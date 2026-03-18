@@ -1,21 +1,22 @@
 package org.athletica.crm
 
+import io.ktor.client.plugins.auth.providers.*
 import java.io.File
 
-class FileAccessTokenStorage : AccessTokenStorage {
-
-    private val file = File(System.getProperty("user.home"), ".athletica_crm_token")
-
-    override fun get(): String? =
-        if (file.exists()) file.readText().trim().takeIf { it.isNotEmpty() } else null
-
-    override fun save(token: String) {
-        file.writeText(token)
+class FileAccessTokenStorage(private val file: File) {
+    fun get(): BearerTokens? {
+        if (file.exists()) {
+            val lines = file.readLines()
+            return BearerTokens(lines[0], lines[1])
+        }
+        return null
     }
 
-    override fun clear() {
+    fun save(tokens: BearerTokens) {
+        file.writeText(tokens.accessToken + "\n" + tokens.refreshToken)
+    }
+
+    fun clear() {
         file.delete()
     }
 }
-
-actual fun getAccessTokenStorage(): AccessTokenStorage = FileAccessTokenStorage()

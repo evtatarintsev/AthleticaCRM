@@ -16,10 +16,10 @@ application {
 dependencies {
     implementation(projects.shared)
     implementation(libs.logback)
-    implementation(libs.ktor.serverCore)
-    implementation(libs.ktor.serverNetty)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
     implementation(libs.liquibase.core)
     implementation(libs.postgresql.jdbc)
-    testImplementation(libs.ktor.serverTestHost)
+    testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
 }

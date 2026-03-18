@@ -9,6 +9,8 @@ import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
+import org.athletica.crm.api.schemas.LoginResponse
+import org.athletica.crm.api.schemas.AuthMeResponse
 import java.sql.DriverManager
 
 fun main() {
@@ -19,8 +21,13 @@ fun main() {
 fun Application.module() {
     runMigrations()
     routing {
-        get("/") {
-            call.respondText("")
+        route("/api") {
+            get("/auth/login") {
+                call.respond(LoginResponse("access_token", "refresh_token"))
+            }
+            get("/auth/me") {
+                call.respond(AuthMeResponse(1, "Ivan"))
+            }
         }
     }
 }

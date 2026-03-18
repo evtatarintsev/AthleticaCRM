@@ -14,35 +14,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import org.athletica.crm.api.client.ApiClient
 
+enum class AuthState{
+    Checking,
+    Authenticated,
+    Unauthenticated,
+}
 @Composable
-@Preview
-fun App() {
-    val storage = remember { getAccessTokenStorage() }
-
-    // null — проверяем, true — авторизован, false — нет
-    var authState by remember { mutableStateOf<Boolean?>(null) }
+fun App(api: ApiClient) {
+    var authState by remember { mutableStateOf(AuthState.Checking) }
 
     LaunchedEffect(Unit) {
         // TODO: заменить на API-запрос к /auth/me — наличие токена не гарантирует его валидность.
         // Десктоп: отправить токен в Authorization: Bearer <token>.
         // Веб: отправить запрос без токена — браузер приложит httpOnly cookie сам.
         // Пока считаем авторизованным, если токен есть локально.
-        authState = storage.get() != null
+        authState = try {
+            api.me()
+            AuthState.Authenticated
+        } catch (e: Exception) {
+            println(e)
+            AuthState.Unauthenticated
+        }
     }
 
     MaterialTheme {
         when (authState) {
-            null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            AuthState.Checking -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
 
-            true -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            AuthState.Authenticated -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 // TODO: заменить на MainScreen()
                 Text("Главный экран")
             }
 
-            false -> LoginScreen(
+            AuthState.Unauthenticated -> LoginScreen(
                 onLogin = { login, password ->
                     // TODO: HTTP POST /auth/login → сохранить токен → authState = true
                 }

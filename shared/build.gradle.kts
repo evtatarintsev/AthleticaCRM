@@ -16,16 +16,17 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serializationJson)
-            implementation(libs.ktor.clientCore)
-            implementation(libs.ktor.clientContentNegotiation)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.serializationKotlinxJson)
+            implementation(libs.ktor.client.auth)
         }
         jvmMain.dependencies {
-            implementation(libs.ktor.clientCio)
+            implementation(libs.ktor.client.cio)
         }
         val wasmJsMain by getting {
             dependencies {
-                implementation(libs.ktor.clientJs)
+                implementation(libs.ktor.client.cio)
             }
         }
         commonTest.dependencies {

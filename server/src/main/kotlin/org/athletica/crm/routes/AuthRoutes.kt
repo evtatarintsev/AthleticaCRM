@@ -16,16 +16,18 @@ fun Route.authRoutes() {
 
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
-
         val user = UserService.findByCredentials(request.username, request.password)
-            ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
 
-        call.respond(
-            LoginResponse(
-                accessToken = JwtConfig.makeAccessToken(user.id, user.username),
-                refreshToken = JwtConfig.makeRefreshToken(user.id),
+        if (user == null) {
+            call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
+        } else {
+            call.respond(
+                LoginResponse(
+                    accessToken = JwtConfig.makeAccessToken(user.id, user.username),
+                    refreshToken = JwtConfig.makeRefreshToken(user.id),
+                )
             )
-        )
+        }
     }
 
     post("/auth/refresh-token") {

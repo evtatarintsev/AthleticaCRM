@@ -20,7 +20,7 @@ fun Application.module() {
     runMigrations()
     routing {
         get("/") {
-            call.respondText("Ktor: ${Greeting().greet()}")
+            call.respondText("")
         }
     }
 }

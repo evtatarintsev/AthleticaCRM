@@ -46,6 +46,9 @@ liquibase-core = { module = "org.liquibase:liquibase-core", version.ref = "liqui
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 postgresql-jdbc = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
+ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt", version.ref = "ktor" }
+ktor-server-contentNegotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor-server-testHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 

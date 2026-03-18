@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinJvm)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ktor)
     application
 }
@@ -17,6 +18,10 @@ dependencies {
     implementation(projects.shared)
     implementation(libs.logback)
     implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.auth.jwt)
+    implementation(libs.ktor.server.contentNegotiation)
+    implementation(libs.ktor.serializationKotlinxJson)
     implementation(libs.ktor.server.netty)
     implementation(libs.liquibase.core)
     implementation(libs.postgresql.jdbc)

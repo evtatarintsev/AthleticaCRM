@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:18-alpine3.23
+    environment:
+      POSTGRES_DB: athletica
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"

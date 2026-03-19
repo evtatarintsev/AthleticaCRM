@@ -26,7 +26,7 @@ kotlin {
         }
         val wasmJsMain by getting {
             dependencies {
-                implementation(libs.ktor.client.cio)
+                implementation(libs.ktor.client.js)
             }
         }
         commonTest.dependencies {

@@ -17,6 +17,9 @@ object JwtConfig {
     const val TYPE_ACCESS = "access"
     const val TYPE_REFRESH = "refresh"
 
+    const val COOKIE_ACCESS_TOKEN = "access_token"
+    const val COOKIE_REFRESH_TOKEN = "refresh_token"
+
     private val ACCESS_TOKEN_TTL = 15 * 60 * 1000L          // 15 минут
     private val REFRESH_TOKEN_TTL = 30L * 24 * 60 * 60 * 1000 // 30 дней
 

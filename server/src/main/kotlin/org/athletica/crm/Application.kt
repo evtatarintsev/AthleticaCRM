@@ -1,6 +1,7 @@
 package org.athletica.crm
 
 import io.ktor.http.*
+import io.ktor.http.auth.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -8,6 +9,7 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
@@ -32,6 +34,13 @@ fun Application.module() {
 
     install(Authentication) {
         jwt("auth-jwt") {
+            // заголовок приоритетнее — для desktop/mobile; кука — для веб-клиента
+            authHeader { call ->
+                call.request.header(HttpHeaders.Authorization)
+                    ?.let { parseAuthorizationHeader(it) }
+                    ?: call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
+                        ?.let { HttpAuthHeader.Single("Bearer", it) }
+            }
             verifier(JwtConfig.verifier)
             validate { credential ->
                 val type = credential.payload.getClaim(JwtConfig.CLAIM_TYPE).asString()

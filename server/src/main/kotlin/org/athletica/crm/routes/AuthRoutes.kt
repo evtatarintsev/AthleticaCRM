@@ -17,22 +17,38 @@ fun Route.authRoutes() {
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
         val user = UserService.findByCredentials(request.username, request.password)
+            ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
 
-        if (user == null) {
-            call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
-        } else {
-            call.respond(
-                LoginResponse(
-                    accessToken = JwtConfig.makeAccessToken(user.id, user.username),
-                    refreshToken = JwtConfig.makeRefreshToken(user.id),
-                )
+        val accessToken = JwtConfig.makeAccessToken(user.id, user.username)
+        val refreshToken = JwtConfig.makeRefreshToken(user.id)
+
+        call.response.cookies.append(
+            Cookie(
+                name = JwtConfig.COOKIE_ACCESS_TOKEN,
+                value = accessToken,
+                httpOnly = true,
+                path = "/",
+                extensions = mapOf("SameSite" to "Strict"),
             )
-        }
+        )
+        call.response.cookies.append(
+            Cookie(
+                name = JwtConfig.COOKIE_REFRESH_TOKEN,
+                value = refreshToken,
+                httpOnly = true,
+                path = "/api/auth/refresh-token",
+                extensions = mapOf("SameSite" to "Strict"),
+            )
+        )
+
+        call.respond(LoginResponse(accessToken = accessToken, refreshToken = refreshToken))
     }
 
     post("/auth/refresh-token") {
+        // заголовок приоритетнее — для desktop/mobile клиентов
         val refreshToken = call.request.header("X-Refresh-Token")
-            ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing X-Refresh-Token header")
+            ?: call.request.cookies[JwtConfig.COOKIE_REFRESH_TOKEN]
+            ?: return@post call.respond(HttpStatusCode.BadRequest, "Refresh token not provided")
 
         val decoded = runCatching { JwtConfig.verifier.verify(refreshToken) }.getOrNull()
             ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid or expired refresh token")
@@ -44,12 +60,29 @@ fun Route.authRoutes() {
         val user = UserService.findById(userId)
             ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
 
-        call.respond(
-            LoginResponse(
-                accessToken = JwtConfig.makeAccessToken(user.id, user.username),
-                refreshToken = JwtConfig.makeRefreshToken(user.id),
+        val newAccessToken = JwtConfig.makeAccessToken(user.id, user.username)
+        val newRefreshToken = JwtConfig.makeRefreshToken(user.id)
+
+        call.response.cookies.append(
+            Cookie(
+                name = JwtConfig.COOKIE_ACCESS_TOKEN,
+                value = newAccessToken,
+                httpOnly = true,
+                path = "/",
+                extensions = mapOf("SameSite" to "Strict"),
             )
         )
+        call.response.cookies.append(
+            Cookie(
+                name = JwtConfig.COOKIE_REFRESH_TOKEN,
+                value = newRefreshToken,
+                httpOnly = true,
+                path = "/api/auth/refresh-token",
+                extensions = mapOf("SameSite" to "Strict"),
+            )
+        )
+
+        call.respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
     }
 
     authenticate("auth-jwt") {

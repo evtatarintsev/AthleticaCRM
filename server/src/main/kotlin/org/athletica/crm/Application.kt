@@ -10,8 +10,7 @@ import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.cookies
 import io.ktor.server.request.header
@@ -27,13 +26,23 @@ import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
 import java.sql.DriverManager
 
-fun main() {
-    runMigrations()
-    embeddedServer(Netty, port = SERVER_PORT, host = "0.0.0.0", module = Application::module)
-        .start(wait = true)
-}
+fun main(args: Array<String>): Unit = EngineMain.main(args)
 
 fun Application.module() {
+    val config = environment.config
+
+    JwtConfig.configure(
+        secret = config.property("jwt.secret").getString(),
+        accessTokenTtlMinutes = config.property("jwt.accessTokenTtlMinutes").getString().toLong(),
+        refreshTokenTtlDays = config.property("jwt.refreshTokenTtlDays").getString().toLong(),
+    )
+
+    runMigrations(
+        url = config.property("database.url").getString(),
+        user = config.property("database.user").getString(),
+        password = config.property("database.password").getString(),
+    )
+
     install(ContentNegotiation) {
         json(Json { ignoreUnknownKeys = true })
     }
@@ -65,17 +74,11 @@ fun Application.module() {
     }
 }
 
-fun runMigrations() {
-    val url =
-        System.getenv("POSTGRES_URL")
-            ?: throw RuntimeException("Missing POSTGRES_URL environment variable")
-    val user =
-        System.getenv("POSTGRES_USER")
-            ?: throw RuntimeException("Missing POSTGRES_USER environment variable")
-    val password =
-        System.getenv("POSTGRES_PASSWORD")
-            ?: throw RuntimeException("Missing POSTGRES_PASSWORD environment variable")
-
+fun runMigrations(
+    url: String,
+    user: String,
+    password: String,
+) {
     val connection = DriverManager.getConnection(url, user, password)
     val database =
         DatabaseFactory.getInstance()

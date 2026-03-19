@@ -23,16 +23,16 @@ fun LoginScreen(onLogin: (login: String, password: String) -> Unit = { _, _ -> }
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.width(320.dp)
+            modifier = Modifier.width(320.dp),
         ) {
             Text(
                 text = "AthleticaCRM",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -42,14 +42,16 @@ fun LoginScreen(onLogin: (login: String, password: String) -> Unit = { _, _ -> }
                 onValueChange = { login = it },
                 label = { Text("Логин") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
-                modifier = Modifier.fillMaxWidth()
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next,
+                    ),
+                keyboardActions =
+                    KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
 
             OutlinedTextField(
@@ -58,23 +60,25 @@ fun LoginScreen(onLogin: (login: String, password: String) -> Unit = { _, _ -> }
                 label = { Text("Пароль") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        onLogin(login, password)
-                    }
-                ),
-                modifier = Modifier.fillMaxWidth()
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
+                keyboardActions =
+                    KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            onLogin(login, password)
+                        },
+                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
 
             Button(
                 onClick = { onLogin(login, password) },
                 enabled = login.isNotBlank() && password.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Войти")
             }

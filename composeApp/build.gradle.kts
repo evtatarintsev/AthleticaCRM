@@ -16,7 +16,7 @@ kotlin {
         browser()
         binaries.executable()
     }
-    
+
     sourceSets {
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -38,7 +38,6 @@ kotlin {
         }
     }
 }
-
 
 compose.desktop {
     application {

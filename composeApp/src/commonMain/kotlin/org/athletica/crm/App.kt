@@ -15,11 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import org.athletica.crm.api.client.ApiClient
 
-enum class AuthState{
+enum class AuthState {
     Checking,
     Authenticated,
     Unauthenticated,
 }
+
 @Composable
 fun App(api: ApiClient) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
@@ -29,30 +30,34 @@ fun App(api: ApiClient) {
         // Десктоп: отправить токен в Authorization: Bearer <token>.
         // Веб: отправить запрос без токена — браузер приложит httpOnly cookie сам.
         // Пока считаем авторизованным, если токен есть локально.
-        authState = try {
-            api.me()
-            AuthState.Authenticated
-        } catch (e: Exception) {
-            AuthState.Unauthenticated
-        }
+        authState =
+            try {
+                api.me()
+                AuthState.Authenticated
+            } catch (e: Exception) {
+                AuthState.Unauthenticated
+            }
     }
 
     MaterialTheme {
         when (authState) {
-            AuthState.Checking -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-
-            AuthState.Authenticated -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                // TODO: заменить на MainScreen()
-                Text("Главный экран")
-            }
-
-            AuthState.Unauthenticated -> LoginScreen(
-                onLogin = { login, password ->
-                    // TODO: HTTP POST /auth/login → сохранить токен → authState = true
+            AuthState.Checking ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-            )
+
+            AuthState.Authenticated ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    // TODO: заменить на MainScreen()
+                    Text("Главный экран")
+                }
+
+            AuthState.Unauthenticated ->
+                LoginScreen(
+                    onLogin = { login, password ->
+                        // TODO: HTTP POST /auth/login → сохранить токен → authState = true
+                    },
+                )
         }
     }
 }

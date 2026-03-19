@@ -12,7 +12,6 @@ import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.request.cookies
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
@@ -26,16 +25,19 @@ import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
 import java.sql.DriverManager
 
+/** Точка входа: делегирует запуск Ktor [EngineMain], который читает application.conf. */
 fun main(args: Array<String>): Unit = EngineMain.main(args)
 
+/** Модуль приложения: инициализирует конфигурацию, запускает миграции и настраивает плагины. */
 fun Application.module() {
     val config = environment.config
 
-    JwtConfig.configure(
-        secret = config.property("jwt.secret").getString(),
-        accessTokenTtlMinutes = config.property("jwt.accessTokenTtlMinutes").getString().toLong(),
-        refreshTokenTtlDays = config.property("jwt.refreshTokenTtlDays").getString().toLong(),
-    )
+    val jwtConfig =
+        JwtConfig(
+            secret = config.property("jwt.secret").getString(),
+            accessTokenTtlMinutes = config.property("jwt.accessTokenTtlMinutes").getString().toLong(),
+            refreshTokenTtlDays = config.property("jwt.refreshTokenTtlDays").getString().toLong(),
+        )
 
     runMigrations(
         url = config.property("database.url").getString(),
@@ -43,20 +45,29 @@ fun Application.module() {
         password = config.property("database.password").getString(),
     )
 
+    configureServer(jwtConfig)
+}
+
+/**
+ * Устанавливает плагины и маршруты без запуска миграций.
+ * Выделена отдельно для возможности тестирования без подключения к БД.
+ *
+ * @param jwtConfig конфигурация JWT токенов
+ */
+fun Application.configureServer(jwtConfig: JwtConfig) {
     install(ContentNegotiation) {
         json(Json { ignoreUnknownKeys = true })
     }
 
     install(Authentication) {
         jwt("auth-jwt") {
-            // заголовок приоритетнее — для desktop/mobile; кука — для веб-клиента
             authHeader { call ->
                 call.request.header(HttpHeaders.Authorization)
                     ?.let { parseAuthorizationHeader(it) }
                     ?: call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
                         ?.let { HttpAuthHeader.Single("Bearer", it) }
             }
-            verifier(JwtConfig.verifier)
+            verifier(jwtConfig.verifier)
             validate { credential ->
                 val type = credential.payload.getClaim(JwtConfig.CLAIM_TYPE).asString()
                 if (type == JwtConfig.TYPE_ACCESS) JWTPrincipal(credential.payload) else null
@@ -69,11 +80,18 @@ fun Application.module() {
 
     routing {
         route("/api") {
-            authRoutes()
+            authRoutes(jwtConfig)
         }
     }
 }
 
+/**
+ * Запускает Liquibase миграции базы данных.
+ *
+ * @param url JDBC URL подключения к PostgreSQL
+ * @param user имя пользователя БД
+ * @param password пароль пользователя БД
+ */
 fun runMigrations(
     url: String,
     user: String,

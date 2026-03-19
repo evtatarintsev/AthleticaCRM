@@ -4,6 +4,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import java.io.File
 
+/** Точка входа десктоп-приложения. */
 fun main() =
     application {
         val tokenStorage =

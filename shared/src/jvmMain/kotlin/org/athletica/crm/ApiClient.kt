@@ -15,6 +15,13 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.LoginResponse
 
+/**
+ * Создаёт [ApiClient] с движком CIO для JVM.
+ * Настраивает JSON сериализацию, базовый URL, таймауты и Bearer аутентификацию с автообновлением токенов.
+ *
+ * @param tokenStorage хранилище JWT токенов для загрузки и сохранения
+ * @return настроенный [ApiClient]
+ */
 fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
     val http =
         HttpClient(CIO).config {
@@ -30,7 +37,7 @@ fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
             }
             install(Auth) {
                 bearer {
-                    cacheTokens = false // берем токены из хранилища при каждом запросе
+                    cacheTokens = false
                     loadTokens {
                         tokenStorage.get()
                     }

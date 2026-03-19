@@ -5,40 +5,36 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import java.util.Date
 
-object JwtConfig {
-    const val ISSUER = "athletica-crm"
-    const val AUDIENCE = "athletica-crm-users"
-    const val CLAIM_USER_ID = "userId"
-    const val CLAIM_USERNAME = "username"
-    const val CLAIM_TYPE = "type"
-    const val TYPE_ACCESS = "access"
-    const val TYPE_REFRESH = "refresh"
+/**
+ * Конфигурация и фабрика JWT токенов.
+ *
+ * @param secret секретный ключ HMAC256 для подписи токенов
+ * @param accessTokenTtlMinutes время жизни access токена в минутах
+ * @param refreshTokenTtlDays время жизни refresh токена в днях
+ */
+class JwtConfig(
+    secret: String,
+    accessTokenTtlMinutes: Long,
+    refreshTokenTtlDays: Long,
+) {
+    private val algorithm = Algorithm.HMAC256(secret)
+    private val accessTokenTtlMs = accessTokenTtlMinutes * 60 * 1000
+    private val refreshTokenTtlMs = refreshTokenTtlDays * 24 * 60 * 60 * 1000
 
-    const val COOKIE_ACCESS_TOKEN = "access_token"
-    const val COOKIE_REFRESH_TOKEN = "refresh_token"
+    /** Верификатор для проверки подписи и claims входящих токенов. */
+    val verifier: JWTVerifier =
+        JWT.require(algorithm)
+            .withIssuer(ISSUER)
+            .withAudience(AUDIENCE)
+            .build()
 
-    private lateinit var algorithm: Algorithm
-    private var accessTokenTtlMs: Long = 0
-    private var refreshTokenTtlMs: Long = 0
-
-    lateinit var verifier: JWTVerifier
-        private set
-
-    fun configure(
-        secret: String,
-        accessTokenTtlMinutes: Long,
-        refreshTokenTtlDays: Long,
-    ) {
-        algorithm = Algorithm.HMAC256(secret)
-        accessTokenTtlMs = accessTokenTtlMinutes * 60 * 1000
-        refreshTokenTtlMs = refreshTokenTtlDays * 24 * 60 * 60 * 1000
-        verifier =
-            JWT.require(algorithm)
-                .withIssuer(ISSUER)
-                .withAudience(AUDIENCE)
-                .build()
-    }
-
+    /**
+     * Создаёт подписанный access токен.
+     *
+     * @param userId идентификатор пользователя
+     * @param username имя пользователя
+     * @return подписанный JWT access токен
+     */
     fun makeAccessToken(
         userId: Int,
         username: String,
@@ -52,6 +48,12 @@ object JwtConfig {
             .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtlMs))
             .sign(algorithm)
 
+    /**
+     * Создаёт подписанный refresh токен.
+     *
+     * @param userId идентификатор пользователя
+     * @return подписанный JWT refresh токен
+     */
     fun makeRefreshToken(userId: Int): String =
         JWT.create()
             .withIssuer(ISSUER)
@@ -60,4 +62,33 @@ object JwtConfig {
             .withClaim(CLAIM_TYPE, TYPE_REFRESH)
             .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtlMs))
             .sign(algorithm)
+
+    companion object {
+        /** Издатель токенов. */
+        const val ISSUER = "athletica-crm"
+
+        /** Аудитория токенов. */
+        const val AUDIENCE = "athletica-crm-users"
+
+        /** Claim с идентификатором пользователя. */
+        const val CLAIM_USER_ID = "userId"
+
+        /** Claim с именем пользователя. */
+        const val CLAIM_USERNAME = "username"
+
+        /** Claim с типом токена. */
+        const val CLAIM_TYPE = "type"
+
+        /** Значение claim типа для access токена. */
+        const val TYPE_ACCESS = "access"
+
+        /** Значение claim типа для refresh токена. */
+        const val TYPE_REFRESH = "refresh"
+
+        /** Имя cookie для хранения access токена. */
+        const val COOKIE_ACCESS_TOKEN = "access_token"
+
+        /** Имя cookie для хранения refresh токена. */
+        const val COOKIE_REFRESH_TOKEN = "refresh_token"
+    }
 }

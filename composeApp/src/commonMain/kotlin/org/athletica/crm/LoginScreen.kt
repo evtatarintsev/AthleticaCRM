@@ -28,6 +28,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
+/**
+ * Экран авторизации с полями логина и пароля.
+ *
+ * @param onLogin обработчик нажатия кнопки "Войти", принимает логин и пароль
+ */
 @Composable
 fun LoginScreen(onLogin: (login: String, password: String) -> Unit = { _, _ -> }) {
     val focusManager = LocalFocusManager.current

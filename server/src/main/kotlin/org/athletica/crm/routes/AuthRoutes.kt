@@ -5,7 +5,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
-import io.ktor.server.request.cookies
 import io.ktor.server.request.header
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -20,24 +19,29 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.User
 import org.athletica.crm.security.UserService
 
-fun Route.authRoutes() {
+/**
+ * Регистрирует маршруты аутентификации:
+ * POST /auth/login, POST /auth/refresh-token, GET /auth/me.
+ *
+ * @param jwtConfig конфигурация JWT для создания и верификации токенов
+ */
+fun Route.authRoutes(jwtConfig: JwtConfig) {
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
         val user =
             UserService.findByCredentials(request.username, request.password)
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
-        call.respondWithJwt(user)
+        call.respondWithJwt(user, jwtConfig)
     }
 
     post("/auth/refresh-token") {
-        // заголовок приоритетнее — для desktop/mobile клиентов
         val refreshToken =
             call.request.header("X-Refresh-Token")
                 ?: call.request.cookies[JwtConfig.COOKIE_REFRESH_TOKEN]
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Refresh token not provided")
 
         val decoded =
-            runCatching { JwtConfig.verifier.verify(refreshToken) }.getOrNull()
+            runCatching { jwtConfig.verifier.verify(refreshToken) }.getOrNull()
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid or expired refresh token")
 
         if (decoded.getClaim(JwtConfig.CLAIM_TYPE).asString() != JwtConfig.TYPE_REFRESH) {
@@ -48,7 +52,7 @@ fun Route.authRoutes() {
         val user =
             UserService.findById(userId)
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
-        call.respondWithJwt(user)
+        call.respondWithJwt(user, jwtConfig)
     }
 
     authenticate("auth-jwt") {
@@ -64,9 +68,19 @@ fun Route.authRoutes() {
     }
 }
 
-suspend fun RoutingCall.respondWithJwt(user: User) {
-    val newAccessToken = JwtConfig.makeAccessToken(user.id, user.username)
-    val newRefreshToken = JwtConfig.makeRefreshToken(user.id)
+/**
+ * Формирует JWT токены для пользователя и отправляет ответ.
+ * Устанавливает HttpOnly cookies для веб-клиентов и возвращает токены в теле ответа.
+ *
+ * @param user пользователь, для которого создаются токены
+ * @param jwtConfig конфигурация JWT для создания токенов
+ */
+suspend fun RoutingCall.respondWithJwt(
+    user: User,
+    jwtConfig: JwtConfig,
+) {
+    val newAccessToken = jwtConfig.makeAccessToken(user.id, user.username)
+    val newRefreshToken = jwtConfig.makeRefreshToken(user.id)
 
     response.cookies.append(
         Cookie(

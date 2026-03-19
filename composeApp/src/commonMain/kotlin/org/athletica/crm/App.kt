@@ -15,21 +15,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import org.athletica.crm.api.client.ApiClient
 
+/** Состояние авторизации пользователя. */
 enum class AuthState {
+    /** Проверка авторизации в процессе. */
     Checking,
+
+    /** Пользователь авторизован. */
     Authenticated,
+
+    /** Пользователь не авторизован. */
     Unauthenticated,
 }
 
+/**
+ * Корневой composable приложения.
+ * Проверяет авторизацию через [ApiClient.me] и отображает соответствующий экран.
+ *
+ * @param api клиент API
+ */
 @Composable
 fun App(api: ApiClient) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
 
     LaunchedEffect(Unit) {
-        // TODO: заменить на API-запрос к /auth/me — наличие токена не гарантирует его валидность.
-        // Десктоп: отправить токен в Authorization: Bearer <token>.
-        // Веб: отправить запрос без токена — браузер приложит httpOnly cookie сам.
-        // Пока считаем авторизованным, если токен есть локально.
+        // TODO: на вебе браузер приложит httpOnly cookie автоматически
         authState =
             try {
                 api.me()
@@ -54,8 +63,8 @@ fun App(api: ApiClient) {
 
             AuthState.Unauthenticated ->
                 LoginScreen(
-                    onLogin = { login, password ->
-                        // TODO: HTTP POST /auth/login → сохранить токен → authState = true
+                    onLogin = { _, _ ->
+                        // TODO: HTTP POST /auth/login → сохранить токен → authState = Authenticated
                     },
                 )
         }

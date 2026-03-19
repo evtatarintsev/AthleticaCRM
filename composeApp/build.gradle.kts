@@ -39,6 +39,16 @@ kotlin {
     }
 }
 
+afterEvaluate {
+    val srcOnly = fileTree("src")
+    tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.KtLintCheckTask>().configureEach {
+        setSource(srcOnly)
+    }
+    tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask>().configureEach {
+        setSource(srcOnly)
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "org.athletica.crm.MainKt"

@@ -10,10 +10,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.LoginRequest
 
 /** Состояние авторизации пользователя. */
 enum class AuthState {
@@ -36,6 +39,7 @@ enum class AuthState {
 @Composable
 fun App(api: ApiClient) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         // TODO: на вебе браузер приложит httpOnly cookie автоматически
@@ -63,8 +67,15 @@ fun App(api: ApiClient) {
 
             AuthState.Unauthenticated ->
                 LoginScreen(
-                    onLogin = { _, _ ->
-                        // TODO: HTTP POST /auth/login → сохранить токен → authState = Authenticated
+                    onLogin = { login, password ->
+                        scope.launch {
+                            try {
+                                api.login(LoginRequest(username = login, password = password))
+                                authState = AuthState.Authenticated
+                            } catch (e: Exception) {
+                                // TODO: показать ошибку пользователю
+                            }
+                        }
                     },
                 )
         }

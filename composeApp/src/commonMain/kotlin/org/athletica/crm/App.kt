@@ -14,9 +14,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.LoginRequest
+
+private val logger = Logger.withTag("App")
 
 /** Состояние авторизации пользователя. */
 enum class AuthState {
@@ -46,8 +49,10 @@ fun App(api: ApiClient) {
         authState =
             try {
                 api.me()
+                logger.i { "Сессия активна" }
                 AuthState.Authenticated
             } catch (e: Exception) {
+                logger.i(e) { "Сессия не найдена, требуется вход" }
                 AuthState.Unauthenticated
             }
     }
@@ -71,8 +76,10 @@ fun App(api: ApiClient) {
                         scope.launch {
                             try {
                                 api.login(LoginRequest(username = login, password = password))
+                                logger.i { "Вход выполнен успешно: $login" }
                                 authState = AuthState.Authenticated
                             } catch (e: Exception) {
+                                logger.e(e) { "Ошибка входа: $login" }
                                 // TODO: показать ошибку пользователю
                             }
                         }

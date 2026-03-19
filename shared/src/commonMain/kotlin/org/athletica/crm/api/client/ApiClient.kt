@@ -5,6 +5,8 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.LoginRequest
 import org.athletica.crm.api.schemas.LoginResponse
@@ -23,6 +25,7 @@ class ApiClient(private val http: HttpClient) {
      */
     suspend fun login(request: LoginRequest): LoginResponse =
         http.post("/auth/login") {
+            contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 

@@ -29,7 +29,7 @@ fun apiClient(): ApiClient {
                 json(Json { ignoreUnknownKeys = true })
             }
             defaultRequest {
-                url("http://127.0.0.1:8080/")
+                url("http://localhost:8081/")
             }
             install(Auth) {
                 bearer {

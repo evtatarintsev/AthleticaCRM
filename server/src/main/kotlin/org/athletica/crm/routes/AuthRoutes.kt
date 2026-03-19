@@ -10,6 +10,7 @@ import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.LoginRequest
 import org.athletica.crm.api.schemas.LoginResponse
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.security.User
 import org.athletica.crm.security.UserService
 
 fun Route.authRoutes() {
@@ -18,30 +19,7 @@ fun Route.authRoutes() {
         val request = call.receive<LoginRequest>()
         val user = UserService.findByCredentials(request.username, request.password)
             ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
-
-        val accessToken = JwtConfig.makeAccessToken(user.id, user.username)
-        val refreshToken = JwtConfig.makeRefreshToken(user.id)
-
-        call.response.cookies.append(
-            Cookie(
-                name = JwtConfig.COOKIE_ACCESS_TOKEN,
-                value = accessToken,
-                httpOnly = true,
-                path = "/",
-                extensions = mapOf("SameSite" to "Strict"),
-            )
-        )
-        call.response.cookies.append(
-            Cookie(
-                name = JwtConfig.COOKIE_REFRESH_TOKEN,
-                value = refreshToken,
-                httpOnly = true,
-                path = "/api/auth/refresh-token",
-                extensions = mapOf("SameSite" to "Strict"),
-            )
-        )
-
-        call.respond(LoginResponse(accessToken = accessToken, refreshToken = refreshToken))
+        call.respondWithJwt(user)
     }
 
     post("/auth/refresh-token") {
@@ -59,30 +37,7 @@ fun Route.authRoutes() {
         val userId = decoded.getClaim(JwtConfig.CLAIM_USER_ID).asInt()
         val user = UserService.findById(userId)
             ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
-
-        val newAccessToken = JwtConfig.makeAccessToken(user.id, user.username)
-        val newRefreshToken = JwtConfig.makeRefreshToken(user.id)
-
-        call.response.cookies.append(
-            Cookie(
-                name = JwtConfig.COOKIE_ACCESS_TOKEN,
-                value = newAccessToken,
-                httpOnly = true,
-                path = "/",
-                extensions = mapOf("SameSite" to "Strict"),
-            )
-        )
-        call.response.cookies.append(
-            Cookie(
-                name = JwtConfig.COOKIE_REFRESH_TOKEN,
-                value = newRefreshToken,
-                httpOnly = true,
-                path = "/api/auth/refresh-token",
-                extensions = mapOf("SameSite" to "Strict"),
-            )
-        )
-
-        call.respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
+        call.respondWithJwt(user)
     }
 
     authenticate("auth-jwt") {
@@ -96,4 +51,30 @@ fun Route.authRoutes() {
             )
         }
     }
+}
+
+suspend fun RoutingCall.respondWithJwt(user: User) {
+    val newAccessToken = JwtConfig.makeAccessToken(user.id, user.username)
+    val newRefreshToken = JwtConfig.makeRefreshToken(user.id)
+
+    response.cookies.append(
+        Cookie(
+            name = JwtConfig.COOKIE_ACCESS_TOKEN,
+            value = newAccessToken,
+            httpOnly = true,
+            path = "/",
+            extensions = mapOf("SameSite" to "Strict"),
+        )
+    )
+    response.cookies.append(
+        Cookie(
+            name = JwtConfig.COOKIE_REFRESH_TOKEN,
+            value = newRefreshToken,
+            httpOnly = true,
+            path = "/api/auth/refresh-token",
+            extensions = mapOf("SameSite" to "Strict"),
+        )
+    )
+
+    respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
 }

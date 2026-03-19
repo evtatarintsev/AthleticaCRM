@@ -12,6 +12,5 @@ object UserService {
     fun findByCredentials(username: String, password: String): User? =
         users.find { it.username == username && it.password == password }
 
-    fun findById(id: Int): User? =
-        users.find { it.id == id }
+    fun findById(id: Int): User? = users.find { it.id == id }
 }

@@ -13,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import org.athletica.crm.api.client.ApiClient
 
 enum class AuthState{
@@ -34,7 +33,6 @@ fun App(api: ApiClient) {
             api.me()
             AuthState.Authenticated
         } catch (e: Exception) {
-            println(e)
             AuthState.Unauthenticated
         }
     }

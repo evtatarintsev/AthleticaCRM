@@ -1,6 +1,7 @@
 package org.athletica.crm
 
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.auth.HttpAuthHeader
 import io.ktor.http.auth.parseAuthorizationHeader
@@ -12,6 +13,7 @@ import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
@@ -45,7 +47,8 @@ fun Application.module() {
         password = config.property("database.password").getString(),
     )
 
-    configureServer(jwtConfig)
+    val corsAllowedHosts = config.property("cors.allowedHosts").getString()
+    configureServer(jwtConfig, corsAllowedHosts)
 }
 
 /**
@@ -53,8 +56,22 @@ fun Application.module() {
  * Выделена отдельно для возможности тестирования без подключения к БД.
  *
  * @param jwtConfig конфигурация JWT токенов
+ * @param corsAllowedHost хост, которому разрешены кросс-доменные запросы (например, `localhost:8081`)
  */
-fun Application.configureServer(jwtConfig: JwtConfig) {
+fun Application.configureServer(
+    jwtConfig: JwtConfig,
+    corsAllowedHost: String = "localhost:8081",
+) {
+    install(CORS) {
+        allowHost(corsAllowedHost, schemes = listOf("http", "https"))
+        allowCredentials = true
+        allowHeader(HttpHeaders.Authorization)
+        allowHeader(HttpHeaders.ContentType)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Options)
+    }
+
     install(ContentNegotiation) {
         json(Json { ignoreUnknownKeys = true })
     }

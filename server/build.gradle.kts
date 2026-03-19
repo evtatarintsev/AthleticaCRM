@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.contentNegotiation)
     implementation(libs.ktor.serializationKotlinxJson)
+    implementation(libs.ktor.server.cors)
     implementation(libs.ktor.server.netty)
     implementation(libs.liquibase.core)
     implementation(libs.postgresql.jdbc)

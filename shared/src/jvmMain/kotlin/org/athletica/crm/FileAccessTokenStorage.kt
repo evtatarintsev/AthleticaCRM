@@ -1,6 +1,6 @@
 package org.athletica.crm
 
-import io.ktor.client.plugins.auth.providers.*
+import io.ktor.client.plugins.auth.providers.BearerTokens
 import java.io.File
 
 class FileAccessTokenStorage(private val file: File) {

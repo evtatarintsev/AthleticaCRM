@@ -9,7 +9,7 @@ group = "org.athletica.crm"
 version = "1.0.0"
 application {
     mainClass.set("org.athletica.crm.ApplicationKt")
-    
+
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }

@@ -1,17 +1,23 @@
 package org.athletica.crm
 
-import io.ktor.http.*
-import io.ktor.http.auth.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
-import io.ktor.server.auth.jwt.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.auth.HttpAuthHeader
+import io.ktor.http.auth.parseAuthorizationHeader
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.jwt.jwt
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.cookies
+import io.ktor.server.request.header
+import io.ktor.server.response.respond
+import io.ktor.server.routing.route
+import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
@@ -60,16 +66,20 @@ fun Application.module() {
 }
 
 fun runMigrations() {
-    val url = System.getenv("POSTGRES_URL")
-        ?: throw RuntimeException("Missing POSTGRES_URL environment variable")
-    val user = System.getenv("POSTGRES_USER")
-        ?: throw RuntimeException("Missing POSTGRES_USER environment variable")
-    val password = System.getenv("POSTGRES_PASSWORD")
-        ?: throw RuntimeException("Missing POSTGRES_PASSWORD environment variable")
+    val url =
+        System.getenv("POSTGRES_URL")
+            ?: throw RuntimeException("Missing POSTGRES_URL environment variable")
+    val user =
+        System.getenv("POSTGRES_USER")
+            ?: throw RuntimeException("Missing POSTGRES_USER environment variable")
+    val password =
+        System.getenv("POSTGRES_PASSWORD")
+            ?: throw RuntimeException("Missing POSTGRES_PASSWORD environment variable")
 
     val connection = DriverManager.getConnection(url, user, password)
-    val database = DatabaseFactory.getInstance()
-        .findCorrectDatabaseImplementation(JdbcConnection(connection))
+    val database =
+        DatabaseFactory.getInstance()
+            .findCorrectDatabaseImplementation(JdbcConnection(connection))
 
     Liquibase("db/changelog/db.changelog-master.yaml", ClassLoaderResourceAccessor(), database)
         .use { it.update("") }

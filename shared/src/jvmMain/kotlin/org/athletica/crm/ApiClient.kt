@@ -1,6 +1,6 @@
 package org.athletica.crm
 
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
@@ -15,34 +15,33 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.LoginResponse
 
-
 fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
-    val http = HttpClient(CIO).config {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        defaultRequest {
-            url("https://ktor.io/docs/")
-        }
-        install(HttpTimeout){
-            connectTimeoutMillis = 1000
-            requestTimeoutMillis = 1000
-        }
-        install(Auth) {
-            bearer {
-                cacheTokens = false  // берем токены из хранилища при каждом запросе
-                loadTokens {
-                    tokenStorage.get()
-                }
-                refreshTokens {
-                    val response = client.post("/api/auth/refresh-tokens").body<LoginResponse>()
-                    val tokens = BearerTokens(response.accessToken, response.refreshToken)
-                    tokenStorage.save(tokens)
-                    tokens
+    val http =
+        HttpClient(CIO).config {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+            defaultRequest {
+                url("https://ktor.io/docs/")
+            }
+            install(HttpTimeout) {
+                connectTimeoutMillis = 1000
+                requestTimeoutMillis = 1000
+            }
+            install(Auth) {
+                bearer {
+                    cacheTokens = false // берем токены из хранилища при каждом запросе
+                    loadTokens {
+                        tokenStorage.get()
+                    }
+                    refreshTokens {
+                        val response = client.post("/api/auth/refresh-tokens").body<LoginResponse>()
+                        val tokens = BearerTokens(response.accessToken, response.refreshToken)
+                        tokenStorage.save(tokens)
+                        tokens
+                    }
                 }
             }
-
         }
-    }
     return ApiClient(http)
 }

@@ -16,22 +16,22 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.LoginResponse
 
 fun apiClient(): ApiClient {
-    val http = HttpClient(CIO).config {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        defaultRequest {
-            url("https://ktor.io/docs/")
-        }
-        install(Auth) {
-            bearer {
-                refreshTokens {
-                    val response = client.post("/api/auth/refresh-tokens").body<LoginResponse>()
-                    BearerTokens(response.accessToken, response.refreshToken)
+    val http =
+        HttpClient(CIO).config {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+            defaultRequest {
+                url("https://ktor.io/docs/")
+            }
+            install(Auth) {
+                bearer {
+                    refreshTokens {
+                        val response = client.post("/api/auth/refresh-tokens").body<LoginResponse>()
+                        BearerTokens(response.accessToken, response.refreshToken)
+                    }
                 }
             }
-
         }
-    }
     return ApiClient(http)
 }

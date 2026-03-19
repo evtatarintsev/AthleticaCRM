@@ -42,6 +42,7 @@ enum class AuthState {
 @Composable
 fun App(api: ApiClient) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
+    var loginError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -72,15 +73,18 @@ fun App(api: ApiClient) {
 
             AuthState.Unauthenticated ->
                 LoginScreen(
+                    errorMessage = loginError,
+                    onErrorDismissed = { loginError = null },
                     onLogin = { login, password ->
                         scope.launch {
+                            loginError = null
                             try {
                                 api.login(LoginRequest(username = login, password = password))
                                 logger.i { "Вход выполнен успешно: $login" }
                                 authState = AuthState.Authenticated
                             } catch (e: Exception) {
                                 logger.e(e) { "Ошибка входа: $login" }
-                                // TODO: показать ошибку пользователю
+                                loginError = "Неверный логин или пароль"
                             }
                         }
                     },

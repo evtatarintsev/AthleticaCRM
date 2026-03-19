@@ -24,7 +24,7 @@ class ApiClient(private val http: HttpClient) {
      * @return access и refresh токены
      */
     suspend fun login(request: LoginRequest): LoginResponse =
-        http.post("/auth/login") {
+        http.post("/api/auth/login") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
@@ -34,5 +34,5 @@ class ApiClient(private val http: HttpClient) {
      *
      * @return данные пользователя
      */
-    suspend fun me(): AuthMeResponse = http.get("/auth/me").body()
+    suspend fun me(): AuthMeResponse = http.get("/api/auth/me").body()
 }

@@ -29,7 +29,7 @@ fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
                 json(Json { ignoreUnknownKeys = true })
             }
             defaultRequest {
-                url("https://ktor.io/docs/")
+                url("http://127.0.0.1:8080/")
             }
             install(HttpTimeout) {
                 connectTimeoutMillis = 1000

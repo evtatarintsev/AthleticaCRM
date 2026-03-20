@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.launch
+import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.LoginRequest
 
@@ -39,7 +40,10 @@ enum class AuthState {
  * @param api клиент API
  */
 @Composable
-fun App(api: ApiClient) {
+fun App(
+    tokenStorage: AccessTokenStorage,
+    api: ApiClient
+) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
     var loginError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -75,7 +79,8 @@ fun App(api: ApiClient) {
                         scope.launch {
                             loginError = null
                             try {
-                                api.login(LoginRequest(username = login, password = password))
+                                val response = api.login(LoginRequest(username = login, password = password))
+                                tokenStorage.save(response.accessToken, response.refreshToken)
                                 logger.i { "Вход выполнен успешно: $login" }
                                 authState = AuthState.Authenticated
                             } catch (e: Exception) {

@@ -43,9 +43,8 @@ fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
                     }
                     refreshTokens {
                         val response = client.post("/api/auth/refresh-tokens").body<LoginResponse>()
-                        val tokens = BearerTokens(response.accessToken, response.refreshToken)
-                        tokenStorage.save(tokens)
-                        tokens
+                        tokenStorage.save(response.accessToken, response.refreshToken)
+                        BearerTokens(response.accessToken, response.refreshToken)
                     }
                 }
             }

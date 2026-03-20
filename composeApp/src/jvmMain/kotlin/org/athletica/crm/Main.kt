@@ -15,6 +15,6 @@ fun main() =
             onCloseRequest = ::exitApplication,
             title = "AthleticaCRM",
         ) {
-            App(apiClient(tokenStorage))
+            App(tokenStorage, apiClient(tokenStorage))
         }
     }

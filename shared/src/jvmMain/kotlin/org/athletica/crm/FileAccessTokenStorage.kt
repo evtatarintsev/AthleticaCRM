@@ -1,7 +1,9 @@
 package org.athletica.crm
 
 import io.ktor.client.plugins.auth.providers.BearerTokens
+import org.athletica.crm.api.AccessTokenStorage
 import java.io.File
+
 
 /**
  * Хранилище JWT токенов на основе файловой системы для десктоп-клиента.
@@ -9,7 +11,7 @@ import java.io.File
  *
  * @param file файл для хранения токенов
  */
-class FileAccessTokenStorage(private val file: File) {
+class FileAccessTokenStorage(private val file: File) : AccessTokenStorage {
     /**
      * Возвращает сохранённые токены или null если файл отсутствует.
      *
@@ -25,11 +27,9 @@ class FileAccessTokenStorage(private val file: File) {
 
     /**
      * Сохраняет токены в файл.
-     *
-     * @param tokens JWT токены для сохранения
      */
-    fun save(tokens: BearerTokens) {
-        file.writeText(tokens.accessToken + "\n" + tokens.refreshToken)
+    override fun save(accessToken: String, refreshToken: String) {
+        file.writeText(accessToken + "\n" + refreshToken)
     }
 
     /** Удаляет файл с токенами. */

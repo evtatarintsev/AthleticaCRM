@@ -30,6 +30,13 @@ class ApiClient(private val http: HttpClient) {
         }.body()
 
     /**
+     * Разлогинивает пользователя на сервере
+     */
+    suspend fun logout(): Unit {
+        http.post("/api/auth/logout")
+    }
+
+    /**
      * Возвращает данные текущего авторизованного пользователя.
      *
      * @return данные пользователя

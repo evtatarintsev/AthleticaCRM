@@ -33,7 +33,7 @@ class FileAccessTokenStorage(private val file: File) : AccessTokenStorage {
     }
 
     /** Удаляет файл с токенами. */
-    fun clear() {
+    override fun clear() {
         file.delete()
     }
 }

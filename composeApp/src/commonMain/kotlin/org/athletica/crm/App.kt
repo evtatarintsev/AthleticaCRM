@@ -44,7 +44,7 @@ private enum class UnauthScreen { Login, Register }
 @Composable
 fun App(
     tokenStorage: AccessTokenStorage,
-    api: ApiClient
+    api: ApiClient,
 ) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
     var loginError by remember { mutableStateOf<String?>(null) }

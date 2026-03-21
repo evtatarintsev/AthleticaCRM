@@ -4,6 +4,8 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import java.util.Date
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Конфигурация и фабрика JWT токенов.
@@ -36,13 +38,13 @@ class JwtConfig(
      * @return подписанный JWT access токен
      */
     fun makeAccessToken(
-        userId: Int,
+        userId: Uuid,
         username: String,
     ): String =
         JWT.create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
-            .withClaim(CLAIM_USER_ID, userId)
+            .withClaim(CLAIM_USER_ID, userId.toString())
             .withClaim(CLAIM_USERNAME, username)
             .withClaim(CLAIM_TYPE, TYPE_ACCESS)
             .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtlMs))
@@ -54,11 +56,11 @@ class JwtConfig(
      * @param userId идентификатор пользователя
      * @return подписанный JWT refresh токен
      */
-    fun makeRefreshToken(userId: Int): String =
+    fun makeRefreshToken(userId: Uuid): String =
         JWT.create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
-            .withClaim(CLAIM_USER_ID, userId)
+            .withClaim(CLAIM_USER_ID, userId.toString())
             .withClaim(CLAIM_TYPE, TYPE_REFRESH)
             .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtlMs))
             .sign(algorithm)

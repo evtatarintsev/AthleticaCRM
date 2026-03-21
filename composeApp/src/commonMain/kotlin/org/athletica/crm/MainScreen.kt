@@ -81,7 +81,10 @@ enum class NavItem(
  * @param onLogout вызывается при нажатии кнопки выхода
  */
 @Composable
-fun MainScreen(api: ApiClient, onLogout: () -> Unit = {}) {
+fun MainScreen(
+    api: ApiClient,
+    onLogout: () -> Unit = {},
+) {
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)

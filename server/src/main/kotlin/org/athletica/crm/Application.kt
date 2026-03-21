@@ -25,6 +25,7 @@ import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.usecases.SignUp
 import java.sql.DriverManager
 
 /** Точка входа: делегирует запуск Ktor [EngineMain], который читает application.conf. */
@@ -97,7 +98,7 @@ fun Application.configureServer(
 
     routing {
         route("/api") {
-            authRoutes(jwtConfig)
+            authRoutes(jwtConfig, SignUp())
         }
     }
 }

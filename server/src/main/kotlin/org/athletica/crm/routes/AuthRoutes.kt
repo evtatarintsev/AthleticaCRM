@@ -16,9 +16,13 @@ import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.LoginRequest
 import org.athletica.crm.api.schemas.LoginResponse
+import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.User
 import org.athletica.crm.security.UserService
+import org.athletica.crm.usecases.SignUp
+import kotlin.uuid.Uuid
 
 /**
  * Регистрирует маршруты аутентификации:
@@ -26,7 +30,7 @@ import org.athletica.crm.security.UserService
  *
  * @param jwtConfig конфигурация JWT для создания и верификации токенов
  */
-fun Route.authRoutes(jwtConfig: JwtConfig) {
+fun Route.authRoutes(jwtConfig: JwtConfig, signUp: SignUp) {
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
         val user =
@@ -54,10 +58,17 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
             return@post call.respond(HttpStatusCode.Unauthorized, "Invalid token type")
         }
 
-        val userId = decoded.getClaim(JwtConfig.CLAIM_USER_ID).asInt()
+        val userId = decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()
         val user =
-            UserService.findById(userId)
+            UserService.findById(Uuid.parse(userId))
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
+        call.respondWithJwt(user, jwtConfig)
+    }
+
+
+    post("/auth/sign-up") {
+        val request = call.receive<SignUpRequest>()
+        val user = signUp.signUp(request)
         call.respondWithJwt(user, jwtConfig)
     }
 
@@ -82,7 +93,7 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
  * @param jwtConfig конфигурация JWT для создания токенов
  */
 suspend fun RoutingCall.respondWithJwt(
-    user: User,
+    user: AuthenticatedUser,
     jwtConfig: JwtConfig,
 ) {
     val newAccessToken = jwtConfig.makeAccessToken(user.id, user.username)

@@ -70,8 +70,9 @@ fun RegisterScreen(
         }
     }
 
-    val isFormValid = organizationName.isNotBlank() && name.isNotBlank() &&
-        email.isNotBlank() && password.isNotBlank()
+    val isFormValid =
+        organizationName.isNotBlank() && name.isNotBlank() &&
+            email.isNotBlank() && password.isNotBlank()
 
     Scaffold(
         snackbarHost = {
@@ -86,9 +87,10 @@ fun RegisterScreen(
     ) { innerPadding ->
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -108,9 +110,10 @@ fun RegisterScreen(
                     label = { Text("Название организации") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                    ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -120,9 +123,10 @@ fun RegisterScreen(
                     label = { Text("Ваше имя") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                    ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -131,13 +135,15 @@ fun RegisterScreen(
                     onValueChange = { email = it },
                     label = { Text("Email") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                    ),
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next,
+                        ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -147,16 +153,18 @@ fun RegisterScreen(
                     label = { Text("Пароль") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            if (isFormValid) onRegister(organizationName, name, email, password)
-                        },
-                    ),
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done,
+                        ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                                if (isFormValid) onRegister(organizationName, name, email, password)
+                            },
+                        ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -170,14 +178,15 @@ fun RegisterScreen(
 
                 val primary = MaterialTheme.colorScheme.primary
                 Text(
-                    text = buildAnnotatedString {
-                        append("Уже есть аккаунт? ")
-                        withLink(LinkAnnotation.Clickable(tag = "login") { onNavigateToLogin() }) {
-                            withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
-                                append("Войти")
+                    text =
+                        buildAnnotatedString {
+                            append("Уже есть аккаунт? ")
+                            withLink(LinkAnnotation.Clickable(tag = "login") { onNavigateToLogin() }) {
+                                withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
+                                    append("Войти")
+                                }
                             }
-                        }
-                    },
+                        },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

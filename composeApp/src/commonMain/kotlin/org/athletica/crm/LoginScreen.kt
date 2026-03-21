@@ -147,14 +147,15 @@ fun LoginScreen(
 
                 val primary = MaterialTheme.colorScheme.primary
                 Text(
-                    text = buildAnnotatedString {
-                        append("Нет аккаунта? ")
-                        withLink(LinkAnnotation.Clickable(tag = "register") { onNavigateToRegister() }) {
-                            withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
-                                append("Зарегистрироваться")
+                    text =
+                        buildAnnotatedString {
+                            append("Нет аккаунта? ")
+                            withLink(LinkAnnotation.Clickable(tag = "register") { onNavigateToRegister() }) {
+                                withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
+                                    append("Зарегистрироваться")
+                                }
                             }
-                        }
-                    },
+                        },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

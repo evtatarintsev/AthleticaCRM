@@ -1,5 +1,8 @@
 package org.athletica.crm.security
 
+import org.athletica.crm.core.auth.AuthenticatedUser
+import kotlin.uuid.Uuid
+
 /**
  * Данные пользователя системы.
  *
@@ -8,10 +11,10 @@ package org.athletica.crm.security
  * @param password пароль пользователя
  */
 data class User(
-    val id: Int,
-    val username: String,
+    override val id: Uuid,
+    override val username: String,
     val password: String,
-)
+) : AuthenticatedUser
 
 /**
  * Сервис для работы с пользователями.
@@ -21,8 +24,8 @@ data class User(
 object UserService {
     private val users =
         listOf(
-            User(id = 1, username = "admin", password = "admin"),
-            User(id = 2, username = "user", password = "password"),
+            User(id = Uuid.generateV7(), username = "admin", password = "admin"),
+            User(id = Uuid.generateV7(), username = "user", password = "password"),
         )
 
     /**
@@ -43,5 +46,5 @@ object UserService {
      * @param id идентификатор пользователя
      * @return пользователь если найден, иначе null
      */
-    fun findById(id: Int): User? = users.find { it.id == id }
+    fun findById(id: Uuid): User? = users.find { it.id == id }
 }

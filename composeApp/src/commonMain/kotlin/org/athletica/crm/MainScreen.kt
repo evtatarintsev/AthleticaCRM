@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
@@ -76,9 +77,10 @@ enum class NavItem(
  * мобильный (< 600dp), свёрнутый (600–1200dp) и развёрнутый (≥ 1200dp).
  *
  * @param api клиент API для передачи дочерним экранам
+ * @param onLogout вызывается при нажатии кнопки выхода
  */
 @Composable
-fun MainScreen(api: ApiClient) {
+fun MainScreen(api: ApiClient, onLogout: () -> Unit = {}) {
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -107,6 +109,7 @@ fun MainScreen(api: ApiClient) {
                             MainTopAppBar(
                                 showMenuButton = true,
                                 onMenuClick = { scope.launch { drawerState.open() } },
+                                onLogout = onLogout,
                             )
                         },
                     ) { innerPadding ->
@@ -150,6 +153,7 @@ fun MainScreen(api: ApiClient) {
                             MainTopAppBar(
                                 showMenuButton = false,
                                 onMenuClick = {},
+                                onLogout = onLogout,
                             )
                         },
                     ) { innerPadding ->
@@ -179,6 +183,7 @@ fun MainScreen(api: ApiClient) {
                             MainTopAppBar(
                                 showMenuButton = false,
                                 onMenuClick = {},
+                                onLogout = onLogout,
                             )
                         },
                     ) { innerPadding ->
@@ -267,12 +272,14 @@ private fun DrawerContent(
  *
  * @param showMenuButton true — показывать иконку «бургер» (мобильный режим)
  * @param onMenuClick обработчик нажатия кнопки открытия бокового меню
+ * @param onLogout обработчик нажатия кнопки выхода
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainTopAppBar(
     showMenuButton: Boolean,
     onMenuClick: () -> Unit,
+    onLogout: () -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
@@ -301,6 +308,12 @@ private fun MainTopAppBar(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = "Уведомления",
+                )
+            }
+            IconButton(onClick = onLogout) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = "Выйти",
                 )
             }
         },

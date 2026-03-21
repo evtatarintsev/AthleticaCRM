@@ -72,7 +72,21 @@ fun App(
                 }
 
             AuthState.Authenticated ->
-                MainScreen(api = api)
+                MainScreen(
+                    api = api,
+                    onLogout = {
+                        scope.launch {
+                            try {
+                                api.logout()
+                            } catch (e: Exception) {
+                                logger.e(e) { "Ошибка при выходе" }
+                            } finally {
+                                tokenStorage.clear()
+                                authState = AuthState.Unauthenticated
+                            }
+                        }
+                    },
+                )
 
             AuthState.Unauthenticated ->
                 when (unauthScreen) {

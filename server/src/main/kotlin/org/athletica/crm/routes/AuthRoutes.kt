@@ -21,7 +21,7 @@ import org.athletica.crm.security.UserService
 
 /**
  * Регистрирует маршруты аутентификации:
- * POST /auth/login, POST /auth/refresh-token, GET /auth/me.
+ * POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
  *
  * @param jwtConfig конфигурация JWT для создания и верификации токенов
  */
@@ -32,6 +32,30 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
             UserService.findByCredentials(request.username, request.password)
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
         call.respondWithJwt(user, jwtConfig)
+    }
+
+    post("/auth/logout") {
+        response.cookies.append(
+            Cookie(
+                name = JwtConfig.COOKIE_ACCESS_TOKEN,
+                value = "",
+                httpOnly = true,
+                path = "/",
+                maxAge = 0,
+                extensions = mapOf("SameSite" to "Strict"),
+            ),
+        )
+        response.cookies.append(
+            Cookie(
+                name = JwtConfig.COOKIE_REFRESH_TOKEN,
+                value = "",
+                httpOnly = true,
+                path = "/api/auth/refresh-token",
+                maxAge = 0,
+                extensions = mapOf("SameSite" to "Strict"),
+            ),
+        )
+        call.respond(HttpStatusCode.OK)
     }
 
     post("/auth/refresh-token") {

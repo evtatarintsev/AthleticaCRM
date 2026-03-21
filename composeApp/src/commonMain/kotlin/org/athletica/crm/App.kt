@@ -39,6 +39,8 @@ enum class AuthState {
  *
  * @param api клиент API
  */
+private enum class UnauthScreen { Login, Register }
+
 @Composable
 fun App(
     tokenStorage: AccessTokenStorage,
@@ -46,6 +48,7 @@ fun App(
 ) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
     var loginError by remember { mutableStateOf<String?>(null) }
+    var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -72,24 +75,33 @@ fun App(
                 MainScreen(api = api)
 
             AuthState.Unauthenticated ->
-                LoginScreen(
-                    errorMessage = loginError,
-                    onErrorDismissed = { loginError = null },
-                    onLogin = { login, password ->
-                        scope.launch {
-                            loginError = null
-                            try {
-                                val response = api.login(LoginRequest(username = login, password = password))
-                                tokenStorage.save(response.accessToken, response.refreshToken)
-                                logger.i { "Вход выполнен успешно: $login" }
-                                authState = AuthState.Authenticated
-                            } catch (e: Exception) {
-                                logger.e(e) { "Ошибка входа: $login" }
-                                loginError = "Неверный логин или пароль"
-                            }
-                        }
-                    },
-                )
+                when (unauthScreen) {
+                    UnauthScreen.Login ->
+                        LoginScreen(
+                            errorMessage = loginError,
+                            onErrorDismissed = { loginError = null },
+                            onLogin = { login, password ->
+                                scope.launch {
+                                    loginError = null
+                                    try {
+                                        val response = api.login(LoginRequest(username = login, password = password))
+                                        tokenStorage.save(response.accessToken, response.refreshToken)
+                                        logger.i { "Вход выполнен успешно: $login" }
+                                        authState = AuthState.Authenticated
+                                    } catch (e: Exception) {
+                                        logger.e(e) { "Ошибка входа: $login" }
+                                        loginError = "Неверный логин или пароль"
+                                    }
+                                }
+                            },
+                            onNavigateToRegister = { unauthScreen = UnauthScreen.Register },
+                        )
+
+                    UnauthScreen.Register ->
+                        RegisterScreen(
+                            onNavigateToLogin = { unauthScreen = UnauthScreen.Login },
+                        )
+                }
         }
     }
 }

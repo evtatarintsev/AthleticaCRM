@@ -41,25 +41,26 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 
 /**
- * Экран авторизации с полями логина и пароля.
- * Ошибка входа отображается через [Snackbar].
+ * Экран регистрации новой организации.
  *
  * @param errorMessage сообщение об ошибке для отображения, null если ошибки нет
  * @param onErrorDismissed вызывается после того, как snackbar скрыт
- * @param onLogin обработчик нажатия кнопки "Войти", принимает логин и пароль
- * @param onNavigateToRegister вызывается при нажатии "Зарегистрироваться"
+ * @param onRegister обработчик нажатия кнопки "Зарегистрироваться"
+ * @param onNavigateToLogin вызывается при нажатии "Войти"
  */
 @Composable
-fun LoginScreen(
+fun RegisterScreen(
     errorMessage: String? = null,
     onErrorDismissed: () -> Unit = {},
-    onLogin: (login: String, password: String) -> Unit = { _, _ -> },
-    onNavigateToRegister: () -> Unit = {},
+    onRegister: (organizationName: String, name: String, email: String, password: String) -> Unit = { _, _, _, _ -> },
+    onNavigateToLogin: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var login by remember { mutableStateOf("") }
+    var organizationName by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     LaunchedEffect(errorMessage) {
@@ -68,6 +69,9 @@ fun LoginScreen(
             onErrorDismissed()
         }
     }
+
+    val isFormValid = organizationName.isNotBlank() && name.isNotBlank() &&
+        email.isNotBlank() && password.isNotBlank()
 
     Scaffold(
         snackbarHost = {
@@ -82,10 +86,9 @@ fun LoginScreen(
     ) { innerPadding ->
         Box(
             contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -93,26 +96,48 @@ fun LoginScreen(
                 modifier = Modifier.width(320.dp),
             ) {
                 Text(
-                    text = "AthleticaCRM",
+                    text = "Регистрация",
                     style = MaterialTheme.typography.headlineMedium,
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
-                    value = login,
-                    onValueChange = { login = it },
-                    label = { Text("Логин") },
+                    value = organizationName,
+                    onValueChange = { organizationName = it },
+                    label = { Text("Название организации") },
                     singleLine = true,
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next,
-                        ),
-                    keyboardActions =
-                        KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                        ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Ваше имя") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next,
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -122,36 +147,34 @@ fun LoginScreen(
                     label = { Text("Пароль") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done,
-                        ),
-                    keyboardActions =
-                        KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                onLogin(login, password)
-                            },
-                        ),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            if (isFormValid) onRegister(organizationName, name, email, password)
+                        },
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
                 Button(
-                    onClick = { onLogin(login, password) },
-                    enabled = login.isNotBlank() && password.isNotBlank(),
+                    onClick = { onRegister(organizationName, name, email, password) },
+                    enabled = isFormValid,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Войти")
+                    Text("Зарегистрироваться")
                 }
 
                 val primary = MaterialTheme.colorScheme.primary
                 Text(
                     text = buildAnnotatedString {
-                        append("Нет аккаунта? ")
-                        withLink(LinkAnnotation.Clickable(tag = "register") { onNavigateToRegister() }) {
+                        append("Уже есть аккаунт? ")
+                        withLink(LinkAnnotation.Clickable(tag = "login") { onNavigateToLogin() }) {
                             withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
-                                append("Зарегистрироваться")
+                                append("Войти")
                             }
                         }
                     },

@@ -7,6 +7,7 @@ import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.header
 import io.ktor.server.request.receive
+import io.ktor.server.response.ResponseCookies
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
@@ -35,26 +36,7 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
     }
 
     post("/auth/logout") {
-        response.cookies.append(
-            Cookie(
-                name = JwtConfig.COOKIE_ACCESS_TOKEN,
-                value = "",
-                httpOnly = true,
-                path = "/",
-                maxAge = 0,
-                extensions = mapOf("SameSite" to "Strict"),
-            ),
-        )
-        response.cookies.append(
-            Cookie(
-                name = JwtConfig.COOKIE_REFRESH_TOKEN,
-                value = "",
-                httpOnly = true,
-                path = "/api/auth/refresh-token",
-                maxAge = 0,
-                extensions = mapOf("SameSite" to "Strict"),
-            ),
-        )
+        call.response.cookies.setJwtCookies("", "")
         call.respond(HttpStatusCode.OK)
     }
 
@@ -106,24 +88,37 @@ suspend fun RoutingCall.respondWithJwt(
     val newAccessToken = jwtConfig.makeAccessToken(user.id, user.username)
     val newRefreshToken = jwtConfig.makeRefreshToken(user.id)
 
-    response.cookies.append(
+    response.cookies.setJwtCookies(newAccessToken, newRefreshToken)
+
+    respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
+}
+
+
+/**
+ * Устанавливает HttpOnly cookies с JWT токенами.
+ * При передаче пустых строк браузер удаляет соответствующие cookies (используется при logout).
+ *
+ * @param accessToken значение access токена; пустая строка сбрасывает куку
+ * @param refreshToken значение refresh токена; пустая строка сбрасывает куку
+ */
+fun ResponseCookies.setJwtCookies(accessToken: String, refreshToken: String) {
+
+    append(
         Cookie(
             name = JwtConfig.COOKIE_ACCESS_TOKEN,
-            value = newAccessToken,
+            value = accessToken,
             httpOnly = true,
             path = "/",
             extensions = mapOf("SameSite" to "Strict"),
         ),
     )
-    response.cookies.append(
+    append(
         Cookie(
             name = JwtConfig.COOKIE_REFRESH_TOKEN,
-            value = newRefreshToken,
+            value = refreshToken,
             httpOnly = true,
             path = "/api/auth/refresh-token",
             extensions = mapOf("SameSite" to "Strict"),
         ),
     )
-
-    respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
 }

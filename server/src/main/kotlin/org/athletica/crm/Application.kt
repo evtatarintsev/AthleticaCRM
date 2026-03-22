@@ -18,13 +18,19 @@ import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.r2dbc.pool.ConnectionPool
+import io.r2dbc.pool.ConnectionPoolConfiguration
+import io.r2dbc.spi.ConnectionFactories
+import io.r2dbc.spi.ConnectionFactoryOptions
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
+import org.athletica.crm.db.Database
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.security.UserService
 import org.athletica.crm.usecases.SignUp
 import java.sql.DriverManager
 
@@ -42,14 +48,17 @@ fun Application.module() {
             refreshTokenTtlDays = config.property("jwt.refreshTokenTtlDays").getString().toLong(),
         )
 
-    runMigrations(
-        url = config.property("database.url").getString(),
-        user = config.property("database.user").getString(),
-        password = config.property("database.password").getString(),
-    )
+    val dbUrl = config.property("database.url").getString()
+    val dbUser = config.property("database.user").getString()
+    val dbPassword = config.property("database.password").getString()
+
+    runMigrations(url = dbUrl, user = dbUser, password = dbPassword)
+
+    val database = createDatabase(jdbcUrl = dbUrl, user = dbUser, password = dbPassword)
+    val userService = UserService(database)
 
     val corsAllowedHosts = config.property("cors.allowedHosts").getString()
-    configureServer(jwtConfig, corsAllowedHosts)
+    configureServer(jwtConfig, userService, corsAllowedHosts)
 }
 
 /**
@@ -57,10 +66,12 @@ fun Application.module() {
  * Выделена отдельно для возможности тестирования без подключения к БД.
  *
  * @param jwtConfig конфигурация JWT токенов
+ * @param userService сервис пользователей
  * @param corsAllowedHost хост, которому разрешены кросс-доменные запросы (например, `localhost:8081`)
  */
 fun Application.configureServer(
     jwtConfig: JwtConfig,
+    userService: UserService,
     corsAllowedHost: String = "localhost:8081",
 ) {
     install(CORS) {
@@ -98,9 +109,36 @@ fun Application.configureServer(
 
     routing {
         route("/api") {
-            authRoutes(jwtConfig, SignUp())
+            authRoutes(jwtConfig, SignUp(), userService)
         }
     }
+}
+
+/**
+ * Создаёт [Database] с R2DBC пулом соединений.
+ * JDBC URL автоматически преобразуется в R2DBC URL.
+ *
+ * @param jdbcUrl JDBC URL вида `jdbc:postgresql://host:port/db`
+ * @param user имя пользователя БД
+ * @param password пароль пользователя БД
+ */
+fun createDatabase(jdbcUrl: String, user: String, password: String): Database {
+    val r2dbcUrl = jdbcUrl.replace("jdbc:postgresql", "r2dbc:postgresql")
+    val options =
+        ConnectionFactoryOptions.parse(r2dbcUrl)
+            .mutate()
+            .option(ConnectionFactoryOptions.USER, user)
+            .option(ConnectionFactoryOptions.PASSWORD, password)
+            .build()
+    val pool =
+        ConnectionPool(
+            ConnectionPoolConfiguration
+                .builder(ConnectionFactories.get(options))
+                .initialSize(2)
+                .maxSize(10)
+                .build(),
+        )
+    return Database(pool)
 }
 
 /**

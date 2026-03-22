@@ -1,14 +1,18 @@
 package org.athletica.crm.security
 
+import io.r2dbc.spi.Row
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.db.Database
 import kotlin.uuid.Uuid
+import kotlin.uuid.toJavaUuid
+import kotlin.uuid.toKotlinUuid
 
 /**
  * Данные пользователя системы.
  *
  * @param id уникальный идентификатор
  * @param username имя пользователя для входа
- * @param password пароль пользователя
+ * @param password хэш пароля пользователя
  */
 data class User(
     override val id: Uuid,
@@ -19,32 +23,34 @@ data class User(
 /**
  * Сервис для работы с пользователями.
  *
- * TODO: заменить заглушку на запросы к БД
+ * @param db обёртка над пулом R2DBC соединений
  */
-object UserService {
-    private val users =
-        listOf(
-            User(id = Uuid.generateV7(), username = "admin", password = "admin"),
-            User(id = Uuid.generateV7(), username = "user", password = "password"),
-        )
-
-    /**
-     * Ищет пользователя по имени и паролю.
-     *
-     * @param username имя пользователя
-     * @param password пароль пользователя
-     * @return пользователь если найден, иначе null
-     */
-    fun findByCredentials(
-        username: String,
-        password: String,
-    ): User? = users.find { it.username == username && it.password == password }
-
+class UserService(private val db: Database) {
     /**
      * Ищет пользователя по идентификатору.
      *
      * @param id идентификатор пользователя
      * @return пользователь если найден, иначе null
      */
-    fun findById(id: Uuid): User? = users.find { it.id == id }
+    suspend fun findById(id: Uuid): User? =
+        db.sql("SELECT * FROM users WHERE id = :id")
+            .bind("id", id.toJavaUuid())
+            .firstOrNull { row, _ -> row.toUser() }
+
+    /**
+     * Ищет пользователя по имени и паролю.
+     *
+     * TODO: реализовать через БД с проверкой хэша пароля
+     *
+     * @param username имя пользователя
+     * @param password пароль пользователя
+     * @return пользователь если найден, иначе null
+     */
+    suspend fun findByCredentials(username: String, password: String): User? = null
 }
+
+private fun Row.toUser() = User(
+    id = get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
+    username = get("login", String::class.java)!!,
+    password = get("password_hash", String::class.java)!!,
+)

@@ -19,7 +19,6 @@ import org.athletica.crm.api.schemas.LoginResponse
 import org.athletica.crm.api.schemas.SignUpRequest
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.security.JwtConfig
-import org.athletica.crm.security.User
 import org.athletica.crm.security.UserService
 import org.athletica.crm.usecases.SignUp
 import kotlin.uuid.Uuid
@@ -29,12 +28,14 @@ import kotlin.uuid.Uuid
  * POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
  *
  * @param jwtConfig конфигурация JWT для создания и верификации токенов
+ * @param signUp use case регистрации нового пользователя
+ * @param userService сервис для работы с пользователями
  */
-fun Route.authRoutes(jwtConfig: JwtConfig, signUp: SignUp) {
+fun Route.authRoutes(jwtConfig: JwtConfig, signUp: SignUp, userService: UserService) {
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
         val user =
-            UserService.findByCredentials(request.username, request.password)
+            userService.findByCredentials(request.username, request.password)
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
         call.respondWithJwt(user, jwtConfig)
     }
@@ -60,7 +61,7 @@ fun Route.authRoutes(jwtConfig: JwtConfig, signUp: SignUp) {
 
         val userId = decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()
         val user =
-            UserService.findById(Uuid.parse(userId))
+            userService.findById(Uuid.parse(userId))
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
         call.respondWithJwt(user, jwtConfig)
     }

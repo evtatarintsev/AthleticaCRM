@@ -26,6 +26,9 @@ dependencies {
     implementation(libs.ktor.server.netty)
     implementation(libs.liquibase.core)
     implementation(libs.postgresql.jdbc)
+    implementation(libs.r2dbc.postgresql)
+    implementation(libs.r2dbc.pool)
+    implementation(libs.kotlinx.coroutines.reactive)
     testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
 }

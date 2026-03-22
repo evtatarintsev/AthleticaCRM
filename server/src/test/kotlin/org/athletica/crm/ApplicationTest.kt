@@ -35,11 +35,12 @@ class ApplicationTest {
                 password = postgres.password,
             )
             userService = UserService(
-                createDatabase(
+                db = createDatabase(
                     jdbcUrl = postgres.jdbcUrl,
                     user = postgres.username,
                     password = postgres.password,
-                )
+                ),
+                passwordHasher = org.athletica.crm.security.PasswordHasher(),
             )
         }
 

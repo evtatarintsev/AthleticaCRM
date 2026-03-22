@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 class ApplicationTest {
 
     companion object {
-        private val postgres = PostgreSQLContainer("postgres:17")
+        private val postgres = PostgreSQLContainer("postgres:18")
 
         private lateinit var userService: UserService
 

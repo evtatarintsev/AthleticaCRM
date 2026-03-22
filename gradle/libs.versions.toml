@@ -20,6 +20,7 @@ postgresql = "42.7.10"
 r2dbc-postgresql = "1.0.7.RELEASE"
 r2dbc-pool = "1.0.2.RELEASE"
 testcontainers = "1.21.4"
+bouncycastle = "1.80"
 material3 = "1.10.0-alpha05"
 
 [libraries]
@@ -63,6 +64,7 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "k
 ktor-server-cors = { module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor" }
 ktor-server-testHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }

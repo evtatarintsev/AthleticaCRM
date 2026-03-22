@@ -30,6 +30,7 @@ import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.db.Database
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.UserService
 import org.athletica.crm.usecases.SignUp
 import java.sql.DriverManager
@@ -55,7 +56,7 @@ fun Application.module() {
     runMigrations(url = dbUrl, user = dbUser, password = dbPassword)
 
     val database = createDatabase(jdbcUrl = dbUrl, user = dbUser, password = dbPassword)
-    val userService = UserService(database)
+    val userService = UserService(database, PasswordHasher())
 
     val corsAllowedHosts = config.property("cors.allowedHosts").getString()
     configureServer(jwtConfig, userService, corsAllowedHosts)

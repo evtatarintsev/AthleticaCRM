@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.r2dbc.postgresql)
     implementation(libs.r2dbc.pool)
     implementation(libs.kotlinx.coroutines.reactive)
+    implementation(libs.bouncycastle)
     testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
     testImplementation(libs.testcontainers.postgresql)

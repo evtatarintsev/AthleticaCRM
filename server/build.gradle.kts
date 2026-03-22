@@ -31,4 +31,5 @@ dependencies {
     implementation(libs.kotlinx.coroutines.reactive)
     testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
+    testImplementation(libs.testcontainers.postgresql)
 }

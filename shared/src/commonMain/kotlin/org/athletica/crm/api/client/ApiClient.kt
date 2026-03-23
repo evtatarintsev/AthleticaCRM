@@ -10,6 +10,7 @@ import io.ktor.http.contentType
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.LoginRequest
 import org.athletica.crm.api.schemas.LoginResponse
+import org.athletica.crm.api.schemas.SignUpRequest
 
 /**
  * Клиент для взаимодействия с API сервера.
@@ -25,6 +26,18 @@ class ApiClient(private val http: HttpClient) {
      */
     suspend fun login(request: LoginRequest): LoginResponse =
         http.post("/api/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+
+    /**
+     * Регистрирует нового пользователя и возвращает JWT токены.
+     *
+     * @param request данные для регистрации
+     * @return access и refresh токены
+     */
+    suspend fun signUp(request: SignUpRequest): LoginResponse =
+        http.post("/api/auth/sign-up") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

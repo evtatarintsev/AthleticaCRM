@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.LoginRequest
+import org.athletica.crm.api.schemas.SignUpRequest
 
 private val logger = Logger.withTag("App")
 
@@ -48,6 +49,7 @@ fun App(
 ) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
     var loginError by remember { mutableStateOf<String?>(null) }
+    var registerError by remember { mutableStateOf<String?>(null) }
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
     val scope = rememberCoroutineScope()
 
@@ -113,6 +115,29 @@ fun App(
 
                     UnauthScreen.Register ->
                         RegisterScreen(
+                            errorMessage = registerError,
+                            onErrorDismissed = { registerError = null },
+                            onRegister = { organizationName, name, email, password ->
+                                scope.launch {
+                                    registerError = null
+                                    try {
+                                        val response = api.signUp(
+                                            SignUpRequest(
+                                                companyName = organizationName,
+                                                userName = name,
+                                                login = email,
+                                                password = password,
+                                            ),
+                                        )
+                                        tokenStorage.save(response.accessToken, response.refreshToken)
+                                        logger.i { "Регистрация выполнена успешно: $email" }
+                                        authState = AuthState.Authenticated
+                                    } catch (e: Exception) {
+                                        logger.e(e) { "Ошибка регистрации: $email" }
+                                        registerError = "Ошибка регистрации. Попробуйте ещё раз"
+                                    }
+                                }
+                            },
                             onNavigateToLogin = { unauthScreen = UnauthScreen.Login },
                         )
                 }

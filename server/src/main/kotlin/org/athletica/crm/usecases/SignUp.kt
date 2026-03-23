@@ -14,8 +14,10 @@ data class User(override val id: Uuid, override val username: String) : Authenti
 /**
  * Use case регистрации новой организации и её владельца.
  *
- * Создаёт в одной транзакции: организацию, пользователя, роль владельца
- * и запись сотрудника с флагом [is_owner = true][org.athletica.crm.db.Database.transaction].
+ * Создаёт в одной транзакции организацию, пользователя и запись сотрудника
+ * с флагом [is_owner = true][org.athletica.crm.db.Database.transaction].
+ * UUID генерируются на клиенте; все три INSERT выполняются одним запросом
+ * через data-modifying CTE.
  *
  * @param db обёртка над пулом R2DBC соединений
  * @param passwordHasher сервис хеширования паролей
@@ -27,41 +29,35 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
      * @param request данные для регистрации
      * @return созданный пользователь
      */
-    suspend fun signUp(request: SignUpRequest): User =
+    suspend fun signUp(request: SignUpRequest): User {
+        val orgId = Uuid.generateV7()
+        val userId = Uuid.generateV7()
+
         db.transaction {
-            val orgId =
-                sql("INSERT INTO organizations (name) VALUES (:name) RETURNING id")
-                    .bind("name", request.companyName)
-                    .firstOrNull { row, _ -> row.get("id", java.util.UUID::class.java)!! }!!
-                    .toKotlinUuid()
-
-            val userId =
-                sql("INSERT INTO users (login, name, password_hash) VALUES (:login, :name, :hash) RETURNING id")
-                    .bind("login", request.login)
-                    .bind("name", request.userName)
-                    .bind("hash", passwordHasher.hash(request.password).value)
-                    .firstOrNull { row, _ -> row.get("id", java.util.UUID::class.java)!! }!!
-                    .toKotlinUuid()
-
-            val roleId =
-                sql("INSERT INTO roles (org_id, name) VALUES (:orgId, :name) RETURNING id")
-                    .bind("orgId", orgId.toJavaUuid())
-                    .bind("name", "Владелец")
-                    .firstOrNull { row, _ -> row.get("id", java.util.UUID::class.java)!! }!!
-                    .toKotlinUuid()
-
-            val employeeId =
-                sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true) RETURNING id")
-                    .bind("userId", userId.toJavaUuid())
-                    .bind("orgId", orgId.toJavaUuid())
-                    .firstOrNull { row, _ -> row.get("id", java.util.UUID::class.java)!! }!!
-                    .toKotlinUuid()
-
-            sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
-                .bind("employeeId", employeeId.toJavaUuid())
-                .bind("roleId", roleId.toJavaUuid())
+            sql(
+                """
+                WITH
+                  new_org AS (
+                    INSERT INTO organizations (id, name)
+                    VALUES (:orgId, :orgName)
+                  ),
+                  new_user AS (
+                    INSERT INTO users (id, login, name, password_hash)
+                    VALUES (:userId, :login, :userName, :hash)
+                  )
+                INSERT INTO employees (user_id, org_id, is_owner)
+                VALUES (:userId, :orgId, true)
+                """.trimIndent()
+            )
+                .bind("orgId", orgId.toJavaUuid())
+                .bind("orgName", request.companyName)
+                .bind("userId", userId.toJavaUuid())
+                .bind("login", request.login)
+                .bind("userName", request.userName)
+                .bind("hash", passwordHasher.hash(request.password).value)
                 .firstOrNull { _, _ -> Unit }
-
-            User(id = userId, username = request.login)
         }
+
+        return User(id = userId, username = request.login)
+    }
 }

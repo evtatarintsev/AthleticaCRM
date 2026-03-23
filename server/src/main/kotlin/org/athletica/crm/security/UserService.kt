@@ -49,17 +49,22 @@ class UserService(private val db: Database, private val passwordHasher: Password
      * @param password сырой пароль
      * @return пользователь если найден и пароль верен, иначе null
      */
-    suspend fun findByCredentials(username: String, password: String): User? {
-        val user = db.sql("SELECT * FROM users WHERE login = :username")
-            .bind("username", username)
-            .firstOrNull { row, _ -> row.toUser() }
-            ?: return null
+    suspend fun findByCredentials(
+        username: String,
+        password: String,
+    ): User? {
+        val user =
+            db.sql("SELECT * FROM users WHERE login = :username")
+                .bind("username", username)
+                .firstOrNull { row, _ -> row.toUser() }
+                ?: return null
         return if (passwordHasher.verify(password, PasswordHash(user.password))) user else null
     }
 }
 
-private fun Row.toUser() = User(
-    id = get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-    username = get("login", String::class.java)!!,
-    password = get("password_hash", String::class.java)!!,
-)
+private fun Row.toUser() =
+    User(
+        id = get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
+        username = get("login", String::class.java)!!,
+        password = get("password_hash", String::class.java)!!,
+    )

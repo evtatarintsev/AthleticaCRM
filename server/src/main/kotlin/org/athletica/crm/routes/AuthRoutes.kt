@@ -31,7 +31,11 @@ import kotlin.uuid.Uuid
  * @param signUp use case регистрации нового пользователя
  * @param userService сервис для работы с пользователями
  */
-fun Route.authRoutes(jwtConfig: JwtConfig, signUp: SignUp, userService: UserService) {
+fun Route.authRoutes(
+    jwtConfig: JwtConfig,
+    signUp: SignUp,
+    userService: UserService,
+) {
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
         val user =
@@ -65,7 +69,6 @@ fun Route.authRoutes(jwtConfig: JwtConfig, signUp: SignUp, userService: UserServ
                 ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
         call.respondWithJwt(user, jwtConfig)
     }
-
 
     post("/auth/sign-up") {
         val request = call.receive<SignUpRequest>()
@@ -105,7 +108,6 @@ suspend fun RoutingCall.respondWithJwt(
     respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
 }
 
-
 /**
  * Устанавливает HttpOnly cookies с JWT токенами.
  * При передаче пустых строк браузер удаляет соответствующие cookies (используется при logout).
@@ -113,8 +115,10 @@ suspend fun RoutingCall.respondWithJwt(
  * @param accessToken значение access токена; пустая строка сбрасывает куку
  * @param refreshToken значение refresh токена; пустая строка сбрасывает куку
  */
-fun ResponseCookies.setJwtCookies(accessToken: String, refreshToken: String) {
-
+fun ResponseCookies.setJwtCookies(
+    accessToken: String,
+    refreshToken: String,
+) {
     append(
         Cookie(
             name = JwtConfig.COOKIE_ACCESS_TOKEN,

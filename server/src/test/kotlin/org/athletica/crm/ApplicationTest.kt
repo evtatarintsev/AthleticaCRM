@@ -9,6 +9,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.UserService
 import org.junit.AfterClass
 import org.junit.BeforeClass
@@ -19,11 +20,17 @@ import kotlin.test.assertEquals
 
 /** Интеграционные тесты сервера с изолированной БД в Docker-контейнере. */
 class ApplicationTest {
+    private val hasher = PasswordHasher()
+
+    val userService by lazy {
+        UserService(
+            db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
+            passwordHasher = hasher,
+        )
+    }
 
     companion object {
         private val postgres = PostgreSQLContainer("postgres:18")
-
-        private lateinit var userService: UserService
 
         @BeforeClass
         @JvmStatic
@@ -34,14 +41,6 @@ class ApplicationTest {
                 user = postgres.username,
                 password = postgres.password,
             )
-            userService = UserService(
-                db = createDatabase(
-                    jdbcUrl = postgres.jdbcUrl,
-                    user = postgres.username,
-                    password = postgres.password,
-                ),
-                passwordHasher = org.athletica.crm.security.PasswordHasher(),
-            )
         }
 
         @AfterClass
@@ -51,20 +50,22 @@ class ApplicationTest {
         }
     }
 
-    private val testJwtConfig = JwtConfig(
-        secret = "test-secret-key-for-unit-tests",
-        accessTokenTtlMinutes = 15L,
-        refreshTokenTtlDays = 30L,
-    )
+    private val testJwtConfig =
+        JwtConfig(
+            secret = "test-secret-key-for-unit-tests",
+            accessTokenTtlMinutes = 15L,
+            refreshTokenTtlDays = 30L,
+        )
 
     @Test
     fun testLoginWithInvalidCredentials() =
         testApplication {
             application { configureServer(testJwtConfig, userService) }
-            val response = client.post("/api/auth/login") {
-                contentType(ContentType.Application.Json)
-                setBody("""{"username":"wrong","password":"wrong"}""")
-            }
+            val response =
+                client.post("/api/auth/login") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"username":"wrong","password":"wrong"}""")
+                }
             assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
 

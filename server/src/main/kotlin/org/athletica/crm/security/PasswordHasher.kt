@@ -38,7 +38,6 @@ data class PasswordConfig(
  * @param config параметры алгоритма
  */
 class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
-
     /**
      * Генерирует хеш пароля со случайной солью.
      * Каждый вызов возвращает разный хеш — это нормально и ожидаемо.
@@ -52,10 +51,11 @@ class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
         val hash = compute(password, salt, config.memory, config.iterations, config.parallelism, config.hashLength)
 
         val enc = Base64.getEncoder().withoutPadding()
-        val phc = "\$argon2id\$v=19" +
-            "\$m=${config.memory},t=${config.iterations},p=${config.parallelism}" +
-            "\$${enc.encodeToString(salt)}" +
-            "\$${enc.encodeToString(hash)}"
+        val phc =
+            "\$argon2id\$v=19" +
+                "\$m=${config.memory},t=${config.iterations},p=${config.parallelism}" +
+                "\$${enc.encodeToString(salt)}" +
+                "\$${enc.encodeToString(hash)}"
 
         return PasswordHash(phc)
     }
@@ -70,31 +70,37 @@ class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
      * @param storedHash хеш, ранее полученный из [hash]
      * @return `true` если пароль совпадает
      */
-    fun verify(password: String, storedHash: PasswordHash): Boolean = runCatching {
-        // PHC: $argon2id$v=19$m=...,t=...,p=...$<salt_b64>$<hash_b64>
-        val parts = storedHash.value.split("$").filter { it.isNotEmpty() }
-        require(parts.size == 5 && parts[0] == "argon2id")
+    fun verify(
+        password: String,
+        storedHash: PasswordHash,
+    ): Boolean =
+        runCatching {
+            // PHC: $argon2id$v=19$m=...,t=...,p=...$<salt_b64>$<hash_b64>
+            val parts = storedHash.value.split("$").filter { it.isNotEmpty() }
+            require(parts.size == 5 && parts[0] == "argon2id")
 
-        val params = parts[2].split(",").associate { segment ->
-            val (k, v) = segment.split("=")
-            k to v.toInt()
-        }
+            val params =
+                parts[2].split(",").associate { segment ->
+                    val (k, v) = segment.split("=")
+                    k to v.toInt()
+                }
 
-        val dec = Base64.getDecoder()
-        val salt = dec.decode(parts[3])
-        val expected = dec.decode(parts[4])
+            val dec = Base64.getDecoder()
+            val salt = dec.decode(parts[3])
+            val expected = dec.decode(parts[4])
 
-        val actual = compute(
-            password = password,
-            salt = salt,
-            memory = params.getValue("m"),
-            iterations = params.getValue("t"),
-            parallelism = params.getValue("p"),
-            hashLength = expected.size,
-        )
+            val actual =
+                compute(
+                    password = password,
+                    salt = salt,
+                    memory = params.getValue("m"),
+                    iterations = params.getValue("t"),
+                    parallelism = params.getValue("p"),
+                    hashLength = expected.size,
+                )
 
-        MessageDigest.isEqual(actual, expected)
-    }.getOrDefault(false)
+            MessageDigest.isEqual(actual, expected)
+        }.getOrDefault(false)
 
     private fun compute(
         password: String,
@@ -104,12 +110,13 @@ class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
         parallelism: Int,
         hashLength: Int,
     ): ByteArray {
-        val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
-            .withSalt(salt)
-            .withMemoryAsKB(memory)
-            .withIterations(iterations)
-            .withParallelism(parallelism)
-            .build()
+        val params =
+            Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+                .withSalt(salt)
+                .withMemoryAsKB(memory)
+                .withIterations(iterations)
+                .withParallelism(parallelism)
+                .build()
 
         return ByteArray(hashLength).also { out ->
             Argon2BytesGenerator().apply { init(params) }.generateBytes(password.toCharArray(), out)

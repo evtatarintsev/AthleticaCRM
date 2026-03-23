@@ -123,7 +123,11 @@ fun Application.configureServer(
  * @param user имя пользователя БД
  * @param password пароль пользователя БД
  */
-fun createDatabase(jdbcUrl: String, user: String, password: String): Database {
+fun createDatabase(
+    jdbcUrl: String,
+    user: String,
+    password: String,
+): Database {
     val r2dbcUrl = jdbcUrl.replace("jdbc:postgresql", "r2dbc:postgresql")
     val options =
         ConnectionFactoryOptions.parse(r2dbcUrl)

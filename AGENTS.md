@@ -54,3 +54,38 @@ Command методы (команды) должны выполнять дейст
 1. Инжектировать зависимости в поля класса (через `@Value` или `@Autowired`) запрещено.
 2. Используй конструктор класса для внедрения зависимостей.
 3. Использование `lateinit var` является плохим стилем. Допустимо только в исключительных случаях, когда другой способ инициализации невозможен.
+
+   **Плохо** — `lateinit var` с `@BeforeEach`:
+   ```kotlin
+   class UserServiceTest {
+       private lateinit var hasher: PasswordHasher
+       private lateinit var userService: UserService
+
+       @BeforeEach
+       fun setup() {
+           hasher = PasswordHasher()
+           userService = UserService(db = ..., passwordHasher = hasher)
+       }
+   }
+   ```
+
+   **Хорошо** — `val` для простых зависимостей, `by lazy` когда нужна отложенная инициализация (например, зависимость от ресурса, стартующего в `@BeforeClass`):
+   ```kotlin
+   class UserServiceTest {
+       private val hasher = PasswordHasher()
+
+       val userService by lazy {
+           UserService(
+               db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
+               passwordHasher = hasher,
+           )
+       }
+
+       companion object {
+           private val postgres = PostgreSQLContainer("postgres:18")
+
+           @BeforeClass @JvmStatic
+           fun setup() { postgres.start() }
+       }
+   }
+   ```

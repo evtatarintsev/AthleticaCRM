@@ -7,7 +7,6 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class PasswordHasherTest {
-
     private val hasher = PasswordHasher()
 
     @Test

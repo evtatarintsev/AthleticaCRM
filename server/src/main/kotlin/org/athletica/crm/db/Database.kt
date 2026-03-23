@@ -92,6 +92,18 @@ class QueryBuilder(
      */
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
+    /**
+     * Выполняет запрос без возврата результата (INSERT / UPDATE / DELETE).
+     */
+    suspend fun execute() {
+        val connection = pool.create().awaitSingle()
+        try {
+            connection.executeStatement(sql, bindings)
+        } finally {
+            connection.close().awaitFirstOrNull()
+        }
+    }
+
     private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> {
         val connection = pool.create().awaitSingle()
         return try {
@@ -136,8 +148,33 @@ class ConnectionQueryBuilder(
      */
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
+    /**
+     * Выполняет запрос без возврата результата (INSERT / UPDATE / DELETE).
+     */
+    suspend fun execute() = connection.executeStatement(sql, bindings)
+
     private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
         connection.executeStatement(sql, bindings, mapper)
+}
+
+private suspend fun Connection.executeStatement(
+    sql: String,
+    bindings: List<Pair<String, Any?>>,
+) {
+    val connection = this
+    var paramIndex = 1
+    val paramOrder = mutableListOf<String>()
+    val processedSql =
+        sql.replace(Regex(":([a-zA-Z_][a-zA-Z0-9_]*)")) { match ->
+            paramOrder.add(match.groupValues[1])
+            "\$${paramIndex++}"
+        }
+    val statement = connection.createStatement(processedSql)
+    paramOrder.forEachIndexed { i, name ->
+        val value = bindings.find { it.first == name }?.second
+        if (value == null) statement.bindNull(i, Any::class.java) else statement.bind(i, value)
+    }
+    statement.execute().awaitSingle().rowsUpdated.awaitSingle()
 }
 
 private suspend fun <T : Any> Connection.executeStatement(

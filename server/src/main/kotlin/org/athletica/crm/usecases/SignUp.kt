@@ -37,19 +37,19 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
             sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
                 .bind("orgId", orgId.toJavaUuid())
                 .bind("orgName", request.companyName)
-                .firstOrNull { _, _ -> Unit }
+                .execute()
 
             sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")
                 .bind("userId", userId.toJavaUuid())
                 .bind("login", request.login)
                 .bind("userName", request.userName)
                 .bind("hash", passwordHasher.hash(request.password).value)
-                .firstOrNull { _, _ -> Unit }
+                .execute()
 
             sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
                 .bind("orgId", orgId.toJavaUuid())
                 .bind("userId", userId.toJavaUuid())
-                .firstOrNull { _, _ -> Unit }
+                .execute()
         }
 
         return User(id = userId, username = request.login)

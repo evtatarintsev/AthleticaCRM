@@ -34,27 +34,21 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
         val userId = Uuid.generateV7()
 
         db.transaction {
-            sql(
-                """
-                WITH
-                  new_org AS (
-                    INSERT INTO organizations (id, name)
-                    VALUES (:orgId, :orgName)
-                  ),
-                  new_user AS (
-                    INSERT INTO users (id, login, name, password_hash)
-                    VALUES (:userId, :login, :userName, :hash)
-                  )
-                INSERT INTO employees (user_id, org_id, is_owner)
-                VALUES (:userId, :orgId, true)
-                """.trimIndent()
-            )
+            sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
                 .bind("orgId", orgId.toJavaUuid())
                 .bind("orgName", request.companyName)
+                .firstOrNull { _, _ -> Unit }
+
+            sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")
                 .bind("userId", userId.toJavaUuid())
                 .bind("login", request.login)
                 .bind("userName", request.userName)
                 .bind("hash", passwordHasher.hash(request.password).value)
+                .firstOrNull { _, _ -> Unit }
+
+            sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
+                .bind("orgId", orgId.toJavaUuid())
+                .bind("userId", userId.toJavaUuid())
                 .firstOrNull { _, _ -> Unit }
         }
 

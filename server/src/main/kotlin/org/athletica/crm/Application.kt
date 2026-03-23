@@ -56,10 +56,12 @@ fun Application.module() {
     runMigrations(url = dbUrl, user = dbUser, password = dbPassword)
 
     val database = createDatabase(jdbcUrl = dbUrl, user = dbUser, password = dbPassword)
-    val userService = UserService(database, PasswordHasher())
+    val passwordHasher = PasswordHasher()
+    val userService = UserService(database, passwordHasher)
+    val signUp = SignUp(database, passwordHasher)
 
     val corsAllowedHosts = config.property("cors.allowedHosts").getString()
-    configureServer(jwtConfig, userService, corsAllowedHosts)
+    configureServer(jwtConfig, signUp, userService, corsAllowedHosts)
 }
 
 /**
@@ -72,6 +74,7 @@ fun Application.module() {
  */
 fun Application.configureServer(
     jwtConfig: JwtConfig,
+    signUp: SignUp,
     userService: UserService,
     corsAllowedHost: String = "localhost:8081",
 ) {
@@ -110,7 +113,7 @@ fun Application.configureServer(
 
     routing {
         route("/api") {
-            authRoutes(jwtConfig, SignUp(), userService)
+            authRoutes(jwtConfig, signUp, userService)
         }
     }
 }

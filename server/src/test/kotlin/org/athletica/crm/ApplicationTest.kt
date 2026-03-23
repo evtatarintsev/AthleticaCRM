@@ -11,6 +11,7 @@ import io.ktor.server.testing.testApplication
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.UserService
+import org.athletica.crm.usecases.SignUp
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.testcontainers.containers.PostgreSQLContainer
@@ -24,6 +25,13 @@ class ApplicationTest {
 
     val userService by lazy {
         UserService(
+            db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
+            passwordHasher = hasher,
+        )
+    }
+
+    val signUp by lazy {
+        SignUp(
             db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
             passwordHasher = hasher,
         )
@@ -60,7 +68,7 @@ class ApplicationTest {
     @Test
     fun testLoginWithInvalidCredentials() =
         testApplication {
-            application { configureServer(testJwtConfig, userService) }
+            application { configureServer(testJwtConfig, signUp, userService) }
             val response =
                 client.post("/api/auth/login") {
                     contentType(ContentType.Application.Json)
@@ -72,7 +80,7 @@ class ApplicationTest {
     @Test
     fun testMeWithoutToken() =
         testApplication {
-            application { configureServer(testJwtConfig, userService) }
+            application { configureServer(testJwtConfig, signUp, userService) }
             val response = client.get("/api/auth/me")
             assertEquals(HttpStatusCode.Unauthorized, response.status)
             assertContains(response.bodyAsText(), "Token expired or invalid")

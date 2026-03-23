@@ -50,9 +50,15 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
                     .firstOrNull { row, _ -> row.get("id", java.util.UUID::class.java)!! }!!
                     .toKotlinUuid()
 
-            sql("INSERT INTO employees (user_id, org_id, role_id, is_owner) VALUES (:userId, :orgId, :roleId, true)")
-                .bind("userId", userId.toJavaUuid())
-                .bind("orgId", orgId.toJavaUuid())
+            val employeeId =
+                sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true) RETURNING id")
+                    .bind("userId", userId.toJavaUuid())
+                    .bind("orgId", orgId.toJavaUuid())
+                    .firstOrNull { row, _ -> row.get("id", java.util.UUID::class.java)!! }!!
+                    .toKotlinUuid()
+
+            sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
+                .bind("employeeId", employeeId.toJavaUuid())
                 .bind("roleId", roleId.toJavaUuid())
                 .firstOrNull { _, _ -> Unit }
 

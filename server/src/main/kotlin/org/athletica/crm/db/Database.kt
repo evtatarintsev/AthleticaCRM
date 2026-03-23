@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
+import kotlin.uuid.Uuid
+import kotlin.uuid.toJavaUuid
 
 /**
  * Обёртка над R2DBC [ConnectionPool] с fluent DSL.
@@ -78,6 +80,15 @@ class QueryBuilder(
         return this
     }
 
+    /** Привязывает именованный [Uuid] параметр, конвертируя в [java.util.UUID] для R2DBC. */
+    fun bind(
+        name: String,
+        value: Uuid,
+    ): QueryBuilder {
+        bindings.add(name to value.toJavaUuid())
+        return this
+    }
+
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
      *
@@ -131,6 +142,15 @@ class ConnectionQueryBuilder(
         value: Any?,
     ): ConnectionQueryBuilder {
         bindings.add(name to value)
+        return this
+    }
+
+    /** Привязывает именованный Uuid к значению. */
+    fun bind(
+        name: String,
+        value: Uuid,
+    ): ConnectionQueryBuilder {
+        bindings.add(name to value.toJavaUuid())
         return this
     }
 

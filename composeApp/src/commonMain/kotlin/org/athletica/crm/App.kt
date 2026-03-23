@@ -121,14 +121,15 @@ fun App(
                                 scope.launch {
                                     registerError = null
                                     try {
-                                        val response = api.signUp(
-                                            SignUpRequest(
-                                                companyName = organizationName,
-                                                userName = name,
-                                                login = email,
-                                                password = password,
-                                            ),
-                                        )
+                                        val response =
+                                            api.signUp(
+                                                SignUpRequest(
+                                                    companyName = organizationName,
+                                                    userName = name,
+                                                    login = email,
+                                                    password = password,
+                                                ),
+                                            )
                                         tokenStorage.save(response.accessToken, response.refreshToken)
                                         logger.i { "Регистрация выполнена успешно: $email" }
                                         authState = AuthState.Authenticated

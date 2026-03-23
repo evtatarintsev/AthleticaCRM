@@ -35,20 +35,20 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
 
         db.transaction {
             sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
-                .bind("orgId", orgId.toJavaUuid())
+                .bind("orgId", orgId)
                 .bind("orgName", request.companyName)
                 .execute()
 
             sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")
-                .bind("userId", userId.toJavaUuid())
+                .bind("userId", userId)
                 .bind("login", request.login)
                 .bind("userName", request.userName)
                 .bind("hash", passwordHasher.hash(request.password).value)
                 .execute()
 
             sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
-                .bind("orgId", orgId.toJavaUuid())
-                .bind("userId", userId.toJavaUuid())
+                .bind("orgId", orgId)
+                .bind("userId", userId)
                 .execute()
         }
 

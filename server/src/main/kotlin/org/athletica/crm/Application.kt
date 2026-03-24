@@ -14,6 +14,8 @@ import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.util.logging.KtorSimpleLogger
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
@@ -27,6 +29,7 @@ import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
+import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.db.Database
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
@@ -34,6 +37,8 @@ import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.UserService
 import org.athletica.crm.usecases.SignUp
 import java.sql.DriverManager
+
+private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
 /** Точка входа: делегирует запуск Ktor [EngineMain], который читает application.conf. */
 fun main(args: Array<String>): Unit = EngineMain.main(args)
@@ -78,6 +83,22 @@ fun Application.configureServer(
     userService: UserService,
     corsAllowedHost: String = "localhost:8081",
 ) {
+    install(StatusPages) {
+        exception<Throwable> { call, cause ->
+            logger.error("Unhandled exception", cause)
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                ErrorResponse(code = "INTERNAL_ERROR", message = "Something went wrong"),
+            )
+        }
+        status(HttpStatusCode.NotFound) { call, _ ->
+            call.respond(
+                HttpStatusCode.NotFound,
+                ErrorResponse(code = "NOT_FOUND", message = "Resource not found"),
+            )
+        }
+    }
+
     install(CORS) {
         allowHost(corsAllowedHost, schemes = listOf("http", "https"))
         allowCredentials = true

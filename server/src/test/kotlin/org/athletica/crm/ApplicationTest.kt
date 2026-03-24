@@ -12,9 +12,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.UserService
 import org.athletica.crm.usecases.SignUp
-import org.junit.AfterClass
-import org.junit.BeforeClass
-import org.testcontainers.containers.PostgreSQLContainer
+import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -22,41 +20,11 @@ import kotlin.test.assertEquals
 /** Интеграционные тесты сервера с изолированной БД в Docker-контейнере. */
 class ApplicationTest {
     private val hasher = PasswordHasher()
+    private val userService = UserService(db = TestPostgres.db, passwordHasher = hasher)
+    private val signUp = SignUp(db = TestPostgres.db, passwordHasher = hasher)
 
-    val userService by lazy {
-        UserService(
-            db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
-            passwordHasher = hasher,
-        )
-    }
-
-    val signUp by lazy {
-        SignUp(
-            db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
-            passwordHasher = hasher,
-        )
-    }
-
-    companion object {
-        private val postgres = PostgreSQLContainer("postgres:18")
-
-        @BeforeClass
-        @JvmStatic
-        fun setup() {
-            postgres.start()
-            runMigrations(
-                url = postgres.jdbcUrl,
-                user = postgres.username,
-                password = postgres.password,
-            )
-        }
-
-        @AfterClass
-        @JvmStatic
-        fun teardown() {
-            postgres.stop()
-        }
-    }
+    @Before
+    fun setUp() = TestPostgres.truncate()
 
     private val testJwtConfig =
         JwtConfig(

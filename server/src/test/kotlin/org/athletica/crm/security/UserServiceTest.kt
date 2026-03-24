@@ -1,94 +1,67 @@
 package org.athletica.crm.security
 
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.createDatabase
-import org.athletica.crm.runMigrations
-import org.junit.AfterClass
-import org.junit.BeforeClass
-import org.testcontainers.containers.PostgreSQLContainer
-import java.sql.DriverManager
-import java.util.UUID
+import org.athletica.crm.TestPostgres
+import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.uuid.Uuid
 
 class UserServiceTest {
     private val hasher = PasswordHasher()
+    private val userService = UserService(db = TestPostgres.db, passwordHasher = hasher)
 
-    val userService by lazy {
-        UserService(
-            db = createDatabase(postgres.jdbcUrl, postgres.username, postgres.password),
-            passwordHasher = hasher,
-        )
-    }
+    @Before
+    fun setUp() = TestPostgres.truncate()
 
-    companion object {
-        private val postgres = PostgreSQLContainer("postgres:18")
-
-        @BeforeClass
-        @JvmStatic
-        fun setup() {
-            postgres.start()
-            runMigrations(postgres.jdbcUrl, postgres.username, postgres.password)
-        }
-
-        @AfterClass
-        @JvmStatic
-        fun teardown() {
-            postgres.stop()
-        }
-    }
-
-    /** Вставляет пользователя напрямую через JDBC, возвращает его UUID. */
-    private fun insertUser(
+    /** Вставляет пользователя через [TestPostgres.db], возвращает его UUID. */
+    private suspend fun insertUser(
         login: String,
         password: String,
-    ): UUID {
-        val hash = hasher.hash(password).value
-        val sql = "INSERT INTO users (login, name, password_hash) VALUES (?, ?, ?) RETURNING id"
-        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { conn ->
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setString(1, login)
-                stmt.setString(2, login)
-                stmt.setString(3, hash)
-                val rs = stmt.executeQuery()
-                rs.next()
-                return rs.getObject("id", UUID::class.java)
-            }
-        }
+    ): Uuid {
+        val id = Uuid.generateV7()
+        TestPostgres.db
+            .sql("INSERT INTO users (id, login, name, password_hash) VALUES (:id, :login, :name, :hash)")
+            .bind("id", id)
+            .bind("login", login)
+            .bind("name", login)
+            .bind("hash", hasher.hash(password).value)
+            .execute()
+        return id
     }
 
     @Test
     fun `findById returns user when exists`() =
         runTest {
-            val id = insertUser("find_by_id_user", "pass")
-            val user = userService.findById(id.toKotlinUuid())
+            val id = insertUser("user1", "pass")
+            val user = userService.findById(id)
             assertNotNull(user)
-            assertEquals("find_by_id_user", user.username)
+            assertEquals("user1", user.username)
         }
 
     @Test
     fun `findById returns null when user does not exist`() =
         runTest {
-            val user = userService.findById(UUID.randomUUID().toKotlinUuid())
+            val user = userService.findById(Uuid.generateV7())
             assertNull(user)
         }
 
     @Test
     fun `findByCredentials returns user for correct credentials`() =
         runTest {
-            insertUser("credentials_user", "secret123")
-            val user = userService.findByCredentials("credentials_user", "secret123")
+            insertUser("user2", "secret123")
+            val user = userService.findByCredentials("user2", "secret123")
             assertNotNull(user)
-            assertEquals("credentials_user", user.username)
+            assertEquals("user2", user.username)
         }
 
     @Test
     fun `findByCredentials returns null for wrong password`() =
         runTest {
-            insertUser("wrong_pass_user", "correct_password")
-            val user = userService.findByCredentials("wrong_pass_user", "wrong_password")
+            insertUser("user3", "correct_password")
+            val user = userService.findByCredentials("user3", "wrong_password")
             assertNull(user)
         }
 
@@ -99,5 +72,3 @@ class UserServiceTest {
             assertNull(user)
         }
 }
-
-private fun UUID.toKotlinUuid() = kotlin.uuid.Uuid.parse(this.toString())

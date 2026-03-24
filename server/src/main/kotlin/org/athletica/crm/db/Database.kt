@@ -194,7 +194,7 @@ private suspend fun Connection.executeStatement(
         val value = bindings.find { it.first == name }?.second
         if (value == null) statement.bindNull(i, Any::class.java) else statement.bind(i, value)
     }
-    statement.execute().awaitSingle().rowsUpdated.awaitSingle()
+    statement.execute().awaitFirstOrNull()?.rowsUpdated?.awaitFirstOrNull()
 }
 
 private suspend fun <T : Any> Connection.executeStatement(

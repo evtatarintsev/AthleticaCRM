@@ -10,10 +10,7 @@ import kotlin.uuid.toKotlinUuid
 
 /**
  * Данные пользователя системы.
- *
- * @param id уникальный идентификатор
- * @param username имя пользователя для входа
- * @param password хэш пароля пользователя
+ * [id] — уникальный идентификатор, [username] — имя для входа, [password] — хэш пароля.
  */
 data class User(
     override val id: Uuid,
@@ -23,15 +20,12 @@ data class User(
 
 /**
  * Сервис для работы с пользователями.
- *
- * @param db обёртка над пулом R2DBC соединений
+ * Принимает [db] — обёртку над пулом R2DBC соединений.
  */
 class UserService(private val db: Database, private val passwordHasher: PasswordHasher) {
     /**
-     * Ищет пользователя по идентификатору.
-     *
-     * @param id идентификатор пользователя
-     * @return пользователь если найден, иначе null
+     * Ищет пользователя по идентификатору [id].
+     * Возвращает пользователя если найден, иначе `null`.
      */
     suspend fun findById(id: Uuid): User? =
         db.sql("SELECT * FROM users WHERE id = :id")
@@ -45,9 +39,7 @@ class UserService(private val db: Database, private val passwordHasher: Password
      * Сравнение в коде обязательно, так как Argon2id использует случайную соль —
      * два хеша одного пароля всегда разные и не могут сравниваться в SQL.
      *
-     * @param username имя пользователя
-     * @param password сырой пароль
-     * @return пользователь если найден и пароль верен, иначе null
+     * Возвращает пользователя если [username] найден и [password] верен, иначе `null`.
      */
     suspend fun findByCredentials(
         username: String,

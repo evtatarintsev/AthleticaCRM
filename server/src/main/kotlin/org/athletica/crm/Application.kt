@@ -72,10 +72,8 @@ fun Application.module() {
 /**
  * Устанавливает плагины и маршруты без запуска миграций.
  * Выделена отдельно для возможности тестирования без подключения к БД.
- *
- * @param jwtConfig конфигурация JWT токенов
- * @param userService сервис пользователей
- * @param corsAllowedHost хост, которому разрешены кросс-доменные запросы (например, `localhost:8081`)
+ * [jwtConfig] — конфигурация JWT токенов, [userService] — сервис пользователей,
+ * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  */
 fun Application.configureServer(
     jwtConfig: JwtConfig,
@@ -142,10 +140,8 @@ fun Application.configureServer(
 /**
  * Создаёт [Database] с R2DBC пулом соединений.
  * JDBC URL автоматически преобразуется в R2DBC URL.
- *
- * @param jdbcUrl JDBC URL вида `jdbc:postgresql://host:port/db`
- * @param user имя пользователя БД
- * @param password пароль пользователя БД
+ * [jdbcUrl] — JDBC URL вида `jdbc:postgresql://host:port/db`,
+ * [user] и [password] — учётные данные пользователя БД.
  */
 fun createDatabase(
     jdbcUrl: String,
@@ -172,10 +168,7 @@ fun createDatabase(
 
 /**
  * Запускает Liquibase миграции базы данных.
- *
- * @param url JDBC URL подключения к PostgreSQL
- * @param user имя пользователя БД
- * @param password пароль пользователя БД
+ * [url] — JDBC URL подключения к PostgreSQL, [user] и [password] — учётные данные пользователя БД.
  */
 fun runMigrations(
     url: String,

@@ -43,10 +43,10 @@ import androidx.compose.ui.unit.dp
 /**
  * Экран регистрации новой организации.
  *
- * @param errorMessage сообщение об ошибке для отображения, null если ошибки нет
- * @param onErrorDismissed вызывается после того, как snackbar скрыт
- * @param onRegister обработчик нажатия кнопки "Зарегистрироваться"
- * @param onNavigateToLogin вызывается при нажатии "Войти"
+ * [errorMessage] — сообщение об ошибке, `null` если ошибки нет,
+ * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
+ * [onRegister] — callback кнопки "Зарегистрироваться",
+ * [onNavigateToLogin] — вызывается при нажатии "Войти".
  */
 @Composable
 fun RegisterScreen(

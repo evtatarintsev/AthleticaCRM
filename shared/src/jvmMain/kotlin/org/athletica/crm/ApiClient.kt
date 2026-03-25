@@ -18,9 +18,7 @@ import org.athletica.crm.api.schemas.LoginResponse
 /**
  * Создаёт [ApiClient] с движком CIO для JVM.
  * Настраивает JSON сериализацию, базовый URL, таймауты и Bearer аутентификацию с автообновлением токенов.
- *
- * @param tokenStorage хранилище JWT токенов для загрузки и сохранения
- * @return настроенный [ApiClient]
+ * Принимает [tokenStorage] — хранилище JWT токенов для загрузки и сохранения.
  */
 fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
     val http =

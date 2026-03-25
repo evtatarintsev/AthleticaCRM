@@ -19,15 +19,12 @@ data class User(override val id: Uuid, override val username: String) : Authenti
  * UUID генерируются на клиенте; все три INSERT выполняются одним запросом
  * через data-modifying CTE.
  *
- * @param db обёртка над пулом R2DBC соединений
- * @param passwordHasher сервис хеширования паролей
+ * Принимает [db] — обёртку над пулом R2DBC соединений и [passwordHasher] — сервис хеширования паролей.
  */
 class SignUp(private val db: Database, private val passwordHasher: PasswordHasher) {
     /**
-     * Регистрирует новую организацию и её владельца.
-     *
-     * @param request данные для регистрации
-     * @return созданный пользователь
+     * Регистрирует новую организацию и её владельца по данным [request].
+     * Возвращает созданного пользователя.
      */
     suspend fun signUp(request: SignUpRequest): User {
         val orgId = Uuid.generateV7()

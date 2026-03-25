@@ -14,11 +14,9 @@ import java.util.Base64
  * - memory  ≥ 19 MiB
  * - iterations ≥ 2
  *
- * @param memory      потребление памяти в КБ (default: 19 MiB = 19 456 КБ)
- * @param iterations  количество итераций
- * @param parallelism степень параллелизма
- * @param saltLength  длина соли в байтах (128 бит)
- * @param hashLength  длина хеша в байтах (256 бит)
+ * [memory] — потребление памяти в КБ (default: 19 MiB = 19 456 КБ),
+ * [iterations] — количество итераций, [parallelism] — степень параллелизма,
+ * [saltLength] — длина соли в байтах (128 бит), [hashLength] — длина хеша в байтах (256 бит).
  */
 data class PasswordConfig(
     val memory: Int = 19_456,
@@ -35,16 +33,16 @@ data class PasswordConfig(
  * первый выбор по рекомендациям OWASP 2024.
  * Устойчив к GPU-атакам (memory-hard) и side-channel-атакам (hybrid variant).
  *
- * @param config параметры алгоритма
+ * Принимает [config] — параметры алгоритма.
  */
 class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
     /**
      * Генерирует хеш пароля со случайной солью.
      * Каждый вызов возвращает разный хеш — это нормально и ожидаемо.
      *
-     * @param password сырой пароль
-     * @return хеш в стандартном формате PHC:
-     *         `$argon2id$v=19$m=19456,t=2,p=1$<salt_base64>$<hash_base64>`
+     * Принимает [password] — сырой пароль.
+     * Возвращает хеш в стандартном формате PHC:
+     * `$argon2id$v=19$m=19456,t=2,p=1$<salt_base64>$<hash_base64>`
      */
     fun hash(password: String): PasswordHash {
         val salt = ByteArray(config.saltLength).also { SecureRandom().nextBytes(it) }
@@ -66,9 +64,8 @@ class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
      * Использует сравнение за постоянное время ([MessageDigest.isEqual])
      * для защиты от timing-атак.
      *
-     * @param password   сырой пароль
-     * @param storedHash хеш, ранее полученный из [hash]
-     * @return `true` если пароль совпадает
+     * Принимает [password] — сырой пароль и [storedHash] — хеш, ранее полученный из [hash].
+     * Возвращает `true` если пароль совпадает.
      */
     fun verify(
         password: String,

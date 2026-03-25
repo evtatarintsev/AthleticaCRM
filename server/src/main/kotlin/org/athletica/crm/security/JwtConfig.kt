@@ -8,10 +8,9 @@ import kotlin.uuid.Uuid
 
 /**
  * Конфигурация и фабрика JWT токенов.
- *
- * @param secret секретный ключ HMAC256 для подписи токенов
- * @param accessTokenTtlMinutes время жизни access токена в минутах
- * @param refreshTokenTtlDays время жизни refresh токена в днях
+ * [secret] — секретный ключ HMAC256 для подписи,
+ * [accessTokenTtlMinutes] — время жизни access токена в минутах,
+ * [refreshTokenTtlDays] — время жизни refresh токена в днях.
  */
 class JwtConfig(
     secret: String,
@@ -30,11 +29,7 @@ class JwtConfig(
             .build()
 
     /**
-     * Создаёт подписанный access токен.
-     *
-     * @param userId идентификатор пользователя
-     * @param username имя пользователя
-     * @return подписанный JWT access токен
+     * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId] и именем [username].
      */
     fun makeAccessToken(
         userId: Uuid,
@@ -50,10 +45,7 @@ class JwtConfig(
             .sign(algorithm)
 
     /**
-     * Создаёт подписанный refresh токен.
-     *
-     * @param userId идентификатор пользователя
-     * @return подписанный JWT refresh токен
+     * Создаёт подписанный JWT refresh токен для пользователя с идентификатором [userId].
      */
     fun makeRefreshToken(userId: Uuid): String =
         JWT.create()

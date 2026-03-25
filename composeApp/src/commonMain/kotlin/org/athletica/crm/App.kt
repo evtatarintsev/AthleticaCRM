@@ -17,6 +17,7 @@ import co.touchlab.kermit.Logger
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.LoginRequest
 import org.athletica.crm.api.schemas.SignUpRequest
 
@@ -37,8 +38,7 @@ enum class AuthState {
 /**
  * Корневой composable приложения.
  * Проверяет авторизацию через [ApiClient.me] и отображает соответствующий экран.
- *
- * @param api клиент API
+ * Принимает [api] — клиент API для проверки сессии и выполнения запросов.
  */
 private enum class UnauthScreen { Login, Register }
 
@@ -56,14 +56,18 @@ fun App(
     LaunchedEffect(Unit) {
         // TODO: на вебе браузер приложит httpOnly cookie автоматически
         authState =
-            try {
-                api.me()
-                logger.i { "Сессия активна" }
-                AuthState.Authenticated
-            } catch (e: Exception) {
-                logger.i(e) { "Сессия не найдена, требуется вход" }
-                AuthState.Unauthenticated
-            }
+            api.me().fold(
+                ifLeft = { error ->
+                    if (error !is ApiClientError.Unauthenticated) {
+                        logger.w { "Не удалось проверить сессию: $error" }
+                    }
+                    AuthState.Unauthenticated
+                },
+                ifRight = {
+                    logger.i { "Сессия активна" }
+                    AuthState.Authenticated
+                },
+            )
     }
 
     MaterialTheme {
@@ -78,14 +82,10 @@ fun App(
                     api = api,
                     onLogout = {
                         scope.launch {
-                            try {
-                                api.logout()
-                            } catch (e: Exception) {
-                                logger.e(e) { "Ошибка при выходе" }
-                            } finally {
-                                tokenStorage.clear()
-                                authState = AuthState.Unauthenticated
-                            }
+                            api.logout()
+                                .mapLeft { logger.e { "Ошибка при выходе: $it" } }
+                            tokenStorage.clear()
+                            authState = AuthState.Unauthenticated
                         }
                     },
                 )
@@ -99,15 +99,21 @@ fun App(
                             onLogin = { login, password ->
                                 scope.launch {
                                     loginError = null
-                                    try {
-                                        val response = api.login(LoginRequest(username = login, password = password))
-                                        tokenStorage.save(response.accessToken, response.refreshToken)
-                                        logger.i { "Вход выполнен успешно: $login" }
-                                        authState = AuthState.Authenticated
-                                    } catch (e: Exception) {
-                                        logger.e(e) { "Ошибка входа: $login" }
-                                        loginError = "Неверный логин или пароль"
-                                    }
+                                    api.login(LoginRequest(username = login, password = password))
+                                        .map {
+                                            tokenStorage.save(it.accessToken, it.refreshToken)
+                                            logger.i { "Вход выполнен успешно: $login" }
+                                            authState = AuthState.Authenticated
+                                        }
+                                        .mapLeft {
+                                            logger.e { "Ошибка входа: $login — $it" }
+                                            loginError =
+                                                when (it) {
+                                                    is ApiClientError.ValidationError -> it.message
+                                                    is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
+                                                    is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
+                                                }
+                                        }
                                 }
                             },
                             onNavigateToRegister = { unauthScreen = UnauthScreen.Register },
@@ -120,23 +126,28 @@ fun App(
                             onRegister = { organizationName, name, email, password ->
                                 scope.launch {
                                     registerError = null
-                                    try {
-                                        val response =
-                                            api.signUp(
-                                                SignUpRequest(
-                                                    companyName = organizationName,
-                                                    userName = name,
-                                                    login = email,
-                                                    password = password,
-                                                ),
-                                            )
-                                        tokenStorage.save(response.accessToken, response.refreshToken)
-                                        logger.i { "Регистрация выполнена успешно: $email" }
-                                        authState = AuthState.Authenticated
-                                    } catch (e: Exception) {
-                                        logger.e(e) { "Ошибка регистрации: $email" }
-                                        registerError = "Ошибка регистрации. Попробуйте ещё раз"
-                                    }
+                                    api.signUp(
+                                        SignUpRequest(
+                                            companyName = organizationName,
+                                            userName = name,
+                                            login = email,
+                                            password = password,
+                                        ),
+                                    )
+                                        .map {
+                                            tokenStorage.save(it.accessToken, it.refreshToken)
+                                            logger.i { "Регистрация выполнена успешно: $email" }
+                                            authState = AuthState.Authenticated
+                                        }
+                                        .mapLeft {
+                                            logger.e { "Ошибка регистрации: $email — $it" }
+                                            registerError =
+                                                when (it) {
+                                                    is ApiClientError.ValidationError -> it.message
+                                                    is ApiClientError.Unauthenticated -> "Ошибка регистрации. Попробуйте ещё раз"
+                                                    is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
+                                                }
+                                        }
                                 }
                             },
                             onNavigateToLogin = { unauthScreen = UnauthScreen.Login },

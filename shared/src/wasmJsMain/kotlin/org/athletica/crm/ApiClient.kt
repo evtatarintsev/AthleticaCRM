@@ -19,8 +19,6 @@ import org.athletica.crm.api.schemas.LoginResponse
  * Использует движок Js (Fetch API) — единственный поддерживаемый в браузере.
  * Токены не хранятся явно: браузер автоматически отправляет HttpOnly cookie.
  * Автообновление токенов выполняется через POST /api/auth/refresh-token.
- *
- * @return настроенный [ApiClient]
  */
 fun apiClient(): ApiClient {
     val http =

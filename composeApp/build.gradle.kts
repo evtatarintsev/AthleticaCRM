@@ -31,6 +31,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(projects.shared)
             implementation(libs.kermit)
+            implementation(libs.arrow.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

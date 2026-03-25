@@ -21,7 +21,7 @@ import kotlin.uuid.toJavaUuid
  *     .firstOrNull { row, _ -> row.toUser() }
  * ```
  *
- * @param pool пул соединений с базой данных
+ * Принимает [pool] — пул соединений с базой данных.
  */
 class Database(private val pool: ConnectionPool) {
     /** Начинает построение запроса с заданным SQL. */
@@ -31,8 +31,7 @@ class Database(private val pool: ConnectionPool) {
      * Выполняет [block] в рамках одной транзакции.
      * При любом исключении транзакция откатывается, исключение пробрасывается выше.
      *
-     * @param block блок с запросами, выполняемыми в единой транзакции
-     * @return результат [block]
+     * Возвращает результат [block].
      */
     suspend fun <T> transaction(block: suspend TransactionScope.() -> T): T {
         val connection = pool.create().awaitSingle()
@@ -52,9 +51,7 @@ class Database(private val pool: ConnectionPool) {
 
 /**
  * Контекст транзакции: предоставляет DSL для выполнения запросов
- * в рамках одного соединения с активной транзакцией.
- *
- * @param connection соединение с активной транзакцией
+ * в рамках [connection] с активной транзакцией.
  */
 class TransactionScope(private val connection: Connection) {
     /** Начинает построение запроса с заданным SQL. */
@@ -92,14 +89,14 @@ class QueryBuilder(
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
      *
-     * @param mapper функция преобразования строки результата в доменный объект
+     * [mapper] — функция преобразования строки результата в доменный объект.
      */
     suspend fun <T : Any> firstOrNull(mapper: (Row, RowMetadata) -> T): T? = execute(mapper).firstOrNull()
 
     /**
      * Выполняет запрос и возвращает список результатов.
      *
-     * @param mapper функция преобразования строки результата в доменный объект
+     * [mapper] — функция преобразования строки результата в доменный объект.
      */
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
@@ -157,14 +154,14 @@ class ConnectionQueryBuilder(
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
      *
-     * @param mapper функция преобразования строки результата в доменный объект
+     * [mapper] — функция преобразования строки результата в доменный объект.
      */
     suspend fun <T : Any> firstOrNull(mapper: (Row, RowMetadata) -> T): T? = execute(mapper).firstOrNull()
 
     /**
      * Выполняет запрос и возвращает список результатов.
      *
-     * @param mapper функция преобразования строки результата в доменный объект
+     * [mapper] — функция преобразования строки результата в доменный объект.
      */
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 

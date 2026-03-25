@@ -77,8 +77,7 @@ enum class NavItem(
  * Использует [BoxWithConstraints] для выбора режима отображения:
  * мобильный (< 600dp), свёрнутый (600–1200dp) и развёрнутый (≥ 1200dp).
  *
- * @param api клиент API для передачи дочерним экранам
- * @param onLogout вызывается при нажатии кнопки выхода
+ * Принимает [api] для передачи дочерним экранам и [onLogout] — callback при нажатии кнопки выхода.
  */
 @Composable
 fun MainScreen(
@@ -205,10 +204,8 @@ fun MainScreen(
 /**
  * Содержимое боковой панели навигации: логотип и список разделов.
  *
- * @param selectedItem текущий выбранный пункт меню
- * @param expanded true — показывать текстовые метки рядом с иконками
- * @param onItemSelected обработчик выбора пункта меню
- * @param onToggle обработчик нажатия кнопки сворачивания (только desktop)
+ * [selectedItem] — текущий выбранный пункт, [expanded] — показывать ли текстовые метки рядом с иконками,
+ * [onItemSelected] — callback выбора пункта, [onToggle] — callback кнопки сворачивания (только desktop).
  */
 @Composable
 private fun DrawerContent(
@@ -274,9 +271,8 @@ private fun DrawerContent(
 /**
  * Верхняя панель приложения с поиском, уведомлениями и кнопкой открытия меню.
  *
- * @param showMenuButton true — показывать иконку «бургер» (мобильный режим)
- * @param onMenuClick обработчик нажатия кнопки открытия бокового меню
- * @param onLogout обработчик нажатия кнопки выхода
+ * [showMenuButton] — показывать иконку «бургер» (мобильный режим),
+ * [onMenuClick] — callback кнопки открытия бокового меню, [onLogout] — callback кнопки выхода.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -328,8 +324,7 @@ private fun MainTopAppBar(
  * Область основного контента — слот для страниц приложения.
  * TODO: заменить на маршрутизацию реальных страниц по [selectedItem]
  *
- * @param selectedItem текущий выбранный раздел навигации
- * @param modifier модификатор для применения отступов от Scaffold
+ * [modifier] — модификатор для применения отступов от Scaffold.
  */
 @Composable
 private fun ContentArea(

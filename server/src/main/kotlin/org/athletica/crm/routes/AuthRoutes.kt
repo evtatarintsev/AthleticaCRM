@@ -26,10 +26,9 @@ import kotlin.uuid.Uuid
 /**
  * Регистрирует маршруты аутентификации:
  * POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
- *
- * @param jwtConfig конфигурация JWT для создания и верификации токенов
- * @param signUp use case регистрации нового пользователя
- * @param userService сервис для работы с пользователями
+ * [jwtConfig] — конфигурация JWT для создания и верификации токенов,
+ * [signUp] — use case регистрации нового пользователя,
+ * [userService] — сервис для работы с пользователями.
  */
 fun Route.authRoutes(
     jwtConfig: JwtConfig,
@@ -90,11 +89,9 @@ fun Route.authRoutes(
 }
 
 /**
- * Формирует JWT токены для пользователя и отправляет ответ.
+ * Формирует JWT токены для [user] и отправляет ответ.
  * Устанавливает HttpOnly cookies для веб-клиентов и возвращает токены в теле ответа.
- *
- * @param user пользователь, для которого создаются токены
- * @param jwtConfig конфигурация JWT для создания токенов
+ * Использует [jwtConfig] для создания токенов.
  */
 suspend fun RoutingCall.respondWithJwt(
     user: AuthenticatedUser,
@@ -111,9 +108,8 @@ suspend fun RoutingCall.respondWithJwt(
 /**
  * Устанавливает HttpOnly cookies с JWT токенами.
  * При передаче пустых строк браузер удаляет соответствующие cookies (используется при logout).
- *
- * @param accessToken значение access токена; пустая строка сбрасывает куку
- * @param refreshToken значение refresh токена; пустая строка сбрасывает куку
+ * [accessToken] — значение access токена; пустая строка сбрасывает куку.
+ * [refreshToken] — значение refresh токена; пустая строка сбрасывает куку.
  */
 fun ResponseCookies.setJwtCookies(
     accessToken: String,

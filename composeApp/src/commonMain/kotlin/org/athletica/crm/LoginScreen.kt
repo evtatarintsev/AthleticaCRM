@@ -44,10 +44,10 @@ import androidx.compose.ui.unit.dp
  * Экран авторизации с полями логина и пароля.
  * Ошибка входа отображается через [Snackbar].
  *
- * @param errorMessage сообщение об ошибке для отображения, null если ошибки нет
- * @param onErrorDismissed вызывается после того, как snackbar скрыт
- * @param onLogin обработчик нажатия кнопки "Войти", принимает логин и пароль
- * @param onNavigateToRegister вызывается при нажатии "Зарегистрироваться"
+ * [errorMessage] — сообщение об ошибке, `null` если ошибки нет,
+ * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
+ * [onLogin] — callback кнопки "Войти", принимает логин и пароль,
+ * [onNavigateToRegister] — вызывается при нажатии "Зарегистрироваться".
  */
 @Composable
 fun LoginScreen(

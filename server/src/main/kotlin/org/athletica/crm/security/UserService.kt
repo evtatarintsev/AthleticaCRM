@@ -22,7 +22,9 @@ data class User(
     val password: String,
 ) : AuthenticatedUser
 
-data class UserNotFound(override val message: String) : DomainError {
+data class UserNotFound(
+    override val message: String,
+) : DomainError {
     override val code: String = "USER_NOT_FOUND"
 }
 
@@ -31,11 +33,19 @@ data class UserNotFound(override val message: String) : DomainError {
  * Возвращает найденного пользователя, либо [UserNotFound].
  */
 context(db: Database)
-suspend fun findById(id: Uuid): Either<UserNotFound, User> =
-    db.sql("SELECT * FROM users WHERE id = :id")
+suspend fun userById(id: Uuid): Either<UserNotFound, User> =
+    db
+        .sql("SELECT * FROM users WHERE id = :id")
         .bind("id", id.toJavaUuid())
         .firstOrNull { row, _ -> row.toUser() }
         ?.right() ?: UserNotFound("User with id='$id' not found").left()
+
+/**
+ * Ищет пользователя по идентификатору [id].
+ * Возвращает найденного пользователя, либо [UserNotFound].
+ */
+context(db: Database)
+suspend fun Uuid.mapUserById() = userById(this)
 
 /**
  * Ищет пользователя по имени и паролю.
@@ -47,9 +57,13 @@ suspend fun findById(id: Uuid): Either<UserNotFound, User> =
  * Возвращает пользователя если [username] найден и [password] верен, либо [UserNotFound].
  */
 context(db: Database, passwordHasher: PasswordHasher)
-suspend fun findByCredentials(username: String, password: String): Either<UserNotFound, User> {
+suspend fun findByCredentials(
+    username: String,
+    password: String,
+): Either<UserNotFound, User> {
     val user =
-        db.sql("SELECT * FROM users WHERE login = :username")
+        db
+            .sql("SELECT * FROM users WHERE login = :username")
             .bind("username", username)
             .firstOrNull { row, _ -> row.toUser() }
     if (user == null) {
@@ -58,7 +72,6 @@ suspend fun findByCredentials(username: String, password: String): Either<UserNo
     val passwordIsValid = passwordHasher.verify(password, PasswordHash(user.password))
     return if (passwordIsValid) user.right() else UserNotFound("User with given credentials not found").left()
 }
-
 
 private fun Row.toUser() =
     User(

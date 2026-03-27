@@ -8,7 +8,9 @@ import java.io.File
  * Хранилище JWT токенов на основе файловой системы для десктоп-клиента.
  * Сохраняет access и refresh токены в текстовый [file], по одному на строку.
  */
-class FileAccessTokenStorage(private val file: File) : AccessTokenStorage {
+class FileAccessTokenStorage(
+    private val file: File,
+) : AccessTokenStorage {
     /** Возвращает сохранённые токены или `null` если [file] отсутствует. */
     fun get(): BearerTokens? {
         if (file.exists()) {

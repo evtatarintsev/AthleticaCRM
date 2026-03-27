@@ -71,8 +71,10 @@ fun RegisterScreen(
     }
 
     val isFormValid =
-        organizationName.isNotBlank() && name.isNotBlank() &&
-            email.isNotBlank() && password.isNotBlank()
+        organizationName.isNotBlank() &&
+            name.isNotBlank() &&
+            email.isNotBlank() &&
+            password.isNotBlank()
 
     Scaffold(
         snackbarHost = {

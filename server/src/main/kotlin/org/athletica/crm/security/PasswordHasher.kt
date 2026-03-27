@@ -35,7 +35,9 @@ data class PasswordConfig(
  *
  * Принимает [config] — параметры алгоритма.
  */
-class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
+class PasswordHasher(
+    private val config: PasswordConfig = PasswordConfig(),
+) {
     /**
      * Генерирует хеш пароля со случайной солью.
      * Каждый вызов возвращает разный хеш — это нормально и ожидаемо.
@@ -108,7 +110,8 @@ class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
         hashLength: Int,
     ): ByteArray {
         val params =
-            Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+            Argon2Parameters
+                .Builder(Argon2Parameters.ARGON2_id)
                 .withSalt(salt)
                 .withMemoryAsKB(memory)
                 .withIterations(iterations)

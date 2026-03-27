@@ -13,7 +13,10 @@ import org.athletica.crm.security.PasswordHasher
 import kotlin.uuid.Uuid
 
 /** Зарегистрированный пользователь без данных о пароле. */
-data class User(override val id: Uuid, override val username: String) : AuthenticatedUser
+data class User(
+    override val id: Uuid,
+    override val username: String,
+) : AuthenticatedUser
 
 sealed class SignUpError : DomainError {
     data object UserAlreadyRegistered : SignUpError() {
@@ -58,4 +61,3 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
 
     return User(id = userId, username = request.login).right()
 }
-

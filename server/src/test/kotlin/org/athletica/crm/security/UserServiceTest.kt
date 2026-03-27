@@ -16,7 +16,10 @@ class UserServiceTest {
     fun setUp() = TestPostgres.truncate()
 
     /** Вставляет пользователя напрямую через [TestPostgres.db], возвращает его UUID. */
-    private suspend fun insertUser(login: String, password: String): Uuid {
+    private suspend fun insertUser(
+        login: String,
+        password: String,
+    ): Uuid {
         val id = Uuid.generateV7()
         TestPostgres.db
             .sql("INSERT INTO users (id, login, name, password_hash) VALUES (:id, :login, :name, :hash)")
@@ -33,7 +36,7 @@ class UserServiceTest {
         runTest {
             val id = insertUser("user1", "pass")
             context(TestPostgres.db) {
-                val result = findById(id)
+                val result = userById(id)
                 val user = assertIs<Either.Right<User>>(result).value
                 assertEquals("user1", user.username)
             }
@@ -43,7 +46,7 @@ class UserServiceTest {
     fun `findById returns UserNotFound when user does not exist`() =
         runTest {
             context(TestPostgres.db) {
-                assertIs<Either.Left<UserNotFound>>(findById(Uuid.generateV7()))
+                assertIs<Either.Left<UserNotFound>>(userById(Uuid.generateV7()))
             }
         }
 

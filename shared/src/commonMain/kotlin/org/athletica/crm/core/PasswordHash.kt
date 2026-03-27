@@ -5,4 +5,6 @@ import kotlin.jvm.JvmInline
 
 @Serializable
 @JvmInline
-value class PasswordHash(val value: String)
+value class PasswordHash(
+    val value: String,
+)

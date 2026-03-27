@@ -1,5 +1,6 @@
 package org.athletica.crm.security
 
+import org.athletica.crm.core.PasswordHash
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -44,13 +45,13 @@ class PasswordHasherTest {
     @Test
     fun `verify returns false for tampered hash`() {
         val hash = hasher.hash("password123")
-        val tampered = org.athletica.crm.core.PasswordHash(hash.value.dropLast(5) + "AAAAA")
+        val tampered = PasswordHash(hash.value.dropLast(5) + "AAAAA")
         assertFalse(hasher.verify("password123", tampered))
     }
 
     @Test
     fun `verify returns false for malformed hash`() {
-        val malformed = org.athletica.crm.core.PasswordHash("not_a_valid_hash")
+        val malformed = PasswordHash("not_a_valid_hash")
         assertFalse(hasher.verify("password", malformed))
     }
 

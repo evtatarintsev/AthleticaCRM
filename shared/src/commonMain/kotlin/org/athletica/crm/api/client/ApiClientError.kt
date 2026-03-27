@@ -23,5 +23,7 @@ sealed interface ApiClientError {
     /**
      * Сервис недоступен: нет сети, истёк таймаут, не удалось установить соединение и пр.
      */
-    data class Unavailable(val cause: Throwable) : ApiClientError
+    data class Unavailable(
+        val cause: Throwable,
+    ) : ApiClientError
 }

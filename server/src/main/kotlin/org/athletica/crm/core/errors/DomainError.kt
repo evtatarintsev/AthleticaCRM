@@ -5,5 +5,7 @@ interface DomainError {
     val message: String
 }
 
-
-data class  CommonDomainError(override val code: String, override val message: String) : DomainError
+data class CommonDomainError(
+    override val code: String,
+    override val message: String,
+) : DomainError

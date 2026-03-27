@@ -13,6 +13,7 @@ plugins {
 subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+        version.set("1.6.0")
         filter {
             include("**/src/**")
         }

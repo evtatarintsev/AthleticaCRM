@@ -26,7 +26,9 @@ import org.athletica.crm.api.schemas.SignUpRequest
  * Клиент для взаимодействия с API сервера.
  * Принимает настроенный [http] — Ktor HTTP клиент с аутентификацией и сериализацией.
  */
-class ApiClient(private val http: HttpClient) {
+class ApiClient(
+    private val http: HttpClient,
+) {
     /** Выполняет вход по данным [request]. Возвращает access и refresh токены. */
     suspend fun login(request: LoginRequest): Either<ApiClientError, LoginResponse> =
         execute {

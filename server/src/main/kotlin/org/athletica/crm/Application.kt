@@ -15,11 +15,11 @@ import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
-import io.ktor.util.logging.KtorSimpleLogger
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.util.logging.KtorSimpleLogger
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
@@ -110,7 +110,8 @@ fun Application.configureServer(
     install(Authentication) {
         jwt("auth-jwt") {
             authHeader { call ->
-                call.request.header(HttpHeaders.Authorization)
+                call.request
+                    .header(HttpHeaders.Authorization)
                     ?.let { parseAuthorizationHeader(it) }
                     ?: call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
                         ?.let { HttpAuthHeader.Single("Bearer", it) }
@@ -146,7 +147,8 @@ fun createDatabase(
 ): Database {
     val r2dbcUrl = jdbcUrl.replace("jdbc:postgresql", "r2dbc:postgresql")
     val options =
-        ConnectionFactoryOptions.parse(r2dbcUrl)
+        ConnectionFactoryOptions
+            .parse(r2dbcUrl)
             .mutate()
             .option(ConnectionFactoryOptions.USER, user)
             .option(ConnectionFactoryOptions.PASSWORD, password)
@@ -173,7 +175,8 @@ fun runMigrations(
 ) {
     val connection = DriverManager.getConnection(url, user, password)
     val database =
-        DatabaseFactory.getInstance()
+        DatabaseFactory
+            .getInstance()
             .findCorrectDatabaseImplementation(JdbcConnection(connection))
 
     Liquibase("db/changelog/db.changelog-master.yaml", ClassLoaderResourceAccessor(), database)

@@ -23,7 +23,9 @@ import kotlin.uuid.toJavaUuid
  *
  * Принимает [pool] — пул соединений с базой данных.
  */
-class Database(private val pool: ConnectionPool) {
+class Database(
+    private val pool: ConnectionPool,
+) {
     /** Начинает построение запроса с заданным SQL. */
     fun sql(sql: String): QueryBuilder = QueryBuilder(pool, sql)
 
@@ -53,7 +55,9 @@ class Database(private val pool: ConnectionPool) {
  * Контекст транзакции: предоставляет DSL для выполнения запросов
  * в рамках [connection] с активной транзакцией.
  */
-class TransactionScope(private val connection: Connection) {
+class TransactionScope(
+    private val connection: Connection,
+) {
     /** Начинает построение запроса с заданным SQL. */
     fun sql(sql: String): ConnectionQueryBuilder = ConnectionQueryBuilder(connection, sql)
 }
@@ -170,8 +174,7 @@ class ConnectionQueryBuilder(
      */
     suspend fun execute() = connection.executeStatement(sql, bindings)
 
-    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
-        connection.executeStatement(sql, bindings, mapper)
+    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> = connection.executeStatement(sql, bindings, mapper)
 }
 
 private suspend fun Connection.executeStatement(
@@ -191,7 +194,11 @@ private suspend fun Connection.executeStatement(
         val value = bindings.find { it.first == name }?.second
         if (value == null) statement.bindNull(i, Any::class.java) else statement.bind(i, value)
     }
-    statement.execute().awaitFirstOrNull()?.rowsUpdated?.awaitFirstOrNull()
+    statement
+        .execute()
+        .awaitFirstOrNull()
+        ?.rowsUpdated
+        ?.awaitFirstOrNull()
 }
 
 private suspend fun <T : Any> Connection.executeStatement(

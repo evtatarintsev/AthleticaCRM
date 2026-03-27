@@ -82,7 +82,8 @@ fun App(
                     api = api,
                     onLogout = {
                         scope.launch {
-                            api.logout()
+                            api
+                                .logout()
                                 .mapLeft { logger.e { "Ошибка при выходе: $it" } }
                             tokenStorage.clear()
                             authState = AuthState.Unauthenticated
@@ -99,13 +100,13 @@ fun App(
                             onLogin = { login, password ->
                                 scope.launch {
                                     loginError = null
-                                    api.login(LoginRequest(username = login, password = password))
+                                    api
+                                        .login(LoginRequest(username = login, password = password))
                                         .map {
                                             tokenStorage.save(it.accessToken, it.refreshToken)
                                             logger.i { "Вход выполнен успешно: $login" }
                                             authState = AuthState.Authenticated
-                                        }
-                                        .mapLeft {
+                                        }.mapLeft {
                                             logger.e { "Ошибка входа: $login — $it" }
                                             loginError =
                                                 when (it) {
@@ -126,20 +127,19 @@ fun App(
                             onRegister = { organizationName, name, email, password ->
                                 scope.launch {
                                     registerError = null
-                                    api.signUp(
-                                        SignUpRequest(
-                                            companyName = organizationName,
-                                            userName = name,
-                                            login = email,
-                                            password = password,
-                                        ),
-                                    )
-                                        .map {
+                                    api
+                                        .signUp(
+                                            SignUpRequest(
+                                                companyName = organizationName,
+                                                userName = name,
+                                                login = email,
+                                                password = password,
+                                            ),
+                                        ).map {
                                             tokenStorage.save(it.accessToken, it.refreshToken)
                                             logger.i { "Регистрация выполнена успешно: $email" }
                                             authState = AuthState.Authenticated
-                                        }
-                                        .mapLeft {
+                                        }.mapLeft {
                                             logger.e { "Ошибка регистрации: $email — $it" }
                                             registerError =
                                                 when (it) {

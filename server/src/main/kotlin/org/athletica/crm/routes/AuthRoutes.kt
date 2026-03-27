@@ -37,9 +37,8 @@ import kotlin.uuid.Uuid
 /**
  * Регистрирует маршруты аутентификации:
  * POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
- * [jwtConfig] — конфигурация JWT для создания и верификации токенов,
- * [signUp] — use case регистрации нового пользователя,
- * [userService] — сервис для работы с пользователями.
+ * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
+ * Требует контекстных параметров [Database] и [PasswordHasher].
  */
 context(db: Database, passwordHasher: PasswordHasher)
 fun Route.authRoutes(jwtConfig: JwtConfig) {
@@ -92,11 +91,20 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
     }
 }
 
+/**
+ * Верифицирует JWT-токен с помощью [jwtConfig].
+ * Возвращает декодированный токен или ошибку, если подпись невалидна либо токен истёк.
+ */
 fun String.verifiedJwtToken(jwtConfig: JwtConfig): Either<CommonDomainError, DecodedJWT> =
     runCatching { jwtConfig.verifier.verify(this) }
         .getOrNull()
         ?.right() ?: CommonDomainError("", "").left()
 
+/**
+ * Извлекает refresh-токен из запроса.
+ * Сначала ищет в заголовке `X-Refresh-Token`, затем в cookie [JwtConfig.COOKIE_REFRESH_TOKEN].
+ * Возвращает токен или ошибку, если он отсутствует.
+ */
 fun ApplicationRequest.refreshToken(): Either<CommonDomainError, String> =
     either {
         val token =
@@ -108,6 +116,10 @@ fun ApplicationRequest.refreshToken(): Either<CommonDomainError, String> =
         token
     }
 
+/**
+ * Извлекает идентификатор пользователя из claim-а токена.
+ * Проверяет, что тип токена — [JwtConfig.TYPE_REFRESH], иначе возвращает ошибку.
+ */
 fun DecodedJWT.userIdClaim(): Either<CommonDomainError, Uuid> =
     either {
         if (getClaim(JwtConfig.CLAIM_TYPE).asString() != JwtConfig.TYPE_REFRESH) {

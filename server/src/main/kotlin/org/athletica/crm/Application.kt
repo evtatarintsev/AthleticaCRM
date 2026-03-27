@@ -69,8 +69,9 @@ fun Application.module() {
 /**
  * Устанавливает плагины и маршруты без запуска миграций.
  * Выделена отдельно для возможности тестирования без подключения к БД.
- * [jwtConfig] — конфигурация JWT токенов, [userService] — сервис пользователей,
+ * [jwtConfig] — конфигурация JWT токенов,
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
+ * Требует контекстных параметров [Database] и [PasswordHasher].
  */
 context(db: Database, passwordHasher: PasswordHasher)
 fun Application.configureServer(

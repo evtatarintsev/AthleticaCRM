@@ -22,6 +22,7 @@ data class User(
     val password: String,
 ) : AuthenticatedUser
 
+/** Ошибка поиска пользователя: пользователь не найден по заданным критериям. */
 data class UserNotFound(
     override val message: String,
 ) : DomainError {
@@ -40,10 +41,7 @@ suspend fun userById(id: Uuid): Either<UserNotFound, User> =
         .firstOrNull { row, _ -> row.toUser() }
         ?.right() ?: UserNotFound("User with id='$id' not found").left()
 
-/**
- * Ищет пользователя по идентификатору [id].
- * Возвращает найденного пользователя, либо [UserNotFound].
- */
+/** Делегирует вызов [userById] для данного UUID. Удобен при цепочке Either-операций. */
 context(db: Database)
 suspend fun Uuid.mapUserById() = userById(this)
 

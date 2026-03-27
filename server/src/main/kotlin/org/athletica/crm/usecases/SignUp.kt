@@ -18,7 +18,9 @@ data class User(
     override val username: String,
 ) : AuthenticatedUser
 
+/** Ошибки, возникающие при регистрации нового пользователя. */
 sealed class SignUpError : DomainError {
+    /** Логин уже занят другим пользователем. */
     data object UserAlreadyRegistered : SignUpError() {
         override val code = "USER_ALREADY_REGISTERED"
         override val message = "Пользователь с таким логином уже зарегистрирован"

@@ -6,6 +6,10 @@ import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
 import org.athletica.crm.core.Lang
 
+/**
+ * Регистрирует POST-маршрут с контекстным параметром [Lang].
+ * Язык определяется из заголовков запроса (сейчас заглушка — всегда [Lang.EN]).
+ */
 fun Route.postWithContext(
     path: String,
     body: suspend context(Lang) RoutingContext.() -> Unit,
@@ -19,6 +23,10 @@ fun Route.postWithContext(
         }
     }
 
+/**
+ * Регистрирует GET-маршрут с контекстным параметром [Lang].
+ * Язык определяется из заголовков запроса (сейчас заглушка — всегда [Lang.EN]).
+ */
 fun Route.getWithContext(
     path: String,
     body: suspend context(Lang) RoutingContext.() -> Unit,

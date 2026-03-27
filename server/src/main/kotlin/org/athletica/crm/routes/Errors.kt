@@ -16,6 +16,7 @@ private val DomainError.httpStatus: HttpStatusCode
             else -> HttpStatusCode.BadRequest
         }
 
+/** Сериализует [error] в [ErrorResponse] и отвечает соответствующим HTTP-статусом. */
 suspend fun RoutingCall.respondWithError(error: DomainError) =
     respond(
         error.httpStatus,

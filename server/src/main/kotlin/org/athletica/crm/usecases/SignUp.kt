@@ -1,15 +1,15 @@
 package org.athletica.crm.usecases
 
-import org.athletica.crm.api.schemas.SignUpRequest
-import org.athletica.crm.core.auth.AuthenticatedUser
-import org.athletica.crm.db.Database
-import org.athletica.crm.security.PasswordHasher
-import kotlin.uuid.Uuid
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.db.Database
+import org.athletica.crm.security.PasswordHasher
+import kotlin.uuid.Uuid
 
 /** Зарегистрированный пользователь без данных о пароле. */
 data class User(override val id: Uuid, override val username: String) : AuthenticatedUser
@@ -20,45 +20,47 @@ sealed class SignUpError : DomainError {
         override val message = "Пользователь с таким логином уже зарегистрирован"
     }
 }
+
 /**
  * Use case регистрации новой организации и её владельца.
  *
- * Создаёт в одной транзакции организацию, пользователя и запись сотрудника
- * с флагом [is_owner = true][org.athletica.crm.db.Database.transaction].
- * UUID генерируются на клиенте; все три INSERT выполняются одним запросом
- * через data-modifying CTE.
+ * Создаёт в одной транзакции организацию, пользователя и запись сотрудника с флагом `is_owner = true`.
+ * UUID генерируются на клиенте.
  *
  * Принимает [db] — обёртку над пулом R2DBC соединений и [passwordHasher] — сервис хеширования паролей.
  */
 class SignUp(private val db: Database, private val passwordHasher: PasswordHasher) {
     /**
      * Регистрирует новую организацию и её владельца по данным [request].
-     * Возвращает созданного пользователя.
+     * Возвращает созданного пользователя, либо [SignUpError.UserAlreadyRegistered] если логин занят.
      */
     suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
         val orgId = Uuid.generateV7()
         val userId = Uuid.generateV7()
         try {
-        db.transaction {
-            sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
-                .bind("orgId", orgId)
-                .bind("orgName", request.companyName)
-                .execute()
+            db.transaction {
+                sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
+                    .bind("orgId", orgId)
+                    .bind("orgName", request.companyName)
+                    .execute()
 
-            sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")
-                .bind("userId", userId)
-                .bind("login", request.login)
-                .bind("userName", request.userName)
-                .bind("hash", passwordHasher.hash(request.password).value)
-                .execute()
+                sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")
+                    .bind("userId", userId)
+                    .bind("login", request.login)
+                    .bind("userName", request.userName)
+                    .bind("hash", passwordHasher.hash(request.password).value)
+                    .execute()
 
-            sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
-                .bind("orgId", orgId)
-                .bind("userId", userId)
-                .execute()
-        }
+                sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
+                    .bind("orgId", orgId)
+                    .bind("userId", userId)
+                    .execute()
+            }
         } catch (e: R2dbcDataIntegrityViolationException) {
-            return SignUpError.UserAlreadyRegistered.left()
+            if (e.message?.contains("users_login_key") == true) {
+                return SignUpError.UserAlreadyRegistered.left()
+            }
+            throw e
         }
 
         return User(id = userId, username = request.login).right()

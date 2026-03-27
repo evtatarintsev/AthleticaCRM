@@ -5,12 +5,21 @@ import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.db.Database
 import org.athletica.crm.security.PasswordHasher
 import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
-import kotlin.uuid.toKotlinUuid
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import org.athletica.crm.core.errors.DomainError
 
 /** Зарегистрированный пользователь без данных о пароле. */
 data class User(override val id: Uuid, override val username: String) : AuthenticatedUser
 
+sealed class SignUpError : DomainError {
+    data object UserAlreadyRegistered : SignUpError() {
+        override val code = "USER_ALREADY_REGISTERED"
+        override val message = "Пользователь с таким логином уже зарегистрирован"
+    }
+}
 /**
  * Use case регистрации новой организации и её владельца.
  *
@@ -26,10 +35,10 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
      * Регистрирует новую организацию и её владельца по данным [request].
      * Возвращает созданного пользователя.
      */
-    suspend fun signUp(request: SignUpRequest): User {
+    suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
         val orgId = Uuid.generateV7()
         val userId = Uuid.generateV7()
-
+        try {
         db.transaction {
             sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
                 .bind("orgId", orgId)
@@ -48,7 +57,10 @@ class SignUp(private val db: Database, private val passwordHasher: PasswordHashe
                 .bind("userId", userId)
                 .execute()
         }
+        } catch (e: R2dbcDataIntegrityViolationException) {
+            return SignUpError.UserAlreadyRegistered.left()
+        }
 
-        return User(id = userId, username = request.login)
+        return User(id = userId, username = request.login).right()
     }
 }

@@ -37,10 +37,12 @@ fun Route.authRoutes(
 ) {
     post("/auth/login") {
         val request = call.receive<LoginRequest>()
-        val user =
-            userService.findByCredentials(request.username, request.password)
-                ?: return@post call.respond(HttpStatusCode.Unauthorized, "Invalid credentials")
-        call.respondWithJwt(user, jwtConfig)
+        userService
+            .findByCredentials(request.username, request.password)
+            .fold(
+                { call.respondWithError(it) },
+                { call.respondWithJwt(it, jwtConfig) }
+            )
     }
 
     post("/auth/logout") {
@@ -63,16 +65,22 @@ fun Route.authRoutes(
         }
 
         val userId = decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()
-        val user =
-            userService.findById(Uuid.parse(userId))
-                ?: return@post call.respond(HttpStatusCode.Unauthorized, "User not found")
-        call.respondWithJwt(user, jwtConfig)
+        userService
+            .findById(Uuid.parse(userId))
+            .fold(
+                { call.respondWithError(it) },
+                { call.respondWithJwt(it, jwtConfig) }
+            )
     }
 
     post("/auth/sign-up") {
         val request = call.receive<SignUpRequest>()
-        val user = signUp.signUp(request)
-        call.respondWithJwt(user, jwtConfig)
+        signUp
+            .signUp(request)
+            .fold(
+                { call.respondWithError(it) },
+                { call.respondWithJwt(it, jwtConfig) }
+            )
     }
 
     authenticate("auth-jwt") {

@@ -1,8 +1,13 @@
 package org.athletica.crm.security
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
+import com.auth0.jwt.interfaces.DecodedJWT
+import org.athletica.crm.core.errors.CommonDomainError
 import java.util.Date
 import kotlin.uuid.Uuid
 
@@ -55,6 +60,10 @@ class JwtConfig(
             .withClaim(CLAIM_TYPE, TYPE_REFRESH)
             .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtlMs))
             .sign(algorithm)
+
+    fun verifyRefreshToken(refreshToken: String): Either<CommonDomainError, DecodedJWT> = runCatching {
+        verifier.verify(refreshToken)
+    }.getOrNull()?.right() ?: CommonDomainError("", "").left()
 
     companion object {
         /** Издатель токенов. */

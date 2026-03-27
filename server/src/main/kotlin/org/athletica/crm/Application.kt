@@ -34,8 +34,6 @@ import org.athletica.crm.db.Database
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.UserService
-import org.athletica.crm.usecases.SignUp
 import java.sql.DriverManager
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
@@ -61,12 +59,11 @@ fun Application.module() {
     runMigrations(url = dbUrl, user = dbUser, password = dbPassword)
 
     val database = createDatabase(jdbcUrl = dbUrl, user = dbUser, password = dbPassword)
-    val passwordHasher = PasswordHasher()
-    val userService = UserService(database, passwordHasher)
-    val signUp = SignUp(database, passwordHasher)
-
     val corsAllowedHosts = config.property("cors.allowedHosts").getString()
-    configureServer(jwtConfig, signUp, userService, corsAllowedHosts)
+
+    context(database, PasswordHasher()) {
+        configureServer(jwtConfig, corsAllowedHosts)
+    }
 }
 
 /**
@@ -75,10 +72,9 @@ fun Application.module() {
  * [jwtConfig] — конфигурация JWT токенов, [userService] — сервис пользователей,
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  */
+context(db: Database, passwordHasher: PasswordHasher)
 fun Application.configureServer(
     jwtConfig: JwtConfig,
-    signUp: SignUp,
-    userService: UserService,
     corsAllowedHost: String = "localhost:8081",
 ) {
     install(StatusPages) {
@@ -132,7 +128,7 @@ fun Application.configureServer(
 
     routing {
         route("/api") {
-            authRoutes(jwtConfig, signUp, userService)
+            authRoutes(jwtConfig)
         }
     }
 }

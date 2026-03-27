@@ -46,12 +46,10 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Завершает сессию текущего пользователя на сервере. */
-    suspend fun logout(): Either<ApiClientError, Unit> =
-        execute { http.post("/api/auth/logout") }
+    suspend fun logout(): Either<ApiClientError, Unit> = execute { http.post("/api/auth/logout") }
 
     /** Возвращает данные текущего авторизованного пользователя. */
-    suspend fun me(): Either<ApiClientError, AuthMeResponse> =
-        execute { http.get("/api/auth/me") }
+    suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
 
     private suspend inline fun <reified T> execute(noinline request: suspend () -> HttpResponse): Either<ApiClientError, T> {
         val response =

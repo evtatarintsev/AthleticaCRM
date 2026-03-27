@@ -11,7 +11,6 @@ data class LoginRequest(
     val password: String,
 )
 
-
 /** Ответ на успешный вход. Содержит JWT токены для авторизации запросов. */
 @Serializable
 data class LoginResponse(

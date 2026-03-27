@@ -10,8 +10,6 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.UserService
-import org.athletica.crm.usecases.SignUp
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -19,10 +17,6 @@ import kotlin.test.assertEquals
 
 /** Интеграционные тесты сервера с изолированной БД в Docker-контейнере. */
 class ApplicationTest {
-    private val hasher = PasswordHasher()
-    private val userService = UserService(db = TestPostgres.db, passwordHasher = hasher)
-    private val signUp = SignUp(db = TestPostgres.db, passwordHasher = hasher)
-
     @Before
     fun setUp() = TestPostgres.truncate()
 
@@ -36,7 +30,11 @@ class ApplicationTest {
     @Test
     fun testLoginWithInvalidCredentials() =
         testApplication {
-            application { configureServer(testJwtConfig, signUp, userService) }
+            application {
+                context(TestPostgres.db, PasswordHasher()) {
+                    configureServer(testJwtConfig)
+                }
+            }
             val response =
                 client.post("/api/auth/login") {
                     contentType(ContentType.Application.Json)
@@ -48,7 +46,11 @@ class ApplicationTest {
     @Test
     fun testMeWithoutToken() =
         testApplication {
-            application { configureServer(testJwtConfig, signUp, userService) }
+            application {
+                context(TestPostgres.db, PasswordHasher()) {
+                    configureServer(testJwtConfig)
+                }
+            }
             val response = client.get("/api/auth/me")
             assertEquals(HttpStatusCode.Unauthorized, response.status)
             assertContains(response.bodyAsText(), "Token expired or invalid")

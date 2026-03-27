@@ -27,44 +27,38 @@ data class UserNotFound(override val message: String) : DomainError {
 }
 
 /**
- * Сервис для работы с пользователями.
- * Принимает [db] — обёртку над пулом R2DBC соединений.
+ * Ищет пользователя по идентификатору [id].
+ * Возвращает найденного пользователя, либо [UserNotFound].
  */
-class UserService(private val db: Database, private val passwordHasher: PasswordHasher) {
-    /**
-     * Ищет пользователя по идентификатору [id].
-     * Возвращает найденного пользователя, либо [UserNotFound].
-     */
-    suspend fun findById(id: Uuid): Either<UserNotFound, User> =
-        db.sql("SELECT * FROM users WHERE id = :id")
-            .bind("id", id.toJavaUuid())
-            .firstOrNull { row, _ -> row.toUser() }
-            ?.right() ?: UserNotFound("User with id='$id' not found").left()
+context(db: Database)
+suspend fun findById(id: Uuid): Either<UserNotFound, User> =
+    db.sql("SELECT * FROM users WHERE id = :id")
+        .bind("id", id.toJavaUuid())
+        .firstOrNull { row, _ -> row.toUser() }
+        ?.right() ?: UserNotFound("User with id='$id' not found").left()
 
-    /**
-     * Ищет пользователя по имени и паролю.
-     *
-     * Сначала ищет пользователя по логину, затем проверяет пароль через [PasswordHasher.verify].
-     * Сравнение в коде обязательно, так как Argon2id использует случайную соль —
-     * два хеша одного пароля всегда разные и не могут сравниваться в SQL.
-     *
-     * Возвращает пользователя если [username] найден и [password] верен, либо [UserNotFound].
-     */
-    suspend fun findByCredentials(
-        username: String,
-        password: String,
-    ): Either<UserNotFound, User> {
-        val user =
-            db.sql("SELECT * FROM users WHERE login = :username")
-                .bind("username", username)
-                .firstOrNull { row, _ -> row.toUser() }
-        if (user == null) {
-            return UserNotFound("User with given credentials not found").left()
-        }
-        val passwordIsValid = passwordHasher.verify(password, PasswordHash(user.password))
-        return if (passwordIsValid) user.right() else UserNotFound("User with given credentials not found").left()
+/**
+ * Ищет пользователя по имени и паролю.
+ *
+ * Сначала ищет пользователя по логину, затем проверяет пароль через [PasswordHasher.verify].
+ * Сравнение в коде обязательно, так как Argon2id использует случайную соль —
+ * два хеша одного пароля всегда разные и не могут сравниваться в SQL.
+ *
+ * Возвращает пользователя если [username] найден и [password] верен, либо [UserNotFound].
+ */
+context(db: Database, passwordHasher: PasswordHasher)
+suspend fun findByCredentials(username: String, password: String): Either<UserNotFound, User> {
+    val user =
+        db.sql("SELECT * FROM users WHERE login = :username")
+            .bind("username", username)
+            .firstOrNull { row, _ -> row.toUser() }
+    if (user == null) {
+        return UserNotFound("User with given credentials not found").left()
     }
+    val passwordIsValid = passwordHasher.verify(password, PasswordHash(user.password))
+    return if (passwordIsValid) user.right() else UserNotFound("User with given credentials not found").left()
 }
+
 
 private fun Row.toUser() =
     User(

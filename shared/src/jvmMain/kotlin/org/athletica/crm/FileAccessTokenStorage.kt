@@ -4,7 +4,6 @@ import io.ktor.client.plugins.auth.providers.BearerTokens
 import org.athletica.crm.api.AccessTokenStorage
 import java.io.File
 
-
 /**
  * Хранилище JWT токенов на основе файловой системы для десктоп-клиента.
  * Сохраняет access и refresh токены в текстовый [file], по одному на строку.
@@ -22,7 +21,10 @@ class FileAccessTokenStorage(private val file: File) : AccessTokenStorage {
     /**
      * Сохраняет токены в файл.
      */
-    override fun save(accessToken: String, refreshToken: String) {
+    override fun save(
+        accessToken: String,
+        refreshToken: String,
+    ) {
         file.writeText(accessToken + "\n" + refreshToken)
     }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -86,6 +88,7 @@ fun MainScreen(
 ) {
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
+    var showCreateClientDialog by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -113,12 +116,15 @@ fun MainScreen(
                                 showMenuButton = true,
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onLogout = onLogout,
+                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClientDialog = true }) },
                             )
                         },
                     ) { innerPadding ->
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
+                            showCreateClientDialog = showCreateClientDialog,
+                            onCreateClientDismiss = { showCreateClientDialog = false },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -158,12 +164,15 @@ fun MainScreen(
                                 showMenuButton = false,
                                 onMenuClick = {},
                                 onLogout = onLogout,
+                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClientDialog = true }) },
                             )
                         },
                     ) { innerPadding ->
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
+                            showCreateClientDialog = showCreateClientDialog,
+                            onCreateClientDismiss = { showCreateClientDialog = false },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -189,12 +198,15 @@ fun MainScreen(
                                 showMenuButton = false,
                                 onMenuClick = {},
                                 onLogout = onLogout,
+                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClientDialog = true }) },
                             )
                         },
                     ) { innerPadding ->
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
+                            showCreateClientDialog = showCreateClientDialog,
+                            onCreateClientDismiss = { showCreateClientDialog = false },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -272,10 +284,32 @@ private fun DrawerContent(
 }
 
 /**
+ * Контекстные action-кнопки top bar для текущего [selectedItem].
+ * [onCreateClient] вызывается при нажатии «Добавить клиента» на экране клиентов.
+ */
+@Composable
+private fun RowScope.TopBarActions(
+    selectedItem: NavItem,
+    onCreateClient: () -> Unit,
+) {
+    when (selectedItem) {
+        NavItem.CLIENTS ->
+            IconButton(onClick = onCreateClient) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Добавить клиента",
+                )
+            }
+        else -> Unit
+    }
+}
+
+/**
  * Верхняя панель приложения с поиском, уведомлениями и кнопкой открытия меню.
  *
  * [showMenuButton] — показывать иконку «бургер» (мобильный режим),
  * [onMenuClick] — callback кнопки открытия бокового меню, [onLogout] — callback кнопки выхода.
+ * [extraActions] — контекстные действия текущего экрана, отображаются перед стандартными иконками.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -283,6 +317,7 @@ private fun MainTopAppBar(
     showMenuButton: Boolean,
     onMenuClick: () -> Unit,
     onLogout: () -> Unit,
+    extraActions: @Composable RowScope.() -> Unit = {},
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
@@ -307,6 +342,7 @@ private fun MainTopAppBar(
             }
         },
         actions = {
+            extraActions()
             IconButton(onClick = {}) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
@@ -327,16 +363,26 @@ private fun MainTopAppBar(
  * Область основного контента — рендерит нужный экран по [selectedItem].
  *
  * [api] — клиент API для передачи дочерним экранам,
+ * [showCreateClientDialog] — управляет видимостью диалога создания клиента,
+ * [onCreateClientDismiss] — callback закрытия диалога,
  * [modifier] — модификатор для применения отступов от Scaffold.
  */
 @Composable
 private fun ContentArea(
     api: ApiClient,
     selectedItem: NavItem,
+    showCreateClientDialog: Boolean = false,
+    onCreateClientDismiss: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     when (selectedItem) {
-        NavItem.CLIENTS -> ClientsScreen(api = api, modifier = modifier)
+        NavItem.CLIENTS ->
+            ClientsScreen(
+                api = api,
+                showCreateDialog = showCreateClientDialog,
+                onDismissCreateDialog = onCreateClientDismiss,
+                modifier = modifier,
+            )
         else ->
             Box(
                 contentAlignment = Alignment.Center,

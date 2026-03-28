@@ -15,20 +15,34 @@ class UserServiceTest {
     @Before
     fun setUp() = TestPostgres.truncate()
 
-    /** Вставляет пользователя напрямую через [TestPostgres.db], возвращает его UUID. */
+    /**
+     * Вставляет организацию, пользователя и запись сотрудника напрямую через [TestPostgres.db].
+     * Возвращает UUID созданного пользователя.
+     */
     private suspend fun insertUser(
         login: String,
         password: String,
     ): Uuid {
-        val id = Uuid.generateV7()
+        val orgId = Uuid.generateV7()
+        val userId = Uuid.generateV7()
+        TestPostgres.db
+            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+            .bind("id", orgId)
+            .bind("name", login)
+            .execute()
         TestPostgres.db
             .sql("INSERT INTO users (id, login, name, password_hash) VALUES (:id, :login, :name, :hash)")
-            .bind("id", id)
+            .bind("id", userId)
             .bind("login", login)
             .bind("name", login)
             .bind("hash", hasher.hash(password).value)
             .execute()
-        return id
+        TestPostgres.db
+            .sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
+            .bind("userId", userId)
+            .bind("orgId", orgId)
+            .execute()
+        return userId
     }
 
     @Test

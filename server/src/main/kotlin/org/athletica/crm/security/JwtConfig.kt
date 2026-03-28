@@ -12,11 +12,7 @@ import kotlin.uuid.Uuid
  * [accessTokenTtlMinutes] — время жизни access токена в минутах,
  * [refreshTokenTtlDays] — время жизни refresh токена в днях.
  */
-class JwtConfig(
-    secret: String,
-    accessTokenTtlMinutes: Long,
-    refreshTokenTtlDays: Long,
-) {
+class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays: Long) {
     private val algorithm = Algorithm.HMAC256(secret)
     private val accessTokenTtlMs = accessTokenTtlMinutes * 60 * 1000
     private val refreshTokenTtlMs = refreshTokenTtlDays * 24 * 60 * 60 * 1000
@@ -32,10 +28,7 @@ class JwtConfig(
     /**
      * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId] и именем [username].
      */
-    fun makeAccessToken(
-        userId: Uuid,
-        username: String,
-    ): String =
+    fun makeAccessToken(userId: Uuid, username: String): String =
         JWT
             .create()
             .withIssuer(ISSUER)

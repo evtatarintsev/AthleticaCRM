@@ -1,7 +1,9 @@
 package org.athletica.crm.routes
 
 import io.ktor.http.HttpMethod
+import io.ktor.server.request.header
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
 import org.athletica.crm.core.Lang
@@ -16,8 +18,7 @@ fun Route.postWithContext(
 ): Route =
     route(path, HttpMethod.Post) {
         handle {
-            val lang = Lang.EN // в реальности возьмем их хидеров call.
-            context(lang) {
+            context(call.langFromRequest()) {
                 body()
             }
         }
@@ -33,9 +34,23 @@ fun Route.getWithContext(
 ): Route =
     route(path, HttpMethod.Get) {
         handle {
-            val lang = Lang.EN // в реальности возьмем их хидеров call.
-            context(lang) {
+            context(call.langFromRequest()) {
                 body()
             }
         }
     }
+
+/**
+ * Определяет язык из заголовка `Accept-Language` (RFC 7231).
+ * Берёт первый тег с наивысшим приоритетом и сопоставляет с поддерживаемыми [Lang].
+ * Если заголовок отсутствует или язык не поддерживается — возвращает [Lang.EN].
+ */
+fun RoutingCall.langFromRequest(): Lang {
+    val header = request.header("Accept-Language") ?: return Lang.default()
+    val primaryTag =
+        header
+            .splitToSequence(",")
+            .map { it.trim().substringBefore(";").substringBefore("-").lowercase() }
+            .firstOrNull() ?: return Lang.EN
+    return Lang.entries.firstOrNull { it.code == primaryTag } ?: Lang.EN
+}

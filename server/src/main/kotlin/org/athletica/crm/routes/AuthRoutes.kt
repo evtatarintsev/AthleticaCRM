@@ -126,7 +126,7 @@ fun DecodedJWT.userIdClaim(): Either<CommonDomainError, Uuid> =
             raise(CommonDomainError("", ""))
         }
         val userId = getClaim(JwtConfig.CLAIM_USER_ID).asString()
-        return Uuid.parse(userId).right()
+        Uuid.parse(userId)
     }
 
 /**

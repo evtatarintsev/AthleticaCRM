@@ -10,7 +10,11 @@ trim_trailing_whitespace = true
 
 [*.{kt,kts}]
 ktlint_standard_no-wildcard-imports = enabled
-ktlint_standard_max-line-length = disabled
+ktlint_standard_max-line-length = 120
 # Разрешить PascalCase для @Composable функций (App, LoginScreen и т.д.)
 ktlint_function_naming_ignore_when_annotated_with = Composable
 ktlint_standard_chain-method-continuation = disabled
+ktlint_standard_parameter-list-wrapping = disabled
+ktlint_standard_argument-list-wrapping = disabled
+ktlint_class_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 4
+ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 4

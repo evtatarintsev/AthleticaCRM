@@ -23,9 +23,7 @@ data class User(
 ) : AuthenticatedUser
 
 /** Ошибка поиска пользователя: пользователь не найден по заданным критериям. */
-data class UserNotFound(
-    override val message: String,
-) : DomainError {
+data class UserNotFound(override val message: String) : DomainError {
     override val code: String = "USER_NOT_FOUND"
 }
 
@@ -55,10 +53,7 @@ suspend fun Uuid.mapUserById() = userById(this)
  * Возвращает пользователя если [username] найден и [password] верен, либо [UserNotFound].
  */
 context(db: Database, passwordHasher: PasswordHasher)
-suspend fun findByCredentials(
-    username: String,
-    password: String,
-): Either<UserNotFound, User> {
+suspend fun findByCredentials(username: String, password: String): Either<UserNotFound, User> {
     val user =
         db
             .sql("SELECT * FROM users WHERE login = :username")

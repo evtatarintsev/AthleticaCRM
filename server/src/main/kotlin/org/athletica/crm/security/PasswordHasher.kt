@@ -35,9 +35,7 @@ data class PasswordConfig(
  *
  * Принимает [config] — параметры алгоритма.
  */
-class PasswordHasher(
-    private val config: PasswordConfig = PasswordConfig(),
-) {
+class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
     /**
      * Генерирует хеш пароля со случайной солью.
      * Каждый вызов возвращает разный хеш — это нормально и ожидаемо.

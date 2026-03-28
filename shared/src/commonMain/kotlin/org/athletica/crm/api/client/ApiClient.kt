@@ -55,8 +55,10 @@ class ApiClient(private val http: HttpClient) {
     /** Возвращает данные текущего авторизованного пользователя. */
     suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
 
+    /** Возвращает страницу клиентов организации по параметрам [request]. */
     suspend fun client(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
 
+    /** Создаёт нового клиента по данным [request]. Возвращает созданного клиента. */
     suspend fun createClient(request: CreateClientRequest): Either<ApiClientError, ClientDetailResponse> =
         execute {
             http.post("/api/clients/create") {

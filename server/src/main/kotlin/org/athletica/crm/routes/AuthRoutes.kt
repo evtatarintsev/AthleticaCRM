@@ -37,7 +37,7 @@ import kotlin.uuid.Uuid
  */
 context(db: Database, passwordHasher: PasswordHasher)
 fun Route.authRoutes(jwtConfig: JwtConfig) {
-    postWithContext("/auth/sign-up") {
+    post("/auth/sign-up") {
         val request = call.receive<SignUpRequest>()
         signUp(request)
             .fold(
@@ -46,7 +46,7 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
             )
     }
 
-    postWithContext("/auth/login") {
+    post("/auth/login") {
         val request = call.receive<LoginRequest>()
         findByCredentials(request.username, request.password)
             .fold(

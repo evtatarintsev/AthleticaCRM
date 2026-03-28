@@ -45,11 +45,12 @@ class ProfileTest {
         return userId to orgId
     }
 
-    private fun requestContext(userId: Uuid, orgId: Uuid) =
+    private fun requestContext(userId: Uuid, orgId: Uuid, username: String = "") =
         RequestContext(
             lang = Lang.EN,
             userId = UserId(userId),
             orgId = OrgId(orgId),
+            username = username,
         )
 
     @Test

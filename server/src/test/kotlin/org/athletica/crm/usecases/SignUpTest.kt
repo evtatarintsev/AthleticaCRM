@@ -30,7 +30,7 @@ class SignUpTest {
     @Test
     fun `signUp returns user on success`() =
         runTest {
-            context(TestPostgres.db, PasswordHasher(), RequestContext(lang = Lang.RU, userId = UserId(Uuid.generateV7()), orgId = OrgId(Uuid.generateV7()))) {
+            context(TestPostgres.db, PasswordHasher(), RequestContext(lang = Lang.RU, userId = UserId(Uuid.generateV7()), orgId = OrgId(Uuid.generateV7()), username = "")) {
                 val result = signUp(request())
                 val user = assertIs<Either.Right<User>>(result).value
                 assertEquals("user@example.com", user.username)
@@ -40,7 +40,7 @@ class SignUpTest {
     @Test
     fun `signUp returns UserAlreadyRegistered when login is taken`() =
         runTest {
-            context(TestPostgres.db, PasswordHasher(), RequestContext(lang = Lang.RU, userId = UserId(Uuid.generateV7()), orgId = OrgId(Uuid.generateV7()))) {
+            context(TestPostgres.db, PasswordHasher(), RequestContext(lang = Lang.RU, userId = UserId(Uuid.generateV7()), orgId = OrgId(Uuid.generateV7()), username = "")) {
                 signUp(request())
                 val result = signUp(request())
                 assertIs<Either.Left<SignUpError.UserAlreadyRegistered>>(result)
@@ -50,7 +50,7 @@ class SignUpTest {
     @Test
     fun `signUp allows different logins`() =
         runTest {
-            context(TestPostgres.db, PasswordHasher(), RequestContext(lang = Lang.RU, userId = UserId(Uuid.generateV7()), orgId = OrgId(Uuid.generateV7()))) {
+            context(TestPostgres.db, PasswordHasher(), RequestContext(lang = Lang.RU, userId = UserId(Uuid.generateV7()), orgId = OrgId(Uuid.generateV7()), username = "")) {
                 assertIs<Either.Right<User>>(signUp(request(login = "user1@example.com")))
                 assertIs<Either.Right<User>>(signUp(request(login = "user2@example.com")))
             }

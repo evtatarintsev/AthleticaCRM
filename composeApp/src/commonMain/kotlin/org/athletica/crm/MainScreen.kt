@@ -117,6 +117,7 @@ fun MainScreen(
                         },
                     ) { innerPadding ->
                         ContentArea(
+                            api = api,
                             selectedItem = selectedItem,
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -161,6 +162,7 @@ fun MainScreen(
                         },
                     ) { innerPadding ->
                         ContentArea(
+                            api = api,
                             selectedItem = selectedItem,
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -191,6 +193,7 @@ fun MainScreen(
                         },
                     ) { innerPadding ->
                         ContentArea(
+                            api = api,
                             selectedItem = selectedItem,
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -321,23 +324,28 @@ private fun MainTopAppBar(
 }
 
 /**
- * Область основного контента — слот для страниц приложения.
- * TODO: заменить на маршрутизацию реальных страниц по [selectedItem]
+ * Область основного контента — рендерит нужный экран по [selectedItem].
  *
+ * [api] — клиент API для передачи дочерним экранам,
  * [modifier] — модификатор для применения отступов от Scaffold.
  */
 @Composable
 private fun ContentArea(
+    api: ApiClient,
     selectedItem: NavItem,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Text(
-            text = selectedItem.label,
-            style = MaterialTheme.typography.headlineMedium,
-        )
+    when (selectedItem) {
+        NavItem.CLIENTS -> ClientsScreen(api = api, modifier = modifier)
+        else ->
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = modifier.fillMaxSize(),
+            ) {
+                Text(
+                    text = selectedItem.label,
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+            }
     }
 }

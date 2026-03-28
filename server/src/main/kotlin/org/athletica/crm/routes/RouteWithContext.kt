@@ -21,11 +21,11 @@ import kotlin.uuid.Uuid
  */
 fun Route.postWithContext(
     path: String,
-    body: suspend context(Lang) RoutingContext.() -> Unit,
+    body: suspend context(RequestContext) RoutingContext.() -> Unit,
 ): Route =
     route(path, HttpMethod.Post) {
         handle {
-            context(call.langFromRequest()) {
+            context(call.contextFromRequest()) {
                 body()
             }
         }

@@ -21,14 +21,16 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.clients.ClientListRequest
+import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.CreateClientRequest
 
 /**
  * Клиент для взаимодействия с API сервера.
  * Принимает настроенный [http] — Ktor HTTP клиент с аутентификацией и сериализацией.
  */
-class ApiClient(
-    private val http: HttpClient,
-) {
+class ApiClient(private val http: HttpClient) {
     /** Выполняет вход по данным [request]. Возвращает access и refresh токены. */
     suspend fun login(request: LoginRequest): Either<ApiClientError, LoginResponse> =
         execute {
@@ -52,6 +54,16 @@ class ApiClient(
 
     /** Возвращает данные текущего авторизованного пользователя. */
     suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
+
+    suspend fun client(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
+
+    suspend fun createClient(request: CreateClientRequest): Either<ApiClientError, ClientDetailResponse> =
+        execute {
+            http.post("/api/clients/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     private suspend inline fun <reified T> execute(noinline request: suspend () -> HttpResponse): Either<ApiClientError, T> {
         val response =

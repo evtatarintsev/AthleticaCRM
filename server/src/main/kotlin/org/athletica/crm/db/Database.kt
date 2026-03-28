@@ -184,8 +184,7 @@ class ConnectionQueryBuilder(
      */
     suspend fun execute() = connection.executeStatement(sql, bindings)
 
-    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
-        connection.executeStatement(sql, bindings, mapper)
+    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> = connection.executeStatement(sql, bindings, mapper)
 }
 
 private suspend fun Connection.executeStatement(

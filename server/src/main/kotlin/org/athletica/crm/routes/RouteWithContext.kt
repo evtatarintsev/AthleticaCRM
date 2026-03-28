@@ -74,5 +74,6 @@ fun RoutingCall.contextFromRequest(): RequestContext {
         userId = userId,
         orgId = orgId,
         lang = langFromRequest(),
+        username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
     )
 }

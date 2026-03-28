@@ -12,4 +12,5 @@ data class RequestContext(
     val lang: Lang,
     val userId: UserId,
     val orgId: OrgId,
+    val username: String,
 )

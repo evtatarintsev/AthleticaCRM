@@ -7,9 +7,6 @@ import arrow.core.right
 import com.auth0.jwt.interfaces.DecodedJWT
 import io.ktor.http.Cookie
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.header
 import io.ktor.server.request.receive
@@ -19,7 +16,6 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
@@ -75,18 +71,6 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
             { call.respondWithError(it) },
             { call.respondWithJwt(it, jwtConfig) },
         )
-    }
-
-    authenticate("auth-jwt") {
-        get("/auth/me") {
-            val principal = call.principal<JWTPrincipal>()!!
-            call.respond(
-                AuthMeResponse(
-                    id = principal.payload.getClaim(JwtConfig.CLAIM_USER_ID).asString(),
-                    username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
-                ),
-            )
-        }
     }
 }
 

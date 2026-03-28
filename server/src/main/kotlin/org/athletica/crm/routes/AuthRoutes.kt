@@ -82,7 +82,7 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
             val principal = call.principal<JWTPrincipal>()!!
             call.respond(
                 AuthMeResponse(
-                    id = Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_USER_ID).asString()),
+                    id = principal.payload.getClaim(JwtConfig.CLAIM_USER_ID).asString(),
                     username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
                 ),
             )

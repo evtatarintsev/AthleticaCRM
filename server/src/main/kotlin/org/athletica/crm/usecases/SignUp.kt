@@ -5,7 +5,7 @@ import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.api.schemas.auth.SignUpRequest
-import org.athletica.crm.core.Lang
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.db.Database
@@ -32,7 +32,7 @@ sealed class SignUpError : DomainError {
  * Регистрирует новую организацию и её владельца по данным [request].
  * Возвращает созданного пользователя, либо [SignUpError.UserAlreadyRegistered] если логин занят.
  */
-context(db: Database, passwordHasher: PasswordHasher, lang: Lang)
+context(db: Database, passwordHasher: PasswordHasher, ctx: RequestContext)
 suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
     val orgId = Uuid.generateV7()
     val userId = Uuid.generateV7()

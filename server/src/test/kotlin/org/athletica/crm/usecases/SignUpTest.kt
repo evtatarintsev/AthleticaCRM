@@ -3,7 +3,7 @@ package org.athletica.crm.usecases
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before

@@ -2,7 +2,6 @@ package org.athletica.crm.routes
 
 import arrow.core.Either
 import arrow.core.left
-import arrow.core.raise.context.bind
 import arrow.core.raise.either
 import arrow.core.right
 import com.auth0.jwt.interfaces.DecodedJWT
@@ -21,9 +20,9 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.AuthMeResponse
-import org.athletica.crm.api.schemas.LoginRequest
-import org.athletica.crm.api.schemas.LoginResponse
-import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.api.schemas.auth.LoginRequest
+import org.athletica.crm.api.schemas.auth.LoginResponse
+import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -138,7 +137,7 @@ suspend fun RoutingCall.respondWithJwt(
     user: AuthenticatedUser,
     jwtConfig: JwtConfig,
 ) {
-    val newAccessToken = jwtConfig.makeAccessToken(user.id, user.username)
+    val newAccessToken = jwtConfig.makeAccessToken(user.id, user.orgId, user.username)
     val newRefreshToken = jwtConfig.makeRefreshToken(user.id)
 
     response.cookies.setJwtCookies(newAccessToken, newRefreshToken)

@@ -4,7 +4,7 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
@@ -15,6 +15,7 @@ import kotlin.uuid.Uuid
 /** Зарегистрированный пользователь без данных о пароле. */
 data class User(
     override val id: Uuid,
+    override val orgId: Uuid,
     override val username: String,
 ) : AuthenticatedUser
 
@@ -61,5 +62,5 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
         throw e
     }
 
-    return User(id = userId, username = request.login).right()
+    return User(id = userId, orgId = orgId, username = request.login).right()
 }

@@ -26,14 +26,16 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .build()
 
     /**
-     * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId] и именем [username].
+     * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId],
+     * организацией [orgId] и именем [username].
      */
-    fun makeAccessToken(userId: Uuid, username: String): String =
+    fun makeAccessToken(userId: Uuid, orgId: Uuid, username: String): String =
         JWT
             .create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
             .withClaim(CLAIM_USER_ID, userId.toString())
+            .withClaim(CLAIM_ORG_ID, orgId.toString())
             .withClaim(CLAIM_USERNAME, username)
             .withClaim(CLAIM_TYPE, TYPE_ACCESS)
             .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtlMs))
@@ -61,6 +63,9 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
 
         /** Claim с идентификатором пользователя. */
         const val CLAIM_USER_ID = "userId"
+
+        /** Claim с идентификатором организации пользователя. */
+        const val CLAIM_ORG_ID = "orgId"
 
         /** Claim с именем пользователя. */
         const val CLAIM_USERNAME = "username"

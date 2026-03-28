@@ -98,6 +98,16 @@ class QueryBuilder(
     suspend fun <T : Any> firstOrNull(mapper: (Row, RowMetadata) -> T): T? = execute(mapper).firstOrNull()
 
     /**
+     * Выполняет запрос и возвращает первый результат или `null`.
+     *
+     * [mapper] — функция преобразования строки результата в доменный объект.
+     */
+    suspend fun <T : Any> firstOrNull(mapper: (Row) -> T): T? =
+        execute { row, _ ->
+            mapper(row)
+        }.firstOrNull()
+
+    /**
      * Выполняет запрос и возвращает список результатов.
      *
      * [mapper] — функция преобразования строки результата в доменный объект.
@@ -174,7 +184,8 @@ class ConnectionQueryBuilder(
      */
     suspend fun execute() = connection.executeStatement(sql, bindings)
 
-    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> = connection.executeStatement(sql, bindings, mapper)
+    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
+        connection.executeStatement(sql, bindings, mapper)
 }
 
 private suspend fun Connection.executeStatement(

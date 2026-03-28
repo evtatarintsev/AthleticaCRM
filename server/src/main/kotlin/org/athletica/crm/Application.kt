@@ -32,6 +32,7 @@ import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.db.Database
 import org.athletica.crm.routes.authRoutes
+import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import java.sql.DriverManager
@@ -131,6 +132,7 @@ fun Application.configureServer(
     routing {
         route("/api") {
             authRoutes(jwtConfig)
+            clientsRoutes()
         }
     }
 }

@@ -18,8 +18,8 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.LoginRequest
-import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.api.schemas.auth.LoginRequest
+import org.athletica.crm.api.schemas.auth.SignUpRequest
 
 private val logger = Logger.withTag("App")
 

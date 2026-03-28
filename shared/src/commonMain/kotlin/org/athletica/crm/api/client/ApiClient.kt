@@ -18,9 +18,9 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.crm.api.schemas.LoginRequest
-import org.athletica.crm.api.schemas.LoginResponse
-import org.athletica.crm.api.schemas.SignUpRequest
+import org.athletica.crm.api.schemas.auth.LoginRequest
+import org.athletica.crm.api.schemas.auth.LoginResponse
+import org.athletica.crm.api.schemas.auth.SignUpRequest
 
 /**
  * Клиент для взаимодействия с API сервера.

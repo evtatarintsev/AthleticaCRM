@@ -14,10 +14,11 @@ import kotlin.uuid.toKotlinUuid
 
 /**
  * Данные пользователя системы.
- * [id] — уникальный идентификатор, [username] — имя для входа, [password] — хэш пароля.
+ * [id] — уникальный идентификатор, [orgId] — организация пользователя, [username] — имя для входа, [password] — хэш пароля.
  */
 data class User(
     override val id: Uuid,
+    override val orgId: Uuid,
     override val username: String,
     val password: String,
 ) : AuthenticatedUser
@@ -34,9 +35,16 @@ data class UserNotFound(override val message: String) : DomainError {
 context(db: Database)
 suspend fun userById(id: Uuid): Either<UserNotFound, User> =
     db
-        .sql("SELECT * FROM users WHERE id = :id")
+        .sql(
+            """
+            SELECT u.*, e.org_id
+            FROM users u
+            JOIN employees e ON e.user_id = u.id
+            WHERE u.id = :id AND e.is_active = true
+            """.trimIndent(),
+        )
         .bind("id", id.toJavaUuid())
-        .firstOrNull { row, _ -> row.toUser() }
+        .firstOrNull { it.toUser() }
         ?.right() ?: UserNotFound("User with id='$id' not found").left()
 
 /** Делегирует вызов [userById] для данного UUID. Удобен при цепочке Either-операций. */
@@ -56,9 +64,16 @@ context(db: Database, passwordHasher: PasswordHasher)
 suspend fun findByCredentials(username: String, password: String): Either<UserNotFound, User> {
     val user =
         db
-            .sql("SELECT * FROM users WHERE login = :username")
+            .sql(
+                """
+                SELECT u.*, e.org_id
+                FROM users u
+                JOIN employees e ON e.user_id = u.id
+                WHERE u.login = :username AND e.is_active = true
+                """.trimIndent(),
+            )
             .bind("username", username)
-            .firstOrNull { row, _ -> row.toUser() }
+            .firstOrNull { it.toUser() }
     if (user == null) {
         return UserNotFound("User with given credentials not found").left()
     }
@@ -69,6 +84,7 @@ suspend fun findByCredentials(username: String, password: String): Either<UserNo
 private fun Row.toUser() =
     User(
         id = get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
+        orgId = get("org_id", java.util.UUID::class.java)!!.toKotlinUuid(),
         username = get("login", String::class.java)!!,
         password = get("password_hash", String::class.java)!!,
     )

@@ -12,7 +12,7 @@ import io.ktor.client.request.post
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.LoginResponse
+import org.athletica.crm.api.schemas.auth.LoginResponse
 
 /**
  * Создаёт [ApiClient] для веб-браузера.

@@ -1,4 +1,4 @@
-package org.athletica.crm.api.schemas
+package org.athletica.crm.api.schemas.auth
 
 import kotlinx.serialization.Serializable
 

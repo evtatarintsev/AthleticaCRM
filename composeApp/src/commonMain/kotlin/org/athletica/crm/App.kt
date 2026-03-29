@@ -20,6 +20,8 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.components.auth.LoginScreen
+import org.athletica.crm.components.auth.RegisterScreen
 
 private val logger = Logger.withTag("App")
 
@@ -84,7 +86,7 @@ fun App(
                         scope.launch {
                             api
                                 .logout()
-                                .mapLeft { logger.e { "Ошибка при выходе: $it" } }
+                                .onLeft { logger.e { "Ошибка при выходе: $it" } }
                             tokenStorage.clear()
                             authState = AuthState.Unauthenticated
                         }
@@ -102,19 +104,22 @@ fun App(
                                     loginError = null
                                     api
                                         .login(LoginRequest(username = login, password = password))
-                                        .map {
-                                            tokenStorage.save(it.accessToken, it.refreshToken)
-                                            logger.i { "Вход выполнен успешно: $login" }
-                                            authState = AuthState.Authenticated
-                                        }.mapLeft {
-                                            logger.e { "Ошибка входа: $login — $it" }
-                                            loginError =
-                                                when (it) {
-                                                    is ApiClientError.ValidationError -> it.message
-                                                    is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                                                }
-                                        }
+                                        .fold(
+                                            ifLeft = {
+                                                logger.e { "Ошибка входа: $login — $it" }
+                                                loginError =
+                                                    when (it) {
+                                                        is ApiClientError.ValidationError -> it.message
+                                                        is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
+                                                        is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
+                                                    }
+                                            },
+                                            ifRight = {
+                                                tokenStorage.save(it.accessToken, it.refreshToken)
+                                                logger.i { "Вход выполнен успешно: $login" }
+                                                authState = AuthState.Authenticated
+                                            },
+                                        )
                                 }
                             },
                             onNavigateToRegister = { unauthScreen = UnauthScreen.Register },
@@ -135,19 +140,22 @@ fun App(
                                                 login = email,
                                                 password = password,
                                             ),
-                                        ).map {
-                                            tokenStorage.save(it.accessToken, it.refreshToken)
-                                            logger.i { "Регистрация выполнена успешно: $email" }
-                                            authState = AuthState.Authenticated
-                                        }.mapLeft {
-                                            logger.e { "Ошибка регистрации: $email — $it" }
-                                            registerError =
-                                                when (it) {
-                                                    is ApiClientError.ValidationError -> it.message
-                                                    is ApiClientError.Unauthenticated -> "Ошибка регистрации. Попробуйте ещё раз"
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                                                }
-                                        }
+                                        ).fold(
+                                            ifLeft = {
+                                                logger.e { "Ошибка регистрации: $email — $it" }
+                                                registerError =
+                                                    when (it) {
+                                                        is ApiClientError.ValidationError -> it.message
+                                                        is ApiClientError.Unauthenticated -> "Ошибка регистрации. Попробуйте ещё раз"
+                                                        is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
+                                                    }
+                                            },
+                                            ifRight = {
+                                                tokenStorage.save(it.accessToken, it.refreshToken)
+                                                logger.i { "Регистрация выполнена успешно: $email" }
+                                                authState = AuthState.Authenticated
+                                            },
+                                        )
                                 }
                             },
                             onNavigateToLogin = { unauthScreen = UnauthScreen.Login },

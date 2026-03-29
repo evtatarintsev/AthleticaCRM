@@ -39,6 +39,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.components.clients.ClientRow
 import kotlin.uuid.Uuid
 
 /**
@@ -196,49 +197,5 @@ fun ClientsScreen(
                     }
                 }
         }
-    }
-}
-
-@Composable
-private fun ClientRow(
-    client: ClientListItem,
-    selected: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-    ) {
-        Checkbox(
-            checked = selected,
-            onCheckedChange = onCheckedChange,
-        )
-
-        Spacer(Modifier.width(12.dp))
-
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-        ) {
-            Text(
-                text = client.name.first().uppercaseChar().toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Text(
-            text = client.name,
-            style = MaterialTheme.typography.bodyLarge,
-        )
     }
 }

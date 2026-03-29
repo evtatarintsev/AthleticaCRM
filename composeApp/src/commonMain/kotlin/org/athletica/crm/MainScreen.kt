@@ -1,6 +1,7 @@
 package org.athletica.crm
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -56,6 +57,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
 
 /** Пункт бокового меню навигации. */
@@ -93,8 +96,18 @@ fun MainScreen(
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var showCreateClientDialog by remember { mutableStateOf(false) }
+    var selectedClient by remember { mutableStateOf<ClientListItem?>(null) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // Карточка клиента накрывает весь экран поверх навигации
+    if (selectedClient != null) {
+        ClientDetailScreen(
+            client = selectedClient!!,
+            onBack = { selectedClient = null },
+        )
+        return
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         when {
@@ -129,6 +142,7 @@ fun MainScreen(
                             selectedItem = selectedItem,
                             showCreateClientDialog = showCreateClientDialog,
                             onCreateClientDismiss = { showCreateClientDialog = false },
+                            onClientClick = { selectedClient = it },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -177,6 +191,7 @@ fun MainScreen(
                             selectedItem = selectedItem,
                             showCreateClientDialog = showCreateClientDialog,
                             onCreateClientDismiss = { showCreateClientDialog = false },
+                            onClientClick = { selectedClient = it },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -211,6 +226,7 @@ fun MainScreen(
                             selectedItem = selectedItem,
                             showCreateClientDialog = showCreateClientDialog,
                             onCreateClientDismiss = { showCreateClientDialog = false },
+                            onClientClick = { selectedClient = it },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -436,6 +452,7 @@ private fun MainTopAppBar(
  * [api] — клиент API для передачи дочерним экранам,
  * [showCreateClientDialog] — управляет видимостью диалога создания клиента,
  * [onCreateClientDismiss] — callback закрытия диалога,
+ * [onClientClick] — callback перехода к карточке клиента,
  * [modifier] — модификатор для применения отступов от Scaffold.
  */
 @Composable
@@ -444,6 +461,7 @@ private fun ContentArea(
     selectedItem: NavItem,
     showCreateClientDialog: Boolean = false,
     onCreateClientDismiss: () -> Unit = {},
+    onClientClick: (ClientListItem) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     when (selectedItem) {
@@ -452,6 +470,7 @@ private fun ContentArea(
                 api = api,
                 showCreateDialog = showCreateClientDialog,
                 onDismissCreateDialog = onCreateClientDismiss,
+                onClientClick = onClientClick,
                 modifier = modifier,
             )
         else ->

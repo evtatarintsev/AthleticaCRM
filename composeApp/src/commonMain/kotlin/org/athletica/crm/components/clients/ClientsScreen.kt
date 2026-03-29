@@ -43,7 +43,7 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import kotlin.uuid.Uuid
 
 /**
- * Экран списка клиентов.
+ * Экран списка клиентов с поиском, фильтрами и выбором записей.
  * Загружает данные через [api] при первом отображении.
  * Если [showCreateDialog] равен `true` — отображает диалог создания нового клиента.
  * [onDismissCreateDialog] вызывается при закрытии диалога.
@@ -59,6 +59,8 @@ fun ClientsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
+    var filter by remember { mutableStateOf(ClientFilterState()) }
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     var newClientName by remember { mutableStateOf("") }
     var isCreating by remember { mutableStateOf(false) }
@@ -77,9 +79,7 @@ fun ClientsScreen(
                             is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
                         }
                 },
-                ifRight = { response ->
-                    clients = response.clients
-                },
+                ifRight = { response -> clients = response.clients },
             )
         isLoading = false
     }
@@ -150,13 +150,18 @@ fun ClientsScreen(
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = onDismissCreateDialog,
-                    enabled = !isCreating,
-                ) {
+                TextButton(onClick = onDismissCreateDialog, enabled = !isCreating) {
                     Text("Отмена")
                 }
             },
+        )
+    }
+
+    if (showFilterSheet) {
+        ClientsFilterSheet(
+            filter = filter,
+            onFilterChange = { filter = it },
+            onDismiss = { showFilterSheet = false },
         )
     }
 
@@ -173,51 +178,66 @@ fun ClientsScreen(
                     modifier = Modifier.align(Alignment.Center),
                 )
 
-            clients.isEmpty() ->
-                Text(
-                    text = "Клиентов пока нет",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-
             else -> {
+                val filteredClients = filter.applyTo(clients)
+
                 val selectAllState =
                     when {
                         selectedIds.isEmpty() -> ToggleableState.Off
-                        selectedIds.size == clients.size -> ToggleableState.On
+                        selectedIds.containsAll(filteredClients.map { it.id }) -> ToggleableState.On
                         else -> ToggleableState.Indeterminate
                     }
 
                 Column(Modifier.fillMaxSize()) {
-                    ClientsTableHeader(
-                        selectAllState = selectAllState,
-                        onSelectAllClick = {
-                            selectedIds =
-                                if (selectAllState == ToggleableState.On) {
-                                    emptySet()
-                                } else {
-                                    clients.map { it.id }.toSet()
-                                }
-                        },
+                    ClientsFilterBar(
+                        filter = filter,
+                        onFilterChange = { filter = it },
+                        onOpenSheet = { showFilterSheet = true },
                     )
-                    HorizontalDivider()
-                    LazyColumn(
-                        contentPadding = PaddingValues(
-                            top = 4.dp,
-                            bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
-                        ),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(clients, key = { it.id }) { client ->
-                            ClientRow(
-                                client = client,
-                                selected = client.id in selectedIds,
-                                onCheckedChange = { checked ->
+
+                    when {
+                        clients.isEmpty() ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Клиентов пока нет", style = MaterialTheme.typography.bodyLarge)
+                            }
+
+                        filteredClients.isEmpty() ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Ничего не найдено", style = MaterialTheme.typography.bodyLarge)
+                            }
+
+                        else -> {
+                            ClientsTableHeader(
+                                selectAllState = selectAllState,
+                                onSelectAllClick = {
                                     selectedIds =
-                                        if (checked) selectedIds + client.id
-                                        else selectedIds - client.id
+                                        if (selectAllState == ToggleableState.On) {
+                                            emptySet()
+                                        } else {
+                                            filteredClients.map { it.id }.toSet()
+                                        }
                                 },
                             )
+                            HorizontalDivider()
+                            LazyColumn(
+                                contentPadding = PaddingValues(
+                                    top = 4.dp,
+                                    bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
+                                ),
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                items(filteredClients, key = { it.id }) { client ->
+                                    ClientRow(
+                                        client = client,
+                                        selected = client.id in selectedIds,
+                                        onCheckedChange = { checked ->
+                                            selectedIds =
+                                                if (checked) selectedIds + client.id
+                                                else selectedIds - client.id
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -259,22 +279,13 @@ private fun ClientsBottomActionBar(
                     .weight(1f),
         )
         IconButton(onClick = onDelete) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Удалить выбранных",
-            )
+            Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить выбранных")
         }
         IconButton(onClick = onNotify) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = "Оповестить выбранных",
-            )
+            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Оповестить выбранных")
         }
         IconButton(onClick = onExport) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = "Экспортировать выбранных",
-            )
+            Icon(imageVector = Icons.Default.Share, contentDescription = "Экспортировать выбранных")
         }
     }
 }

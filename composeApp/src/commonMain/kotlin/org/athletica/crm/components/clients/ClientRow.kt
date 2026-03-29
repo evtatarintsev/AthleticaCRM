@@ -20,7 +20,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientListItem
-import kotlin.math.abs
 
 internal val GenderColWidth: Dp = 52.dp
 internal val BirthYearColWidth: Dp = 68.dp
@@ -36,16 +35,7 @@ fun ClientRow(
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    // TODO: заменить на реальные данные из API
-    val absHash = abs(client.name.hashCode())
-    val gender = if (absHash % 2 == 0) "М" else "Ж"
-    val birthYear = 1970 + absHash % 36
-    val debt =
-        when (absHash % 4) {
-            0 -> "1 200 ₽"
-            1 -> "500 ₽"
-            else -> "—"
-        }
+    val data = client.fakeData()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -86,21 +76,21 @@ fun ClientRow(
         )
 
         Text(
-            text = gender,
+            text = data.gender,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(GenderColWidth),
         )
 
         Text(
-            text = birthYear.toString(),
+            text = data.birthYear.toString(),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(BirthYearColWidth),
         )
 
         Text(
-            text = debt,
+            text = data.debtLabel,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.End,
             modifier = Modifier.width(DebtColWidth),

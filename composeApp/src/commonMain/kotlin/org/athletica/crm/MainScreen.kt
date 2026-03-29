@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
@@ -48,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -217,6 +221,67 @@ fun MainScreen(
 }
 
 /**
+ * Шапка аккаунта в боковой панели навигации.
+ * Отображает аватар с инициалами, имя пользователя, название организации и баланс.
+ * TODO: заменить заглушки на реальные данные из профиля.
+ */
+@Composable
+private fun DrawerAccountHeader() {
+    // TODO: получить из профиля / токена
+    val userName = "Александр Иванов"
+    val orgName = "ООО «Атлетика»"
+    val balance = "12 400 ₽"
+    val initials = userName
+        .split(" ")
+        .take(2)
+        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+        .joinToString("")
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            Text(
+                text = initials,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = userName,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = orgName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Баланс: $balance",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+/**
  * Содержимое боковой панели навигации: логотип и список разделов.
  *
  * [selectedItem] — текущий выбранный пункт, [expanded] — показывать ли текстовые метки рядом с иконками,
@@ -235,6 +300,7 @@ private fun DrawerContent(
                 .fillMaxHeight()
                 .width(280.dp),
     ) {
+        // Логотип + кнопка сворачивания
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -260,6 +326,11 @@ private fun DrawerContent(
                     contentDescription = "Свернуть меню",
                 )
             }
+        }
+
+        // Account header: аватар, имя пользователя, организация, баланс
+        if (expanded) {
+            DrawerAccountHeader()
         }
 
         HorizontalDivider()

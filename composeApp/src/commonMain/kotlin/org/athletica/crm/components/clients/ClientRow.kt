@@ -28,12 +28,16 @@ internal val DebtColWidth: Dp = 84.dp
 // Ширина области аватара: Spacer(8dp) + Box(36dp) + Spacer(10dp)
 internal val AvatarAreaWidth: Dp = 54.dp
 
-/** Строка клиента в таблице с чекбоксом, аватаром и колонками данных. */
+/**
+ * Строка клиента в таблице с чекбоксом, аватаром и колонками данных.
+ * [settings] — управляет видимостью опциональных колонок.
+ */
 @Composable
 fun ClientRow(
     client: ClientListItem,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    settings: ClientDisplaySettings = ClientDisplaySettings(),
 ) {
     val data = client.fakeData()
 
@@ -75,25 +79,31 @@ fun ClientRow(
             modifier = Modifier.weight(1f),
         )
 
-        Text(
-            text = data.gender,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(GenderColWidth),
-        )
+        if (ClientColumn.Gender in settings.visibleColumns) {
+            Text(
+                text = data.gender,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(GenderColWidth),
+            )
+        }
 
-        Text(
-            text = data.birthYear.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(BirthYearColWidth),
-        )
+        if (ClientColumn.BirthYear in settings.visibleColumns) {
+            Text(
+                text = data.birthYear.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(BirthYearColWidth),
+            )
+        }
 
-        Text(
-            text = data.debtLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(DebtColWidth),
-        )
+        if (ClientColumn.Debt in settings.visibleColumns) {
+            Text(
+                text = data.debtLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(DebtColWidth),
+            )
+        }
     }
 }

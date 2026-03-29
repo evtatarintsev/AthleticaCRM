@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,12 +36,14 @@ import androidx.compose.ui.unit.dp
  * [filter] — текущее состояние фильтров.
  * [onFilterChange] — вызывается при любом изменении фильтра.
  * [onOpenSheet] — вызывается при нажатии кнопки «Фильтры» для открытия панели фильтров.
+ * [onOpenSettings] — вызывается при нажатии иконки настроек отображения.
  */
 @Composable
 fun ClientsFilterBar(
     filter: ClientFilterState,
     onFilterChange: (ClientFilterState) -> Unit,
     onOpenSheet: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -87,6 +90,13 @@ fun ClientsFilterBar(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     if (filter.chipCount > 0) "Фильтры · ${filter.chipCount}" else "Фильтры",
+                )
+            }
+
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Настройки отображения",
                 )
             }
         }

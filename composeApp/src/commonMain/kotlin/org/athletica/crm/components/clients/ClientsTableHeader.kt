@@ -24,11 +24,13 @@ import androidx.compose.ui.unit.dp
  * Заголовок таблицы клиентов: чекбокс «выбрать все» и названия колонок.
  * [selectAllState] — состояние чекбокса (On / Off / Indeterminate).
  * [onSelectAllClick] — вызывается при нажатии на чекбокс.
+ * [settings] — настройки отображения, управляют видимостью опциональных колонок.
  */
 @Composable
 fun ClientsTableHeader(
     selectAllState: ToggleableState,
     onSelectAllClick: () -> Unit,
+    settings: ClientDisplaySettings = ClientDisplaySettings(),
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -60,28 +62,34 @@ fun ClientsTableHeader(
             )
         }
 
-        Text(
-            text = "Пол",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(GenderColWidth),
-        )
+        if (ClientColumn.Gender in settings.visibleColumns) {
+            Text(
+                text = "Пол",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(GenderColWidth),
+            )
+        }
 
-        Text(
-            text = "Год",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(BirthYearColWidth),
-        )
+        if (ClientColumn.BirthYear in settings.visibleColumns) {
+            Text(
+                text = "Год",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(BirthYearColWidth),
+            )
+        }
 
-        Text(
-            text = "Долг",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(DebtColWidth),
-        )
+        if (ClientColumn.Debt in settings.visibleColumns) {
+            Text(
+                text = "Долг",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(DebtColWidth),
+            )
+        }
     }
 }

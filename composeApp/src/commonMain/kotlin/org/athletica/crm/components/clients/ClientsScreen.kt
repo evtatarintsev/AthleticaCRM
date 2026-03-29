@@ -61,6 +61,8 @@ fun ClientsScreen(
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
     var filter by remember { mutableStateOf(ClientFilterState()) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(ClientDisplaySettings()) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     var newClientName by remember { mutableStateOf("") }
     var isCreating by remember { mutableStateOf(false) }
@@ -157,6 +159,14 @@ fun ClientsScreen(
         )
     }
 
+    if (showSettingsDialog) {
+        ClientsSettingsDialog(
+            settings = settings,
+            onSettingsChange = { settings = it },
+            onDismiss = { showSettingsDialog = false },
+        )
+    }
+
     if (showFilterSheet) {
         ClientsFilterSheet(
             filter = filter,
@@ -179,7 +189,7 @@ fun ClientsScreen(
                 )
 
             else -> {
-                val filteredClients = filter.applyTo(clients)
+                val filteredClients = filter.applyTo(clients).take(settings.pageSize)
 
                 val selectAllState =
                     when {
@@ -193,6 +203,7 @@ fun ClientsScreen(
                         filter = filter,
                         onFilterChange = { filter = it },
                         onOpenSheet = { showFilterSheet = true },
+                        onOpenSettings = { showSettingsDialog = true },
                     )
 
                     when {
@@ -209,6 +220,7 @@ fun ClientsScreen(
                         else -> {
                             ClientsTableHeader(
                                 selectAllState = selectAllState,
+                                settings = settings,
                                 onSelectAllClick = {
                                     selectedIds =
                                         if (selectAllState == ToggleableState.On) {
@@ -229,6 +241,7 @@ fun ClientsScreen(
                                 items(filteredClients, key = { it.id }) { client ->
                                     ClientRow(
                                         client = client,
+                                        settings = settings,
                                         selected = client.id in selectedIds,
                                         onCheckedChange = { checked ->
                                             selectedIds =

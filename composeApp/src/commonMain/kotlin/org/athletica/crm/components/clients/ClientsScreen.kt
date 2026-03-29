@@ -5,11 +5,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
@@ -150,42 +160,121 @@ fun ClientsScreen(
         )
     }
 
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier.fillMaxSize(),
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
         when {
-            isLoading -> CircularProgressIndicator()
+            isLoading ->
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
             error != null ->
                 Text(
                     text = error!!,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.align(Alignment.Center),
                 )
 
             clients.isEmpty() ->
                 Text(
                     text = "Клиентов пока нет",
                     style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.align(Alignment.Center),
                 )
 
-            else ->
-                LazyColumn(
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(clients, key = { it.id }) { client ->
-                        ClientRow(
-                            client = client,
-                            selected = client.id in selectedIds,
-                            onCheckedChange = { checked ->
-                                selectedIds =
-                                    if (checked) selectedIds + client.id else selectedIds - client.id
-                            },
-                        )
+            else -> {
+                val selectAllState =
+                    when {
+                        selectedIds.isEmpty() -> ToggleableState.Off
+                        selectedIds.size == clients.size -> ToggleableState.On
+                        else -> ToggleableState.Indeterminate
+                    }
+
+                Column(Modifier.fillMaxSize()) {
+                    ClientsTableHeader(
+                        selectAllState = selectAllState,
+                        onSelectAllClick = {
+                            selectedIds =
+                                if (selectAllState == ToggleableState.On) {
+                                    emptySet()
+                                } else {
+                                    clients.map { it.id }.toSet()
+                                }
+                        },
+                    )
+                    HorizontalDivider()
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            top = 4.dp,
+                            bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
+                        ),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(clients, key = { it.id }) { client ->
+                            ClientRow(
+                                client = client,
+                                selected = client.id in selectedIds,
+                                onCheckedChange = { checked ->
+                                    selectedIds =
+                                        if (checked) selectedIds + client.id
+                                        else selectedIds - client.id
+                                },
+                            )
+                        }
                     }
                 }
+
+                if (selectedIds.isNotEmpty()) {
+                    ClientsBottomActionBar(
+                        selectedCount = selectedIds.size,
+                        onDelete = { selectedIds = emptySet() },
+                        onNotify = {},
+                        onExport = {},
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Контекстная нижняя панель действий, появляющаяся при выборе клиентов.
+ * [selectedCount] — количество выбранных записей.
+ * [onDelete], [onNotify], [onExport] — обработчики массовых действий.
+ */
+@Composable
+private fun ClientsBottomActionBar(
+    selectedCount: Int,
+    onDelete: () -> Unit,
+    onNotify: () -> Unit,
+    onExport: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BottomAppBar(modifier = modifier) {
+        Text(
+            text = "Выбрано: $selectedCount",
+            style = MaterialTheme.typography.titleSmall,
+            modifier =
+                Modifier
+                    .padding(start = 16.dp)
+                    .weight(1f),
+        )
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Удалить выбранных",
+            )
+        }
+        IconButton(onClick = onNotify) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = "Оповестить выбранных",
+            )
+        }
+        IconButton(onClick = onExport) {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = "Экспортировать выбранных",
+            )
         }
     }
 }

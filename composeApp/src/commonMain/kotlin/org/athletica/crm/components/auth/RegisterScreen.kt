@@ -1,4 +1,4 @@
-package org.athletica.crm
+package org.athletica.crm.components.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

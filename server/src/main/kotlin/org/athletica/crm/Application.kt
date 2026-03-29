@@ -134,7 +134,9 @@ fun Application.configureServer(
 
     routing {
         route("/api") {
-            authRoutes(jwtConfig)
+            context(jwtConfig) {
+                authRoutes()
+            }
             authenticate("auth-jwt") {
                 clientsRoutes()
                 profileRoutes()

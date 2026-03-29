@@ -1,17 +1,23 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.Raise
+import arrow.core.raise.either
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.header
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
+import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.JwtConfig
 import kotlin.uuid.Uuid
 
@@ -76,4 +82,21 @@ fun RoutingCall.contextFromRequest(): RequestContext {
         lang = langFromRequest(),
         username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
     )
+}
+
+/**
+ * Выполняет [block] в контексте [Raise], оборачивает результат в [either] и отвечает:
+ * - успех: [respond] с телом типа [A]
+ * - ошибка: HTTP 400 с [ErrorResponse]
+ */
+suspend inline fun <reified A : Any> RoutingCall.eitherToResponse(block: Raise<DomainError>.() -> A) {
+    either {
+        val result = block()
+        respond(result)
+    }.onLeft {
+        respond(
+            HttpStatusCode.BadRequest,
+            ErrorResponse(code = it.code, message = it.message),
+        )
+    }
 }

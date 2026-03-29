@@ -2,6 +2,8 @@ package org.athletica.crm.routes
 
 import arrow.core.Either
 import arrow.core.left
+import arrow.core.raise.Raise
+import arrow.core.raise.context.bind
 import arrow.core.raise.either
 import arrow.core.right
 import com.auth0.jwt.interfaces.DecodedJWT
@@ -14,13 +16,14 @@ import io.ktor.server.response.ResponseCookies
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
-import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -35,24 +38,20 @@ import kotlin.uuid.Uuid
  * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(db: Database, passwordHasher: PasswordHasher)
-fun Route.authRoutes(jwtConfig: JwtConfig) {
+context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig)
+fun Route.authRoutes() {
     post("/auth/sign-up") {
-        val request = call.receive<SignUpRequest>()
-        signUp(request)
-            .fold(
-                { call.respondWithError(it) },
-                { call.respondWithJwt(it, jwtConfig) },
-            )
+        call.eitherToAuthResponse {
+            val request = call.receive<SignUpRequest>()
+            signUp(request).bind()
+        }
     }
 
     post("/auth/login") {
-        val request = call.receive<LoginRequest>()
-        findByCredentials(request.username, request.password)
-            .fold(
-                { call.respondWithError(it) },
-                { call.respondWithJwt(it, jwtConfig) },
-            )
+        call.eitherToAuthResponse {
+            val request = call.receive<LoginRequest>()
+            findByCredentials(request.username, request.password).bind()
+        }
     }
 
     post("/auth/logout") {
@@ -61,15 +60,33 @@ fun Route.authRoutes(jwtConfig: JwtConfig) {
     }
 
     post("/auth/refresh-token") {
-        either {
+        call.eitherToAuthResponse {
             call.request
                 .refreshToken().bind()
                 .verifiedJwtToken(jwtConfig).bind()
                 .userIdClaim().bind()
                 .mapUserById().bind()
-        }.fold(
-            { call.respondWithError(it) },
-            { call.respondWithJwt(it, jwtConfig) },
+        }
+    }
+}
+
+/**
+ * Выполняет [block] в контексте [Raise], при успехе выпускает новые JWT-токены и отвечает [LoginResponse].
+ * При ошибке отвечает HTTP 400 с [ErrorResponse].
+ */
+context(jwtConfig: JwtConfig)
+suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<DomainError>.() -> AuthenticatedUser) {
+    either {
+        val user = block()
+        val newAccessToken = jwtConfig.makeAccessToken(user.id, user.orgId, user.username)
+        val newRefreshToken = jwtConfig.makeRefreshToken(user.id)
+
+        response.cookies.setJwtCookies(newAccessToken, newRefreshToken)
+        respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
+    }.onLeft {
+        respond(
+            HttpStatusCode.BadRequest,
+            ErrorResponse(code = it.code, message = it.message),
         )
     }
 }
@@ -111,23 +128,6 @@ fun DecodedJWT.userIdClaim(): Either<CommonDomainError, Uuid> =
         val userId = getClaim(JwtConfig.CLAIM_USER_ID).asString()
         Uuid.parse(userId)
     }
-
-/**
- * Формирует JWT токены для [user] и отправляет ответ.
- * Устанавливает HttpOnly cookies для веб-клиентов и возвращает токены в теле ответа.
- * Использует [jwtConfig] для создания токенов.
- */
-suspend fun RoutingCall.respondWithJwt(
-    user: AuthenticatedUser,
-    jwtConfig: JwtConfig,
-) {
-    val newAccessToken = jwtConfig.makeAccessToken(user.id, user.orgId, user.username)
-    val newRefreshToken = jwtConfig.makeRefreshToken(user.id)
-
-    response.cookies.setJwtCookies(newAccessToken, newRefreshToken)
-
-    respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
-}
 
 /**
  * Устанавливает HttpOnly cookies с JWT токенами.

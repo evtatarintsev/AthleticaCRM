@@ -9,6 +9,7 @@ import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -40,7 +41,15 @@ fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
                         tokenStorage.get()
                     }
                     refreshTokens {
-                        val response = client.post("/api/auth/refresh-token").body<LoginResponse>()
+                        // oldTokens.refreshToken — токен из файла (loadTokens вернул BearerTokens(access, refresh))
+                        val refreshToken = oldTokens?.refreshToken ?: return@refreshTokens null
+                        val response =
+                            runCatching {
+                                client.post("/api/auth/refresh-token") {
+                                    markAsRefreshTokenRequest() // запрет рекурсии: этот запрос не перехватывается Auth-плагином
+                                    header("X-Refresh-Token", refreshToken)
+                                }.body<LoginResponse>()
+                            }.getOrNull() ?: return@refreshTokens null
                         tokenStorage.save(response.accessToken, response.refreshToken)
                         BearerTokens(response.accessToken, response.refreshToken)
                     }

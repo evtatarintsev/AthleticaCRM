@@ -58,19 +58,21 @@ fun ClientRow(
         // Кликабельная область: аватар + имя + колонки
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .weight(1f)
-                .clickable(onClick = onClick)
-                .padding(end = 16.dp, top = 4.dp, bottom = 4.dp),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .clickable(onClick = onClick)
+                    .padding(end = 16.dp, top = 4.dp, bottom = 4.dp),
         ) {
             Spacer(Modifier.width(4.dp))
 
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                modifier =
+                    Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
             ) {
                 Text(
                     text = client.name.first().uppercaseChar().toString(),

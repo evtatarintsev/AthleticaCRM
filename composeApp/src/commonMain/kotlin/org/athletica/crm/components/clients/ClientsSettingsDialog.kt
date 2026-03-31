@@ -56,10 +56,11 @@ fun ClientsSettingsDialog(
                             SegmentedButton(
                                 selected = settings.pageSize == size,
                                 onClick = { onSettingsChange(settings.copy(pageSize = size)) },
-                                shape = SegmentedButtonDefaults.itemShape(
-                                    index = index,
-                                    count = pageSizes.size,
-                                ),
+                                shape =
+                                    SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = pageSizes.size,
+                                    ),
                             ) {
                                 Text(size.toString())
                             }
@@ -84,10 +85,11 @@ fun ClientsSettingsDialog(
                         Checkbox(
                             checked = true,
                             onCheckedChange = null,
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                checkmarkColor = MaterialTheme.colorScheme.surface,
-                            ),
+                            colors =
+                                CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    checkmarkColor = MaterialTheme.colorScheme.surface,
+                                ),
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(

@@ -69,49 +69,59 @@ private data class FakeSubscription(
 )
 
 private data class FakeUnpaidLesson(val date: String, val status: String, val group: String)
+
 private data class FakePayment(val date: String, val amount: String, val description: String)
+
 private data class FakeParent(val name: String, val phone: String, val relation: String)
+
 private data class FakeDocument(val name: String, val uploadedAt: String)
+
 private data class FakeVisit(val date: String, val status: String, val group: String)
 
 private val fakeGroups = listOf("Боевое самбо", "Мужчины")
 
-private val fakeSubscriptions = listOf(
-    FakeSubscription("11.02.2020", "12.03.2020", 12, 12),
-    FakeSubscription("11.01.2020", "11.02.2020", 0, 12),
-)
+private val fakeSubscriptions =
+    listOf(
+        FakeSubscription("11.02.2020", "12.03.2020", 12, 12),
+        FakeSubscription("11.01.2020", "11.02.2020", 0, 12),
+    )
 
-private val fakeUnpaidLessons = listOf(
-    FakeUnpaidLesson("09.07.2021", "Был", "Боевое самбо"),
-    FakeUnpaidLesson("07.07.2021", "Опоздал", "Боевое самбо"),
-    FakeUnpaidLesson("05.07.2021", "Был", "Боевое самбо"),
-    FakeUnpaidLesson("25.03.2020", "Опоздал", "Боевое самбо"),
-    FakeUnpaidLesson("16.03.2020", "Был", "Боевое самбо"),
-)
+private val fakeUnpaidLessons =
+    listOf(
+        FakeUnpaidLesson("09.07.2021", "Был", "Боевое самбо"),
+        FakeUnpaidLesson("07.07.2021", "Опоздал", "Боевое самбо"),
+        FakeUnpaidLesson("05.07.2021", "Был", "Боевое самбо"),
+        FakeUnpaidLesson("25.03.2020", "Опоздал", "Боевое самбо"),
+        FakeUnpaidLesson("16.03.2020", "Был", "Боевое самбо"),
+    )
 
-private val fakePayments = listOf(
-    FakePayment("21.03.2020", "+3 000 ₽", "Пополнение баланса"),
-    FakePayment("11.02.2020", "+3 000 ₽", "Абонемент — Боевое самбо"),
-    FakePayment("15.11.2019", "+5 000 ₽", "Первый платёж"),
-)
+private val fakePayments =
+    listOf(
+        FakePayment("21.03.2020", "+3 000 ₽", "Пополнение баланса"),
+        FakePayment("11.02.2020", "+3 000 ₽", "Абонемент — Боевое самбо"),
+        FakePayment("15.11.2019", "+5 000 ₽", "Первый платёж"),
+    )
 
-private val fakeParents = listOf(
-    FakeParent("Иванова Мария Петровна", "+7 999 111-22-33", "Мать"),
-    FakeParent("Иванов Сергей Николаевич", "+7 999 444-55-66", "Отец"),
-)
+private val fakeParents =
+    listOf(
+        FakeParent("Иванова Мария Петровна", "+7 999 111-22-33", "Мать"),
+        FakeParent("Иванов Сергей Николаевич", "+7 999 444-55-66", "Отец"),
+    )
 
-private val fakeDocuments = listOf(
-    FakeDocument("Договор №А-1042.pdf", "15.11.2019"),
-    FakeDocument("Паспорт (скан).jpg", "15.11.2019"),
-)
+private val fakeDocuments =
+    listOf(
+        FakeDocument("Договор №А-1042.pdf", "15.11.2019"),
+        FakeDocument("Паспорт (скан).jpg", "15.11.2019"),
+    )
 
-private val fakeHistory = listOf(
-    FakeVisit("09.07.2021", "Был", "Боевое самбо"),
-    FakeVisit("07.07.2021", "Опоздал", "Боевое самбо"),
-    FakeVisit("05.07.2021", "Был", "Боевое самбо"),
-    FakeVisit("02.07.2021", "Пропустил", "Боевое самбо"),
-    FakeVisit("30.06.2021", "Был", "Боевое самбо"),
-)
+private val fakeHistory =
+    listOf(
+        FakeVisit("09.07.2021", "Был", "Боевое самбо"),
+        FakeVisit("07.07.2021", "Опоздал", "Боевое самбо"),
+        FakeVisit("05.07.2021", "Был", "Боевое самбо"),
+        FakeVisit("02.07.2021", "Пропустил", "Боевое самбо"),
+        FakeVisit("30.06.2021", "Был", "Боевое самбо"),
+    )
 
 private enum class ClientDetailTab(val title: String) {
     Payments("Платежи"),
@@ -244,24 +254,27 @@ fun ClientDetailScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ClientDetailHeader(client: ClientListItem) {
-    val initials = client.name
-        .split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
+    val initials =
+        client.name
+            .split(" ")
+            .take(2)
+            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+            .joinToString("")
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+            modifier =
+                Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
             Text(
                 text = initials,
@@ -298,9 +311,10 @@ private fun SectionCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     OutlinedCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -313,9 +327,10 @@ private fun SectionCard(
 @Composable
 private fun InfoRow(label: String, value: String?) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp),
     ) {
         Text(
             text = label,
@@ -326,8 +341,12 @@ private fun InfoRow(label: String, value: String?) {
         Text(
             text = value ?: "Не указан",
             style = MaterialTheme.typography.bodyMedium,
-            color = if (value != null) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            color =
+                if (value != null) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
             textAlign = TextAlign.Start,
             modifier = Modifier.weight(0.55f),
         )
@@ -388,8 +407,12 @@ private fun SubscriptionItem(sub: FakeSubscription) {
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = if (isActive) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline,
+                color =
+                    if (isActive) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
             )
             Text(
                 text = "Осталось ${sub.remaining} из ${sub.total} посещений",
@@ -407,9 +430,10 @@ private fun UnpaidLessonsSection() {
             if (index > 0) HorizontalDivider()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
             ) {
                 Text(
                     text = lesson.date,
@@ -469,9 +493,10 @@ private fun DocumentRow(doc: FakeDocument) {
 private fun HistoryRow(visit: FakeVisit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Text(
             text = visit.date,
@@ -493,11 +518,12 @@ private fun HistoryRow(visit: FakeVisit) {
 
 @Composable
 private fun StatusText(status: String) {
-    val color = when (status) {
-        "Был" -> Color(0xFF2E7D32)
-        "Опоздал" -> Color(0xFFE65100)
-        else -> MaterialTheme.colorScheme.error
-    }
+    val color =
+        when (status) {
+            "Был" -> Color(0xFF2E7D32)
+            "Опоздал" -> Color(0xFFE65100)
+            else -> MaterialTheme.colorScheme.error
+        }
     Text(
         text = status,
         style = MaterialTheme.typography.labelMedium,

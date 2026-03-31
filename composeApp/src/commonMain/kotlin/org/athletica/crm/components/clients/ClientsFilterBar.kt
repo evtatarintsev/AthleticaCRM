@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -58,7 +59,7 @@ fun ClientsFilterBar(
             OutlinedTextField(
                 value = filter.nameQuery,
                 onValueChange = { onFilterChange(filter.copy(nameQuery = it)) },
-                placeholder = { Text("Поиск по имени...") },
+                placeholder = { Text("Поиск по имени...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,

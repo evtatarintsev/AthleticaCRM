@@ -71,7 +71,12 @@ internal fun ClientListItem.fakeData(): FakeClientData {
     return FakeClientData(
         gender = if (h % 2 == 0) "М" else "Ж",
         birthYear = 1970 + h % 36,
-        debtLabel = when (h % 4) { 0 -> "1 200 ₽"; 1 -> "500 ₽"; else -> "—" },
+        debtLabel =
+            when (h % 4) {
+                0 -> "1 200 ₽"
+                1 -> "500 ₽"
+                else -> "—"
+            },
         hasDebt = h % 4 < 2,
         noGroup = h % 3 == 0,
     )

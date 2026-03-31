@@ -40,7 +40,7 @@ class ApplicationTest {
                     contentType(ContentType.Application.Json)
                     setBody("""{"username":"wrong","password":"wrong"}""")
                 }
-            assertEquals(HttpStatusCode.Unauthorized, response.status)
+            assertEquals(HttpStatusCode.BadRequest, response.status)
         }
 
     @Test

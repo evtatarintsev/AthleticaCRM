@@ -80,10 +80,11 @@ fun ClientsFilterSheet(
                         SegmentedButton(
                             selected = filter.gender == g,
                             onClick = { onFilterChange(filter.copy(gender = g)) },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = GenderFilter.entries.size,
-                            ),
+                            shape =
+                                SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = GenderFilter.entries.size,
+                                ),
                         ) {
                             Text(g.label)
                         }

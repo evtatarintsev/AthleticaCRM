@@ -196,9 +196,10 @@ fun ClientDetailScreen(
         },
     ) { innerPadding ->
         BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             val windowSize = WindowSize.fromWidth(maxWidth)
 
@@ -228,46 +229,52 @@ fun ClientDetailScreen(
                 }
 
                 stickyHeader {
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTab,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    tabs.forEachIndexed { index, tab ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = { Text(tab.title) },
-                        )
-                    }
-                }
-            }
-
-            when (tabs[selectedTab]) {
-                ClientDetailTab.Payments ->
-                    items(fakePayments) { PaymentRow(it) }
-
-                ClientDetailTab.Parents ->
-                    items(fakeParents) { ParentRow(it) }
-
-                ClientDetailTab.Documents -> {
-                    items(fakeDocuments) { DocumentRow(it) }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            AssistChip(
-                                onClick = {},
-                                label = { Text("Загрузить документ") },
-                                leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedTab,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        tabs.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                text = { Text(tab.title) },
                             )
                         }
                     }
                 }
 
-                ClientDetailTab.History ->
-                    items(fakeHistory) { HistoryRow(it) }
+                when (tabs[selectedTab]) {
+                    ClientDetailTab.Payments ->
+                        items(fakePayments) { PaymentRow(it) }
+
+                    ClientDetailTab.Parents ->
+                        items(fakeParents) { ParentRow(it) }
+
+                    ClientDetailTab.Documents -> {
+                        items(fakeDocuments) { DocumentRow(it) }
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            ) {
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text("Загрузить документ") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    ClientDetailTab.History ->
+                        items(fakeHistory) { HistoryRow(it) }
+                }
             }
-        }
         }
     }
 }

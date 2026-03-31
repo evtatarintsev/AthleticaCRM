@@ -8,7 +8,6 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.db.Database
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
-import org.athletica.crm.usecases.clients.totalClientsCount
 
 /**
  * Регистрирует маршруты для работы с клиентами:

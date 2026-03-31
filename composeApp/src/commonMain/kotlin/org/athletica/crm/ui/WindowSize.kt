@@ -23,7 +23,9 @@ enum class WindowSize {
     MEDIUM,
 
     /** ≥ 1200 dp — широкий десктоп. */
-    EXPANDED;
+    EXPANDED,
+
+    ;
 
     companion object {
         fun fromWidth(width: Dp): WindowSize =

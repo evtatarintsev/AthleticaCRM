@@ -202,9 +202,10 @@ fun GroupsScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             OutlinedTextField(
                                 value = filter.nameQuery,
@@ -254,10 +255,11 @@ fun GroupsScreen(
 
                             else ->
                                 LazyColumn(
-                                    contentPadding = PaddingValues(
-                                        top = 4.dp,
-                                        bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
-                                    ),
+                                    contentPadding =
+                                        PaddingValues(
+                                            top = 4.dp,
+                                            bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
+                                        ),
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     items(filteredGroups, key = { it.id }) { group ->
@@ -266,8 +268,11 @@ fun GroupsScreen(
                                             selected = group.id in selectedIds,
                                             onCheckedChange = { checked ->
                                                 selectedIds =
-                                                    if (checked) selectedIds + group.id
-                                                    else selectedIds - group.id
+                                                    if (checked) {
+                                                        selectedIds + group.id
+                                                    } else {
+                                                        selectedIds - group.id
+                                                    }
                                             },
                                         )
                                         HorizontalDivider()
@@ -296,9 +301,10 @@ private fun GroupsBottomActionBar(
         Text(
             text = "Выбрано: $selectedCount",
             style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier
-                .padding(start = 16.dp)
-                .weight(1f),
+            modifier =
+                Modifier
+                    .padding(start = 16.dp)
+                    .weight(1f),
         )
         IconButton(onClick = onDelete) {
             Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить выбранные")

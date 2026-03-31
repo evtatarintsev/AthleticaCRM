@@ -18,13 +18,10 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
             FROM clients c
             WHERE org_id = :orgId
             ORDER BY c.name
-            LIMIT :limit OFFSET :offset
             """.trimIndent(),
         )
         .bind("userId", ctx.userId.value)
         .bind("orgId", ctx.orgId.value)
-        .bind("limit", request.limit)
-        .bind("offset", request.offset)
         .list { row, _ ->
             ClientListItem(
                 id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
@@ -32,20 +29,3 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
             )
         }
         .right()
-
-context(db: Database, ctx: RequestContext)
-suspend fun totalClientsCount(request: ClientListRequest): Either<CommonDomainError, UInt> {
-    val count =
-        db
-            .sql(
-                """
-                SELECT COUNT(*)
-                FROM clients
-                WHERE org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("orgId", ctx.orgId.value)
-            .firstOrNull { it.get(0, Long::class.java)!! }
-            ?: 0L
-    return count.toUInt().right()
-}

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,82 +72,88 @@ private data class SettingSection(
     val items: List<SettingItem>,
 )
 
-private val sections = listOf(
-    SettingSection(
-        label = "Основное",
-        items = listOf(
-            SettingItem(
-                title = "Основные настройки",
-                subtitle = "Название, описание, контакты, спортивные разряды",
-                icon = Icons.Default.Article,
-                containerColor = Ic.PurpleContainer,
-                iconColor = Ic.Purple,
-            ),
+private val sections =
+    listOf(
+        SettingSection(
+            label = "Основное",
+            items =
+                listOf(
+                    SettingItem(
+                        title = "Основные настройки",
+                        subtitle = "Название, описание, контакты, спортивные разряды",
+                        icon = Icons.Default.Article,
+                        containerColor = Ic.PurpleContainer,
+                        iconColor = Ic.Purple,
+                    ),
+                ),
         ),
-    ),
-    SettingSection(
-        label = "Клиенты",
-        items = listOf(
-            SettingItem(
-                title = "Отображение клиентов",
-                subtitle = "Столбцы и данные в списке клиентов",
-                icon = Icons.Default.PeopleAlt,
-                containerColor = Ic.TealContainer,
-                iconColor = Ic.Teal,
-            ),
-            SettingItem(
-                title = "Источники клиентов",
-                subtitle = "Откуда приходят клиенты, аналитика каналов",
-                icon = Icons.Default.Analytics,
-                containerColor = Ic.TealContainer,
-                iconColor = Ic.Teal,
-            ),
+        SettingSection(
+            label = "Клиенты",
+            items =
+                listOf(
+                    SettingItem(
+                        title = "Отображение клиентов",
+                        subtitle = "Столбцы и данные в списке клиентов",
+                        icon = Icons.Default.PeopleAlt,
+                        containerColor = Ic.TealContainer,
+                        iconColor = Ic.Teal,
+                    ),
+                    SettingItem(
+                        title = "Источники клиентов",
+                        subtitle = "Откуда приходят клиенты, аналитика каналов",
+                        icon = Icons.Default.Analytics,
+                        containerColor = Ic.TealContainer,
+                        iconColor = Ic.Teal,
+                    ),
+                ),
         ),
-    ),
-    SettingSection(
-        label = "Занятия и абонементы",
-        items = listOf(
-            SettingItem(
-                title = "Посещаемость",
-                subtitle = "Отметки, оплата, иконки и цвета статусов",
-                icon = Icons.Default.HowToReg,
-                containerColor = Ic.BlueContainer,
-                iconColor = Ic.Blue,
-            ),
-            SettingItem(
-                title = "Шаблоны абонементов",
-                subtitle = "Посещения, срок действия, стоимость",
-                icon = Icons.Default.CardMembership,
-                containerColor = Ic.BlueContainer,
-                iconColor = Ic.Blue,
-            ),
+        SettingSection(
+            label = "Занятия и абонементы",
+            items =
+                listOf(
+                    SettingItem(
+                        title = "Посещаемость",
+                        subtitle = "Отметки, оплата, иконки и цвета статусов",
+                        icon = Icons.Default.HowToReg,
+                        containerColor = Ic.BlueContainer,
+                        iconColor = Ic.Blue,
+                    ),
+                    SettingItem(
+                        title = "Шаблоны абонементов",
+                        subtitle = "Посещения, срок действия, стоимость",
+                        icon = Icons.Default.CardMembership,
+                        containerColor = Ic.BlueContainer,
+                        iconColor = Ic.Blue,
+                    ),
+                ),
         ),
-    ),
-    SettingSection(
-        label = "Финансы",
-        items = listOf(
-            SettingItem(
-                title = "Кассы и статьи доходов",
-                subtitle = "Счета для оплат, категории доходов и расходов",
-                icon = Icons.Default.AccountBalance,
-                containerColor = Ic.GreenContainer,
-                iconColor = Ic.Green,
-            ),
+        SettingSection(
+            label = "Финансы",
+            items =
+                listOf(
+                    SettingItem(
+                        title = "Кассы и статьи доходов",
+                        subtitle = "Счета для оплат, категории доходов и расходов",
+                        icon = Icons.Default.AccountBalance,
+                        containerColor = Ic.GreenContainer,
+                        iconColor = Ic.Green,
+                    ),
+                ),
         ),
-    ),
-    SettingSection(
-        label = "Интеграции",
-        items = listOf(
-            SettingItem(
-                title = "SMS-рассылка",
-                subtitle = "Провайдер, шаблоны сообщений, подпись",
-                icon = Icons.Default.Sms,
-                containerColor = Ic.CoralContainer,
-                iconColor = Ic.Coral,
-            ),
+        SettingSection(
+            label = "Интеграции",
+            items =
+                listOf(
+                    SettingItem(
+                        title = "SMS-рассылка",
+                        subtitle = "Провайдер, шаблоны сообщений, подпись",
+                        icon = Icons.Default.Sms,
+                        containerColor = Ic.CoralContainer,
+                        iconColor = Ic.Coral,
+                    ),
+                ),
         ),
-    ),
-)
+    )
 
 // ── Экран ─────────────────────────────────────────────────────────────────
 
@@ -183,9 +188,10 @@ private fun SectionLabel(label: String) {
         fontWeight = FontWeight.Medium,
         letterSpacing = 0.8.sp,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 4.dp),
     )
 }
 
@@ -193,9 +199,10 @@ private fun SectionLabel(label: String) {
 private fun SettingsSectionCard(items: List<SettingItem>) {
     OutlinedCard(
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
     ) {
         items.forEachIndexed { index, item ->
             SettingItemRow(item)
@@ -227,10 +234,11 @@ private fun SettingItemRow(item: SettingItem) {
         leadingContent = {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(item.containerColor),
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(item.containerColor),
             ) {
                 Icon(
                     imageVector = item.icon,

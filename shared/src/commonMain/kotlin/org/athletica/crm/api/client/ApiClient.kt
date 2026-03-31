@@ -25,6 +25,8 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.groups.GroupCreateRequest
+import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 
@@ -62,6 +64,15 @@ class ApiClient(private val http: HttpClient) {
 
     /** Возвращает список групп организации по параметрам [request]. */
     suspend fun groupList(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = execute { http.get("/api/groups/list") }
+
+    /** Создаёт новую группу по данным [request]. Возвращает созданную группу. */
+    suspend fun createGroup(request: GroupCreateRequest): Either<ApiClientError, GroupDetailResponse> =
+        execute {
+            http.post("/api/groups/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Создаёт нового клиента по данным [request]. Возвращает созданного клиента. */
     suspend fun createClient(request: CreateClientRequest): Either<ApiClientError, ClientDetailResponse> =

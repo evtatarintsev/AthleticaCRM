@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
@@ -54,12 +55,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
+import org.athletica.crm.components.groups.GroupsScreen
 
 /** Пункт бокового меню навигации. */
 enum class NavItem(
@@ -73,6 +76,9 @@ enum class NavItem(
 
     /** Раздел клиентов. */
     CLIENTS(Icons.Default.Person, "Клиенты"),
+
+    /** Раздел групп. */
+    GROUPS(Icons.Default.Group, "Группы"),
 
     /** Расписание занятий. */
     SCHEDULE(Icons.Default.DateRange, "Расписание"),
@@ -247,11 +253,12 @@ private fun DrawerAccountHeader() {
     val userName = "Александр Иванов"
     val orgName = "ООО «Атлетика»"
     val balance = "12 400 ₽"
-    val initials = userName
-        .split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
+    val initials =
+        userName
+            .split(" ")
+            .take(2)
+            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+            .joinToString("")
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -413,7 +420,7 @@ private fun MainTopAppBar(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Поиск...") },
+                placeholder = { Text("Поиск...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(0.5f),
             )
@@ -471,6 +478,11 @@ private fun ContentArea(
                 showCreateDialog = showCreateClientDialog,
                 onDismissCreateDialog = onCreateClientDismiss,
                 onClientClick = onClientClick,
+                modifier = modifier,
+            )
+        NavItem.GROUPS ->
+            GroupsScreen(
+                api = api,
                 modifier = modifier,
             )
         else ->

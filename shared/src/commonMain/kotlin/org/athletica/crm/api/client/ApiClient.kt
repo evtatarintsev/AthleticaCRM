@@ -25,6 +25,8 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.groups.GroupListRequest
+import org.athletica.crm.api.schemas.groups.GroupListResponse
 
 /**
  * Клиент для взаимодействия с API сервера.
@@ -56,7 +58,10 @@ class ApiClient(private val http: HttpClient) {
     suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
 
     /** Возвращает страницу клиентов организации по параметрам [request]. */
-    suspend fun client(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
+    suspend fun clientList(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
+
+    /** Возвращает список групп организации по параметрам [request]. */
+    suspend fun groupList(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = execute { http.get("/api/groups/list") }
 
     /** Создаёт нового клиента по данным [request]. Возвращает созданного клиента. */
     suspend fun createClient(request: CreateClientRequest): Either<ApiClientError, ClientDetailResponse> =

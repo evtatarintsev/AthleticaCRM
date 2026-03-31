@@ -72,7 +72,7 @@ fun ClientsScreen(
 
     LaunchedEffect(Unit) {
         api
-            .client(ClientListRequest())
+            .clientList(ClientListRequest())
             .fold(
                 ifLeft = { err ->
                     error =
@@ -233,10 +233,11 @@ fun ClientsScreen(
                             )
                             HorizontalDivider()
                             LazyColumn(
-                                contentPadding = PaddingValues(
-                                    top = 4.dp,
-                                    bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
-                                ),
+                                contentPadding =
+                                    PaddingValues(
+                                        top = 4.dp,
+                                        bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
+                                    ),
                                 modifier = Modifier.fillMaxSize(),
                             ) {
                                 items(filteredClients, key = { it.id }) { client ->
@@ -247,8 +248,11 @@ fun ClientsScreen(
                                         onClick = { onClientClick(client) },
                                         onCheckedChange = { checked ->
                                             selectedIds =
-                                                if (checked) selectedIds + client.id
-                                                else selectedIds - client.id
+                                                if (checked) {
+                                                    selectedIds + client.id
+                                                } else {
+                                                    selectedIds - client.id
+                                                }
                                         },
                                     )
                                 }

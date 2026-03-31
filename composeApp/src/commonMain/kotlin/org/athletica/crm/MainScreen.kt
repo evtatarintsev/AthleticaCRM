@@ -62,6 +62,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
+import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
@@ -104,8 +105,9 @@ fun MainScreen(
 ) {
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
-    var showCreateClientDialog by remember { mutableStateOf(false) }
     var selectedClient by remember { mutableStateOf<ClientListItem?>(null) }
+    var showCreateClient by remember { mutableStateOf(false) }
+    var clientsRefreshKey by remember { mutableStateOf(0) }
     var showCreateGroup by remember { mutableStateOf(false) }
     var groupsRefreshKey by remember { mutableStateOf(0) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -116,6 +118,19 @@ fun MainScreen(
         ClientDetailScreen(
             client = selectedClient!!,
             onBack = { selectedClient = null },
+        )
+        return
+    }
+
+    // Экран создания клиента накрывает весь экран поверх навигации
+    if (showCreateClient) {
+        ClientCreateScreen(
+            api = api,
+            onBack = { showCreateClient = false },
+            onCreated = {
+                clientsRefreshKey++
+                showCreateClient = false
+            },
         )
         return
     }
@@ -158,16 +173,16 @@ fun MainScreen(
                                 showMenuButton = true,
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onLogout = onLogout,
-                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClientDialog = true }) },
+                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClient = true }) },
                             )
                         },
                     ) { innerPadding ->
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
-                            showCreateClientDialog = showCreateClientDialog,
-                            onCreateClientDismiss = { showCreateClientDialog = false },
                             onClientClick = { selectedClient = it },
+                            onNavigateToCreateClient = { showCreateClient = true },
+                            clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
                             modifier = Modifier.padding(innerPadding),
@@ -209,16 +224,16 @@ fun MainScreen(
                                 showMenuButton = false,
                                 onMenuClick = {},
                                 onLogout = onLogout,
-                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClientDialog = true }) },
+                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClient = true }) },
                             )
                         },
                     ) { innerPadding ->
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
-                            showCreateClientDialog = showCreateClientDialog,
-                            onCreateClientDismiss = { showCreateClientDialog = false },
                             onClientClick = { selectedClient = it },
+                            onNavigateToCreateClient = { showCreateClient = true },
+                            clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
                             modifier = Modifier.padding(innerPadding),
@@ -246,16 +261,16 @@ fun MainScreen(
                                 showMenuButton = false,
                                 onMenuClick = {},
                                 onLogout = onLogout,
-                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClientDialog = true }) },
+                                extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClient = true }) },
                             )
                         },
                     ) { innerPadding ->
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
-                            showCreateClientDialog = showCreateClientDialog,
-                            onCreateClientDismiss = { showCreateClientDialog = false },
                             onClientClick = { selectedClient = it },
+                            onNavigateToCreateClient = { showCreateClient = true },
+                            clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
                             modifier = Modifier.padding(innerPadding),
@@ -491,9 +506,9 @@ private fun MainTopAppBar(
 private fun ContentArea(
     api: ApiClient,
     selectedItem: NavItem,
-    showCreateClientDialog: Boolean = false,
-    onCreateClientDismiss: () -> Unit = {},
     onClientClick: (ClientListItem) -> Unit = {},
+    onNavigateToCreateClient: () -> Unit = {},
+    clientsRefreshKey: Int = 0,
     onNavigateToCreateGroup: () -> Unit = {},
     groupsRefreshKey: Int = 0,
     modifier: Modifier = Modifier,
@@ -502,8 +517,8 @@ private fun ContentArea(
         NavItem.CLIENTS ->
             ClientsScreen(
                 api = api,
-                showCreateDialog = showCreateClientDialog,
-                onDismissCreateDialog = onCreateClientDismiss,
+                onNavigateToCreate = onNavigateToCreateClient,
+                refreshKey = clientsRefreshKey,
                 onClientClick = onClientClick,
                 modifier = modifier,
             )

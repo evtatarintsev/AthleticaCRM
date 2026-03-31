@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -28,33 +27,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupListItem
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import kotlin.uuid.Uuid
 
 /**
  * Экран списка групп организации с поиском, чекбоксами и меню действий.
- * Загружает данные через [api] при первом отображении.
+ * [refreshKey] — при изменении перезагружает список (например, после создания группы).
+ * [onNavigateToCreate] — переход к экрану создания группы.
  */
 @Composable
 fun GroupsScreen(
     api: ApiClient,
+    onNavigateToCreate: () -> Unit,
+    refreshKey: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     var groups by remember { mutableStateOf<List<GroupListItem>>(emptyList()) }
@@ -63,14 +61,8 @@ fun GroupsScreen(
     var filter by remember { mutableStateOf(GroupFilterState()) }
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
 
-    var showCreateDialog by remember { mutableStateOf(false) }
-    var newGroupName by remember { mutableStateOf("") }
-    var isCreating by remember { mutableStateOf(false) }
-    var createError by remember { mutableStateOf<String?>(null) }
-
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
+    LaunchedEffect(refreshKey) {
+        isLoading = true
         api
             .groupList(GroupListRequest())
             .fold(
@@ -87,85 +79,12 @@ fun GroupsScreen(
         isLoading = false
     }
 
-    LaunchedEffect(showCreateDialog) {
-        if (!showCreateDialog) {
-            newGroupName = ""
-            createError = null
-        }
-    }
-
-    if (showCreateDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isCreating) showCreateDialog = false },
-            title = { Text("Новая группа") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    OutlinedTextField(
-                        value = newGroupName,
-                        onValueChange = { newGroupName = it },
-                        label = { Text("Название") },
-                        singleLine = true,
-                        isError = createError != null,
-                        enabled = !isCreating,
-                    )
-                    if (createError != null) {
-                        Text(
-                            text = createError!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            isCreating = true
-                            createError = null
-                            api
-                                .createGroup(GroupCreateRequest(id = Uuid.generateV7(), name = newGroupName))
-                                .fold(
-                                    ifLeft = { err ->
-                                        createError =
-                                            when (err) {
-                                                is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                                is ApiClientError.ValidationError -> err.message
-                                                is ApiClientError.Unavailable -> "Сервис недоступен"
-                                            }
-                                        isCreating = false
-                                    },
-                                    ifRight = { created ->
-                                        groups = groups + GroupListItem(id = created.id, name = created.name)
-                                        isCreating = false
-                                        showCreateDialog = false
-                                    },
-                                )
-                        }
-                    },
-                    enabled = newGroupName.isNotBlank() && !isCreating,
-                ) {
-                    if (isCreating) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                    } else {
-                        Text("Создать")
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }, enabled = !isCreating) {
-                    Text("Отмена")
-                }
-            },
-        )
-    }
-
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
             if (selectedIds.isEmpty()) {
                 ExtendedFloatingActionButton(
-                    onClick = { showCreateDialog = true },
+                    onClick = onNavigateToCreate,
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text("Добавить группу") },
                 )
@@ -198,7 +117,6 @@ fun GroupsScreen(
                     val filteredGroups = filter.applyTo(groups)
 
                     Column(Modifier.fillMaxSize()) {
-                        // Строка поиска
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -288,7 +206,6 @@ fun GroupsScreen(
 
 /**
  * Нижняя панель действий при выбранных группах.
- * [selectedCount] — количество выбранных записей.
  */
 @Composable
 private fun GroupsBottomActionBar(

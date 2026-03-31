@@ -62,6 +62,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
+import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.ui.WindowSize
@@ -105,6 +106,8 @@ fun MainScreen(
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var showCreateClientDialog by remember { mutableStateOf(false) }
     var selectedClient by remember { mutableStateOf<ClientListItem?>(null) }
+    var showCreateGroup by remember { mutableStateOf(false) }
+    var groupsRefreshKey by remember { mutableStateOf(0) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -113,6 +116,19 @@ fun MainScreen(
         ClientDetailScreen(
             client = selectedClient!!,
             onBack = { selectedClient = null },
+        )
+        return
+    }
+
+    // Экран создания группы накрывает весь экран поверх навигации
+    if (showCreateGroup) {
+        GroupCreateScreen(
+            api = api,
+            onBack = { showCreateGroup = false },
+            onCreated = {
+                groupsRefreshKey++
+                showCreateGroup = false
+            },
         )
         return
     }
@@ -152,6 +168,8 @@ fun MainScreen(
                             showCreateClientDialog = showCreateClientDialog,
                             onCreateClientDismiss = { showCreateClientDialog = false },
                             onClientClick = { selectedClient = it },
+                            onNavigateToCreateGroup = { showCreateGroup = true },
+                            groupsRefreshKey = groupsRefreshKey,
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -201,6 +219,8 @@ fun MainScreen(
                             showCreateClientDialog = showCreateClientDialog,
                             onCreateClientDismiss = { showCreateClientDialog = false },
                             onClientClick = { selectedClient = it },
+                            onNavigateToCreateGroup = { showCreateGroup = true },
+                            groupsRefreshKey = groupsRefreshKey,
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -236,6 +256,8 @@ fun MainScreen(
                             showCreateClientDialog = showCreateClientDialog,
                             onCreateClientDismiss = { showCreateClientDialog = false },
                             onClientClick = { selectedClient = it },
+                            onNavigateToCreateGroup = { showCreateGroup = true },
+                            groupsRefreshKey = groupsRefreshKey,
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -472,6 +494,8 @@ private fun ContentArea(
     showCreateClientDialog: Boolean = false,
     onCreateClientDismiss: () -> Unit = {},
     onClientClick: (ClientListItem) -> Unit = {},
+    onNavigateToCreateGroup: () -> Unit = {},
+    groupsRefreshKey: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     when (selectedItem) {
@@ -486,6 +510,8 @@ private fun ContentArea(
         NavItem.GROUPS ->
             GroupsScreen(
                 api = api,
+                onNavigateToCreate = onNavigateToCreateGroup,
+                refreshKey = groupsRefreshKey,
                 modifier = modifier,
             )
         NavItem.SETTINGS ->

@@ -63,6 +63,7 @@ import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.groups.GroupsScreen
+import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.ui.WindowSize
 
 /** Пункт бокового меню навигации. */
@@ -487,6 +488,8 @@ private fun ContentArea(
                 api = api,
                 modifier = modifier,
             )
+        NavItem.SETTINGS ->
+            OrgSettingsScreen(modifier = modifier)
         else ->
             Box(
                 contentAlignment = Alignment.Center,

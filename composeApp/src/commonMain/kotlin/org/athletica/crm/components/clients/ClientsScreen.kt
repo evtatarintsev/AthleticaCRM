@@ -190,7 +190,7 @@ fun ClientsScreen(
                 )
 
             else -> {
-                val filteredClients = filter.applyTo(clients).take(settings.pageSize)
+                val filteredClients = filter.applyTo(clients)
 
                 val selectAllState =
                     when {

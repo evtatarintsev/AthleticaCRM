@@ -20,8 +20,7 @@ fun Route.clientsRoutes() {
     getWithContext("/clients/list") {
         call.eitherToResponse {
             val clients = clientList(ClientListRequest()).bind()
-            val totalCount = totalClientsCount(ClientListRequest()).bind()
-            ClientListResponse(clients, totalCount)
+            ClientListResponse(clients, clients.size.toUInt())
         }
     }
 

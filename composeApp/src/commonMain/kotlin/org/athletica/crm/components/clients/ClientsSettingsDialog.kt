@@ -11,19 +11,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-
-private val pageSizes = listOf(10, 25, 50, 100)
 
 /**
  * Диалог настроек отображения таблицы клиентов.
@@ -45,31 +39,6 @@ fun ClientsSettingsDialog(
         title = { Text("Настройки отображения") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Записей на странице
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Записей на странице",
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        pageSizes.forEachIndexed { index, size ->
-                            SegmentedButton(
-                                selected = settings.pageSize == size,
-                                onClick = { onSettingsChange(settings.copy(pageSize = size)) },
-                                shape =
-                                    SegmentedButtonDefaults.itemShape(
-                                        index = index,
-                                        count = pageSizes.size,
-                                    ),
-                            ) {
-                                Text(size.toString())
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-
                 // Видимые колонки
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(

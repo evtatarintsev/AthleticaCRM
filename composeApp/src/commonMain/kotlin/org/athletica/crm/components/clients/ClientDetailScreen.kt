@@ -3,6 +3,7 @@ package org.athletica.crm.components.clients
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.ui.WindowSize
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
 
@@ -193,19 +195,39 @@ fun ClientDetailScreen(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
-            contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
         ) {
-            item { ClientDetailHeader(client) }
+            val windowSize = WindowSize.fromWidth(maxWidth)
 
-            item { BasicInfoSection() }
+            LazyColumn(
+                contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item { ClientDetailHeader(client) }
 
-            item { SubscriptionsSection() }
+                if (windowSize >= WindowSize.MEDIUM) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp),
+                        ) {
+                            Box(Modifier.weight(1f)) { BasicInfoSection() }
+                            Column(Modifier.weight(1f)) {
+                                SubscriptionsSection()
+                                UnpaidLessonsSection()
+                            }
+                        }
+                    }
+                } else {
+                    item { BasicInfoSection() }
+                    item { SubscriptionsSection() }
+                    item { UnpaidLessonsSection() }
+                }
 
-            item { UnpaidLessonsSection() }
-
-            stickyHeader {
+                stickyHeader {
                 ScrollableTabRow(
                     selectedTabIndex = selectedTab,
                     modifier = Modifier.fillMaxWidth(),
@@ -245,6 +267,7 @@ fun ClientDetailScreen(
                 ClientDetailTab.History ->
                     items(fakeHistory) { HistoryRow(it) }
             }
+        }
         }
     }
 }

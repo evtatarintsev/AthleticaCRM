@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import kotlin.uuid.toJavaUuid
 
 /**
  * Создаёт нового клиента в организации из [ctx] по данным [request].
@@ -18,10 +19,11 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
     either {
         try {
             db
-                .sql("INSERT INTO clients (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .sql("INSERT INTO clients (id, org_id, name, avatar_id) VALUES (:id, :orgId, :name, :avatarId)")
                 .bind("id", request.id)
                 .bind("orgId", ctx.orgId.value)
                 .bind("name", request.name)
+                .bind("avatarId", request.avatarId?.let { it.toJavaUuid() })
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("CLIENT_ALREADY_EXISTS", "Клиент с таким идентификатором уже существует"))
@@ -30,5 +32,6 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
         ClientDetailResponse(
             id = request.id,
             name = request.name,
+            avatarId = request.avatarId,
         )
     }

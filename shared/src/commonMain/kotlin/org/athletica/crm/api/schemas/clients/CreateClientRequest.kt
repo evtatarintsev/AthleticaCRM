@@ -13,4 +13,6 @@ data class CreateClientRequest(
     val id: Uuid,
     /** Отображаемое имя клиента. */
     val name: String,
+    /** Идентификатор загрузки аватарки клиента, полученный через POST /api/upload. */
+    val avatarId: Uuid? = null,
 )

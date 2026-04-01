@@ -10,4 +10,6 @@ data class ClientDetailResponse(
     val id: Uuid,
     /** Отображаемое имя клиента. */
     val name: String,
+    /** Идентификатор загрузки аватарки клиента, либо null если аватарка не задана. */
+    val avatarId: Uuid? = null,
 )

@@ -14,7 +14,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
     db
         .sql(
             """
-            SELECT c.id, c.name
+            SELECT c.id, c.name, c.avatar_id
             FROM clients c
             WHERE org_id = :orgId
             ORDER BY c.name
@@ -26,6 +26,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
             ClientListItem(
                 id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                 name = row.get("name", String::class.java)!!,
+                avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
             )
         }
         .right()

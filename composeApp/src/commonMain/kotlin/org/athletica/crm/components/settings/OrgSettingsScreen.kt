@@ -126,53 +126,53 @@ private fun buildSections(
                 ),
             ),
     ),
-        SettingSection(
-            label = "Занятия и абонементы",
-            items =
-                listOf(
-                    SettingItem(
-                        title = "Посещаемость",
-                        subtitle = "Отметки, оплата, иконки и цвета статусов",
-                        icon = Icons.Default.HowToReg,
-                        containerColor = Ic.BlueContainer,
-                        iconColor = Ic.Blue,
-                    ),
-                    SettingItem(
-                        title = "Шаблоны абонементов",
-                        subtitle = "Посещения, срок действия, стоимость",
-                        icon = Icons.Default.CardMembership,
-                        containerColor = Ic.BlueContainer,
-                        iconColor = Ic.Blue,
-                    ),
+    SettingSection(
+        label = "Занятия и абонементы",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Посещаемость",
+                    subtitle = "Отметки, оплата, иконки и цвета статусов",
+                    icon = Icons.Default.HowToReg,
+                    containerColor = Ic.BlueContainer,
+                    iconColor = Ic.Blue,
                 ),
-        ),
-        SettingSection(
-            label = "Финансы",
-            items =
-                listOf(
-                    SettingItem(
-                        title = "Кассы и статьи доходов",
-                        subtitle = "Счета для оплат, категории доходов и расходов",
-                        icon = Icons.Default.AccountBalance,
-                        containerColor = Ic.GreenContainer,
-                        iconColor = Ic.Green,
-                    ),
+                SettingItem(
+                    title = "Шаблоны абонементов",
+                    subtitle = "Посещения, срок действия, стоимость",
+                    icon = Icons.Default.CardMembership,
+                    containerColor = Ic.BlueContainer,
+                    iconColor = Ic.Blue,
                 ),
-        ),
-        SettingSection(
-            label = "Интеграции",
-            items =
-                listOf(
-                    SettingItem(
-                        title = "SMS-рассылка",
-                        subtitle = "Провайдер, шаблоны сообщений, подпись",
-                        icon = Icons.Default.Sms,
-                        containerColor = Ic.CoralContainer,
-                        iconColor = Ic.Coral,
-                    ),
+            ),
+    ),
+    SettingSection(
+        label = "Финансы",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Кассы и статьи доходов",
+                    subtitle = "Счета для оплат, категории доходов и расходов",
+                    icon = Icons.Default.AccountBalance,
+                    containerColor = Ic.GreenContainer,
+                    iconColor = Ic.Green,
                 ),
-        ),
-    )
+            ),
+    ),
+    SettingSection(
+        label = "Интеграции",
+        items =
+            listOf(
+                SettingItem(
+                    title = "SMS-рассылка",
+                    subtitle = "Провайдер, шаблоны сообщений, подпись",
+                    icon = Icons.Default.Sms,
+                    containerColor = Ic.CoralContainer,
+                    iconColor = Ic.Coral,
+                ),
+            ),
+    ),
+)
 
 // ── Экран ─────────────────────────────────────────────────────────────────
 
@@ -189,10 +189,11 @@ fun OrgSettingsScreen(
     onNavigateToSportsTypes: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val sections = buildSections(
-        onNavigateToSportsTypes = onNavigateToSportsTypes,
-        onNavigateToClientSources = onNavigateToClientSources,
-    )
+    val sections =
+        buildSections(
+            onNavigateToSportsTypes = onNavigateToSportsTypes,
+            onNavigateToClientSources = onNavigateToClientSources,
+        )
     LazyColumn(
         contentPadding = PaddingValues(bottom = 24.dp),
         modifier = modifier.fillMaxSize(),

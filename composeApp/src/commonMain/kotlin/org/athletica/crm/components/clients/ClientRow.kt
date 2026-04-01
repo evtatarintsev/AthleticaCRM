@@ -47,10 +47,11 @@ fun ClientRow(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
     ) {
         // Аватар — всегда leading
         Box(

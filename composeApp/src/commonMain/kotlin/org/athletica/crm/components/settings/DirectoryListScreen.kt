@@ -73,8 +73,12 @@ fun DirectoryListScreen(
     var query by remember { mutableStateOf("") }
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
 
-    val filtered = if (query.isBlank()) items
-    else items.filter { it.name.contains(query.trim(), ignoreCase = true) }
+    val filtered =
+        if (query.isBlank()) {
+            items
+        } else {
+            items.filter { it.name.contains(query.trim(), ignoreCase = true) }
+        }
 
     Scaffold(
         modifier = modifier,
@@ -118,9 +122,10 @@ fun DirectoryListScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             when {
                 items.isEmpty() -> {
@@ -133,10 +138,11 @@ fun DirectoryListScreen(
 
                 else -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(
-                            top = 4.dp,
-                            bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
-                        ),
+                        contentPadding =
+                            PaddingValues(
+                                top = 4.dp,
+                                bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
+                            ),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         // Строка поиска
@@ -144,9 +150,10 @@ fun DirectoryListScreen(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
                             ) {
                                 OutlinedTextField(
                                     value = query,
@@ -186,9 +193,10 @@ fun DirectoryListScreen(
                         if (filtered.isEmpty()) {
                             item(key = "empty") {
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 48.dp),
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 48.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
@@ -203,8 +211,12 @@ fun DirectoryListScreen(
                                     item = item,
                                     selected = item.id in selectedIds,
                                     onCheckedChange = { checked ->
-                                        selectedIds = if (checked) selectedIds + item.id
-                                        else selectedIds - item.id
+                                        selectedIds =
+                                            if (checked) {
+                                                selectedIds + item.id
+                                            } else {
+                                                selectedIds - item.id
+                                            }
                                     },
                                 )
                                 HorizontalDivider()
@@ -248,10 +260,11 @@ fun DirectoryItemAvatar(
     val initial = item.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondaryContainer),
+        modifier =
+            modifier
+                .size(size.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Text(
             text = initial,

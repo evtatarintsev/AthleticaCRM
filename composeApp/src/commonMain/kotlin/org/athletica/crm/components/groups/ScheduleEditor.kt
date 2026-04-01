@@ -104,9 +104,10 @@ private fun ScheduleSlotRow(
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
-                modifier = Modifier
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    .width(92.dp),
+                modifier =
+                    Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .width(92.dp),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium,
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),

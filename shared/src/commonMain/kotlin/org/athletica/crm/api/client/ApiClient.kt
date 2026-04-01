@@ -89,8 +89,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Возвращает список видов спорта организации. */
-    suspend fun sportList(): Either<ApiClientError, SportListResponse> =
-        execute { http.get("/api/sports/list") }
+    suspend fun sportList(): Either<ApiClientError, SportListResponse> = execute { http.get("/api/sports/list") }
 
     /** Создаёт новый вид спорта по данным [request]. Возвращает созданный вид спорта. */
     suspend fun createSport(request: CreateSportRequest): Either<ApiClientError, SportDetailResponse> =

@@ -74,11 +74,12 @@ fun ClientCreateScreen(
                                     .createClient(CreateClientRequest(id = Uuid.generateV7(), name = name))
                                     .fold(
                                         ifLeft = { err ->
-                                            error = when (err) {
-                                                is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                                is ApiClientError.ValidationError -> err.message
-                                                is ApiClientError.Unavailable -> "Сервис недоступен"
-                                            }
+                                            error =
+                                                when (err) {
+                                                    is ApiClientError.Unauthenticated -> "Сессия истекла"
+                                                    is ApiClientError.ValidationError -> err.message
+                                                    is ApiClientError.Unavailable -> "Сервис недоступен"
+                                                }
                                             isCreating = false
                                         },
                                         ifRight = {
@@ -101,11 +102,12 @@ fun ClientCreateScreen(
         },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             OutlinedTextField(

@@ -33,10 +33,11 @@ fun GroupRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!selected) }
-            .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable { onCheckedChange(!selected) }
+                .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Box(
             contentAlignment = Alignment.Center,

@@ -60,14 +60,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
-import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
-import org.athletica.crm.components.settings.SportsTypesScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
+import org.athletica.crm.components.settings.SportsTypesScreen
 import org.athletica.crm.ui.WindowSize
 
 /** Пункт бокового меню навигации. */

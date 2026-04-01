@@ -23,7 +23,7 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
                 .bind("id", request.id)
                 .bind("orgId", ctx.orgId.value)
                 .bind("name", request.name)
-                .bind("avatarId", request.avatarId?.let { it.toJavaUuid() })
+                .bind("avatarId", request.avatarId?.toJavaUuid())
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("CLIENT_ALREADY_EXISTS", "Клиент с таким идентификатором уже существует"))

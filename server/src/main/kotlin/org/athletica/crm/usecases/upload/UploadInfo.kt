@@ -15,9 +15,9 @@ import kotlin.uuid.toKotlinUuid
  * Доступ ограничен организацией из [ctx] — чужие загрузки не видны.
  */
 context(db: Database, minioService: MinioService, ctx: RequestContext)
-suspend fun getUploadInfo(id: Uuid): Either<CommonDomainError, UploadResponse> =
+suspend fun uploadInfo(id: Uuid): Either<CommonDomainError, UploadResponse> =
     either {
-        val row =
+        val upload =
             db
                 .sql(
                     """
@@ -25,17 +25,33 @@ suspend fun getUploadInfo(id: Uuid): Either<CommonDomainError, UploadResponse> =
                     FROM uploads
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
-                ).bind("id", id)
+                )
+                .bind("id", id)
                 .bind("orgId", ctx.orgId.value)
-                .firstOrNull { row, _ ->
-                    UploadResponse(
+                .firstOrNull { row ->
+                    UploadDbRecord(
                         id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        url = "", // заполняется ниже
+                        objectKey = row.get("object_key", String::class.java)!!,
                         originalName = row.get("original_name", String::class.java)!!,
                         contentType = row.get("content_type", String::class.java)!!,
                         sizeBytes = row.get("size_bytes", Long::class.java)!!,
-                    ) to row.get("object_key", String::class.java)!!
+                    )
                 } ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", "Загрузка не найдена"))
 
-        row.first.copy(url = minioService.presignedGetUrl(row.second))
+        UploadResponse(
+            id = upload.id,
+            url = minioService.presignedGetUrl(upload.objectKey),
+            originalName = upload.originalName,
+            contentType = upload.contentType,
+            sizeBytes = upload.sizeBytes,
+        )
     }
+
+
+data class UploadDbRecord(
+    val id: Uuid,
+    val objectKey: String,
+    val originalName: String,
+    val contentType: String,
+    val sizeBytes: Long,
+)

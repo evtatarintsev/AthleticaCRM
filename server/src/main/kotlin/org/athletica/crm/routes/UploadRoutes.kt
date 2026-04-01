@@ -8,7 +8,7 @@ import io.ktor.utils.io.toByteArray
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.storage.MinioService
-import org.athletica.crm.usecases.upload.getUploadInfo
+import org.athletica.crm.usecases.upload.uploadInfo
 import org.athletica.crm.usecases.upload.uploadFile
 import kotlin.uuid.Uuid
 
@@ -27,7 +27,7 @@ fun Route.uploadRoutes() {
             val id = runCatching { Uuid.parse(idParam) }.getOrElse {
                 raise(CommonDomainError("INVALID_PARAMETER", "Параметр id должен быть корректным UUID"))
             }
-            getUploadInfo(id).bind()
+            uploadInfo(id).bind()
         }
     }
 

@@ -115,11 +115,11 @@ class QueryBuilder(
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
     /**
-     * Выполняет запрос без возврата результата (INSERT / UPDATE / DELETE).
+     * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
      */
-    suspend fun execute() {
+    suspend fun execute(): Long {
         val connection = pool.create().awaitSingle()
-        try {
+        return try {
             connection.executeStatement(sql, bindings)
         } finally {
             connection.close().awaitFirstOrNull()
@@ -180,9 +180,9 @@ class ConnectionQueryBuilder(
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
     /**
-     * Выполняет запрос без возврата результата (INSERT / UPDATE / DELETE).
+     * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
      */
-    suspend fun execute() = connection.executeStatement(sql, bindings)
+    suspend fun execute(): Long = connection.executeStatement(sql, bindings)
 
     private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> = connection.executeStatement(sql, bindings, mapper)
 }
@@ -190,7 +190,7 @@ class ConnectionQueryBuilder(
 private suspend fun Connection.executeStatement(
     sql: String,
     bindings: List<Pair<String, Any?>>,
-) {
+): Long {
     val connection = this
     var paramIndex = 1
     val paramOrder = mutableListOf<String>()
@@ -204,11 +204,11 @@ private suspend fun Connection.executeStatement(
         val value = bindings.find { it.first == name }?.second
         if (value == null) statement.bindNull(i, Any::class.java) else statement.bind(i, value)
     }
-    statement
+    return statement
         .execute()
         .awaitFirstOrNull()
         ?.rowsUpdated
-        ?.awaitFirstOrNull()
+        ?.awaitFirstOrNull() ?: 0L
 }
 
 private suspend fun <T : Any> Connection.executeStatement(

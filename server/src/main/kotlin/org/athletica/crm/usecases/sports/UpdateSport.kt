@@ -17,16 +17,17 @@ import org.athletica.crm.db.Database
 context(db: Database, ctx: RequestContext)
 suspend fun updateSport(request: UpdateSportRequest): Either<CommonDomainError, SportDetailResponse> =
     either {
-        val updatedRows = try {
-            db
-                .sql("UPDATE sports SET name = :name WHERE id = :id AND org_id = :orgId")
-                .bind("id", request.id)
-                .bind("orgId", ctx.orgId.value)
-                .bind("name", request.name)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("SPORT_NAME_ALREADY_EXISTS", "Вид спорта с таким названием уже существует"))
-        }
+        val updatedRows =
+            try {
+                db
+                    .sql("UPDATE sports SET name = :name WHERE id = :id AND org_id = :orgId")
+                    .bind("id", request.id)
+                    .bind("orgId", ctx.orgId.value)
+                    .bind("name", request.name)
+                    .execute()
+            } catch (e: R2dbcDataIntegrityViolationException) {
+                raise(CommonDomainError("SPORT_NAME_ALREADY_EXISTS", "Вид спорта с таким названием уже существует"))
+            }
 
         if (updatedRows == 0L) raise(CommonDomainError("SPORT_NOT_FOUND", "Вид спорта не найден"))
 

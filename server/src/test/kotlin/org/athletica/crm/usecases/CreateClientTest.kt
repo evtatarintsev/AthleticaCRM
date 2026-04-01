@@ -90,15 +90,16 @@ class CreateClientTest {
     fun `createClient isolates clients between organizations`() =
         runTest {
             val orgId1 = insertOrg()
-            val orgId2 = run {
-                val id = Uuid.generateV7()
-                TestPostgres.db
-                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                    .bind("id", id)
-                    .bind("name", "Org 2")
-                    .execute()
-                id
-            }
+            val orgId2 =
+                run {
+                    val id = Uuid.generateV7()
+                    TestPostgres.db
+                        .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                        .bind("id", id)
+                        .bind("name", "Org 2")
+                        .execute()
+                    id
+                }
             val userId = insertUser(orgId1)
             val sharedId = Uuid.generateV7()
 

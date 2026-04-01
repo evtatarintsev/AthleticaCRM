@@ -1,15 +1,23 @@
 package org.athletica.crm.components.clients
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,12 +34,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.pickImageFile
 import kotlin.uuid.Uuid
 
 /**
@@ -47,9 +59,13 @@ fun ClientCreateScreen(
     modifier: Modifier = Modifier,
 ) {
     var name by remember { mutableStateOf("") }
+    var avatarId by remember { mutableStateOf<Uuid?>(null) }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
     var isCreating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    val busy = isCreating || isUploadingAvatar
 
     Scaffold(
         modifier = modifier,
@@ -57,7 +73,7 @@ fun ClientCreateScreen(
             TopAppBar(
                 title = { Text("Новый клиент") },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isCreating) {
+                    IconButton(onClick = onBack, enabled = !busy) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Назад",
@@ -71,8 +87,13 @@ fun ClientCreateScreen(
                                 isCreating = true
                                 error = null
                                 api
-                                    .createClient(CreateClientRequest(id = Uuid.generateV7(), name = name))
-                                    .fold(
+                                    .createClient(
+                                        CreateClientRequest(
+                                            id = Uuid.generateV7(),
+                                            name = name,
+                                            avatarId = avatarId,
+                                        ),
+                                    ).fold(
                                         ifLeft = { err ->
                                             error =
                                                 when (err) {
@@ -89,7 +110,7 @@ fun ClientCreateScreen(
                                     )
                             }
                         },
-                        enabled = name.isNotBlank() && !isCreating,
+                        enabled = name.isNotBlank() && !busy,
                     ) {
                         if (isCreating) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -102,21 +123,54 @@ fun ClientCreateScreen(
         },
     ) { innerPadding ->
         Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp),
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
         ) {
+            Spacer(Modifier.height(8.dp))
+
+            AvatarPicker(
+                avatarId = avatarId,
+                isLoading = isUploadingAvatar,
+                name = name,
+                onClick = {
+                    scope.launch {
+                        val file = pickImageFile() ?: return@launch
+                        isUploadingAvatar = true
+                        error = null
+                        api
+                            .uploadFile(
+                                bytes = file.first,
+                                filename = file.second,
+                                contentType = file.third,
+                            ).fold(
+                                ifLeft = { err ->
+                                    error =
+                                        when (err) {
+                                            is ApiClientError.Unauthenticated -> "Сессия истекла"
+                                            is ApiClientError.ValidationError -> err.message
+                                            is ApiClientError.Unavailable -> "Сервис недоступен"
+                                        }
+                                },
+                                ifRight = { upload -> avatarId = upload.id },
+                            )
+                        isUploadingAvatar = false
+                    }
+                },
+            )
+
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Имя") },
                 singleLine = true,
                 isError = error != null,
-                enabled = !isCreating,
+                enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -128,5 +182,63 @@ fun ClientCreateScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun AvatarPicker(
+    avatarId: Uuid?,
+    isLoading: Boolean,
+    name: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (avatarId != null) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                    ).clickable(enabled = !isLoading, onClick = onClick),
+        ) {
+            when {
+                isLoading -> CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                avatarId != null -> Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Аватар загружен",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(40.dp),
+                )
+                name.isNotBlank() -> Text(
+                    text = name.first().uppercaseChar().toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                else -> Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Добавить фото",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+        }
+
+        Text(
+            text = if (avatarId != null) "Фото загружено" else "Добавить фото",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (avatarId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }

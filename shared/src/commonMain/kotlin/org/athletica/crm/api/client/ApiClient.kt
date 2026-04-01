@@ -34,6 +34,11 @@ import org.athletica.crm.api.schemas.sports.DeleteSportRequest
 import org.athletica.crm.api.schemas.sports.SportDetailResponse
 import org.athletica.crm.api.schemas.sports.SportListResponse
 import org.athletica.crm.api.schemas.sports.UpdateSportRequest
+import org.athletica.crm.api.schemas.upload.UploadResponse
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 
 /**
  * Клиент для взаимодействия с API сервера.
@@ -106,6 +111,31 @@ class ApiClient(private val http: HttpClient) {
             http.post("/api/sports/update") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
+            }
+        }
+
+    /** Загружает файл на сервер. Возвращает [UploadResponse] с id и presigned URL. */
+    suspend fun uploadFile(
+        bytes: ByteArray,
+        filename: String,
+        contentType: String,
+    ): Either<ApiClientError, UploadResponse> =
+        execute {
+            http.post("/api/upload") {
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append(
+                                "file",
+                                bytes,
+                                Headers.build {
+                                    append(HttpHeaders.ContentType, contentType)
+                                    append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                                },
+                            )
+                        },
+                    ),
+                )
             }
         }
 

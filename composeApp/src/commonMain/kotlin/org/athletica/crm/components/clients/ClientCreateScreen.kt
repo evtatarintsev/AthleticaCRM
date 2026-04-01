@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,8 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
@@ -60,6 +61,7 @@ fun ClientCreateScreen(
 ) {
     var name by remember { mutableStateOf("") }
     var avatarId by remember { mutableStateOf<Uuid?>(null) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isUploadingAvatar by remember { mutableStateOf(false) }
     var isCreating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -135,7 +137,7 @@ fun ClientCreateScreen(
             Spacer(Modifier.height(8.dp))
 
             AvatarPicker(
-                avatarId = avatarId,
+                avatarUrl = avatarUrl,
                 isLoading = isUploadingAvatar,
                 name = name,
                 onClick = {
@@ -157,7 +159,10 @@ fun ClientCreateScreen(
                                             is ApiClientError.Unavailable -> "Сервис недоступен"
                                         }
                                 },
-                                ifRight = { upload -> avatarId = upload.id },
+                                ifRight = { upload ->
+                                    avatarId = upload.id
+                                    avatarUrl = upload.url
+                                },
                             )
                         isUploadingAvatar = false
                     }
@@ -187,7 +192,7 @@ fun ClientCreateScreen(
 
 @Composable
 private fun AvatarPicker(
-    avatarId: Uuid?,
+    avatarUrl: String?,
     isLoading: Boolean,
     name: String,
     onClick: () -> Unit,
@@ -204,21 +209,16 @@ private fun AvatarPicker(
                 Modifier
                     .size(96.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (avatarId != null) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                    ).clickable(enabled = !isLoading, onClick = onClick),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(enabled = !isLoading, onClick = onClick),
         ) {
             when {
                 isLoading -> CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                avatarId != null -> Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Аватар загружен",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(40.dp),
+                avatarUrl != null -> AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Аватар",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(96.dp).clip(CircleShape),
                 )
                 name.isNotBlank() -> Text(
                     text = name.first().uppercaseChar().toString(),
@@ -235,9 +235,9 @@ private fun AvatarPicker(
         }
 
         Text(
-            text = if (avatarId != null) "Фото загружено" else "Добавить фото",
+            text = if (avatarUrl != null) "Изменить фото" else "Добавить фото",
             style = MaterialTheme.typography.labelMedium,
-            color = if (avatarId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
         )
     }

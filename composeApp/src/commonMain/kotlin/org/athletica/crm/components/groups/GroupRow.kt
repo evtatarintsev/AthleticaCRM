@@ -33,46 +33,38 @@ fun GroupRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!selected) }
+            .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
     ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+        ) {
+            Text(
+                text = group.name.first().uppercaseChar().toString(),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Text(
+            text = group.name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+
         Checkbox(
             checked = selected,
             onCheckedChange = onCheckedChange,
         )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .clickable { onCheckedChange(!selected) }
-                    .padding(end = 16.dp, top = 6.dp, bottom = 6.dp),
-        ) {
-            Spacer(Modifier.width(4.dp))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-            ) {
-                Text(
-                    text = group.name.first().uppercaseChar().toString(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-
-            Spacer(Modifier.width(10.dp))
-
-            Text(
-                text = group.name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }

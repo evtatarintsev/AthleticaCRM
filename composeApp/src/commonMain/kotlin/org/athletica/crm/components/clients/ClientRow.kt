@@ -47,75 +47,69 @@ fun ClientRow(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
     ) {
-        // Чекбокс изолирован: клик на него не проваливается в кликабельную область строки
+        // Аватар — всегда leading
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            Text(
+                text = client.name.first().uppercaseChar().toString(),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        // Имя растягивается
+        Text(
+            text = client.name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+
+        // Опциональные колонки
+        if (ClientColumn.Gender in settings.visibleColumns) {
+            Text(
+                text = data.gender,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(GenderColWidth),
+            )
+        }
+
+        if (ClientColumn.BirthYear in settings.visibleColumns) {
+            Text(
+                text = data.birthYear.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(BirthYearColWidth),
+            )
+        }
+
+        if (ClientColumn.Debt in settings.visibleColumns) {
+            Text(
+                text = data.debtLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(DebtColWidth),
+            )
+        }
+
+        // Чекбокс — trailing, изолирован от клика по строке
         Checkbox(
             checked = selected,
             onCheckedChange = onCheckedChange,
         )
-
-        // Кликабельная область: аватар + имя + колонки
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .clickable(onClick = onClick)
-                    .padding(end = 16.dp, top = 4.dp, bottom = 4.dp),
-        ) {
-            Spacer(Modifier.width(4.dp))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-            ) {
-                Text(
-                    text = client.name.first().uppercaseChar().toString(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-
-            Spacer(Modifier.width(10.dp))
-
-            Text(
-                text = client.name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
-            )
-
-            if (ClientColumn.Gender in settings.visibleColumns) {
-                Text(
-                    text = data.gender,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.width(GenderColWidth),
-                )
-            }
-
-            if (ClientColumn.BirthYear in settings.visibleColumns) {
-                Text(
-                    text = data.birthYear.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.width(BirthYearColWidth),
-                )
-            }
-
-            if (ClientColumn.Debt in settings.visibleColumns) {
-                Text(
-                    text = data.debtLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.width(DebtColWidth),
-                )
-            }
-        }
     }
 }

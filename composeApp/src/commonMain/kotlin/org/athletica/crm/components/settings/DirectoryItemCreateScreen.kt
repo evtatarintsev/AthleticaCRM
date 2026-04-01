@@ -39,9 +39,10 @@ import androidx.compose.ui.unit.dp
 import kotlin.uuid.Uuid
 
 /**
- * Экран добавления новой записи в справочник.
+ * Экран добавления или редактирования записи в справочнике.
  *
- * [title] — заголовок экрана (например, "Новый источник").
+ * [title] — заголовок экрана (например, "Новый источник" или "Изменить вид спорта").
+ * [initialItem] — если передан, экран работает в режиме редактирования с предзаполненными данными.
  * [onBack] — переход назад без сохранения.
  * [onSave] — сохранение: передаёт готовый [DirectoryItem].
  */
@@ -52,8 +53,9 @@ fun DirectoryItemCreateScreen(
     onBack: () -> Unit,
     onSave: (DirectoryItem) -> Unit,
     modifier: Modifier = Modifier,
+    initialItem: DirectoryItem? = null,
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialItem?.name ?: "") }
     // photoUrl будет заполнен после реализации загрузки файлов
     var photoSelected by remember { mutableStateOf(false) }
 
@@ -72,9 +74,9 @@ fun DirectoryItemCreateScreen(
                         onClick = {
                             onSave(
                                 DirectoryItem(
-                                    id = Uuid.generateV7(),
+                                    id = initialItem?.id ?: Uuid.generateV7(),
                                     name = name.trim(),
-                                    photoUrl = null, // TODO: wire up after file picker implementation
+                                    photoUrl = initialItem?.photoUrl,
                                 ),
                             )
                         },

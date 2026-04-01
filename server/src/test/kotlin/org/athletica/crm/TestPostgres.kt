@@ -22,7 +22,7 @@ object TestPostgres {
      * CASCADE покрывает зависимости: удаление organizations тянет employees → employee_roles,
      * удаление users тянет employees (ON DELETE CASCADE) → employee_roles.
      */
-    fun truncate() =
+    fun truncate(): Unit =
         runBlocking {
             db.sql("TRUNCATE users, organizations CASCADE").execute()
         }

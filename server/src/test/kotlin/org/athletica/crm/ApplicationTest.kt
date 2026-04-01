@@ -31,7 +31,7 @@ class ApplicationTest {
     fun testLoginWithInvalidCredentials() =
         testApplication {
             application {
-                context(TestPostgres.db, PasswordHasher()) {
+                context(TestPostgres.db, PasswordHasher(), TestMinio.minioService) {
                     configureServer(testJwtConfig)
                 }
             }
@@ -47,7 +47,7 @@ class ApplicationTest {
     fun testMeWithoutToken() =
         testApplication {
             application {
-                context(TestPostgres.db, PasswordHasher()) {
+                context(TestPostgres.db, PasswordHasher(), TestMinio.minioService) {
                     configureServer(testJwtConfig)
                 }
             }

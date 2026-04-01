@@ -22,6 +22,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.KtorSimpleLogger
+import io.minio.MinioClient
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
@@ -38,8 +39,10 @@ import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.sportsRoutes
+import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.MinioService
 import java.sql.DriverManager
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
@@ -67,7 +70,20 @@ fun Application.module() {
     val database = createDatabase(jdbcUrl = dbUrl, user = dbUser, password = dbPassword)
     val corsAllowedHosts = config.property("cors.allowedHosts").getString()
 
-    context(database, PasswordHasher()) {
+    val minioService =
+        MinioService(
+            client =
+                MinioClient
+                    .builder()
+                    .endpoint(config.property("minio.endpoint").getString())
+                    .credentials(
+                        config.property("minio.accessKey").getString(),
+                        config.property("minio.secretKey").getString(),
+                    ).build(),
+            bucket = config.property("minio.bucket").getString(),
+        ).also { it.ensureBucketExists() }
+
+    context(database, PasswordHasher(), minioService) {
         configureServer(jwtConfig, corsAllowedHosts)
     }
 }
@@ -79,7 +95,7 @@ fun Application.module() {
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(db: Database, passwordHasher: PasswordHasher)
+context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService)
 fun Application.configureServer(
     jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",
@@ -144,6 +160,7 @@ fun Application.configureServer(
                 groupsRoutes()
                 sportsRoutes()
                 profileRoutes()
+                uploadRoutes()
             }
         }
     }

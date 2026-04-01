@@ -145,7 +145,7 @@ fun MainScreen(
     }
 
     if (showSportsTypes) {
-        SportsTypesScreen(onBack = { showSportsTypes = false })
+        SportsTypesScreen(api = api, onBack = { showSportsTypes = false })
         return
     }
 

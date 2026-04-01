@@ -1,6 +1,7 @@
 package org.athletica.crm.components.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -59,6 +61,9 @@ data class DirectoryItem(
  * [onBack] — переход назад.
  * [onAdd] — переход к экрану создания записи.
  * [onDeleteSelected] — удаление выбранных записей.
+ * [onItemClick] — переход к редактированию записи; если `null`, записи не кликабельны.
+ * [isLoading] — показывает индикатор загрузки вместо содержимого при первом запросе.
+ * [error] — сообщение об ошибке загрузки; отображается, если список пуст.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +74,9 @@ fun DirectoryListScreen(
     onAdd: () -> Unit,
     onDeleteSelected: (Set<Uuid>) -> Unit,
     modifier: Modifier = Modifier,
+    onItemClick: ((DirectoryItem) -> Unit)? = null,
+    isLoading: Boolean = false,
+    error: String? = null,
 ) {
     var query by remember { mutableStateOf("") }
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
@@ -128,6 +136,19 @@ fun DirectoryListScreen(
                     .padding(innerPadding),
         ) {
             when {
+                isLoading && items.isEmpty() -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+
+                error != null && items.isEmpty() -> {
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 24.dp),
+                    )
+                }
+
                 items.isEmpty() -> {
                     Text(
                         text = "Список пуст",
@@ -218,6 +239,7 @@ fun DirectoryListScreen(
                                                 selectedIds - item.id
                                             }
                                     },
+                                    onClick = onItemClick?.let { { it(item) } },
                                 )
                                 HorizontalDivider()
                             }
@@ -234,6 +256,7 @@ private fun DirectoryItemRow(
     item: DirectoryItem,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    onClick: (() -> Unit)? = null,
 ) {
     ListItem(
         headlineContent = {
@@ -248,6 +271,7 @@ private fun DirectoryItemRow(
                 onCheckedChange = onCheckedChange,
             )
         },
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
     )
 }
 

@@ -37,13 +37,8 @@ fun ClientsTableHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(end = 16.dp),
+                .padding(start = 16.dp, end = 4.dp),
     ) {
-        TriStateCheckbox(
-            state = selectAllState,
-            onClick = onSelectAllClick,
-        )
-
         Spacer(Modifier.width(AvatarAreaWidth))
 
         Row(
@@ -91,5 +86,11 @@ fun ClientsTableHeader(
                 modifier = Modifier.width(DebtColWidth),
             )
         }
+
+        // Trailing: совпадает с позицией чекбокса в строках ClientRow
+        TriStateCheckbox(
+            state = selectAllState,
+            onClick = onSelectAllClick,
+        )
     }
 }

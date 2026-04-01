@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Analytics
@@ -72,41 +73,59 @@ private data class SettingSection(
     val items: List<SettingItem>,
 )
 
-private val sections =
-    listOf(
-        SettingSection(
-            label = "Основное",
-            items =
-                listOf(
-                    SettingItem(
-                        title = "Основные настройки",
-                        subtitle = "Название, описание, контакты, спортивные разряды",
-                        icon = Icons.Default.Article,
-                        containerColor = Ic.PurpleContainer,
-                        iconColor = Ic.Purple,
-                    ),
+private fun buildSections(
+    onNavigateToSportsTypes: () -> Unit,
+    onNavigateToClientSources: () -> Unit,
+) = listOf(
+    SettingSection(
+        label = "Основное",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Основные настройки",
+                    subtitle = "Название, описание, контакты, спортивные разряды",
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
                 ),
-        ),
-        SettingSection(
-            label = "Клиенты",
-            items =
-                listOf(
-                    SettingItem(
-                        title = "Отображение клиентов",
-                        subtitle = "Столбцы и данные в списке клиентов",
-                        icon = Icons.Default.PeopleAlt,
-                        containerColor = Ic.TealContainer,
-                        iconColor = Ic.Teal,
-                    ),
-                    SettingItem(
-                        title = "Источники клиентов",
-                        subtitle = "Откуда приходят клиенты, аналитика каналов",
-                        icon = Icons.Default.Analytics,
-                        containerColor = Ic.TealContainer,
-                        iconColor = Ic.Teal,
-                    ),
+                SettingItem(
+                    title = "Виды спорта",
+                    subtitle = "Указываются для занятий и групп",
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                    onClick = onNavigateToSportsTypes,
                 ),
-        ),
+                SettingItem(
+                    title = "Разряды",
+                    subtitle = "Указываются для клиентов",
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                ),
+            ),
+    ),
+    SettingSection(
+        label = "Клиенты",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Отображение клиентов",
+                    subtitle = "Столбцы и данные в списке клиентов",
+                    icon = Icons.Default.PeopleAlt,
+                    containerColor = Ic.TealContainer,
+                    iconColor = Ic.Teal,
+                ),
+                SettingItem(
+                    title = "Источники клиентов",
+                    subtitle = "Откуда приходят клиенты, аналитика каналов",
+                    icon = Icons.Default.Analytics,
+                    containerColor = Ic.TealContainer,
+                    iconColor = Ic.Teal,
+                    onClick = onNavigateToClientSources,
+                ),
+            ),
+    ),
         SettingSection(
             label = "Занятия и абонементы",
             items =
@@ -160,9 +179,20 @@ private val sections =
 /**
  * Экран настроек организации — секции с пунктами в стиле M3 Settings pattern.
  * Каждый пункт: цветная иконка в круге → заголовок + описание → шеврон.
+ *
+ * [onNavigateToClientSources] — переход к справочнику источников клиентов.
+ * [onNavigateToSportsTypes] — переход к справочнику видов спорта.
  */
 @Composable
-fun OrgSettingsScreen(modifier: Modifier = Modifier) {
+fun OrgSettingsScreen(
+    onNavigateToClientSources: () -> Unit = {},
+    onNavigateToSportsTypes: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    val sections = buildSections(
+        onNavigateToSportsTypes = onNavigateToSportsTypes,
+        onNavigateToClientSources = onNavigateToClientSources,
+    )
     LazyColumn(
         contentPadding = PaddingValues(bottom = 24.dp),
         modifier = modifier.fillMaxSize(),

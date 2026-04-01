@@ -29,6 +29,11 @@ import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.sports.CreateSportRequest
+import org.athletica.crm.api.schemas.sports.DeleteSportRequest
+import org.athletica.crm.api.schemas.sports.SportDetailResponse
+import org.athletica.crm.api.schemas.sports.SportListResponse
+import org.athletica.crm.api.schemas.sports.UpdateSportRequest
 
 /**
  * Клиент для взаимодействия с API сервера.
@@ -78,6 +83,37 @@ class ApiClient(private val http: HttpClient) {
     suspend fun createClient(request: CreateClientRequest): Either<ApiClientError, ClientDetailResponse> =
         execute {
             http.post("/api/clients/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Возвращает список видов спорта организации. */
+    suspend fun sportList(): Either<ApiClientError, SportListResponse> =
+        execute { http.get("/api/sports/list") }
+
+    /** Создаёт новый вид спорта по данным [request]. Возвращает созданный вид спорта. */
+    suspend fun createSport(request: CreateSportRequest): Either<ApiClientError, SportDetailResponse> =
+        execute {
+            http.post("/api/sports/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Обновляет название вида спорта по данным [request]. Возвращает обновлённый вид спорта. */
+    suspend fun updateSport(request: UpdateSportRequest): Either<ApiClientError, SportDetailResponse> =
+        execute {
+            http.post("/api/sports/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Удаляет виды спорта по списку id из [request]. Атомарная операция. */
+    suspend fun deleteSport(request: DeleteSportRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/sports/delete") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

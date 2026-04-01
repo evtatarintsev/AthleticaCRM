@@ -37,6 +37,7 @@ import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.profileRoutes
+import org.athletica.crm.routes.sportsRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import java.sql.DriverManager
@@ -141,6 +142,7 @@ fun Application.configureServer(
             authenticate("auth-jwt") {
                 clientsRoutes()
                 groupsRoutes()
+                sportsRoutes()
                 profileRoutes()
             }
         }

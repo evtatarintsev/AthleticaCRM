@@ -8,11 +8,15 @@ import io.ktor.client.call.body
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -29,6 +33,8 @@ import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.org.OrgSettingsResponse
+import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.sports.CreateSportRequest
 import org.athletica.crm.api.schemas.sports.DeleteSportRequest
 import org.athletica.crm.api.schemas.sports.SportDetailResponse
@@ -36,10 +42,6 @@ import org.athletica.crm.api.schemas.sports.SportListResponse
 import org.athletica.crm.api.schemas.sports.UpdateSportRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import kotlin.uuid.Uuid
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
 
 /**
  * Клиент для взаимодействия с API сервера.
@@ -94,6 +96,18 @@ class ApiClient(private val http: HttpClient) {
             }
         }
 
+    /** Возвращает основные настройки организации (название, часовой пояс). */
+    suspend fun orgSettings(): Either<ApiClientError, OrgSettingsResponse> = execute { http.get("/api/org/settings") }
+
+    /** Обновляет название и часовой пояс организации по данным [request]. */
+    suspend fun updateOrgSettings(request: UpdateOrgSettingsRequest): Either<ApiClientError, OrgSettingsResponse> =
+        execute {
+            http.post("/api/org/settings/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
     /** Возвращает список видов спорта организации. */
     suspend fun sportList(): Either<ApiClientError, SportListResponse> = execute { http.get("/api/sports/list") }
 
@@ -116,8 +130,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Возвращает информацию о загрузке по [id], включая presigned URL аватара. */
-    suspend fun uploadInfo(id: Uuid): Either<ApiClientError, UploadResponse> =
-        execute { http.get("/api/upload/info") { url { parameters.append("id", id.toString()) } } }
+    suspend fun uploadInfo(id: Uuid): Either<ApiClientError, UploadResponse> = execute { http.get("/api/upload/info") { url { parameters.append("id", id.toString()) } } }
 
     /** Загружает файл на сервер. Возвращает [UploadResponse] с id и presigned URL. */
     suspend fun uploadFile(

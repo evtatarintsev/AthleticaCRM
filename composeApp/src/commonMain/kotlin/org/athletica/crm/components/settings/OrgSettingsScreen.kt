@@ -74,6 +74,7 @@ private data class SettingSection(
 )
 
 private fun buildSections(
+    onNavigateToBasicSettings: () -> Unit,
     onNavigateToSportsTypes: () -> Unit,
     onNavigateToClientSources: () -> Unit,
 ) = listOf(
@@ -83,10 +84,11 @@ private fun buildSections(
             listOf(
                 SettingItem(
                     title = "Основные настройки",
-                    subtitle = "Название, описание, контакты, спортивные разряды",
+                    subtitle = "Название, описание, контакты, часовой пояс",
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
+                    onClick = onNavigateToBasicSettings,
                 ),
                 SettingItem(
                     title = "Виды спорта",
@@ -180,17 +182,20 @@ private fun buildSections(
  * Экран настроек организации — секции с пунктами в стиле M3 Settings pattern.
  * Каждый пункт: цветная иконка в круге → заголовок + описание → шеврон.
  *
+ * [onNavigateToBasicSettings] — переход к основным настройкам организации.
  * [onNavigateToClientSources] — переход к справочнику источников клиентов.
  * [onNavigateToSportsTypes] — переход к справочнику видов спорта.
  */
 @Composable
 fun OrgSettingsScreen(
+    onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToSportsTypes: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val sections =
         buildSections(
+            onNavigateToBasicSettings = onNavigateToBasicSettings,
             onNavigateToSportsTypes = onNavigateToSportsTypes,
             onNavigateToClientSources = onNavigateToClientSources,
         )

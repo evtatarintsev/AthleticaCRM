@@ -11,8 +11,10 @@ actual suspend fun pickImageFile(): Triple<ByteArray, String, String>? =
         val dialog = FileDialog(null as Frame?, "Выбрать фото", FileDialog.LOAD)
         dialog.setFilenameFilter { _, name ->
             name.lowercase().let {
-                it.endsWith(".jpg") || it.endsWith(".jpeg") ||
-                    it.endsWith(".png") || it.endsWith(".webp")
+                it.endsWith(".jpg") ||
+                    it.endsWith(".jpeg") ||
+                    it.endsWith(".png") ||
+                    it.endsWith(".webp")
             }
         }
         dialog.isVisible = true

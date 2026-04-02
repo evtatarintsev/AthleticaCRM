@@ -36,11 +36,12 @@ actual suspend fun pickImageFile(): Triple<ByteArray, String, String>? =
                     } else {
                         @OptIn(ExperimentalEncodingApi::class)
                         val bytes = Base64.decode(dataUrl.substringAfter(","))
-                        val contentType = when {
-                            file.name.endsWith(".png", ignoreCase = true) -> "image/png"
-                            file.name.endsWith(".webp", ignoreCase = true) -> "image/webp"
-                            else -> "image/jpeg"
-                        }
+                        val contentType =
+                            when {
+                                file.name.endsWith(".png", ignoreCase = true) -> "image/png"
+                                file.name.endsWith(".webp", ignoreCase = true) -> "image/webp"
+                                else -> "image/jpeg"
+                            }
                         cleanup()
                         continuation.resume(Triple(bytes, file.name, contentType))
                     }

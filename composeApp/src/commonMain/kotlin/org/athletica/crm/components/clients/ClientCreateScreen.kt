@@ -214,23 +214,26 @@ private fun AvatarPicker(
         ) {
             when {
                 isLoading -> CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                avatarUrl != null -> AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = "Аватар",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(96.dp).clip(CircleShape),
-                )
-                name.isNotBlank() -> Text(
-                    text = name.first().uppercaseChar().toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                else -> Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Добавить фото",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp),
-                )
+                avatarUrl != null ->
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = "Аватар",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(96.dp).clip(CircleShape),
+                    )
+                name.isNotBlank() ->
+                    Text(
+                        text = name.first().uppercaseChar().toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                else ->
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Добавить фото",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(32.dp),
+                    )
             }
         }
 

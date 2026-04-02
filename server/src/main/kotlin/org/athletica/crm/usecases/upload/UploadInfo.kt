@@ -48,7 +48,6 @@ suspend fun uploadInfo(id: Uuid, ttl: Duration): Either<CommonDomainError, Uploa
         )
     }
 
-
 data class UploadDbRecord(
     val id: Uuid,
     val objectKey: String,

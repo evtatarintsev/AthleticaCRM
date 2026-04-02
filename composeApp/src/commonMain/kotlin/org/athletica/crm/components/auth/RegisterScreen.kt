@@ -78,10 +78,14 @@ fun RegisterScreen(
     val availableZones = remember { platformAvailableTimezones() }
     var timezoneExpanded by remember { mutableStateOf(false) }
     var timezoneQuery by remember { mutableStateOf("") }
-    val filteredZones = remember(timezoneQuery) {
-        if (timezoneQuery.isEmpty()) availableZones
-        else availableZones.filter { it.contains(timezoneQuery, ignoreCase = true) }
-    }
+    val filteredZones =
+        remember(timezoneQuery) {
+            if (timezoneQuery.isEmpty()) {
+                availableZones
+            } else {
+                availableZones.filter { it.contains(timezoneQuery, ignoreCase = true) }
+            }
+        }
 
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {

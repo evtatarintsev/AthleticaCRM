@@ -66,6 +66,7 @@ import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
+import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.SportsTypesScreen
 import org.athletica.crm.ui.WindowSize
@@ -112,6 +113,7 @@ fun MainScreen(
     var clientsRefreshKey by remember { mutableStateOf(0) }
     var showCreateGroup by remember { mutableStateOf(false) }
     var groupsRefreshKey by remember { mutableStateOf(0) }
+    var showOrgBasicSettings by remember { mutableStateOf(false) }
     var showClientSources by remember { mutableStateOf(false) }
     var showSportsTypes by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -136,6 +138,11 @@ fun MainScreen(
                 showCreateClient = false
             },
         )
+        return
+    }
+
+    if (showOrgBasicSettings) {
+        OrgBasicSettingsScreen(api = api, onBack = { showOrgBasicSettings = false })
         return
     }
 
@@ -199,6 +206,7 @@ fun MainScreen(
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
+                            onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToSportsTypes = { showSportsTypes = true },
                             modifier = Modifier.padding(innerPadding),
@@ -252,6 +260,7 @@ fun MainScreen(
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
+                            onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToSportsTypes = { showSportsTypes = true },
                             modifier = Modifier.padding(innerPadding),
@@ -291,6 +300,7 @@ fun MainScreen(
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
+                            onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToSportsTypes = { showSportsTypes = true },
                             modifier = Modifier.padding(innerPadding),
@@ -531,6 +541,7 @@ private fun ContentArea(
     clientsRefreshKey: Int = 0,
     onNavigateToCreateGroup: () -> Unit = {},
     groupsRefreshKey: Int = 0,
+    onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToSportsTypes: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -553,6 +564,7 @@ private fun ContentArea(
             )
         NavItem.SETTINGS ->
             OrgSettingsScreen(
+                onNavigateToBasicSettings = onNavigateToBasicSettings,
                 onNavigateToClientSources = onNavigateToClientSources,
                 onNavigateToSportsTypes = onNavigateToSportsTypes,
                 modifier = modifier,

@@ -7,6 +7,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.storage.MinioService
+import kotlin.time.Duration
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
@@ -15,7 +16,7 @@ import kotlin.uuid.toKotlinUuid
  * Доступ ограничен организацией из [ctx] — чужие загрузки не видны.
  */
 context(db: Database, minioService: MinioService, ctx: RequestContext)
-suspend fun uploadInfo(id: Uuid): Either<CommonDomainError, UploadResponse> =
+suspend fun uploadInfo(id: Uuid, ttl: Duration): Either<CommonDomainError, UploadResponse> =
     either {
         val upload =
             db
@@ -40,7 +41,7 @@ suspend fun uploadInfo(id: Uuid): Either<CommonDomainError, UploadResponse> =
 
         UploadResponse(
             id = upload.id,
-            url = minioService.presignedGetUrl(upload.objectKey),
+            url = minioService.presignedGetUrl(upload.objectKey, ttlSeconds = ttl.inWholeSeconds.toInt()),
             originalName = upload.originalName,
             contentType = upload.contentType,
             sizeBytes = upload.sizeBytes,

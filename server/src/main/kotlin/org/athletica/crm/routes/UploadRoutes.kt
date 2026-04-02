@@ -1,7 +1,9 @@
 package org.athletica.crm.routes
 
+import io.ktor.http.CacheControl
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
+import io.ktor.server.response.cacheControl
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.routing.Route
 import io.ktor.utils.io.toByteArray
@@ -10,6 +12,8 @@ import org.athletica.crm.db.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.upload.uploadInfo
 import org.athletica.crm.usecases.upload.uploadFile
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.uuid.Uuid
 
 /**
@@ -21,13 +25,15 @@ import kotlin.uuid.Uuid
 context(db: Database, minioService: MinioService)
 fun Route.uploadRoutes() {
     getWithContext("/upload/info") {
+        val cacheTTL = 7.days
+        call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = cacheTTL.inWholeSeconds.toInt()))
         call.eitherToResponse {
             val idParam = call.request.queryParameters["id"]
                 ?: raise(CommonDomainError("MISSING_PARAMETER", "Параметр id обязателен"))
             val id = runCatching { Uuid.parse(idParam) }.getOrElse {
                 raise(CommonDomainError("INVALID_PARAMETER", "Параметр id должен быть корректным UUID"))
             }
-            uploadInfo(id).bind()
+            uploadInfo(id, cacheTTL).bind()
         }
     }
 

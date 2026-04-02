@@ -30,9 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.api.schemas.groups.DayOfWeek
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
-
-private val DAY_NAMES = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
 
 /**
  * Редактор расписания группы.
@@ -68,7 +67,7 @@ fun ScheduleEditor(
 
         TextButton(
             onClick = {
-                onSlotsChange(slots + ScheduleSlot(dayOfWeek = 0, startAt = "", endAt = ""))
+                onSlotsChange(slots + ScheduleSlot(dayOfWeek = DayOfWeek.MONDAY, startAt = "", endAt = ""))
             },
             modifier = Modifier.align(Alignment.Start),
             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
@@ -100,7 +99,7 @@ private fun ScheduleSlotRow(
             modifier = Modifier.width(92.dp),
         ) {
             OutlinedTextField(
-                value = DAY_NAMES[slot.dayOfWeek],
+                value = slot.dayOfWeek.displayName,
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
@@ -116,11 +115,11 @@ private fun ScheduleSlotRow(
                 expanded = dayExpanded,
                 onDismissRequest = { dayExpanded = false },
             ) {
-                DAY_NAMES.forEachIndexed { index, name ->
+                DayOfWeek.entries.forEach { day ->
                     DropdownMenuItem(
-                        text = { Text(name) },
+                        text = { Text(day.displayName) },
                         onClick = {
-                            onSlotChange(slot.copy(dayOfWeek = index))
+                            onSlotChange(slot.copy(dayOfWeek = day))
                             dayExpanded = false
                         },
                     )

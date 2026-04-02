@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.DayOfWeek
 
 /**
  * Один слот в расписании группы.

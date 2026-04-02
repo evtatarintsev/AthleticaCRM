@@ -1,4 +1,4 @@
-package org.athletica.crm.api.schemas.groups
+package org.athletica.crm.core
 
 import kotlinx.serialization.Serializable
 

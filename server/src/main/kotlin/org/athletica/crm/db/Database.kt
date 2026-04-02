@@ -195,7 +195,7 @@ private suspend fun Connection.executeStatement(
     var paramIndex = 1
     val paramOrder = mutableListOf<String>()
     val processedSql =
-        sql.replace(Regex(":([a-zA-Z_][a-zA-Z0-9_]*)")) { match ->
+        sql.replace(Regex("(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)")) { match ->
             paramOrder.add(match.groupValues[1])
             "\$${paramIndex++}"
         }
@@ -219,7 +219,7 @@ private suspend fun <T : Any> Connection.executeStatement(
     var paramIndex = 1
     val paramOrder = mutableListOf<String>()
     val processedSql =
-        sql.replace(Regex(":([a-zA-Z_][a-zA-Z0-9_]*)")) { match ->
+        sql.replace(Regex("(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)")) { match ->
             paramOrder.add(match.groupValues[1])
             "\$${paramIndex++}"
         }

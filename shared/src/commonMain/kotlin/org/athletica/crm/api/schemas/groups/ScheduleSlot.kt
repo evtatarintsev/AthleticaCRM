@@ -5,7 +5,7 @@ import org.athletica.crm.core.DayOfWeek
 
 /**
  * Один слот в расписании группы.
- * [dayOfWeek] — день недели (Пн..Вс), сериализуется как 0..6.
+ * [dayOfWeek] — день недели (Пн..Вс).
  * [startAt] и [endAt] — время в формате "HH:MM".
  */
 @Serializable

@@ -117,7 +117,6 @@ private fun buildSections(
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
-                    onClick = onNavigateToBasicSettings,
                 ),
                 SettingItem(
                     title = "Роли",
@@ -125,7 +124,6 @@ private fun buildSections(
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
-                    onClick = onNavigateToSportsTypes,
                 ),
             ),
     ),

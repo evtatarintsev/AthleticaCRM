@@ -10,4 +10,6 @@ data class GroupDetailResponse(
     val id: Uuid,
     /** Название группы. */
     val name: String,
+    /** Слоты расписания группы. */
+    val schedule: List<ScheduleSlot>,
 )

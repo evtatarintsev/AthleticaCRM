@@ -75,7 +75,7 @@ fun GroupCreateScreen(
                                 isCreating = true
                                 error = null
                                 api
-                                    .createGroup(GroupCreateRequest(id = Uuid.generateV7(), name = name))
+                                    .createGroup(GroupCreateRequest(id = Uuid.generateV7(), name = name, schedule = schedule))
                                     .fold(
                                         ifLeft = { err ->
                                             error =

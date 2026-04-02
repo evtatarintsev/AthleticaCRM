@@ -108,6 +108,28 @@ private fun buildSections(
             ),
     ),
     SettingSection(
+        label = "Сотрудники",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Лог действий пользователей",
+                    subtitle = "Логируются все действия пользователей с системой",
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                    onClick = onNavigateToBasicSettings,
+                ),
+                SettingItem(
+                    title = "Роли",
+                    subtitle = "Кому что позволено",
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                    onClick = onNavigateToSportsTypes,
+                ),
+            ),
+    ),
+    SettingSection(
         label = "Клиенты",
         items =
             listOf(

@@ -44,7 +44,7 @@ fun ClientsScreen(
     api: ApiClient,
     onNavigateToCreate: () -> Unit = {},
     refreshKey: Int = 0,
-    onClientClick: (ClientListItem) -> Unit = {},
+    onClientClick: (Uuid) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var clients by remember { mutableStateOf<List<ClientListItem>>(emptyList()) }
@@ -160,7 +160,7 @@ fun ClientsScreen(
                                         api = api,
                                         settings = settings,
                                         selected = client.id in selectedIds,
-                                        onClick = { onClientClick(client) },
+                                        onClick = { onClientClick(client.id) },
                                         onCheckedChange = { checked ->
                                             selectedIds =
                                                 if (checked) {

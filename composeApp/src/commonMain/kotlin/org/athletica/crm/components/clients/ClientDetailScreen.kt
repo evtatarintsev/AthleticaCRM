@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +47,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,8 +60,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.client.ApiClientError
+import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.ui.WindowSize
+import kotlin.uuid.Uuid
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
 
@@ -137,142 +142,195 @@ private enum class ClientDetailTab(val title: String) {
 /**
  * Карточка клиента — основная информация, абонементы, неоплаченные занятия
  * и дополнительные вкладки (платежи, родители, документы, история).
- * TODO: заменить заглушки на реальные данные через [client].
+ * Загружает данные клиента через [api] по [clientId].
+ * TODO: заменить заглушки на реальные данные.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientDetailScreen(
-    client: ClientListItem,
+    clientId: Uuid,
+    api: ApiClient,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var client by remember { mutableStateOf<ClientDetailResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showOverflow by remember { mutableStateOf(false) }
     val tabs = ClientDetailTab.entries
+
+    LaunchedEffect(clientId) {
+        isLoading = true
+        error = null
+        api.clientDetail(clientId).fold(
+            ifLeft = { err ->
+                error = when (err) {
+                    is ApiClientError.Unauthenticated -> "Сессия истекла"
+                    is ApiClientError.ValidationError -> err.message
+                    is ApiClientError.Unavailable -> "Сервис недоступен"
+                }
+                isLoading = false
+            },
+            ifRight = { detail ->
+                client = detail
+                isLoading = false
+            },
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(client.name) },
+                title = { Text(client?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
-                    }
-                    Box {
-                        IconButton(onClick = { showOverflow = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Ещё")
+                    if (client != null) {
+                        IconButton(onClick = {}) {
+                            Icon(Icons.Default.Edit, contentDescription = "Редактировать")
                         }
-                        DropdownMenu(
-                            expanded = showOverflow,
-                            onDismissRequest = { showOverflow = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Загрузить документ") },
-                                leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
-                                onClick = { showOverflow = false },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Удалить клиента") },
-                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                                onClick = { showOverflow = false },
-                            )
+                        Box {
+                            IconButton(onClick = { showOverflow = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Ещё")
+                            }
+                            DropdownMenu(
+                                expanded = showOverflow,
+                                onDismissRequest = { showOverflow = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Загрузить документ") },
+                                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
+                                    onClick = { showOverflow = false },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Удалить клиента") },
+                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                    onClick = { showOverflow = false },
+                                )
+                            }
                         }
                     }
                 },
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {},
-                icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-                text = { Text("Выдать абонемент") },
-            )
+            if (client != null) {
+                ExtendedFloatingActionButton(
+                    onClick = {},
+                    icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                    text = { Text("Выдать абонемент") },
+                )
+            }
         },
     ) { innerPadding ->
-        BoxWithConstraints(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-        ) {
-            val windowSize = WindowSize.fromWidth(maxWidth)
-
-            LazyColumn(
-                contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                item { ClientDetailHeader(client) }
-
-                if (windowSize >= WindowSize.MEDIUM) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(0.dp),
-                        ) {
-                            Box(Modifier.weight(1f)) { BasicInfoSection() }
-                            Column(Modifier.weight(1f)) {
-                                SubscriptionsSection()
-                                UnpaidLessonsSection()
-                            }
-                        }
-                    }
-                } else {
-                    item { BasicInfoSection() }
-                    item { SubscriptionsSection() }
-                    item { UnpaidLessonsSection() }
+        when {
+            isLoading -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    CircularProgressIndicator()
                 }
+            }
 
-                stickyHeader {
-                    ScrollableTabRow(
-                        selectedTabIndex = selectedTab,
-                        modifier = Modifier.fillMaxWidth(),
+            error != null -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
+                ) {
+                    Text(
+                        text = error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            client != null -> {
+                val loadedClient = client!!
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    val windowSize = WindowSize.fromWidth(maxWidth)
+
+                    LazyColumn(
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
+                        modifier = Modifier.fillMaxSize(),
                     ) {
-                        tabs.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = selectedTab == index,
-                                onClick = { selectedTab = index },
-                                text = { Text(tab.title) },
-                            )
+                        item { ClientDetailHeader(loadedClient) }
+
+                        if (windowSize >= WindowSize.MEDIUM) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(0.dp),
+                                ) {
+                                    Box(Modifier.weight(1f)) { BasicInfoSection() }
+                                    Column(Modifier.weight(1f)) {
+                                        SubscriptionsSection()
+                                        UnpaidLessonsSection()
+                                    }
+                                }
+                            }
+                        } else {
+                            item { BasicInfoSection() }
+                            item { SubscriptionsSection() }
+                            item { UnpaidLessonsSection() }
                         }
-                    }
-                }
 
-                when (tabs[selectedTab]) {
-                    ClientDetailTab.Payments ->
-                        items(fakePayments) { PaymentRow(it) }
-
-                    ClientDetailTab.Parents ->
-                        items(fakeParents) { ParentRow(it) }
-
-                    ClientDetailTab.Documents -> {
-                        items(fakeDocuments) { DocumentRow(it) }
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        stickyHeader {
+                            ScrollableTabRow(
+                                selectedTabIndex = selectedTab,
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text("Загрузить документ") },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    },
-                                )
+                                tabs.forEachIndexed { index, tab ->
+                                    Tab(
+                                        selected = selectedTab == index,
+                                        onClick = { selectedTab = index },
+                                        text = { Text(tab.title) },
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    ClientDetailTab.History ->
-                        items(fakeHistory) { HistoryRow(it) }
+                        when (tabs[selectedTab]) {
+                            ClientDetailTab.Payments ->
+                                items(fakePayments) { PaymentRow(it) }
+
+                            ClientDetailTab.Parents ->
+                                items(fakeParents) { ParentRow(it) }
+
+                            ClientDetailTab.Documents -> {
+                                items(fakeDocuments) { DocumentRow(it) }
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    ) {
+                                        AssistChip(
+                                            onClick = {},
+                                            label = { Text("Загрузить документ") },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.Add,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp),
+                                                )
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+
+                            ClientDetailTab.History ->
+                                items(fakeHistory) { HistoryRow(it) }
+                        }
+                    }
                 }
             }
         }
@@ -283,7 +341,7 @@ fun ClientDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ClientDetailHeader(client: ClientListItem) {
+private fun ClientDetailHeader(client: ClientDetailResponse) {
     val initials =
         client.name
             .split(" ")

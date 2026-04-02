@@ -58,8 +58,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlin.uuid.Uuid
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
@@ -108,7 +108,7 @@ fun MainScreen(
 ) {
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
-    var selectedClient by remember { mutableStateOf<ClientListItem?>(null) }
+    var selectedClientId by remember { mutableStateOf<Uuid?>(null) }
     var showCreateClient by remember { mutableStateOf(false) }
     var clientsRefreshKey by remember { mutableStateOf(0) }
     var showCreateGroup by remember { mutableStateOf(false) }
@@ -120,10 +120,11 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
 
     // Карточка клиента накрывает весь экран поверх навигации
-    if (selectedClient != null) {
+    if (selectedClientId != null) {
         ClientDetailScreen(
-            client = selectedClient!!,
-            onBack = { selectedClient = null },
+            clientId = selectedClientId!!,
+            api = api,
+            onBack = { selectedClientId = null },
         )
         return
     }
@@ -201,7 +202,7 @@ fun MainScreen(
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
-                            onClientClick = { selectedClient = it },
+                            onClientClick = { selectedClientId = it },
                             onNavigateToCreateClient = { showCreateClient = true },
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
@@ -255,7 +256,7 @@ fun MainScreen(
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
-                            onClientClick = { selectedClient = it },
+                            onClientClick = { selectedClientId = it },
                             onNavigateToCreateClient = { showCreateClient = true },
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
@@ -295,7 +296,7 @@ fun MainScreen(
                         ContentArea(
                             api = api,
                             selectedItem = selectedItem,
-                            onClientClick = { selectedClient = it },
+                            onClientClick = { selectedClientId = it },
                             onNavigateToCreateClient = { showCreateClient = true },
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
@@ -536,7 +537,7 @@ private fun MainTopAppBar(
 private fun ContentArea(
     api: ApiClient,
     selectedItem: NavItem,
-    onClientClick: (ClientListItem) -> Unit = {},
+    onClientClick: (Uuid) -> Unit = {},
     onNavigateToCreateClient: () -> Unit = {},
     clientsRefreshKey: Int = 0,
     onNavigateToCreateGroup: () -> Unit = {},

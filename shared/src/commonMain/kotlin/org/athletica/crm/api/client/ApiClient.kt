@@ -75,6 +75,10 @@ class ApiClient(private val http: HttpClient) {
     /** Возвращает страницу клиентов организации по параметрам [request]. */
     suspend fun clientList(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
 
+    /** Возвращает полные данные клиента по [id]. */
+    suspend fun clientDetail(id: Uuid): Either<ApiClientError, ClientDetailResponse> =
+        execute { http.get("/api/clients/detail") { url { parameters.append("id", id.toString()) } } }
+
     /** Возвращает список групп организации по параметрам [request]. */
     suspend fun groupList(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = execute { http.get("/api/groups/list") }
 

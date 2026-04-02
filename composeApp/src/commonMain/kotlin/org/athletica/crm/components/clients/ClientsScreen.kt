@@ -157,6 +157,7 @@ fun ClientsScreen(
                                 items(filteredClients, key = { it.id }) { client ->
                                     ClientRow(
                                         client = client,
+                                        api = api,
                                         settings = settings,
                                         selected = client.id in selectedIds,
                                         onClick = { onClientClick(client) },

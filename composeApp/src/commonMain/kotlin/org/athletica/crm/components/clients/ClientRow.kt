@@ -14,12 +14,20 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
 
 internal val GenderColWidth: Dp = 52.dp
@@ -34,16 +42,28 @@ internal val AvatarAreaWidth: Dp = 50.dp
  * Чекбокс изолирован от кликабельной области — клик по нему только переключает выбор.
  * Клик по остальной части строки вызывает [onClick].
  * [settings] — управляет видимостью опциональных колонок.
+ * Аватар запрашивается лениво через [api] только когда строка отображается на экране.
  */
 @Composable
 fun ClientRow(
     client: ClientListItem,
+    api: ApiClient,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit = {},
     settings: ClientDisplaySettings = ClientDisplaySettings(),
 ) {
     val data = client.fakeData()
+
+    // Запрашиваем URL аватара лениво — только когда строка скомпозирована (видима в LazyColumn).
+    // HttpCache на клиенте (Cache-Control: max-age=604800) исключает повторные запросы.
+    var avatarUrl by remember(client.avatarId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(client.avatarId) {
+        val id = client.avatarId
+        if (id != null) {
+            api.uploadInfo(id).onRight { avatarUrl = it.url }
+        }
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -62,11 +82,21 @@ fun ClientRow(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
-            Text(
-                text = client.name.first().uppercaseChar().toString(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            if (avatarUrl != null) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    // avatarId как ключ кеша — URL обновляется каждые 7 дней, изображение нет
+                    modifier = Modifier.size(36.dp).clip(CircleShape),
+                )
+            } else {
+                Text(
+                    text = client.name.first().uppercaseChar().toString(),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
 
         Spacer(Modifier.width(12.dp))

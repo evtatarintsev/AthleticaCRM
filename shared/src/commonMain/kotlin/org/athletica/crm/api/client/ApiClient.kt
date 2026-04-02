@@ -35,6 +35,7 @@ import org.athletica.crm.api.schemas.sports.SportDetailResponse
 import org.athletica.crm.api.schemas.sports.SportListResponse
 import org.athletica.crm.api.schemas.sports.UpdateSportRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
+import kotlin.uuid.Uuid
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.http.Headers
@@ -113,6 +114,10 @@ class ApiClient(private val http: HttpClient) {
                 setBody(request)
             }
         }
+
+    /** Возвращает информацию о загрузке по [id], включая presigned URL аватара. */
+    suspend fun uploadInfo(id: Uuid): Either<ApiClientError, UploadResponse> =
+        execute { http.get("/api/upload/info") { url { parameters.append("id", id.toString()) } } }
 
     /** Загружает файл на сервер. Возвращает [UploadResponse] с id и presigned URL. */
     suspend fun uploadFile(

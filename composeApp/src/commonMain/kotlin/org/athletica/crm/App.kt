@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.launch
-import kotlinx.datetime.TimeZone
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
@@ -54,7 +53,7 @@ fun App(
     var loginError by remember { mutableStateOf<String?>(null) }
     var registerError by remember { mutableStateOf<String?>(null) }
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
-    var timezone by remember { mutableStateOf(TimeZone.currentSystemDefault().id) }
+    var timezone by remember { mutableStateOf(platformCurrentTimezone()) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {

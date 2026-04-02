@@ -44,7 +44,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.TimeZone
+import org.athletica.crm.platformAvailableTimezones
+import org.athletica.crm.platformCurrentTimezone
 
 /**
  * Экран регистрации новой организации.
@@ -61,7 +62,7 @@ import kotlinx.datetime.TimeZone
 fun RegisterScreen(
     errorMessage: String? = null,
     onErrorDismissed: () -> Unit = {},
-    timezone: String = TimeZone.currentSystemDefault().id,
+    timezone: String = platformCurrentTimezone(),
     onTimezoneChange: (String) -> Unit = {},
     onRegister: (organizationName: String, name: String, email: String, password: String, timezone: String) -> Unit = { _, _, _, _, _ -> },
     onNavigateToLogin: () -> Unit = {},
@@ -74,7 +75,7 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    val availableZones = remember { TimeZone.availableZoneIds.sorted() }
+    val availableZones = remember { platformAvailableTimezones() }
     var timezoneExpanded by remember { mutableStateOf(false) }
     var timezoneQuery by remember { mutableStateOf("") }
     val filteredZones = remember(timezoneQuery) {

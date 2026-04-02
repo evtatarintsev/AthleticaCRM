@@ -37,9 +37,10 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
     val userId = Uuid.generateV7()
     try {
         db.transaction {
-            sql("INSERT INTO organizations (id, name) VALUES (:orgId, :orgName)")
+            sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
                 .bind("orgId", orgId)
                 .bind("orgName", request.companyName)
+                .bind("timezone", request.timezone)
                 .execute()
 
             sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")

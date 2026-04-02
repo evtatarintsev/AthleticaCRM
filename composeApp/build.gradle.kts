@@ -30,6 +30,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(projects.shared)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kermit)
             implementation(libs.arrow.core)
             implementation(libs.coil.compose)

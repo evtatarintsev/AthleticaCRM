@@ -12,7 +12,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -39,20 +44,26 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.TimeZone
 
 /**
  * Экран регистрации новой организации.
  *
  * [errorMessage] — сообщение об ошибке, `null` если ошибки нет,
  * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
+ * [timezone] — выбранный часовой пояс,
+ * [onTimezoneChange] — callback изменения часового пояса,
  * [onRegister] — callback кнопки "Зарегистрироваться",
  * [onNavigateToLogin] — вызывается при нажатии "Войти".
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     errorMessage: String? = null,
     onErrorDismissed: () -> Unit = {},
-    onRegister: (organizationName: String, name: String, email: String, password: String) -> Unit = { _, _, _, _ -> },
+    timezone: String = TimeZone.currentSystemDefault().id,
+    onTimezoneChange: (String) -> Unit = {},
+    onRegister: (organizationName: String, name: String, email: String, password: String, timezone: String) -> Unit = { _, _, _, _, _ -> },
     onNavigateToLogin: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
@@ -62,6 +73,14 @@ fun RegisterScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    val availableZones = remember { TimeZone.availableZoneIds.sorted() }
+    var timezoneExpanded by remember { mutableStateOf(false) }
+    var timezoneQuery by remember { mutableStateOf("") }
+    val filteredZones = remember(timezoneQuery) {
+        if (timezoneQuery.isEmpty()) availableZones
+        else availableZones.filter { it.contains(timezoneQuery, ignoreCase = true) }
+    }
 
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
@@ -164,14 +183,49 @@ fun RegisterScreen(
                         KeyboardActions(
                             onDone = {
                                 focusManager.clearFocus()
-                                if (isFormValid) onRegister(organizationName, name, email, password)
+                                if (isFormValid) onRegister(organizationName, name, email, password, timezone)
                             },
                         ),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
+                ExposedDropdownMenuBox(
+                    expanded = timezoneExpanded,
+                    onExpandedChange = { expanded ->
+                        timezoneExpanded = expanded
+                        if (expanded) timezoneQuery = "" else timezoneQuery = ""
+                    },
+                ) {
+                    OutlinedTextField(
+                        value = if (timezoneExpanded) timezoneQuery else timezone,
+                        onValueChange = { query ->
+                            timezoneQuery = query
+                            timezoneExpanded = true
+                        },
+                        label = { Text("Часовой пояс") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = timezoneExpanded) },
+                        singleLine = true,
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = timezoneExpanded,
+                        onDismissRequest = { timezoneExpanded = false },
+                    ) {
+                        filteredZones.take(100).forEach { zone ->
+                            DropdownMenuItem(
+                                text = { Text(zone) },
+                                onClick = {
+                                    onTimezoneChange(zone)
+                                    timezoneExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
                 Button(
-                    onClick = { onRegister(organizationName, name, email, password) },
+                    onClick = { onRegister(organizationName, name, email, password, timezone) },
                     enabled = isFormValid,
                     modifier = Modifier.fillMaxWidth(),
                 ) {

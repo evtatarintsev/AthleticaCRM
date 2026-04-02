@@ -16,6 +16,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.arrow.core)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serializationJson)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)

@@ -8,4 +8,5 @@ data class SignUpRequest(
     val userName: String,
     val login: String,
     val password: String,
+    val timezone: String,
 )

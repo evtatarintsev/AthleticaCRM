@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.db.Database
 import kotlin.uuid.toJavaUuid
 
-private val logger = KtorSimpleLogger("org.athletica.crm.audit.AuditService")
+private val logger = KtorSimpleLogger("org.athletica.crm.audit.PostgresAuditLog")
 
 /**
  * Сервис асинхронного логирования действий пользователей.
@@ -22,10 +22,9 @@ private val logger = KtorSimpleLogger("org.athletica.crm.audit.AuditService")
  * [db] — соединение с базой данных.
  * [scope] — корутинный скоуп приложения (ApplicationScope); при его отмене consumer останавливается.
  */
-class AuditService(
-    private val db: Database,
-    scope: CoroutineScope,
-) : AutoCloseable {
+class PostgresAuditLog(private val db: Database, scope: CoroutineScope) :
+    AuditLog,
+    AutoCloseable {
     private val channel = Channel<AuditEvent>(capacity = Channel.BUFFERED)
 
     init {
@@ -44,7 +43,7 @@ class AuditService(
      * Отправляет событие в очередь. Вызов неблокирующий.
      * Если буфер переполнен — событие дропается, в лог пишется предупреждение.
      */
-    fun log(event: AuditEvent) {
+    override fun log(event: AuditEvent) {
         val result = channel.trySend(event)
         if (result.isFailure) {
             logger.warn("Audit channel is full, dropping event: ${event.actionType} by ${event.username}")

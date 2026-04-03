@@ -19,7 +19,6 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
-import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.KtorSimpleLogger
@@ -37,7 +36,8 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.crm.audit.AuditService
+import org.athletica.crm.audit.AuditLog
+import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.db.Database
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
@@ -91,7 +91,7 @@ fun Application.module() {
         ).also { it.ensureBucketExists() }
 
     val auditScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val auditService = AuditService(database, auditScope)
+    val auditService = PostgresAuditLog(database, auditScope)
     monitor.subscribe(ApplicationStopped) { auditService.close() }
 
     context(database, PasswordHasher(), minioService) {
@@ -108,7 +108,7 @@ fun Application.module() {
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService, audit: AuditService)
+context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService, audit: AuditLog)
 fun Application.configureServer(
     jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",

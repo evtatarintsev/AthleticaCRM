@@ -30,8 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
+import org.athletica.crm.core.DayOfWeek
 
 /**
  * Редактор расписания группы.

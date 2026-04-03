@@ -3,7 +3,6 @@ package org.athletica.crm.routes
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.raise.Raise
-import arrow.core.raise.context.bind
 import arrow.core.raise.either
 import arrow.core.right
 import com.auth0.jwt.interfaces.DecodedJWT
@@ -23,7 +22,10 @@ import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.audit.AuditActionType
 import org.athletica.crm.audit.AuditEvent
-import org.athletica.crm.audit.AuditService
+import org.athletica.crm.audit.AuditLog
+import org.athletica.crm.audit.PostgresAuditLog
+import org.athletica.crm.audit.logLogin
+import org.athletica.crm.audit.logSignUp
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
@@ -41,42 +43,26 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты аутентификации:
  * POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
  * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
- * Требует контекстных параметров [Database], [PasswordHasher] и [AuditService].
+ * Требует контекстных параметров [Database], [PasswordHasher] и [AuditLog].
  */
-context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditService)
+context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog)
 fun Route.authRoutes() {
     post("/auth/sign-up") {
-        val ip = call.clientIp()
         call.eitherToAuthResponse {
             val request = call.receive<SignUpRequest>()
             val user = signUp(request).bind()
-            audit.log(
-                AuditEvent(
-                    orgId = OrgId(user.orgId),
-                    userId = UserId(user.id),
-                    username = user.username,
-                    actionType = AuditActionType.AUTH_SIGNUP,
-                    ipAddress = ip,
-                ),
+            audit.logSignUp(
+                user.orgId, userId = user.id, username = user.username, call.clientIp(),
             )
             user
         }
     }
 
     post("/auth/login") {
-        val ip = call.clientIp()
         call.eitherToAuthResponse {
             val request = call.receive<LoginRequest>()
             val user = findByCredentials(request.username, request.password).bind()
-            audit.log(
-                AuditEvent(
-                    orgId = OrgId(user.orgId),
-                    userId = UserId(user.id),
-                    username = user.username,
-                    actionType = AuditActionType.AUTH_LOGIN,
-                    ipAddress = ip,
-                ),
-            )
+            audit.logLogin(user.orgId, user.id, user.username, call.clientIp())
             user
         }
     }
@@ -86,7 +72,8 @@ fun Route.authRoutes() {
         val accessToken = call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
         if (accessToken != null) {
             runCatching { jwtConfig.verifier.verify(accessToken) }.getOrNull()?.let { decoded ->
-                val userId = runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()) }.getOrNull()
+                val userId =
+                    runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()) }.getOrNull()
                 val orgId = runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_ORG_ID).asString()) }.getOrNull()
                 val username = decoded.getClaim(JwtConfig.CLAIM_USERNAME).asString().orEmpty()
                 if (userId != null && orgId != null) {

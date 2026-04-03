@@ -1,7 +1,9 @@
 package org.athletica.crm.usecases
 
 import arrow.core.Either
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.sports.CreateSportRequest
 import org.athletica.crm.api.schemas.sports.DeleteSportRequest
@@ -24,17 +26,17 @@ import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
 class SportsUsecasesTest {
-    private val orgId = Uuid.generateV7()
-    private val otherOrgId = Uuid.generateV7()
-    private val userId = Uuid.generateV7()
+    private val orgId = OrgId.new()
+    private val otherOrgId = OrgId.new()
+    private val userId = UserId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId(userId), OrgId(orgId), "")
-    private val otherCtx = RequestContext(Lang.EN, UserId(userId), OrgId(otherOrgId), "")
+    private val ctx = RequestContext(Lang.EN, userId, orgId, "", null)
+    private val otherCtx = RequestContext(Lang.EN, userId, otherOrgId, "", null)
 
     @Before
     fun setUp() =
         TestPostgres.truncate().also {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
                     .bind("id", orgId).bind("name", "Org 1").execute()
                 TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
@@ -48,7 +50,7 @@ class SportsUsecasesTest {
     fun `createSport returns SportDetailResponse on success`() =
         runTest {
             val request = CreateSportRequest(id = Uuid.generateV7(), name = "Футбол")
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 val result = createSport(request)
                 val sport = assertIs<Either.Right<SportDetailResponse>>(result).value
                 assertEquals(request.id, sport.id)
@@ -59,7 +61,7 @@ class SportsUsecasesTest {
     @Test
     fun `createSport returns error when name already exists in same org`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Хоккей"))
                 val result = createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Хоккей"))
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
@@ -70,12 +72,12 @@ class SportsUsecasesTest {
     @Test
     fun `createSport allows same name in different organizations`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 assertIs<Either.Right<SportDetailResponse>>(
                     createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Баскетбол")),
                 )
             }
-            context(TestPostgres.db, otherCtx) {
+            context(TestPostgres.db, otherCtx, TestAuditLog()) {
                 assertIs<Either.Right<SportDetailResponse>>(
                     createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Баскетбол")),
                 )
@@ -97,10 +99,10 @@ class SportsUsecasesTest {
     @Test
     fun `sportList returns only sports of current org`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Теннис"))
             }
-            context(TestPostgres.db, otherCtx) {
+            context(TestPostgres.db, otherCtx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Волейбол"))
             }
             context(TestPostgres.db, ctx) {
@@ -113,7 +115,7 @@ class SportsUsecasesTest {
     @Test
     fun `sportList returns sports sorted by name`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Хоккей"))
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Бокс"))
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Плавание"))
@@ -128,7 +130,7 @@ class SportsUsecasesTest {
     @Test
     fun `updateSport returns updated sport on success`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 val id = Uuid.generateV7()
                 createSport(CreateSportRequest(id = id, name = "Старое название"))
 
@@ -142,7 +144,7 @@ class SportsUsecasesTest {
     @Test
     fun `updateSport returns SPORT_NOT_FOUND for unknown id`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 val result = updateSport(UpdateSportRequest(id = Uuid.generateV7(), name = "Что угодно"))
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("SPORT_NOT_FOUND", error.code)
@@ -152,7 +154,7 @@ class SportsUsecasesTest {
     @Test
     fun `updateSport returns error when new name conflicts with existing sport`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 val id = Uuid.generateV7()
                 createSport(CreateSportRequest(id = id, name = "Бег"))
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Прыжки"))
@@ -168,11 +170,11 @@ class SportsUsecasesTest {
         runTest {
             val sharedName = "Гимнастика"
             val id = Uuid.generateV7()
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = id, name = sharedName))
             }
             // попытка обновить спорт чужой орги — 0 строк → SPORT_NOT_FOUND
-            context(TestPostgres.db, otherCtx) {
+            context(TestPostgres.db, otherCtx, TestAuditLog()) {
                 val result = updateSport(UpdateSportRequest(id = id, name = "Другое"))
                 assertIs<Either.Left<CommonDomainError>>(result)
             }
@@ -188,7 +190,7 @@ class SportsUsecasesTest {
     @Test
     fun `deleteSport removes sport from list`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 val id = Uuid.generateV7()
                 createSport(CreateSportRequest(id = id, name = "Фехтование"))
 
@@ -202,7 +204,7 @@ class SportsUsecasesTest {
     @Test
     fun `deleteSport with empty list is a no-op`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = Uuid.generateV7(), name = "Самбо"))
 
                 assertIs<Either.Right<Unit>>(deleteSport(DeleteSportRequest(ids = emptyList())))
@@ -215,7 +217,7 @@ class SportsUsecasesTest {
     @Test
     fun `deleteSport removes multiple sports atomically`() =
         runTest {
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 val id1 = Uuid.generateV7()
                 val id2 = Uuid.generateV7()
                 val id3 = Uuid.generateV7()
@@ -234,7 +236,7 @@ class SportsUsecasesTest {
     fun `deleteSport ignores ids from other org`() =
         runTest {
             val id = Uuid.generateV7()
-            context(TestPostgres.db, ctx) {
+            context(TestPostgres.db, ctx, TestAuditLog()) {
                 createSport(CreateSportRequest(id = id, name = "Лыжи"))
             }
             // удаляем из чужой орги — должно молча игнорироваться

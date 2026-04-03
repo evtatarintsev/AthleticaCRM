@@ -1,6 +1,7 @@
 package org.athletica.crm.audit
 
 import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import kotlin.uuid.Uuid
 
@@ -18,7 +19,7 @@ enum class AuditActionType(val code: String) {
 }
 
 /**
- * Событие аудита для отправки в [AuditService].
+ * Событие аудита для отправки в [PostgresAuditLog].
  *
  * [orgId] — организация, в контексте которой произошло действие.
  * [userId] — пользователь, совершивший действие; null для системных действий.
@@ -39,3 +40,91 @@ data class AuditEvent(
     val data: String? = null,
     val ipAddress: String? = null,
 )
+
+/**
+ * Логирует успешный вход пользователя с идентификатором [userId] из организации [orgId].
+ * [clientIp] — IP-адрес клиента; null если определить не удалось.
+ */
+fun AuditLog.logLogin(
+    orgId: OrgId,
+    userId: UserId,
+    username: String,
+    clientIp: String?,
+) {
+    log(
+        AuditEvent(
+            orgId = orgId,
+            userId = userId,
+            username = username,
+            actionType = AuditActionType.AUTH_LOGIN,
+            entityType = null,
+            entityId = null,
+            ipAddress = clientIp,
+        ),
+    )
+}
+
+/**
+ * Логирует регистрацию нового пользователя с идентификатором [userId] в организации [orgId].
+ * [clientIp] — IP-адрес клиента; null если определить не удалось.
+ */
+fun AuditLog.logSignUp(
+    orgId: OrgId,
+    userId: UserId,
+    username: String,
+    clientIp: String?,
+) {
+    log(
+        AuditEvent(
+            orgId = orgId,
+            userId = userId,
+            username = username,
+            actionType = AuditActionType.AUTH_SIGNUP,
+            entityType = null,
+            entityId = null,
+            ipAddress = clientIp,
+        ),
+    )
+}
+
+/**
+ * Логирует создание сущности типа [entityType] с идентификатором [entityId].
+ * [data] — JSON-снапшот созданной сущности на момент события.
+ * Организация, пользователь и IP берутся из контекста запроса [ctx].
+ */
+context(ctx: RequestContext)
+fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String) {
+    log(
+        AuditEvent(
+            orgId = ctx.orgId,
+            userId = ctx.userId,
+            username = ctx.username,
+            actionType = AuditActionType.CREATE,
+            ipAddress = ctx.clientIp,
+            entityType = entityType,
+            entityId = entityId,
+            data = data,
+        ),
+    )
+}
+
+/**
+ * Логирует обновление сущности типа [entityType] с идентификатором [entityId].
+ * [data] — JSON-снапшот сущности после изменения.
+ * Организация, пользователь и IP берутся из контекста запроса [ctx].
+ */
+context(ctx: RequestContext)
+fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
+    log(
+        AuditEvent(
+            orgId = ctx.orgId,
+            userId = ctx.userId,
+            username = ctx.username,
+            actionType = AuditActionType.UPDATE,
+            ipAddress = ctx.clientIp,
+            entityType = entityType,
+            entityId = entityId,
+            data = data,
+        ),
+    )
+}

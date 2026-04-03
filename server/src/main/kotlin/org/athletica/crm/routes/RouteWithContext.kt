@@ -70,7 +70,8 @@ fun RoutingCall.langFromRequest(): Lang {
 
 /**
  * Собирает [RequestContext] из JWT-токена и заголовков запроса.
- * Извлекает [UserId] и [OrgId] из claims токена, язык — из `Accept-Language`.
+ * Извлекает [UserId] и [OrgId] из claims токена, язык — из `Accept-Language`,
+ * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
  */
 fun RoutingCall.contextFromRequest(): RequestContext {
     val principal = principal<JWTPrincipal>()!!
@@ -81,6 +82,7 @@ fun RoutingCall.contextFromRequest(): RequestContext {
         orgId = orgId,
         lang = langFromRequest(),
         username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
+        clientIp = clientIp(),
     )
 }
 
@@ -100,3 +102,11 @@ suspend inline fun <reified A : Any> RoutingCall.eitherToResponse(block: Raise<D
         )
     }
 }
+
+/**
+ * Возвращает IP-адрес клиента из заголовка X-Forwarded-For (для запросов через прокси)
+ * или из локального адреса прямого подключения.
+ */
+fun RoutingCall.clientIp(): String? =
+    request.headers["X-Forwarded-For"]?.split(",")?.firstOrNull()?.trim()
+        ?: request.local.remoteHost

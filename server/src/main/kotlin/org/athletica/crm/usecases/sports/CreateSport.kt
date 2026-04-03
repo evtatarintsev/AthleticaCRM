@@ -3,8 +3,11 @@ package org.athletica.crm.usecases.sports
 import arrow.core.Either
 import arrow.core.raise.either
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.sports.CreateSportRequest
 import org.athletica.crm.api.schemas.sports.SportDetailResponse
+import org.athletica.crm.audit.AuditLog
+import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -13,7 +16,7 @@ import org.athletica.crm.db.Database
  * Создаёт новый вид спорта в организации из [ctx].
  * Название уникально в рамках организации — повтор возвращает ошибку [CommonDomainError].
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: RequestContext, audit: AuditLog)
 suspend fun createSport(request: CreateSportRequest): Either<CommonDomainError, SportDetailResponse> =
     either {
         try {
@@ -30,5 +33,9 @@ suspend fun createSport(request: CreateSportRequest): Either<CommonDomainError, 
         SportDetailResponse(
             id = request.id,
             name = request.name,
-        )
+        ).also { audit.logCreate(it) }
     }
+
+/** Логирует создание вида спорта: тип сущности `"sport"`, данные — JSON-снапшот [result]. */
+context(ctx: RequestContext)
+fun AuditLog.logCreate(result: SportDetailResponse) = logCreate("sport", result.id, Json.encodeToString(result))

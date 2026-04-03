@@ -5,16 +5,17 @@ import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.security.PasswordHasher
-import kotlin.uuid.Uuid
 
 /** Зарегистрированный пользователь без данных о пароле. */
 data class User(
-    override val id: Uuid,
-    override val orgId: Uuid,
+    override val id: UserId,
+    override val orgId: OrgId,
     override val username: String,
 ) : AuthenticatedUser
 
@@ -33,8 +34,8 @@ sealed class SignUpError : DomainError {
  */
 context(db: Database, passwordHasher: PasswordHasher)
 suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
-    val orgId = Uuid.generateV7()
-    val userId = Uuid.generateV7()
+    val orgId = OrgId.new()
+    val userId = UserId.new()
     try {
         db.transaction {
             sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")

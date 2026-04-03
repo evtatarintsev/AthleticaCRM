@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
+import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.UserId
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
@@ -90,6 +92,23 @@ class QueryBuilder(
         return this
     }
 
+    /** Привязывает именованный [UserId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
+    fun bind(
+        name: String,
+        value: UserId,
+    ): QueryBuilder {
+        bindings.add(name to value.value.toJavaUuid())
+        return this
+    }
+
+    /** Привязывает именованный [OrgId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
+    fun bind(
+        name: String,
+        value: OrgId,
+    ): QueryBuilder {
+        bindings.add(name to value.value.toJavaUuid())
+        return this
+    }
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
      *
@@ -148,20 +167,26 @@ class ConnectionQueryBuilder(
     private val bindings = mutableListOf<Pair<String, Any?>>()
 
     /** Привязывает именованный параметр к значению. */
-    fun bind(
-        name: String,
-        value: Any?,
-    ): ConnectionQueryBuilder {
+    fun bind(name: String, value: Any?): ConnectionQueryBuilder {
         bindings.add(name to value)
         return this
     }
 
     /** Привязывает именованный Uuid к значению. */
-    fun bind(
-        name: String,
-        value: Uuid,
-    ): ConnectionQueryBuilder {
+    fun bind(name: String, value: Uuid): ConnectionQueryBuilder {
         bindings.add(name to value.toJavaUuid())
+        return this
+    }
+
+    /** Привязывает именованный [UserId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
+    fun bind(name: String, value: UserId): ConnectionQueryBuilder {
+        bindings.add(name to value.value.toJavaUuid())
+        return this
+    }
+
+    /** Привязывает именованный [OrgId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
+    fun bind(name: String, value: OrgId): ConnectionQueryBuilder {
+        bindings.add(name to value.value.toJavaUuid())
         return this
     }
 

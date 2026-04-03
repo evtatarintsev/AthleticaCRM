@@ -4,9 +4,13 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.Row
+import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.PasswordHash
+import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.toOrgId
+import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -17,8 +21,8 @@ import kotlin.uuid.toKotlinUuid
  * [id] — уникальный идентификатор, [orgId] — организация пользователя, [username] — имя для входа, [password] — хэш пароля.
  */
 data class User(
-    override val id: Uuid,
-    override val orgId: Uuid,
+    override val id: UserId,
+    override val orgId: OrgId,
     override val username: String,
     val password: String,
 ) : AuthenticatedUser
@@ -83,8 +87,8 @@ suspend fun findByCredentials(username: String, password: String): Either<UserNo
 
 private fun Row.toUser() =
     User(
-        id = get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-        orgId = get("org_id", java.util.UUID::class.java)!!.toKotlinUuid(),
+        id = get("id", java.util.UUID::class.java)!!.toKotlinUuid().toUserId(),
+        orgId = get("org_id", java.util.UUID::class.java)!!.toKotlinUuid().toOrgId(),
         username = get("login", String::class.java)!!,
         password = get("password_hash", String::class.java)!!,
     )

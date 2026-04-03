@@ -2,6 +2,7 @@ package org.athletica.crm.usecases
 
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -54,6 +55,7 @@ class CreateClientTest {
             userId = UserId(userId),
             orgId = OrgId(orgId),
             username = "user@example.com",
+            clientIp = "127.0.0.1",
         )
 
     @Test
@@ -63,7 +65,7 @@ class CreateClientTest {
             val userId = insertUser(orgId)
             val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров")
 
-            context(TestPostgres.db, ctx(userId, orgId)) {
+            context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = createClient(request)
                 val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
                 assertEquals(request.id, client.id)
@@ -78,7 +80,7 @@ class CreateClientTest {
             val userId = insertUser(orgId)
             val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров")
 
-            context(TestPostgres.db, ctx(userId, orgId)) {
+            context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 createClient(request)
                 val result = createClient(request)
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
@@ -103,14 +105,14 @@ class CreateClientTest {
             val userId = insertUser(orgId1)
             val sharedId = Uuid.generateV7()
 
-            context(TestPostgres.db, ctx(userId, orgId1)) {
+            context(TestPostgres.db, ctx(userId, orgId1), TestAuditLog()) {
                 assertIs<Either.Right<ClientDetailResponse>>(
                     createClient(CreateClientRequest(id = sharedId, name = "Клиент")),
                 )
             }
             // тот же UUID, но другая org — не конфликт на уровне БД,
             // так как PK на id уникален глобально; ожидаем ошибку дублирования PK
-            context(TestPostgres.db, ctx(userId, orgId2)) {
+            context(TestPostgres.db, ctx(userId, orgId2), TestAuditLog()) {
                 val result = createClient(CreateClientRequest(id = sharedId, name = "Клиент"))
                 assertIs<Either.Left<CommonDomainError>>(result)
             }
@@ -122,7 +124,7 @@ class CreateClientTest {
             val orgId = insertOrg()
             val userId = insertUser(orgId)
 
-            context(TestPostgres.db, ctx(userId, orgId)) {
+            context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 assertIs<Either.Right<ClientDetailResponse>>(
                     createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей")),
                 )

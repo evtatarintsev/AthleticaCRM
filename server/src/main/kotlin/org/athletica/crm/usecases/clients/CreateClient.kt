@@ -3,8 +3,11 @@ package org.athletica.crm.usecases.clients
 import arrow.core.Either
 import arrow.core.raise.either
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.audit.AuditLog
+import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -14,7 +17,7 @@ import kotlin.uuid.toJavaUuid
  * Создаёт нового клиента в организации из [ctx] по данным [request].
  * Возвращает обновлённый список всех клиентов организации, либо ошибку если клиент уже существует.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: RequestContext, audit: AuditLog)
 suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError, ClientDetailResponse> =
     either {
         try {
@@ -33,5 +36,9 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
             id = request.id,
             name = request.name,
             avatarId = request.avatarId,
-        )
+        ).also { audit.logCreate(it) }
     }
+
+/** Логирует создание клиента: тип сущности `"client"`, данные — JSON-снапшот [result]. */
+context(ctx: RequestContext)
+fun AuditLog.logCreate(result: ClientDetailResponse) = logCreate("client", result.id, Json.encodeToString(result))

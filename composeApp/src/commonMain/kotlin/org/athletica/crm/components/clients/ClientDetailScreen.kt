@@ -167,11 +167,12 @@ fun ClientDetailScreen(
         error = null
         api.clientDetail(clientId).fold(
             ifLeft = { err ->
-                error = when (err) {
-                    is ApiClientError.Unauthenticated -> "Сессия истекла"
-                    is ApiClientError.ValidationError -> err.message
-                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                }
+                error =
+                    when (err) {
+                        is ApiClientError.Unauthenticated -> "Сессия истекла"
+                        is ApiClientError.ValidationError -> err.message
+                        is ApiClientError.Unavailable -> "Сервис недоступен"
+                    }
                 isLoading = false
             },
             ifRight = { detail ->

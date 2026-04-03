@@ -20,6 +20,7 @@ class SignUpTest {
             userName = "John",
             login = login,
             password = "password123",
+            timezone = "UTC",
         )
 
     @Test

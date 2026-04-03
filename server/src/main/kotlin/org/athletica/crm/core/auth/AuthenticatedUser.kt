@@ -1,10 +1,11 @@
 package org.athletica.crm.core.auth
 
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.UserId
 
 /** Аутентифицированный пользователь системы. Реализуется разными доменными моделями (security, usecases). */
 interface AuthenticatedUser {
-    val id: Uuid
-    val orgId: Uuid
+    val id: UserId
+    val orgId: OrgId
     val username: String
 }

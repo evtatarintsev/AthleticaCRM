@@ -2,6 +2,7 @@ package org.athletica.crm.usecases
 
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
@@ -14,7 +15,6 @@ import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.uuid.Uuid
 
 class ProfileTest {
     private val hasher = PasswordHasher()
@@ -22,9 +22,9 @@ class ProfileTest {
     @Before
     fun setUp() = TestPostgres.truncate()
 
-    private suspend fun insertUser(login: String): Pair<Uuid, Uuid> {
-        val orgId = Uuid.generateV7()
-        val userId = Uuid.generateV7()
+    private suspend fun insertUser(login: String): Pair<UserId, OrgId> {
+        val orgId = OrgId.new()
+        val userId = UserId.new()
         TestPostgres.db
             .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
             .bind("id", orgId)
@@ -45,19 +45,20 @@ class ProfileTest {
         return userId to orgId
     }
 
-    private fun requestContext(userId: Uuid, orgId: Uuid, username: String = "") =
+    private fun requestContext(userId: UserId, orgId: OrgId, username: String = "") =
         RequestContext(
             lang = Lang.EN,
-            userId = UserId(userId),
-            orgId = OrgId(orgId),
+            userId = userId,
+            orgId = orgId,
             username = username,
+            clientIp = "127.0.0.1",
         )
 
     @Test
     fun `profile returns user for authenticated user`() =
         runTest {
             val (userId, orgId) = insertUser("user@example.com")
-            context(TestPostgres.db, requestContext(userId, orgId)) {
+            context(TestPostgres.db, requestContext(userId, orgId), TestAuditLog()) {
                 val result = profile()
                 val user = assertIs<Either.Right<User>>(result).value
                 assertEquals("user@example.com", user.username)
@@ -69,7 +70,7 @@ class ProfileTest {
     @Test
     fun `profile returns error when user does not exist`() =
         runTest {
-            val ctx = requestContext(Uuid.generateV7(), Uuid.generateV7())
+            val ctx = requestContext(UserId.new(), OrgId.new())
             context(TestPostgres.db, ctx) {
                 assertIs<Either.Left<DomainError>>(profile())
             }

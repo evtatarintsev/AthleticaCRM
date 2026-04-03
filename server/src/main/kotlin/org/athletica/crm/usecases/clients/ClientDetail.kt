@@ -7,7 +7,6 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 context(db: Database, ctx: RequestContext)

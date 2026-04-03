@@ -22,6 +22,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
@@ -76,8 +77,7 @@ class ApiClient(private val http: HttpClient) {
     suspend fun clientList(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
 
     /** Возвращает полные данные клиента по [id]. */
-    suspend fun clientDetail(id: Uuid): Either<ApiClientError, ClientDetailResponse> =
-        execute { http.get("/api/clients/detail") { url { parameters.append("id", id.toString()) } } }
+    suspend fun clientDetail(id: Uuid): Either<ApiClientError, ClientDetailResponse> = execute { http.get("/api/clients/detail") { url { parameters.append("id", id.toString()) } } }
 
     /** Возвращает список групп организации по параметрам [request]. */
     suspend fun groupList(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = execute { http.get("/api/groups/list") }
@@ -158,6 +158,30 @@ class ApiClient(private val http: HttpClient) {
                         },
                     ),
                 )
+            }
+        }
+
+    /** Возвращает страницу лога аудита с пагинацией и фильтрами. */
+    suspend fun auditLogList(
+        page: Int = 0,
+        pageSize: Int = 50,
+        actionType: String? = null,
+        userId: String? = null,
+        entityType: String? = null,
+        from: String? = null,
+        to: String? = null,
+    ): Either<ApiClientError, AuditLogListResponse> =
+        execute {
+            http.get("/api/audit/log") {
+                url {
+                    parameters.append("page", page.toString())
+                    parameters.append("pageSize", pageSize.toString())
+                    if (actionType != null) parameters.append("actionType", actionType)
+                    if (userId != null) parameters.append("userId", userId)
+                    if (entityType != null) parameters.append("entityType", entityType)
+                    if (from != null) parameters.append("from", from)
+                    if (to != null) parameters.append("to", to)
+                }
             }
         }
 

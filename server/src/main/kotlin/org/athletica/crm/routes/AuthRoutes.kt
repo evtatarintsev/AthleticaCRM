@@ -21,6 +21,11 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.audit.AuditActionType
+import org.athletica.crm.audit.AuditEvent
+import org.athletica.crm.audit.AuditService
+import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -36,25 +41,67 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты аутентификации:
  * POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
  * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
- * Требует контекстных параметров [Database] и [PasswordHasher].
+ * Требует контекстных параметров [Database], [PasswordHasher] и [AuditService].
  */
-context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig)
+context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditService)
 fun Route.authRoutes() {
     post("/auth/sign-up") {
+        val ip = call.clientIp()
         call.eitherToAuthResponse {
             val request = call.receive<SignUpRequest>()
-            signUp(request).bind()
+            val user = signUp(request).bind()
+            audit.log(
+                AuditEvent(
+                    orgId = OrgId(user.orgId),
+                    userId = UserId(user.id),
+                    username = user.username,
+                    actionType = AuditActionType.AUTH_SIGNUP,
+                    ipAddress = ip,
+                ),
+            )
+            user
         }
     }
 
     post("/auth/login") {
+        val ip = call.clientIp()
         call.eitherToAuthResponse {
             val request = call.receive<LoginRequest>()
-            findByCredentials(request.username, request.password).bind()
+            val user = findByCredentials(request.username, request.password).bind()
+            audit.log(
+                AuditEvent(
+                    orgId = OrgId(user.orgId),
+                    userId = UserId(user.id),
+                    username = user.username,
+                    actionType = AuditActionType.AUTH_LOGIN,
+                    ipAddress = ip,
+                ),
+            )
+            user
         }
     }
 
     post("/auth/logout") {
+        val ip = call.clientIp()
+        val accessToken = call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
+        if (accessToken != null) {
+            runCatching { jwtConfig.verifier.verify(accessToken) }.getOrNull()?.let { decoded ->
+                val userId = runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()) }.getOrNull()
+                val orgId = runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_ORG_ID).asString()) }.getOrNull()
+                val username = decoded.getClaim(JwtConfig.CLAIM_USERNAME).asString().orEmpty()
+                if (userId != null && orgId != null) {
+                    audit.log(
+                        AuditEvent(
+                            orgId = OrgId(orgId),
+                            userId = UserId(userId),
+                            username = username,
+                            actionType = AuditActionType.AUTH_LOGOUT,
+                            ipAddress = ip,
+                        ),
+                    )
+                }
+            }
+        }
         call.response.cookies.setJwtCookies("", "")
         call.respond(HttpStatusCode.OK)
     }

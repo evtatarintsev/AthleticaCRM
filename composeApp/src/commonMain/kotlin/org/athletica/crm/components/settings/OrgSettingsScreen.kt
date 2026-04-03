@@ -77,6 +77,7 @@ private fun buildSections(
     onNavigateToBasicSettings: () -> Unit,
     onNavigateToSportsTypes: () -> Unit,
     onNavigateToClientSources: () -> Unit,
+    onNavigateToActivityLog: () -> Unit,
 ) = listOf(
     SettingSection(
         label = "Основное",
@@ -117,6 +118,7 @@ private fun buildSections(
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
+                    onClick = onNavigateToActivityLog,
                 ),
                 SettingItem(
                     title = "Роли",
@@ -205,12 +207,14 @@ private fun buildSections(
  * [onNavigateToBasicSettings] — переход к основным настройкам организации.
  * [onNavigateToClientSources] — переход к справочнику источников клиентов.
  * [onNavigateToSportsTypes] — переход к справочнику видов спорта.
+ * [onNavigateToActivityLog] — переход к логу действий пользователей.
  */
 @Composable
 fun OrgSettingsScreen(
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToSportsTypes: () -> Unit = {},
+    onNavigateToActivityLog: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val sections =
@@ -218,6 +222,7 @@ fun OrgSettingsScreen(
             onNavigateToBasicSettings = onNavigateToBasicSettings,
             onNavigateToSportsTypes = onNavigateToSportsTypes,
             onNavigateToClientSources = onNavigateToClientSources,
+            onNavigateToActivityLog = onNavigateToActivityLog,
         )
     LazyColumn(
         contentPadding = PaddingValues(bottom = 24.dp),

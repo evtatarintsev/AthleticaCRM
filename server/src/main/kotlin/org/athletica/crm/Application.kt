@@ -7,6 +7,7 @@ import io.ktor.http.auth.HttpAuthHeader
 import io.ktor.http.auth.parseAuthorizationHeader
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
@@ -27,13 +28,18 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.audit.AuditService
 import org.athletica.crm.db.Database
+import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.groupsRoutes
@@ -84,8 +90,14 @@ fun Application.module() {
             bucket = config.property("minio.bucket").getString(),
         ).also { it.ensureBucketExists() }
 
+    val auditScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    val auditService = AuditService(database, auditScope)
+    monitor.subscribe(ApplicationStopped) { auditService.close() }
+
     context(database, PasswordHasher(), minioService) {
-        configureServer(jwtConfig, corsAllowedHosts)
+        context(auditService) {
+            configureServer(jwtConfig, corsAllowedHosts)
+        }
     }
 }
 
@@ -96,7 +108,7 @@ fun Application.module() {
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService)
+context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService, audit: AuditService)
 fun Application.configureServer(
     jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",
@@ -163,6 +175,7 @@ fun Application.configureServer(
                 sportsRoutes()
                 profileRoutes()
                 uploadRoutes()
+                auditRoutes()
             }
         }
     }

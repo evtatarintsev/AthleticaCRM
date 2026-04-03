@@ -58,18 +58,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlin.uuid.Uuid
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
+import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.SportsTypesScreen
 import org.athletica.crm.ui.WindowSize
+import kotlin.uuid.Uuid
 
 /** Пункт бокового меню навигации. */
 enum class NavItem(
@@ -116,6 +117,7 @@ fun MainScreen(
     var showOrgBasicSettings by remember { mutableStateOf(false) }
     var showClientSources by remember { mutableStateOf(false) }
     var showSportsTypes by remember { mutableStateOf(false) }
+    var showActivityLog by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -154,6 +156,11 @@ fun MainScreen(
 
     if (showSportsTypes) {
         SportsTypesScreen(api = api, onBack = { showSportsTypes = false })
+        return
+    }
+
+    if (showActivityLog) {
+        ActivityLogScreen(api = api, onBack = { showActivityLog = false })
         return
     }
 
@@ -210,6 +217,7 @@ fun MainScreen(
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToSportsTypes = { showSportsTypes = true },
+                            onNavigateToActivityLog = { showActivityLog = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -264,6 +272,7 @@ fun MainScreen(
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToSportsTypes = { showSportsTypes = true },
+                            onNavigateToActivityLog = { showActivityLog = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -304,6 +313,7 @@ fun MainScreen(
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToSportsTypes = { showSportsTypes = true },
+                            onNavigateToActivityLog = { showActivityLog = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -545,6 +555,7 @@ private fun ContentArea(
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToSportsTypes: () -> Unit = {},
+    onNavigateToActivityLog: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     when (selectedItem) {
@@ -568,6 +579,7 @@ private fun ContentArea(
                 onNavigateToBasicSettings = onNavigateToBasicSettings,
                 onNavigateToClientSources = onNavigateToClientSources,
                 onNavigateToSportsTypes = onNavigateToSportsTypes,
+                onNavigateToActivityLog = onNavigateToActivityLog,
                 modifier = modifier,
             )
         else ->

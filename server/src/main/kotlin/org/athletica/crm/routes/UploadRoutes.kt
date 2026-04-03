@@ -7,6 +7,7 @@ import io.ktor.server.request.receiveMultipart
 import io.ktor.server.response.cacheControl
 import io.ktor.server.routing.Route
 import io.ktor.utils.io.toByteArray
+import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.storage.MinioService
@@ -19,9 +20,9 @@ import kotlin.uuid.Uuid
  * Регистрирует маршрут POST /upload для загрузки файлов.
  * Принимает multipart/form-data с полем "file".
  * Возвращает UploadResponse с id загрузки и presigned URL.
- * Требует контекстных параметров [Database] и [MinioService].
+ * Требует контекстных параметров [Database], [MinioService] и [AuditLog].
  */
-context(db: Database, minioService: MinioService)
+context(db: Database, minioService: MinioService, audit: AuditLog)
 fun Route.uploadRoutes() {
     getWithContext("/upload/info") {
         val cacheTTL = 7.days

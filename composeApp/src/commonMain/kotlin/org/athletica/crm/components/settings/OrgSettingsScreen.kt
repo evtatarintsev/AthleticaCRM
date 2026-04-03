@@ -75,7 +75,7 @@ private data class SettingSection(
 
 private fun buildSections(
     onNavigateToBasicSettings: () -> Unit,
-    onNavigateToSportsTypes: () -> Unit,
+    onNavigateToDisciplines: () -> Unit,
     onNavigateToClientSources: () -> Unit,
     onNavigateToActivityLog: () -> Unit,
 ) = listOf(
@@ -92,12 +92,12 @@ private fun buildSections(
                     onClick = onNavigateToBasicSettings,
                 ),
                 SettingItem(
-                    title = "Виды спорта",
+                    title = "Дисциплины",
                     subtitle = "Указываются для занятий и групп",
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
-                    onClick = onNavigateToSportsTypes,
+                    onClick = onNavigateToDisciplines,
                 ),
                 SettingItem(
                     title = "Разряды",
@@ -206,21 +206,21 @@ private fun buildSections(
  *
  * [onNavigateToBasicSettings] — переход к основным настройкам организации.
  * [onNavigateToClientSources] — переход к справочнику источников клиентов.
- * [onNavigateToSportsTypes] — переход к справочнику видов спорта.
+ * [onNavigateToDisciplines] — переход к справочнику дисциплин.
  * [onNavigateToActivityLog] — переход к логу действий пользователей.
  */
 @Composable
 fun OrgSettingsScreen(
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
-    onNavigateToSportsTypes: () -> Unit = {},
+    onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val sections =
         buildSections(
             onNavigateToBasicSettings = onNavigateToBasicSettings,
-            onNavigateToSportsTypes = onNavigateToSportsTypes,
+            onNavigateToDisciplines = onNavigateToDisciplines,
             onNavigateToClientSources = onNavigateToClientSources,
             onNavigateToActivityLog = onNavigateToActivityLog,
         )

@@ -11,16 +11,16 @@ import androidx.compose.ui.Modifier
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.sports.CreateSportRequest
-import org.athletica.crm.api.schemas.sports.DeleteSportRequest
-import org.athletica.crm.api.schemas.sports.UpdateSportRequest
+import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
+import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
+import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 
 /**
- * Экран «Виды спорта».
+ * Экран «Дисциплины».
  * Загружает список через [api], поддерживает создание, редактирование и удаление.
  */
 @Composable
-fun SportsTypesScreen(
+fun DisciplinesScreen(
     api: ApiClient,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -36,7 +36,7 @@ fun SportsTypesScreen(
     LaunchedEffect(refreshKey) {
         isLoading = true
         error = null
-        api.sportList().fold(
+        api.disciplineList().fold(
             ifLeft = { err ->
                 error =
                     when (err) {
@@ -47,23 +47,23 @@ fun SportsTypesScreen(
             },
             ifRight = { response ->
                 items =
-                    response.sports.map { sport ->
-                        DirectoryItem(id = sport.id, name = sport.name)
+                    response.disciplines.map { discipline ->
+                        DirectoryItem(id = discipline.id, name = discipline.name)
                     }
             },
         )
         isLoading = false
     }
 
-    // Экран редактирования вида спорта
+    // Экран редактирования дисциплины
     editingItem?.let { item ->
         DirectoryItemCreateScreen(
-            title = "Изменить вид спорта",
+            title = "Изменить дисциплину",
             initialItem = item,
             onBack = { editingItem = null },
             onSave = { updated ->
                 scope.launch {
-                    api.updateSport(UpdateSportRequest(id = updated.id, name = updated.name))
+                    api.updateDiscipline(UpdateDisciplineRequest(id = updated.id, name = updated.name))
                         .onRight { refreshKey++ }
                 }
                 editingItem = null
@@ -73,14 +73,14 @@ fun SportsTypesScreen(
         return
     }
 
-    // Экран создания вида спорта
+    // Экран создания дисциплины
     if (showCreate) {
         DirectoryItemCreateScreen(
-            title = "Новый вид спорта",
+            title = "Новая дисциплина",
             onBack = { showCreate = false },
             onSave = { newItem ->
                 scope.launch {
-                    api.createSport(CreateSportRequest(id = newItem.id, name = newItem.name))
+                    api.createDiscipline(CreateDisciplineRequest(id = newItem.id, name = newItem.name))
                         .onRight { refreshKey++ }
                 }
                 showCreate = false
@@ -91,7 +91,7 @@ fun SportsTypesScreen(
     }
 
     DirectoryListScreen(
-        title = "Виды спорта",
+        title = "Дисциплины",
         items = items,
         isLoading = isLoading,
         error = error,
@@ -100,7 +100,7 @@ fun SportsTypesScreen(
         onItemClick = { item -> editingItem = item },
         onDeleteSelected = { ids ->
             scope.launch {
-                api.deleteSport(DeleteSportRequest(ids = ids.toList()))
+                api.deleteDiscipline(DeleteDisciplineRequest(ids = ids.toList()))
                     .onRight { refreshKey++ }
             }
         },

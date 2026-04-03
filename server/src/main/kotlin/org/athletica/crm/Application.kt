@@ -42,10 +42,10 @@ import org.athletica.crm.db.Database
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
+import org.athletica.crm.routes.disciplinesRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.profileRoutes
-import org.athletica.crm.routes.sportsRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -172,7 +172,7 @@ fun Application.configureServer(
                 clientsRoutes()
                 groupsRoutes()
                 orgRoutes()
-                sportsRoutes()
+                disciplinesRoutes()
                 profileRoutes()
                 uploadRoutes()
                 auditRoutes()

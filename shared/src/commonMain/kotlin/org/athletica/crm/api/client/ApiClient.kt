@@ -30,17 +30,17 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
+import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
+import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
+import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
+import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
-import org.athletica.crm.api.schemas.sports.CreateSportRequest
-import org.athletica.crm.api.schemas.sports.DeleteSportRequest
-import org.athletica.crm.api.schemas.sports.SportDetailResponse
-import org.athletica.crm.api.schemas.sports.SportListResponse
-import org.athletica.crm.api.schemas.sports.UpdateSportRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import kotlin.uuid.Uuid
 
@@ -112,22 +112,22 @@ class ApiClient(private val http: HttpClient) {
             }
         }
 
-    /** Возвращает список видов спорта организации. */
-    suspend fun sportList(): Either<ApiClientError, SportListResponse> = execute { http.get("/api/sports/list") }
+    /** Возвращает список дисциплин организации. */
+    suspend fun disciplineList(): Either<ApiClientError, DisciplineListResponse> = execute { http.get("/api/disciplines/list") }
 
-    /** Создаёт новый вид спорта по данным [request]. Возвращает созданный вид спорта. */
-    suspend fun createSport(request: CreateSportRequest): Either<ApiClientError, SportDetailResponse> =
+    /** Создаёт новую дисциплину по данным [request]. Возвращает созданную дисциплину. */
+    suspend fun createDiscipline(request: CreateDisciplineRequest): Either<ApiClientError, DisciplineDetailResponse> =
         execute {
-            http.post("/api/sports/create") {
+            http.post("/api/disciplines/create") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
         }
 
-    /** Обновляет название вида спорта по данным [request]. Возвращает обновлённый вид спорта. */
-    suspend fun updateSport(request: UpdateSportRequest): Either<ApiClientError, SportDetailResponse> =
+    /** Обновляет название дисциплины по данным [request]. Возвращает обновлённую дисциплину. */
+    suspend fun updateDiscipline(request: UpdateDisciplineRequest): Either<ApiClientError, DisciplineDetailResponse> =
         execute {
-            http.post("/api/sports/update") {
+            http.post("/api/disciplines/update") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
@@ -185,10 +185,10 @@ class ApiClient(private val http: HttpClient) {
             }
         }
 
-    /** Удаляет виды спорта по списку id из [request]. Атомарная операция. */
-    suspend fun deleteSport(request: DeleteSportRequest): Either<ApiClientError, Unit> =
+    /** Удаляет дисциплины по списку id из [request]. Атомарная операция. */
+    suspend fun deleteDiscipline(request: DeleteDisciplineRequest): Either<ApiClientError, Unit> =
         execute {
-            http.post("/api/sports/delete") {
+            http.post("/api/disciplines/delete") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

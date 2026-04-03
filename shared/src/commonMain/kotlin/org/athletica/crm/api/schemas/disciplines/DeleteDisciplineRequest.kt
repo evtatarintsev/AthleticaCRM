@@ -1,9 +1,9 @@
-package org.athletica.crm.api.schemas.sports
+package org.athletica.crm.api.schemas.disciplines
 
 import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
 
 @Serializable
-data class DeleteSportRequest(
+data class DeleteDisciplineRequest(
     val ids: List<Uuid>,
 )

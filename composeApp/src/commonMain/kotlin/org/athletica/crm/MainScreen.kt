@@ -66,9 +66,9 @@ import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
+import org.athletica.crm.components.settings.DisciplinesScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
-import org.athletica.crm.components.settings.SportsTypesScreen
 import org.athletica.crm.ui.WindowSize
 import kotlin.uuid.Uuid
 
@@ -116,7 +116,7 @@ fun MainScreen(
     var groupsRefreshKey by remember { mutableStateOf(0) }
     var showOrgBasicSettings by remember { mutableStateOf(false) }
     var showClientSources by remember { mutableStateOf(false) }
-    var showSportsTypes by remember { mutableStateOf(false) }
+    var showDisciplines by remember { mutableStateOf(false) }
     var showActivityLog by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -154,8 +154,8 @@ fun MainScreen(
         return
     }
 
-    if (showSportsTypes) {
-        SportsTypesScreen(api = api, onBack = { showSportsTypes = false })
+    if (showDisciplines) {
+        DisciplinesScreen(api = api, onBack = { showDisciplines = false })
         return
     }
 
@@ -216,7 +216,7 @@ fun MainScreen(
                             groupsRefreshKey = groupsRefreshKey,
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
-                            onNavigateToSportsTypes = { showSportsTypes = true },
+                            onNavigateToDisciplines = { showDisciplines = true },
                             onNavigateToActivityLog = { showActivityLog = true },
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -271,7 +271,7 @@ fun MainScreen(
                             groupsRefreshKey = groupsRefreshKey,
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
-                            onNavigateToSportsTypes = { showSportsTypes = true },
+                            onNavigateToDisciplines = { showDisciplines = true },
                             onNavigateToActivityLog = { showActivityLog = true },
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -312,7 +312,7 @@ fun MainScreen(
                             groupsRefreshKey = groupsRefreshKey,
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
-                            onNavigateToSportsTypes = { showSportsTypes = true },
+                            onNavigateToDisciplines = { showDisciplines = true },
                             onNavigateToActivityLog = { showActivityLog = true },
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -554,7 +554,7 @@ private fun ContentArea(
     groupsRefreshKey: Int = 0,
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
-    onNavigateToSportsTypes: () -> Unit = {},
+    onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -578,7 +578,7 @@ private fun ContentArea(
             OrgSettingsScreen(
                 onNavigateToBasicSettings = onNavigateToBasicSettings,
                 onNavigateToClientSources = onNavigateToClientSources,
-                onNavigateToSportsTypes = onNavigateToSportsTypes,
+                onNavigateToDisciplines = onNavigateToDisciplines,
                 onNavigateToActivityLog = onNavigateToActivityLog,
                 modifier = modifier,
             )

@@ -5,18 +5,18 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.Row
+import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
-import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toOrgId
 import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
-import org.athletica.crm.security.User
 import org.athletica.crm.security.UserNotFound
 import kotlin.uuid.Uuid
+import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 /**
@@ -40,6 +40,28 @@ suspend fun profile(): Either<DomainError, UserProfile> =
         .firstOrNull { it.toUserProfile() }
         ?.right() ?: UserNotFound("User with id='${ctx.userId}' not found").left()
 
+
+/**
+ * Обновляет имя и аватар текущего авторизованного сотрудника.
+ * Изменения применяются к записи [employees] организации из [ctx].
+ * Возвращает обновлённый [UserProfile] или ошибку если сотрудник не найден.
+ */
+context(db: Database, ctx: RequestContext)
+suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile> =
+    either {
+        val updatedRows =
+            db
+                .sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
+                .bind("name", request.name)
+                .bind("avatarId", request.avatarId?.toJavaUuid())
+                .bind("userId", ctx.userId)
+                .bind("orgId", ctx.orgId)
+                .execute()
+
+        if (updatedRows == 0L) raise(UserNotFound("Employee not found for user='${ctx.userId}'"))
+
+        profile().bind()
+    }
 
 data class UserProfile(
     override val id: UserId,

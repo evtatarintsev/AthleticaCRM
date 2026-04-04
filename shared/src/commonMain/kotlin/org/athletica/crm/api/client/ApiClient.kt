@@ -22,6 +22,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
@@ -72,6 +73,15 @@ class ApiClient(private val http: HttpClient) {
 
     /** Возвращает данные текущего авторизованного пользователя. */
     suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
+
+    /** Обновляет имя и аватар текущего авторизованного пользователя. Возвращает обновлённый профиль. */
+    suspend fun updateMe(request: UpdateMeRequest): Either<ApiClientError, AuthMeResponse> =
+        execute {
+            http.post("/api/auth/me/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Возвращает страницу клиентов организации по параметрам [request]. */
     suspend fun clientList(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }

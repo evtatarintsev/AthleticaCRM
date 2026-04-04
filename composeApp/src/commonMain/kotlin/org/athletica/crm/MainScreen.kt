@@ -67,6 +67,7 @@ import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
+import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.ui.WindowSize
@@ -172,7 +173,7 @@ fun MainScreen(
     }
 
     if (showEditProfile) {
-        // TODO: экран редактирования профиля
+        EditProfileScreen(api = api, onBack = { showEditProfile = false })
         return
     }
 

@@ -15,7 +15,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
         db
             .sql(
                 """
-                SELECT id, name, avatar_id
+                SELECT id, name, avatar_id, birthday
                 FROM clients
                 WHERE id = :id AND org_id = :orgId
                 """.trimIndent(),
@@ -27,6 +27,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                     id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                     name = row.get("name", String::class.java)!!,
                     avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
+                    birthday = row.get("birthday", java.time.LocalDate::class.java)?.toString(),
                 )
             }
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", "Клиент не найден"))

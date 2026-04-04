@@ -15,4 +15,6 @@ data class CreateClientRequest(
     val name: String,
     /** Идентификатор загрузки аватарки клиента, полученный через POST /api/upload. */
     val avatarId: Uuid? = null,
+    /** День рождения клиента в формате ISO-8601 (YYYY-MM-DD), либо null если не указан. */
+    val birthday: String? = null,
 )

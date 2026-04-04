@@ -12,6 +12,8 @@ data class ClientListItem(
     val name: String,
     /** Идентификатор загрузки аватарки клиента, либо null если аватарка не задана. */
     val avatarId: Uuid? = null,
+    /** День рождения клиента в формате ISO-8601 (YYYY-MM-DD), либо null если не указан. */
+    val birthday: String? = null,
 )
 
 /** Ответ на запрос списка клиентов с поддержкой пагинации. */

@@ -24,8 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,12 +37,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.UpdateMeRequest
+import org.athletica.crm.pickImageFile
 import kotlin.uuid.Uuid
 
 /**
@@ -62,12 +63,14 @@ fun EditProfileScreen(
 ) {
     var name by remember { mutableStateOf("") }
     var avatarId by remember { mutableStateOf<Uuid?>(null) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    val busy = isSaving || isUploadingAvatar
 
     LaunchedEffect(Unit) {
         api.me().fold(
@@ -82,26 +85,21 @@ fun EditProfileScreen(
             ifRight = { profile ->
                 name = profile.name
                 avatarId = profile.avatarId
+                if (profile.avatarId != null) {
+                    api.uploadInfo(profile.avatarId).onRight { avatarUrl = it.url }
+                }
             },
         )
         isLoading = false
     }
 
-    LaunchedEffect(error) {
-        if (error != null) {
-            snackbarHostState.showSnackbar(error!!)
-            error = null
-        }
-    }
-
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Редактировать профиль") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !busy) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
@@ -110,6 +108,7 @@ fun EditProfileScreen(
                         onClick = {
                             scope.launch {
                                 isSaving = true
+                                error = null
                                 api
                                     .updateMe(
                                         UpdateMeRequest(
@@ -124,15 +123,22 @@ fun EditProfileScreen(
                                                     is ApiClientError.Unavailable -> "Сервис недоступен"
                                                     ApiClientError.Unauthenticated -> "Необходима авторизация"
                                                 }
+                                            isSaving = false
                                         },
-                                        ifRight = { onBack() },
+                                        ifRight = {
+                                            isSaving = false
+                                            onBack()
+                                        },
                                     )
-                                isSaving = false
                             }
                         },
-                        enabled = name.isNotBlank() && !isLoading && !isSaving,
+                        enabled = name.isNotBlank() && !isLoading && !busy,
                     ) {
-                        Text("Сохранить")
+                        if (isSaving) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        } else {
+                            Text("Сохранить")
+                        }
                     }
                 },
             )
@@ -141,10 +147,7 @@ fun EditProfileScreen(
         if (isLoading) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 CircularProgressIndicator()
             }
@@ -163,9 +166,37 @@ fun EditProfileScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            ProfileAvatarPicker(
+            AvatarPicker(
+                avatarUrl = avatarUrl,
+                isLoading = isUploadingAvatar,
                 name = name,
-                onClick = { /* TODO: загрузка файла через platform-specific file picker */ },
+                onClick = {
+                    scope.launch {
+                        val file = pickImageFile() ?: return@launch
+                        isUploadingAvatar = true
+                        error = null
+                        api
+                            .uploadFile(
+                                bytes = file.first,
+                                filename = file.second,
+                                contentType = file.third,
+                            ).fold(
+                                ifLeft = { err ->
+                                    error =
+                                        when (err) {
+                                            is ApiClientError.ValidationError -> err.message
+                                            is ApiClientError.Unavailable -> "Сервис недоступен"
+                                            ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                        }
+                                },
+                                ifRight = { upload ->
+                                    avatarId = upload.id
+                                    avatarUrl = upload.url
+                                },
+                            )
+                        isUploadingAvatar = false
+                    }
+                },
             )
 
             OutlinedTextField(
@@ -173,24 +204,30 @@ fun EditProfileScreen(
                 onValueChange = { name = it },
                 label = { Text("Имя") },
                 singleLine = true,
+                isError = error != null,
+                enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (error != null) {
+                Text(
+                    text = error!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
 
-/**
- * Круглый аватар-заглушка: показывает инициал из [name], если он задан,
- * иначе — иконку камеры. Нажатие вызывает [onClick] для выбора файла.
- */
 @Composable
-private fun ProfileAvatarPicker(
+private fun AvatarPicker(
+    avatarUrl: String?,
+    isLoading: Boolean,
     name: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hasInitial = name.isNotBlank()
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -202,33 +239,36 @@ private fun ProfileAvatarPicker(
                 Modifier
                     .size(96.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (hasInitial) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                    )
-                    .clickable(onClick = onClick),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(enabled = !isLoading, onClick = onClick),
         ) {
-            if (hasInitial) {
-                Text(
-                    text = name.first().uppercaseChar().toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Выбрать фото",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp),
-                )
+            when {
+                isLoading -> CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                avatarUrl != null ->
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = "Аватар",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(96.dp).clip(CircleShape),
+                    )
+                name.isNotBlank() ->
+                    Text(
+                        text = name.first().uppercaseChar().toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                else ->
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Добавить фото",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(32.dp),
+                    )
             }
         }
 
         Text(
-            text = "Изменить фото",
+            text = if (avatarUrl != null) "Изменить фото" else "Добавить фото",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,

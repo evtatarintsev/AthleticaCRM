@@ -29,7 +29,10 @@ fun DisciplinesScreen(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var createError by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<DirectoryItem?>(null) }
+    var editError by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
@@ -60,14 +63,31 @@ fun DisciplinesScreen(
         DirectoryItemCreateScreen(
             title = "Изменить дисциплину",
             initialItem = item,
-            onBack = { editingItem = null },
+            onBack = { editingItem = null; editError = null },
             onSave = { updated ->
                 scope.launch {
+                    isSaving = true
+                    editError = null
                     api.updateDiscipline(UpdateDisciplineRequest(id = updated.id, name = updated.name))
-                        .onRight { refreshKey++ }
+                        .fold(
+                            ifLeft = { err ->
+                                editError = when (err) {
+                                    is ApiClientError.ValidationError -> err.message
+                                    is ApiClientError.Unavailable -> "Сервис недоступен"
+                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                }
+                            },
+                            ifRight = {
+                                editingItem = null
+                                editError = null
+                                refreshKey++
+                            },
+                        )
+                    isSaving = false
                 }
-                editingItem = null
             },
+            error = editError,
+            isLoading = isSaving,
             modifier = modifier,
         )
         return
@@ -77,14 +97,31 @@ fun DisciplinesScreen(
     if (showCreate) {
         DirectoryItemCreateScreen(
             title = "Новая дисциплина",
-            onBack = { showCreate = false },
+            onBack = { showCreate = false; createError = null },
             onSave = { newItem ->
                 scope.launch {
+                    isSaving = true
+                    createError = null
                     api.createDiscipline(CreateDisciplineRequest(id = newItem.id, name = newItem.name))
-                        .onRight { refreshKey++ }
+                        .fold(
+                            ifLeft = { err ->
+                                createError = when (err) {
+                                    is ApiClientError.ValidationError -> err.message
+                                    is ApiClientError.Unavailable -> "Сервис недоступен"
+                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                }
+                            },
+                            ifRight = {
+                                showCreate = false
+                                createError = null
+                                refreshKey++
+                            },
+                        )
+                    isSaving = false
                 }
-                showCreate = false
             },
+            error = createError,
+            isLoading = isSaving,
             modifier = modifier,
         )
         return

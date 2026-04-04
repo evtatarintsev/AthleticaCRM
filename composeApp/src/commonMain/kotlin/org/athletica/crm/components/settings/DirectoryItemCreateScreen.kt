@@ -41,10 +41,12 @@ import kotlin.uuid.Uuid
 /**
  * Экран добавления или редактирования записи в справочнике.
  *
- * [title] — заголовок экрана (например, "Новый источник" или "Изменить вид спорта").
+ * [title] — заголовок экрана (например, "Новый источник" или "Изменить дисциплину").
  * [initialItem] — если передан, экран работает в режиме редактирования с предзаполненными данными.
  * [onBack] — переход назад без сохранения.
  * [onSave] — сохранение: передаёт готовый [DirectoryItem].
+ * [error] — текст ошибки от API, отображается под полем ввода.
+ * [isLoading] — блокирует кнопку «Сохранить» на время запроса.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +56,8 @@ fun DirectoryItemCreateScreen(
     onSave: (DirectoryItem) -> Unit,
     modifier: Modifier = Modifier,
     initialItem: DirectoryItem? = null,
+    error: String? = null,
+    isLoading: Boolean = false,
 ) {
     var name by remember { mutableStateOf(initialItem?.name ?: "") }
     // photoUrl будет заполнен после реализации загрузки файлов
@@ -80,7 +84,7 @@ fun DirectoryItemCreateScreen(
                                 ),
                             )
                         },
-                        enabled = name.isNotBlank(),
+                        enabled = name.isNotBlank() && !isLoading,
                     ) {
                         Text("Сохранить")
                     }
@@ -113,6 +117,8 @@ fun DirectoryItemCreateScreen(
                 onValueChange = { name = it },
                 label = { Text("Название") },
                 singleLine = true,
+                isError = error != null,
+                supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

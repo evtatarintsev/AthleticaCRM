@@ -205,9 +205,10 @@ fun ClientCreateScreen(
                 // Прозрачный оверлей — TextField перехватывает клики сам,
                 // поэтому Modifier.clickable на нём не срабатывает
                 Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable(enabled = !busy) { showDatePicker = true },
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .clickable(enabled = !busy) { showDatePicker = true },
                 )
             }
 

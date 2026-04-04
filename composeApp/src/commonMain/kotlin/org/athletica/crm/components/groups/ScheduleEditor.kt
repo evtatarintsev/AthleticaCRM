@@ -166,7 +166,9 @@ private fun TimeTextField(
         value = value,
         onValueChange = { input ->
             val filtered = input.filter { it.isDigit() || it == ':' }
-            if (filtered.length <= 5) onValueChange(filtered)
+            if (filtered.length <= 5) {
+                onValueChange(filtered)
+            }
         },
         isError = value.isNotEmpty() && !isValid,
         placeholder = { Text("00:00", style = MaterialTheme.typography.bodySmall) },

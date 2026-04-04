@@ -188,7 +188,9 @@ fun RegisterScreen(
                         KeyboardActions(
                             onDone = {
                                 focusManager.clearFocus()
-                                if (isFormValid) onRegister(organizationName, name, email, password, timezone)
+                                if (isFormValid) {
+                                    onRegister(organizationName, name, email, password, timezone)
+                                }
                             },
                         ),
                     modifier = Modifier.fillMaxWidth(),

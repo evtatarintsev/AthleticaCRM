@@ -2,12 +2,12 @@ package org.athletica.crm.usecases.clients
 
 import arrow.core.Either
 import arrow.core.right
+import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlinx.datetime.toKotlinLocalDate
 import kotlin.uuid.toKotlinUuid
 
 context(db: Database, ctx: RequestContext)

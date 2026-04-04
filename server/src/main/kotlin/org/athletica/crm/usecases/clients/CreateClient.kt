@@ -3,6 +3,7 @@ package org.athletica.crm.usecases.clients
 import arrow.core.Either
 import arrow.core.raise.either
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.datetime.toJavaLocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -11,7 +12,6 @@ import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlinx.datetime.toJavaLocalDate
 import kotlin.uuid.toJavaUuid
 
 /**

@@ -26,11 +26,21 @@ data class AuditLogListRequest(
 context(db: Database, ctx: RequestContext)
 suspend fun auditLogList(request: AuditLogListRequest): Either<CommonDomainError, AuditLogListResponse> {
     val conditions = mutableListOf("org_id = :orgId")
-    if (request.actionType != null) conditions += "action_type = :actionType"
-    if (request.userId != null) conditions += "user_id = :userId::uuid"
-    if (request.entityType != null) conditions += "entity_type = :entityType"
-    if (request.from != null) conditions += "created_at >= :from::timestamptz"
-    if (request.to != null) conditions += "created_at <= :to::timestamptz"
+    if (request.actionType != null) {
+        conditions += "action_type = :actionType"
+    }
+    if (request.userId != null) {
+        conditions += "user_id = :userId::uuid"
+    }
+    if (request.entityType != null) {
+        conditions += "entity_type = :entityType"
+    }
+    if (request.from != null) {
+        conditions += "created_at >= :from::timestamptz"
+    }
+    if (request.to != null) {
+        conditions += "created_at <= :to::timestamptz"
+    }
 
     val whereClause = conditions.joinToString(" AND ")
     val offset = request.page * request.pageSize

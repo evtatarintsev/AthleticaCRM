@@ -31,6 +31,7 @@ dependencies {
     implementation(libs.r2dbc.postgresql)
     implementation(libs.r2dbc.pool)
     implementation(libs.kotlinx.coroutines.reactive)
+    implementation(libs.kotlinx.datetime)
     implementation(libs.bouncycastle)
     implementation(libs.minio)
     testImplementation(libs.ktor.server.testHost)

@@ -32,7 +32,9 @@ suspend fun updateDiscipline(request: UpdateDisciplineRequest): Either<CommonDom
                 raise(CommonDomainError("DISCIPLINE_NAME_ALREADY_EXISTS", "Дисциплина с таким названием уже существует"))
             }
 
-        if (updatedRows == 0L) raise(CommonDomainError("DISCIPLINE_NOT_FOUND", "Дисциплина не найдена"))
+        if (updatedRows == 0L) {
+            raise(CommonDomainError("DISCIPLINE_NOT_FOUND", "Дисциплина не найдена"))
+        }
 
         DisciplineDetailResponse(
             id = request.id,

@@ -196,11 +196,21 @@ class ApiClient(private val http: HttpClient) {
                 url {
                     parameters.append("page", page.toString())
                     parameters.append("pageSize", pageSize.toString())
-                    if (actionType != null) parameters.append("actionType", actionType)
-                    if (userId != null) parameters.append("userId", userId)
-                    if (entityType != null) parameters.append("entityType", entityType)
-                    if (from != null) parameters.append("from", from)
-                    if (to != null) parameters.append("to", to)
+                    if (actionType != null) {
+                        parameters.append("actionType", actionType)
+                    }
+                    if (userId != null) {
+                        parameters.append("userId", userId)
+                    }
+                    if (entityType != null) {
+                        parameters.append("entityType", entityType)
+                    }
+                    if (from != null) {
+                        parameters.append("from", from)
+                    }
+                    if (to != null) {
+                        parameters.append("to", to)
+                    }
                 }
             }
         }

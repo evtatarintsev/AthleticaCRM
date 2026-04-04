@@ -179,7 +179,9 @@ fun OrgBasicSettingsScreen(
                 expanded = timezoneExpanded,
                 onExpandedChange = { expanded ->
                     timezoneExpanded = expanded
-                    if (!expanded) timezoneQuery = ""
+                    if (!expanded) {
+                        timezoneQuery = ""
+                    }
                 },
             ) {
                 OutlinedTextField(

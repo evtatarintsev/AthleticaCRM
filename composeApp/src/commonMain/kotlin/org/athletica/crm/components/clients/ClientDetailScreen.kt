@@ -537,7 +537,9 @@ private fun SubscriptionItem(sub: FakeSubscription) {
 private fun UnpaidLessonsSection() {
     SectionCard("Неоплаченные занятия (${fakeUnpaidLessons.size})") {
         fakeUnpaidLessons.forEachIndexed { index, lesson ->
-            if (index > 0) HorizontalDivider()
+            if (index > 0) {
+                HorizontalDivider()
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
@@ -627,21 +629,22 @@ private fun HistoryRow(visit: FakeVisit) {
 // ── helpers ───────────────────────────────────────────────────────────────
 
 private fun LocalDate.formatRu(): String {
-    val month = when (month) {
-        Month.JANUARY -> "января"
-        Month.FEBRUARY -> "февраля"
-        Month.MARCH -> "марта"
-        Month.APRIL -> "апреля"
-        Month.MAY -> "мая"
-        Month.JUNE -> "июня"
-        Month.JULY -> "июля"
-        Month.AUGUST -> "августа"
-        Month.SEPTEMBER -> "сентября"
-        Month.OCTOBER -> "октября"
-        Month.NOVEMBER -> "ноября"
-        Month.DECEMBER -> "декабря"
-        else -> month.name
-    }
+    val month =
+        when (month) {
+            Month.JANUARY -> "января"
+            Month.FEBRUARY -> "февраля"
+            Month.MARCH -> "марта"
+            Month.APRIL -> "апреля"
+            Month.MAY -> "мая"
+            Month.JUNE -> "июня"
+            Month.JULY -> "июля"
+            Month.AUGUST -> "августа"
+            Month.SEPTEMBER -> "сентября"
+            Month.OCTOBER -> "октября"
+            Month.NOVEMBER -> "ноября"
+            Month.DECEMBER -> "декабря"
+            else -> month.name
+        }
     return "$dayOfMonth $month $year"
 }
 

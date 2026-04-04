@@ -44,16 +44,16 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
                 .bind("timezone", request.timezone)
                 .execute()
 
-            sql("INSERT INTO users (id, login, name, password_hash) VALUES (:userId, :login, :userName, :hash)")
+            sql("INSERT INTO users (id, login, password_hash) VALUES (:userId, :login, :hash)")
                 .bind("userId", userId)
                 .bind("login", request.login)
-                .bind("userName", request.userName)
                 .bind("hash", passwordHasher.hash(request.password).value)
                 .execute()
 
-            sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
+            sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
                 .bind("orgId", orgId)
                 .bind("userId", userId)
+                .bind("name", request.userName)
                 .execute()
         }
     } catch (e: R2dbcDataIntegrityViolationException) {

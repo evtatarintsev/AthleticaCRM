@@ -35,16 +35,16 @@ class CreateClientTest {
     private suspend fun insertUser(orgId: Uuid): Uuid {
         val userId = Uuid.generateV7()
         TestPostgres.db
-            .sql("INSERT INTO users (id, login, name, password_hash) VALUES (:id, :login, :name, :hash)")
+            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
             .bind("id", userId)
             .bind("login", "user@example.com")
-            .bind("name", "User")
             .bind("hash", "hash")
             .execute()
         TestPostgres.db
-            .sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
+            .sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
             .bind("userId", userId)
             .bind("orgId", orgId)
+            .bind("name", "User")
             .execute()
         return userId
     }

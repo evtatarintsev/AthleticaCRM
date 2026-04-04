@@ -31,16 +31,16 @@ class ProfileTest {
             .bind("name", login)
             .execute()
         TestPostgres.db
-            .sql("INSERT INTO users (id, login, name, password_hash) VALUES (:id, :login, :name, :hash)")
+            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
             .bind("id", userId)
             .bind("login", login)
-            .bind("name", login)
             .bind("hash", hasher.hash("password").value)
             .execute()
         TestPostgres.db
-            .sql("INSERT INTO employees (user_id, org_id, is_owner) VALUES (:userId, :orgId, true)")
+            .sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
             .bind("userId", userId)
             .bind("orgId", orgId)
+            .bind("name", login)
             .execute()
         return userId to orgId
     }

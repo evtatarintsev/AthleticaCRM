@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +44,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -60,6 +67,8 @@ fun ClientCreateScreen(
     modifier: Modifier = Modifier,
 ) {
     var name by remember { mutableStateOf("") }
+    var birthday by remember { mutableStateOf<LocalDate?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var avatarId by remember { mutableStateOf<Uuid?>(null) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isUploadingAvatar by remember { mutableStateOf(false) }
@@ -94,6 +103,7 @@ fun ClientCreateScreen(
                                             id = Uuid.generateV7(),
                                             name = name,
                                             avatarId = avatarId,
+                                            birthday = birthday,
                                         ),
                                     ).fold(
                                         ifLeft = { err ->
@@ -178,6 +188,47 @@ fun ClientCreateScreen(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            OutlinedTextField(
+                value = birthday?.toString() ?: "",
+                onValueChange = {},
+                label = { Text("День рождения") },
+                placeholder = { Text("ГГГГ-ММ-ДД") },
+                singleLine = true,
+                readOnly = true,
+                enabled = !busy,
+                trailingIcon = {
+                    if (birthday != null) {
+                        TextButton(onClick = { birthday = null }) { Text("Очистить") }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !busy) { showDatePicker = true },
+            )
+
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState()
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                birthday = Instant
+                                    .fromEpochMilliseconds(millis)
+                                    .toLocalDateTime(TimeZone.UTC)
+                                    .date
+                            }
+                            showDatePicker = false
+                        }) { Text("ОК") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) { Text("Отмена") }
+                    },
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
 
             if (error != null) {
                 Text(

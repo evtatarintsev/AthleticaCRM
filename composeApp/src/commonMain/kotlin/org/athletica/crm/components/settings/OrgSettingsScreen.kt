@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.HowToReg
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PeopleAlt
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.HorizontalDivider
@@ -55,6 +57,9 @@ private object Ic {
 
     val CoralContainer = Color(0xFFFAECE7)
     val Coral = Color(0xFF993C1D)
+
+    val OrangeContainer = Color(0xFFFFF3E0)
+    val Orange = Color(0xFFBF5A00)
 }
 
 // ── Модель данных ─────────────────────────────────────────────────────────
@@ -78,6 +83,8 @@ private fun buildSections(
     onNavigateToDisciplines: () -> Unit,
     onNavigateToClientSources: () -> Unit,
     onNavigateToActivityLog: () -> Unit,
+    onNavigateToChangePassword: () -> Unit,
+    onNavigateToEditProfile: () -> Unit,
 ) = listOf(
     SettingSection(
         label = "Основное",
@@ -196,6 +203,28 @@ private fun buildSections(
                 ),
             ),
     ),
+    SettingSection(
+        label = "Пользователь",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Редактировать профиль",
+                    subtitle = "Имя, фото и контактные данные",
+                    icon = Icons.Default.ManageAccounts,
+                    containerColor = Ic.OrangeContainer,
+                    iconColor = Ic.Orange,
+                    onClick = onNavigateToEditProfile,
+                ),
+                SettingItem(
+                    title = "Сменить пароль",
+                    subtitle = "Изменить текущий пароль аккаунта",
+                    icon = Icons.Default.Lock,
+                    containerColor = Ic.OrangeContainer,
+                    iconColor = Ic.Orange,
+                    onClick = onNavigateToChangePassword,
+                ),
+            ),
+    ),
 )
 
 // ── Экран ─────────────────────────────────────────────────────────────────
@@ -208,6 +237,8 @@ private fun buildSections(
  * [onNavigateToClientSources] — переход к справочнику источников клиентов.
  * [onNavigateToDisciplines] — переход к справочнику дисциплин.
  * [onNavigateToActivityLog] — переход к логу действий пользователей.
+ * [onNavigateToChangePassword] — переход к смене пароля.
+ * [onNavigateToEditProfile] — переход к редактированию профиля пользователя.
  */
 @Composable
 fun OrgSettingsScreen(
@@ -215,6 +246,8 @@ fun OrgSettingsScreen(
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val sections =
@@ -223,6 +256,8 @@ fun OrgSettingsScreen(
             onNavigateToDisciplines = onNavigateToDisciplines,
             onNavigateToClientSources = onNavigateToClientSources,
             onNavigateToActivityLog = onNavigateToActivityLog,
+            onNavigateToChangePassword = onNavigateToChangePassword,
+            onNavigateToEditProfile = onNavigateToEditProfile,
         )
     LazyColumn(
         contentPadding = PaddingValues(bottom = 24.dp),

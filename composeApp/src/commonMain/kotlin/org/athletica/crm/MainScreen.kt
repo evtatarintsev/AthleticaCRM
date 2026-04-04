@@ -118,6 +118,8 @@ fun MainScreen(
     var showClientSources by remember { mutableStateOf(false) }
     var showDisciplines by remember { mutableStateOf(false) }
     var showActivityLog by remember { mutableStateOf(false) }
+    var showChangePassword by remember { mutableStateOf(false) }
+    var showEditProfile by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -161,6 +163,16 @@ fun MainScreen(
 
     if (showActivityLog) {
         ActivityLogScreen(api = api, onBack = { showActivityLog = false })
+        return
+    }
+
+    if (showChangePassword) {
+        // TODO: экран смены пароля
+        return
+    }
+
+    if (showEditProfile) {
+        // TODO: экран редактирования профиля
         return
     }
 
@@ -218,6 +230,8 @@ fun MainScreen(
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToDisciplines = { showDisciplines = true },
                             onNavigateToActivityLog = { showActivityLog = true },
+                            onNavigateToChangePassword = { showChangePassword = true },
+                            onNavigateToEditProfile = { showEditProfile = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -273,6 +287,8 @@ fun MainScreen(
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToDisciplines = { showDisciplines = true },
                             onNavigateToActivityLog = { showActivityLog = true },
+                            onNavigateToChangePassword = { showChangePassword = true },
+                            onNavigateToEditProfile = { showEditProfile = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -314,6 +330,8 @@ fun MainScreen(
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToDisciplines = { showDisciplines = true },
                             onNavigateToActivityLog = { showActivityLog = true },
+                            onNavigateToChangePassword = { showChangePassword = true },
+                            onNavigateToEditProfile = { showEditProfile = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -556,6 +574,8 @@ private fun ContentArea(
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     when (selectedItem) {
@@ -580,6 +600,8 @@ private fun ContentArea(
                 onNavigateToClientSources = onNavigateToClientSources,
                 onNavigateToDisciplines = onNavigateToDisciplines,
                 onNavigateToActivityLog = onNavigateToActivityLog,
+                onNavigateToChangePassword = onNavigateToChangePassword,
+                onNavigateToEditProfile = onNavigateToEditProfile,
                 modifier = modifier,
             )
         else ->

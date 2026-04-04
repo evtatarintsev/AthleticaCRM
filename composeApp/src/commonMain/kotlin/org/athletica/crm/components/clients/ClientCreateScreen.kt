@@ -189,23 +189,30 @@ fun ClientCreateScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            OutlinedTextField(
-                value = birthday?.toString() ?: "",
-                onValueChange = {},
-                label = { Text("День рождения") },
-                placeholder = { Text("ГГГГ-ММ-ДД") },
-                singleLine = true,
-                readOnly = true,
-                enabled = !busy,
-                trailingIcon = {
-                    if (birthday != null) {
-                        TextButton(onClick = { birthday = null }) { Text("Очистить") }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = !busy) { showDatePicker = true },
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = birthday?.toString() ?: "",
+                    onValueChange = {},
+                    label = { Text("День рождения") },
+                    placeholder = { Text("ГГГГ-ММ-ДД") },
+                    singleLine = true,
+                    readOnly = true,
+                    enabled = !busy,
+                    trailingIcon = {
+                        if (birthday != null) {
+                            TextButton(onClick = { birthday = null }) { Text("Очистить") }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // Прозрачный оверлей — TextField перехватывает клики сам,
+                // поэтому Modifier.clickable на нём не срабатывает
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(enabled = !busy) { showDatePicker = true },
+                )
+            }
 
             if (showDatePicker) {
                 val datePickerState = rememberDatePickerState()

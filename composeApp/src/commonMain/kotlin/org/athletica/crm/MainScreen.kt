@@ -46,11 +46,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -199,6 +202,7 @@ fun MainScreen(
                     drawerContent = {
                         ModalDrawerSheet {
                             DrawerContent(
+                                api = api,
                                 selectedItem = selectedItem,
                                 expanded = true,
                                 onItemSelected = {
@@ -301,6 +305,7 @@ fun MainScreen(
                     drawerContent = {
                         PermanentDrawerSheet {
                             DrawerContent(
+                                api = api,
                                 selectedItem = selectedItem,
                                 expanded = true,
                                 onItemSelected = { selectedItem = it },
@@ -344,17 +349,27 @@ fun MainScreen(
 
 /**
  * Шапка аккаунта в боковой панели навигации.
- * Отображает аватар с инициалами, имя пользователя, название организации и баланс.
- * TODO: заменить заглушки на реальные данные из профиля.
+ * Загружает имя и аватар через [api]; название организации и баланс — заглушки до появления соответствующих API.
  */
 @Composable
-private fun DrawerAccountHeader() {
-    // TODO: получить из профиля / токена
-    val userName = "Александр Иванов"
+private fun DrawerAccountHeader(api: ApiClient) {
+    var name by remember { mutableStateOf("") }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        api.me().onRight { profile ->
+            name = profile.name
+            val avatarId = profile.avatarId
+            if (avatarId != null) {
+                api.uploadInfo(avatarId).onRight { avatarUrl = it.url }
+            }
+        }
+    }
+
     val orgName = "ООО «Атлетика»"
     val balance = "12 400 ₽"
     val initials =
-        userName
+        name
             .split(" ")
             .take(2)
             .mapNotNull { it.firstOrNull()?.uppercaseChar() }
@@ -375,20 +390,31 @@ private fun DrawerAccountHeader() {
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            if (avatarUrl != null) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Аватар",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                )
+            } else {
+                Text(
+                    text = initials,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
 
         Spacer(Modifier.width(12.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = userName,
+                text = name,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = orgName,
@@ -412,6 +438,7 @@ private fun DrawerAccountHeader() {
  */
 @Composable
 private fun DrawerContent(
+    api: ApiClient,
     selectedItem: NavItem,
     expanded: Boolean,
     onItemSelected: (NavItem) -> Unit,
@@ -453,7 +480,7 @@ private fun DrawerContent(
 
         // Account header: аватар, имя пользователя, организация, баланс
         if (expanded) {
-            DrawerAccountHeader()
+            DrawerAccountHeader(api)
         }
 
         HorizontalDivider()

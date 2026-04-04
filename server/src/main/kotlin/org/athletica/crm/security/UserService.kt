@@ -12,8 +12,6 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toOrgId
 import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
-import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 /**

@@ -52,14 +52,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.layout.ContentScale
-import coil3.compose.AsyncImage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.components.clients.ClientCreateScreen
@@ -68,6 +68,7 @@ import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.settings.ActivityLogScreen
+import org.athletica.crm.components.settings.ChangePasswordScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
@@ -171,7 +172,7 @@ fun MainScreen(
     }
 
     if (showChangePassword) {
-        // TODO: экран смены пароля
+        ChangePasswordScreen(api = api, onBack = { showChangePassword = false })
         return
     }
 

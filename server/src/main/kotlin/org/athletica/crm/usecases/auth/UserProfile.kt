@@ -1,4 +1,4 @@
-package org.athletica.crm.usecases
+package org.athletica.crm.usecases.auth
 
 import arrow.core.Either
 import arrow.core.left
@@ -15,6 +15,7 @@ import org.athletica.crm.core.toOrgId
 import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
 import org.athletica.crm.security.UserNotFound
+import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
@@ -39,7 +40,6 @@ suspend fun profile(): Either<DomainError, UserProfile> =
         .bind("orgId", ctx.orgId)
         .firstOrNull { it.toUserProfile() }
         ?.right() ?: UserNotFound("User with id='${ctx.userId}' not found").left()
-
 
 /**
  * Обновляет имя и аватар текущего авторизованного сотрудника.
@@ -71,12 +71,11 @@ data class UserProfile(
     val avatarId: Uuid? = null,
 ) : AuthenticatedUser
 
-
 private fun Row.toUserProfile() =
     UserProfile(
-        id = get("id", java.util.UUID::class.java)!!.toKotlinUuid().toUserId(),
-        orgId = get("org_id", java.util.UUID::class.java)!!.toKotlinUuid().toOrgId(),
+        id = get("id", UUID::class.java)!!.toKotlinUuid().toUserId(),
+        orgId = get("org_id", UUID::class.java)!!.toKotlinUuid().toOrgId(),
         username = get("login", String::class.java)!!,
         name = get("name", String::class.java)!!,
-        avatarId = get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
+        avatarId = get("avatar_id", UUID::class.java)?.toKotlinUuid(),
     )

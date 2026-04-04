@@ -240,7 +240,7 @@ class DisciplinesUsecasesTest {
                 createDiscipline(CreateDisciplineRequest(id = id, name = "Лыжи"))
             }
             // удаляем из чужой орги — должно молча игнорироваться
-            context(TestPostgres.db, otherCtx,TestAuditLog()) {
+            context(TestPostgres.db, otherCtx, TestAuditLog()) {
                 assertIs<Either.Right<Unit>>(deleteDiscipline(DeleteDisciplineRequest(ids = listOf(id))))
             }
             // дисциплина должна остаться

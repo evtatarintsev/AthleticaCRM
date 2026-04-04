@@ -36,7 +36,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
 import org.athletica.crm.security.mapUserById
-import org.athletica.crm.usecases.signUp
+import org.athletica.crm.usecases.auth.signUp
 import kotlin.uuid.Uuid
 
 /**

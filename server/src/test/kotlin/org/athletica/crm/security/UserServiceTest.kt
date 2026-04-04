@@ -9,7 +9,6 @@ import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.uuid.Uuid
 
 class UserServiceTest {
     private val hasher = PasswordHasher()

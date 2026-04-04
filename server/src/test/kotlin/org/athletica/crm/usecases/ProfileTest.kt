@@ -10,7 +10,8 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.usecases.UserProfile
+import org.athletica.crm.usecases.auth.UserProfile
+import org.athletica.crm.usecases.auth.profile
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

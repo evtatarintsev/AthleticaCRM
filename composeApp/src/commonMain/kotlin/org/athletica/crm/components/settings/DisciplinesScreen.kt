@@ -63,7 +63,10 @@ fun DisciplinesScreen(
         DirectoryItemCreateScreen(
             title = "Изменить дисциплину",
             initialItem = item,
-            onBack = { editingItem = null; editError = null },
+            onBack = {
+                editingItem = null
+                editError = null
+            },
             onSave = { updated ->
                 scope.launch {
                     isSaving = true
@@ -71,11 +74,12 @@ fun DisciplinesScreen(
                     api.updateDiscipline(UpdateDisciplineRequest(id = updated.id, name = updated.name))
                         .fold(
                             ifLeft = { err ->
-                                editError = when (err) {
-                                    is ApiClientError.ValidationError -> err.message
-                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                }
+                                editError =
+                                    when (err) {
+                                        is ApiClientError.ValidationError -> err.message
+                                        is ApiClientError.Unavailable -> "Сервис недоступен"
+                                        ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                    }
                             },
                             ifRight = {
                                 editingItem = null
@@ -97,7 +101,10 @@ fun DisciplinesScreen(
     if (showCreate) {
         DirectoryItemCreateScreen(
             title = "Новая дисциплина",
-            onBack = { showCreate = false; createError = null },
+            onBack = {
+                showCreate = false
+                createError = null
+            },
             onSave = { newItem ->
                 scope.launch {
                     isSaving = true
@@ -105,11 +112,12 @@ fun DisciplinesScreen(
                     api.createDiscipline(CreateDisciplineRequest(id = newItem.id, name = newItem.name))
                         .fold(
                             ifLeft = { err ->
-                                createError = when (err) {
-                                    is ApiClientError.ValidationError -> err.message
-                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                }
+                                createError =
+                                    when (err) {
+                                        is ApiClientError.ValidationError -> err.message
+                                        is ApiClientError.Unavailable -> "Сервис недоступен"
+                                        ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                    }
                             },
                             ifRight = {
                                 showCreate = false

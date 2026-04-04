@@ -21,6 +21,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import org.athletica.crm.api.schemas.AuthMeResponse
+import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
@@ -78,6 +79,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun updateMe(request: UpdateMeRequest): Either<ApiClientError, AuthMeResponse> =
         execute {
             http.post("/api/auth/me/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Меняет пароль текущего авторизованного пользователя. */
+    suspend fun changePassword(request: ChangePasswordRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/auth/me/change-password") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

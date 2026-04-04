@@ -1,4 +1,4 @@
-package org.athletica.crm.usecases
+package org.athletica.crm.usecases.auth
 
 import arrow.core.Either
 import arrow.core.left

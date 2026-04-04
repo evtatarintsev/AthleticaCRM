@@ -5,6 +5,9 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.usecases.auth.SignUpError
+import org.athletica.crm.usecases.auth.User
+import org.athletica.crm.usecases.auth.signUp
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -16,6 +16,7 @@ enum class AuditActionType(val code: String) {
     MESSAGE_SEND("message_send"),
     EXPORT("export"),
     IMPORT("import"),
+    AUTH_CHANGE_PASSWORD("auth_change_password"),
 }
 
 /**
@@ -125,6 +126,23 @@ fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
             entityType = entityType,
             entityId = entityId,
             data = data,
+        ),
+    )
+}
+
+/**
+ * Логирует смену пароля текущим авторизованным пользователем.
+ * Организация, пользователь и IP берутся из контекста запроса [ctx].
+ */
+context(ctx: RequestContext)
+fun AuditLog.logChangePassword() {
+    log(
+        AuditEvent(
+            orgId = ctx.orgId,
+            userId = ctx.userId,
+            username = ctx.username,
+            actionType = AuditActionType.AUTH_CHANGE_PASSWORD,
+            ipAddress = ctx.clientIp,
         ),
     )
 }

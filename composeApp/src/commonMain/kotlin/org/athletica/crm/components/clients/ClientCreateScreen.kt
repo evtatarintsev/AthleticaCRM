@@ -44,10 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -221,10 +218,9 @@ fun ClientCreateScreen(
                     confirmButton = {
                         TextButton(onClick = {
                             datePickerState.selectedDateMillis?.let { millis ->
-                                birthday = Instant
-                                    .fromEpochMilliseconds(millis)
-                                    .toLocalDateTime(TimeZone.UTC)
-                                    .date
+                                // DatePicker возвращает миллисекунды UTC-полуночи;
+                                // делим на количество мс в сутках → epoch days
+                                birthday = LocalDate.fromEpochDays((millis / 86_400_000L).toInt())
                             }
                             showDatePicker = false
                         }) { Text("ОК") }

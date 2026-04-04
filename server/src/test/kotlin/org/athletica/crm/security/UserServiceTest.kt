@@ -3,6 +3,8 @@ package org.athletica.crm.security
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.UserId
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,9 +24,9 @@ class UserServiceTest {
     private suspend fun insertUser(
         login: String,
         password: String,
-    ): Uuid {
-        val orgId = Uuid.generateV7()
-        val userId = Uuid.generateV7()
+    ): UserId {
+        val orgId = OrgId.new()
+        val userId = UserId.new()
         TestPostgres.db
             .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
             .bind("id", orgId)
@@ -60,7 +62,7 @@ class UserServiceTest {
     fun `findById returns UserNotFound when user does not exist`() =
         runTest {
             context(TestPostgres.db) {
-                assertIs<Either.Left<UserNotFound>>(userById(Uuid.generateV7()))
+                assertIs<Either.Left<UserNotFound>>(userById(UserId.new()))
             }
         }
 

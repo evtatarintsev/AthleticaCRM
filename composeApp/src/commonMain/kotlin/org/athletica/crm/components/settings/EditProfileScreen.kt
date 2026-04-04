@@ -85,8 +85,9 @@ fun EditProfileScreen(
             ifRight = { profile ->
                 name = profile.name
                 avatarId = profile.avatarId
-                if (profile.avatarId != null) {
-                    api.uploadInfo(profile.avatarId).onRight { avatarUrl = it.url }
+                val avaId = profile.avatarId
+                if (avaId != null) {
+                    api.uploadInfo(avaId).onRight { avatarUrl = it.url }
                 }
             },
         )

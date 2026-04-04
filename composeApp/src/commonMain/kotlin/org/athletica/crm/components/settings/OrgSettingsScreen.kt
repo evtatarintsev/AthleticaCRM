@@ -87,6 +87,28 @@ private fun buildSections(
     onNavigateToEditProfile: () -> Unit,
 ) = listOf(
     SettingSection(
+        label = "Пользователь",
+        items =
+            listOf(
+                SettingItem(
+                    title = "Редактировать профиль",
+                    subtitle = "Имя, фото и контактные данные",
+                    icon = Icons.Default.ManageAccounts,
+                    containerColor = Ic.OrangeContainer,
+                    iconColor = Ic.Orange,
+                    onClick = onNavigateToEditProfile,
+                ),
+                SettingItem(
+                    title = "Сменить пароль",
+                    subtitle = "Изменить текущий пароль аккаунта",
+                    icon = Icons.Default.Lock,
+                    containerColor = Ic.OrangeContainer,
+                    iconColor = Ic.Orange,
+                    onClick = onNavigateToChangePassword,
+                ),
+            ),
+    ),
+    SettingSection(
         label = "Основное",
         items =
             listOf(
@@ -200,28 +222,6 @@ private fun buildSections(
                     icon = Icons.Default.Sms,
                     containerColor = Ic.CoralContainer,
                     iconColor = Ic.Coral,
-                ),
-            ),
-    ),
-    SettingSection(
-        label = "Пользователь",
-        items =
-            listOf(
-                SettingItem(
-                    title = "Редактировать профиль",
-                    subtitle = "Имя, фото и контактные данные",
-                    icon = Icons.Default.ManageAccounts,
-                    containerColor = Ic.OrangeContainer,
-                    iconColor = Ic.Orange,
-                    onClick = onNavigateToEditProfile,
-                ),
-                SettingItem(
-                    title = "Сменить пароль",
-                    subtitle = "Изменить текущий пароль аккаунта",
-                    icon = Icons.Default.Lock,
-                    containerColor = Ic.OrangeContainer,
-                    iconColor = Ic.Orange,
-                    onClick = onNavigateToChangePassword,
                 ),
             ),
     ),

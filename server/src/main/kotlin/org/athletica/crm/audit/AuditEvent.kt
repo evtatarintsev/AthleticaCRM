@@ -128,3 +128,24 @@ fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
         ),
     )
 }
+
+/**
+ * Логирует удаление сущности типа [entityType] с идентификатором [entityId].
+ * [data] — JSON-снапшот сущности после изменения.
+ * Организация, пользователь и IP берутся из контекста запроса [ctx].
+ */
+context(ctx: RequestContext)
+fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
+    log(
+        AuditEvent(
+            orgId = ctx.orgId,
+            userId = ctx.userId,
+            username = ctx.username,
+            actionType = AuditActionType.DELETE,
+            ipAddress = ctx.clientIp,
+            entityType = entityType,
+            entityId = entityId,
+            data = data,
+        ),
+    )
+}

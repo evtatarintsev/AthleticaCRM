@@ -23,7 +23,6 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.audit.AuditActionType
 import org.athletica.crm.audit.AuditEvent
 import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.audit.logLogin
 import org.athletica.crm.audit.logSignUp
 import org.athletica.crm.core.OrgId
@@ -31,6 +30,7 @@ import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -154,13 +154,13 @@ fun ApplicationRequest.refreshToken(): Either<CommonDomainError, String> =
  * Извлекает идентификатор пользователя из claim-а токена.
  * Проверяет, что тип токена — [JwtConfig.TYPE_REFRESH], иначе возвращает ошибку.
  */
-fun DecodedJWT.userIdClaim(): Either<CommonDomainError, Uuid> =
+fun DecodedJWT.userIdClaim(): Either<CommonDomainError, UserId> =
     either {
         if (getClaim(JwtConfig.CLAIM_TYPE).asString() != JwtConfig.TYPE_REFRESH) {
             raise(CommonDomainError("", ""))
         }
         val userId = getClaim(JwtConfig.CLAIM_USER_ID).asString()
-        Uuid.parse(userId)
+        Uuid.parse(userId).toUserId()
     }
 
 /**

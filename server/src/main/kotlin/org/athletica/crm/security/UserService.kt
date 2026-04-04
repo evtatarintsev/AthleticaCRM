@@ -37,7 +37,7 @@ data class UserNotFound(override val message: String) : DomainError {
  * Возвращает найденного пользователя, либо [UserNotFound].
  */
 context(db: Database)
-suspend fun userById(id: Uuid): Either<UserNotFound, User> =
+suspend fun userById(id: UserId): Either<UserNotFound, User> =
     db
         .sql(
             """
@@ -47,13 +47,13 @@ suspend fun userById(id: Uuid): Either<UserNotFound, User> =
             WHERE u.id = :id AND e.is_active = true
             """.trimIndent(),
         )
-        .bind("id", id.toJavaUuid())
+        .bind("id", id)
         .firstOrNull { it.toUser() }
         ?.right() ?: UserNotFound("User with id='$id' not found").left()
 
 /** Делегирует вызов [userById] для данного UUID. Удобен при цепочке Either-операций. */
 context(db: Database)
-suspend fun Uuid.mapUserById() = userById(this)
+suspend fun UserId.mapUserById() = userById(this)
 
 /**
  * Ищет пользователя по имени и паролю.

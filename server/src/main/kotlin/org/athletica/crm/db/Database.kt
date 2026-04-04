@@ -109,6 +109,7 @@ class QueryBuilder(
         bindings.add(name to value.value.toJavaUuid())
         return this
     }
+
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
      *

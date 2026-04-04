@@ -57,7 +57,6 @@ fun App(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        // TODO: на вебе браузер приложит httpOnly cookie автоматически
         authState =
             api.me().fold(
                 ifLeft = { error ->

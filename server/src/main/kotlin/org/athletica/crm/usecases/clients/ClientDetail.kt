@@ -8,6 +8,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
+import kotlinx.datetime.toKotlinLocalDate
 
 context(db: Database, ctx: RequestContext)
 suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailResponse> =
@@ -27,7 +28,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                     id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                     name = row.get("name", String::class.java)!!,
                     avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
-                    birthday = row.get("birthday", java.time.LocalDate::class.java)?.toString(),
+                    birthday = row.get("birthday", java.time.LocalDate::class.java)?.toKotlinLocalDate(),
                 )
             }
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", "Клиент не найден"))

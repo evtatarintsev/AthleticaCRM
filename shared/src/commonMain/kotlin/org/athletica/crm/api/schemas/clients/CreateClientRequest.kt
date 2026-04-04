@@ -1,5 +1,6 @@
 package org.athletica.crm.api.schemas.clients
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
 
@@ -15,6 +16,6 @@ data class CreateClientRequest(
     val name: String,
     /** Идентификатор загрузки аватарки клиента, полученный через POST /api/upload. */
     val avatarId: Uuid? = null,
-    /** День рождения клиента в формате ISO-8601 (YYYY-MM-DD), либо null если не указан. */
-    val birthday: String? = null,
+    /** День рождения клиента, либо null если не указан. */
+    val birthday: LocalDate? = null,
 )

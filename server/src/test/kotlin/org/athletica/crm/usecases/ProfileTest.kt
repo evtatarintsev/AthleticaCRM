@@ -10,7 +10,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.User
+import org.athletica.crm.usecases.UserProfile
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -60,10 +60,12 @@ class ProfileTest {
             val (userId, orgId) = insertUser("user@example.com")
             context(TestPostgres.db, requestContext(userId, orgId), TestAuditLog()) {
                 val result = profile()
-                val user = assertIs<Either.Right<User>>(result).value
+                val user = assertIs<Either.Right<UserProfile>>(result).value
                 assertEquals("user@example.com", user.username)
+                assertEquals("user@example.com", user.name)
                 assertEquals(userId, user.id)
                 assertEquals(orgId, user.orgId)
+                assertEquals(null, user.avatarId)
             }
         }
 

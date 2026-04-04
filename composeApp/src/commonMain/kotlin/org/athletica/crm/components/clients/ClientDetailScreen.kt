@@ -62,6 +62,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Month
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
@@ -274,7 +276,7 @@ fun ClientDetailScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                                 ) {
-                                    Box(Modifier.weight(1f)) { BasicInfoSection() }
+                                    Box(Modifier.weight(1f)) { BasicInfoSection(loadedClient) }
                                     Column(Modifier.weight(1f)) {
                                         SubscriptionsSection()
                                         UnpaidLessonsSection()
@@ -282,7 +284,7 @@ fun ClientDetailScreen(
                                 }
                             }
                         } else {
-                            item { BasicInfoSection() }
+                            item { BasicInfoSection(loadedClient) }
                             item { SubscriptionsSection() }
                             item { UnpaidLessonsSection() }
                         }
@@ -462,7 +464,7 @@ private fun InfoRow(label: String, value: String?) {
 }
 
 @Composable
-private fun BasicInfoSection() {
+private fun BasicInfoSection(client: ClientDetailResponse) {
     SectionCard("Основная информация") {
         InfoRow("Баланс", "3 056,00 ₽")
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -472,7 +474,7 @@ private fun BasicInfoSection() {
         InfoRow("Тип договора", null)
         InfoRow("Спортивный разряд", null)
         InfoRow("Скидка", "0 ₽")
-        InfoRow("День рождения", null)
+        InfoRow("День рождения", client.birthday?.formatRu())
         InfoRow("Адрес", null)
         InfoRow("Начало занятий", "15.11.2019")
     }
@@ -623,6 +625,25 @@ private fun HistoryRow(visit: FakeVisit) {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
+
+private fun LocalDate.formatRu(): String {
+    val month = when (month) {
+        Month.JANUARY -> "января"
+        Month.FEBRUARY -> "февраля"
+        Month.MARCH -> "марта"
+        Month.APRIL -> "апреля"
+        Month.MAY -> "мая"
+        Month.JUNE -> "июня"
+        Month.JULY -> "июля"
+        Month.AUGUST -> "августа"
+        Month.SEPTEMBER -> "сентября"
+        Month.OCTOBER -> "октября"
+        Month.NOVEMBER -> "ноября"
+        Month.DECEMBER -> "декабря"
+        else -> month.name
+    }
+    return "$dayOfMonth $month $year"
+}
 
 @Composable
 private fun StatusText(status: String) {

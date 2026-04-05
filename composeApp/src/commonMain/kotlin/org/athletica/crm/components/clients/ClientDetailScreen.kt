@@ -40,8 +40,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -290,7 +290,7 @@ fun ClientDetailScreen(
                         }
 
                         stickyHeader {
-                            ScrollableTabRow(
+                            PrimaryScrollableTabRow(
                                 selectedTabIndex = selectedTab,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
@@ -643,7 +643,6 @@ private fun LocalDate.formatRu(): String {
             Month.OCTOBER -> "октября"
             Month.NOVEMBER -> "ноября"
             Month.DECEMBER -> "декабря"
-            else -> month.name
         }
     return "$dayOfMonth $month $year"
 }

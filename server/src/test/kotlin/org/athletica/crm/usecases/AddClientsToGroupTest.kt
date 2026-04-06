@@ -94,9 +94,10 @@ class AddClientsToGroupTest {
             val groupId = insertGroup(orgId)
 
             context(TestPostgres.db, ctx(orgId)) {
-                val result = addClientsToGroup(
-                    AddClientsToGroupRequest(listOf(clientId1, clientId2, clientId3), groupId),
-                )
+                val result =
+                    addClientsToGroup(
+                        AddClientsToGroupRequest(listOf(clientId1, clientId2, clientId3), groupId),
+                    )
                 assertIs<Either.Right<Unit>>(result)
             }
 
@@ -128,9 +129,10 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
 
             context(TestPostgres.db, ctx(orgId)) {
-                val result = addClientsToGroup(
-                    AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()),
-                )
+                val result =
+                    addClientsToGroup(
+                        AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()),
+                    )
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("GROUP_NOT_FOUND", error.code)
             }
@@ -145,9 +147,10 @@ class AddClientsToGroupTest {
             val foreignGroupId = insertGroup(orgId2)
 
             context(TestPostgres.db, ctx(orgId1)) {
-                val result = addClientsToGroup(
-                    AddClientsToGroupRequest(listOf(clientId), foreignGroupId),
-                )
+                val result =
+                    addClientsToGroup(
+                        AddClientsToGroupRequest(listOf(clientId), foreignGroupId),
+                    )
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("GROUP_NOT_FOUND", error.code)
             }
@@ -162,9 +165,10 @@ class AddClientsToGroupTest {
             val groupId = insertGroup(orgId)
 
             context(TestPostgres.db, ctx(orgId)) {
-                val result = addClientsToGroup(
-                    AddClientsToGroupRequest(listOf(Uuid.generateV7()), groupId),
-                )
+                val result =
+                    addClientsToGroup(
+                        AddClientsToGroupRequest(listOf(Uuid.generateV7()), groupId),
+                    )
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("CLIENT_NOT_FOUND", error.code)
             }

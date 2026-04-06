@@ -68,6 +68,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_delete_client
 import org.athletica.crm.generated.resources.action_edit
@@ -117,8 +118,6 @@ private data class FakeParent(val name: String, val phone: String, val relation:
 private data class FakeDocument(val name: String, val uploadedAt: String)
 
 private data class FakeVisit(val date: String, val status: String, val group: String)
-
-private val fakeGroups = listOf("Боевое самбо", "Мужчины")
 
 private val fakeSubscriptions =
     listOf(
@@ -442,9 +441,13 @@ private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient) {
                 fontWeight = FontWeight.Medium,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                fakeGroups.forEach { group ->
-                    SuggestionChip(onClick = {}, label = { Text(group, style = MaterialTheme.typography.labelSmall) })
+                client.groups.forEach { group ->
+                    SuggestionChip(onClick = {}, label = { Text(group.name, style = MaterialTheme.typography.labelSmall) })
                 }
+                AssistChip(
+                    onClick = {},
+                    label = { Text(stringResource(Res.string.action_add_client_group), style = MaterialTheme.typography.labelSmall) },
+                )
             }
         }
     }
@@ -507,7 +510,6 @@ private fun BasicInfoSection(client: ClientDetailResponse) {
         InfoRow(stringResource(Res.string.label_balance), "3 056,00 ₽")
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         InfoRow(stringResource(Res.string.label_phone), null)
-        InfoRow("Группы", fakeGroups.joinToString(", "))
         InfoRow(stringResource(Res.string.label_contract_number), null)
         InfoRow(stringResource(Res.string.label_contract_type), null)
         InfoRow(stringResource(Res.string.label_sports_rank), null)

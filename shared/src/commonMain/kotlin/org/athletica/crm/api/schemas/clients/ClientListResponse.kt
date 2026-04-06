@@ -15,6 +15,8 @@ data class ClientListItem(
     val avatarId: Uuid? = null,
     /** День рождения клиента, либо null если не указан. */
     val birthday: LocalDate? = null,
+    /** Группы в которых состоит клиент. */
+    val groups: List<ClientGroup>,
 )
 
 /** Ответ на запрос списка клиентов с поддержкой пагинации. */

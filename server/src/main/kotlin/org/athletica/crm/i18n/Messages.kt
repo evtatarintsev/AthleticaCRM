@@ -131,6 +131,11 @@ object Messages {
         override val en = "Group with this ID already exists"
     }
 
+    object GroupNotFound : LocalizationKey {
+        override val ru = "Группа не найдена"
+        override val en = "Group not found"
+    }
+
     object InvalidScheduleStartTime : LocalizationTemplate1<String> {
         override val ru = { time: String -> "Некорректное время начала слота: \"$time\"" }
         override val en = { time: String -> "Invalid slot start time: \"$time\"" }

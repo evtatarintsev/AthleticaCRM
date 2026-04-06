@@ -131,6 +131,11 @@ object Messages {
         override val en = "Group with this ID already exists"
     }
 
+    object GroupNameAlreadyExists : LocalizationKey {
+        override val ru = "Группа с таким названием уже существует"
+        override val en = "Group with this name already exists"
+    }
+
     object GroupNotFound : LocalizationKey {
         override val ru = "Группа не найдена"
         override val en = "Group not found"

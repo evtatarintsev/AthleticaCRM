@@ -69,7 +69,11 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                 }
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("GROUP_ALREADY_EXISTS", Messages.GroupAlreadyExists.localize()))
+            if (e.message?.contains("uq_groups_org_name") == true) {
+                raise(CommonDomainError("GROUP_NAME_ALREADY_EXISTS", Messages.GroupNameAlreadyExists.localize()))
+            } else {
+                raise(CommonDomainError("GROUP_ALREADY_EXISTS", Messages.GroupAlreadyExists.localize()))
+            }
         }
 
         GroupDetailResponse(

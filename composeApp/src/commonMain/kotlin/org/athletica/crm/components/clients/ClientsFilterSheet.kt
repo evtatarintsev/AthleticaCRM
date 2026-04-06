@@ -23,6 +23,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_reset_filters
+import org.athletica.crm.generated.resources.filter_gender_all
+import org.athletica.crm.generated.resources.filter_gender_female
+import org.athletica.crm.generated.resources.filter_gender_male
+import org.athletica.crm.generated.resources.filter_has_debt
+import org.athletica.crm.generated.resources.filter_no_group
+import org.athletica.crm.generated.resources.filters_label
+import org.athletica.crm.generated.resources.label_birth_year
+import org.athletica.crm.generated.resources.label_from
+import org.athletica.crm.generated.resources.label_gender
+import org.athletica.crm.generated.resources.label_to
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Панель расширенных фильтров в виде [ModalBottomSheet].
@@ -59,13 +72,13 @@ fun ClientsFilterSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Фильтры",
+                    text = stringResource(Res.string.filters_label),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
                 if (filter.chipCount > 0) {
                     TextButton(onClick = { onFilterChange(ClientFilterState(nameQuery = filter.nameQuery)) }) {
-                        Text("Сбросить все")
+                        Text(stringResource(Res.string.action_reset_filters))
                     }
                 }
             }
@@ -74,7 +87,7 @@ fun ClientsFilterSheet(
 
             // Пол
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Пол", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(Res.string.label_gender), style = MaterialTheme.typography.labelLarge)
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     GenderFilter.entries.forEachIndexed { index, g ->
                         SegmentedButton(
@@ -86,7 +99,13 @@ fun ClientsFilterSheet(
                                     count = GenderFilter.entries.size,
                                 ),
                         ) {
-                            Text(g.label)
+                            Text(
+                                when (g) {
+                                    GenderFilter.All -> stringResource(Res.string.filter_gender_all)
+                                    GenderFilter.Male -> stringResource(Res.string.filter_gender_male)
+                                    GenderFilter.Female -> stringResource(Res.string.filter_gender_female)
+                                },
+                            )
                         }
                     }
                 }
@@ -94,7 +113,7 @@ fun ClientsFilterSheet(
 
             // Год рождения
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Год рождения", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(Res.string.label_birth_year), style = MaterialTheme.typography.labelLarge)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth(),
@@ -102,7 +121,7 @@ fun ClientsFilterSheet(
                     OutlinedTextField(
                         value = filter.birthYearFrom?.toString() ?: "",
                         onValueChange = { onFilterChange(filter.copy(birthYearFrom = it.toIntOrNull())) },
-                        label = { Text("С") },
+                        label = { Text(stringResource(Res.string.label_from)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
@@ -110,7 +129,7 @@ fun ClientsFilterSheet(
                     OutlinedTextField(
                         value = filter.birthYearTo?.toString() ?: "",
                         onValueChange = { onFilterChange(filter.copy(birthYearTo = it.toIntOrNull())) },
-                        label = { Text("По") },
+                        label = { Text(stringResource(Res.string.label_to)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
@@ -124,7 +143,7 @@ fun ClientsFilterSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Без группы",
+                    text = stringResource(Res.string.filter_no_group),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
@@ -140,7 +159,7 @@ fun ClientsFilterSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Есть задолженность",
+                    text = stringResource(Res.string.filter_has_debt),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )

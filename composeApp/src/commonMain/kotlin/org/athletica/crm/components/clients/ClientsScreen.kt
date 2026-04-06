@@ -32,6 +32,14 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_delete_selected
+import org.athletica.crm.generated.resources.action_export_selected
+import org.athletica.crm.generated.resources.action_notify_selected
+import org.athletica.crm.generated.resources.clients_empty
+import org.athletica.crm.generated.resources.empty_search_results
+import org.athletica.crm.generated.resources.label_selected_count
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
@@ -124,12 +132,12 @@ fun ClientsScreen(
                     when {
                         clients.isEmpty() ->
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Клиентов пока нет", style = MaterialTheme.typography.bodyLarge)
+                                Text(stringResource(Res.string.clients_empty), style = MaterialTheme.typography.bodyLarge)
                             }
 
                         filteredClients.isEmpty() ->
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Ничего не найдено", style = MaterialTheme.typography.bodyLarge)
+                                Text(stringResource(Res.string.empty_search_results), style = MaterialTheme.typography.bodyLarge)
                             }
 
                         else -> {
@@ -205,7 +213,7 @@ private fun ClientsBottomActionBar(
 ) {
     BottomAppBar(modifier = modifier) {
         Text(
-            text = "Выбрано: $selectedCount",
+            text = stringResource(Res.string.label_selected_count, selectedCount),
             style = MaterialTheme.typography.titleSmall,
             modifier =
                 Modifier
@@ -213,13 +221,13 @@ private fun ClientsBottomActionBar(
                     .weight(1f),
         )
         IconButton(onClick = onDelete) {
-            Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить выбранных")
+            Icon(imageVector = Icons.Default.Delete, contentDescription = stringResource(Res.string.action_delete_selected))
         }
         IconButton(onClick = onNotify) {
-            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Оповестить выбранных")
+            Icon(imageVector = Icons.Default.Notifications, contentDescription = stringResource(Res.string.action_notify_selected))
         }
         IconButton(onClick = onExport) {
-            Icon(imageVector = Icons.Default.Share, contentDescription = "Экспортировать выбранных")
+            Icon(imageVector = Icons.Default.Share, contentDescription = stringResource(Res.string.action_export_selected))
         }
     }
 }

@@ -32,6 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
 import org.athletica.crm.core.DayOfWeek
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_slot
+import org.athletica.crm.generated.resources.action_delete_slot
+import org.athletica.crm.generated.resources.schedule_empty
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Редактор расписания группы.
@@ -47,7 +52,7 @@ fun ScheduleEditor(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (slots.isEmpty()) {
             Text(
-                text = "Расписание не задано",
+                text = stringResource(Res.string.schedule_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -74,7 +79,7 @@ fun ScheduleEditor(
         ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Добавить слот")
+            Text(stringResource(Res.string.action_add_slot))
         }
     }
 }
@@ -148,7 +153,7 @@ private fun ScheduleSlotRow(
         IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Удалить слот",
+                contentDescription = stringResource(Res.string.action_delete_slot),
                 modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )

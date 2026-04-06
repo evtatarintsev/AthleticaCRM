@@ -35,6 +35,15 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.ChangePasswordRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_save
+import org.athletica.crm.generated.resources.error_passwords_dont_match
+import org.athletica.crm.generated.resources.label_confirm_password
+import org.athletica.crm.generated.resources.label_current_password
+import org.athletica.crm.generated.resources.label_new_password
+import org.athletica.crm.generated.resources.screen_change_password
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран «Сменить пароль».
@@ -68,10 +77,10 @@ fun ChangePasswordScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Сменить пароль") },
+                title = { Text(stringResource(Res.string.screen_change_password)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isSaving) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
@@ -107,7 +116,7 @@ fun ChangePasswordScreen(
                         if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
-                            Text("Сохранить")
+                            Text(stringResource(Res.string.action_save))
                         }
                     }
                 },
@@ -126,7 +135,7 @@ fun ChangePasswordScreen(
             OutlinedTextField(
                 value = oldPassword,
                 onValueChange = { oldPassword = it },
-                label = { Text("Текущий пароль") },
+                label = { Text(stringResource(Res.string.label_current_password)) },
                 singleLine = true,
                 enabled = !isSaving,
                 visualTransformation = PasswordVisualTransformation(),
@@ -137,7 +146,7 @@ fun ChangePasswordScreen(
             OutlinedTextField(
                 value = newPassword,
                 onValueChange = { newPassword = it },
-                label = { Text("Новый пароль") },
+                label = { Text(stringResource(Res.string.label_new_password)) },
                 singleLine = true,
                 enabled = !isSaving,
                 isError = newPassword.isNotBlank() && !passwordsMatch,
@@ -149,13 +158,13 @@ fun ChangePasswordScreen(
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
-                label = { Text("Подтверждение пароля") },
+                label = { Text(stringResource(Res.string.label_confirm_password)) },
                 singleLine = true,
                 enabled = !isSaving,
                 isError = confirmPassword.isNotBlank() && !passwordsMatch,
                 supportingText =
                     if (confirmPassword.isNotBlank() && !passwordsMatch) {
-                        { Text("Пароли не совпадают") }
+                        { Text(stringResource(Res.string.error_passwords_dont_match)) }
                     } else {
                         null
                     },

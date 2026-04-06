@@ -18,6 +18,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_close
+import org.athletica.crm.generated.resources.action_display_settings
+import org.athletica.crm.generated.resources.label_birth_year
+import org.athletica.crm.generated.resources.label_debt
+import org.athletica.crm.generated.resources.label_gender
+import org.athletica.crm.generated.resources.label_person_name
+import org.athletica.crm.generated.resources.section_columns
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Диалог настроек отображения таблицы клиентов.
@@ -36,13 +45,13 @@ fun ClientsSettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Настройки отображения") },
+        title = { Text(stringResource(Res.string.action_display_settings)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Видимые колонки
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Колонки",
+                        text = stringResource(Res.string.section_columns),
                         style = MaterialTheme.typography.labelLarge,
                     )
 
@@ -62,7 +71,7 @@ fun ClientsSettingsDialog(
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = "Имя",
+                            text = stringResource(Res.string.label_person_name),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
@@ -92,7 +101,12 @@ fun ClientsSettingsDialog(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                text = column.label,
+                                text =
+                                    when (column) {
+                                        ClientColumn.Gender -> stringResource(Res.string.label_gender)
+                                        ClientColumn.BirthYear -> stringResource(Res.string.label_birth_year)
+                                        ClientColumn.Debt -> stringResource(Res.string.label_debt)
+                                    },
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         }
@@ -101,7 +115,7 @@ fun ClientsSettingsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Закрыть") }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_close)) }
         },
     )
 }

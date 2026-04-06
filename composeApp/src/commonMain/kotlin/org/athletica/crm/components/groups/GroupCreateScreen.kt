@@ -34,6 +34,13 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_create
+import org.athletica.crm.generated.resources.label_name
+import org.athletica.crm.generated.resources.screen_group_create
+import org.athletica.crm.generated.resources.section_schedule
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
@@ -59,12 +66,12 @@ fun GroupCreateScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Новая группа") },
+                title = { Text(stringResource(Res.string.screen_group_create)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !isCreating) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -98,7 +105,7 @@ fun GroupCreateScreen(
                         if (isCreating) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
-                            Text("Создать")
+                            Text(stringResource(Res.string.action_create))
                         }
                     }
                 },
@@ -117,7 +124,7 @@ fun GroupCreateScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Название") },
+                label = { Text(stringResource(Res.string.label_name)) },
                 singleLine = true,
                 isError = error != null,
                 enabled = !isCreating,
@@ -134,7 +141,7 @@ fun GroupCreateScreen(
 
             HorizontalDivider()
 
-            Text("Расписание", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(Res.string.section_schedule), style = MaterialTheme.typography.titleMedium)
 
             ScheduleEditor(
                 slots = schedule,

@@ -48,7 +48,21 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_photo
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_cancel
+import org.athletica.crm.generated.resources.action_change_photo
+import org.athletica.crm.generated.resources.action_clear
+import org.athletica.crm.generated.resources.action_create
+import org.athletica.crm.generated.resources.action_ok
+import org.athletica.crm.generated.resources.cd_avatar
+import org.athletica.crm.generated.resources.hint_date_format
+import org.athletica.crm.generated.resources.label_birthday
+import org.athletica.crm.generated.resources.label_person_name
+import org.athletica.crm.generated.resources.screen_client_create
 import org.athletica.crm.pickImageFile
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
@@ -79,12 +93,12 @@ fun ClientCreateScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Новый клиент") },
+                title = { Text(stringResource(Res.string.screen_client_create)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !busy) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -124,7 +138,7 @@ fun ClientCreateScreen(
                         if (isCreating) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
-                            Text("Создать")
+                            Text(stringResource(Res.string.action_create))
                         }
                     }
                 },
@@ -179,7 +193,7 @@ fun ClientCreateScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Имя") },
+                label = { Text(stringResource(Res.string.label_person_name)) },
                 singleLine = true,
                 isError = error != null,
                 enabled = !busy,
@@ -190,14 +204,14 @@ fun ClientCreateScreen(
                 OutlinedTextField(
                     value = birthday?.toString() ?: "",
                     onValueChange = {},
-                    label = { Text("День рождения") },
-                    placeholder = { Text("ГГГГ-ММ-ДД") },
+                    label = { Text(stringResource(Res.string.label_birthday)) },
+                    placeholder = { Text(stringResource(Res.string.hint_date_format)) },
                     singleLine = true,
                     readOnly = true,
                     enabled = !busy,
                     trailingIcon = {
                         if (birthday != null) {
-                            TextButton(onClick = { birthday = null }) { Text("Очистить") }
+                            TextButton(onClick = { birthday = null }) { Text(stringResource(Res.string.action_clear)) }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -224,10 +238,10 @@ fun ClientCreateScreen(
                                 birthday = LocalDate.fromEpochDays((millis / 86_400_000L).toInt())
                             }
                             showDatePicker = false
-                        }) { Text("ОК") }
+                        }) { Text(stringResource(Res.string.action_ok)) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) { Text("Отмена") }
+                        TextButton(onClick = { showDatePicker = false }) { Text(stringResource(Res.string.action_cancel)) }
                     },
                 ) {
                     DatePicker(state = datePickerState)
@@ -272,7 +286,7 @@ private fun AvatarPicker(
                 avatarUrl != null ->
                     AsyncImage(
                         model = avatarUrl,
-                        contentDescription = "Аватар",
+                        contentDescription = stringResource(Res.string.cd_avatar),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.size(96.dp).clip(CircleShape),
                     )
@@ -285,7 +299,7 @@ private fun AvatarPicker(
                 else ->
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Добавить фото",
+                        contentDescription = stringResource(Res.string.action_add_photo),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(32.dp),
                     )
@@ -293,7 +307,7 @@ private fun AvatarPicker(
         }
 
         Text(
-            text = if (avatarUrl != null) "Изменить фото" else "Добавить фото",
+            text = if (avatarUrl != null) stringResource(Res.string.action_change_photo) else stringResource(Res.string.action_add_photo),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,

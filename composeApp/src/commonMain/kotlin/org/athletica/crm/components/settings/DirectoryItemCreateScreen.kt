@@ -36,6 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_photo
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_save
+import org.athletica.crm.generated.resources.action_select_photo
+import org.athletica.crm.generated.resources.label_name
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
@@ -70,7 +77,7 @@ fun DirectoryItemCreateScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
@@ -86,7 +93,7 @@ fun DirectoryItemCreateScreen(
                         },
                         enabled = name.isNotBlank() && !isLoading,
                     ) {
-                        Text("Сохранить")
+                        Text(stringResource(Res.string.action_save))
                     }
                 },
             )
@@ -115,7 +122,7 @@ fun DirectoryItemCreateScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Название") },
+                label = { Text(stringResource(Res.string.label_name)) },
                 singleLine = true,
                 isError = error != null,
                 supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -168,7 +175,7 @@ private fun PhotoPickerPlaceholder(
             } else {
                 Icon(
                     imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Выбрать фото",
+                    contentDescription = stringResource(Res.string.action_select_photo),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(32.dp),
                 )
@@ -176,7 +183,7 @@ private fun PhotoPickerPlaceholder(
         }
 
         Text(
-            text = "Добавить фото",
+            text = stringResource(Res.string.action_add_photo),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,

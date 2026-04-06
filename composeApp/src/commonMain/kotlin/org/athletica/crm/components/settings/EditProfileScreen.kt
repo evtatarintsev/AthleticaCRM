@@ -45,7 +45,16 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.UpdateMeRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_photo
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_change_photo
+import org.athletica.crm.generated.resources.action_save
+import org.athletica.crm.generated.resources.cd_avatar
+import org.athletica.crm.generated.resources.label_person_name
+import org.athletica.crm.generated.resources.screen_edit_profile
 import org.athletica.crm.pickImageFile
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
@@ -98,10 +107,10 @@ fun EditProfileScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Редактировать профиль") },
+                title = { Text(stringResource(Res.string.screen_edit_profile)) },
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !busy) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
@@ -138,7 +147,7 @@ fun EditProfileScreen(
                         if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
-                            Text("Сохранить")
+                            Text(stringResource(Res.string.action_save))
                         }
                     }
                 },
@@ -203,7 +212,7 @@ fun EditProfileScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Имя") },
+                label = { Text(stringResource(Res.string.label_person_name)) },
                 singleLine = true,
                 isError = error != null,
                 enabled = !busy,
@@ -248,7 +257,7 @@ private fun AvatarPicker(
                 avatarUrl != null ->
                     AsyncImage(
                         model = avatarUrl,
-                        contentDescription = "Аватар",
+                        contentDescription = stringResource(Res.string.cd_avatar),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.size(96.dp).clip(CircleShape),
                     )
@@ -261,7 +270,7 @@ private fun AvatarPicker(
                 else ->
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Добавить фото",
+                        contentDescription = stringResource(Res.string.action_add_photo),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(32.dp),
                     )
@@ -269,7 +278,7 @@ private fun AvatarPicker(
         }
 
         Text(
-            text = if (avatarUrl != null) "Изменить фото" else "Добавить фото",
+            text = if (avatarUrl != null) stringResource(Res.string.action_change_photo) else stringResource(Res.string.action_add_photo),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,

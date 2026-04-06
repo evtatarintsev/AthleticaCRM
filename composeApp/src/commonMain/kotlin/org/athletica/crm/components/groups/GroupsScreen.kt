@@ -41,6 +41,16 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.groups.GroupListItem
 import org.athletica.crm.api.schemas.groups.GroupListRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_group
+import org.athletica.crm.generated.resources.action_clear_search
+import org.athletica.crm.generated.resources.action_delete_selected
+import org.athletica.crm.generated.resources.action_notify_selected
+import org.athletica.crm.generated.resources.empty_search_results
+import org.athletica.crm.generated.resources.groups_empty
+import org.athletica.crm.generated.resources.hint_search_by_title
+import org.athletica.crm.generated.resources.label_selected_count
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
@@ -86,7 +96,7 @@ fun GroupsScreen(
                 ExtendedFloatingActionButton(
                     onClick = onNavigateToCreate,
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Добавить группу") },
+                    text = { Text(stringResource(Res.string.action_add_group)) },
                 )
             }
         },
@@ -130,7 +140,7 @@ fun GroupsScreen(
                                 onValueChange = { filter = filter.copy(nameQuery = it) },
                                 placeholder = {
                                     Text(
-                                        "Поиск по названию...",
+                                        stringResource(Res.string.hint_search_by_title),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -147,7 +157,7 @@ fun GroupsScreen(
                                         IconButton(onClick = { filter = filter.copy(nameQuery = "") }) {
                                             Icon(
                                                 imageVector = Icons.Default.Close,
-                                                contentDescription = "Очистить поиск",
+                                                contentDescription = stringResource(Res.string.action_clear_search),
                                                 modifier = Modifier.size(18.dp),
                                             )
                                         }
@@ -163,12 +173,12 @@ fun GroupsScreen(
                         when {
                             groups.isEmpty() ->
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("Групп пока нет", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(Res.string.groups_empty), style = MaterialTheme.typography.bodyLarge)
                                 }
 
                             filteredGroups.isEmpty() ->
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("Ничего не найдено", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(Res.string.empty_search_results), style = MaterialTheme.typography.bodyLarge)
                                 }
 
                             else ->
@@ -216,7 +226,7 @@ private fun GroupsBottomActionBar(
 ) {
     BottomAppBar(modifier = modifier) {
         Text(
-            text = "Выбрано: $selectedCount",
+            text = stringResource(Res.string.label_selected_count, selectedCount),
             style = MaterialTheme.typography.titleSmall,
             modifier =
                 Modifier
@@ -224,10 +234,10 @@ private fun GroupsBottomActionBar(
                     .weight(1f),
         )
         IconButton(onClick = onDelete) {
-            Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить выбранные")
+            Icon(imageVector = Icons.Default.Delete, contentDescription = stringResource(Res.string.action_delete_selected))
         }
         IconButton(onClick = onNotify) {
-            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Оповестить выбранные")
+            Icon(imageVector = Icons.Default.Notifications, contentDescription = stringResource(Res.string.action_notify_selected))
         }
     }
 }

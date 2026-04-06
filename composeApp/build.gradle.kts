@@ -59,6 +59,10 @@ afterEvaluate {
     }
 }
 
+compose.resources {
+    packageOfResClass = "org.athletica.crm.generated.resources"
+}
+
 compose.desktop {
     application {
         mainClass = "org.athletica.crm.MainKt"

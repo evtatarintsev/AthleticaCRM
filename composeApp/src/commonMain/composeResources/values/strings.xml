@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- App -->
+    <string name="app_name">AthleticaCRM</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Назад</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_create">Создать</string>
+    <string name="action_add">Добавить</string>
+    <string name="action_close">Закрыть</string>
+    <string name="action_clear">Очистить</string>
+    <string name="action_ok">ОК</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_edit">Редактировать</string>
+    <string name="action_more">Ещё</string>
+    <string name="action_logout">Выйти</string>
+    <string name="action_delete_selected">Удалить выбранные</string>
+    <string name="action_notify_selected">Оповестить выбранных</string>
+    <string name="action_export_selected">Экспортировать выбранных</string>
+    <string name="action_add_photo">Добавить фото</string>
+    <string name="action_change_photo">Изменить фото</string>
+    <string name="action_select_photo">Выбрать фото</string>
+    <string name="action_clear_search">Очистить поиск</string>
+    <string name="action_upload_document">Загрузить документ</string>
+    <string name="action_display_settings">Настройки отображения</string>
+    <string name="action_previous_page">Предыдущая</string>
+    <string name="action_next_page">Следующая</string>
+    <string name="action_reset_filters">Сбросить все</string>
+    <string name="action_remove_gender_filter">Убрать фильтр по полу</string>
+    <string name="action_remove_birth_year_filter">Убрать фильтр по году рождения</string>
+
+    <!-- Common hints / placeholders -->
+    <string name="hint_search">Поиск…</string>
+    <string name="hint_date_format">ГГГГ-ММ-ДД</string>
+    <string name="placeholder_not_specified">Не указан</string>
+
+    <!-- Common labels -->
+    <string name="label_name">Название</string>
+    <string name="label_person_name">Имя</string>
+    <string name="label_login">Логин</string>
+    <string name="label_email">Email</string>
+    <string name="label_password">Пароль</string>
+    <string name="label_org_name">Название организации</string>
+    <string name="label_timezone">Часовой пояс</string>
+    <string name="label_balance">Баланс</string>
+    <string name="label_balance_value">Баланс: %1$s</string>
+    <string name="label_phone">Телефон</string>
+    <string name="label_gender">Пол</string>
+    <string name="label_birth_year">Год рождения</string>
+    <string name="label_birthday">День рождения</string>
+    <string name="label_address">Адрес</string>
+    <string name="label_contract_number">Номер договора</string>
+    <string name="label_contract_type">Тип договора</string>
+    <string name="label_sports_rank">Спортивный разряд</string>
+    <string name="label_discount">Скидка</string>
+    <string name="label_classes_start">Начало занятий</string>
+    <string name="label_debt">Задолженность</string>
+    <string name="label_debt_short">Долг</string>
+    <string name="label_year_short">Год</string>
+    <string name="label_ip_address">IP: %1$s</string>
+    <string name="label_from">С</string>
+    <string name="label_to">По</string>
+    <string name="label_selected_count">Выбрано: %1$d</string>
+    <string name="label_pagination">%1$d / %2$d</string>
+
+    <!-- Common empty states -->
+    <string name="empty_search_results">Ничего не найдено</string>
+    <string name="empty_list">Список пуст</string>
+
+    <!-- Common errors -->
+    <string name="error_session_expired">Сессия истекла</string>
+    <string name="error_service_unavailable">Сервис недоступен. Проверьте соединение</string>
+    <string name="error_auth_required">Необходима авторизация</string>
+    <string name="error_invalid_credentials">Неверный логин или пароль</string>
+    <string name="error_registration_failed">Ошибка регистрации. Попробуйте ещё раз</string>
+    <string name="error_passwords_dont_match">Пароли не совпадают</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_avatar">Аватар</string>
+    <string name="cd_app_logo">Логотип AthleticaCRM</string>
+    <string name="cd_sort_name_asc">Сортировка по имени по возрастанию</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_clients">Клиенты</string>
+    <string name="nav_groups">Группы</string>
+    <string name="nav_schedule">Расписание</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="action_collapse_menu">Свернуть меню</string>
+    <string name="action_toggle_nav">Переключить навигацию</string>
+    <string name="action_notifications">Уведомления</string>
+    <string name="action_open_menu">Открыть меню</string>
+    <string name="action_add_client">Добавить клиента</string>
+
+    <!-- Auth screens -->
+    <string name="screen_register">Регистрация</string>
+    <string name="label_your_name">Ваше имя</string>
+    <string name="auth_no_account">Нет аккаунта?</string>
+    <string name="action_register">Зарегистрироваться</string>
+    <string name="action_login">Войти</string>
+    <string name="auth_already_have_account">Уже есть аккаунт?</string>
+
+    <!-- Clients screen -->
+    <string name="clients_empty">Клиентов пока нет</string>
+    <string name="hint_search_by_name">Поиск по имени…</string>
+    <string name="action_add_client_group">Добавить группу</string>
+
+    <!-- Client detail -->
+    <string name="action_delete_client">Удалить клиента</string>
+    <string name="action_issue_subscription">Выдать абонемент</string>
+    <string name="section_basic_info">Основная информация</string>
+    <string name="section_subscriptions">Абонементы</string>
+    <string name="section_unpaid_lessons">Неоплаченные занятия</string>
+    <string name="tab_payments">Платежи</string>
+    <string name="tab_parents">Родители</string>
+    <string name="tab_documents">Документы</string>
+    <string name="tab_history">История</string>
+    <string name="subscription_status_active">Активен</string>
+    <string name="subscription_status_expired">Истёк</string>
+    <string name="visits_remaining">Осталось %1$d из %2$d посещений</string>
+    <string name="visit_status_attended">Был</string>
+    <string name="visit_status_late">Опоздал</string>
+    <string name="visit_status_missed">Пропустил</string>
+
+    <!-- Client create -->
+    <string name="screen_client_create">Новый клиент</string>
+
+    <!-- Client display settings / filter -->
+    <string name="filter_gender_all">Все</string>
+    <string name="filter_gender_male">Мужской</string>
+    <string name="filter_gender_female">Женский</string>
+    <string name="filter_no_group">Без группы</string>
+    <string name="filter_has_debt">Есть задолженность</string>
+    <string name="filter_chip_has_debt">Есть долг</string>
+    <string name="filters_label">Фильтры</string>
+    <string name="filters_with_count">Фильтры · %1$d</string>
+    <string name="section_columns">Колонки</string>
+
+    <!-- Groups screen -->
+    <string name="groups_empty">Групп пока нет</string>
+    <string name="action_add_group">Добавить группу</string>
+    <string name="hint_search_by_title">Поиск по названию…</string>
+
+    <!-- Group create / schedule editor -->
+    <string name="screen_group_create">Новая группа</string>
+    <string name="section_schedule">Расписание</string>
+    <string name="schedule_empty">Расписание не задано</string>
+    <string name="action_add_slot">Добавить слот</string>
+    <string name="action_delete_slot">Удалить слот</string>
+
+    <!-- Settings screen -->
+    <string name="settings_section_user">Пользователь</string>
+    <string name="settings_item_edit_profile">Редактировать профиль</string>
+    <string name="settings_item_edit_profile_subtitle">Имя, фото и контактные данные</string>
+    <string name="settings_item_change_password">Сменить пароль</string>
+    <string name="settings_item_change_password_subtitle">Изменить текущий пароль аккаунта</string>
+    <string name="settings_section_basic">Основное</string>
+    <string name="settings_item_basic_settings">Основные настройки</string>
+    <string name="settings_item_basic_settings_subtitle">Название, описание, контакты, часовой пояс</string>
+    <string name="settings_item_disciplines">Дисциплины</string>
+    <string name="settings_item_disciplines_subtitle">Указываются для занятий и групп</string>
+    <string name="settings_item_ranks">Разряды</string>
+    <string name="settings_item_ranks_subtitle">Указываются для клиентов</string>
+    <string name="settings_section_staff">Сотрудники</string>
+    <string name="settings_item_activity_log">Лог действий пользователей</string>
+    <string name="settings_item_activity_log_subtitle">Логируются все действия пользователей с системой</string>
+    <string name="settings_item_roles">Роли</string>
+    <string name="settings_item_roles_subtitle">Кому что позволено</string>
+    <string name="settings_section_clients">Клиенты</string>
+    <string name="settings_item_client_display">Отображение клиентов</string>
+    <string name="settings_item_client_display_subtitle">Столбцы и данные в списке клиентов</string>
+    <string name="settings_item_client_sources">Источники клиентов</string>
+    <string name="settings_item_client_sources_subtitle">Откуда приходят клиенты, аналитика каналов</string>
+    <string name="settings_section_classes">Занятия и абонементы</string>
+    <string name="settings_item_attendance">Посещаемость</string>
+    <string name="settings_item_attendance_subtitle">Отметки, оплата, иконки и цвета статусов</string>
+    <string name="settings_item_subscription_templates">Шаблоны абонементов</string>
+    <string name="settings_item_subscription_templates_subtitle">Посещения, срок действия, стоимость</string>
+    <string name="settings_section_finance">Финансы</string>
+    <string name="settings_item_cashboxes">Кассы и статьи доходов</string>
+    <string name="settings_item_cashboxes_subtitle">Счета для оплат, категории доходов и расходов</string>
+    <string name="settings_section_integrations">Интеграции</string>
+    <string name="settings_item_sms">SMS-рассылка</string>
+    <string name="settings_item_sms_subtitle">Провайдер, шаблоны сообщений, подпись</string>
+
+    <!-- Activity log -->
+    <string name="screen_activity_log">Лог действий</string>
+
+    <!-- Profile / password screens -->
+    <string name="screen_edit_profile">Редактировать профиль</string>
+    <string name="screen_change_password">Сменить пароль</string>
+    <string name="label_current_password">Текущий пароль</string>
+    <string name="label_new_password">Новый пароль</string>
+    <string name="label_confirm_password">Подтверждение пароля</string>
+
+    <!-- Org settings -->
+    <string name="screen_org_basic_settings">Основные настройки</string>
+
+    <!-- Disciplines -->
+    <string name="screen_disciplines">Дисциплины</string>
+    <string name="screen_discipline_create">Новая дисциплина</string>
+    <string name="screen_discipline_edit">Изменить дисциплину</string>
+
+    <!-- Client sources -->
+    <string name="screen_client_sources">Источники клиентов</string>
+    <string name="screen_client_source_create">Новый источник</string>
+
+    <!-- Plurals -->
+    <plurals name="clients_count">
+        <item quantity="one">%1$d клиент</item>
+        <item quantity="few">%1$d клиента</item>
+        <item quantity="many">%1$d клиентов</item>
+        <item quantity="other">%1$d клиента</item>
+    </plurals>
+
+    <plurals name="groups_count">
+        <item quantity="one">%1$d группа</item>
+        <item quantity="few">%1$d группы</item>
+        <item quantity="many">%1$d групп</item>
+        <item quantity="other">%1$d группы</item>
+    </plurals>
+
+    <plurals name="visits_count">
+        <item quantity="one">%1$d посещение</item>
+        <item quantity="few">%1$d посещения</item>
+        <item quantity="many">%1$d посещений</item>
+        <item quantity="other">%1$d посещений</item>
+    </plurals>
+
+</resources>

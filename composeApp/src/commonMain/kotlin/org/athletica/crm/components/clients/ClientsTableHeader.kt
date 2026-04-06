@@ -19,6 +19,13 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.cd_sort_name_asc
+import org.athletica.crm.generated.resources.label_debt_short
+import org.athletica.crm.generated.resources.label_gender
+import org.athletica.crm.generated.resources.label_person_name
+import org.athletica.crm.generated.resources.label_year_short
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Заголовок таблицы клиентов: чекбокс «выбрать все» и названия колонок.
@@ -46,20 +53,20 @@ fun ClientsTableHeader(
             modifier = Modifier.weight(1f),
         ) {
             Text(
-                text = "Имя",
+                text = stringResource(Res.string.label_person_name),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
             )
             Icon(
                 imageVector = Icons.Default.KeyboardArrowUp,
-                contentDescription = "Сортировка по имени по возрастанию",
+                contentDescription = stringResource(Res.string.cd_sort_name_asc),
                 modifier = Modifier.size(16.dp),
             )
         }
 
         if (ClientColumn.Gender in settings.visibleColumns) {
             Text(
-                text = "Пол",
+                text = stringResource(Res.string.label_gender),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -69,7 +76,7 @@ fun ClientsTableHeader(
 
         if (ClientColumn.BirthYear in settings.visibleColumns) {
             Text(
-                text = "Год",
+                text = stringResource(Res.string.label_year_short),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -79,7 +86,7 @@ fun ClientsTableHeader(
 
         if (ClientColumn.Debt in settings.visibleColumns) {
             Text(
-                text = "Долг",
+                text = stringResource(Res.string.label_debt_short),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.End,

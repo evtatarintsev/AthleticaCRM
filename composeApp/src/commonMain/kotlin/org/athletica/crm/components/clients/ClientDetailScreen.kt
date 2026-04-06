@@ -67,7 +67,36 @@ import kotlinx.datetime.Month
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_delete_client
+import org.athletica.crm.generated.resources.action_edit
+import org.athletica.crm.generated.resources.action_issue_subscription
+import org.athletica.crm.generated.resources.action_more
+import org.athletica.crm.generated.resources.action_upload_document
+import org.athletica.crm.generated.resources.label_address
+import org.athletica.crm.generated.resources.label_balance
+import org.athletica.crm.generated.resources.label_balance_value
+import org.athletica.crm.generated.resources.label_birthday
+import org.athletica.crm.generated.resources.label_classes_start
+import org.athletica.crm.generated.resources.label_contract_number
+import org.athletica.crm.generated.resources.label_contract_type
+import org.athletica.crm.generated.resources.label_discount
+import org.athletica.crm.generated.resources.label_phone
+import org.athletica.crm.generated.resources.label_sports_rank
+import org.athletica.crm.generated.resources.placeholder_not_specified
+import org.athletica.crm.generated.resources.section_basic_info
+import org.athletica.crm.generated.resources.section_subscriptions
+import org.athletica.crm.generated.resources.section_unpaid_lessons
+import org.athletica.crm.generated.resources.subscription_status_active
+import org.athletica.crm.generated.resources.subscription_status_expired
+import org.athletica.crm.generated.resources.tab_documents
+import org.athletica.crm.generated.resources.tab_history
+import org.athletica.crm.generated.resources.tab_parents
+import org.athletica.crm.generated.resources.tab_payments
+import org.athletica.crm.generated.resources.visits_remaining
 import org.athletica.crm.ui.WindowSize
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
@@ -134,12 +163,21 @@ private val fakeHistory =
         FakeVisit("30.06.2021", "Был", "Боевое самбо"),
     )
 
-private enum class ClientDetailTab(val title: String) {
-    Payments("Платежи"),
-    Parents("Родители"),
-    Documents("Документы"),
-    History("История"),
+private enum class ClientDetailTab {
+    Payments,
+    Parents,
+    Documents,
+    History,
 }
+
+@Composable
+private fun ClientDetailTab.title(): String =
+    when (this) {
+        ClientDetailTab.Payments -> stringResource(Res.string.tab_payments)
+        ClientDetailTab.Parents -> stringResource(Res.string.tab_parents)
+        ClientDetailTab.Documents -> stringResource(Res.string.tab_documents)
+        ClientDetailTab.History -> stringResource(Res.string.tab_history)
+    }
 
 // ── screen ────────────────────────────────────────────────────────────────
 
@@ -191,29 +229,29 @@ fun ClientDetailScreen(
                 title = { Text(client?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
                     if (client != null) {
                         IconButton(onClick = {}) {
-                            Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
                         }
                         Box {
                             IconButton(onClick = { showOverflow = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Ещё")
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.action_more))
                             }
                             DropdownMenu(
                                 expanded = showOverflow,
                                 onDismissRequest = { showOverflow = false },
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Загрузить документ") },
+                                    text = { Text(stringResource(Res.string.action_upload_document)) },
                                     leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
                                     onClick = { showOverflow = false },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Удалить клиента") },
+                                    text = { Text(stringResource(Res.string.action_delete_client)) },
                                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                     onClick = { showOverflow = false },
                                 )
@@ -228,7 +266,7 @@ fun ClientDetailScreen(
                 ExtendedFloatingActionButton(
                     onClick = {},
                     icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-                    text = { Text("Выдать абонемент") },
+                    text = { Text(stringResource(Res.string.action_issue_subscription)) },
                 )
             }
         },
@@ -298,7 +336,7 @@ fun ClientDetailScreen(
                                     Tab(
                                         selected = selectedTab == index,
                                         onClick = { selectedTab = index },
-                                        text = { Text(tab.title) },
+                                        text = { Text(tab.title()) },
                                     )
                                 }
                             }
@@ -319,7 +357,7 @@ fun ClientDetailScreen(
                                     ) {
                                         AssistChip(
                                             onClick = {},
-                                            label = { Text("Загрузить документ") },
+                                            label = { Text(stringResource(Res.string.action_upload_document)) },
                                             leadingIcon = {
                                                 Icon(
                                                     Icons.Default.Add,
@@ -398,7 +436,7 @@ private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(client.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             Text(
-                text = "Баланс: 3 056,00 ₽",
+                text = stringResource(Res.string.label_balance_value, "3 056,00 ₽"),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium,
@@ -449,7 +487,7 @@ private fun InfoRow(label: String, value: String?) {
             modifier = Modifier.weight(0.45f),
         )
         Text(
-            text = value ?: "Не указан",
+            text = value ?: stringResource(Res.string.placeholder_not_specified),
             style = MaterialTheme.typography.bodyMedium,
             color =
                 if (value != null) {
@@ -465,24 +503,24 @@ private fun InfoRow(label: String, value: String?) {
 
 @Composable
 private fun BasicInfoSection(client: ClientDetailResponse) {
-    SectionCard("Основная информация") {
-        InfoRow("Баланс", "3 056,00 ₽")
+    SectionCard(stringResource(Res.string.section_basic_info)) {
+        InfoRow(stringResource(Res.string.label_balance), "3 056,00 ₽")
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        InfoRow("Телефон", null)
+        InfoRow(stringResource(Res.string.label_phone), null)
         InfoRow("Группы", fakeGroups.joinToString(", "))
-        InfoRow("Номер договора", null)
-        InfoRow("Тип договора", null)
-        InfoRow("Спортивный разряд", null)
-        InfoRow("Скидка", "0 ₽")
-        InfoRow("День рождения", client.birthday?.formatRu())
-        InfoRow("Адрес", null)
-        InfoRow("Начало занятий", "15.11.2019")
+        InfoRow(stringResource(Res.string.label_contract_number), null)
+        InfoRow(stringResource(Res.string.label_contract_type), null)
+        InfoRow(stringResource(Res.string.label_sports_rank), null)
+        InfoRow(stringResource(Res.string.label_discount), "0 ₽")
+        InfoRow(stringResource(Res.string.label_birthday), client.birthday?.formatRu())
+        InfoRow(stringResource(Res.string.label_address), null)
+        InfoRow(stringResource(Res.string.label_classes_start), "15.11.2019")
     }
 }
 
 @Composable
 private fun SubscriptionsSection() {
-    SectionCard("Абонементы") {
+    SectionCard(stringResource(Res.string.section_subscriptions)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             fakeSubscriptions.forEach { sub ->
                 SubscriptionItem(sub)
@@ -511,7 +549,7 @@ private fun SubscriptionItem(sub: FakeSubscription) {
                 )
                 SuggestionChip(
                     onClick = {},
-                    label = { Text(if (isActive) "Активен" else "Истёк", style = MaterialTheme.typography.labelSmall) },
+                    label = { Text(if (isActive) stringResource(Res.string.subscription_status_active) else stringResource(Res.string.subscription_status_expired), style = MaterialTheme.typography.labelSmall) },
                 )
             }
             LinearProgressIndicator(
@@ -525,7 +563,7 @@ private fun SubscriptionItem(sub: FakeSubscription) {
                     },
             )
             Text(
-                text = "Осталось ${sub.remaining} из ${sub.total} посещений",
+                text = stringResource(Res.string.visits_remaining, sub.remaining, sub.total),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -535,7 +573,7 @@ private fun SubscriptionItem(sub: FakeSubscription) {
 
 @Composable
 private fun UnpaidLessonsSection() {
-    SectionCard("Неоплаченные занятия (${fakeUnpaidLessons.size})") {
+    SectionCard(stringResource(Res.string.section_unpaid_lessons)) {
         fakeUnpaidLessons.forEachIndexed { index, lesson ->
             if (index > 0) {
                 HorizontalDivider()

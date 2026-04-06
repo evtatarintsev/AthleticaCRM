@@ -14,6 +14,11 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.screen_discipline_create
+import org.athletica.crm.generated.resources.screen_discipline_edit
+import org.athletica.crm.generated.resources.screen_disciplines
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран «Дисциплины».
@@ -61,7 +66,7 @@ fun DisciplinesScreen(
     // Экран редактирования дисциплины
     editingItem?.let { item ->
         DirectoryItemCreateScreen(
-            title = "Изменить дисциплину",
+            title = stringResource(Res.string.screen_discipline_edit),
             initialItem = item,
             onBack = {
                 editingItem = null
@@ -100,7 +105,7 @@ fun DisciplinesScreen(
     // Экран создания дисциплины
     if (showCreate) {
         DirectoryItemCreateScreen(
-            title = "Новая дисциплина",
+            title = stringResource(Res.string.screen_discipline_create),
             onBack = {
                 showCreate = false
                 createError = null
@@ -136,7 +141,7 @@ fun DisciplinesScreen(
     }
 
     DirectoryListScreen(
-        title = "Дисциплины",
+        title = stringResource(Res.string.screen_disciplines),
         items = items,
         isLoading = isLoading,
         error = error,

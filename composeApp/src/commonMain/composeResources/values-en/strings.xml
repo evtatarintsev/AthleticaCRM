@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- App -->
+    <string name="app_name">AthleticaCRM</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_create">Create</string>
+    <string name="action_add">Add</string>
+    <string name="action_close">Close</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_more">More</string>
+    <string name="action_logout">Log out</string>
+    <string name="action_delete_selected">Delete selected</string>
+    <string name="action_notify_selected">Notify selected</string>
+    <string name="action_export_selected">Export selected</string>
+    <string name="action_add_photo">Add photo</string>
+    <string name="action_change_photo">Change photo</string>
+    <string name="action_select_photo">Select photo</string>
+    <string name="action_clear_search">Clear search</string>
+    <string name="action_upload_document">Upload document</string>
+    <string name="action_display_settings">Display settings</string>
+    <string name="action_previous_page">Previous</string>
+    <string name="action_next_page">Next</string>
+    <string name="action_reset_filters">Reset all</string>
+    <string name="action_remove_gender_filter">Remove gender filter</string>
+    <string name="action_remove_birth_year_filter">Remove birth year filter</string>
+
+    <!-- Common hints / placeholders -->
+    <string name="hint_search">Search…</string>
+    <string name="hint_date_format">YYYY-MM-DD</string>
+    <string name="placeholder_not_specified">Not specified</string>
+
+    <!-- Common labels -->
+    <string name="label_name">Name</string>
+    <string name="label_person_name">Name</string>
+    <string name="label_login">Login</string>
+    <string name="label_email">Email</string>
+    <string name="label_password">Password</string>
+    <string name="label_org_name">Organisation name</string>
+    <string name="label_timezone">Time zone</string>
+    <string name="label_balance">Balance</string>
+    <string name="label_balance_value">Balance: %1$s</string>
+    <string name="label_phone">Phone</string>
+    <string name="label_gender">Gender</string>
+    <string name="label_birth_year">Birth year</string>
+    <string name="label_birthday">Date of birth</string>
+    <string name="label_address">Address</string>
+    <string name="label_contract_number">Contract number</string>
+    <string name="label_contract_type">Contract type</string>
+    <string name="label_sports_rank">Sports rank</string>
+    <string name="label_discount">Discount</string>
+    <string name="label_classes_start">Classes started</string>
+    <string name="label_debt">Debt</string>
+    <string name="label_debt_short">Debt</string>
+    <string name="label_year_short">Year</string>
+    <string name="label_ip_address">IP: %1$s</string>
+    <string name="label_from">From</string>
+    <string name="label_to">To</string>
+    <string name="label_selected_count">Selected: %1$d</string>
+    <string name="label_pagination">%1$d / %2$d</string>
+
+    <!-- Common empty states -->
+    <string name="empty_search_results">Nothing found</string>
+    <string name="empty_list">List is empty</string>
+
+    <!-- Common errors -->
+    <string name="error_session_expired">Session expired</string>
+    <string name="error_service_unavailable">Service unavailable. Check your connection</string>
+    <string name="error_auth_required">Authorisation required</string>
+    <string name="error_invalid_credentials">Invalid login or password</string>
+    <string name="error_registration_failed">Registration failed. Please try again</string>
+    <string name="error_passwords_dont_match">Passwords do not match</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_avatar">Avatar</string>
+    <string name="cd_app_logo">AthleticaCRM logo</string>
+    <string name="cd_sort_name_asc">Sort by name ascending</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_clients">Clients</string>
+    <string name="nav_groups">Groups</string>
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_settings">Settings</string>
+    <string name="action_collapse_menu">Collapse menu</string>
+    <string name="action_toggle_nav">Toggle navigation</string>
+    <string name="action_notifications">Notifications</string>
+    <string name="action_open_menu">Open menu</string>
+    <string name="action_add_client">Add client</string>
+
+    <!-- Auth screens -->
+    <string name="screen_register">Sign up</string>
+    <string name="label_your_name">Your name</string>
+    <string name="auth_no_account">Don\'t have an account?</string>
+    <string name="action_register">Sign up</string>
+    <string name="action_login">Log in</string>
+    <string name="auth_already_have_account">Already have an account?</string>
+
+    <!-- Clients screen -->
+    <string name="clients_empty">No clients yet</string>
+    <string name="hint_search_by_name">Search by name…</string>
+    <string name="action_add_client_group">Add group</string>
+
+    <!-- Client detail -->
+    <string name="action_delete_client">Delete client</string>
+    <string name="action_issue_subscription">Issue subscription</string>
+    <string name="section_basic_info">Basic information</string>
+    <string name="section_subscriptions">Subscriptions</string>
+    <string name="section_unpaid_lessons">Unpaid lessons</string>
+    <string name="tab_payments">Payments</string>
+    <string name="tab_parents">Parents</string>
+    <string name="tab_documents">Documents</string>
+    <string name="tab_history">History</string>
+    <string name="subscription_status_active">Active</string>
+    <string name="subscription_status_expired">Expired</string>
+    <string name="visits_remaining">%1$d of %2$d visits remaining</string>
+    <string name="visit_status_attended">Attended</string>
+    <string name="visit_status_late">Late</string>
+    <string name="visit_status_missed">Missed</string>
+
+    <!-- Client create -->
+    <string name="screen_client_create">New client</string>
+
+    <!-- Client display settings / filter -->
+    <string name="filter_gender_all">All</string>
+    <string name="filter_gender_male">Male</string>
+    <string name="filter_gender_female">Female</string>
+    <string name="filter_no_group">No group</string>
+    <string name="filter_has_debt">Has debt</string>
+    <string name="filter_chip_has_debt">Has debt</string>
+    <string name="filters_label">Filters</string>
+    <string name="filters_with_count">Filters · %1$d</string>
+    <string name="section_columns">Columns</string>
+
+    <!-- Groups screen -->
+    <string name="groups_empty">No groups yet</string>
+    <string name="action_add_group">Add group</string>
+    <string name="hint_search_by_title">Search by name…</string>
+
+    <!-- Group create / schedule editor -->
+    <string name="screen_group_create">New group</string>
+    <string name="section_schedule">Schedule</string>
+    <string name="schedule_empty">No schedule set</string>
+    <string name="action_add_slot">Add slot</string>
+    <string name="action_delete_slot">Delete slot</string>
+
+    <!-- Settings screen -->
+    <string name="settings_section_user">User</string>
+    <string name="settings_item_edit_profile">Edit profile</string>
+    <string name="settings_item_edit_profile_subtitle">Name, photo and contact details</string>
+    <string name="settings_item_change_password">Change password</string>
+    <string name="settings_item_change_password_subtitle">Change your current account password</string>
+    <string name="settings_section_basic">General</string>
+    <string name="settings_item_basic_settings">Basic settings</string>
+    <string name="settings_item_basic_settings_subtitle">Name, description, contacts, time zone</string>
+    <string name="settings_item_disciplines">Disciplines</string>
+    <string name="settings_item_disciplines_subtitle">Used for lessons and groups</string>
+    <string name="settings_item_ranks">Ranks</string>
+    <string name="settings_item_ranks_subtitle">Used for clients</string>
+    <string name="settings_section_staff">Staff</string>
+    <string name="settings_item_activity_log">User activity log</string>
+    <string name="settings_item_activity_log_subtitle">All user actions in the system are logged</string>
+    <string name="settings_item_roles">Roles</string>
+    <string name="settings_item_roles_subtitle">Who can do what</string>
+    <string name="settings_section_clients">Clients</string>
+    <string name="settings_item_client_display">Client display</string>
+    <string name="settings_item_client_display_subtitle">Columns and data in the client list</string>
+    <string name="settings_item_client_sources">Client sources</string>
+    <string name="settings_item_client_sources_subtitle">Where clients come from, channel analytics</string>
+    <string name="settings_section_classes">Classes &amp; subscriptions</string>
+    <string name="settings_item_attendance">Attendance</string>
+    <string name="settings_item_attendance_subtitle">Marks, payment, status icons and colours</string>
+    <string name="settings_item_subscription_templates">Subscription templates</string>
+    <string name="settings_item_subscription_templates_subtitle">Visits, validity, price</string>
+    <string name="settings_section_finance">Finance</string>
+    <string name="settings_item_cashboxes">Cash registers &amp; revenue items</string>
+    <string name="settings_item_cashboxes_subtitle">Payment accounts, income and expense categories</string>
+    <string name="settings_section_integrations">Integrations</string>
+    <string name="settings_item_sms">SMS mailing</string>
+    <string name="settings_item_sms_subtitle">Provider, message templates, sender name</string>
+
+    <!-- Activity log -->
+    <string name="screen_activity_log">Activity log</string>
+
+    <!-- Profile / password screens -->
+    <string name="screen_edit_profile">Edit profile</string>
+    <string name="screen_change_password">Change password</string>
+    <string name="label_current_password">Current password</string>
+    <string name="label_new_password">New password</string>
+    <string name="label_confirm_password">Confirm password</string>
+
+    <!-- Org settings -->
+    <string name="screen_org_basic_settings">Basic settings</string>
+
+    <!-- Disciplines -->
+    <string name="screen_disciplines">Disciplines</string>
+    <string name="screen_discipline_create">New discipline</string>
+    <string name="screen_discipline_edit">Edit discipline</string>
+
+    <!-- Client sources -->
+    <string name="screen_client_sources">Client sources</string>
+    <string name="screen_client_source_create">New source</string>
+
+    <!-- Plurals -->
+    <plurals name="clients_count">
+        <item quantity="one">%1$d client</item>
+        <item quantity="other">%1$d clients</item>
+    </plurals>
+
+    <plurals name="groups_count">
+        <item quantity="one">%1$d group</item>
+        <item quantity="other">%1$d groups</item>
+    </plurals>
+
+    <plurals name="visits_count">
+        <item quantity="one">%1$d visit</item>
+        <item quantity="other">%1$d visits</item>
+    </plurals>
+
+</resources>

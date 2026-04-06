@@ -39,6 +39,41 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.settings_item_activity_log
+import org.athletica.crm.generated.resources.settings_item_activity_log_subtitle
+import org.athletica.crm.generated.resources.settings_item_attendance
+import org.athletica.crm.generated.resources.settings_item_attendance_subtitle
+import org.athletica.crm.generated.resources.settings_item_basic_settings
+import org.athletica.crm.generated.resources.settings_item_basic_settings_subtitle
+import org.athletica.crm.generated.resources.settings_item_cashboxes
+import org.athletica.crm.generated.resources.settings_item_cashboxes_subtitle
+import org.athletica.crm.generated.resources.settings_item_change_password
+import org.athletica.crm.generated.resources.settings_item_change_password_subtitle
+import org.athletica.crm.generated.resources.settings_item_client_display
+import org.athletica.crm.generated.resources.settings_item_client_display_subtitle
+import org.athletica.crm.generated.resources.settings_item_client_sources
+import org.athletica.crm.generated.resources.settings_item_client_sources_subtitle
+import org.athletica.crm.generated.resources.settings_item_disciplines
+import org.athletica.crm.generated.resources.settings_item_disciplines_subtitle
+import org.athletica.crm.generated.resources.settings_item_edit_profile
+import org.athletica.crm.generated.resources.settings_item_edit_profile_subtitle
+import org.athletica.crm.generated.resources.settings_item_ranks
+import org.athletica.crm.generated.resources.settings_item_ranks_subtitle
+import org.athletica.crm.generated.resources.settings_item_roles
+import org.athletica.crm.generated.resources.settings_item_roles_subtitle
+import org.athletica.crm.generated.resources.settings_item_sms
+import org.athletica.crm.generated.resources.settings_item_sms_subtitle
+import org.athletica.crm.generated.resources.settings_item_subscription_templates
+import org.athletica.crm.generated.resources.settings_item_subscription_templates_subtitle
+import org.athletica.crm.generated.resources.settings_section_basic
+import org.athletica.crm.generated.resources.settings_section_classes
+import org.athletica.crm.generated.resources.settings_section_clients
+import org.athletica.crm.generated.resources.settings_section_finance
+import org.athletica.crm.generated.resources.settings_section_integrations
+import org.athletica.crm.generated.resources.settings_section_staff
+import org.athletica.crm.generated.resources.settings_section_user
+import org.jetbrains.compose.resources.stringResource
 
 // ── Цветовая палитра ──────────────────────────────────────────────────────
 
@@ -78,6 +113,7 @@ private data class SettingSection(
     val items: List<SettingItem>,
 )
 
+@Composable
 private fun buildSections(
     onNavigateToBasicSettings: () -> Unit,
     onNavigateToDisciplines: () -> Unit,
@@ -87,20 +123,20 @@ private fun buildSections(
     onNavigateToEditProfile: () -> Unit,
 ) = listOf(
     SettingSection(
-        label = "Пользователь",
+        label = stringResource(Res.string.settings_section_user),
         items =
             listOf(
                 SettingItem(
-                    title = "Редактировать профиль",
-                    subtitle = "Имя, фото и контактные данные",
+                    title = stringResource(Res.string.settings_item_edit_profile),
+                    subtitle = stringResource(Res.string.settings_item_edit_profile_subtitle),
                     icon = Icons.Default.ManageAccounts,
                     containerColor = Ic.OrangeContainer,
                     iconColor = Ic.Orange,
                     onClick = onNavigateToEditProfile,
                 ),
                 SettingItem(
-                    title = "Сменить пароль",
-                    subtitle = "Изменить текущий пароль аккаунта",
+                    title = stringResource(Res.string.settings_item_change_password),
+                    subtitle = stringResource(Res.string.settings_item_change_password_subtitle),
                     icon = Icons.Default.Lock,
                     containerColor = Ic.OrangeContainer,
                     iconColor = Ic.Orange,
@@ -109,28 +145,28 @@ private fun buildSections(
             ),
     ),
     SettingSection(
-        label = "Основное",
+        label = stringResource(Res.string.settings_section_basic),
         items =
             listOf(
                 SettingItem(
-                    title = "Основные настройки",
-                    subtitle = "Название, описание, контакты, часовой пояс",
+                    title = stringResource(Res.string.settings_item_basic_settings),
+                    subtitle = stringResource(Res.string.settings_item_basic_settings_subtitle),
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
                     onClick = onNavigateToBasicSettings,
                 ),
                 SettingItem(
-                    title = "Дисциплины",
-                    subtitle = "Указываются для занятий и групп",
+                    title = stringResource(Res.string.settings_item_disciplines),
+                    subtitle = stringResource(Res.string.settings_item_disciplines_subtitle),
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
                     onClick = onNavigateToDisciplines,
                 ),
                 SettingItem(
-                    title = "Разряды",
-                    subtitle = "Указываются для клиентов",
+                    title = stringResource(Res.string.settings_item_ranks),
+                    subtitle = stringResource(Res.string.settings_item_ranks_subtitle),
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
@@ -138,20 +174,20 @@ private fun buildSections(
             ),
     ),
     SettingSection(
-        label = "Сотрудники",
+        label = stringResource(Res.string.settings_section_staff),
         items =
             listOf(
                 SettingItem(
-                    title = "Лог действий пользователей",
-                    subtitle = "Логируются все действия пользователей с системой",
+                    title = stringResource(Res.string.settings_item_activity_log),
+                    subtitle = stringResource(Res.string.settings_item_activity_log_subtitle),
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
                     onClick = onNavigateToActivityLog,
                 ),
                 SettingItem(
-                    title = "Роли",
-                    subtitle = "Кому что позволено",
+                    title = stringResource(Res.string.settings_item_roles),
+                    subtitle = stringResource(Res.string.settings_item_roles_subtitle),
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
@@ -159,19 +195,19 @@ private fun buildSections(
             ),
     ),
     SettingSection(
-        label = "Клиенты",
+        label = stringResource(Res.string.settings_section_clients),
         items =
             listOf(
                 SettingItem(
-                    title = "Отображение клиентов",
-                    subtitle = "Столбцы и данные в списке клиентов",
+                    title = stringResource(Res.string.settings_item_client_display),
+                    subtitle = stringResource(Res.string.settings_item_client_display_subtitle),
                     icon = Icons.Default.PeopleAlt,
                     containerColor = Ic.TealContainer,
                     iconColor = Ic.Teal,
                 ),
                 SettingItem(
-                    title = "Источники клиентов",
-                    subtitle = "Откуда приходят клиенты, аналитика каналов",
+                    title = stringResource(Res.string.settings_item_client_sources),
+                    subtitle = stringResource(Res.string.settings_item_client_sources_subtitle),
                     icon = Icons.Default.Analytics,
                     containerColor = Ic.TealContainer,
                     iconColor = Ic.Teal,
@@ -180,19 +216,19 @@ private fun buildSections(
             ),
     ),
     SettingSection(
-        label = "Занятия и абонементы",
+        label = stringResource(Res.string.settings_section_classes),
         items =
             listOf(
                 SettingItem(
-                    title = "Посещаемость",
-                    subtitle = "Отметки, оплата, иконки и цвета статусов",
+                    title = stringResource(Res.string.settings_item_attendance),
+                    subtitle = stringResource(Res.string.settings_item_attendance_subtitle),
                     icon = Icons.Default.HowToReg,
                     containerColor = Ic.BlueContainer,
                     iconColor = Ic.Blue,
                 ),
                 SettingItem(
-                    title = "Шаблоны абонементов",
-                    subtitle = "Посещения, срок действия, стоимость",
+                    title = stringResource(Res.string.settings_item_subscription_templates),
+                    subtitle = stringResource(Res.string.settings_item_subscription_templates_subtitle),
                     icon = Icons.Default.CardMembership,
                     containerColor = Ic.BlueContainer,
                     iconColor = Ic.Blue,
@@ -200,12 +236,12 @@ private fun buildSections(
             ),
     ),
     SettingSection(
-        label = "Финансы",
+        label = stringResource(Res.string.settings_section_finance),
         items =
             listOf(
                 SettingItem(
-                    title = "Кассы и статьи доходов",
-                    subtitle = "Счета для оплат, категории доходов и расходов",
+                    title = stringResource(Res.string.settings_item_cashboxes),
+                    subtitle = stringResource(Res.string.settings_item_cashboxes_subtitle),
                     icon = Icons.Default.AccountBalance,
                     containerColor = Ic.GreenContainer,
                     iconColor = Ic.Green,
@@ -213,12 +249,12 @@ private fun buildSections(
             ),
     ),
     SettingSection(
-        label = "Интеграции",
+        label = stringResource(Res.string.settings_section_integrations),
         items =
             listOf(
                 SettingItem(
-                    title = "SMS-рассылка",
-                    subtitle = "Провайдер, шаблоны сообщений, подпись",
+                    title = stringResource(Res.string.settings_item_sms),
+                    subtitle = stringResource(Res.string.settings_item_sms_subtitle),
                     icon = Icons.Default.Sms,
                     containerColor = Ic.CoralContainer,
                     iconColor = Ic.Coral,

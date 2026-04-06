@@ -39,8 +39,15 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_save
+import org.athletica.crm.generated.resources.label_org_name
+import org.athletica.crm.generated.resources.label_timezone
+import org.athletica.crm.generated.resources.settings_item_basic_settings
 import org.athletica.crm.platformAvailableTimezones
 import org.athletica.crm.platformCurrentTimezone
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран «Основные настройки» организации.
@@ -106,10 +113,10 @@ fun OrgBasicSettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Основные настройки") },
+                title = { Text(stringResource(Res.string.settings_item_basic_settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
@@ -139,7 +146,7 @@ fun OrgBasicSettingsScreen(
                         },
                         enabled = name.isNotBlank() && !isLoading && !isSaving,
                     ) {
-                        Text("Сохранить")
+                        Text(stringResource(Res.string.action_save))
                     }
                 },
             )
@@ -170,7 +177,7 @@ fun OrgBasicSettingsScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Название организации") },
+                label = { Text(stringResource(Res.string.label_org_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -190,7 +197,7 @@ fun OrgBasicSettingsScreen(
                         timezoneQuery = query
                         timezoneExpanded = true
                     },
-                    label = { Text("Часовой пояс") },
+                    label = { Text(stringResource(Res.string.label_timezone)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = timezoneExpanded) },
                     singleLine = true,
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),

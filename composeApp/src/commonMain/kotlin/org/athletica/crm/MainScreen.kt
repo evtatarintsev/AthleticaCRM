@@ -74,31 +74,58 @@ import org.athletica.crm.components.settings.DisciplinesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_client
+import org.athletica.crm.generated.resources.action_collapse_menu
+import org.athletica.crm.generated.resources.action_logout
+import org.athletica.crm.generated.resources.action_notifications
+import org.athletica.crm.generated.resources.action_open_menu
+import org.athletica.crm.generated.resources.action_toggle_nav
+import org.athletica.crm.generated.resources.app_name
+import org.athletica.crm.generated.resources.cd_app_logo
+import org.athletica.crm.generated.resources.cd_avatar
+import org.athletica.crm.generated.resources.hint_search
+import org.athletica.crm.generated.resources.label_balance_value
+import org.athletica.crm.generated.resources.nav_clients
+import org.athletica.crm.generated.resources.nav_groups
+import org.athletica.crm.generated.resources.nav_home
+import org.athletica.crm.generated.resources.nav_schedule
+import org.athletica.crm.generated.resources.nav_settings
 import org.athletica.crm.ui.WindowSize
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /** Пункт бокового меню навигации. */
 enum class NavItem(
     /** Иконка раздела. */
     val icon: ImageVector,
-    /** Название раздела. */
-    val label: String,
 ) {
     /** Главная страница. */
-    HOME(Icons.Default.Home, "Главная"),
+    HOME(Icons.Default.Home),
 
     /** Раздел клиентов. */
-    CLIENTS(Icons.Default.Person, "Клиенты"),
+    CLIENTS(Icons.Default.Person),
 
     /** Раздел групп. */
-    GROUPS(Icons.Default.Group, "Группы"),
+    GROUPS(Icons.Default.Group),
 
     /** Расписание занятий. */
-    SCHEDULE(Icons.Default.DateRange, "Расписание"),
+    SCHEDULE(Icons.Default.DateRange),
 
     /** Настройки приложения. */
-    SETTINGS(Icons.Default.Settings, "Настройки"),
+    SETTINGS(Icons.Default.Settings),
 }
+
+/** Возвращает локализованное название пункта меню. */
+@Composable
+fun NavItem.label(): String =
+    when (this) {
+        NavItem.HOME -> stringResource(Res.string.nav_home)
+        NavItem.CLIENTS -> stringResource(Res.string.nav_clients)
+        NavItem.GROUPS -> stringResource(Res.string.nav_groups)
+        NavItem.SCHEDULE -> stringResource(Res.string.nav_schedule)
+        NavItem.SETTINGS -> stringResource(Res.string.nav_settings)
+    }
 
 /**
  * Главный экран приложения с адаптивным боковым меню.
@@ -251,7 +278,7 @@ fun MainScreen(
                             IconButton(onClick = { isSidebarExpanded = !isSidebarExpanded }) {
                                 Icon(
                                     imageVector = Icons.Default.Menu,
-                                    contentDescription = "Переключить навигацию",
+                                    contentDescription = stringResource(Res.string.action_toggle_nav),
                                 )
                             }
                         },
@@ -264,7 +291,7 @@ fun MainScreen(
                                 icon = {
                                     Icon(
                                         imageVector = item.icon,
-                                        contentDescription = item.label,
+                                        contentDescription = item.label(),
                                     )
                                 },
                             )
@@ -394,7 +421,7 @@ private fun DrawerAccountHeader(api: ApiClient) {
             if (avatarUrl != null) {
                 AsyncImage(
                     model = avatarUrl,
-                    contentDescription = "Аватар",
+                    contentDescription = stringResource(Res.string.cd_avatar),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(48.dp).clip(CircleShape),
                 )
@@ -423,7 +450,7 @@ private fun DrawerAccountHeader(api: ApiClient) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Баланс: $balance",
+                text = stringResource(Res.string.label_balance_value, balance),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -458,13 +485,13 @@ private fun DrawerContent(
         ) {
             Icon(
                 imageVector = Icons.Default.Home,
-                contentDescription = "Логотип AthleticaCRM",
+                contentDescription = stringResource(Res.string.cd_app_logo),
                 tint = MaterialTheme.colorScheme.primary,
             )
             if (expanded) {
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = "AthleticaCRM",
+                    text = stringResource(Res.string.app_name),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
@@ -474,7 +501,7 @@ private fun DrawerContent(
             IconButton(onClick = onToggle) {
                 Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Свернуть меню",
+                    contentDescription = stringResource(Res.string.action_collapse_menu),
                 )
             }
         }
@@ -493,10 +520,10 @@ private fun DrawerContent(
                 icon = {
                     Icon(
                         imageVector = item.icon,
-                        contentDescription = item.label,
+                        contentDescription = item.label(),
                     )
                 },
-                label = { Text(item.label) },
+                label = { Text(item.label()) },
                 selected = selectedItem == item,
                 onClick = { onItemSelected(item) },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
@@ -519,7 +546,7 @@ private fun RowScope.TopBarActions(
             IconButton(onClick = onCreateClient) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Добавить клиента",
+                    contentDescription = stringResource(Res.string.action_add_client),
                 )
             }
         else -> Unit
@@ -548,7 +575,7 @@ private fun MainTopAppBar(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Поиск...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                placeholder = { Text(stringResource(Res.string.hint_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(0.5f),
             )
@@ -558,7 +585,7 @@ private fun MainTopAppBar(
                 IconButton(onClick = onMenuClick) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = "Открыть меню",
+                        contentDescription = stringResource(Res.string.action_open_menu),
                     )
                 }
             }
@@ -568,13 +595,13 @@ private fun MainTopAppBar(
             IconButton(onClick = {}) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
-                    contentDescription = "Уведомления",
+                    contentDescription = stringResource(Res.string.action_notifications),
                 )
             }
             IconButton(onClick = onLogout) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = "Выйти",
+                    contentDescription = stringResource(Res.string.action_logout),
                 )
             }
         },
@@ -639,7 +666,7 @@ private fun ContentArea(
                 modifier = modifier.fillMaxSize(),
             ) {
                 Text(
-                    text = selectedItem.label,
+                    text = selectedItem.label(),
                     style = MaterialTheme.typography.headlineMedium,
                 )
             }

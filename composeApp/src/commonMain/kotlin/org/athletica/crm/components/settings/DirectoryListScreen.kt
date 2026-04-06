@@ -44,6 +44,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_clear
+import org.athletica.crm.generated.resources.action_delete_selected
+import org.athletica.crm.generated.resources.empty_list
+import org.athletica.crm.generated.resources.empty_search_results
+import org.athletica.crm.generated.resources.hint_search
+import org.athletica.crm.generated.resources.label_selected_count
+import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /** Запись справочника: уникальный [id], отображаемое [name] и необязательный [photoUrl]. */
@@ -95,7 +105,7 @@ fun DirectoryListScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -105,7 +115,7 @@ fun DirectoryListScreen(
                 ExtendedFloatingActionButton(
                     onClick = onAdd,
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Добавить") },
+                    text = { Text(stringResource(Res.string.action_add)) },
                 )
             }
         },
@@ -113,7 +123,7 @@ fun DirectoryListScreen(
             if (selectedIds.isNotEmpty()) {
                 BottomAppBar {
                     Text(
-                        text = "Выбрано: ${selectedIds.size}",
+                        text = stringResource(Res.string.label_selected_count, selectedIds.size),
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(start = 16.dp).weight(1f),
                     )
@@ -123,7 +133,7 @@ fun DirectoryListScreen(
                             selectedIds = emptySet()
                         },
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Удалить выбранные")
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.action_delete_selected))
                     }
                 }
             }
@@ -151,7 +161,7 @@ fun DirectoryListScreen(
 
                 items.isEmpty() -> {
                     Text(
-                        text = "Список пуст",
+                        text = stringResource(Res.string.empty_list),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -181,7 +191,7 @@ fun DirectoryListScreen(
                                     onValueChange = { query = it },
                                     placeholder = {
                                         Text(
-                                            "Поиск...",
+                                            stringResource(Res.string.hint_search),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -198,7 +208,7 @@ fun DirectoryListScreen(
                                             IconButton(onClick = { query = "" }) {
                                                 Icon(
                                                     Icons.Default.Close,
-                                                    contentDescription = "Очистить",
+                                                    contentDescription = stringResource(Res.string.action_clear),
                                                     modifier = Modifier.size(18.dp),
                                                 )
                                             }
@@ -221,7 +231,7 @@ fun DirectoryListScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        "Ничего не найдено",
+                                        stringResource(Res.string.empty_search_results),
                                         style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }

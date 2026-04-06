@@ -39,6 +39,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_login
+import org.athletica.crm.generated.resources.action_register
+import org.athletica.crm.generated.resources.app_name
+import org.athletica.crm.generated.resources.auth_no_account
+import org.athletica.crm.generated.resources.label_login
+import org.athletica.crm.generated.resources.label_password
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран авторизации с полями логина и пароля.
@@ -93,7 +101,7 @@ fun LoginScreen(
                 modifier = Modifier.width(320.dp),
             ) {
                 Text(
-                    text = "AthleticaCRM",
+                    text = stringResource(Res.string.app_name),
                     style = MaterialTheme.typography.headlineMedium,
                 )
 
@@ -102,7 +110,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = login,
                     onValueChange = { login = it },
-                    label = { Text("Логин") },
+                    label = { Text(stringResource(Res.string.label_login)) },
                     singleLine = true,
                     keyboardOptions =
                         KeyboardOptions(
@@ -119,7 +127,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Пароль") },
+                    label = { Text(stringResource(Res.string.label_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions =
@@ -142,17 +150,17 @@ fun LoginScreen(
                     enabled = login.isNotBlank() && password.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Войти")
+                    Text(stringResource(Res.string.action_login))
                 }
 
                 val primary = MaterialTheme.colorScheme.primary
                 Text(
                     text =
                         buildAnnotatedString {
-                            append("Нет аккаунта? ")
+                            append(stringResource(Res.string.auth_no_account) + " ")
                             withLink(LinkAnnotation.Clickable(tag = "register") { onNavigateToRegister() }) {
                                 withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
-                                    append("Зарегистрироваться")
+                                    append(stringResource(Res.string.action_register))
                                 }
                             }
                         },

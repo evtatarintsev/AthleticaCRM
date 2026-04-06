@@ -41,6 +41,14 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.audit.AuditLogItem
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_next_page
+import org.athletica.crm.generated.resources.action_previous_page
+import org.athletica.crm.generated.resources.label_ip_address
+import org.athletica.crm.generated.resources.label_pagination
+import org.athletica.crm.generated.resources.screen_activity_log
+import org.jetbrains.compose.resources.stringResource
 
 private const val PAGE_SIZE = 50
 
@@ -87,12 +95,12 @@ fun ActivityLogScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Лог действий") },
+                title = { Text(stringResource(Res.string.screen_activity_log)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -185,15 +193,17 @@ private fun AuditLogItemCard(item: AuditLogItem) {
                     text =
                         buildString {
                             append(item.entityType)
-                            if (item.entityId != null) append(" • ${item.entityId}")
+                            if (item.entityId != null) {
+                                append(" • ${item.entityId}")
+                            }
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (item.ipAddress != null) {
+            item.ipAddress?.let {
                 Text(
-                    text = "IP: ${item.ipAddress}",
+                    text = stringResource(Res.string.label_ip_address, it),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -220,16 +230,22 @@ private fun PaginationBar(
                 .padding(8.dp),
     ) {
         IconButton(onClick = onPrevious, enabled = page > 0) {
-            Icon(Icons.AutoMirrored.Filled.NavigateBefore, contentDescription = "Предыдущая")
+            Icon(
+                Icons.AutoMirrored.Filled.NavigateBefore,
+                contentDescription = stringResource(Res.string.action_previous_page),
+            )
         }
         Spacer(Modifier.width(8.dp))
         Text(
-            text = "${page + 1} / $totalPages",
+            text = stringResource(Res.string.label_pagination, page + 1, totalPages),
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.width(8.dp))
         IconButton(onClick = onNext, enabled = (page + 1) * pageSize < total) {
-            Icon(Icons.AutoMirrored.Filled.NavigateNext, contentDescription = "Следующая")
+            Icon(
+                Icons.AutoMirrored.Filled.NavigateNext,
+                contentDescription = stringResource(Res.string.action_next_page),
+            )
         }
     }
 }

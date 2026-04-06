@@ -44,8 +44,19 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_login
+import org.athletica.crm.generated.resources.action_register
+import org.athletica.crm.generated.resources.auth_already_have_account
+import org.athletica.crm.generated.resources.label_email
+import org.athletica.crm.generated.resources.label_org_name
+import org.athletica.crm.generated.resources.label_password
+import org.athletica.crm.generated.resources.label_timezone
+import org.athletica.crm.generated.resources.label_your_name
+import org.athletica.crm.generated.resources.screen_register
 import org.athletica.crm.platformAvailableTimezones
 import org.athletica.crm.platformCurrentTimezone
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран регистрации новой организации.
@@ -124,7 +135,7 @@ fun RegisterScreen(
                 modifier = Modifier.width(320.dp),
             ) {
                 Text(
-                    text = "Регистрация",
+                    text = stringResource(Res.string.screen_register),
                     style = MaterialTheme.typography.headlineMedium,
                 )
 
@@ -133,7 +144,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = organizationName,
                     onValueChange = { organizationName = it },
-                    label = { Text("Название организации") },
+                    label = { Text(stringResource(Res.string.label_org_name)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions =
@@ -146,7 +157,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Ваше имя") },
+                    label = { Text(stringResource(Res.string.label_your_name)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions =
@@ -159,7 +170,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text(stringResource(Res.string.label_email)) },
                     singleLine = true,
                     keyboardOptions =
                         KeyboardOptions(
@@ -176,7 +187,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Пароль") },
+                    label = { Text(stringResource(Res.string.label_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions =
@@ -209,7 +220,7 @@ fun RegisterScreen(
                             timezoneQuery = query
                             timezoneExpanded = true
                         },
-                        label = { Text("Часовой пояс") },
+                        label = { Text(stringResource(Res.string.label_timezone)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = timezoneExpanded) },
                         singleLine = true,
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
@@ -236,17 +247,17 @@ fun RegisterScreen(
                     enabled = isFormValid,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Зарегистрироваться")
+                    Text(stringResource(Res.string.action_register))
                 }
 
                 val primary = MaterialTheme.colorScheme.primary
                 Text(
                     text =
                         buildAnnotatedString {
-                            append("Уже есть аккаунт? ")
+                            append(stringResource(Res.string.auth_already_have_account) + " ")
                             withLink(LinkAnnotation.Clickable(tag = "login") { onNavigateToLogin() }) {
                                 withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
-                                    append("Войти")
+                                    append(stringResource(Res.string.action_login))
                                 }
                             }
                         },

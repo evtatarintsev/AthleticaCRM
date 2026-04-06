@@ -6,6 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.screen_client_source_create
+import org.athletica.crm.generated.resources.screen_client_sources
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран «Источники клиентов».
@@ -21,7 +25,7 @@ fun ClientSourcesScreen(
 
     if (showCreate) {
         DirectoryItemCreateScreen(
-            title = "Новый источник",
+            title = stringResource(Res.string.screen_client_source_create),
             onBack = { showCreate = false },
             onSave = { newItem ->
                 items = items + newItem
@@ -33,7 +37,7 @@ fun ClientSourcesScreen(
     }
 
     DirectoryListScreen(
-        title = "Источники клиентов",
+        title = stringResource(Res.string.screen_client_sources),
         items = items,
         onBack = onBack,
         onAdd = { showCreate = true },

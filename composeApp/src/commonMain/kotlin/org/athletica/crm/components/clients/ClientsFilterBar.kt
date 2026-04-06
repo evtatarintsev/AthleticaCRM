@@ -26,6 +26,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_clear_search
+import org.athletica.crm.generated.resources.action_display_settings
+import org.athletica.crm.generated.resources.action_remove_birth_year_filter
+import org.athletica.crm.generated.resources.action_remove_gender_filter
+import org.athletica.crm.generated.resources.filter_chip_has_debt
+import org.athletica.crm.generated.resources.filter_gender_all
+import org.athletica.crm.generated.resources.filter_gender_female
+import org.athletica.crm.generated.resources.filter_gender_male
+import org.athletica.crm.generated.resources.filter_no_group
+import org.athletica.crm.generated.resources.filters_label
+import org.athletica.crm.generated.resources.filters_with_count
+import org.athletica.crm.generated.resources.hint_search_by_name
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Панель поиска и фильтров над таблицей клиентов.
@@ -59,7 +73,7 @@ fun ClientsFilterBar(
             OutlinedTextField(
                 value = filter.nameQuery,
                 onValueChange = { onFilterChange(filter.copy(nameQuery = it)) },
-                placeholder = { Text("Поиск по имени...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                placeholder = { Text(stringResource(Res.string.hint_search_by_name), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -72,7 +86,7 @@ fun ClientsFilterBar(
                         IconButton(onClick = { onFilterChange(filter.copy(nameQuery = "")) }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Очистить поиск",
+                                contentDescription = stringResource(Res.string.action_clear_search),
                                 modifier = Modifier.size(18.dp),
                             )
                         }
@@ -90,14 +104,14 @@ fun ClientsFilterBar(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    if (filter.chipCount > 0) "Фильтры · ${filter.chipCount}" else "Фильтры",
+                    if (filter.chipCount > 0) stringResource(Res.string.filters_with_count, filter.chipCount) else stringResource(Res.string.filters_label),
                 )
             }
 
             IconButton(onClick = onOpenSettings) {
                 Icon(
                     imageVector = Icons.Default.Settings,
-                    contentDescription = "Настройки отображения",
+                    contentDescription = stringResource(Res.string.action_display_settings),
                 )
             }
         }
@@ -115,11 +129,19 @@ fun ClientsFilterBar(
                     FilterChip(
                         selected = true,
                         onClick = { onFilterChange(filter.copy(gender = GenderFilter.All)) },
-                        label = { Text(filter.gender.label) },
+                        label = {
+                            Text(
+                                when (filter.gender) {
+                                    GenderFilter.All -> stringResource(Res.string.filter_gender_all)
+                                    GenderFilter.Male -> stringResource(Res.string.filter_gender_male)
+                                    GenderFilter.Female -> stringResource(Res.string.filter_gender_female)
+                                },
+                            )
+                        },
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Убрать фильтр по полу",
+                                contentDescription = stringResource(Res.string.action_remove_gender_filter),
                                 modifier = Modifier.size(16.dp),
                             )
                         },
@@ -141,7 +163,7 @@ fun ClientsFilterBar(
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Убрать фильтр по году рождения",
+                                contentDescription = stringResource(Res.string.action_remove_birth_year_filter),
                                 modifier = Modifier.size(16.dp),
                             )
                         },
@@ -152,11 +174,11 @@ fun ClientsFilterBar(
                     FilterChip(
                         selected = true,
                         onClick = { onFilterChange(filter.copy(hasDebtOnly = false)) },
-                        label = { Text("Есть долг") },
+                        label = { Text(stringResource(Res.string.filter_chip_has_debt)) },
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Убрать фильтр по задолженности",
+                                contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                             )
                         },
@@ -167,11 +189,11 @@ fun ClientsFilterBar(
                     FilterChip(
                         selected = true,
                         onClick = { onFilterChange(filter.copy(noGroupOnly = false)) },
-                        label = { Text("Без группы") },
+                        label = { Text(stringResource(Res.string.filter_no_group)) },
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Убрать фильтр «без группы»",
+                                contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                             )
                         },

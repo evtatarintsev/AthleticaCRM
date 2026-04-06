@@ -29,7 +29,7 @@ suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<CommonD
             db.transaction {
                 for (clientId in request.clientIds) {
                     sql(
-                        "INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId) ON CONFLICT DO NOTHING",
+                        "INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId) ON CONFLICT ON CONSTRAINT uq_client_groups DO NOTHING",
                     )
                         .bind("clientId", clientId)
                         .bind("groupId", request.groupId)

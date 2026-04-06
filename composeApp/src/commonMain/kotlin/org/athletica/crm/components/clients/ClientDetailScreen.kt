@@ -199,9 +199,11 @@ fun ClientDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showOverflow by remember { mutableStateOf(false) }
+    var showAddToGroupSheet by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableIntStateOf(0) }
     val tabs = ClientDetailTab.entries
 
-    LaunchedEffect(clientId) {
+    LaunchedEffect(clientId, refreshKey) {
         isLoading = true
         error = null
         api.clientDetail(clientId).fold(
@@ -305,7 +307,7 @@ fun ClientDetailScreen(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        item { ClientDetailHeader(loadedClient, api) }
+                        item { ClientDetailHeader(loadedClient, api, onAddToGroup = { showAddToGroupSheet = true }) }
 
                         if (windowSize >= WindowSize.MEDIUM) {
                             item {
@@ -377,13 +379,26 @@ fun ClientDetailScreen(
             }
         }
     }
+
+    if (showAddToGroupSheet && client != null) {
+        AddToGroupSheet(
+            clientId = clientId,
+            existingGroupIds = client!!.groups.map { it.id }.toSet(),
+            api = api,
+            onDismiss = { showAddToGroupSheet = false },
+            onGroupAdded = {
+                showAddToGroupSheet = false
+                refreshKey++
+            },
+        )
+    }
 }
 
 // ── header ────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient) {
+private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient, onAddToGroup: () -> Unit) {
     val initials =
         client.name
             .split(" ")
@@ -445,7 +460,7 @@ private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient) {
                     SuggestionChip(onClick = {}, label = { Text(group.name, style = MaterialTheme.typography.labelSmall) })
                 }
                 AssistChip(
-                    onClick = {},
+                    onClick = onAddToGroup,
                     label = { Text(stringResource(Res.string.action_add_client_group), style = MaterialTheme.typography.labelSmall) },
                 )
             }

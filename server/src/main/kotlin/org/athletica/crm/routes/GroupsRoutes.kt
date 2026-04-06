@@ -10,6 +10,7 @@ import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.db.Database
 import org.athletica.crm.usecases.groups.createGroup
 import org.athletica.crm.usecases.groups.groupList
+import org.athletica.crm.usecases.groups.groupListForSelect
 
 context(db: Database, audit: AuditLog)
 fun Route.groupsRoutes() {
@@ -18,6 +19,12 @@ fun Route.groupsRoutes() {
             call.eitherToResponse {
                 val groups = groupList(GroupListRequest()).bind()
                 GroupListResponse(groups)
+            }
+        }
+
+        getWithContext("/list-for-select") {
+            call.eitherToResponse {
+                groupListForSelect().bind()
             }
         }
 

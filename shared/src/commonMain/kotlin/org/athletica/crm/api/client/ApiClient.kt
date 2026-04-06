@@ -28,6 +28,7 @@ import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
@@ -41,6 +42,7 @@ import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
@@ -101,6 +103,18 @@ class ApiClient(private val http: HttpClient) {
 
     /** Возвращает список групп организации по параметрам [request]. */
     suspend fun groupList(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = execute { http.get("/api/groups/list") }
+
+    /** Возвращает минимальный список групп организации (только id и name) для использования в селекторах. */
+    suspend fun groupListForSelect(): Either<ApiClientError, List<GroupSelectItem>> = execute { http.get("/api/groups/list-for-select") }
+
+    /** Добавляет список клиентов из [request] в группу. */
+    suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/clients/add-to-group") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Создаёт новую группу по данным [request]. Возвращает созданную группу. */
     suspend fun createGroup(request: GroupCreateRequest): Either<ApiClientError, GroupDetailResponse> =

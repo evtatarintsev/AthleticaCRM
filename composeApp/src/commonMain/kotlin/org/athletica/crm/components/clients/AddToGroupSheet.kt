@@ -43,21 +43,21 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
 /**
- * Шторка выбора группы для добавления клиента.
+ * Шторка выбора группы для добавления одного или нескольких клиентов.
  * Загружает список групп через [api], исключает группы из [existingGroupIds].
- * При выборе группы добавляет [clientId] в неё и вызывает [onGroupAdded].
+ * При выборе группы добавляет всех [clientIds] в неё и вызывает [onGroupAdded].
  *
- * [clientId] — идентификатор клиента, добавляемого в группу.
- * [existingGroupIds] — группы, в которых клиент уже состоит (исключаются из списка).
+ * [clientIds] — идентификаторы клиентов, добавляемых в группу.
+ * [existingGroupIds] — группы, исключаемые из списка (уже добавленные).
  * [api] — клиент API.
  * [onDismiss] — вызывается при закрытии шторки.
- * [onGroupAdded] — вызывается после успешного добавления клиента в группу.
+ * [onGroupAdded] — вызывается после успешного добавления клиентов в группу.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToGroupSheet(
-    clientId: Uuid,
-    existingGroupIds: Set<Uuid>,
+    clientIds: List<Uuid>,
+    existingGroupIds: Set<Uuid> = emptySet(),
     api: ApiClient,
     onDismiss: () -> Unit,
     onGroupAdded: () -> Unit,
@@ -163,7 +163,7 @@ fun AddToGroupSheet(
                                         scope.launch {
                                             api.addClientsToGroup(
                                                 AddClientsToGroupRequest(
-                                                    clientIds = listOf(clientId),
+                                                    clientIds = clientIds,
                                                     groupId = group.id,
                                                 ),
                                             ).onRight {

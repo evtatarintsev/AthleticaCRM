@@ -382,7 +382,7 @@ fun ClientDetailScreen(
 
     if (showAddToGroupSheet && client != null) {
         AddToGroupSheet(
-            clientId = clientId,
+            clientIds = listOf(clientId),
             existingGroupIds = client!!.groups.map { it.id }.toSet(),
             api = api,
             onDismiss = { showAddToGroupSheet = false },

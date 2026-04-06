@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -33,6 +34,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_delete_selected
 import org.athletica.crm.generated.resources.action_export_selected
 import org.athletica.crm.generated.resources.action_notify_selected
@@ -61,6 +63,7 @@ fun ClientsScreen(
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
     var filter by remember { mutableStateOf(ClientFilterState()) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showAddToGroupSheet by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf(ClientDisplaySettings()) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
@@ -187,10 +190,23 @@ fun ClientsScreen(
                 if (selectedIds.isNotEmpty()) {
                     ClientsBottomActionBar(
                         selectedCount = selectedIds.size,
+                        onAddToGroup = { showAddToGroupSheet = true },
                         onDelete = { selectedIds = emptySet() },
                         onNotify = {},
                         onExport = {},
                         modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+
+                if (showAddToGroupSheet && selectedIds.isNotEmpty()) {
+                    AddToGroupSheet(
+                        clientIds = selectedIds.toList(),
+                        api = api,
+                        onDismiss = { showAddToGroupSheet = false },
+                        onGroupAdded = {
+                            showAddToGroupSheet = false
+                            selectedIds = emptySet()
+                        },
                     )
                 }
             }
@@ -206,6 +222,7 @@ fun ClientsScreen(
 @Composable
 private fun ClientsBottomActionBar(
     selectedCount: Int,
+    onAddToGroup: () -> Unit,
     onDelete: () -> Unit,
     onNotify: () -> Unit,
     onExport: () -> Unit,
@@ -220,6 +237,9 @@ private fun ClientsBottomActionBar(
                     .padding(start = 16.dp)
                     .weight(1f),
         )
+        IconButton(onClick = onAddToGroup) {
+            Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(Res.string.action_add_client_group))
+        }
         IconButton(onClick = onDelete) {
             Icon(imageVector = Icons.Default.Delete, contentDescription = stringResource(Res.string.action_delete_selected))
         }

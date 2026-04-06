@@ -10,6 +10,7 @@ import io.ktor.utils.io.toByteArray
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.upload.uploadFile
 import org.athletica.crm.usecases.upload.uploadInfo
@@ -30,10 +31,10 @@ fun Route.uploadRoutes() {
         call.eitherToResponse {
             val idParam =
                 call.request.queryParameters["id"]
-                    ?: raise(CommonDomainError("MISSING_PARAMETER", "Параметр id обязателен"))
+                    ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
             val id =
                 runCatching { Uuid.parse(idParam) }.getOrElse {
-                    raise(CommonDomainError("INVALID_PARAMETER", "Параметр id должен быть корректным UUID"))
+                    raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
                 }
             uploadInfo(id, cacheTTL).bind()
         }
@@ -54,7 +55,7 @@ fun Route.uploadRoutes() {
                 part.dispose()
             }
 
-            val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", "Файл не найден в запросе"))
+            val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", Messages.FileNotInRequest.localize()))
             uploadFile(bytes, originalName, contentType).bind()
         }
     }

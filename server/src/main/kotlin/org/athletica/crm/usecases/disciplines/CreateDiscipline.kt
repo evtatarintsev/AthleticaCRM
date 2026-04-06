@@ -11,6 +11,7 @@ import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 
 /**
  * Создаёт новую дисциплину в организации из [ctx].
@@ -27,7 +28,7 @@ suspend fun createDiscipline(request: CreateDisciplineRequest): Either<CommonDom
                 .bind("name", request.name)
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("DISCIPLINE_ALREADY_EXISTS", "Дисциплина с таким названием уже существует"))
+            raise(CommonDomainError("DISCIPLINE_ALREADY_EXISTS", Messages.DisciplineAlreadyExists.localize()))
         }
 
         DisciplineDetailResponse(

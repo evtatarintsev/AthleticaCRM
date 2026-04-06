@@ -12,20 +12,22 @@ import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 
 private val TIME_REGEX = Regex("""^([01]\d|2[0-3]):[0-5]\d$""")
 
+context(ctx: RequestContext)
 private fun ScheduleSlot.validate(): CommonDomainError? {
     if (!TIME_REGEX.matches(startAt)) {
-        return CommonDomainError("INVALID_SCHEDULE_TIME", "Некорректное время начала слота: \"$startAt\"")
+        return CommonDomainError("INVALID_SCHEDULE_TIME", Messages.InvalidScheduleStartTime.localize(ctx.lang, startAt))
     }
     if (!TIME_REGEX.matches(endAt)) {
-        return CommonDomainError("INVALID_SCHEDULE_TIME", "Некорректное время окончания слота: \"$endAt\"")
+        return CommonDomainError("INVALID_SCHEDULE_TIME", Messages.InvalidScheduleEndTime.localize(ctx.lang, endAt))
     }
     if (endAt <= startAt) {
         return CommonDomainError(
             "INVALID_SCHEDULE_TIME",
-            "Время окончания должно быть позже времени начала: $startAt – $endAt",
+            Messages.ScheduleEndBeforeStart.localize(ctx.lang, startAt, endAt),
         )
     }
     return null
@@ -67,7 +69,7 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                 }
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("GROUP_ALREADY_EXISTS", "Группа с таким идентификатором уже существует"))
+            raise(CommonDomainError("GROUP_ALREADY_EXISTS", Messages.GroupAlreadyExists.localize()))
         }
 
         GroupDetailResponse(

@@ -6,6 +6,7 @@ import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 
 /**
  * Возвращает основные настройки организации текущего пользователя из [ctx].
@@ -21,5 +22,5 @@ suspend fun getOrgSettings(): Either<CommonDomainError, OrgSettingsResponse> =
                     name = row.get("name", String::class.java)!!,
                     timezone = row.get("timezone", String::class.java)!!,
                 )
-            } ?: raise(CommonDomainError("ORG_NOT_FOUND", "Организация не найдена"))
+            } ?: raise(CommonDomainError("ORG_NOT_FOUND", Messages.OrgNotFound.localize()))
     }

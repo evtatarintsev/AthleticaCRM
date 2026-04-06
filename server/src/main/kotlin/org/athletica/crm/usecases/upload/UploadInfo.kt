@@ -6,6 +6,7 @@ import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.MinioService
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
@@ -37,7 +38,7 @@ suspend fun uploadInfo(id: Uuid, ttl: Duration): Either<CommonDomainError, Uploa
                         contentType = row.get("content_type", String::class.java)!!,
                         sizeBytes = row.get("size_bytes", Long::class.java)!!,
                     )
-                } ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", "Загрузка не найдена"))
+                } ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", Messages.UploadNotFound.localize()))
 
         UploadResponse(
             id = upload.id,

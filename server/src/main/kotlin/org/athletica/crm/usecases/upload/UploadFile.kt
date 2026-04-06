@@ -9,6 +9,7 @@ import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.MinioService
 import kotlin.uuid.Uuid
 
@@ -24,7 +25,7 @@ suspend fun uploadFile(
 ): Either<CommonDomainError, UploadResponse> =
     either {
         if (bytes.isEmpty()) {
-            raise(CommonDomainError("EMPTY_FILE", "Файл не может быть пустым"))
+            raise(CommonDomainError("EMPTY_FILE", Messages.EmptyFile.localize()))
         }
 
         val uploadId = Uuid.random()

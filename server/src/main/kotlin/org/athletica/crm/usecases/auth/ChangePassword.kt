@@ -10,6 +10,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.userById
 
@@ -29,7 +30,7 @@ suspend fun changePassword(request: ChangePasswordRequest): Either<DomainError, 
 
         val oldPasswordValid = passwordHasher.verify(request.oldPassword, PasswordHash(user.password))
         if (!oldPasswordValid) {
-            raise(CommonDomainError(code = "WRONG_PASSWORD", message = "Неверный текущий пароль"))
+            raise(CommonDomainError(code = "WRONG_PASSWORD", message = Messages.WrongPassword.localize()))
         }
 
         val newHash = passwordHasher.hash(request.newPassword)

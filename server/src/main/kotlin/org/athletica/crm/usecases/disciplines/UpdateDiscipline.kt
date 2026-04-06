@@ -11,6 +11,7 @@ import org.athletica.crm.audit.logUpdate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 
 /**
  * Обновляет название дисциплины одним запросом.
@@ -29,11 +30,11 @@ suspend fun updateDiscipline(request: UpdateDisciplineRequest): Either<CommonDom
                     .bind("name", request.name)
                     .execute()
             } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("DISCIPLINE_NAME_ALREADY_EXISTS", "Дисциплина с таким названием уже существует"))
+                raise(CommonDomainError("DISCIPLINE_NAME_ALREADY_EXISTS", Messages.DisciplineAlreadyExists.localize()))
             }
 
         if (updatedRows == 0L) {
-            raise(CommonDomainError("DISCIPLINE_NOT_FOUND", "Дисциплина не найдена"))
+            raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
         }
 
         DisciplineDetailResponse(

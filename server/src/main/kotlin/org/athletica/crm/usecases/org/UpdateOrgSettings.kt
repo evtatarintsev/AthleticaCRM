@@ -7,6 +7,7 @@ import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 
 /**
  * Обновляет название и часовой пояс организации текущего пользователя из [ctx].
@@ -16,7 +17,7 @@ context(db: Database, ctx: RequestContext)
 suspend fun updateOrgSettings(request: UpdateOrgSettingsRequest): Either<CommonDomainError, OrgSettingsResponse> =
     either {
         if (request.name.isBlank()) {
-            raise(CommonDomainError("VALIDATION_ERROR", "Название организации не может быть пустым"))
+            raise(CommonDomainError("VALIDATION_ERROR", Messages.OrgNameBlank.localize()))
         }
         db
             .sql(

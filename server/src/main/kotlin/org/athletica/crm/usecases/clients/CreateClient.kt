@@ -12,6 +12,7 @@ import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 import kotlin.uuid.toJavaUuid
 
 /**
@@ -31,7 +32,7 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
                 .bind("birthday", request.birthday?.toJavaLocalDate())
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("CLIENT_ALREADY_EXISTS", "Клиент с таким идентификатором уже существует"))
+            raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
         }
 
         ClientDetailResponse(

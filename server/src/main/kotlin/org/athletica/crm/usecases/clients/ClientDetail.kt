@@ -7,6 +7,7 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.i18n.Messages
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
@@ -31,5 +32,5 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                     birthday = row.get("birthday", java.time.LocalDate::class.java)?.toKotlinLocalDate(),
                 )
             }
-            ?: raise(CommonDomainError("CLIENT_NOT_FOUND", "Клиент не найден"))
+            ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
     }

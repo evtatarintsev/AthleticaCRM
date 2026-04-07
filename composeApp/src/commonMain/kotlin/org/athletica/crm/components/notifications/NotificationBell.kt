@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -195,8 +195,11 @@ private fun NotificationPanelContent(
                 )
             }
         } else {
-            LazyColumn(modifier = Modifier.heightIn(max = 480.dp)) {
-                items(notifications, key = { it.id }) { notification ->
+            // LazyColumn нельзя использовать внутри DropdownMenu — тот запрашивает intrinsic
+            // measurements, которые SubcomposeLayout не поддерживает. Список ограничен 50
+            // элементами на сервере, поэтому Column + verticalScroll достаточно.
+            Column(modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                notifications.forEach { notification ->
                     NotificationItemRow(
                         notification = notification,
                         nowEpochSeconds = nowEpochSeconds,

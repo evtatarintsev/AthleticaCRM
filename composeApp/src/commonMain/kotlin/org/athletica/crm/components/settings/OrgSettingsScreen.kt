@@ -299,11 +299,11 @@ fun OrgSettingsScreen(
         contentPadding = PaddingValues(bottom = 24.dp),
         modifier = modifier.fillMaxSize(),
     ) {
-        sections.forEach { section ->
-            item(key = "label_${section.label}") {
+        sections.forEachIndexed { index, section ->
+            item(key = "label_$index") {
                 SectionLabel(section.label)
             }
-            item(key = "card_${section.label}") {
+            item(key = "card_$index") {
                 SettingsSectionCard(section.items)
             }
         }

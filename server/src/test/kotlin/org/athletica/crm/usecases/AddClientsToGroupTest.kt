@@ -2,6 +2,7 @@ package org.athletica.crm.usecases
 
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.core.Lang
@@ -76,7 +77,7 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId)) {
+            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 val result = addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
                 assertIs<Either.Right<Unit>>(result)
             }
@@ -93,7 +94,7 @@ class AddClientsToGroupTest {
             val clientId3 = insertClient(orgId, "Клиент 3")
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId)) {
+            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 val result =
                     addClientsToGroup(
                         AddClientsToGroupRequest(listOf(clientId1, clientId2, clientId3), groupId),
@@ -113,7 +114,7 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId)) {
+            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
                 val result = addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
                 assertIs<Either.Right<Unit>>(result)
@@ -128,7 +129,7 @@ class AddClientsToGroupTest {
             val orgId = insertOrg()
             val clientId = insertClient(orgId)
 
-            context(TestPostgres.db, ctx(orgId)) {
+            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 val result =
                     addClientsToGroup(
                         AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()),
@@ -146,7 +147,7 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId1)
             val foreignGroupId = insertGroup(orgId2)
 
-            context(TestPostgres.db, ctx(orgId1)) {
+            context(TestPostgres.db, ctx(orgId1), TestAuditLog()) {
                 val result =
                     addClientsToGroup(
                         AddClientsToGroupRequest(listOf(clientId), foreignGroupId),
@@ -164,7 +165,7 @@ class AddClientsToGroupTest {
             val orgId = insertOrg()
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId)) {
+            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 val result =
                     addClientsToGroup(
                         AddClientsToGroupRequest(listOf(Uuid.generateV7()), groupId),
@@ -180,7 +181,7 @@ class AddClientsToGroupTest {
             val orgId = insertOrg()
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId)) {
+            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 val result = addClientsToGroup(AddClientsToGroupRequest(emptyList(), groupId))
                 assertIs<Either.Right<Unit>>(result)
             }

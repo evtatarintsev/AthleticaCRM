@@ -50,6 +50,72 @@ Command методы (команды) должны выполнять дейст
 Явный `catch` внутри бизнес-логики — признак того, что ошибка должна быть смоделирована через `Either`.
 
 
+## Внутренняя итерация (Internal Iteration) для side-эффектов над коллекцией
+
+Для выполнения действий над каждым элементом коллекции используй `forEach` вместо `for`.
+`for` — это внешняя итерация (external iteration): вызывающий код управляет обходом.
+`forEach` — внутренняя итерация (internal iteration): обход делегируется коллекции, код выражает **что** делать с элементом, а не **как** его перебирать.
+Термины введены в контексте паттерна Iterator (GoF) и popularized в функциональных языках; в JVM-экосистеме закреплены в Effective Java (Bloch) и Kotlin Coding Conventions.
+
+**Плохо** — внешняя итерация:
+```kotlin
+for (clientId in request.clientIds) {
+    audit.logUpdate("client", clientId, auditData)
+}
+```
+
+**Хорошо** — внутренняя итерация:
+```kotlin
+request.clientIds.forEach {
+    audit.logUpdate("client", it, auditData)
+}
+```
+
+Исключение: `for` допустим, если внутри тела нужен `break`, `continue` или `return` из внешней функции — `forEach` их не поддерживает.
+
+
+## Минимальная область видимости переменных (Minimize Variable Span)
+
+Объявляй переменную как можно ближе к месту её первого использования («declare variables close to their first use», Code Complete — Steve McConnell, Chapter 10).
+Чем меньше расстояние между объявлением и использованием, тем проще читать код: не нужно держать переменную в голове и возвращаться к её объявлению.
+
+**Плохо** — `requestJson` объявлена задолго до использования, между объявлением и использованием есть несвязанный блок `try/catch`:
+```kotlin
+val requestJson = Json.encodeToString(request)
+
+try {
+    db.transaction {
+        for (clientId in request.clientIds) {
+            sql("INSERT INTO client_groups ...")
+                .bind("clientId", clientId)
+                .bind("groupId", request.groupId)
+                .execute()
+        }
+    }
+} catch (e: R2dbcDataIntegrityViolationException) {
+    raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
+}
+
+for (clientId in request.clientIds) {
+    audit.logUpdate("client", clientId, requestJson)
+}
+```
+
+**Хорошо** — переменная объявлена непосредственно перед использованием:
+```kotlin
+try {
+    db.transaction { ... }
+} catch (e: R2dbcDataIntegrityViolationException) {
+    raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
+}
+
+val auditData = Json.encodeToString(request)
+for (clientId in request.clientIds) {
+    audit.logUpdate("client", clientId, auditData)
+}
+```
+
+
 ## Фигурные скобки в управляющих конструкциях
 
 `if`, `for`, `while` всегда используются с фигурными скобками, даже если тело состоит из одного выражения.

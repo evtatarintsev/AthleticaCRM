@@ -3,7 +3,10 @@ package org.athletica.crm.usecases.clients
 import arrow.core.Either
 import arrow.core.raise.either
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
+import org.athletica.crm.audit.AuditLog
+import org.athletica.crm.audit.logUpdate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -15,7 +18,7 @@ import org.athletica.crm.i18n.Messages
  * Уже существующие связи клиент–группа игнорируются (ON CONFLICT DO NOTHING).
  * Возвращает ошибку если группа не найдена или один из клиентов не существует.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: RequestContext, audit: AuditLog)
 suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<CommonDomainError, Unit> =
     either {
         db
@@ -38,5 +41,10 @@ suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<CommonD
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
+        }
+
+        val auditData = Json.encodeToString(request)
+        request.clientIds.forEach {
+            audit.logUpdate("client", it, auditData)
         }
     }

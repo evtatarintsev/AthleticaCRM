@@ -45,6 +45,7 @@ import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
+import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
@@ -245,6 +246,20 @@ class ApiClient(private val http: HttpClient) {
                     if (to != null) {
                         parameters.append("to", to)
                     }
+                }
+            }
+        }
+
+    /**
+     * Возвращает уведомления текущего пользователя.
+     * [isRead] — опциональный фильтр: `true` — только прочитанные, `false` — только непрочитанные,
+     * `null` — все.
+     */
+    suspend fun notificationList(isRead: Boolean? = null): Either<ApiClientError, NotificationsResponse> =
+        execute {
+            http.get("/api/notifications") {
+                url {
+                    if (isRead != null) parameters.append("isRead", isRead.toString())
                 }
             }
         }

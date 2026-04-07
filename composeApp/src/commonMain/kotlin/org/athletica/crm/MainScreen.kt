@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.notifications.NotificationItem as ApiNotificationItem
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
@@ -144,6 +145,13 @@ fun MainScreen(
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var selectedClientId by remember { mutableStateOf<Uuid?>(null) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        api.notificationList().fold(
+            ifLeft = { /* ошибка — оставляем пустой список, не мешаем работе */ },
+            ifRight = { response -> notifications = response.notifications.map { it.toAppNotification() } },
+        )
+    }
 
     fun onNotificationLink(link: NotificationLink) {
         when (link) {
@@ -704,3 +712,14 @@ private fun ContentArea(
             }
     }
 }
+
+/** Конвертирует API-схему [ApiNotificationItem] в UI-модель [AppNotification]. */
+private fun ApiNotificationItem.toAppNotification() =
+    AppNotification(
+        id = id,
+        title = title,
+        body = body,
+        isRead = isRead,
+        createdAt = createdAt,
+        link = null, // ссылки будут добавлены позже
+    )

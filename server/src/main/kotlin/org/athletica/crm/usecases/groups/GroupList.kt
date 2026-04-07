@@ -24,7 +24,7 @@ suspend fun groupList(request: GroupListRequest): Either<CommonDomainError, List
         )
         .bind("orgId", ctx.orgId.value)
         .let { if (nameFilter != null) it.bind("name", "%$nameFilter%") else it }
-        .list { row, _ ->
+        .list { row ->
             GroupListItem(
                 id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                 name = row.get("name", String::class.java)!!,

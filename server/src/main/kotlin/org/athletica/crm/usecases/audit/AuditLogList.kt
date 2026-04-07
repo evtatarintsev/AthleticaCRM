@@ -57,7 +57,7 @@ suspend fun auditLogList(request: AuditLogListRequest): Either<CommonDomainError
             .bind("offset", offset)
 
     val items =
-        buildQuery("id, user_id, username, action_type, entity_type, entity_id, data::text, ip_address, created_at").list { row, _ ->
+        buildQuery("id, user_id, username, action_type, entity_type, entity_id, data::text, ip_address, created_at").list { row ->
             AuditLogItem(
                 id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                 userId = row.get("user_id", java.util.UUID::class.java)?.toKotlinUuid(),

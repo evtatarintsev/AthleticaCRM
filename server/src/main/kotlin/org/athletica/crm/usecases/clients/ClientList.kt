@@ -33,7 +33,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId.value)
-                .list { row, _ ->
+                .list { row ->
                     ClientRow(
                         id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                         name = row.get("name", String::class.java)!!,
@@ -54,7 +54,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId.value)
-                .list { row, _ ->
+                .list { row ->
                     val clientId = row.get("client_id", java.util.UUID::class.java)!!.toKotlinUuid()
                     val group =
                         ClientGroup(

@@ -23,7 +23,7 @@ suspend fun disciplineList(): Either<CommonDomainError, List<DisciplineDetailRes
             """.trimIndent(),
         )
         .bind("orgId", ctx.orgId.value)
-        .list { row, _ ->
+        .list { row ->
             DisciplineDetailResponse(
                 id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                 name = row.get("name", String::class.java)!!,

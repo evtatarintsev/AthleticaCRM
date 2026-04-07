@@ -24,7 +24,7 @@ suspend fun groupListForSelect(): Either<CommonDomainError, List<GroupSelectItem
             """.trimIndent(),
         )
         .bind("orgId", ctx.orgId.value)
-        .list { row, _ ->
+        .list { row ->
             GroupSelectItem(
                 id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                 name = row.get("name", String::class.java)!!,

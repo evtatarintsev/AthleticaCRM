@@ -48,7 +48,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                     """.trimIndent(),
                 )
                 .bind("clientId", id)
-                .list { row, _ ->
+                .list { row ->
                     ClientGroup(
                         id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                         name = row.get("name", String::class.java)!!,

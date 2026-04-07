@@ -61,7 +61,7 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                     )
                     .bind("ids", request.disciplineIds.map { it.toJavaUuid() }.toTypedArray())
                     .bind("orgId", ctx.orgId.value)
-                    .list { row, _ ->
+                    .list { row ->
                         GroupDiscipline(
                             id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
                             name = row.get("name", String::class.java)!!,

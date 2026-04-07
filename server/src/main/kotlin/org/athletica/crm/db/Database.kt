@@ -135,6 +135,13 @@ class QueryBuilder(
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
     /**
+     * Выполняет запрос и возвращает список результатов.
+     *
+     * [mapper] — функция преобразования строки результата в доменный объект.
+     */
+    suspend fun <T : Any> list(mapper: (Row) -> T): List<T> = execute { row, _ -> mapper(row) }
+
+    /**
      * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
      */
     suspend fun execute(): Long {

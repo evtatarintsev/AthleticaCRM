@@ -45,6 +45,7 @@ import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
+import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
@@ -263,6 +264,19 @@ class ApiClient(private val http: HttpClient) {
                 }
             }
         }
+
+    /** Отмечает уведомления из [request] прочитанными для текущего пользователя. */
+    suspend fun markNotificationsRead(request: MarkNotificationsReadRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/notifications/mark-as-read") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Отмечает все уведомления текущего пользователя прочитанными. */
+    suspend fun markAllNotificationsRead(): Either<ApiClientError, Unit> =
+        execute { http.post("/api/notifications/mark-all-read") }
 
     /** Удаляет дисциплины по списку id из [request]. Атомарная операция. */
     suspend fun deleteDiscipline(request: DeleteDisciplineRequest): Either<ApiClientError, Unit> =

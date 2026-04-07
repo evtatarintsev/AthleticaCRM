@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.api.schemas.notifications.NotificationItem as ApiNotificationItem
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
@@ -174,6 +175,18 @@ fun MainScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // Оптимистично помечает уведомление прочитанным в UI и синхронизирует с сервером.
+    fun onMarkNotificationRead(id: Uuid) {
+        notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it }
+        scope.launch { api.markNotificationsRead(MarkNotificationsReadRequest(listOf(id))) }
+    }
+
+    // Оптимистично помечает все уведомления прочитанными в UI и синхронизирует с сервером.
+    fun onMarkAllNotificationsRead() {
+        notifications = notifications.map { it.copy(isRead = true) }
+        scope.launch { api.markAllNotificationsRead() }
+    }
+
     // Карточка клиента накрывает весь экран поверх навигации
     if (selectedClientId != null) {
         ClientDetailScreen(
@@ -266,8 +279,8 @@ fun MainScreen(
                                 showMenuButton = true,
                                 windowSize = windowSize,
                                 notifications = notifications,
-                                onMarkNotificationRead = { id -> notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it } },
-                                onMarkAllNotificationsRead = { notifications = notifications.map { it.copy(isRead = true) } },
+                                onMarkNotificationRead = ::onMarkNotificationRead,
+                                onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                 onNotificationNavigate = ::onNotificationLink,
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onLogout = onLogout,
@@ -328,8 +341,8 @@ fun MainScreen(
                                 showMenuButton = false,
                                 windowSize = windowSize,
                                 notifications = notifications,
-                                onMarkNotificationRead = { id -> notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it } },
-                                onMarkAllNotificationsRead = { notifications = notifications.map { it.copy(isRead = true) } },
+                                onMarkNotificationRead = ::onMarkNotificationRead,
+                                onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                 onNotificationNavigate = ::onNotificationLink,
                                 onMenuClick = {},
                                 onLogout = onLogout,
@@ -377,8 +390,8 @@ fun MainScreen(
                                 showMenuButton = false,
                                 windowSize = windowSize,
                                 notifications = notifications,
-                                onMarkNotificationRead = { id -> notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it } },
-                                onMarkAllNotificationsRead = { notifications = notifications.map { it.copy(isRead = true) } },
+                                onMarkNotificationRead = ::onMarkNotificationRead,
+                                onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                 onNotificationNavigate = ::onNotificationLink,
                                 onMenuClick = {},
                                 onLogout = onLogout,

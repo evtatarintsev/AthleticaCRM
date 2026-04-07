@@ -21,3 +21,9 @@ data class NotificationItem(
     val isRead: Boolean,
     val createdAt: Instant,
 )
+
+/** Запрос на отметку конкретных уведомлений прочитанными. */
+@Serializable
+data class MarkNotificationsReadRequest(
+    val ids: List<Uuid>,
+)

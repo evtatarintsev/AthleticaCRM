@@ -92,6 +92,10 @@
     <string name="action_toggle_nav">Переключить навигацию</string>
     <string name="action_notifications">Уведомления</string>
     <string name="action_open_menu">Открыть меню</string>
+    <string name="notifications_empty">Нет уведомлений</string>
+    <string name="notifications_mark_all_read">Прочитать все</string>
+    <string name="cd_notification_mark_read">Отметить как прочитанное</string>
+    <string name="notifications_open_link">Открыть</string>
     <string name="action_add_client">Добавить клиента</string>
 
     <!-- Auth screens -->

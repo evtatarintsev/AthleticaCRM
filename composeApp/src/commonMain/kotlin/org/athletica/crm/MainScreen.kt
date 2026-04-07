@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerValue
@@ -67,6 +66,9 @@ import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
+import org.athletica.crm.components.notifications.AppNotification
+import org.athletica.crm.components.notifications.NotificationBell
+import org.athletica.crm.components.notifications.NotificationLink
 import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.ChangePasswordScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
@@ -78,7 +80,6 @@ import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client
 import org.athletica.crm.generated.resources.action_collapse_menu
 import org.athletica.crm.generated.resources.action_logout
-import org.athletica.crm.generated.resources.action_notifications
 import org.athletica.crm.generated.resources.action_open_menu
 import org.athletica.crm.generated.resources.action_toggle_nav
 import org.athletica.crm.generated.resources.app_name
@@ -142,6 +143,16 @@ fun MainScreen(
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var selectedClientId by remember { mutableStateOf<Uuid?>(null) }
+    var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
+
+    fun onNotificationLink(link: NotificationLink) {
+        when (link) {
+            is NotificationLink.ToClient -> selectedClientId = link.clientId
+            NotificationLink.ToSchedule -> selectedItem = NavItem.SCHEDULE
+            NotificationLink.ToClients -> selectedItem = NavItem.CLIENTS
+            NotificationLink.ToGroups -> selectedItem = NavItem.GROUPS
+        }
+    }
     var showCreateClient by remember { mutableStateOf(false) }
     var clientsRefreshKey by remember { mutableStateOf(0) }
     var showCreateGroup by remember { mutableStateOf(false) }
@@ -245,6 +256,11 @@ fun MainScreen(
                         topBar = {
                             MainTopAppBar(
                                 showMenuButton = true,
+                                windowSize = windowSize,
+                                notifications = notifications,
+                                onMarkNotificationRead = { id -> notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it } },
+                                onMarkAllNotificationsRead = { notifications = notifications.map { it.copy(isRead = true) } },
+                                onNotificationNavigate = ::onNotificationLink,
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onLogout = onLogout,
                                 extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClient = true }) },
@@ -302,6 +318,11 @@ fun MainScreen(
                         topBar = {
                             MainTopAppBar(
                                 showMenuButton = false,
+                                windowSize = windowSize,
+                                notifications = notifications,
+                                onMarkNotificationRead = { id -> notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it } },
+                                onMarkAllNotificationsRead = { notifications = notifications.map { it.copy(isRead = true) } },
+                                onNotificationNavigate = ::onNotificationLink,
                                 onMenuClick = {},
                                 onLogout = onLogout,
                                 extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClient = true }) },
@@ -346,6 +367,11 @@ fun MainScreen(
                         topBar = {
                             MainTopAppBar(
                                 showMenuButton = false,
+                                windowSize = windowSize,
+                                notifications = notifications,
+                                onMarkNotificationRead = { id -> notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it } },
+                                onMarkAllNotificationsRead = { notifications = notifications.map { it.copy(isRead = true) } },
+                                onNotificationNavigate = ::onNotificationLink,
                                 onMenuClick = {},
                                 onLogout = onLogout,
                                 extraActions = { TopBarActions(selectedItem, onCreateClient = { showCreateClient = true }) },
@@ -564,6 +590,11 @@ private fun RowScope.TopBarActions(
 @Composable
 private fun MainTopAppBar(
     showMenuButton: Boolean,
+    windowSize: WindowSize,
+    notifications: List<AppNotification>,
+    onMarkNotificationRead: (Uuid) -> Unit,
+    onMarkAllNotificationsRead: () -> Unit,
+    onNotificationNavigate: (NotificationLink) -> Unit,
     onMenuClick: () -> Unit,
     onLogout: () -> Unit,
     extraActions: @Composable RowScope.() -> Unit = {},
@@ -592,12 +623,13 @@ private fun MainTopAppBar(
         },
         actions = {
             extraActions()
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = stringResource(Res.string.action_notifications),
-                )
-            }
+            NotificationBell(
+                notifications = notifications,
+                windowSize = windowSize,
+                onMarkRead = onMarkNotificationRead,
+                onMarkAllRead = onMarkAllNotificationsRead,
+                onNavigate = onNotificationNavigate,
+            )
             IconButton(onClick = onLogout) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,

@@ -15,4 +15,6 @@ data class GroupCreateRequest(
     val name: String,
     /** Слоты расписания группы. */
     val schedule: List<ScheduleSlot> = emptyList(),
+    /** Идентификаторы дисциплин, привязываемых к группе. */
+    val disciplineIds: List<Uuid> = emptyList(),
 )

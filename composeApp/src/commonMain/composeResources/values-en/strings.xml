@@ -143,6 +143,11 @@
     <string name="action_add_group">Add group</string>
     <string name="hint_search_by_title">Search by name…</string>
 
+    <!-- Group disciplines -->
+    <string name="section_disciplines">Disciplines</string>
+    <string name="action_add_discipline">Add discipline</string>
+    <string name="disciplines_empty">No disciplines yet</string>
+
     <!-- Group create / schedule editor -->
     <string name="screen_group_create">New group</string>
     <string name="section_schedule">Schedule</string>

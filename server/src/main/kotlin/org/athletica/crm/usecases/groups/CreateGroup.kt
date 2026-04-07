@@ -6,6 +6,7 @@ import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
+import org.athletica.crm.api.schemas.groups.GroupDiscipline
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.audit.logCreate
@@ -13,6 +14,8 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.i18n.Messages
+import kotlin.uuid.toJavaUuid
+import kotlin.uuid.toKotlinUuid
 
 private val TIME_REGEX = Regex("""^([01]\d|2[0-3]):[0-5]\d$""")
 
@@ -35,8 +38,9 @@ private fun ScheduleSlot.validate(): CommonDomainError? {
 
 /**
  * Создаёт новую группу в организации из [ctx] по данным [request].
- * В одной транзакции сохраняет группу и все слоты расписания.
- * Возвращает детали созданной группы, либо ошибку если группа уже существует.
+ * В одной транзакции сохраняет группу, слоты расписания и привязки дисциплин.
+ * Возвращает детали созданной группы, либо ошибку если группа уже существует
+ * или одна из дисциплин не найдена.
  */
 context(db: Database, ctx: RequestContext, audit: AuditLog)
 suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, GroupDetailResponse> =
@@ -44,6 +48,32 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
         request.schedule.forEach { slot ->
             slot.validate()?.let { raise(it) }
         }
+
+        val disciplines =
+            if (request.disciplineIds.isNotEmpty()) {
+                db
+                    .sql(
+                        """
+                        SELECT id, name FROM disciplines
+                        WHERE id = ANY(:ids) AND org_id = :orgId
+                        ORDER BY name
+                        """.trimIndent(),
+                    )
+                    .bind("ids", request.disciplineIds.map { it.toJavaUuid() }.toTypedArray())
+                    .bind("orgId", ctx.orgId.value)
+                    .list { row, _ ->
+                        GroupDiscipline(
+                            id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
+                            name = row.get("name", String::class.java)!!,
+                        )
+                    }.also { result ->
+                        if (result.size != request.disciplineIds.size) {
+                            raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
+                        }
+                    }
+            } else {
+                emptyList()
+            }
 
         try {
             db.transaction {
@@ -67,6 +97,13 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                         .bind("endAt", slot.endAt)
                         .execute()
                 }
+
+                request.disciplineIds.forEach { disciplineId ->
+                    sql("INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:groupId, :disciplineId)")
+                        .bind("groupId", request.id)
+                        .bind("disciplineId", disciplineId)
+                        .execute()
+                }
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
             if (e.message?.contains("uq_groups_org_name") == true) {
@@ -80,6 +117,7 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
             id = request.id,
             name = request.name,
             schedule = request.schedule,
+            disciplines = disciplines,
         ).also { audit.logCreate(it) }
     }
 

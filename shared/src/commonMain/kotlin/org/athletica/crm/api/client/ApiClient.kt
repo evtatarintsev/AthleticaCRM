@@ -43,6 +43,7 @@ import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
+import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
@@ -111,6 +112,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/clients/add-to-group") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Устанавливает список дисциплин для группы по данным [request]. Полностью заменяет текущий список. */
+    suspend fun setGroupDisciplines(request: SetGroupDisciplinesRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/groups/set-disciplines") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

@@ -12,4 +12,6 @@ data class GroupDetailResponse(
     val name: String,
     /** Слоты расписания группы. */
     val schedule: List<ScheduleSlot>,
+    /** Дисциплины, привязанные к группе. */
+    val disciplines: List<GroupDiscipline> = emptyList(),
 )

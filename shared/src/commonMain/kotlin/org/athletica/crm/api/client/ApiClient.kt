@@ -33,6 +33,7 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
@@ -112,6 +113,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/clients/add-to-group") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Удаляет клиента из группы по данным [request]. */
+    suspend fun removeClientFromGroup(request: RemoveClientFromGroupRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/clients/remove-from-group") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

@@ -1,6 +1,7 @@
 package org.athletica.crm.components.clients
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -36,6 +38,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,11 +66,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
@@ -201,6 +207,7 @@ fun ClientDetailScreen(
     var showOverflow by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
     val tabs = ClientDetailTab.entries
 
     LaunchedEffect(clientId, refreshKey) {
@@ -307,7 +314,19 @@ fun ClientDetailScreen(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        item { ClientDetailHeader(loadedClient, api, onAddToGroup = { showAddToGroupSheet = true }) }
+                        item {
+                            ClientDetailHeader(
+                                client = loadedClient,
+                                api = api,
+                                onAddToGroup = { showAddToGroupSheet = true },
+                                onRemoveFromGroup = { groupId ->
+                                    scope.launch {
+                                        api.removeClientFromGroup(RemoveClientFromGroupRequest(listOf(clientId), groupId))
+                                        refreshKey++
+                                    }
+                                },
+                            )
+                        }
 
                         if (windowSize >= WindowSize.MEDIUM) {
                             item {
@@ -398,7 +417,12 @@ fun ClientDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient, onAddToGroup: () -> Unit) {
+private fun ClientDetailHeader(
+    client: ClientDetailResponse,
+    api: ApiClient,
+    onAddToGroup: () -> Unit,
+    onRemoveFromGroup: (groupId: Uuid) -> Unit,
+) {
     val initials =
         client.name
             .split(" ")
@@ -457,7 +481,18 @@ private fun ClientDetailHeader(client: ClientDetailResponse, api: ApiClient, onA
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 client.groups.forEach { group ->
-                    SuggestionChip(onClick = {}, label = { Text(group.name, style = MaterialTheme.typography.labelSmall) })
+                    InputChip(
+                        selected = false,
+                        onClick = {},
+                        label = { Text(group.name, style = MaterialTheme.typography.labelSmall) },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp).clickable { onRemoveFromGroup(group.id) },
+                            )
+                        },
+                    )
                 }
                 AssistChip(
                     onClick = onAddToGroup,

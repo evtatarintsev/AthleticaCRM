@@ -6,6 +6,7 @@ import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -14,6 +15,7 @@ import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.clientDetail
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
+import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
 
 /**
@@ -54,6 +56,13 @@ fun Route.clientsRoutes() {
         call.eitherToResponse {
             val request = call.receive<AddClientsToGroupRequest>()
             addClientsToGroup(request).bind()
+        }
+    }
+
+    postWithContext("/clients/remove-from-group") {
+        call.eitherToResponse {
+            val request = call.receive<RemoveClientFromGroupRequest>()
+            removeClientsFromGroup(request).bind()
         }
     }
 }

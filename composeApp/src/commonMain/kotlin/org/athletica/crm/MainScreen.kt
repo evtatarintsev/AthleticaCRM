@@ -46,6 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,6 +97,7 @@ import org.athletica.crm.generated.resources.nav_schedule
 import org.athletica.crm.generated.resources.nav_settings
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 
 /** Пункт бокового меню навигации. */
@@ -148,10 +150,13 @@ fun MainScreen(
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        api.notificationList().fold(
-            ifLeft = { /* ошибка — оставляем пустой список, не мешаем работе */ },
-            ifRight = { response -> notifications = response.notifications.map { it.toAppNotification() } },
-        )
+        while (true) {
+            api.notificationList().fold(
+                ifLeft = { /* ошибка — оставляем пустой список, не мешаем работе */ },
+                ifRight = { response -> notifications = response.notifications.map { it.toAppNotification() } },
+            )
+            delay(60.seconds)
+        }
     }
 
     fun onNotificationLink(link: NotificationLink) {

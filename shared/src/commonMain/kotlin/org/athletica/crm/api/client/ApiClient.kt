@@ -275,8 +275,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Отмечает все уведомления текущего пользователя прочитанными. */
-    suspend fun markAllNotificationsRead(): Either<ApiClientError, Unit> =
-        execute { http.post("/api/notifications/mark-all-read") }
+    suspend fun markAllNotificationsRead(): Either<ApiClientError, Unit> = execute { http.post("/api/notifications/mark-all-read") }
 
     /** Удаляет дисциплины по списку id из [request]. Атомарная операция. */
     suspend fun deleteDiscipline(request: DeleteDisciplineRequest): Either<ApiClientError, Unit> =

@@ -36,6 +36,9 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.infra.mail.Mailbox
+import org.athletica.infra.mail.SmtpConfig
+import org.athletica.infra.mail.SmtpMailbox
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.db.Database
@@ -43,6 +46,7 @@ import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.disciplinesRoutes
+import org.athletica.crm.routes.employeesRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.notificationsRoutes
 import org.athletica.crm.routes.orgRoutes
@@ -174,6 +178,7 @@ fun Application.configureServer(
                 groupsRoutes()
                 orgRoutes()
                 disciplinesRoutes()
+                employeesRoutes()
                 profileRoutes()
                 uploadRoutes()
                 auditRoutes()
@@ -182,6 +187,21 @@ fun Application.configureServer(
         }
     }
 }
+
+/**
+ * Создаёт [Mailbox] на основе SMTP-настроек из конфигурации.
+ */
+fun Application.mailbox(): Mailbox =
+    SmtpMailbox(
+        SmtpConfig(
+            host = environment.config.property("smtp.host").getString(),
+            port = environment.config.property("smtp.port").getString().toInt(),
+            username = environment.config.property("smtp.username").getString(),
+            password = environment.config.property("smtp.password").getString(),
+            fromAddress = environment.config.property("smtp.fromAddress").getString(),
+            fromName = environment.config.property("smtp.fromName").getString(),
+        ),
+    )
 
 /**
  * Создаёт [Database] с R2DBC пулом соединений.

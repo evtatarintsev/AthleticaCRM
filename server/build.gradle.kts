@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.bouncycastle)
     implementation(libs.minio)
+    implementation(libs.angus.mail)
     testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
     testImplementation(libs.testcontainers.postgresql)

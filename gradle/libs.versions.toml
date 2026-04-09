@@ -25,6 +25,7 @@ testcontainers = "1.21.4"
 bouncycastle = "1.80"
 material3 = "1.10.0-alpha05"
 minio = "8.5.17"
+angus-mail = "2.0.3"
 coil3 = "3.1.0"
 
 [libraries]
@@ -75,6 +76,7 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.
 testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers" }
 bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
+angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-mail" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil3" }
 

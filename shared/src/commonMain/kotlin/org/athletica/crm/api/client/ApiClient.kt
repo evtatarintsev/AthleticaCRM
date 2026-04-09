@@ -45,6 +45,9 @@ import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
+import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.api.schemas.employees.EmployeeListItem
+import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
@@ -163,6 +166,18 @@ class ApiClient(private val http: HttpClient) {
     suspend fun updateOrgSettings(request: UpdateOrgSettingsRequest): Either<ApiClientError, OrgSettingsResponse> =
         execute {
             http.post("/api/org/settings/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Возвращает список сотрудников организации. */
+    suspend fun employeeList(): Either<ApiClientError, EmployeeListResponse> = execute { http.get("/api/employees/list") }
+
+    /** Создаёт нового сотрудника по данным [request]. Возвращает созданного сотрудника. */
+    suspend fun createEmployee(request: CreateEmployeeRequest): Either<ApiClientError, EmployeeListItem> =
+        execute {
+            http.post("/api/employees/create") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

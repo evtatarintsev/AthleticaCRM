@@ -121,6 +121,11 @@ object Messages {
         override val en = "Discipline with this name already exists"
     }
 
+    object EmployeeAlreadyExists : LocalizationKey {
+        override val ru = "Сотрудник с таким идентификатором уже существует"
+        override val en = "Employee with this ID already exists"
+    }
+
     object DisciplineNotFound : LocalizationKey {
         override val ru = "Дисциплина не найдена"
         override val en = "Discipline not found"

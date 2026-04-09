@@ -21,13 +21,15 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
             val isOwner: Boolean,
             val isActive: Boolean,
             val joinedAt: java.time.Instant,
+            val phoneNo: String?,
+            val email: String?,
         )
 
         val rows =
             db
                 .sql(
                     """
-                    SELECT e.id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at
+                    SELECT e.id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at, e.phone_no, e.email
                     FROM employees e
                     WHERE e.org_id = :orgId
                     ORDER BY e.is_owner DESC, e.name
@@ -42,6 +44,8 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                         isOwner = row.get("is_owner", Boolean::class.java)!!,
                         isActive = row.get("is_active", Boolean::class.java)!!,
                         joinedAt = row.get("joined_at", java.time.OffsetDateTime::class.java)!!.toInstant(),
+                        phoneNo = row.get("phone_no", String::class.java),
+                        email = row.get("email", String::class.java),
                     )
                 }
 
@@ -77,6 +81,8 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                 isActive = row.isActive,
                 joinedAt = row.joinedAt.toKotlinInstant(),
                 roles = rolesByEmployeeId[row.id] ?: emptyList(),
+                phoneNo = row.phoneNo,
+                email = row.email,
             )
         }
     }

@@ -21,6 +21,8 @@ data class EmployeeListItem(
     val isActive: Boolean,
     val joinedAt: Instant,
     val roles: List<EmployeeRole>,
+    val phoneNo: String? = null,
+    val email: String? = null,
 )
 
 /** Ответ на запрос списка сотрудников. */

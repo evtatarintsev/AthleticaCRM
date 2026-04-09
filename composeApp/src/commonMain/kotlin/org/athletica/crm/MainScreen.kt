@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
@@ -66,6 +67,8 @@ import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientsScreen
+import org.athletica.crm.components.employees.EmployeeCreateScreen
+import org.athletica.crm.components.employees.EmployeesScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.notifications.AppNotification
@@ -90,6 +93,7 @@ import org.athletica.crm.generated.resources.cd_avatar
 import org.athletica.crm.generated.resources.hint_search
 import org.athletica.crm.generated.resources.label_balance_value
 import org.athletica.crm.generated.resources.nav_clients
+import org.athletica.crm.generated.resources.nav_employees
 import org.athletica.crm.generated.resources.nav_groups
 import org.athletica.crm.generated.resources.nav_home
 import org.athletica.crm.generated.resources.nav_schedule
@@ -117,6 +121,9 @@ enum class NavItem(
     /** Расписание занятий. */
     SCHEDULE(Icons.Default.DateRange),
 
+    /** Сотрудники организации. */
+    EMPLOYEES(Icons.Default.Badge),
+
     /** Настройки приложения. */
     SETTINGS(Icons.Default.Settings),
 }
@@ -129,6 +136,7 @@ fun NavItem.label(): String =
         NavItem.CLIENTS -> stringResource(Res.string.nav_clients)
         NavItem.GROUPS -> stringResource(Res.string.nav_groups)
         NavItem.SCHEDULE -> stringResource(Res.string.nav_schedule)
+        NavItem.EMPLOYEES -> stringResource(Res.string.nav_employees)
         NavItem.SETTINGS -> stringResource(Res.string.nav_settings)
     }
 
@@ -171,6 +179,8 @@ fun MainScreen(
     var clientsRefreshKey by remember { mutableStateOf(0) }
     var showCreateGroup by remember { mutableStateOf(false) }
     var groupsRefreshKey by remember { mutableStateOf(0) }
+    var showCreateEmployee by remember { mutableStateOf(false) }
+    var employeesRefreshKey by remember { mutableStateOf(0) }
     var showOrgBasicSettings by remember { mutableStateOf(false) }
     var showClientSources by remember { mutableStateOf(false) }
     var showDisciplines by remember { mutableStateOf(false) }
@@ -258,6 +268,18 @@ fun MainScreen(
         return
     }
 
+    if (showCreateEmployee) {
+        EmployeeCreateScreen(
+            api = api,
+            onBack = { showCreateEmployee = false },
+            onCreated = {
+                employeesRefreshKey++
+                showCreateEmployee = false
+            },
+        )
+        return
+    }
+
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val windowSize = WindowSize.fromWidth(maxWidth)
         when {
@@ -301,6 +323,8 @@ fun MainScreen(
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
+                            onNavigateToCreateEmployee = { showCreateEmployee = true },
+                            employeesRefreshKey = employeesRefreshKey,
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToDisciplines = { showDisciplines = true },
@@ -363,6 +387,8 @@ fun MainScreen(
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
+                            onNavigateToCreateEmployee = { showCreateEmployee = true },
+                            employeesRefreshKey = employeesRefreshKey,
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToDisciplines = { showDisciplines = true },
@@ -412,6 +438,8 @@ fun MainScreen(
                             clientsRefreshKey = clientsRefreshKey,
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
+                            onNavigateToCreateEmployee = { showCreateEmployee = true },
+                            employeesRefreshKey = employeesRefreshKey,
                             onNavigateToBasicSettings = { showOrgBasicSettings = true },
                             onNavigateToClientSources = { showClientSources = true },
                             onNavigateToDisciplines = { showDisciplines = true },
@@ -684,6 +712,8 @@ private fun ContentArea(
     clientsRefreshKey: Int = 0,
     onNavigateToCreateGroup: () -> Unit = {},
     groupsRefreshKey: Int = 0,
+    onNavigateToCreateEmployee: () -> Unit = {},
+    employeesRefreshKey: Int = 0,
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
@@ -706,6 +736,13 @@ private fun ContentArea(
                 api = api,
                 onNavigateToCreate = onNavigateToCreateGroup,
                 refreshKey = groupsRefreshKey,
+                modifier = modifier,
+            )
+        NavItem.EMPLOYEES ->
+            EmployeesScreen(
+                api = api,
+                onNavigateToCreate = onNavigateToCreateEmployee,
+                refreshKey = employeesRefreshKey,
                 modifier = modifier,
             )
         NavItem.SETTINGS ->

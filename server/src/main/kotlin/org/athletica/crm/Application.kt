@@ -99,7 +99,7 @@ fun Application.module() {
     val auditService = PostgresAuditLog(database, auditScope)
     monitor.subscribe(ApplicationStopped) { auditService.close() }
 
-    context(database, PasswordHasher(), minioService) {
+    context(database, PasswordHasher(), minioService, mailbox()) {
         context(auditService) {
             configureServer(jwtConfig, corsAllowedHosts)
         }
@@ -113,7 +113,7 @@ fun Application.module() {
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService, audit: AuditLog)
+context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService, audit: AuditLog, mailbox: Mailbox)
 fun Application.configureServer(
     jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",

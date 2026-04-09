@@ -5,6 +5,7 @@ import arrow.core.raise.either
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -19,7 +20,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
             db
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday
+                    SELECT id, name, avatar_id, birthday, gender
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
@@ -32,6 +33,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                         name = row.get("name", String::class.java)!!,
                         avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
                         birthday = row.get("birthday", java.time.LocalDate::class.java)?.toKotlinLocalDate(),
+                        gender = Gender.valueOf(row.get("gender", String::class.java)!!),
                         groups = emptyList(),
                     )
                 }

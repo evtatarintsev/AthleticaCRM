@@ -26,6 +26,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,6 +51,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.core.Gender
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -57,8 +61,11 @@ import org.athletica.crm.generated.resources.action_clear
 import org.athletica.crm.generated.resources.action_create
 import org.athletica.crm.generated.resources.action_ok
 import org.athletica.crm.generated.resources.cd_avatar
+import org.athletica.crm.generated.resources.filter_gender_female
+import org.athletica.crm.generated.resources.filter_gender_male
 import org.athletica.crm.generated.resources.hint_date_format
 import org.athletica.crm.generated.resources.label_birthday
+import org.athletica.crm.generated.resources.label_gender
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_client_create
 import org.athletica.crm.pickImageFile
@@ -78,6 +85,7 @@ fun ClientCreateScreen(
     modifier: Modifier = Modifier,
 ) {
     var name by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf(Gender.MALE) }
     var birthday by remember { mutableStateOf<LocalDate?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     var avatarId by remember { mutableStateOf<Uuid?>(null) }
@@ -115,6 +123,7 @@ fun ClientCreateScreen(
                                             name = name,
                                             avatarId = avatarId,
                                             birthday = birthday,
+                                            gender = gender,
                                         ),
                                     ).fold(
                                         ifLeft = { err ->
@@ -199,6 +208,36 @@ fun ClientCreateScreen(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(Res.string.label_gender),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    Gender.entries.forEachIndexed { index, g ->
+                        SegmentedButton(
+                            selected = gender == g,
+                            onClick = { if (!busy) gender = g },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = Gender.entries.size),
+                            label = {
+                                Text(
+                                    stringResource(
+                                        when (g) {
+                                            Gender.MALE -> Res.string.filter_gender_male
+                                            Gender.FEMALE -> Res.string.filter_gender_female
+                                        },
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                }
+            }
 
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(

@@ -6,6 +6,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
+import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -20,13 +21,14 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
             val name: String,
             val avatarId: Uuid?,
             val birthday: java.time.LocalDate?,
+            val gender: Gender,
         )
 
         val rows =
             db
                 .sql(
                     """
-                    SELECT c.id, c.name, c.avatar_id, c.birthday
+                    SELECT c.id, c.name, c.avatar_id, c.birthday, c.gender
                     FROM clients c
                     WHERE c.org_id = :orgId
                     ORDER BY c.name
@@ -39,6 +41,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                         name = row.get("name", String::class.java)!!,
                         avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
                         birthday = row.get("birthday", java.time.LocalDate::class.java),
+                        gender = Gender.valueOf(row.get("gender", String::class.java)!!),
                     )
                 }
 
@@ -71,6 +74,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                 name = row.name,
                 avatarId = row.avatarId,
                 birthday = row.birthday?.toKotlinLocalDate(),
+                gender = row.gender,
                 groups = groupsByClientId[row.id] ?: emptyList(),
             )
         }

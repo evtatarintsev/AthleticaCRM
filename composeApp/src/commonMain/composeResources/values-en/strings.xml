@@ -48,6 +48,8 @@
     <string name="label_balance_value">Balance: %1$s</string>
     <string name="label_phone">Phone</string>
     <string name="label_gender">Gender</string>
+    <string name="gender_male_abbr">M</string>
+    <string name="gender_female_abbr">F</string>
     <string name="label_birth_year">Birth year</string>
     <string name="label_birthday">Date of birth</string>
     <string name="label_address">Address</string>

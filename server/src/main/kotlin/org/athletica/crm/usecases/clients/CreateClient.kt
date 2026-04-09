@@ -24,12 +24,13 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
     either {
         try {
             db
-                .sql("INSERT INTO clients (id, org_id, name, avatar_id, birthday) VALUES (:id, :orgId, :name, :avatarId, :birthday)")
+                .sql("INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender) VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender)")
                 .bind("id", request.id)
                 .bind("orgId", ctx.orgId.value)
                 .bind("name", request.name)
                 .bind("avatarId", request.avatarId?.toJavaUuid())
                 .bind("birthday", request.birthday?.toJavaLocalDate())
+                .bind("gender", request.gender.name)
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
@@ -40,6 +41,7 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
             name = request.name,
             avatarId = request.avatarId,
             birthday = request.birthday,
+            gender = request.gender,
             groups = emptyList(),
         ).also { audit.logCreate(it) }
     }

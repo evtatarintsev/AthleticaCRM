@@ -1,6 +1,7 @@
 package org.athletica.crm.components.clients
 
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.core.Gender
 import kotlin.math.abs
 
 /**
@@ -36,7 +37,7 @@ data class ClientFilterState(
         clients.filter { client ->
             val data = client.fakeData()
             (nameQuery.isBlank() || client.name.contains(nameQuery, ignoreCase = true)) &&
-                (gender == GenderFilter.All || data.gender == gender.code) &&
+                (gender == GenderFilter.All || client.gender == gender.value) &&
                 (birthYearFrom == null || data.birthYear >= birthYearFrom) &&
                 (birthYearTo == null || data.birthYear <= birthYearTo) &&
                 (!hasDebtOnly || data.hasDebt) &&
@@ -48,12 +49,12 @@ data class ClientFilterState(
 enum class GenderFilter(
     /** Отображаемое название. */
     val label: String,
-    /** Код, совпадающий с полем [FakeClientData.gender]. */
-    val code: String,
+    /** Соответствующее значение [Gender], либо null для «Все». */
+    val value: Gender?,
 ) {
-    All("Все", ""),
-    Male("Мужской", "М"),
-    Female("Женский", "Ж"),
+    All("Все", null),
+    Male("Мужской", Gender.MALE),
+    Female("Женский", Gender.FEMALE),
 }
 
 // TODO: убрать после появления реальных полей в API.

@@ -34,7 +34,7 @@ class AddClientsToGroupTest {
     private suspend fun insertClient(orgId: Uuid, name: String = "Клиент"): Uuid {
         val clientId = Uuid.generateV7()
         TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name) VALUES (:id, :orgId, :name)")
+            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
             .bind("id", clientId)
             .bind("orgId", orgId)
             .bind("name", name)

@@ -29,6 +29,11 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.core.Gender
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.gender_female_abbr
+import org.athletica.crm.generated.resources.gender_male_abbr
+import org.jetbrains.compose.resources.stringResource
 
 internal val GenderColWidth: Dp = 52.dp
 internal val BirthYearColWidth: Dp = 68.dp
@@ -54,6 +59,11 @@ fun ClientRow(
     settings: ClientDisplaySettings = ClientDisplaySettings(),
 ) {
     val data = client.fakeData()
+    val genderLabel =
+        when (client.gender) {
+            Gender.MALE -> stringResource(Res.string.gender_male_abbr)
+            Gender.FEMALE -> stringResource(Res.string.gender_female_abbr)
+        }
 
     // Запрашиваем URL аватара лениво — только когда строка скомпозирована (видима в LazyColumn).
     // HttpCache на клиенте (Cache-Control: max-age=604800) исключает повторные запросы.
@@ -112,7 +122,7 @@ fun ClientRow(
         // Опциональные колонки
         if (ClientColumn.Gender in settings.visibleColumns) {
             Text(
-                text = data.gender,
+                text = genderLabel,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.width(GenderColWidth),

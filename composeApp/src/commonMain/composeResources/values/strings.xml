@@ -48,6 +48,8 @@
     <string name="label_balance_value">Баланс: %1$s</string>
     <string name="label_phone">Телефон</string>
     <string name="label_gender">Пол</string>
+    <string name="gender_male_abbr">М</string>
+    <string name="gender_female_abbr">Ж</string>
     <string name="label_birth_year">Год рождения</string>
     <string name="label_birthday">День рождения</string>
     <string name="label_address">Адрес</string>

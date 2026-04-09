@@ -6,6 +6,7 @@ import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
@@ -63,7 +64,7 @@ class CreateClientTest {
         runTest {
             val orgId = insertOrg()
             val userId = insertUser(orgId)
-            val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров")
+            val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров", gender = Gender.MALE)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = createClient(request)
@@ -78,7 +79,7 @@ class CreateClientTest {
         runTest {
             val orgId = insertOrg()
             val userId = insertUser(orgId)
-            val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров")
+            val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров", gender = Gender.MALE)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 createClient(request)
@@ -107,13 +108,13 @@ class CreateClientTest {
 
             context(TestPostgres.db, ctx(userId, orgId1), TestAuditLog()) {
                 assertIs<Either.Right<ClientDetailResponse>>(
-                    createClient(CreateClientRequest(id = sharedId, name = "Клиент")),
+                    createClient(CreateClientRequest(id = sharedId, name = "Клиент", gender = Gender.MALE)),
                 )
             }
             // тот же UUID, но другая org — не конфликт на уровне БД,
             // так как PK на id уникален глобально; ожидаем ошибку дублирования PK
             context(TestPostgres.db, ctx(userId, orgId2), TestAuditLog()) {
-                val result = createClient(CreateClientRequest(id = sharedId, name = "Клиент"))
+                val result = createClient(CreateClientRequest(id = sharedId, name = "Клиент", gender = Gender.MALE))
                 assertIs<Either.Left<CommonDomainError>>(result)
             }
         }
@@ -126,10 +127,10 @@ class CreateClientTest {
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 assertIs<Either.Right<ClientDetailResponse>>(
-                    createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей")),
+                    createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей", gender = Gender.MALE)),
                 )
                 assertIs<Either.Right<ClientDetailResponse>>(
-                    createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей")),
+                    createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей", gender = Gender.MALE)),
                 )
             }
         }

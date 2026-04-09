@@ -24,12 +24,11 @@ suspend fun createEmployee(request: CreateEmployeeRequest): Either<CommonDomainE
             db
                 .sql(
                     """
-                    INSERT INTO employees (id, user_id, org_id, name, avatar_id, phone_no, email)
-                    VALUES (:id, :userId, :orgId, :name, :avatarId, :phoneNo, :email)
+                    INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email)
+                    VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email)
                     """.trimIndent(),
                 )
                 .bind("id", request.id)
-                .bind("userId", ctx.userId.value)
                 .bind("orgId", ctx.orgId.value)
                 .bind("name", request.name)
                 .bind("avatarId", request.avatarId?.toJavaUuid())

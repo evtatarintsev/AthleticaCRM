@@ -43,7 +43,7 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
             birthday = request.birthday,
             gender = request.gender,
             groups = emptyList(),
-            balance = 0.0
+            balance = 0.0,
         ).also { audit.logCreate(it) }
     }
 

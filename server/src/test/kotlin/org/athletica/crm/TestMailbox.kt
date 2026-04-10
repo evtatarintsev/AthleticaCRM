@@ -6,6 +6,7 @@ import org.athletica.infra.mail.Mailbox
 
 class TestMailbox : Mailbox {
     val inbox = Channel<Email>()
+
     override suspend fun send(email: Email) {
         inbox.send(email)
     }

@@ -36,9 +36,6 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.infra.mail.Mailbox
-import org.athletica.infra.mail.SmtpConfig
-import org.athletica.infra.mail.SmtpMailbox
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.db.Database
@@ -55,6 +52,9 @@ import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.MinioService
+import org.athletica.infra.mail.Mailbox
+import org.athletica.infra.mail.SmtpConfig
+import org.athletica.infra.mail.SmtpMailbox
 import java.sql.DriverManager
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")

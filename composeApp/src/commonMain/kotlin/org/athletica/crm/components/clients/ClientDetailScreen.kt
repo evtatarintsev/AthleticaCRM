@@ -78,10 +78,10 @@ import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_delete_client
 import org.athletica.crm.generated.resources.action_edit
-import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.action_issue_subscription
 import org.athletica.crm.generated.resources.action_more
 import org.athletica.crm.generated.resources.action_upload_document
+import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_balance_value

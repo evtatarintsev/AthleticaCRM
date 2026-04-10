@@ -36,8 +36,9 @@ import kotlin.uuid.toJavaUuid
 context(db: Database, ctx: RequestContext, audit: AuditLog, passwordHasher: PasswordHasher)
 suspend fun createEmployee(request: CreateEmployeeRequest): Either<CommonDomainError, EmployeeListItem> =
     either {
-        val email = request.email
-            ?: raise(CommonDomainError("EMPLOYEE_EMAIL_REQUIRED", Messages.EmployeeEmailRequired.localize()))
+        val email =
+            request.email
+                ?: raise(CommonDomainError("EMPLOYEE_EMAIL_REQUIRED", Messages.EmployeeEmailRequired.localize()))
 
         val now = java.time.Instant.now()
         val userId = UserId.new()

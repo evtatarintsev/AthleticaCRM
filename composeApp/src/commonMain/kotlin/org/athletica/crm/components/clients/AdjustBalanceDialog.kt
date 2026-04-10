@@ -70,14 +70,20 @@ fun AdjustBalanceDialog(
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
                         selected = isCredit,
-                        onClick = { isCredit = true; error = null },
+                        onClick = {
+                            isCredit = true
+                            error = null
+                        },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         enabled = !isLoading,
                         label = { Text(stringResource(Res.string.action_credit)) },
                     )
                     SegmentedButton(
                         selected = !isCredit,
-                        onClick = { isCredit = false; error = null },
+                        onClick = {
+                            isCredit = false
+                            error = null
+                        },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         enabled = !isLoading,
                         label = { Text(stringResource(Res.string.action_debit)) },

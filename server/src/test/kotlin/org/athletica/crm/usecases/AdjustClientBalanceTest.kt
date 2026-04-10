@@ -59,7 +59,12 @@ class AdjustClientBalanceTest {
         return clientId
     }
 
-    private suspend fun insertBalanceEntry(orgId: Uuid, clientId: Uuid, amount: Double, balanceAfter: Double) {
+    private suspend fun insertBalanceEntry(
+        orgId: Uuid,
+        clientId: Uuid,
+        amount: Double,
+        balanceAfter: Double,
+    ) {
         TestPostgres.db
             .sql(
                 """

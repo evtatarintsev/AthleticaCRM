@@ -31,7 +31,7 @@ class ApplicationTest {
     fun testLoginWithInvalidCredentials() =
         testApplication {
             application {
-                context(TestPostgres.db, PasswordHasher(), TestMinio.minioService, TestAuditLog(),TestMailbox()) {
+                context(TestPostgres.db, PasswordHasher(), TestMinio.minioService, TestAuditLog(), TestMailbox()) {
                     configureServer(testJwtConfig)
                 }
             }

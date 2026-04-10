@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
@@ -34,6 +33,7 @@ import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.balance_history_empty
 import org.athletica.crm.generated.resources.section_balance_history
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /**
@@ -154,11 +154,12 @@ private fun BalanceEntryItem(entry: BalanceJournalEntry) {
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                val meta = buildString {
-                    entry.performedBy?.let { append(it.name) }
-                    append(" · ")
-                    append(entry.createdAt.formatDateTime())
-                }
+                val meta =
+                    buildString {
+                        entry.performedBy?.let { append(it.name) }
+                        append(" · ")
+                        append(entry.createdAt.formatDateTime())
+                    }
                 Text(
                     text = meta,
                     style = MaterialTheme.typography.bodySmall,

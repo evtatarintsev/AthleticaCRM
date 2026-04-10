@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas.employees
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /** Роль сотрудника (краткое представление). */

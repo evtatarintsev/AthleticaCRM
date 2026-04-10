@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas.clients
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /** Сотрудник, выполнивший операцию с балансом. */

@@ -2,7 +2,6 @@ package org.athletica.crm.usecases.clients
 
 import arrow.core.Either
 import arrow.core.raise.either
-import kotlinx.datetime.Instant
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.PerformedBy
@@ -10,6 +9,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.i18n.Messages
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 

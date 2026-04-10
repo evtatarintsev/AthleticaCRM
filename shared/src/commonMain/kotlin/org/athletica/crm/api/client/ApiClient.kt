@@ -154,8 +154,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Возвращает историю операций по балансу клиента с [id], отсортированную от новых к старым. */
-    suspend fun clientBalanceHistory(id: Uuid): Either<ApiClientError, ClientBalanceHistoryResponse> =
-        execute { http.get("/api/clients/balance/history") { url { parameters.append("id", id.toString()) } } }
+    suspend fun clientBalanceHistory(id: Uuid): Either<ApiClientError, ClientBalanceHistoryResponse> = execute { http.get("/api/clients/balance/history") { url { parameters.append("id", id.toString()) } } }
 
     /** Выполняет административную корректировку баланса клиента. Возвращает обновлённые данные клиента. */
     suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<ApiClientError, ClientDetailResponse> =

@@ -18,6 +18,19 @@ import org.athletica.infra.mail.Mailbox
 import org.athletica.infra.mail.Subject
 import kotlin.uuid.toJavaUuid
 
+/**
+ * Отправляет доступ сотруднику [request.employeeId]:
+ * устанавливает новый пароль, активирует аккаунт (`is_active = true`) и высылает письмо с логином и паролем.
+ *
+ * Обновление пароля и активация выполняются атомарно в одной транзакции.
+ * После успешной записи в БД отправляется email через [mailbox].
+ * Событие фиксируется в журнале аудита как `employee_access_sent`.
+ *
+ * Сотрудник должен принадлежать организации из контекста [ctx].
+ *
+ * Возможные ошибки:
+ * - `EMPLOYEE_NOT_FOUND` — сотрудник не найден в организации или не имеет email.
+ */
 context(db: Database, ctx: RequestContext, audit: AuditLog, passwordHasher: PasswordHasher, mailbox: Mailbox)
 suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<CommonDomainError, Unit> =
     either {

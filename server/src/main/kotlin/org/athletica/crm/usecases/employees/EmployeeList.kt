@@ -11,6 +11,15 @@ import kotlin.time.toKotlinInstant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
+/**
+ * Возвращает список всех сотрудников организации из контекста [ctx].
+ *
+ * Выполняет два запроса:
+ * 1. Загружает строки сотрудников (`employees`), отсортированных: владелец первым, далее по имени.
+ * 2. Загружает роли сотрудников (`employee_roles` JOIN `roles`) и группирует их по `employee_id`.
+ *
+ * Возвращает [List<EmployeeListItem>] с заполненными ролями, либо [CommonDomainError] при сбое.
+ */
 context(db: Database, ctx: RequestContext)
 suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
     either {

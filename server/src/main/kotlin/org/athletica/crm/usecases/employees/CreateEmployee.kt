@@ -19,6 +19,20 @@ import kotlin.time.toKotlinInstant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
+/**
+ * Создаёт нового сотрудника по данным [request].
+ *
+ * Email обязателен: на его основе создаётся учётная запись пользователя (`login = email`).
+ * Пароль генерируется случайным образом и хешируется — сотрудник не может войти до тех пор,
+ * пока администратор не отправит ему доступ через [sendEmployeeAccess].
+ *
+ * Создание `users` и `employees` выполняется атомарно в одной транзакции.
+ *
+ * Возможные ошибки:
+ * - `EMPLOYEE_EMAIL_REQUIRED` — поле `email` не передано в запросе.
+ * - `EMPLOYEE_EMAIL_IN_USE` — пользователь с таким email уже зарегистрирован.
+ * - `EMPLOYEE_ALREADY_EXISTS` — сотрудник с таким `id` уже существует.
+ */
 context(db: Database, ctx: RequestContext, audit: AuditLog, passwordHasher: PasswordHasher)
 suspend fun createEmployee(request: CreateEmployeeRequest): Either<CommonDomainError, EmployeeListItem> =
     either {

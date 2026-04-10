@@ -25,7 +25,7 @@ fun Route.profileRoutes() {
         call.eitherToResponse {
             val user = profile().bind()
             AuthMeResponse(
-                id = user.id.toString(),
+                id = user.id,
                 username = user.username,
                 name = user.name,
                 avatarId = user.avatarId,
@@ -38,7 +38,7 @@ fun Route.profileRoutes() {
             val request = call.receive<UpdateMeRequest>()
             val user = updateMe(request).bind()
             AuthMeResponse(
-                id = user.id.toString(),
+                id = user.id,
                 username = user.username,
                 name = user.name,
                 avatarId = user.avatarId,

@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -167,7 +168,7 @@ fun GroupCreateScreen(
                         label = { Text(discipline.name) },
                         trailingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                imageVector = Icons.Default.Close,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                             )

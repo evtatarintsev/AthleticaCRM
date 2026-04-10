@@ -1,5 +1,6 @@
 package org.athletica.crm.core
 
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 import kotlin.uuid.Uuid
 
@@ -7,6 +8,7 @@ import kotlin.uuid.Uuid
  * Типобезопасный идентификатор пользователя.
  * Оборачивает [Uuid], исключая случайную подмену на [OrgId] или raw UUID.
  */
+@Serializable
 @JvmInline
 value class UserId(val value: Uuid) {
     companion object {

@@ -3,6 +3,7 @@ package org.athletica.crm.components.clients
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.core.Gender
 import kotlin.math.abs
+import kotlin.math.round
 
 /**
  * Состояние фильтров и поиска списка клиентов.
@@ -40,8 +41,8 @@ data class ClientFilterState(
                 (gender == GenderFilter.All || client.gender == gender.value) &&
                 (birthYearFrom == null || data.birthYear >= birthYearFrom) &&
                 (birthYearTo == null || data.birthYear <= birthYearTo) &&
-                (!hasDebtOnly || data.hasDebt) &&
-                (!noGroupOnly || data.noGroup)
+                (!hasDebtOnly || client.balance < 0) &&
+                (!noGroupOnly || client.groups.isEmpty())
         }
 }
 
@@ -57,28 +58,36 @@ enum class GenderFilter(
     Female("Женский", Gender.FEMALE),
 }
 
-// TODO: убрать после появления реальных полей в API.
+// TODO: убрать после появления реального поля birthday в API.
 internal data class FakeClientData(
-    val gender: String,
     val birthYear: Int,
-    val debtLabel: String,
-    val hasDebt: Boolean,
-    val noGroup: Boolean,
 )
 
 /** Вычисляет фейковые данные клиента детерминированно из имени. */
 internal fun ClientListItem.fakeData(): FakeClientData {
     val h = abs(name.hashCode())
     return FakeClientData(
-        gender = if (h % 2 == 0) "М" else "Ж",
         birthYear = 1970 + h % 36,
-        debtLabel =
-            when (h % 4) {
-                0 -> "1 200 ₽"
-                1 -> "500 ₽"
-                else -> "—"
-            },
-        hasDebt = h % 4 < 2,
-        noGroup = h % 3 == 0,
     )
+}
+
+/**
+ * Форматирует баланс для отображения.
+ * Положительный: "1 200,00 ₽", отрицательный: "−1 200,00 ₽", ноль: "0,00 ₽".
+ */
+internal fun Double.formatBalance(): String {
+    val sign = if (this < 0) "−" else ""
+    val totalCents = round(abs(this) * 100).toLong()
+    val rubles = totalCents / 100
+    val cents = totalCents % 100
+    val rublesStr = rubles.toString()
+    val formatted =
+        buildString {
+            val len = rublesStr.length
+            rublesStr.forEachIndexed { i, c ->
+                if (i > 0 && (len - i) % 3 == 0) append('\u00a0')
+                append(c)
+            }
+        }
+    return "$sign$formatted,${cents.toString().padStart(2, '0')} ₽"
 }

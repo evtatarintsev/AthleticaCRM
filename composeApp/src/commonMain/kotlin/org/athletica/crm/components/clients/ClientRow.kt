@@ -140,7 +140,7 @@ fun ClientRow(
 
         if (ClientColumn.Debt in settings.visibleColumns) {
             Text(
-                text = data.debtLabel,
+                text = client.balance.formatBalance(),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.End,
                 modifier = Modifier.width(DebtColWidth),

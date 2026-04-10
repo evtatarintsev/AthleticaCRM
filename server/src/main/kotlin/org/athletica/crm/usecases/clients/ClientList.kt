@@ -22,13 +22,15 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
             val avatarId: Uuid?,
             val birthday: java.time.LocalDate?,
             val gender: Gender,
+            val balance: Double,
         )
 
         val rows =
             db
                 .sql(
                     """
-                    SELECT c.id, c.name, c.avatar_id, c.birthday, c.gender
+                    SELECT c.id, c.name, c.avatar_id, c.birthday, c.gender,
+                           COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = c.id), 0) AS balance
                     FROM clients c
                     WHERE c.org_id = :orgId
                     ORDER BY c.name
@@ -42,6 +44,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                         avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
                         birthday = row.get("birthday", java.time.LocalDate::class.java),
                         gender = Gender.valueOf(row.get("gender", String::class.java)!!),
+                        balance = row.get("balance", java.math.BigDecimal::class.java)!!.toDouble(),
                     )
                 }
 
@@ -76,6 +79,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                 birthday = row.birthday?.toKotlinLocalDate(),
                 gender = row.gender,
                 groups = groupsByClientId[row.id] ?: emptyList(),
+                balance = row.balance,
             )
         }
     }

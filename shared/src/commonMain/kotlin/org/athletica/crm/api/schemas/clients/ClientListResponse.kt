@@ -20,6 +20,8 @@ data class ClientListItem(
     val gender: Gender,
     /** Группы в которых состоит клиент. */
     val groups: List<ClientGroup>,
+    /** Баланс личного счёта клиента (отрицательный — задолженность). */
+    val balance: Double,
 )
 
 /** Ответ на запрос списка клиентов с поддержкой пагинации. */

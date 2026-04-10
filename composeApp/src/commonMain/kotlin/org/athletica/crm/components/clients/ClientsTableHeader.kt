@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.cd_sort_name_asc
-import org.athletica.crm.generated.resources.label_debt_short
+import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_gender
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.label_year_short
@@ -86,7 +86,7 @@ fun ClientsTableHeader(
 
         if (ClientColumn.Debt in settings.visibleColumns) {
             Text(
-                text = stringResource(Res.string.label_debt_short),
+                text = stringResource(Res.string.label_balance),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.End,

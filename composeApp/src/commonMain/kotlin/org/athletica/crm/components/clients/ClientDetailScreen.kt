@@ -474,7 +474,7 @@ private fun ClientDetailHeader(
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(client.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             Text(
-                text = stringResource(Res.string.label_balance_value, "3 056,00 ₽"),
+                text = stringResource(Res.string.label_balance_value, client.balance.formatBalance()),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium,
@@ -557,7 +557,7 @@ private fun InfoRow(label: String, value: String?) {
 @Composable
 private fun BasicInfoSection(client: ClientDetailResponse) {
     SectionCard(stringResource(Res.string.section_basic_info)) {
-        InfoRow(stringResource(Res.string.label_balance), "3 056,00 ₽")
+        InfoRow(stringResource(Res.string.label_balance), client.balance.formatBalance())
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         InfoRow(stringResource(Res.string.label_phone), null)
         InfoRow(stringResource(Res.string.label_contract_number), null)

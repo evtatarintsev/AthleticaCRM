@@ -20,7 +20,8 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
             db
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender
+                    SELECT id, name, avatar_id, birthday, gender,
+                           COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
@@ -35,6 +36,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                         birthday = row.get("birthday", java.time.LocalDate::class.java)?.toKotlinLocalDate(),
                         gender = Gender.valueOf(row.get("gender", String::class.java)!!),
                         groups = emptyList(),
+                        balance = row.get("balance", java.math.BigDecimal::class.java)!!.toDouble(),
                     )
                 }
                 ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))

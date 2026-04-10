@@ -195,6 +195,11 @@
     <string name="label_employee_email">Email</string>
     <string name="action_notify_selected_employees">Уведомить выбранных</string>
     <string name="action_deactivate_selected">Деактивировать выбранных</string>
+    <string name="action_send_access">Отправить доступ</string>
+    <string name="cd_send_access">Отправить доступ сотруднику</string>
+    <string name="dialog_send_access_title">Отправить доступ</string>
+    <string name="dialog_send_access_hint">Введите пароль для сотрудника</string>
+    <string name="label_password_for_employee">Пароль</string>
     <string name="settings_section_clients">Клиенты</string>
     <string name="settings_item_client_display">Отображение клиентов</string>
     <string name="settings_item_client_display_subtitle">Столбцы и данные в списке клиентов</string>

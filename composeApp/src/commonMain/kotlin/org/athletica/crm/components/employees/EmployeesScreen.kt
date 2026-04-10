@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +40,7 @@ import org.athletica.crm.generated.resources.action_add_employee
 import org.athletica.crm.generated.resources.action_deactivate_selected
 import org.athletica.crm.generated.resources.action_export_selected
 import org.athletica.crm.generated.resources.action_notify_selected_employees
+import org.athletica.crm.generated.resources.cd_send_access
 import org.athletica.crm.generated.resources.employees_empty
 import org.athletica.crm.generated.resources.label_selected_count
 import org.jetbrains.compose.resources.stringResource
@@ -62,8 +64,10 @@ fun EmployeesScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
+    var showSendAccessFor by remember { mutableStateOf<Uuid?>(null) }
+    var internalRefreshKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(refreshKey) {
+    LaunchedEffect(refreshKey, internalRefreshKey) {
         isLoading = true
         api.employeeList().fold(
             ifLeft = { err ->
@@ -78,6 +82,30 @@ fun EmployeesScreen(
         )
         isLoading = false
     }
+
+    // Send-access dialog
+    showSendAccessFor?.let { employeeId ->
+        SendAccessDialog(
+            api = api,
+            employeeId = employeeId,
+            onSuccess = {
+                showSendAccessFor = null
+                selectedIds = emptySet()
+                internalRefreshKey++
+            },
+            onDismiss = { showSendAccessFor = null },
+        )
+    }
+
+    // Determine if send-access is available: exactly 1 selected and that employee is inactive
+    val sendAccessTarget: Uuid? =
+        if (selectedIds.size == 1) {
+            val id = selectedIds.first()
+            val emp = employees.find { it.id == id }
+            if (emp != null && !emp.isActive) id else null
+        } else {
+            null
+        }
 
     Scaffold(
         modifier = modifier,
@@ -94,6 +122,8 @@ fun EmployeesScreen(
             if (selectedIds.isNotEmpty()) {
                 EmployeesBottomActionBar(
                     selectedCount = selectedIds.size,
+                    sendAccessEnabled = sendAccessTarget != null,
+                    onSendAccess = { sendAccessTarget?.let { showSendAccessFor = it } },
                     onNotify = {},
                     onDeactivate = {},
                     onExport = {},
@@ -166,6 +196,8 @@ fun EmployeesScreen(
 @Composable
 private fun EmployeesBottomActionBar(
     selectedCount: Int,
+    sendAccessEnabled: Boolean,
+    onSendAccess: () -> Unit,
     onNotify: () -> Unit,
     onDeactivate: () -> Unit,
     onExport: () -> Unit,
@@ -177,6 +209,12 @@ private fun EmployeesBottomActionBar(
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(start = 16.dp).weight(1f),
         )
+        IconButton(onClick = onSendAccess, enabled = sendAccessEnabled) {
+            Icon(
+                imageVector = Icons.Default.Send,
+                contentDescription = stringResource(Res.string.cd_send_access),
+            )
+        }
         IconButton(onClick = onNotify) {
             Icon(
                 imageVector = Icons.Default.Notifications,

@@ -48,6 +48,7 @@ import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
+import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
@@ -178,6 +179,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun createEmployee(request: CreateEmployeeRequest): Either<ApiClientError, EmployeeListItem> =
         execute {
             http.post("/api/employees/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Отправляет сотруднику доступ: устанавливает пароль, активирует аккаунт, высылает email. */
+    suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/employees/send-access") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

@@ -126,6 +126,21 @@ object Messages {
         override val en = "Employee with this ID already exists"
     }
 
+    object EmployeeEmailRequired : LocalizationKey {
+        override val ru = "Email обязателен для создания сотрудника"
+        override val en = "Email is required to create an employee"
+    }
+
+    object EmployeeEmailInUse : LocalizationKey {
+        override val ru = "Пользователь с таким email уже зарегистрирован"
+        override val en = "A user with this email is already registered"
+    }
+
+    object EmployeeNotFound : LocalizationKey {
+        override val ru = "Сотрудник не найден"
+        override val en = "Employee not found"
+    }
+
     object DisciplineNotFound : LocalizationKey {
         override val ru = "Дисциплина не найдена"
         override val en = "Discipline not found"

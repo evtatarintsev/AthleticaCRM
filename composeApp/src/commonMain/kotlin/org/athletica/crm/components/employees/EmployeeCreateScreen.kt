@@ -129,7 +129,7 @@ fun EmployeeCreateScreen(
                                     )
                             }
                         },
-                        enabled = name.isNotBlank() && !busy,
+                        enabled = name.isNotBlank() && email.isNotBlank() && !busy,
                     ) {
                         if (isCreating) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))

@@ -34,30 +34,26 @@ suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDom
             .firstOrNull { true }
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
 
-        // Текущий баланс клиента
-        val currentBalance =
-            db
-                .sql("SELECT COALESCE(SUM(amount), 0) AS balance FROM client_balance_journal WHERE client_id = :clientId")
-                .bind("clientId", request.clientId)
-                .firstOrNull { row -> row.get("balance", java.math.BigDecimal::class.java)!!.toDouble() } ?: 0.0
-
-        val balanceAfter = currentBalance + request.amount
         val operationType = if (request.amount > 0) "admin_credit" else "admin_debit"
 
+        // balance_after вычисляется прямо в INSERT подзапросом — атомарно на уровне БД,
+        // без отдельного SELECT, который создавал бы race condition при конкурентных запросах.
         db
             .sql(
                 """
                 INSERT INTO client_balance_journal
                     (id, org_id, client_id, amount, balance_after, operation_type, note, performed_by)
-                VALUES
-                    (:id, :orgId, :clientId, :amount, :balanceAfter, :operationType::balance_operation_type, :note, :performedBy)
+                VALUES (
+                    :id, :orgId, :clientId, :amount,
+                    COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = :clientId), 0) + :amount,
+                    :operationType::balance_operation_type, :note, :performedBy
+                )
                 """.trimIndent(),
             )
             .bind("id", Uuid.generateV7())
             .bind("orgId", ctx.orgId.value)
             .bind("clientId", request.clientId)
             .bind("amount", java.math.BigDecimal(request.amount.toString()))
-            .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
             .bind("operationType", operationType)
             .bind("note", request.note)
             .bind("performedBy", ctx.userId.value)

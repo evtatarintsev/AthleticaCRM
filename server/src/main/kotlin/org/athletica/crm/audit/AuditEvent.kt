@@ -17,6 +17,7 @@ enum class AuditActionType(val code: String) {
     EXPORT("export"),
     IMPORT("import"),
     AUTH_CHANGE_PASSWORD("auth_change_password"),
+    BALANCE_ADJUST("balance_adjust"),
 }
 
 /**
@@ -167,3 +168,42 @@ fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
         ),
     )
 }
+
+/**
+ * Логирует корректировку баланса клиента с идентификатором [clientId].
+ * [amount] — сумма операции (положительная — пополнение, отрицательная — списание).
+ * [operationType] — строковый код типа операции (`admin_credit` / `admin_debit`).
+ * [note] — комментарий администратора.
+ * Организация, пользователь и IP берутся из контекста запроса [ctx].
+ */
+context(ctx: RequestContext)
+fun AuditLog.logBalanceAdjust(clientId: Uuid, amount: Double, operationType: String, note: String) {
+    log(
+        AuditEvent(
+            orgId = ctx.orgId,
+            userId = ctx.userId,
+            username = ctx.username,
+            actionType = AuditActionType.BALANCE_ADJUST,
+            ipAddress = ctx.clientIp,
+            entityType = "client",
+            entityId = clientId,
+            data = """{"amount":$amount,"operationType":"$operationType","note":${note.encodeToJsonString()}}""",
+        ),
+    )
+}
+
+private fun String.encodeToJsonString(): String =
+    buildString {
+        append('"')
+        for (ch in this@encodeToJsonString) {
+            when (ch) {
+                '"' -> append("\\\"")
+                '\\' -> append("\\\\")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(ch)
+            }
+        }
+        append('"')
+    }

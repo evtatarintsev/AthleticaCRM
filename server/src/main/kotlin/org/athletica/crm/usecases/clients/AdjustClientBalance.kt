@@ -4,6 +4,8 @@ import arrow.core.Either
 import arrow.core.raise.either
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.audit.AuditLog
+import org.athletica.crm.audit.logBalanceAdjust
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -16,7 +18,7 @@ import kotlin.uuid.Uuid
  * положительный → `admin_credit`, отрицательный → `admin_debit`.
  * Возвращает обновлённые данные клиента.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: RequestContext, audit: AuditLog)
 suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDomainError, ClientDetailResponse> =
     either {
         if (request.amount == 0.0) {
@@ -58,6 +60,13 @@ suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDom
             .bind("note", request.note)
             .bind("performedBy", ctx.userId.value)
             .execute()
+
+        audit.logBalanceAdjust(
+            clientId = request.clientId,
+            amount = request.amount,
+            operationType = operationType,
+            note = request.note,
+        )
 
         clientDetail(request.clientId).bind()
     }

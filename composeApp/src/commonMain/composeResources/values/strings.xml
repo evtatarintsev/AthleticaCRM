@@ -116,6 +116,13 @@
 
     <!-- Client detail -->
     <string name="action_delete_client">Удалить клиента</string>
+    <string name="cd_adjust_balance">Скорректировать баланс</string>
+    <string name="dialog_adjust_balance_title">Корректировка баланса</string>
+    <string name="action_credit">Пополнить</string>
+    <string name="action_debit">Списать</string>
+    <string name="label_amount">Сумма</string>
+    <string name="label_comment">Комментарий</string>
+    <string name="action_apply">Применить</string>
     <string name="action_issue_subscription">Выдать абонемент</string>
     <string name="section_basic_info">Основная информация</string>
     <string name="section_subscriptions">Абонементы</string>

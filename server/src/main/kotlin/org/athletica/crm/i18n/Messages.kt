@@ -190,4 +190,14 @@ object Messages {
         override val ru = "Загрузка не найдена"
         override val en = "Upload not found"
     }
+
+    object BalanceAmountZero : LocalizationKey {
+        override val ru = "Сумма корректировки не может быть нулевой"
+        override val en = "Adjustment amount cannot be zero"
+    }
+
+    object BalanceNoteRequired : LocalizationKey {
+        override val ru = "Комментарий к корректировке обязателен"
+        override val en = "Adjustment note is required"
+    }
 }

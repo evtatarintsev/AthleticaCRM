@@ -111,6 +111,13 @@
 
     <!-- Client detail -->
     <string name="action_delete_client">Delete client</string>
+    <string name="cd_adjust_balance">Adjust balance</string>
+    <string name="dialog_adjust_balance_title">Adjust balance</string>
+    <string name="action_credit">Credit</string>
+    <string name="action_debit">Debit</string>
+    <string name="label_amount">Amount</string>
+    <string name="label_comment">Comment</string>
+    <string name="action_apply">Apply</string>
     <string name="action_issue_subscription">Issue subscription</string>
     <string name="section_basic_info">Basic information</string>
     <string name="section_subscriptions">Subscriptions</string>

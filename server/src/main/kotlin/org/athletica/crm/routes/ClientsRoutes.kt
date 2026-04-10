@@ -3,6 +3,7 @@ package org.athletica.crm.routes
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
+import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -12,6 +13,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.usecases.clients.addClientsToGroup
+import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.athletica.crm.usecases.clients.clientDetail
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
@@ -63,6 +65,13 @@ fun Route.clientsRoutes() {
         call.eitherToResponse {
             val request = call.receive<RemoveClientFromGroupRequest>()
             removeClientsFromGroup(request).bind()
+        }
+    }
+
+    postWithContext("/clients/balance/adjust") {
+        call.eitherToResponse {
+            val request = call.receive<AdjustBalanceRequest>()
+            adjustClientBalance(request).bind()
         }
     }
 }

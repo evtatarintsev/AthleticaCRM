@@ -29,6 +29,7 @@ import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
+import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
@@ -146,6 +147,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun createGroup(request: GroupCreateRequest): Either<ApiClientError, GroupDetailResponse> =
         execute {
             http.post("/api/groups/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Выполняет административную корректировку баланса клиента. Возвращает обновлённые данные клиента. */
+    suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<ApiClientError, ClientDetailResponse> =
+        execute {
+            http.post("/api/clients/balance/adjust") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

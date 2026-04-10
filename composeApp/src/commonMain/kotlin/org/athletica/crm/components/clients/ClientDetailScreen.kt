@@ -78,6 +78,7 @@ import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_delete_client
 import org.athletica.crm.generated.resources.action_edit
+import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.action_issue_subscription
 import org.athletica.crm.generated.resources.action_more
 import org.athletica.crm.generated.resources.action_upload_document
@@ -206,6 +207,7 @@ fun ClientDetailScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showOverflow by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
+    var showAdjustBalanceDialog by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val tabs = ClientDetailTab.entries
@@ -334,7 +336,9 @@ fun ClientDetailScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                                 ) {
-                                    Box(Modifier.weight(1f)) { BasicInfoSection(loadedClient) }
+                                    Box(Modifier.weight(1f)) {
+                                        BasicInfoSection(loadedClient) { showAdjustBalanceDialog = true }
+                                    }
                                     Column(Modifier.weight(1f)) {
                                         SubscriptionsSection()
                                         UnpaidLessonsSection()
@@ -342,7 +346,7 @@ fun ClientDetailScreen(
                                 }
                             }
                         } else {
-                            item { BasicInfoSection(loadedClient) }
+                            item { BasicInfoSection(loadedClient) { showAdjustBalanceDialog = true } }
                             item { SubscriptionsSection() }
                             item { UnpaidLessonsSection() }
                         }
@@ -409,6 +413,18 @@ fun ClientDetailScreen(
                 showAddToGroupSheet = false
                 refreshKey++
             },
+        )
+    }
+
+    if (showAdjustBalanceDialog) {
+        AdjustBalanceDialog(
+            api = api,
+            clientId = clientId,
+            onSuccess = { updated ->
+                client = updated
+                showAdjustBalanceDialog = false
+            },
+            onDismiss = { showAdjustBalanceDialog = false },
         )
     }
 }
@@ -555,9 +571,34 @@ private fun InfoRow(label: String, value: String?) {
 }
 
 @Composable
-private fun BasicInfoSection(client: ClientDetailResponse) {
+private fun BasicInfoSection(
+    client: ClientDetailResponse,
+    onAdjustBalance: () -> Unit,
+) {
     SectionCard(stringResource(Res.string.section_basic_info)) {
-        InfoRow(stringResource(Res.string.label_balance), client.balance.formatBalance())
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.label_balance),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(0.45f),
+            )
+            Text(
+                text = client.balance.formatBalance(),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onAdjustBalance, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = stringResource(Res.string.cd_adjust_balance),
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         InfoRow(stringResource(Res.string.label_phone), null)
         InfoRow(stringResource(Res.string.label_contract_number), null)

@@ -61,6 +61,27 @@ class ClientDetailTest {
             .execute()
     }
 
+    private suspend fun insertBalanceEntry(
+        orgId: Uuid,
+        clientId: Uuid,
+        amount: Double,
+        balanceAfter: Double,
+    ) {
+        TestPostgres.db
+            .sql(
+                """
+                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type)
+                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type)
+                """.trimIndent(),
+            )
+            .bind("id", Uuid.generateV7())
+            .bind("orgId", orgId)
+            .bind("clientId", clientId)
+            .bind("amount", java.math.BigDecimal(amount.toString()))
+            .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
+            .execute()
+    }
+
     private fun ctx(orgId: Uuid) =
         RequestContext(
             lang = Lang.EN,
@@ -125,6 +146,49 @@ class ClientDetailTest {
                 val result = clientDetail(Uuid.generateV7())
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("CLIENT_NOT_FOUND", error.code)
+            }
+        }
+
+    @Test
+    fun `clientDetail возвращает нулевой баланс если нет операций в журнале`() =
+        runTest {
+            val orgId = insertOrg()
+            val clientId = insertClient(orgId, "Иван Петров")
+
+            context(TestPostgres.db, ctx(orgId)) {
+                val result = clientDetail(clientId)
+                val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
+                assertEquals(0.0, client.balance)
+            }
+        }
+
+    @Test
+    fun `clientDetail возвращает сумму операций как баланс клиента`() =
+        runTest {
+            val orgId = insertOrg()
+            val clientId = insertClient(orgId, "Иван Петров")
+            insertBalanceEntry(orgId, clientId, amount = 2000.0, balanceAfter = 2000.0)
+            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = 200.0)
+
+            context(TestPostgres.db, ctx(orgId)) {
+                val result = clientDetail(clientId)
+                val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
+                assertEquals(200.0, client.balance)
+            }
+        }
+
+    @Test
+    fun `clientDetail возвращает отрицательный баланс при задолженности`() =
+        runTest {
+            val orgId = insertOrg()
+            val clientId = insertClient(orgId, "Иван Петров")
+            insertBalanceEntry(orgId, clientId, amount = 1000.0, balanceAfter = 1000.0)
+            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = -800.0)
+
+            context(TestPostgres.db, ctx(orgId)) {
+                val result = clientDetail(clientId)
+                val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
+                assertEquals(-800.0, client.balance)
             }
         }
 

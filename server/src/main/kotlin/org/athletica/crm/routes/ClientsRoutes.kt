@@ -14,6 +14,7 @@ import org.athletica.crm.db.Database
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.adjustClientBalance
+import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientDetail
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
@@ -72,6 +73,19 @@ fun Route.clientsRoutes() {
         call.eitherToResponse {
             val request = call.receive<AdjustBalanceRequest>()
             adjustClientBalance(request).bind()
+        }
+    }
+
+    getWithContext("/clients/balance/history") {
+        call.eitherToResponse {
+            val idParam =
+                call.request.queryParameters["id"]
+                    ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
+            val id =
+                runCatching { Uuid.parse(idParam) }.getOrElse {
+                    raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
+                }
+            clientBalanceHistory(id).bind()
         }
     }
 }

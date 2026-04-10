@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,6 +83,7 @@ import org.athletica.crm.generated.resources.action_issue_subscription
 import org.athletica.crm.generated.resources.action_more
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
+import org.athletica.crm.generated.resources.cd_balance_history
 import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_balance_value
@@ -208,6 +210,7 @@ fun ClientDetailScreen(
     var showOverflow by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
     var showAdjustBalanceDialog by remember { mutableStateOf(false) }
+    var showBalanceHistorySheet by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val tabs = ClientDetailTab.entries
@@ -337,7 +340,11 @@ fun ClientDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                                 ) {
                                     Box(Modifier.weight(1f)) {
-                                        BasicInfoSection(loadedClient) { showAdjustBalanceDialog = true }
+                                        BasicInfoSection(
+                                            client = loadedClient,
+                                            onAdjustBalance = { showAdjustBalanceDialog = true },
+                                            onBalanceHistory = { showBalanceHistorySheet = true },
+                                        )
                                     }
                                     Column(Modifier.weight(1f)) {
                                         SubscriptionsSection()
@@ -346,7 +353,13 @@ fun ClientDetailScreen(
                                 }
                             }
                         } else {
-                            item { BasicInfoSection(loadedClient) { showAdjustBalanceDialog = true } }
+                            item {
+                                BasicInfoSection(
+                                    client = loadedClient,
+                                    onAdjustBalance = { showAdjustBalanceDialog = true },
+                                    onBalanceHistory = { showBalanceHistorySheet = true },
+                                )
+                            }
                             item { SubscriptionsSection() }
                             item { UnpaidLessonsSection() }
                         }
@@ -413,6 +426,14 @@ fun ClientDetailScreen(
                 showAddToGroupSheet = false
                 refreshKey++
             },
+        )
+    }
+
+    if (showBalanceHistorySheet) {
+        BalanceHistorySheet(
+            api = api,
+            clientId = clientId,
+            onDismiss = { showBalanceHistorySheet = false },
         )
     }
 
@@ -574,6 +595,7 @@ private fun InfoRow(label: String, value: String?) {
 private fun BasicInfoSection(
     client: ClientDetailResponse,
     onAdjustBalance: () -> Unit,
+    onBalanceHistory: () -> Unit,
 ) {
     SectionCard(stringResource(Res.string.section_basic_info)) {
         Row(
@@ -591,6 +613,13 @@ private fun BasicInfoSection(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
+            IconButton(onClick = onBalanceHistory, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = stringResource(Res.string.cd_balance_history),
+                    modifier = Modifier.size(16.dp),
+                )
+            }
             IconButton(onClick = onAdjustBalance, modifier = Modifier.size(32.dp)) {
                 Icon(
                     imageVector = Icons.Default.Edit,

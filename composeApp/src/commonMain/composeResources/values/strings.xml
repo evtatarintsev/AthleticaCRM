@@ -117,7 +117,10 @@
     <!-- Client detail -->
     <string name="action_delete_client">Удалить клиента</string>
     <string name="cd_adjust_balance">Скорректировать баланс</string>
+    <string name="cd_balance_history">История баланса</string>
     <string name="dialog_adjust_balance_title">Корректировка баланса</string>
+    <string name="section_balance_history">История баланса</string>
+    <string name="balance_history_empty">Операций пока нет</string>
     <string name="action_credit">Пополнить</string>
     <string name="action_debit">Списать</string>
     <string name="label_amount">Сумма</string>

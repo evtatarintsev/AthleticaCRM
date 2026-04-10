@@ -30,6 +30,7 @@ import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
+import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
@@ -151,6 +152,10 @@ class ApiClient(private val http: HttpClient) {
                 setBody(request)
             }
         }
+
+    /** Возвращает историю операций по балансу клиента с [id], отсортированную от новых к старым. */
+    suspend fun clientBalanceHistory(id: Uuid): Either<ApiClientError, ClientBalanceHistoryResponse> =
+        execute { http.get("/api/clients/balance/history") { url { parameters.append("id", id.toString()) } } }
 
     /** Выполняет административную корректировку баланса клиента. Возвращает обновлённые данные клиента. */
     suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<ApiClientError, ClientDetailResponse> =

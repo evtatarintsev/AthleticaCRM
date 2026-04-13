@@ -72,8 +72,12 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
+import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.openUrl
+import org.athletica.crm.pickAnyFile
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
@@ -97,10 +101,10 @@ import org.athletica.crm.generated.resources.label_sports_rank
 import org.athletica.crm.generated.resources.placeholder_not_specified
 import org.athletica.crm.generated.resources.section_basic_info
 import org.athletica.crm.generated.resources.section_subscriptions
+import org.athletica.crm.generated.resources.section_documents
 import org.athletica.crm.generated.resources.section_unpaid_lessons
 import org.athletica.crm.generated.resources.subscription_status_active
 import org.athletica.crm.generated.resources.subscription_status_expired
-import org.athletica.crm.generated.resources.tab_documents
 import org.athletica.crm.generated.resources.tab_history
 import org.athletica.crm.generated.resources.tab_parents
 import org.athletica.crm.generated.resources.tab_payments
@@ -124,7 +128,6 @@ private data class FakePayment(val date: String, val amount: String, val descrip
 
 private data class FakeParent(val name: String, val phone: String, val relation: String)
 
-private data class FakeDocument(val name: String, val uploadedAt: String)
 
 private data class FakeVisit(val date: String, val status: String, val group: String)
 
@@ -156,12 +159,6 @@ private val fakeParents =
         FakeParent("Иванов Сергей Николаевич", "+7 999 444-55-66", "Отец"),
     )
 
-private val fakeDocuments =
-    listOf(
-        FakeDocument("Договор №А-1042.pdf", "15.11.2019"),
-        FakeDocument("Паспорт (скан).jpg", "15.11.2019"),
-    )
-
 private val fakeHistory =
     listOf(
         FakeVisit("09.07.2021", "Был", "Боевое самбо"),
@@ -174,7 +171,6 @@ private val fakeHistory =
 private enum class ClientDetailTab {
     Payments,
     Parents,
-    Documents,
     History,
 }
 
@@ -183,7 +179,6 @@ private fun ClientDetailTab.title(): String =
     when (this) {
         ClientDetailTab.Payments -> stringResource(Res.string.tab_payments)
         ClientDetailTab.Parents -> stringResource(Res.string.tab_parents)
-        ClientDetailTab.Documents -> stringResource(Res.string.tab_documents)
         ClientDetailTab.History -> stringResource(Res.string.tab_history)
     }
 
@@ -258,11 +253,6 @@ fun ClientDetailScreen(
                                 expanded = showOverflow,
                                 onDismissRequest = { showOverflow = false },
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.action_upload_document)) },
-                                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
-                                    onClick = { showOverflow = false },
-                                )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(Res.string.action_delete_client)) },
                                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
@@ -352,6 +342,14 @@ fun ClientDetailScreen(
                                     }
                                 }
                             }
+                            item {
+                                DocumentsSection(
+                                    docs = loadedClient.docs,
+                                    clientId = clientId,
+                                    api = api,
+                                    onRefresh = { refreshKey++ },
+                                )
+                            }
                         } else {
                             item {
                                 BasicInfoSection(
@@ -362,6 +360,14 @@ fun ClientDetailScreen(
                             }
                             item { SubscriptionsSection() }
                             item { UnpaidLessonsSection() }
+                            item {
+                                DocumentsSection(
+                                    docs = loadedClient.docs,
+                                    clientId = clientId,
+                                    api = api,
+                                    onRefresh = { refreshKey++ },
+                                )
+                            }
                         }
 
                         stickyHeader {
@@ -385,27 +391,6 @@ fun ClientDetailScreen(
 
                             ClientDetailTab.Parents ->
                                 items(fakeParents) { ParentRow(it) }
-
-                            ClientDetailTab.Documents -> {
-                                items(fakeDocuments) { DocumentRow(it) }
-                                item {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                    ) {
-                                        AssistChip(
-                                            onClick = {},
-                                            label = { Text(stringResource(Res.string.action_upload_document)) },
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Default.Add,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(18.dp),
-                                                )
-                                            },
-                                        )
-                                    }
-                                }
-                            }
 
                             ClientDetailTab.History ->
                                 items(fakeHistory) { HistoryRow(it) }
@@ -510,12 +495,6 @@ private fun ClientDetailHeader(
 
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(client.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Text(
-                text = stringResource(Res.string.label_balance_value, client.balance.formatBalance()),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium,
-            )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 client.groups.forEach { group ->
                     InputChip(
@@ -753,12 +732,84 @@ private fun ParentRow(parent: FakeParent) {
 }
 
 @Composable
-private fun DocumentRow(doc: FakeDocument) {
-    ListItem(
-        headlineContent = { Text(doc.name) },
-        supportingContent = { Text(doc.uploadedAt) },
-    )
-    HorizontalDivider()
+private fun DocumentsSection(
+    docs: List<ClientDoc>,
+    clientId: Uuid,
+    api: ApiClient,
+    onRefresh: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var isUploading by remember { mutableStateOf(false) }
+
+    SectionCard(stringResource(Res.string.section_documents)) {
+        docs.forEachIndexed { index, doc ->
+            if (index > 0) HorizontalDivider()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+            ) {
+                Text(
+                    text = doc.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            api.uploadInfo(doc.uploadId).onRight { openUrl(it.url) }
+                        }
+                    },
+                ) {
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+        ) {
+            AssistChip(
+                enabled = !isUploading,
+                onClick = {
+                    scope.launch {
+                        isUploading = true
+                        val file = pickAnyFile()
+                        if (file != null) {
+                            api.uploadFile(file.first, file.second, file.third)
+                                .onRight { upload ->
+                                    api
+                                        .attachClientDoc(
+                                            AttachClientDocRequest(
+                                                clientId = clientId,
+                                                uploadId = upload.id,
+                                                name = upload.originalName,
+                                            ),
+                                        ).onRight { onRefresh() }
+                                }
+                        }
+                        isUploading = false
+                    }
+                },
+                label = { Text(stringResource(Res.string.action_upload_document)) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
+            )
+        }
+    }
 }
 
 @Composable

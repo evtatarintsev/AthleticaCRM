@@ -4,8 +4,10 @@ import arrow.core.Either
 import arrow.core.raise.either
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.core.Gender
+import kotlin.time.Instant
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -59,5 +61,29 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                     )
                 }
 
-        client.copy(groups = groups)
+        val docs =
+            db
+                .sql(
+                    """
+                    SELECT id, upload_id, name, created_at
+                    FROM client_docs
+                    WHERE client_id = :clientId
+                    ORDER BY created_at DESC
+                    """.trimIndent(),
+                )
+                .bind("clientId", id)
+                .list { row ->
+                    ClientDoc(
+                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
+                        uploadId = row.get("upload_id", java.util.UUID::class.java)!!.toKotlinUuid(),
+                        name = row.get("name", String::class.java)!!,
+                        createdAt =
+                            row
+                                .get("created_at", java.time.OffsetDateTime::class.java)!!
+                                .toInstant()
+                                .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                    )
+                }
+
+        client.copy(groups = groups, docs = docs)
     }

@@ -130,6 +130,7 @@
     <string name="section_basic_info">Основная информация</string>
     <string name="section_subscriptions">Абонементы</string>
     <string name="section_unpaid_lessons">Неоплаченные занятия</string>
+    <string name="section_documents">Документы</string>
     <string name="tab_payments">Платежи</string>
     <string name="tab_parents">Родители</string>
     <string name="tab_documents">Документы</string>

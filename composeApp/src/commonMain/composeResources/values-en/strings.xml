@@ -125,6 +125,7 @@
     <string name="section_basic_info">Basic information</string>
     <string name="section_subscriptions">Subscriptions</string>
     <string name="section_unpaid_lessons">Unpaid lessons</string>
+    <string name="section_documents">Documents</string>
     <string name="tab_payments">Payments</string>
     <string name="tab_parents">Parents</string>
     <string name="tab_documents">Documents</string>

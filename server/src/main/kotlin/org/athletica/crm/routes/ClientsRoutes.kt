@@ -16,6 +16,7 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.athletica.crm.usecases.clients.attachClientDoc
+import org.athletica.crm.usecases.clients.deleteClientDoc
 import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientDetail
 import org.athletica.crm.usecases.clients.clientList
@@ -82,6 +83,19 @@ fun Route.clientsRoutes() {
         call.eitherToResponse {
             val request = call.receive<AttachClientDocRequest>()
             attachClientDoc(request).bind()
+        }
+    }
+
+    postWithContext("/clients/docs/delete") {
+        call.eitherToResponse {
+            val idParam =
+                call.request.queryParameters["id"]
+                    ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
+            val id =
+                runCatching { Uuid.parse(idParam) }.getOrElse {
+                    raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
+                }
+            deleteClientDoc(id).bind()
         }
     }
 

@@ -230,6 +230,14 @@ class ApiClient(private val http: HttpClient) {
             }
         }
 
+    /** Удаляет документ [docId], прикреплённый к клиенту. */
+    suspend fun deleteClientDoc(docId: Uuid): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/clients/docs/delete") {
+                url { parameters.append("id", docId.toString()) }
+            }
+        }
+
     /** Прикрепляет загруженный файл к клиенту как документ. Возвращает созданный [ClientDoc]. */
     suspend fun attachClientDoc(request: AttachClientDocRequest): Either<ApiClientError, ClientDoc> =
         execute {

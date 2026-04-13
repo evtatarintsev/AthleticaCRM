@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -330,11 +331,19 @@ fun ClientDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                                 ) {
                                     Box(Modifier.weight(1f)) {
-                                        BasicInfoSection(
-                                            client = loadedClient,
-                                            onAdjustBalance = { showAdjustBalanceDialog = true },
-                                            onBalanceHistory = { showBalanceHistorySheet = true },
-                                        )
+                                        Column {
+                                            BasicInfoSection(
+                                                client = loadedClient,
+                                                onAdjustBalance = { showAdjustBalanceDialog = true },
+                                                onBalanceHistory = { showBalanceHistorySheet = true },
+                                            )
+                                            DocumentsSection(
+                                                docs = loadedClient.docs,
+                                                clientId = clientId,
+                                                api = api,
+                                                onRefresh = { refreshKey++ },
+                                            )
+                                        }
                                     }
                                     Column(Modifier.weight(1f)) {
                                         SubscriptionsSection()
@@ -342,14 +351,7 @@ fun ClientDetailScreen(
                                     }
                                 }
                             }
-                            item {
-                                DocumentsSection(
-                                    docs = loadedClient.docs,
-                                    clientId = clientId,
-                                    api = api,
-                                    onRefresh = { refreshKey++ },
-                                )
-                            }
+
                         } else {
                             item {
                                 BasicInfoSection(
@@ -767,6 +769,20 @@ private fun DocumentsSection(
                         Icons.Default.Share,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            api.deleteClientDoc(doc.id).onRight { onRefresh() }
+                        }
+                    },
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.error,
                     )
                 }
             }

@@ -37,6 +37,7 @@ import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
@@ -171,6 +172,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun createClient(request: CreateClientRequest): Either<ApiClientError, ClientDetailResponse> =
         execute {
             http.post("/api/clients/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Редактирует существующего клиента по данным [request]. Возвращает обновлённого клиента. */
+    suspend fun editClient(request: EditClientRequest): Either<ApiClientError, ClientDetailResponse> =
+        execute {
+            http.post("/api/clients/edit") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

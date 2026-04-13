@@ -48,6 +48,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,9 +64,11 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
+import org.athletica.crm.components.clients.ClientEditScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.employees.EmployeeCreateScreen
 import org.athletica.crm.components.employees.EmployeesScreen
@@ -176,7 +179,9 @@ fun MainScreen(
         }
     }
     var showCreateClient by remember { mutableStateOf(false) }
+    var editingClient by remember { mutableStateOf<ClientDetailResponse?>(null) }
     var clientsRefreshKey by remember { mutableStateOf(0) }
+    var clientDetailRefreshKey by remember { mutableStateOf(0) }
     var showCreateGroup by remember { mutableStateOf(false) }
     var groupsRefreshKey by remember { mutableStateOf(0) }
     var showCreateEmployee by remember { mutableStateOf(false) }
@@ -202,13 +207,31 @@ fun MainScreen(
         scope.launch { api.markAllNotificationsRead() }
     }
 
+    // Экран редактирования клиента накрывает весь экран поверх навигации
+    if (editingClient != null) {
+        ClientEditScreen(
+            client = editingClient!!,
+            api = api,
+            onBack = { editingClient = null },
+            onSaved = { _ ->
+                editingClient = null
+                clientsRefreshKey++
+                clientDetailRefreshKey++
+            },
+        )
+        return
+    }
+
     // Карточка клиента накрывает весь экран поверх навигации
     if (selectedClientId != null) {
-        ClientDetailScreen(
-            clientId = selectedClientId!!,
-            api = api,
-            onBack = { selectedClientId = null },
-        )
+        key(selectedClientId, clientDetailRefreshKey) {
+            ClientDetailScreen(
+                clientId = selectedClientId!!,
+                api = api,
+                onBack = { selectedClientId = null },
+                onEdit = { client -> editingClient = client },
+            )
+        }
         return
     }
 

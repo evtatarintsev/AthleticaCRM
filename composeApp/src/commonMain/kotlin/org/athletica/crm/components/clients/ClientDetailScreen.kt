@@ -31,14 +31,13 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,28 +80,25 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
-import org.athletica.crm.openUrl
-import org.athletica.crm.pickAnyFile
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_delete
 import org.athletica.crm.generated.resources.action_delete_client
-import org.athletica.crm.generated.resources.action_remove
-import org.athletica.crm.generated.resources.dialog_remove_from_group_message
-import org.athletica.crm.generated.resources.dialog_remove_from_group_title
 import org.athletica.crm.generated.resources.action_edit
-import org.athletica.crm.generated.resources.dialog_delete_doc_message
-import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.action_issue_subscription
 import org.athletica.crm.generated.resources.action_more
+import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.cd_balance_history
+import org.athletica.crm.generated.resources.dialog_delete_doc_message
+import org.athletica.crm.generated.resources.dialog_delete_doc_title
+import org.athletica.crm.generated.resources.dialog_remove_from_group_message
+import org.athletica.crm.generated.resources.dialog_remove_from_group_title
 import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
-import org.athletica.crm.generated.resources.label_balance_value
 import org.athletica.crm.generated.resources.label_birthday
 import org.athletica.crm.generated.resources.label_classes_start
 import org.athletica.crm.generated.resources.label_contract_number
@@ -111,8 +108,8 @@ import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.generated.resources.label_sports_rank
 import org.athletica.crm.generated.resources.placeholder_not_specified
 import org.athletica.crm.generated.resources.section_basic_info
-import org.athletica.crm.generated.resources.section_subscriptions
 import org.athletica.crm.generated.resources.section_documents
+import org.athletica.crm.generated.resources.section_subscriptions
 import org.athletica.crm.generated.resources.section_unpaid_lessons
 import org.athletica.crm.generated.resources.subscription_status_active
 import org.athletica.crm.generated.resources.subscription_status_expired
@@ -120,6 +117,8 @@ import org.athletica.crm.generated.resources.tab_history
 import org.athletica.crm.generated.resources.tab_parents
 import org.athletica.crm.generated.resources.tab_payments
 import org.athletica.crm.generated.resources.visits_remaining
+import org.athletica.crm.openUrl
+import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
@@ -138,7 +137,6 @@ private data class FakeUnpaidLesson(val date: String, val status: String, val gr
 private data class FakePayment(val date: String, val amount: String, val description: String)
 
 private data class FakeParent(val name: String, val phone: String, val relation: String)
-
 
 private data class FakeVisit(val date: String, val status: String, val group: String)
 
@@ -207,6 +205,7 @@ fun ClientDetailScreen(
     clientId: Uuid,
     api: ApiClient,
     onBack: () -> Unit,
+    onEdit: (ClientDetailResponse) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var client by remember { mutableStateOf<ClientDetailResponse?>(null) }
@@ -254,7 +253,7 @@ fun ClientDetailScreen(
                 },
                 actions = {
                     if (client != null) {
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = { onEdit(client!!) }) {
                             Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
                         }
                         Box {
@@ -359,7 +358,6 @@ fun ClientDetailScreen(
                                     }
                                 }
                             }
-
                         } else {
                             item {
                                 BasicInfoSection(

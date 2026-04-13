@@ -145,6 +145,8 @@
 
     <!-- Client create -->
     <string name="screen_client_create">New client</string>
+    <!-- Client edit -->
+    <string name="screen_client_edit">Edit client</string>
 
     <!-- Client display settings / filter -->
     <string name="filter_gender_all">All</string>

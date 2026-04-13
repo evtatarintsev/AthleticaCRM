@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.core.errors.CommonDomainError
@@ -16,11 +17,12 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.athletica.crm.usecases.clients.attachClientDoc
-import org.athletica.crm.usecases.clients.deleteClientDoc
 import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientDetail
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
+import org.athletica.crm.usecases.clients.deleteClientDoc
+import org.athletica.crm.usecases.clients.editClient
 import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
 
@@ -55,6 +57,13 @@ fun Route.clientsRoutes() {
             val request = call.receive<CreateClientRequest>()
             val result = createClient(request).bind()
             result
+        }
+    }
+
+    postWithContext("/clients/edit") {
+        call.eitherToResponse {
+            val request = call.receive<EditClientRequest>()
+            editClient(request).bind()
         }
     }
 

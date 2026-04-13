@@ -36,7 +36,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,8 +84,12 @@ import org.athletica.crm.pickAnyFile
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_cancel
+import org.athletica.crm.generated.resources.action_delete
 import org.athletica.crm.generated.resources.action_delete_client
 import org.athletica.crm.generated.resources.action_edit
+import org.athletica.crm.generated.resources.dialog_delete_doc_message
+import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.action_issue_subscription
 import org.athletica.crm.generated.resources.action_more
 import org.athletica.crm.generated.resources.action_upload_document
@@ -742,6 +748,39 @@ private fun DocumentsSection(
 ) {
     val scope = rememberCoroutineScope()
     var isUploading by remember { mutableStateOf(false) }
+    var docToDelete by remember { mutableStateOf<ClientDoc?>(null) }
+
+    // Диалог подтверждения удаления
+    docToDelete?.let { doc ->
+        AlertDialog(
+            onDismissRequest = { docToDelete = null },
+            title = { Text(stringResource(Res.string.dialog_delete_doc_title)) },
+            text = { Text(stringResource(Res.string.dialog_delete_doc_message, doc.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = docToDelete
+                        docToDelete = null
+                        if (target != null) {
+                            scope.launch {
+                                api.deleteClientDoc(target.id).onRight { onRefresh() }
+                            }
+                        }
+                    },
+                ) {
+                    Text(
+                        text = stringResource(Res.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { docToDelete = null }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+            },
+        )
+    }
 
     SectionCard(stringResource(Res.string.section_documents)) {
         docs.forEachIndexed { index, doc ->
@@ -772,11 +811,7 @@ private fun DocumentsSection(
                     )
                 }
                 IconButton(
-                    onClick = {
-                        scope.launch {
-                            api.deleteClientDoc(doc.id).onRight { onRefresh() }
-                        }
-                    },
+                    onClick = { docToDelete = doc },
                 ) {
                     Icon(
                         Icons.Default.Delete,

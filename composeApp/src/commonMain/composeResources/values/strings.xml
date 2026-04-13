@@ -13,6 +13,9 @@
     <string name="action_clear">Очистить</string>
     <string name="action_ok">ОК</string>
     <string name="action_cancel">Отмена</string>
+    <string name="action_delete">Удалить</string>
+    <string name="dialog_delete_doc_title">Удалить документ?</string>
+    <string name="dialog_delete_doc_message">«%1$s» будет удалён без возможности восстановления.</string>
     <string name="action_edit">Редактировать</string>
     <string name="action_more">Ещё</string>
     <string name="action_logout">Выйти</string>

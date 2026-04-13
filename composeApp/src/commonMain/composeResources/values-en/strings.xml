@@ -13,6 +13,9 @@
     <string name="action_clear">Clear</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="dialog_delete_doc_title">Delete document?</string>
+    <string name="dialog_delete_doc_message">"%1$s" will be permanently deleted.</string>
     <string name="action_edit">Edit</string>
     <string name="action_more">More</string>
     <string name="action_logout">Log out</string>

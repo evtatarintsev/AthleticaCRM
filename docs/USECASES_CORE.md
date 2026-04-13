@@ -9,7 +9,7 @@
 ## 📋 Модули ядра
 
 1. [Клиентская база (CRM/профили)](#1-клиентская-база)
-2. [Абонементы & тарификация](#2-абонементы--тарификация)
+2. [Абонементы & управление планами абонементов](#2-абонементы--управление планами абонементов)
 3. [Посещаемость & учет занятий](#3-посещаемость--учет-занятий)
 4. [Расписание занятий](#4-расписание-занятий)
 
@@ -102,18 +102,18 @@
 
 ---
 
-## 2. Абонементы & тарификация
+## 2. Абонементы & управление планами абонементов
 
 ### Статус реализации
 - ❌ Полностью отсутствует
 
 ### Юзкейсы
 
-#### 2.1 Управление тарифными планами
+#### 2.1 Управление планами абонементов
 **Актеры:** Администратор
 
 **Кейсы:**
-- UC-2.1.1: Создание нового тарифного плана (название, описание, цена, период действия)
+- UC-2.1.1: Создание нового плана абонемента (название, описание, цена, период действия)
 - UC-2.1.2: Типы планов:
   - **Классический абонемент**: Х занятий в период (месяц/квартал/год)
   - **Безлимитный**: Неограниченное кол-во занятий в период
@@ -124,16 +124,16 @@
 - UC-2.1.5: Просмотр списка всех планов
 
 **Статус:** Нужно реализовать:
-- CreateTariff / UpdateTariff / ArchiveTariff
-- ListTariffs
+- CreateMembershipPlan / UpdateMembershipPlan / ArchiveMembershipPlan
+- ListMembershipPlans
 - Модели данных для разных типов планов
 
-#### 2.2 Расширенная тарификация (опционально для 1.0, но важно спланировать)
+#### 2.2 Расширенная управление планами абонементов (опционально для 1.0, но важно спланировать)
 **Актеры:** Администратор
 
 **Кейсы:**
 - UC-2.2.1: Привязка плана к конкретной дисциплине/группе (разные цены для разных курсов)
-- UC-2.2.2: Сезонные тарифы (летний лагерь дороже обычного)
+- UC-2.2.2: Сезонные планы абонементов (летний лагерь дороже обычного)
 - UC-2.2.3: Скидки для новичков (первый месяц 50%)
 - UC-2.2.4: Льготы для постоянных клиентов (каждый Nй месяц дешевле)
 
@@ -162,11 +162,11 @@
 #### 2.4 Управление занятиями в абонементе
 **Актеры:** Администратор, рецепционист (учет)
 
-⚠️ **ВАЖНО:** Списание происходит при MarkInstanceAsCompleted, а не при CheckinClient (см. паттерн в [`ATTENDANCE_DEDUCTION_PATTERNS.md`](./ATTENDANCE_DEDUCTION_PATTERNS.md))
+⚠️ **ВАЖНО:** Списание происходит при CompleteSession, а не при CheckinClient (см. паттерн в [`ATTENDANCE_DEDUCTION_PATTERNS.md`](./ATTENDANCE_DEDUCTION_PATTERNS.md))
 
 **Кейсы:**
 - UC-2.4.1: Убыль занятия из абонемента (при завершении занятия)
-  - Происходит в MarkInstanceAsCompleted (АТОМАРНО для всех посещений)
+  - Происходит в CompleteSession (АТОМАРНО для всех посещений)
   - ✅ Все в одной транзакции
   
 - UC-2.4.2: Восстановление занятия (если клиент отменил визит)
@@ -177,14 +177,14 @@
   - balance = кол-во оставшихся занятий
   
 - UC-2.4.4: Уведомление при низком остатке (например, ≤2 занятия)
-  - После MarkInstanceAsCompleted проверяем balance
+  - После CompleteSession проверяем balance
   - Если ≤2 → отправить уведомление
   
 - UC-2.4.5: Истечение срока абонемента (архивирование, уведомление)
   - Фоновый процесс ежедневно
 
 **Статус:** Тесно связано с посещаемостью. Нужно:
-- DeductMembership (убыль в MarkInstanceAsCompleted)
+- DeductMembership (убыль в CompleteSession)
 - RestoreMembership (восстановление при CancelAttendance)
 - GetMembershipBalance (остаток)
 - CheckMembershipLowBalance (уведомление)
@@ -218,14 +218,14 @@
 #### 3.1 Регистрация посещения
 **Актеры:** Тренер, рецепционист
 
-⚠️ **ВАЖНО:** Используется **ОТЛОЖЕННОЕ СПИСАНИЕ** — баланс убывает не при CheckinClient, а при MarkInstanceAsCompleted (см. [`ATTENDANCE_DEDUCTION_PATTERNS.md`](./ATTENDANCE_DEDUCTION_PATTERNS.md))
+⚠️ **ВАЖНО:** Используется **ОТЛОЖЕННОЕ СПИСАНИЕ** — баланс убывает не при CheckinClient, а при CompleteSession (см. [`ATTENDANCE_DEDUCTION_PATTERNS.md`](./ATTENDANCE_DEDUCTION_PATTERNS.md))
 
 **Кейсы:**
 - UC-3.1.1: Отметить посещение клиента на занятии (быстрая операция)
   - Клиент выбирается из списка участников группы
   - Attendance создаётся с status = REGISTERED (черновик)
   - ✅ Membership.balance НЕ меняется в этот момент!
-  - Баланс убудет ПОЗЖЕ (при MarkInstanceAsCompleted)
+  - Баланс убудет ПОЗЖЕ (при CompleteSession)
   
 - UC-3.1.2: Отметить посещение на день-в-день (drop-in) без абонемента
   - Поиск клиента или гость
@@ -244,7 +244,7 @@
 - CheckinClient (создать REGISTERED Attendance)
 - RemoveAttendance (удалить черновик - без эффектов)
 - CancelAttendance (отменить финализированное с восстановлением баланса)
-- MarkInstanceAsCompleted (финализировать посещение + списать)
+- CompleteSession (финализировать посещение + списать)
 - TransferCheckin (переместить между занятиями)
 - Модель Attendance с status = {REGISTERED, ATTENDED, CANCELLED}
 
@@ -259,7 +259,7 @@
 - UC-3.2.5: Уведомление тренеру об отсутствии постоянного участника
 
 **Статус:** Нужно:
-- GroupAttendanceList (список перед занятием)
+- SessionAttendanceList (список перед занятием)
 - ClientAttendanceHistory
 - GroupAttendanceReport (за период)
 - Фоновое уведомление за отсутствие
@@ -307,21 +307,21 @@
   
 - UC-4.2.2: Отмена отдельного занятия (например, выходной или болезнь тренера)
   - Все REGISTERED Attendance → CANCELLED (без списания баланса!)
-  - GroupInstance → CANCELLED
+  - Session → CANCELLED
   
 - UC-4.2.3: Перенос занятия на другой день/время
-  - Изменение GroupInstance.scheduled_at
+  - Изменение Session.scheduled_at
   
 - UC-4.2.4: Назначение тренера на занятие
-  - GroupInstance.trainer_id = trainerId
+  - Session.trainer_id = trainerId
   
 - UC-4.2.5: Просмотр расписания тренера (его рабочий график)
-  - Какие GroupInstance назначены этому тренеру
+  - Какие Session назначены этому тренеру
   
 - **UC-4.2.6: Завершение занятия и финализация посещений** ⚠️ КРИТИЧНО
-  - MarkInstanceAsCompleted(instanceId)
+  - CompleteSession(sessionId)
   - Это ГЛАВНЫЙ момент, когда:
-    - GroupInstance.status = COMPLETED
+    - Session.status = COMPLETED
     - Для каждого REGISTERED Attendance:
       - Membership.balance -= 1
       - Attendance.status = ATTENDED
@@ -329,11 +329,11 @@
   - 🟢 Ключевой UC для правильной работы системы!
 
 **Статус:** Новое направление, нужно:
-- GenerateGroupInstances (планирование)
-- CancelInstance / RescheduleInstance
-- AssignTrainerToInstance
+- GenerateSessions (планирование)
+- CancelSession / RescheduleSession
+- AssignTrainerToSession
 - TrainerSchedule
-- **MarkInstanceAsCompleted** ← КРИТИЧНО! (отложенное списание)
+- **CompleteSession** ← КРИТИЧНО! (отложенное списание)
 
 #### 4.3 Управление помещениями/залами
 **Актеры:** Администратор
@@ -370,8 +370,8 @@
 | | 1.3 История активности | ✅ | | Нужно добавить |
 | | 1.4 Сегментация (группы) | ⚠️ | | Нужно уточнить |
 | | 1.5 Архивирование | ⏳ | | Нужно |
-| **Абонементы** | 2.1 Управление тарифами | ✅ | | Нужно |
-| | 2.2 Расширенная тарификация | | ✅ | Будет |
+| **Абонементы** | 2.1 Управление планами абонементов | ✅ | | Нужно |
+| | 2.2 Расширенная управление планами абонементов | | ✅ | Будет |
 | | 2.3 Управление абонементами | ✅ | | Нужно |
 | | 2.4 Учет занятий | ✅ | | Нужно (тесно с 3.1) |
 | | 2.5 Платежи | ✅ | | Базовое |
@@ -387,21 +387,21 @@
 
 ## 🎯 Рекомендуемый порядок разработки (MVP)
 
-### Спринт 1: Фундамент (абонементы & тарифы)
-- UC-2.1 Управление тарифами (CreateTariff, ListTariffs, ArchiveTariff)
+### Спринт 1: Фундамент (абонементы & планы абонементов)
+- UC-2.1 Управление планами абонементов (CreateMembershipPlan, ListMembershipPlans, ArchiveMembershipPlan)
 - UC-2.3 Продажа абонементов (CreateMembership, ListClientMemberships, MembershipDetail)
 - UC-2.5 Платежи (RecordPayment)
 
 ### Спринт 2: Посещаемость (регистрация и финализация)
-- UC-4.2.1 Генерирование занятий (GenerateGroupInstances)
-- UC-4.2.4 Назначение тренера (AssignTrainerToInstance)
+- UC-4.2.1 Генерирование занятий (GenerateSessions)
+- UC-4.2.4 Назначение тренера (AssignTrainerToSession)
 - UC-3.1.1 Регистрация посещения (CheckinClient → REGISTERED)
-- **UC-4.2.6 Завершение занятия (MarkInstanceAsCompleted) ← КРИТИЧНО!**
+- **UC-4.2.6 Завершение занятия (CompleteSession) ← КРИТИЧНО!**
   - ✅ В этот момент происходит: DeductMembership + ATTENDED + async события
 
 ### Спринт 3: Откаты и управление
 - UC-3.1.4 Отмена посещения (RemoveAttendance для REGISTERED, CancelAttendance для ATTENDED)
-- UC-4.2.2 Отмена занятия (CancelInstance)
+- UC-4.2.2 Отмена занятия (CancelSession)
 - UC-3.1.3 Перемещение посещения (TransferCheckin)
 
 ### Спринт 4: Залы и расширение расписания
@@ -411,7 +411,7 @@
 ### Спринт 5: Расширение клиентской базы
 - UC-1.2 Расширенное управление профилем (UpdateClientInfo, AddClientNote)
 - UC-1.3 История активности (ClientActivityTimeline)
-- UC-3.2 Управление посещаемостью (GroupAttendanceList, ClientAttendanceHistory)
+- UC-3.2 Управление посещаемостью (SessionAttendanceList, ClientAttendanceHistory)
 
 ---
 
@@ -433,12 +433,12 @@ Client
 └── notes (внутренние комментарии)
 
 Membership
-├── tariff (цена, тип, период)
+├── membership plan (цена, тип, период)
 ├── dates (created, expires, renewed)
 ├── balance (сколько занятий осталось)
 └── payments (платежи)
 
-GroupInstance (реальное занятие)
+Session (реальное занятие)
 ├── group (какая группа)
 ├── schedule_slot (день/время)
 ├── room (где)

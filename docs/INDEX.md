@@ -4,6 +4,7 @@
 
 ```
 AthleticaCRM/
+├── GLOSSARY.md                ← Единый язык (Ubiquitous Language DDD) — начните отсюда
 ├── USECASES_CORE.md          ← Детальное описание 28+ юзкейсов по 4 модулям
 ├── ARCHITECTURE_CORE.md       ← Архитектура, модель данных, бизнес-правила
 ├── PLANNING_SUMMARY.md        ← MVP планы, timeline, критичные решения
@@ -62,11 +63,11 @@ AthleticaCRM/
 | **ИТОГО** | **23%** | **77%** |
 
 ### MVP Phase 1 (10 базовых UC)
-1. ✅ CreateTariff (управление тарифами)
+1. ✅ CreateMembershipPlan (управление планами абонементов)
 2. ✅ CreateMembership (продажа абонементов)
 3. ✅ RecordPayment (регистрация оплаты)
-4. ✅ GenerateGroupInstances (планирование занятий)
-5. ✅ AssignTrainerToInstance (назначение тренера)
+4. ✅ GenerateSessions (планирование занятий)
+5. ✅ AssignTrainerToSession (назначение тренера)
 6. ✅ CheckinClient (отметка посещения)
 7. ✅ DeductMembership (убыль занятий)
 8. ✅ CancelCheckin (отмена посещения)
@@ -77,7 +78,7 @@ AthleticaCRM/
 
 ### Phase 2 (аналитика, маркетинг, интеграции)
 - Отчеты по посещаемости и churn
-- Расширенная тарификация (сезоны, льготы)
+- Расширенная управление планами абонементов (сезоны, льготы)
 - Интеграция платежных систем
 - Email/SMS уведомления
 
@@ -87,9 +88,9 @@ AthleticaCRM/
 
 ### Основные сущности (7)
 ```
-Client → Membership ← Tariff
+Client → Membership ← MembershipPlan
   ↓           ↓
-Attendance → GroupInstance
+Attendance → Session
               ↓
             Room
 ```
@@ -156,11 +157,11 @@ Attendance → GroupInstance
 
 ### Рекомендуемый порядок разработки
 ```
-Спринт 1: Tariff + Membership (CreateTariff, CreateMembership, RecordPayment)
+Спринт 1: MembershipPlan + Membership (CreateMembershipPlan, CreateMembership, RecordPayment)
   ↓
 Спринт 2: Attendance + Deduction (CheckinClient, DeductMembership, CancelCheckin)
   ↓
-Спринт 3: Planning (GenerateGroupInstances, AssignTrainerToInstance)
+Спринт 3: Planning (GenerateSessions, AssignTrainerToSession)
   ↓
 Спринт 4: Rooms (CreateRoom, AssignGroupToRoom, RoomAvailability)
   ↓

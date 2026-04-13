@@ -33,7 +33,7 @@
         ├──────────────────────┤                  ├─────────────────────┤
         │ id                   │                  │ group_id            │
         │ client_id            │                  │ day_of_week         │
-        │ tariff_id            │                  │ start_time          │
+        │ plan_id            │                  │ start_time          │
         │ status               │                  │ end_time            │
         │ created_at           │                  │ recurrence (if any) │
         │ expires_at           │                  └─────────────────────┘
@@ -51,7 +51,7 @@
         ├──────────────────────┤    ├──────────────────────┤
         │ id                   │    │ id                   │
         │ client_id            │    │ group_id             │
-        │ instance_id          │    │ scheduled_at         │
+        │ session_id          │    │ scheduled_at         │
         │ attended_at          │    │ room_id              │
         │ membership_id        │    │ trainer_id           │
         │ status (attended)    │    │ actual_start_time    │
@@ -62,7 +62,7 @@
 
 ┌──────────────────────┐    ┌──────────────────────┐
 │    TARIFF            │    │    DISCIPLINE        │
-│  (тарифный план)     │    │  (спортивная дис.)   │
+│  (план абонемента)     │    │  (спортивная дис.)   │
 ├──────────────────────┤    ├──────────────────────┤
 │ id                   │    │ id                   │
 │ name                 │    │ name                 │
@@ -73,7 +73,7 @@
 │      package)        │
 │ price                │
 │ period_days          │
-│ lessons_count        │
+│ sessions_count        │
 │ discipline_ids       │
 │ status (active)      │
 └──────────────────────┘
@@ -83,21 +83,21 @@
 
 ### Поток A: Покупка абонемента
 ```
-1. Admin выбирает Tariff
+1. Admin выбирает MembershipPlan
 2. Admin выбирает Client
 3. Система создаёт Membership (status = pending_payment)
 4. Admin регистрирует платёж
-5. Membership → status = active, balance = tariff.lessons_count
-6. Membership → expires_at = now + tariff.period_days
+5. Membership → status = active, balance = plan.sessions_count
+6. Membership → expires_at = now + plan.period_days
 ```
 
 ### Поток B: Посещение занятия (ОТЛОЖЕННОЕ СПИСАНИЕ) 🔄
 
-⚠️ **РЕКОМЕНДУЕМЫЙ ПОДХОД:** Списание происходит НЕ при CheckinClient, а при MarkInstanceAsCompleted. Это избегает проблем с откатами и каскадными эффектами. [Подробный анализ в `ATTENDANCE_DEDUCTION_PATTERNS.md`](./ATTENDANCE_DEDUCTION_PATTERNS.md)
+⚠️ **РЕКОМЕНДУЕМЫЙ ПОДХОД:** Списание происходит НЕ при CheckinClient, а при CompleteSession. Это избегает проблем с откатами и каскадными эффектами. [Подробный анализ в `ATTENDANCE_DEDUCTION_PATTERNS.md`](./ATTENDANCE_DEDUCTION_PATTERNS.md)
 
 ```
 ЭТАП 1: РЕГИСТРАЦИЯ (в начале занятия)
-├─ 1. Тренер открывает GroupInstance (status = SCHEDULED)
+├─ 1. Тренер открывает Session (status = SCHEDULED)
 ├─ 2. Система показывает список Client-ов в Group
 ├─ 3. Тренер отмечает посещение → CheckinClient(clientId)
 │  └─ Attendance created с status = REGISTERED (черновик!)
@@ -105,8 +105,8 @@
 │  └─ Риск откатов: МИНИМАЛЕН (просто delete Attendance)
 
 ЭТАП 2: ЗАВЕРШЕНИЕ ЗАНЯТИЯ (в конце)
-└─ 4. Тренер нажимает "Завершить занятие" → MarkInstanceAsCompleted(instanceId)
-   ├─ GroupInstance.status = COMPLETED
+└─ 4. Тренер нажимает "Завершить занятие" → CompleteSession(sessionId)
+   ├─ Session.status = COMPLETED
    ├─ TRANSACTION: Для каждого REGISTERED Attendance:
    │  ├─ Membership.balance -= 1 ← Списание (атомарно!)
    │  ├─ Attendance.status = ATTENDED ← Финализация
@@ -119,7 +119,7 @@
 - ✅ Откат ошибки = простое `RemoveAttendance` (без каскадных откатов)
 - ✅ Нет race conditions с balance (всё в одной транзакции)
 - ✅ Асинхронные эффекты (notifications, tasks) только финальные, точные
-- ✅ Легко откатить целое занятие (просто `CancelInstance` → все Attendance = CANCELLED)
+- ✅ Легко откатить целое занятие (просто `CancelSession` → все Attendance = CANCELLED)
 - ❌ Но требует TWO операций (CheckIn + Complete) вместо одной
 
 ### Поток C: Отмена посещения
@@ -161,14 +161,14 @@
 - Одно посещение = одно занятие (никакой частичной оплаты)
 
 ### Расписание
-- GroupInstance генерируется из ScheduleSlot (расписание группы)
+- Session генерируется из ScheduleSlot (расписание группы)
 - Если ScheduleSlot: ПН, СР, ПТ → каждый месяц создаются 12 instances
-- Если занятие отменено (болезнь тренера) → GroupInstance.status = cancelled
+- Если занятие отменено (болезнь тренера) → Session.status = cancelled
 - Клиенты уведомляются об отмене (когда будет)
 
 ### Залы
-- GroupInstance должна иметь назначенный Room
-- Нельзя создать два GroupInstance в один Room в одно время (проверка конфликтов)
+- Session должна иметь назначенный Room
+- Нельзя создать два Session в один Room в одно время (проверка конфликтов)
 - Комната может быть не назначена (занятие может быть online или на улице) → room_id = NULL
 
 ## 4. Переходные состояния (State Machines)
@@ -186,7 +186,7 @@ EXPIRED / EXHAUSTED / CANCELLED
 ACTIVE
 ```
 
-### GroupInstance (занятие)
+### Session (занятие)
 ```
 SCHEDULED
     ├─ (клиент посетил) → был Attendance created
@@ -213,16 +213,16 @@ CANCELLED / NO_SHOW
 -- Быстрый поиск по org_id (мультитенантность)
 CREATE INDEX idx_clients_org_id ON clients(org_id);
 CREATE INDEX idx_memberships_org_id ON memberships(org_id);
-CREATE INDEX idx_group_instances_org_id ON group_instances(org_id);
+CREATE INDEX idx_sessions_org_id ON sessions(org_id);
 
 -- Быстрый поиск активных абонементов
 CREATE INDEX idx_memberships_client_status ON memberships(client_id, status);
 
 -- Поиск занятий по дате (расписание)
-CREATE INDEX idx_group_instances_scheduled ON group_instances(scheduled_at);
+CREATE INDEX idx_sessions_scheduled ON sessions(scheduled_at);
 
 -- Поиск посещений
-CREATE INDEX idx_attendance_instance ON attendance(instance_id);
+CREATE INDEX idx_attendance_instance ON attendance(session_id);
 CREATE INDEX idx_attendance_client_date ON attendance(client_id, attended_at);
 ```
 
@@ -242,10 +242,10 @@ ExpireMembershipsScheduler {
       AND status = 'active'
 }
 
-// Ежедневно генерирование GroupInstances на неделю вперед
-GenerateGroupInstancesScheduler {
+// Ежедневно генерирование Sessions на неделю вперед
+GenerateSessionsScheduler {
     Для каждой Group найти ScheduleSlots
-    Для каждого ScheduleSlot создать GroupInstance на предстоящей неделе
+    Для каждого ScheduleSlot создать Session на предстоящей неделе
     (это нужно для отметки посещений тренерами)
 }
 ```
@@ -257,7 +257,7 @@ GenerateGroupInstancesScheduler {
 POST /api/memberships
 {
   "clientId": "uuid",
-  "tariffId": "uuid",
+  "planId": "uuid",
   "paymentMethod": "cash" | "card" | "transfer",
   "paidAmount": 5000.00
 }
@@ -266,7 +266,7 @@ Response:
 {
   "id": "uuid",
   "clientId": "uuid",
-  "tariffId": "uuid",
+  "planId": "uuid",
   "status": "active",
   "balance": 16,           // количество занятий
   "expiresAt": "2026-05-11T00:00:00Z",
@@ -276,7 +276,7 @@ Response:
 
 ### Регистрация посещения
 ```
-POST /api/instances/{instanceId}/attendance
+POST /api/instances/{sessionId}/attendance
 {
   "clientId": "uuid"
 }
@@ -284,7 +284,7 @@ POST /api/instances/{instanceId}/attendance
 Response (на успех):
 {
   "id": "uuid",
-  "instanceId": "uuid",
+  "sessionId": "uuid",
   "clientId": "uuid",
   "attendedAt": "2026-04-11T18:30:00Z",
   "membershipId": "uuid",
@@ -300,7 +300,7 @@ Response (ошибка):
 
 ### Просмотр занятия с участниками
 ```
-GET /api/instances/{instanceId}
+GET /api/instances/{sessionId}
 
 Response:
 {
@@ -333,7 +333,7 @@ Response:
 
 ### С модулем Сотрудников
 - Тренер должен быть создан в Employees
-- GroupInstance должна иметь trainer_id (ссылку на Employee)
+- Session должна иметь trainer_id (ссылку на Employee)
 - Нужна проверка: можно ли назначить тренера на это время (конфликты расписания)
 
 ### С модулем Финансов (Phase 2)
@@ -345,7 +345,7 @@ Response:
 
 ### С модулем Маркетинга (Phase 2)
 - Уведомления при истечении абонемента
-- Рассылки новых промо-тарифов
+- Рассылки новых промо-планов абонементов
 - SMS/email напоминания перед занятиями
 
 ## 8. Граничные случаи (edge cases)

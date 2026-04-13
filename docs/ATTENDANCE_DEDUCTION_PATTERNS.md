@@ -11,7 +11,7 @@
 Когда убывать занятие из абонемента?
 
 - **Вариант A (текущий план):** Сразу при CheckinClient (отметке посещения)
-- **Вариант B (альтернативный):** Отложенно, после MarkInstanceAsCompleted (когда тренер отмечает что занятие проведено)
+- **Вариант B (альтернативный):** Отложенно, после CompleteSession (когда тренер отмечает что занятие проведено)
 
 ---
 
@@ -20,7 +20,7 @@
 ### Логика потока
 
 ```
-1. Тренер открывает GroupInstance
+1. Тренер открывает Session
 2. Тренер видит список клиентов с активными Membership
 3. Тренер нажимает "Отметить посещение" → CheckinClient(clientId)
    
@@ -83,12 +83,12 @@ Thread 2: CheckinClient("ivanov")  // balance 0 → -1 ✗ NEGATIVE BALANCE!
 
 ---
 
-## ✅ Вариант B: Отложенное списание при MarkInstanceAsCompleted
+## ✅ Вариант B: Отложенное списание при CompleteSession
 
 ### Логика потока
 
 ```
-1. Тренер открывает GroupInstance (status = SCHEDULED)
+1. Тренер открывает Session (status = SCHEDULED)
 2. Тренер видит список клиентов
 3. Тренер нажимает "Отметить посещение" → CheckinClient(clientId)
    
@@ -97,10 +97,10 @@ Thread 2: CheckinClient("ivanov")  // balance 0 → -1 ✗ NEGATIVE BALANCE!
    ├─ Membership NOT CHANGED (balance тот же)
    └─ API возвращает успех (быстро!)
 
-4. После занятия (в конце дня или явно) → MarkInstanceAsCompleted(instanceId)
+4. После занятия (в конце дня или явно) → CompleteSession(sessionId)
    
    Действия системы:
-   ├─ GroupInstance.status = COMPLETED
+   ├─ Session.status = COMPLETED
    ├─ Для каждого REGISTERED Attendance в этом instance:
    │  ├─ Membership.balance -= 1
    │  ├─ Attendance.status = ATTENDED
@@ -127,7 +127,7 @@ RemoveAttendance(attendanceId)  // No side effects!
 
 ✅ **Транзакция "всё или ничего"**
 ```kotlin
-// MarkInstanceAsCompleted выполняется одной транзакцией
+// CompleteSession выполняется одной транзакцией
 transaction {
     instanceRepo.updateStatus(COMPLETED)
     
@@ -148,7 +148,7 @@ transaction {
 CheckinClient("ivanov")  // Attendance #1 created
 CheckinClient("ivanov")  // Attendance #2 created (разные ID!)
 
-// При MarkInstanceAsCompleted система видит TWO attendance для одного клиента
+// При CompleteSession система видит TWO attendance для одного клиента
 // и может либо:
 // - Отклонить (ошибка)
 // - Дедупликировать (взять только первый)
@@ -160,7 +160,7 @@ CheckinClient("ivanov")  // Attendance #2 created (разные ID!)
 Membership.balance всегда отражает ИСТИНУ только в moment-of-truth
 = когда занятие ТОЧНО проведено
 
-Между CheckinClient и MarkInstanceAsCompleted:
+Между CheckinClient и CompleteSession:
   Attendance.status = REGISTERED (черновик)
   Membership.balance не меняется
   
@@ -170,8 +170,8 @@ Membership.balance всегда отражает ИСТИНУ только в mo
 ✅ **Легче откатить целое занятие**
 ```kotlin
 // Тренер заболел, нужно отменить все занятие:
-CancelInstance(instanceId)
-  ├─ GroupInstance.status = CANCELLED
+CancelSession(sessionId)
+  ├─ Session.status = CANCELLED
   ├─ Все Attendance.status = CANCELLED (были REGISTERED)
   ├─ Membership balance НЕ менялась (он не вычитывалась)
   └─ ✓ Никакие уведомления не отправлялись!
@@ -201,11 +201,11 @@ for (attendance in attendances) {
 
 | Аспект | Вариант A (немедленно) | Вариант B (отложено) |
 |--------|----------------------|----------------------|
-| **Когда списываем** | При CheckinClient | При MarkInstanceAsCompleted |
+| **Когда списываем** | При CheckinClient | При CompleteSession |
 | **Простота реализации** | Проще (1 операция) | Сложнее (2 операции) |
 | **Откаты** | ❌ Сложные (каскадные эффекты) | ✅ Простые (удаление Attendance) |
 | **Race conditions** | ❌ Возможны (need lock) | ✅ Маловероятны (разные таблицы) |
-| **Ошибки дублирования** | ❌ Возможны | ✅ Поймаются при MarkInstanceAsCompleted |
+| **Ошибки дублирования** | ❌ Возможны | ✅ Поймаются при CompleteSession |
 | **Асинхронные эффекты** | ❌ Могут потребовать отката | ✅ Только финальные, точные |
 | **Состояние абонемента** | ⚠️ Может быть неточным | ✅ Всегда точное |
 | **Отмена целого занятия** | ❌ Сложно (откатывать каждое посещение) | ✅ Просто (просто CANCELLED) |
@@ -224,7 +224,7 @@ for (attendance in attendances) {
 2. **Меньше bug-ов** — нет race conditions с balance
 3. **Проще поддерживать** — два чистых состояния (REGISTERED, ATTENDED)
 4. **Экологичнее для асинхронности** — события запускаются только на финал
-5. **Лучше для отмены занятий** — CancelInstance не требует каскадных откатов
+5. **Лучше для отмены занятий** — CancelSession не требует каскадных откатов
 
 ### Примерная реализация
 
@@ -235,19 +235,19 @@ for (attendance in attendances) {
 // ШАГ 1: Регистрация посещения (в начале занятия)
 // ============================================
 suspend fun checkInClient(
-    instanceId: UUID, 
+    sessionId: UUID, 
     clientId: UUID
 ): Either<Error, AttendanceDto> = either {
     // Валидации
-    val instance = groupInstanceRepo.findById(instanceId)
-        ?.takeIf { it.status == InstanceStatus.SCHEDULED }
+    val instance = groupInstanceRepo.findById(sessionId)
+        ?.takeIf { it.status == SessionStatus.SCHEDULED }
         ?: raise(InstanceNotFound())
     
     val membership = membershipRepo.findActiveForClient(clientId, instance.groupId)
         ?: raise(NoActiveMembership())
     
     // Проверка дубля
-    val existing = attendanceRepo.findByInstanceAndClient(instanceId, clientId)
+    val existing = attendanceRepo.findByInstanceAndClient(sessionId, clientId)
     if (existing != null) {
         raise(AlreadyCheckedIn())  // или update?
     }
@@ -255,7 +255,7 @@ suspend fun checkInClient(
     // Создаем черновик (REGISTERED)
     val attendance = Attendance(
         id = UUID.randomUUID(),
-        instanceId = instanceId,
+        sessionId = sessionId,
         clientId = clientId,
         membershipId = membership.id,
         status = AttendanceStatus.REGISTERED,  // ← Черновик!
@@ -275,19 +275,19 @@ suspend fun checkInClient(
 // ШАГ 2: Завершение занятия (в конце)
 // ============================================
 suspend fun markInstanceAsCompleted(
-    instanceId: UUID
+    sessionId: UUID
 ): Either<Error, InstanceCompletedDto> = either {
-    val instance = groupInstanceRepo.findById(instanceId)
-        ?.takeIf { it.status == InstanceStatus.SCHEDULED }
+    val instance = groupInstanceRepo.findById(sessionId)
+        ?.takeIf { it.status == SessionStatus.SCHEDULED }
         ?: raise(InstanceNotFound())
     
-    val registeredAttendances = attendanceRepo.findByInstance(instanceId)
+    val registeredAttendances = attendanceRepo.findByInstance(sessionId)
         .filter { it.status == AttendanceStatus.REGISTERED }
     
     // ATOMIC TRANSACTION
     transaction {
         // 1. Обновляем занятие
-        instance.status = InstanceStatus.COMPLETED
+        instance.status = SessionStatus.COMPLETED
         instance.completedAt = Instant.now()
         groupInstanceRepo.save(instance)
         
@@ -328,7 +328,7 @@ suspend fun markInstanceAsCompleted(
     }
     
     return InstanceCompletedDto(
-        instanceId = instanceId,
+        sessionId = sessionId,
         attendanceCount = registeredAttendances.size,
         updated = true
     )
@@ -425,7 +425,7 @@ CANCELLED
 ### Для веб-приложения тренера
 
 ```typescript
-// До MarkInstanceAsCompleted
+// До CompleteSession
 const instance = {
   status: 'scheduled',
   attendances: [
@@ -435,7 +435,7 @@ const instance = {
   disclaimer: 'Баланс будет списан после завершения занятия'
 }
 
-// После MarkInstanceAsCompleted
+// После CompleteSession
 const instance = {
   status: 'completed',
   attendances: [
@@ -461,7 +461,7 @@ const instance = {
 
 ## ⚠️ Edge cases Варианта B
 
-### Case 1: Абонемент истекает между CheckIn и MarkInstanceAsCompleted
+### Case 1: Абонемент истекает между CheckIn и CompleteSession
 ```kotlin
 // 10:00 CheckinClient("ivanov")
 //   ✓ Membership.status = ACTIVE
@@ -473,18 +473,18 @@ const instance = {
 //   Membership.status = EXPIRED
 //   (фоновый процесс)
 
-// 13:00 MarkInstanceAsCompleted()
+// 13:00 CompleteSession()
 //   ✗ EXPIRED membership
 //   
 // Решение: Либо error, либо все равно списываем с комментарием "late completion"
 // Рекомендация: Error + UI говорит тренеру "свяжись с администратором"
 ```
 
-### Case 2: Удаление клиента из GroupInstance между CheckIn и Complete
+### Case 2: Удаление клиента из Session между CheckIn и Complete
 ```kotlin
 // Тренер отметил Ивана
 // Админ удалил Ивана из группы
-// При MarkInstanceAsCompleted пытаемся списать с удалённого membership
+// При CompleteSession пытаемся списать с удалённого membership
 
 // Решение: Поле membershipId в Attendance (историческая ссылка)
 // не удаляется, даже если membership удалён
@@ -508,10 +508,10 @@ if (membership.balance < 0) {
 Если вы уже реализовали Вариант A, можно перейти:
 
 1. **Добавить новый статус** `Attendance.REGISTERED` и `ATTENDED`
-2. **Создать MarkInstanceAsCompleted** юзкейс
+2. **Создать CompleteSession** юзкейс
 3. **Найти все старые ATTENDED** и пересчитать балансы (если нужно)
 4. **Обновить CheckinClient** чтобы создавал REGISTERED вместо ATTENDED
-5. **Обновить фронт** чтобы требовал MarkInstanceAsCompleted
+5. **Обновить фронт** чтобы требовал CompleteSession
 
 ---
 
@@ -520,10 +520,10 @@ if (membership.balance < 0) {
 | Для MVP | Вариант B ✅ |
 |---------|-------------|
 | **Реализовать** | CheckinClient (→ REGISTERED) |
-| | MarkInstanceAsCompleted (→ ATTENDED + deduct) |
+| | CompleteSession (→ ATTENDED + deduct) |
 | | RemoveAttendance (→ удалить черновик) |
 | | CancelAttendance (→ CANCELLED + restore) |
-| | CancelInstance (→ отменить все в черновике) |
+| | CancelSession (→ отменить все в черновике) |
 | **NOT реализовать** | Запутанные откаты с асинхронными эффектами |
 | **Выиграть** | Чистая архитектура, меньше bugs, легче поддерживать |
 

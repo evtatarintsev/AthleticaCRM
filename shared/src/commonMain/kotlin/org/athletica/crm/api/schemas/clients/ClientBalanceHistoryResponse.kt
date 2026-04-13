@@ -5,6 +5,7 @@ import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /** Сотрудник, выполнивший операцию с балансом. */
+
 @Serializable
 data class PerformedBy(
     val id: Uuid,

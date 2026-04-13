@@ -78,6 +78,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
+import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.openUrl
 import org.athletica.crm.pickAnyFile
@@ -87,6 +88,9 @@ import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_delete
 import org.athletica.crm.generated.resources.action_delete_client
+import org.athletica.crm.generated.resources.action_remove
+import org.athletica.crm.generated.resources.dialog_remove_from_group_message
+import org.athletica.crm.generated.resources.dialog_remove_from_group_title
 import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
@@ -213,6 +217,7 @@ fun ClientDetailScreen(
     var showAddToGroupSheet by remember { mutableStateOf(false) }
     var showAdjustBalanceDialog by remember { mutableStateOf(false) }
     var showBalanceHistorySheet by remember { mutableStateOf(false) }
+    var groupToRemove by remember { mutableStateOf<ClientGroup?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val tabs = ClientDetailTab.entries
@@ -322,10 +327,7 @@ fun ClientDetailScreen(
                                 api = api,
                                 onAddToGroup = { showAddToGroupSheet = true },
                                 onRemoveFromGroup = { groupId ->
-                                    scope.launch {
-                                        api.removeClientFromGroup(RemoveClientFromGroupRequest(listOf(clientId), groupId))
-                                        refreshKey++
-                                    }
+                                    groupToRemove = loadedClient.groups.find { it.id == groupId }
                                 },
                             )
                         }
@@ -418,6 +420,35 @@ fun ClientDetailScreen(
             onGroupAdded = {
                 showAddToGroupSheet = false
                 refreshKey++
+            },
+        )
+    }
+
+    groupToRemove?.let { group ->
+        AlertDialog(
+            onDismissRequest = { groupToRemove = null },
+            title = { Text(stringResource(Res.string.dialog_remove_from_group_title)) },
+            text = { Text(stringResource(Res.string.dialog_remove_from_group_message, group.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        groupToRemove = null
+                        scope.launch {
+                            api.removeClientFromGroup(RemoveClientFromGroupRequest(listOf(clientId), group.id))
+                            refreshKey++
+                        }
+                    },
+                ) {
+                    Text(
+                        text = stringResource(Res.string.action_remove),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { groupToRemove = null }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
             },
         )
     }

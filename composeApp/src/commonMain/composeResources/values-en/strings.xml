@@ -14,8 +14,11 @@
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
+    <string name="action_remove">Remove</string>
     <string name="dialog_delete_doc_title">Delete document?</string>
     <string name="dialog_delete_doc_message">"%1$s" will be permanently deleted.</string>
+    <string name="dialog_remove_from_group_title">Remove from group?</string>
+    <string name="dialog_remove_from_group_message">The client will be removed from group "%1$s".</string>
     <string name="action_edit">Edit</string>
     <string name="action_more">More</string>
     <string name="action_logout">Log out</string>

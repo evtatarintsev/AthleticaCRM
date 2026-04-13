@@ -14,8 +14,11 @@
     <string name="action_ok">ОК</string>
     <string name="action_cancel">Отмена</string>
     <string name="action_delete">Удалить</string>
+    <string name="action_remove">Убрать</string>
     <string name="dialog_delete_doc_title">Удалить документ?</string>
     <string name="dialog_delete_doc_message">«%1$s» будет удалён без возможности восстановления.</string>
+    <string name="dialog_remove_from_group_title">Убрать из группы?</string>
+    <string name="dialog_remove_from_group_message">Клиент будет удалён из группы «%1$s».</string>
     <string name="action_edit">Редактировать</string>
     <string name="action_more">Ещё</string>
     <string name="action_logout">Выйти</string>

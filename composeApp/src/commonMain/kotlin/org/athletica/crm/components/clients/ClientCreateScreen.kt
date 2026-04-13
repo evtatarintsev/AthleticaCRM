@@ -299,7 +299,7 @@ fun ClientCreateScreen(
 }
 
 @Composable
-private fun AvatarPicker(
+internal fun AvatarPicker(
     avatarUrl: String?,
     isLoading: Boolean,
     name: String,

@@ -265,7 +265,7 @@ fun ClientEditScreen(
             }
 
             if (showDatePicker) {
-                val initialDays = birthday?.toEpochDays()?.toLong()
+                val initialDays = birthday?.toEpochDays()
                 val datePickerState =
                     rememberDatePickerState(
                         initialSelectedDateMillis = if (initialDays != null) initialDays * 86_400_000L else null,

@@ -177,7 +177,12 @@ fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
 context(ctx: RequestContext)
-fun AuditLog.logBalanceAdjust(clientId: Uuid, amount: Double, operationType: String, note: String) {
+fun AuditLog.logBalanceAdjust(
+    clientId: Uuid,
+    amount: Double,
+    operationType: String,
+    note: String,
+) {
     log(
         AuditEvent(
             orgId = ctx.orgId,

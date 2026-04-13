@@ -7,11 +7,11 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.core.Gender
-import kotlin.time.Instant
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.i18n.Messages
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 

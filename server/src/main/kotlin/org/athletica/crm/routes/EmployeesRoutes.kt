@@ -6,8 +6,8 @@ import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
-import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.employees.createEmployee
 import org.athletica.crm.usecases.employees.employeeList

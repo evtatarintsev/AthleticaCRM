@@ -36,9 +36,9 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes

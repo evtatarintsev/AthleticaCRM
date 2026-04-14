@@ -2,9 +2,9 @@ package org.athletica.crm.routes
 
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.usecases.audit.AuditLogListRequest
 import org.athletica.crm.usecases.audit.auditLogList
 

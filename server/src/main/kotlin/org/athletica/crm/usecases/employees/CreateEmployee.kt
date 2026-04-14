@@ -7,12 +7,12 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeRole
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import kotlin.time.toKotlinInstant

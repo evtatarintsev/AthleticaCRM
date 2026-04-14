@@ -1,9 +1,11 @@
-package org.athletica.crm.audit
+package org.athletica.crm.domain.audit
 
+import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EntityId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
+import kotlin.text.iterator
 import kotlin.uuid.Uuid
 
 /** Типы действий, которые логируются в системе аудита. */
@@ -202,23 +204,7 @@ fun AuditLog.logBalanceAdjust(
             ipAddress = ctx.clientIp,
             entityType = "client",
             entityId = clientId,
-            data = """{"amount":$amount,"operationType":"$operationType","note":${note.encodeToJsonString()}}""",
+            data = """{"amount":$amount,"operationType":"$operationType","note":${Json.encodeToString(note)}}""",
         ),
     )
 }
-
-private fun String.encodeToJsonString(): String =
-    buildString {
-        append('"')
-        for (ch in this@encodeToJsonString) {
-            when (ch) {
-                '"' -> append("\\\"")
-                '\\' -> append("\\\\")
-                '\n' -> append("\\n")
-                '\r' -> append("\\r")
-                '\t' -> append("\\t")
-                else -> append(ch)
-            }
-        }
-        append('"')
-    }

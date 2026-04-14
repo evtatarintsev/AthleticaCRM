@@ -4,11 +4,11 @@ import arrow.core.Either
 import arrow.core.raise.either
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.logUpdate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
 
 /**

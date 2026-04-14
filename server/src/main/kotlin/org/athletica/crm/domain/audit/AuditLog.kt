@@ -1,4 +1,4 @@
-package org.athletica.crm.audit
+package org.athletica.crm.domain.audit
 
 /**
  * Интерфейс асинхронного журнала аудита.

@@ -6,11 +6,11 @@ import kotlinx.datetime.toJavaLocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.logUpdate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
 import kotlin.uuid.toJavaUuid
 

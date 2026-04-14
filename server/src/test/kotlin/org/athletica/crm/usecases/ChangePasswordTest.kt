@@ -5,13 +5,13 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
-import org.athletica.crm.audit.AuditActionType
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
 import org.athletica.crm.usecases.auth.changePassword

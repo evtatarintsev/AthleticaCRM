@@ -7,8 +7,8 @@ import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
-import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.usecases.groups.createGroup
 import org.athletica.crm.usecases.groups.groupList
 import org.athletica.crm.usecases.groups.groupListForSelect

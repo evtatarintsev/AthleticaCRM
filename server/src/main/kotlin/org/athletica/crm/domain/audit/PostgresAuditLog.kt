@@ -1,4 +1,4 @@
-package org.athletica.crm.audit
+package org.athletica.crm.domain.audit
 
 import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.coroutines.CoroutineScope

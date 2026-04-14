@@ -20,11 +20,6 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
-import org.athletica.crm.audit.AuditActionType
-import org.athletica.crm.audit.AuditEvent
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.logLogin
-import org.athletica.crm.audit.logSignUp
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
@@ -32,6 +27,11 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.audit.AuditActionType
+import org.athletica.crm.domain.audit.AuditEvent
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logLogin
+import org.athletica.crm.domain.audit.logSignUp
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials

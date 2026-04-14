@@ -5,10 +5,6 @@ import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.serialization.json.Json
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.audit.logCreate
-import org.athletica.crm.audit.logDelete
-import org.athletica.crm.audit.logUpdate
 import org.athletica.crm.core.DisciplineId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
@@ -16,6 +12,10 @@ import org.athletica.crm.core.toDisciplineId
 import org.athletica.crm.db.Database
 import org.athletica.crm.db.asString
 import org.athletica.crm.db.asUuid
+import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logCreate
+import org.athletica.crm.domain.audit.logDelete
+import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
 
 class DbDisciplines(private val db: Database, private val audit: AuditLog) : Disciplines {
@@ -77,14 +77,13 @@ class DbDisciplines(private val db: Database, private val audit: AuditLog) : Dis
             return Unit.right()
         }
         return either {
-            val disciplines = list().bind().filter { ids.contains(it.id) }
+            val deleted =
+                db.sql("DELETE FROM disciplines WHERE id = ANY(:ids) AND org_id = :orgId RETURNING id, name")
+                    .bind("ids", ids)
+                    .bind("orgId", ctx.orgId)
+                    .list { Discipline(id = it.asUuid("id").toDisciplineId(), name = it.asString("name")) }
 
-            db.sql("DELETE FROM disciplines WHERE id = ANY(:ids) AND org_id = :orgId")
-                .bind("ids", ids)
-                .bind("orgId", ctx.orgId)
-                .execute()
-
-            disciplines.forEach {
+            deleted.forEach {
                 audit.logDelete("discipline", it.id, Json.encodeToString(it))
             }
         }

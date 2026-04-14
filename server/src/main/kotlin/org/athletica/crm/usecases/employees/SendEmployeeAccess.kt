@@ -19,7 +19,6 @@ import org.athletica.infra.mail.EmailHtmlBody
 import org.athletica.infra.mail.EmailTextBody
 import org.athletica.infra.mail.Mailbox
 import org.athletica.infra.mail.Subject
-import kotlin.uuid.toJavaUuid
 
 /**
  * Отправляет доступ сотруднику [request.employeeId]:
@@ -47,7 +46,7 @@ suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<Commo
                     JOIN users u ON u.id = e.user_id
                     WHERE e.id = :employeeId AND e.org_id = :orgId
                     """.trimIndent(),
-                ).bind("employeeId", request.employeeId.toJavaUuid())
+                ).bind("employeeId", request.employeeId)
                 .bind("orgId", ctx.orgId)
                 .list { row, _ ->
                     Triple(

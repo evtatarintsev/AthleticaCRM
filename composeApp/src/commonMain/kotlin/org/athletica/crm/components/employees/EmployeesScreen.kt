@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
+import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_employee
 import org.athletica.crm.generated.resources.action_deactivate_selected
@@ -44,7 +45,6 @@ import org.athletica.crm.generated.resources.cd_send_access
 import org.athletica.crm.generated.resources.employees_empty
 import org.athletica.crm.generated.resources.label_selected_count
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран списка сотрудников организации.
@@ -63,8 +63,8 @@ fun EmployeesScreen(
     var employees by remember { mutableStateOf<List<EmployeeListItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
-    var showSendAccessFor by remember { mutableStateOf<Uuid?>(null) }
+    var selectedIds by remember { mutableStateOf<Set<EmployeeId>>(emptySet()) }
+    var showSendAccessFor by remember { mutableStateOf<EmployeeId?>(null) }
     var internalRefreshKey by remember { mutableStateOf(0) }
 
     LaunchedEffect(refreshKey, internalRefreshKey) {
@@ -98,7 +98,7 @@ fun EmployeesScreen(
     }
 
     // Determine if send-access is available: exactly 1 selected and that employee is inactive
-    val sendAccessTarget: Uuid? =
+    val sendAccessTarget: EmployeeId? =
         if (selectedIds.size == 1) {
             val id = selectedIds.first()
             val emp = employees.find { it.id == id }

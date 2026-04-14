@@ -17,7 +17,6 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import kotlin.time.toKotlinInstant
 import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
 
 /**
  * Создаёт нового сотрудника по данным [request].
@@ -63,7 +62,7 @@ suspend fun createEmployee(request: CreateEmployeeRequest): Either<CommonDomainE
                     .bind("userId", userId)
                     .bind("orgId", ctx.orgId)
                     .bind("name", request.name)
-                    .bind("avatarId", request.avatarId?.value?.toJavaUuid())
+                    .bind("avatarId", request.avatarId)
                     .bind("phoneNo", request.phoneNo)
                     .bind("email", email)
                     .execute()

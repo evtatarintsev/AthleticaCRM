@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
@@ -59,7 +60,6 @@ import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.generated.resources.screen_employee_create
 import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран создания нового сотрудника.
@@ -107,7 +107,7 @@ fun EmployeeCreateScreen(
                                 api
                                     .createEmployee(
                                         CreateEmployeeRequest(
-                                            id = Uuid.generateV7(),
+                                            id = EmployeeId.new(),
                                             name = name.trim(),
                                             phoneNo = phoneNo.trim().ifBlank { null },
                                             email = email.trim().ifBlank { null },

@@ -4,9 +4,11 @@ import arrow.core.Either
 import arrow.core.raise.either
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeRole
+import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toEmployeeId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
 import org.athletica.crm.db.asBoolean
@@ -16,7 +18,6 @@ import org.athletica.crm.db.asStringOrNull
 import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
 import kotlin.time.Instant
-import kotlin.uuid.Uuid
 
 /**
  * Возвращает список всех сотрудников организации из контекста [ctx].
@@ -31,7 +32,7 @@ context(db: Database, ctx: RequestContext)
 suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
     either {
         data class EmployeeRow(
-            val id: Uuid,
+            val id: EmployeeId,
             val name: String,
             val avatarId: UploadId?,
             val isOwner: Boolean,
@@ -54,7 +55,7 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                 .bind("orgId", ctx.orgId)
                 .list { row ->
                     EmployeeRow(
-                        id = row.asUuid("id"),
+                        id = row.asUuid("id").toEmployeeId(),
                         name = row.asString("name"),
                         avatarId = row.asUuidOrNull("upload_id")?.toUploadId(),
                         isOwner = row.asBoolean("owner"),
@@ -78,7 +79,7 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                 )
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val employeeId = row.asUuid("employee_id")
+                    val employeeId = row.asUuid("employee_id").toEmployeeId()
                     val role =
                         EmployeeRole(
                             id = row.asUuid("role_id"),

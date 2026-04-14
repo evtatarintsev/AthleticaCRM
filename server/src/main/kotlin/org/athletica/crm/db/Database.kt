@@ -93,7 +93,11 @@ class QueryBuilder(
 
     fun bind(name: String, value: LocalDate?) = bind(name, value?.toJavaLocalDate())
 
+    @JvmName("bindEntityIds")
     fun bind(name: String, value: List<EntityId>) = bind(name, value.map { it.value.toJavaUuid() }.toTypedArray())
+
+    @JvmName("bindUuids")
+    fun bind(name: String, value: List<Uuid>) = bind(name, value.map { it.toJavaUuid() }.toTypedArray())
 
     /**
      * Выполняет запрос и возвращает первый результат или `null`.

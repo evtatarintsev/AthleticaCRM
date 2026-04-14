@@ -18,13 +18,13 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_send_access
 import org.athletica.crm.generated.resources.dialog_send_access_title
 import org.athletica.crm.generated.resources.label_password_for_employee
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Диалог отправки доступа сотруднику.
@@ -33,7 +33,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun SendAccessDialog(
     api: ApiClient,
-    employeeId: Uuid,
+    employeeId: EmployeeId,
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
 ) {

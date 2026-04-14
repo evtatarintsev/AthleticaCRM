@@ -6,7 +6,6 @@ import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlin.uuid.toJavaUuid
 
 /**
  * Отмечает уведомления из [request] прочитанными для текущего пользователя ([ctx]).
@@ -29,7 +28,7 @@ suspend fun markNotificationsRead(request: MarkNotificationsReadRequest): Either
           )
         """.trimIndent(),
     )
-        .bind("ids", request.ids.map { it.toJavaUuid() }.toTypedArray())
+        .bind("ids", request.ids)
         .bind("userId", ctx.userId)
         .bind("orgId", ctx.orgId)
         .execute()

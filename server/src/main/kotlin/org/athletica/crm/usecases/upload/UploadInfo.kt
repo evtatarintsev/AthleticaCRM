@@ -4,13 +4,17 @@ import arrow.core.Either
 import arrow.core.raise.either
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asLong
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.MinioService
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
-import kotlin.uuid.toKotlinUuid
 
 /**
  * Возвращает информацию о загрузке по [id].
@@ -29,14 +33,14 @@ suspend fun uploadInfo(id: Uuid, ttl: Duration): Either<CommonDomainError, Uploa
                     """.trimIndent(),
                 )
                 .bind("id", id)
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .firstOrNull { row ->
                     UploadDbRecord(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        objectKey = row.get("object_key", String::class.java)!!,
-                        originalName = row.get("original_name", String::class.java)!!,
-                        contentType = row.get("content_type", String::class.java)!!,
-                        sizeBytes = row.get("size_bytes", Long::class.java)!!,
+                        id = row.asUuid("id").toUploadId(),
+                        objectKey = row.asString("object_key"),
+                        originalName = row.asString("original_name"),
+                        contentType = row.asString("content_type"),
+                        sizeBytes = row.asLong("size_bytes"),
                     )
                 } ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", Messages.UploadNotFound.localize()))
 
@@ -50,7 +54,7 @@ suspend fun uploadInfo(id: Uuid, ttl: Duration): Either<CommonDomainError, Uploa
     }
 
 data class UploadDbRecord(
-    val id: Uuid,
+    val id: UploadId,
     val objectKey: String,
     val originalName: String,
     val contentType: String,

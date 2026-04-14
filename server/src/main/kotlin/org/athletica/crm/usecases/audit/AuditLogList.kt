@@ -7,7 +7,11 @@ import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlin.uuid.toKotlinUuid
+import org.athletica.crm.db.asLong
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asStringOrNull
+import org.athletica.crm.db.asUuid
+import org.athletica.crm.db.asUuidOrNull
 
 data class AuditLogListRequest(
     val page: Int = 0,
@@ -47,7 +51,7 @@ suspend fun auditLogList(request: AuditLogListRequest): Either<CommonDomainError
 
     fun buildQuery(select: String) =
         db.sql("SELECT $select FROM audit_logs WHERE $whereClause ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .let { q -> if (request.actionType != null) q.bind("actionType", request.actionType) else q }
             .let { q -> if (request.userId != null) q.bind("userId", request.userId) else q }
             .let { q -> if (request.entityType != null) q.bind("entityType", request.entityType) else q }
@@ -59,27 +63,27 @@ suspend fun auditLogList(request: AuditLogListRequest): Either<CommonDomainError
     val items =
         buildQuery("id, user_id, username, action_type, entity_type, entity_id, data::text, ip_address, created_at").list { row ->
             AuditLogItem(
-                id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                userId = row.get("user_id", java.util.UUID::class.java)?.toKotlinUuid(),
-                username = row.get("username", String::class.java)!!,
-                actionType = row.get("action_type", String::class.java)!!,
-                entityType = row.get("entity_type", String::class.java),
-                entityId = row.get("entity_id", java.util.UUID::class.java)?.toKotlinUuid(),
-                data = row.get("data", String::class.java),
-                ipAddress = row.get("ip_address", String::class.java),
-                createdAt = row.get("created_at", java.time.OffsetDateTime::class.java)!!.toString(),
+                id = row.asUuid("id"),
+                userId = row.asUuid("userId"),
+                username = row.asString("username"),
+                actionType = row.asString("action_type"),
+                entityType = row.asStringOrNull("entity_type"),
+                entityId = row.asUuidOrNull("entity_id"),
+                data = row.asStringOrNull("data"),
+                ipAddress = row.asStringOrNull("ip_address"),
+                createdAt = row.asString("created_at"),
             )
         }
 
     val total =
         db.sql("SELECT COUNT(*) as cnt FROM audit_logs WHERE $whereClause")
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .let { q -> if (request.actionType != null) q.bind("actionType", request.actionType) else q }
             .let { q -> if (request.userId != null) q.bind("userId", request.userId) else q }
             .let { q -> if (request.entityType != null) q.bind("entityType", request.entityType) else q }
             .let { q -> if (request.from != null) q.bind("from", request.from) else q }
             .let { q -> if (request.to != null) q.bind("to", request.to) else q }
-            .firstOrNull { row -> row.get("cnt", Long::class.java)!! } ?: 0L
+            .firstOrNull { row -> row.asLong("cnt") } ?: 0L
 
     return AuditLogListResponse(
         items = items,

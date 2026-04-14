@@ -32,7 +32,7 @@ suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDom
         db
             .sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId")
             .bind("id", request.clientId)
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .firstOrNull { true }
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
 
@@ -53,12 +53,12 @@ suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDom
                 """.trimIndent(),
             )
             .bind("id", Uuid.generateV7())
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .bind("clientId", request.clientId)
             .bind("amount", java.math.BigDecimal(request.amount.toString()))
             .bind("operationType", operationType)
             .bind("note", request.note)
-            .bind("performedBy", ctx.userId.value)
+            .bind("performedBy", ctx.userId)
             .execute()
 
         audit.logBalanceAdjust(

@@ -8,9 +8,13 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.EntityId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
@@ -77,32 +81,19 @@ class QueryBuilder(
     private val bindings = mutableListOf<Pair<String, Any?>>()
 
     /** Привязывает именованный параметр к значению. */
-    fun bind(
-        name: String,
-        value: Any?,
-    ): QueryBuilder {
+    fun bind(name: String, value: Any?): QueryBuilder {
         bindings.add(name to value)
         return this
     }
 
     /** Привязывает именованный [Uuid] параметр, конвертируя в [java.util.UUID] для R2DBC. */
-    fun bind(
-        name: String,
-        value: Uuid,
-    ): QueryBuilder {
-        bindings.add(name to value.toJavaUuid())
-        return this
-    }
+    fun bind(name: String, value: Uuid?) = bind(name, value?.toJavaUuid())
 
-    fun bind(
-        name: String,
-        value: EntityId,
-    ): QueryBuilder = bind(name, value.value)
+    fun bind(name: String, value: EntityId?) = bind(name, value?.value)
 
-    fun bind(
-        name: String,
-        value: List<EntityId>,
-    ): QueryBuilder = bind(name, value.map { it.value.toJavaUuid() }.toTypedArray())
+    fun bind(name: String, value: LocalDate?) = bind(name, value?.toJavaLocalDate())
+
+    fun bind(name: String, value: List<EntityId>) = bind(name, value.map { it.value.toJavaUuid() }.toTypedArray())
 
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
@@ -267,14 +258,52 @@ private suspend fun <T : Any> Connection.executeStatement(
         .toList()
 }
 
-fun Row.asString(column: String) = get(column, String::class.java)!!
+fun Row.asString(column: String) = asStringOrNull(column)!!
 
-fun Row.asString(pos: Int) = get(pos, String::class.java)!!
+fun Row.asString(pos: Int) = asStringOrNull(pos)!!
 
-fun Row.asUuid(column: String) = get(column, java.util.UUID::class.java)!!.toKotlinUuid()
+fun Row.asStringOrNull(column: String): String? = get(column, String::class.java)
 
-fun Row.asUuid(pos: Int) = get(pos, java.util.UUID::class.java)!!.toKotlinUuid()
+fun Row.asStringOrNull(pos: Int): String? = get(pos, String::class.java)
+
+fun Row.asUuid(column: String) = asUuidOrNull(column)!!
+
+fun Row.asUuid(pos: Int) = asUuidOrNull(pos)!!
+
+fun Row.asUuidOrNull(column: String): Uuid? = get(column, java.util.UUID::class.java)?.toKotlinUuid()
+
+fun Row.asUuidOrNull(pos: Int): Uuid? = get(pos, java.util.UUID::class.java)?.toKotlinUuid()
 
 fun Row.asLong(column: String) = get(column, java.lang.Long::class.java)!!.toLong()
 
 fun Row.asLong(pos: Int) = get(pos, java.lang.Long::class.java)!!.toLong()
+
+fun Row.asInstant(pos: Int) =
+    get(pos, java.time.OffsetDateTime::class.java)!!
+        .toInstant()
+        .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) }
+
+fun Row.asInstant(column: String) =
+    get(column, java.time.OffsetDateTime::class.java)!!
+        .toInstant()
+        .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) }
+
+fun Row.asDouble(pos: Int) = get(pos, java.math.BigDecimal::class.java)!!.toDouble()
+
+fun Row.asDouble(column: String) = get(column, java.math.BigDecimal::class.java)!!.toDouble()
+
+fun Row.asLocalDate(pos: Int) = asLocalDateOrNull(pos)!!
+
+fun Row.asLocalDate(column: String) = asLocalDateOrNull(column)!!
+
+fun Row.asLocalDateOrNull(pos: Int): LocalDate? = get(pos, java.time.LocalDate::class.java)?.toKotlinLocalDate()
+
+fun Row.asLocalDateOrNull(column: String): LocalDate? = get(column, java.time.LocalDate::class.java)?.toKotlinLocalDate()
+
+fun Row.asBooleanOrNull(pos: Int): Boolean? = get(pos, Boolean::class.java)
+
+fun Row.asBooleanOrNull(column: String): Boolean? = get(column, Boolean::class.java)
+
+fun Row.asBoolean(pos: Int) = asBooleanOrNull(pos)!!
+
+fun Row.asBoolean(column: String) = asBooleanOrNull(column)!!

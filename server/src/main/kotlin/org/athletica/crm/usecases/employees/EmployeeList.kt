@@ -5,11 +5,18 @@ import arrow.core.raise.either
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
-import kotlin.time.toKotlinInstant
+import org.athletica.crm.db.asBoolean
+import org.athletica.crm.db.asInstant
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asStringOrNull
+import org.athletica.crm.db.asUuid
+import org.athletica.crm.db.asUuidOrNull
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
-import kotlin.uuid.toKotlinUuid
 
 /**
  * Возвращает список всех сотрудников организации из контекста [ctx].
@@ -26,10 +33,10 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
         data class EmployeeRow(
             val id: Uuid,
             val name: String,
-            val avatarId: Uuid?,
+            val avatarId: UploadId?,
             val isOwner: Boolean,
             val isActive: Boolean,
-            val joinedAt: java.time.Instant,
+            val joinedAt: Instant,
             val phoneNo: String?,
             val email: String?,
         )
@@ -44,17 +51,17 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                     ORDER BY e.is_owner DESC, e.name
                     """.trimIndent(),
                 )
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .list { row ->
                     EmployeeRow(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        name = row.get("name", String::class.java)!!,
-                        avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
-                        isOwner = row.get("is_owner", Boolean::class.java)!!,
-                        isActive = row.get("is_active", Boolean::class.java)!!,
-                        joinedAt = row.get("joined_at", java.time.OffsetDateTime::class.java)!!.toInstant(),
-                        phoneNo = row.get("phone_no", String::class.java),
-                        email = row.get("email", String::class.java),
+                        id = row.asUuid("id"),
+                        name = row.asString("name"),
+                        avatarId = row.asUuidOrNull("upload_id")?.toUploadId(),
+                        isOwner = row.asBoolean("owner"),
+                        isActive = row.asBoolean("active"),
+                        joinedAt = row.asInstant("joined_at"),
+                        phoneNo = row.asStringOrNull("phone_no"),
+                        email = row.asStringOrNull("email"),
                     )
                 }
 
@@ -69,13 +76,13 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                     WHERE e.org_id = :orgId
                     """.trimIndent(),
                 )
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val employeeId = row.get("employee_id", java.util.UUID::class.java)!!.toKotlinUuid()
+                    val employeeId = row.asUuid("employee_id")
                     val role =
                         EmployeeRole(
-                            id = row.get("role_id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                            name = row.get("role_name", String::class.java)!!,
+                            id = row.asUuid("role_id"),
+                            name = row.asString("role_name"),
                         )
                     employeeId to role
                 }
@@ -88,7 +95,7 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                 avatarId = row.avatarId,
                 isOwner = row.isOwner,
                 isActive = row.isActive,
-                joinedAt = row.joinedAt.toKotlinInstant(),
+                joinedAt = row.joinedAt,
                 roles = rolesByEmployeeId[row.id] ?: emptyList(),
                 phoneNo = row.phoneNo,
                 email = row.email,

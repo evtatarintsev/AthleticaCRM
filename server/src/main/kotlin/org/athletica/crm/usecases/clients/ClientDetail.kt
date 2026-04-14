@@ -2,18 +2,22 @@ package org.athletica.crm.usecases.clients
 
 import arrow.core.Either
 import arrow.core.raise.either
-import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asDouble
+import org.athletica.crm.db.asInstant
+import org.athletica.crm.db.asLocalDateOrNull
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
+import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
-import kotlin.time.Instant
 import kotlin.uuid.Uuid
-import kotlin.uuid.toKotlinUuid
 
 context(db: Database, ctx: RequestContext)
 suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailResponse> =
@@ -29,16 +33,16 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                     """.trimIndent(),
                 )
                 .bind("id", id)
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .firstOrNull { row ->
                     ClientDetailResponse(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        name = row.get("name", String::class.java)!!,
-                        avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
-                        birthday = row.get("birthday", java.time.LocalDate::class.java)?.toKotlinLocalDate(),
-                        gender = Gender.valueOf(row.get("gender", String::class.java)!!),
+                        id = row.asUuid("id"),
+                        name = row.asString("name"),
+                        avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
+                        birthday = row.asLocalDateOrNull("birthday"),
+                        gender = Gender.valueOf(row.asString("gender")),
                         groups = emptyList(),
-                        balance = row.get("balance", java.math.BigDecimal::class.java)!!.toDouble(),
+                        balance = row.asDouble("balance"),
                     )
                 }
                 ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
@@ -56,8 +60,8 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                 .bind("clientId", id)
                 .list { row ->
                     ClientGroup(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        name = row.get("name", String::class.java)!!,
+                        id = row.asUuid("id"),
+                        name = row.asString("name"),
                     )
                 }
 
@@ -74,14 +78,10 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                 .bind("clientId", id)
                 .list { row ->
                     ClientDoc(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        uploadId = row.get("upload_id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        name = row.get("name", String::class.java)!!,
-                        createdAt =
-                            row
-                                .get("created_at", java.time.OffsetDateTime::class.java)!!
-                                .toInstant()
-                                .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                        id = row.asUuid("id"),
+                        uploadId = row.asUuid("upload_id").toUploadId(),
+                        name = row.asString("name"),
+                        createdAt = row.asInstant("created_at"),
                     )
                 }
 

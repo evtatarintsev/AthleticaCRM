@@ -6,7 +6,8 @@ import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlin.uuid.toKotlinUuid
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
 
 /**
  * Возвращает минимальный список групп организации из [ctx] для использования в селекторах.
@@ -23,11 +24,11 @@ suspend fun groupListForSelect(): Either<CommonDomainError, List<GroupSelectItem
             ORDER BY name
             """.trimIndent(),
         )
-        .bind("orgId", ctx.orgId.value)
+        .bind("orgId", ctx.orgId)
         .list { row ->
             GroupSelectItem(
-                id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                name = row.get("name", String::class.java)!!,
+                id = row.asUuid("id"),
+                name = row.asString("name"),
             )
         }
         .right()

@@ -59,6 +59,7 @@ import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
+import org.athletica.crm.core.UploadId
 import kotlin.uuid.Uuid
 
 /**
@@ -258,7 +259,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Возвращает информацию о загрузке по [id], включая presigned URL аватара. */
-    suspend fun uploadInfo(id: Uuid): Either<ApiClientError, UploadResponse> = execute { http.get("/api/upload/info") { url { parameters.append("id", id.toString()) } } }
+    suspend fun uploadInfo(id: UploadId): Either<ApiClientError, UploadResponse> = execute { http.get("/api/upload/info") { url { parameters.append("id", id.toString()) } } }
 
     /** Загружает файл на сервер. Возвращает [UploadResponse] с id и presigned URL. */
     suspend fun uploadFile(

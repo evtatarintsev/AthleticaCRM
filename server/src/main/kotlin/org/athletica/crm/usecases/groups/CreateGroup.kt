@@ -61,7 +61,7 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                         """.trimIndent(),
                     )
                     .bind("ids", request.disciplineIds)
-                    .bind("orgId", ctx.orgId.value)
+                    .bind("orgId", ctx.orgId)
                     .list { row ->
                         GroupDiscipline(
                             id = row.asUuid("id").toDisciplineId(),
@@ -91,7 +91,7 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                         VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time)
                         """.trimIndent(),
                     )
-                        .bind("orgId", ctx.orgId.value)
+                        .bind("orgId", ctx.orgId)
                         .bind("groupId", request.id)
                         .bind("dayOfWeek", slot.dayOfWeek.name)
                         .bind("startAt", slot.startAt)

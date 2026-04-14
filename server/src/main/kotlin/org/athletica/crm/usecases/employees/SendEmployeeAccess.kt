@@ -6,6 +6,9 @@ import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asStringOrNull
+import org.athletica.crm.db.asUuid
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
@@ -45,12 +48,12 @@ suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<Commo
                     WHERE e.id = :employeeId AND e.org_id = :orgId
                     """.trimIndent(),
                 ).bind("employeeId", request.employeeId.toJavaUuid())
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .list { row, _ ->
                     Triple(
-                        row.get("email", String::class.java),
-                        row.get("name", String::class.java),
-                        row.get("user_id", java.util.UUID::class.java),
+                        row.asStringOrNull("email"),
+                        row.asString("name"),
+                        row.asUuid("user_id"),
                     )
                 }.firstOrNull()
                 ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
@@ -65,11 +68,11 @@ suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<Commo
         db.transaction {
             sql("UPDATE users SET password_hash = :hash WHERE id = :userId")
                 .bind("hash", newHash.value)
-                .bind("userId", userId!!)
+                .bind("userId", userId)
                 .execute()
 
             sql("UPDATE employees SET is_active = true WHERE id = :employeeId")
-                .bind("employeeId", request.employeeId.toJavaUuid())
+                .bind("employeeId", request.employeeId)
                 .execute()
         }
 

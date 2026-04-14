@@ -30,8 +30,8 @@ suspend fun markNotificationsRead(request: MarkNotificationsReadRequest): Either
         """.trimIndent(),
     )
         .bind("ids", request.ids.map { it.toJavaUuid() }.toTypedArray())
-        .bind("userId", ctx.userId.value)
-        .bind("orgId", ctx.orgId.value)
+        .bind("userId", ctx.userId)
+        .bind("orgId", ctx.orgId)
         .execute()
 
     return Unit.right()
@@ -54,8 +54,8 @@ suspend fun markAllNotificationsRead(): Either<CommonDomainError, Unit> {
           )
         """.trimIndent(),
     )
-        .bind("userId", ctx.userId.value)
-        .bind("orgId", ctx.orgId.value)
+        .bind("userId", ctx.userId)
+        .bind("orgId", ctx.orgId)
         .execute()
 
     return Unit.right()

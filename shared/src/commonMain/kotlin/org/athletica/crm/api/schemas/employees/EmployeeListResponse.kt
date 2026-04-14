@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.employees
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.UploadId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -16,7 +17,7 @@ data class EmployeeRole(
 data class EmployeeListItem(
     val id: Uuid,
     val name: String,
-    val avatarId: Uuid? = null,
+    val avatarId: UploadId? = null,
     val isOwner: Boolean,
     val isActive: Boolean,
     val joinedAt: Instant,

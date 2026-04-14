@@ -8,10 +8,14 @@ import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asDouble
+import org.athletica.crm.db.asInstant
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asStringOrNull
+import org.athletica.crm.db.asUuid
+import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
-import kotlin.time.Instant
 import kotlin.uuid.Uuid
-import kotlin.uuid.toKotlinUuid
 
 context(db: Database, ctx: RequestContext)
 suspend fun clientBalanceHistory(clientId: Uuid): Either<CommonDomainError, ClientBalanceHistoryResponse> =
@@ -20,7 +24,7 @@ suspend fun clientBalanceHistory(clientId: Uuid): Either<CommonDomainError, Clie
         db
             .sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId")
             .bind("id", clientId)
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .firstOrNull { true }
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
 
@@ -43,27 +47,23 @@ suspend fun clientBalanceHistory(clientId: Uuid): Either<CommonDomainError, Clie
                     """.trimIndent(),
                 )
                 .bind("clientId", clientId)
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val performedById = row.get("performed_by_id", java.util.UUID::class.java)
-                    val performedByName = row.get("performed_by_name", String::class.java)
+                    val performedById = row.asUuidOrNull("performed_by_id")
+                    val performedByName = row.asStringOrNull("performed_by_name")
                     BalanceJournalEntry(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        amount = row.get("amount", java.math.BigDecimal::class.java)!!.toDouble(),
-                        balanceAfter = row.get("balance_after", java.math.BigDecimal::class.java)!!.toDouble(),
-                        operationType = row.get("operation_type", String::class.java)!!,
-                        note = row.get("note", String::class.java),
+                        id = row.asUuid("id"),
+                        amount = row.asDouble("amount"),
+                        balanceAfter = row.asDouble("balance_after"),
+                        operationType = row.asString("operation_type"),
+                        note = row.asStringOrNull("note"),
                         performedBy =
                             if (performedById != null && performedByName != null) {
-                                PerformedBy(id = performedById.toKotlinUuid(), name = performedByName)
+                                PerformedBy(id = performedById, name = performedByName)
                             } else {
                                 null
                             },
-                        createdAt =
-                            row
-                                .get("created_at", java.time.OffsetDateTime::class.java)!!
-                                .toInstant()
-                                .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                        createdAt = row.asInstant("created_at"),
                     )
                 }
 

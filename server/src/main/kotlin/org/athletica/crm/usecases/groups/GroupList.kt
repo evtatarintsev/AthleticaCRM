@@ -7,7 +7,8 @@ import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlin.uuid.toKotlinUuid
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
 
 context(db: Database, ctx: RequestContext)
 suspend fun groupList(request: GroupListRequest): Either<CommonDomainError, List<GroupListItem>> {
@@ -22,12 +23,12 @@ suspend fun groupList(request: GroupListRequest): Either<CommonDomainError, List
             ORDER BY g.name
             """.trimIndent(),
         )
-        .bind("orgId", ctx.orgId.value)
+        .bind("orgId", ctx.orgId)
         .let { if (nameFilter != null) it.bind("name", "%$nameFilter%") else it }
         .list { row ->
             GroupListItem(
-                id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                name = row.get("name", String::class.java)!!,
+                id = row.asUuid("id"),
+                name = row.asString("name"),
             )
         }
         .right()

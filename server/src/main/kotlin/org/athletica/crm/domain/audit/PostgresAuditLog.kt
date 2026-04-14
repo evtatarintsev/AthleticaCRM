@@ -1,11 +1,11 @@
 package org.athletica.crm.domain.audit
 
+import arrow.core.raise.context.bind
 import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import org.athletica.crm.db.Database
-import kotlin.uuid.toJavaUuid
 
 private val logger = KtorSimpleLogger("org.athletica.crm.audit.PostgresAuditLog")
 
@@ -65,12 +65,12 @@ class PostgresAuditLog(private val db: Database, scope: CoroutineScope) :
                 INSERT INTO audit_logs (org_id, user_id, username, action_type, entity_type, entity_id, data, ip_address)
                 VALUES (:orgId, :userId, :username, :actionType, :entityType, :entityId, :data::jsonb, :ipAddress)
                 """.trimIndent(),
-            ).bind("orgId", event.orgId.value.toJavaUuid())
-            .bind("userId", event.userId?.value?.toJavaUuid())
+            ).bind("orgId", event.orgId)
+            .bind("userId", event.userId)
             .bind("username", event.username)
             .bind("actionType", event.actionType.code)
             .bind("entityType", event.entityType)
-            .bind("entityId", event.entityId?.toJavaUuid())
+            .bind("entityId", event.entityId)
             .bind("data", event.data)
             .bind("ipAddress", event.ipAddress)
             .execute()

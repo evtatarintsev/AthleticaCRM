@@ -2,7 +2,6 @@ package org.athletica.crm.usecases.clients
 
 import arrow.core.Either
 import arrow.core.raise.either
-import kotlinx.datetime.toJavaLocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
@@ -12,7 +11,6 @@ import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
-import kotlin.uuid.toJavaUuid
 
 /**
  * Обновляет данные существующего клиента организации из [ctx] по данным [request].
@@ -28,11 +26,11 @@ suspend fun editClient(request: EditClientRequest): Either<CommonDomainError, Cl
                         "WHERE id = :id AND org_id = :orgId",
                 )
                 .bind("name", request.name)
-                .bind("avatarId", request.avatarId?.toJavaUuid())
-                .bind("birthday", request.birthday?.toJavaLocalDate())
+                .bind("avatarId", request.avatarId)
+                .bind("birthday", request.birthday)
                 .bind("gender", request.gender.name)
                 .bind("id", request.id)
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .execute()
 
         if (updated == 0L) raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))

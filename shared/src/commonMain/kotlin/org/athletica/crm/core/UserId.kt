@@ -15,6 +15,8 @@ value class UserId(override val value: Uuid) : EntityId {
         /** Генерирует новый UUIDv7 (монотонно возрастающий, подходит для PK). */
         fun new() = UserId(Uuid.generateV7())
     }
+
+    override fun toString() = value.toString()
 }
 
 /** Конвертирует raw [Uuid] в типизированный [UserId]. */

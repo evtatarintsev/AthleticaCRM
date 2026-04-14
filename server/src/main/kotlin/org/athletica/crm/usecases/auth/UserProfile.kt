@@ -8,16 +8,17 @@ import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toOrgId
+import org.athletica.crm.core.toUploadId
 import org.athletica.crm.core.toUserId
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
 import org.athletica.crm.security.UserNotFound
-import java.util.UUID
-import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 /**
@@ -53,7 +54,7 @@ suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile>
             db
                 .sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
                 .bind("name", request.name)
-                .bind("avatarId", request.avatarId?.toJavaUuid())
+                .bind("avatarId", request.avatarId)
                 .bind("userId", ctx.userId)
                 .bind("orgId", ctx.orgId)
                 .execute()
@@ -68,14 +69,14 @@ data class UserProfile(
     override val orgId: OrgId,
     override val username: String,
     val name: String,
-    val avatarId: Uuid? = null,
+    val avatarId: UploadId? = null,
 ) : AuthenticatedUser
 
 private fun Row.toUserProfile() =
     UserProfile(
-        id = get("id", UUID::class.java)!!.toKotlinUuid().toUserId(),
-        orgId = get("org_id", UUID::class.java)!!.toKotlinUuid().toOrgId(),
-        username = get("login", String::class.java)!!,
-        name = get("name", String::class.java)!!,
-        avatarId = get("avatar_id", UUID::class.java)?.toKotlinUuid(),
+        id = asUuid("id").toUserId(),
+        orgId = asUuid("org_id").toOrgId(),
+        username = asString("login"),
+        name = asString("name"),
+        avatarId = get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid()?.toUploadId(),
     )

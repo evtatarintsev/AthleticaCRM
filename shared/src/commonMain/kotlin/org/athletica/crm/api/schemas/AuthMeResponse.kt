@@ -1,8 +1,8 @@
 package org.athletica.crm.api.schemas
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.UserId
-import kotlin.uuid.Uuid
 
 /** Ответ с данными авторизованного пользователя. */
 @Serializable
@@ -14,5 +14,5 @@ data class AuthMeResponse(
     /** Имя . */
     val name: String,
     /** Имя пользователя. */
-    val avatarId: Uuid? = null,
+    val avatarId: UploadId? = null,
 )

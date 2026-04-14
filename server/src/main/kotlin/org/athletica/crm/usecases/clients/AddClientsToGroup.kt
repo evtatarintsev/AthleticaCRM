@@ -24,7 +24,7 @@ suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<CommonD
         db
             .sql("SELECT id FROM groups WHERE id = :groupId AND org_id = :orgId")
             .bind("groupId", request.groupId)
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .firstOrNull { _ -> true }
             ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
 

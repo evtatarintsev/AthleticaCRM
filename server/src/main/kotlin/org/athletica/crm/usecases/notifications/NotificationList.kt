@@ -7,8 +7,11 @@ import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
-import kotlin.time.Instant
-import kotlin.uuid.toKotlinUuid
+import org.athletica.crm.db.asBoolean
+import org.athletica.crm.db.asInstant
+import org.athletica.crm.db.asLong
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
 
 /**
  * Возвращает уведомления текущего пользователя ([ctx]) в рамках его организации.
@@ -34,19 +37,16 @@ suspend fun notificationList(isRead: Boolean?): Either<CommonDomainError, Notifi
                 ORDER BY n.created_at DESC
                 LIMIT 50
                 """.trimIndent(),
-            ).bind("userId", ctx.userId.value)
-            .bind("orgId", ctx.orgId.value)
+            ).bind("userId", ctx.userId)
+            .bind("orgId", ctx.orgId)
             .bind("isRead", isRead)
             .list { row ->
                 NotificationItem(
-                    id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                    title = row.get("title", String::class.java)!!,
-                    body = row.get("body", String::class.java)!!,
-                    isRead = row.get("is_read", Boolean::class.java)!!,
-                    createdAt =
-                        row.get("created_at", java.time.OffsetDateTime::class.java)!!
-                            .toInstant()
-                            .let { Instant.fromEpochSeconds(it.epochSecond, it.nano.toLong()) },
+                    id = row.asUuid("id"),
+                    title = row.asString("title"),
+                    body = row.asString("body"),
+                    isRead = row.asBoolean("is_read"),
+                    createdAt = row.asInstant("created_at"),
                 )
             }
 
@@ -59,9 +59,9 @@ suspend fun notificationList(isRead: Boolean?): Either<CommonDomainError, Notifi
                 JOIN notifications n ON n.id = nr.notification_id
                 WHERE nr.user_id = :userId AND n.org_id = :orgId AND nr.is_read = false
                 """.trimIndent(),
-            ).bind("userId", ctx.userId.value)
-            .bind("orgId", ctx.orgId.value)
-            .firstOrNull { row -> row.get("cnt", Long::class.java)!! }
+            ).bind("userId", ctx.userId)
+            .bind("orgId", ctx.orgId)
+            .firstOrNull { row -> row.asLong("cnt") }
             ?.toInt() ?: 0
 
     return NotificationsResponse(

@@ -5,13 +5,13 @@ import arrow.core.raise.either
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.MinioService
-import kotlin.uuid.Uuid
 
 /**
  * Загружает файл в MinIO и сохраняет метаданные в таблице uploads.
@@ -28,7 +28,7 @@ suspend fun uploadFile(
             raise(CommonDomainError("EMPTY_FILE", Messages.EmptyFile.localize()))
         }
 
-        val uploadId = Uuid.random()
+        val uploadId = UploadId.new()
         val sanitizedName = originalName.replace(Regex("[^a-zA-Z0-9._\\-]"), "_")
         val objectKey = "${ctx.orgId.value}/$uploadId/$sanitizedName"
 
@@ -46,8 +46,8 @@ suspend fun uploadFile(
                 VALUES (:id, :orgId, :uploadedBy, :objectKey, :originalName, :contentType, :sizeBytes)
                 """.trimIndent(),
             ).bind("id", uploadId)
-            .bind("orgId", ctx.orgId.value)
-            .bind("uploadedBy", ctx.userId.value)
+            .bind("orgId", ctx.orgId)
+            .bind("uploadedBy", ctx.userId)
             .bind("objectKey", objectKey)
             .bind("originalName", originalName)
             .bind("contentType", contentType)

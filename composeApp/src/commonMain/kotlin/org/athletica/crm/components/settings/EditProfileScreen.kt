@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.UpdateMeRequest
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -55,7 +56,6 @@ import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_edit_profile
 import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран «Редактировать профиль».
@@ -71,7 +71,7 @@ fun EditProfileScreen(
     modifier: Modifier = Modifier,
 ) {
     var name by remember { mutableStateOf("") }
-    var avatarId by remember { mutableStateOf<Uuid?>(null) }
+    var avatarId by remember { mutableStateOf<UploadId?>(null) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }

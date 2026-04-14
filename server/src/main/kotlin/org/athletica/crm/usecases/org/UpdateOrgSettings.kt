@@ -29,7 +29,7 @@ suspend fun updateOrgSettings(request: UpdateOrgSettingsRequest): Either<CommonD
             )
             .bind("name", request.name.trim())
             .bind("timezone", request.timezone)
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .execute()
         OrgSettingsResponse(name = request.name.trim(), timezone = request.timezone)
     }

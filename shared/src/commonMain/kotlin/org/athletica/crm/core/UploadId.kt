@@ -6,12 +6,12 @@ import kotlin.uuid.Uuid
 
 @Serializable
 @JvmInline
-value class DisciplineId(override val value: Uuid) : EntityId {
+value class UploadId(override val value: Uuid) : EntityId {
     companion object {
-        fun new() = DisciplineId(Uuid.generateV7())
+        fun new() = UploadId(Uuid.generateV7())
     }
 
     override fun toString() = value.toString()
 }
 
-fun Uuid.toDisciplineId(): DisciplineId = DisciplineId(this)
+fun Uuid.toUploadId(): UploadId = UploadId(this)

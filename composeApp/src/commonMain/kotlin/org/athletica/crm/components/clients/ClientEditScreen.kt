@@ -47,6 +47,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
@@ -62,7 +63,6 @@ import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_client_edit
 import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран редактирования существующего клиента.
@@ -81,7 +81,7 @@ fun ClientEditScreen(
     var gender by remember { mutableStateOf(client.gender) }
     var birthday by remember { mutableStateOf<LocalDate?>(client.birthday) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var avatarId by remember { mutableStateOf<Uuid?>(client.avatarId) }
+    var avatarId by remember { mutableStateOf<UploadId?>(client.avatarId) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isUploadingAvatar by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }

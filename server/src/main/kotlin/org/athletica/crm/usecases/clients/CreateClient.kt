@@ -13,7 +13,6 @@ import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
-import kotlin.uuid.toJavaUuid
 
 /**
  * Создаёт нового клиента в организации из [ctx] по данным [request].
@@ -26,9 +25,9 @@ suspend fun createClient(request: CreateClientRequest): Either<CommonDomainError
             db
                 .sql("INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender) VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender)")
                 .bind("id", request.id)
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .bind("name", request.name)
-                .bind("avatarId", request.avatarId?.toJavaUuid())
+                .bind("avatarId", request.avatarId)
                 .bind("birthday", request.birthday?.toJavaLocalDate())
                 .bind("gender", request.gender.name)
                 .execute()

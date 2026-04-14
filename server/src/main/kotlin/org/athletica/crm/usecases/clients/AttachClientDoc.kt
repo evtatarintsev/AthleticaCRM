@@ -7,11 +7,11 @@ import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asInstant
+import org.athletica.crm.db.asUuid
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
-import kotlin.time.Instant
-import kotlin.uuid.toKotlinUuid
 
 /**
  * Прикрепляет ранее загруженный файл [request.uploadId] к клиенту [request.clientId].
@@ -23,14 +23,14 @@ suspend fun attachClientDoc(request: AttachClientDocRequest): Either<CommonDomai
         db
             .sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId")
             .bind("id", request.clientId)
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .firstOrNull { true }
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
 
         db
             .sql("SELECT 1 FROM uploads WHERE id = :id AND org_id = :orgId")
             .bind("id", request.uploadId)
-            .bind("orgId", ctx.orgId.value)
+            .bind("orgId", ctx.orgId)
             .firstOrNull { true }
             ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", Messages.UploadNotFound.localize()))
 
@@ -44,19 +44,15 @@ suspend fun attachClientDoc(request: AttachClientDocRequest): Either<CommonDomai
                     """.trimIndent(),
                 )
                 .bind("clientId", request.clientId)
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .bind("uploadId", request.uploadId)
                 .bind("name", request.name)
                 .firstOrNull { row ->
                     ClientDoc(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
+                        id = row.asUuid("id"),
                         uploadId = request.uploadId,
                         name = request.name,
-                        createdAt =
-                            row
-                                .get("created_at", java.time.OffsetDateTime::class.java)!!
-                                .toInstant()
-                                .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                        createdAt = row.asInstant("created_at"),
                     )
                 }!!
 

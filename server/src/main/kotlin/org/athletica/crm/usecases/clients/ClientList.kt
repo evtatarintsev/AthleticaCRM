@@ -2,16 +2,22 @@ package org.athletica.crm.usecases.clients
 
 import arrow.core.Either
 import arrow.core.raise.either
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asDouble
+import org.athletica.crm.db.asLocalDateOrNull
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
+import org.athletica.crm.db.asUuidOrNull
 import kotlin.uuid.Uuid
-import kotlin.uuid.toKotlinUuid
 
 context(db: Database, ctx: RequestContext)
 suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, List<ClientListItem>> =
@@ -19,8 +25,8 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
         data class ClientRow(
             val id: Uuid,
             val name: String,
-            val avatarId: Uuid?,
-            val birthday: java.time.LocalDate?,
+            val avatarId: UploadId?,
+            val birthday: LocalDate?,
             val gender: Gender,
             val balance: Double,
         )
@@ -36,15 +42,15 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                     ORDER BY c.name
                     """.trimIndent(),
                 )
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .list { row ->
                     ClientRow(
-                        id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                        name = row.get("name", String::class.java)!!,
-                        avatarId = row.get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid(),
-                        birthday = row.get("birthday", java.time.LocalDate::class.java),
-                        gender = Gender.valueOf(row.get("gender", String::class.java)!!),
-                        balance = row.get("balance", java.math.BigDecimal::class.java)!!.toDouble(),
+                        id = row.asUuid("id"),
+                        name = row.asString("name"),
+                        avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
+                        birthday = row.asLocalDateOrNull("birthday"),
+                        gender = Gender.valueOf(row.asString("gender")),
+                        balance = row.asDouble("balance"),
                     )
                 }
 
@@ -59,13 +65,13 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                     WHERE c.org_id = :orgId
                     """.trimIndent(),
                 )
-                .bind("orgId", ctx.orgId.value)
+                .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val clientId = row.get("client_id", java.util.UUID::class.java)!!.toKotlinUuid()
+                    val clientId = row.asUuid("client_id")
                     val group =
                         ClientGroup(
-                            id = row.get("group_id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                            name = row.get("group_name", String::class.java)!!,
+                            id = row.asUuid("group_id"),
+                            name = row.asString("group_name"),
                         )
                     clientId to group
                 }
@@ -76,7 +82,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                 id = row.id,
                 name = row.name,
                 avatarId = row.avatarId,
-                birthday = row.birthday?.toKotlinLocalDate(),
+                birthday = row.birthday,
                 gender = row.gender,
                 groups = groupsByClientId[row.id] ?: emptyList(),
                 balance = row.balance,

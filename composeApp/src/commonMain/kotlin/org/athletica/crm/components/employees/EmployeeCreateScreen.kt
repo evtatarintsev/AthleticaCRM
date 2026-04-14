@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -75,7 +76,7 @@ fun EmployeeCreateScreen(
     var name by remember { mutableStateOf("") }
     var phoneNo by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var avatarId by remember { mutableStateOf<Uuid?>(null) }
+    var avatarId by remember { mutableStateOf<UploadId?>(null) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isUploadingAvatar by remember { mutableStateOf(false) }
     var isCreating by remember { mutableStateOf(false) }

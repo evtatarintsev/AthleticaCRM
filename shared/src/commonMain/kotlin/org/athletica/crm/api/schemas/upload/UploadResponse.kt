@@ -1,11 +1,11 @@
 package org.athletica.crm.api.schemas.upload
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.UploadId
 
 @Serializable
 data class UploadResponse(
-    val id: Uuid,
+    val id: UploadId,
     val url: String,
     val originalName: String,
     val contentType: String,

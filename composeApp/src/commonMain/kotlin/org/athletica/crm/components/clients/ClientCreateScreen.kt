@@ -52,6 +52,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -88,7 +89,7 @@ fun ClientCreateScreen(
     var gender by remember { mutableStateOf(Gender.MALE) }
     var birthday by remember { mutableStateOf<LocalDate?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var avatarId by remember { mutableStateOf<Uuid?>(null) }
+    var avatarId by remember { mutableStateOf<UploadId?>(null) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var isUploadingAvatar by remember { mutableStateOf(false) }
     var isCreating by remember { mutableStateOf(false) }

@@ -8,10 +8,12 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
+import org.athletica.crm.core.EntityId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
+import kotlin.uuid.toKotlinUuid
 
 /**
  * Обёртка над R2DBC [ConnectionPool] с fluent DSL.
@@ -92,23 +94,15 @@ class QueryBuilder(
         return this
     }
 
-    /** Привязывает именованный [UserId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
     fun bind(
         name: String,
-        value: UserId,
-    ): QueryBuilder {
-        bindings.add(name to value.value.toJavaUuid())
-        return this
-    }
+        value: EntityId,
+    ): QueryBuilder = bind(name, value.value)
 
-    /** Привязывает именованный [OrgId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
     fun bind(
         name: String,
-        value: OrgId,
-    ): QueryBuilder {
-        bindings.add(name to value.value.toJavaUuid())
-        return this
-    }
+        value: List<EntityId>,
+    ): QueryBuilder = bind(name, value.map { it.value.toJavaUuid() }.toTypedArray())
 
     /**
      * Выполняет запрос и возвращает первый результат или `null`.
@@ -272,3 +266,15 @@ private suspend fun <T : Any> Connection.executeStatement(
         .asFlow()
         .toList()
 }
+
+fun Row.asString(column: String) = get(column, String::class.java)!!
+
+fun Row.asString(pos: Int) = get(pos, String::class.java)!!
+
+fun Row.asUuid(column: String) = get(column, java.util.UUID::class.java)!!.toKotlinUuid()
+
+fun Row.asUuid(pos: Int) = get(pos, java.util.UUID::class.java)!!.toKotlinUuid()
+
+fun Row.asLong(column: String) = get(column, java.lang.Long::class.java)!!.toLong()
+
+fun Row.asLong(pos: Int) = get(pos, java.lang.Long::class.java)!!.toLong()

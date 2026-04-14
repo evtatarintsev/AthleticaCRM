@@ -34,12 +34,12 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
+import org.athletica.crm.core.DisciplineId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_discipline
 import org.athletica.crm.generated.resources.disciplines_empty
 import org.athletica.crm.generated.resources.hint_search
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Шторка выбора дисциплины для привязки к группе.
@@ -54,7 +54,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDisciplineSheet(
-    existingDisciplineIds: Set<Uuid> = emptySet(),
+    existingDisciplineIds: Set<DisciplineId> = emptySet(),
     api: ApiClient,
     onDismiss: () -> Unit,
     onDisciplineSelected: (DisciplineDetailResponse) -> Unit,

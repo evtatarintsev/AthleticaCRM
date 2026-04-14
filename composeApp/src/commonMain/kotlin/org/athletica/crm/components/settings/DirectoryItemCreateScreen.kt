@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.core.EntityId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -43,7 +44,6 @@ import org.athletica.crm.generated.resources.action_save
 import org.athletica.crm.generated.resources.action_select_photo
 import org.athletica.crm.generated.resources.label_name
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран добавления или редактирования записи в справочнике.
@@ -57,14 +57,15 @@ import kotlin.uuid.Uuid
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DirectoryItemCreateScreen(
+fun <T : EntityId> DirectoryItemCreateScreen(
     title: String,
     onBack: () -> Unit,
-    onSave: (DirectoryItem) -> Unit,
+    onSave: (DirectoryItem<T>) -> Unit,
     modifier: Modifier = Modifier,
-    initialItem: DirectoryItem? = null,
+    initialItem: DirectoryItem<T>? = null,
     error: String? = null,
     isLoading: Boolean = false,
+    newId: () -> T,
 ) {
     var name by remember { mutableStateOf(initialItem?.name ?: "") }
     // photoUrl будет заполнен после реализации загрузки файлов
@@ -85,7 +86,7 @@ fun DirectoryItemCreateScreen(
                         onClick = {
                             onSave(
                                 DirectoryItem(
-                                    id = initialItem?.id ?: Uuid.generateV7(),
+                                    id = initialItem?.id ?: newId(),
                                     name = name.trim(),
                                     photoUrl = initialItem?.photoUrl,
                                 ),

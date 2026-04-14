@@ -5,21 +5,19 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
+import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
 import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
-import org.athletica.crm.audit.AuditLog
-import org.athletica.crm.db.Database
-import org.athletica.crm.usecases.disciplines.createDiscipline
-import org.athletica.crm.usecases.disciplines.deleteDiscipline
-import org.athletica.crm.usecases.disciplines.disciplineList
-import org.athletica.crm.usecases.disciplines.updateDiscipline
+import org.athletica.crm.domain.discipline.Discipline
+import org.athletica.crm.domain.discipline.Disciplines
 
-context(db: Database, audit: AuditLog)
-fun Route.disciplinesRoutes() {
+fun Route.disciplinesRoutes(disciplines: Disciplines) {
     route("/disciplines") {
         getWithContext("/list") {
             call.eitherToResponse {
-                val disciplines = disciplineList().bind()
+                val disciplines =
+                    disciplines.list().bind()
+                        .map { DisciplineDetailResponse(id = it.id, name = it.name) }
                 DisciplineListResponse(disciplines)
             }
         }
@@ -27,23 +25,21 @@ fun Route.disciplinesRoutes() {
         postWithContext("/create") {
             call.eitherToResponse {
                 val request = call.receive<CreateDisciplineRequest>()
-                val result = createDiscipline(request).bind()
-                result
+                disciplines.create(Discipline(request.id, request.name)).bind()
             }
         }
 
         postWithContext("/update") {
             call.eitherToResponse {
                 val request = call.receive<UpdateDisciplineRequest>()
-                val result = updateDiscipline(request).bind()
-                result
+                disciplines.update(Discipline(request.id, request.name)).bind()
             }
         }
 
         postWithContext("/delete") {
             call.eitherToResponse {
                 val request = call.receive<DeleteDisciplineRequest>()
-                deleteDiscipline(request).bind()
+                disciplines.delete(request.ids).bind()
             }
         }
     }

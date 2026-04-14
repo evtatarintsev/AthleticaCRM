@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.DisciplineId
 import kotlin.uuid.Uuid
 
 /**
@@ -16,5 +17,5 @@ data class GroupCreateRequest(
     /** Слоты расписания группы. */
     val schedule: List<ScheduleSlot> = emptyList(),
     /** Идентификаторы дисциплин, привязываемых к группе. */
-    val disciplineIds: List<Uuid> = emptyList(),
+    val disciplineIds: List<DisciplineId> = emptyList(),
 )

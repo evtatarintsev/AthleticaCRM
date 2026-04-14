@@ -10,6 +10,7 @@ import org.athletica.crm.audit.logUpdate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asLong
 import org.athletica.crm.i18n.Messages
 import kotlin.uuid.toJavaUuid
 
@@ -33,10 +34,10 @@ suspend fun setGroupDisciplines(request: SetGroupDisciplinesRequest): Either<Com
         if (request.disciplineIds.isNotEmpty()) {
             val validCount =
                 db
-                    .sql("SELECT COUNT(*) FROM disciplines WHERE id = ANY(:ids) AND org_id = :orgId")
-                    .bind("ids", request.disciplineIds.map { it.toJavaUuid() }.toTypedArray())
-                    .bind("orgId", ctx.orgId.value)
-                    .firstOrNull { row -> row.get(0, java.lang.Long::class.java)!!.toLong() }
+                    .sql("SELECT COUNT(*) as c FROM disciplines WHERE id = ANY(:ids) AND org_id = :orgId")
+                    .bind("ids", request.disciplineIds)
+                    .bind("orgId", ctx.orgId)
+                    .firstOrNull { row -> row.asLong(0) }
                     ?: 0L
             if (validCount != request.disciplineIds.size.toLong()) {
                 raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))

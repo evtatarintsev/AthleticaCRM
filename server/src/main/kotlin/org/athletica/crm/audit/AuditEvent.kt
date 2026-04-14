@@ -1,5 +1,6 @@
 package org.athletica.crm.audit
 
+import org.athletica.crm.core.EntityId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
@@ -110,6 +111,9 @@ fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String) {
     )
 }
 
+context(ctx: RequestContext)
+fun AuditLog.logCreate(entityType: String, entityId: EntityId, data: String) = logCreate(entityType, entityId.value, data)
+
 /**
  * Логирует обновление сущности типа [entityType] с идентификатором [entityId].
  * [data] — JSON-снапшот сущности после изменения.
@@ -130,6 +134,9 @@ fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
         ),
     )
 }
+
+context(ctx: RequestContext)
+fun AuditLog.logUpdate(entityType: String, entityId: EntityId, data: String) = logUpdate(entityType, entityId.value, data)
 
 /**
  * Логирует смену пароля текущим авторизованным пользователем.
@@ -168,6 +175,9 @@ fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
         ),
     )
 }
+
+context(ctx: RequestContext)
+fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = logDelete(entityType, entityId.value, data)
 
 /**
  * Логирует корректировку баланса клиента с идентификатором [clientId].

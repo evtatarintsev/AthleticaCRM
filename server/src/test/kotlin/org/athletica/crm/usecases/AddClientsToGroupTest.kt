@@ -10,6 +10,7 @@ import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.db.asLong
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.junit.Before
 import kotlin.test.Test
@@ -58,7 +59,7 @@ class AddClientsToGroupTest {
             .sql("SELECT COUNT(*) FROM client_groups WHERE client_id = :clientId AND group_id = :groupId")
             .bind("clientId", clientId)
             .bind("groupId", groupId)
-            .firstOrNull { row -> row.get(0, java.lang.Long::class.java)!!.toLong() }
+            .firstOrNull { row -> row.asLong(0) }
             ?: 0L
 
     private fun ctx(orgId: Uuid) =

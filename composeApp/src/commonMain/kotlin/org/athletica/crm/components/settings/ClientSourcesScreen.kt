@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import org.athletica.crm.core.DisciplineId
+import org.athletica.crm.core.EntityId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.screen_client_source_create
 import org.athletica.crm.generated.resources.screen_client_sources
@@ -20,7 +22,7 @@ fun ClientSourcesScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var items by remember { mutableStateOf<List<DirectoryItem>>(emptyList()) }
+    var items by remember { mutableStateOf<List<DirectoryItem<EntityId>>>(emptyList()) }
     var showCreate by remember { mutableStateOf(false) }
 
     if (showCreate) {
@@ -32,6 +34,7 @@ fun ClientSourcesScreen(
                 showCreate = false
             },
             modifier = modifier,
+            newId = { DisciplineId.new() as EntityId },
         )
         return
     }

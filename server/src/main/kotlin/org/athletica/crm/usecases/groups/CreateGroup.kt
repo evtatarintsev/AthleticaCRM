@@ -12,10 +12,11 @@ import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.audit.logCreate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toDisciplineId
 import org.athletica.crm.db.Database
+import org.athletica.crm.db.asString
+import org.athletica.crm.db.asUuid
 import org.athletica.crm.i18n.Messages
-import kotlin.uuid.toJavaUuid
-import kotlin.uuid.toKotlinUuid
 
 private val TIME_REGEX = Regex("""^([01]\d|2[0-3]):[0-5]\d$""")
 
@@ -59,12 +60,12 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                         ORDER BY name
                         """.trimIndent(),
                     )
-                    .bind("ids", request.disciplineIds.map { it.toJavaUuid() }.toTypedArray())
+                    .bind("ids", request.disciplineIds)
                     .bind("orgId", ctx.orgId.value)
                     .list { row ->
                         GroupDiscipline(
-                            id = row.get("id", java.util.UUID::class.java)!!.toKotlinUuid(),
-                            name = row.get("name", String::class.java)!!,
+                            id = row.asUuid("id").toDisciplineId(),
+                            name = row.asString("name"),
                         )
                     }.also { result ->
                         if (result.size != request.disciplineIds.size) {
@@ -79,7 +80,7 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
             db.transaction {
                 sql("INSERT INTO groups (id, org_id, name) VALUES (:id, :orgId, :name)")
                     .bind("id", request.id)
-                    .bind("orgId", ctx.orgId.value)
+                    .bind("orgId", ctx.orgId)
                     .bind("name", request.name)
                     .execute()
 

@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.core.EntityId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add
 import org.athletica.crm.generated.resources.action_back
@@ -54,11 +55,10 @@ import org.athletica.crm.generated.resources.empty_search_results
 import org.athletica.crm.generated.resources.hint_search
 import org.athletica.crm.generated.resources.label_selected_count
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /** Запись справочника: уникальный [id], отображаемое [name] и необязательный [photoUrl]. */
-data class DirectoryItem(
-    val id: Uuid,
+data class DirectoryItem<T : EntityId>(
+    val id: T,
     val name: String,
     val photoUrl: String? = null,
 )
@@ -77,19 +77,19 @@ data class DirectoryItem(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DirectoryListScreen(
+fun <T : EntityId> DirectoryListScreen(
     title: String,
-    items: List<DirectoryItem>,
+    items: List<DirectoryItem<T>>,
     onBack: () -> Unit,
     onAdd: () -> Unit,
-    onDeleteSelected: (Set<Uuid>) -> Unit,
+    onDeleteSelected: (Set<T>) -> Unit,
     modifier: Modifier = Modifier,
-    onItemClick: ((DirectoryItem) -> Unit)? = null,
+    onItemClick: ((DirectoryItem<T>) -> Unit)? = null,
     isLoading: Boolean = false,
     error: String? = null,
 ) {
     var query by remember { mutableStateOf("") }
-    var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
+    var selectedIds by remember { mutableStateOf<Set<T>>(emptySet()) }
 
     val filtered =
         if (query.isBlank()) {
@@ -262,8 +262,8 @@ fun DirectoryListScreen(
 }
 
 @Composable
-private fun DirectoryItemRow(
-    item: DirectoryItem,
+private fun <T : EntityId> DirectoryItemRow(
+    item: DirectoryItem<T>,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onClick: (() -> Unit)? = null,
@@ -286,8 +286,8 @@ private fun DirectoryItemRow(
 }
 
 @Composable
-fun DirectoryItemAvatar(
-    item: DirectoryItem,
+fun <T : EntityId> DirectoryItemAvatar(
+    item: DirectoryItem<T>,
     modifier: Modifier = Modifier,
     size: Int = 40,
 ) {

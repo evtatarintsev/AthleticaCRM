@@ -14,6 +14,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
+import org.athletica.crm.core.DisciplineId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.screen_discipline_create
 import org.athletica.crm.generated.resources.screen_discipline_edit
@@ -30,13 +31,13 @@ fun DisciplinesScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var items by remember { mutableStateOf<List<DirectoryItem>>(emptyList()) }
+    var items by remember { mutableStateOf<List<DirectoryItem<DisciplineId>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var createError by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<DirectoryItem?>(null) }
+    var editingItem by remember { mutableStateOf<DirectoryItem<DisciplineId>?>(null) }
     var editError by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
@@ -98,6 +99,7 @@ fun DisciplinesScreen(
             error = editError,
             isLoading = isSaving,
             modifier = modifier,
+            newId = { DisciplineId.new() },
         )
         return
     }
@@ -136,11 +138,12 @@ fun DisciplinesScreen(
             error = createError,
             isLoading = isSaving,
             modifier = modifier,
+            newId = { DisciplineId.new() },
         )
         return
     }
 
-    DirectoryListScreen(
+    DirectoryListScreen<DisciplineId>(
         title = stringResource(Res.string.screen_disciplines),
         items = items,
         isLoading = isLoading,

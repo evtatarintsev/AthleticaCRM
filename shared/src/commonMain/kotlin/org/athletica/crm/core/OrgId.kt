@@ -8,7 +8,7 @@ import kotlin.uuid.Uuid
  * Оборачивает [Uuid], исключая случайную подмену на [UserId] или raw UUID.
  */
 @JvmInline
-value class OrgId(val value: Uuid) {
+value class OrgId(override val value: Uuid) : EntityId {
     companion object {
         /** Генерирует новый UUIDv7 (монотонно возрастающий, подходит для PK). */
         fun new() = OrgId(Uuid.generateV7())

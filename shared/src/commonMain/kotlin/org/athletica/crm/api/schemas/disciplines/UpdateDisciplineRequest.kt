@@ -1,10 +1,10 @@
 package org.athletica.crm.api.schemas.disciplines
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.DisciplineId
 
 @Serializable
 data class UpdateDisciplineRequest(
-    val id: Uuid,
+    val id: DisciplineId,
     val name: String,
 )

@@ -39,6 +39,7 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.audit.AuditLog
 import org.athletica.crm.audit.PostgresAuditLog
 import org.athletica.crm.db.Database
+import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -177,7 +178,7 @@ fun Application.configureServer(
                 clientsRoutes()
                 groupsRoutes()
                 orgRoutes()
-                disciplinesRoutes()
+                disciplinesRoutes(DbDisciplines(db, audit))
                 employeesRoutes()
                 profileRoutes()
                 uploadRoutes()

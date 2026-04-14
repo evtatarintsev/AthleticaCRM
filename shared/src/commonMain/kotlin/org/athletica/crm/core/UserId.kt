@@ -10,7 +10,7 @@ import kotlin.uuid.Uuid
  */
 @Serializable
 @JvmInline
-value class UserId(val value: Uuid) {
+value class UserId(override val value: Uuid) : EntityId {
     companion object {
         /** Генерирует новый UUIDv7 (монотонно возрастающий, подходит для PK). */
         fun new() = UserId(Uuid.generateV7())

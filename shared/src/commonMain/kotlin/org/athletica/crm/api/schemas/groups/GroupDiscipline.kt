@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.DisciplineId
 
 /**
  * Дисциплина, привязанная к группе.
@@ -11,7 +11,7 @@ import kotlin.uuid.Uuid
 @Serializable
 data class GroupDiscipline(
     /** Идентификатор дисциплины. */
-    val id: Uuid,
+    val id: DisciplineId,
     /** Название дисциплины. */
     val name: String,
 )

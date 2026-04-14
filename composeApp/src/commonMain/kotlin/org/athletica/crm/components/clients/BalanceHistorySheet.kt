@@ -29,12 +29,12 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.balance_history_empty
 import org.athletica.crm.generated.resources.section_balance_history
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
-import kotlin.uuid.Uuid
 
 /**
  * Шторка истории операций по балансу клиента.
@@ -44,7 +44,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun BalanceHistorySheet(
     api: ApiClient,
-    clientId: Uuid,
+    clientId: ClientId,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)

@@ -13,6 +13,7 @@ import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.core.toClientId
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.adjustClientBalance
@@ -45,7 +46,7 @@ fun Route.clientsRoutes() {
                 call.request.queryParameters["id"]
                     ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
             val id =
-                runCatching { Uuid.parse(idParam) }.getOrElse {
+                runCatching { Uuid.parse(idParam).toClientId() }.getOrElse {
                     raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
                 }
             clientDetail(id).bind()
@@ -114,7 +115,7 @@ fun Route.clientsRoutes() {
                 call.request.queryParameters["id"]
                     ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
             val id =
-                runCatching { Uuid.parse(idParam) }.getOrElse {
+                runCatching { Uuid.parse(idParam).toClientId() }.getOrElse {
                     raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
                 }
             clientBalanceHistory(id).bind()

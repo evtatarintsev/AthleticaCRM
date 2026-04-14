@@ -1,13 +1,13 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.ClientId
 
 /** Запрос на административную корректировку баланса клиента. */
 @Serializable
 data class AdjustBalanceRequest(
     /** Идентификатор клиента. */
-    val clientId: Uuid,
+    val clientId: ClientId,
     /**
      * Сумма корректировки.
      * Положительная — пополнение счёта (admin_credit), отрицательная — списание (admin_debit).

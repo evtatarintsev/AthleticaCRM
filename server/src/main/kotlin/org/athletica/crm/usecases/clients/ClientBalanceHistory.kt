@@ -14,11 +14,11 @@ import org.athletica.crm.db.asString
 import org.athletica.crm.db.asStringOrNull
 import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.i18n.Messages
-import kotlin.uuid.Uuid
 
 context(db: Database, ctx: RequestContext)
-suspend fun clientBalanceHistory(clientId: Uuid): Either<CommonDomainError, ClientBalanceHistoryResponse> =
+suspend fun clientBalanceHistory(clientId: ClientId): Either<CommonDomainError, ClientBalanceHistoryResponse> =
     either {
         // Проверяем принадлежность клиента организации
         db

@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.ClientId
 import kotlin.uuid.Uuid
 
 /**
@@ -11,7 +12,7 @@ import kotlin.uuid.Uuid
 @Serializable
 data class AddClientsToGroupRequest(
     /** Идентификаторы клиентов, добавляемых в группу. */
-    val clientIds: List<Uuid>,
+    val clientIds: List<ClientId>,
     /** Идентификатор группы, в которую добавляются клиенты. */
     val groupId: Uuid,
 )

@@ -2,9 +2,9 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.UploadId
-import kotlin.uuid.Uuid
 
 /**
  * Запрос на редактирование существующего клиента.
@@ -12,7 +12,7 @@ import kotlin.uuid.Uuid
 @Serializable
 data class EditClientRequest(
     /** Идентификатор редактируемого клиента. */
-    val id: Uuid,
+    val id: ClientId,
     /** Отображаемое имя клиента. */
     val name: String,
     /** Идентификатор загрузки аватарки клиента, полученный через POST /api/upload. */

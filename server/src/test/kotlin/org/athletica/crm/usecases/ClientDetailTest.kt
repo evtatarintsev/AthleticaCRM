@@ -4,6 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
@@ -31,8 +32,8 @@ class ClientDetailTest {
         return orgId
     }
 
-    private suspend fun insertClient(orgId: Uuid, name: String): Uuid {
-        val clientId = Uuid.generateV7()
+    private suspend fun insertClient(orgId: Uuid, name: String): ClientId {
+        val clientId = ClientId.new()
         TestPostgres.db
             .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
             .bind("id", clientId)
@@ -53,7 +54,7 @@ class ClientDetailTest {
         return groupId
     }
 
-    private suspend fun addClientToGroup(clientId: Uuid, groupId: Uuid) {
+    private suspend fun addClientToGroup(clientId: ClientId, groupId: Uuid) {
         TestPostgres.db
             .sql("INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId)")
             .bind("clientId", clientId)
@@ -63,7 +64,7 @@ class ClientDetailTest {
 
     private suspend fun insertBalanceEntry(
         orgId: Uuid,
-        clientId: Uuid,
+        clientId: ClientId,
         amount: Double,
         balanceAfter: Double,
     ) {
@@ -143,7 +144,7 @@ class ClientDetailTest {
             val orgId = insertOrg()
 
             context(TestPostgres.db, ctx(orgId)) {
-                val result = clientDetail(Uuid.generateV7())
+                val result = clientDetail(ClientId.new())
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("CLIENT_NOT_FOUND", error.code)
             }

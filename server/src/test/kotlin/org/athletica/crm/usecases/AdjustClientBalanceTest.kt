@@ -6,6 +6,7 @@ import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
@@ -49,8 +50,8 @@ class AdjustClientBalanceTest {
         return userId
     }
 
-    private suspend fun insertClient(orgId: Uuid, name: String = "Иван Петров"): Uuid {
-        val clientId = Uuid.generateV7()
+    private suspend fun insertClient(orgId: Uuid, name: String = "Иван Петров"): ClientId {
+        val clientId = ClientId.new()
         TestPostgres.db
             .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
             .bind("id", clientId)
@@ -62,7 +63,7 @@ class AdjustClientBalanceTest {
 
     private suspend fun insertBalanceEntry(
         orgId: Uuid,
-        clientId: Uuid,
+        clientId: ClientId,
         amount: Double,
         balanceAfter: Double,
     ) {

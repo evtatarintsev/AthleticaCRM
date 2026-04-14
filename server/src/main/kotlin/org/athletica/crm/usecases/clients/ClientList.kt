@@ -9,7 +9,9 @@ import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toClientId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
 import org.athletica.crm.db.asDouble
@@ -17,13 +19,12 @@ import org.athletica.crm.db.asLocalDateOrNull
 import org.athletica.crm.db.asString
 import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
-import kotlin.uuid.Uuid
 
 context(db: Database, ctx: RequestContext)
 suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, List<ClientListItem>> =
     either {
         data class ClientRow(
-            val id: Uuid,
+            val id: ClientId,
             val name: String,
             val avatarId: UploadId?,
             val birthday: LocalDate?,
@@ -45,7 +46,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                 .bind("orgId", ctx.orgId)
                 .list { row ->
                     ClientRow(
-                        id = row.asUuid("id"),
+                        id = row.asUuid("id").toClientId(),
                         name = row.asString("name"),
                         avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
                         birthday = row.asLocalDateOrNull("birthday"),
@@ -67,7 +68,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                 )
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val clientId = row.asUuid("client_id")
+                    val clientId = row.asUuid("client_id").toClientId()
                     val group =
                         ClientGroup(
                             id = row.asUuid("group_id"),

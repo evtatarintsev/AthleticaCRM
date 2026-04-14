@@ -28,6 +28,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_apply
 import org.athletica.crm.generated.resources.action_cancel
@@ -37,7 +38,6 @@ import org.athletica.crm.generated.resources.dialog_adjust_balance_title
 import org.athletica.crm.generated.resources.label_amount
 import org.athletica.crm.generated.resources.label_comment
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Диалог административной корректировки баланса клиента.
@@ -47,7 +47,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun AdjustBalanceDialog(
     api: ApiClient,
-    clientId: Uuid,
+    clientId: ClientId,
     onSuccess: (ClientDetailResponse) -> Unit,
     onDismiss: () -> Unit,
 ) {

@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
@@ -32,8 +33,8 @@ class AddClientsToGroupTest {
         return orgId
     }
 
-    private suspend fun insertClient(orgId: Uuid, name: String = "Клиент"): Uuid {
-        val clientId = Uuid.generateV7()
+    private suspend fun insertClient(orgId: Uuid, name: String = "Клиент"): ClientId {
+        val clientId = ClientId.new()
         TestPostgres.db
             .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
             .bind("id", clientId)
@@ -54,7 +55,7 @@ class AddClientsToGroupTest {
         return groupId
     }
 
-    private suspend fun clientGroupCount(clientId: Uuid, groupId: Uuid): Long =
+    private suspend fun clientGroupCount(clientId: ClientId, groupId: Uuid): Long =
         TestPostgres.db
             .sql("SELECT COUNT(*) FROM client_groups WHERE client_id = :clientId AND group_id = :groupId")
             .bind("clientId", clientId)

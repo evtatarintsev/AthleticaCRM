@@ -117,6 +117,7 @@ import org.athletica.crm.generated.resources.tab_history
 import org.athletica.crm.generated.resources.tab_parents
 import org.athletica.crm.generated.resources.tab_payments
 import org.athletica.crm.generated.resources.visits_remaining
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.openUrl
 import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize
@@ -202,7 +203,7 @@ private fun ClientDetailTab.title(): String =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientDetailScreen(
-    clientId: Uuid,
+    clientId: ClientId,
     api: ApiClient,
     onBack: () -> Unit,
     onEdit: (ClientDetailResponse) -> Unit = {},
@@ -771,7 +772,7 @@ private fun ParentRow(parent: FakeParent) {
 @Composable
 private fun DocumentsSection(
     docs: List<ClientDoc>,
-    clientId: Uuid,
+    clientId: ClientId,
     api: ApiClient,
     onRefresh: () -> Unit,
 ) {

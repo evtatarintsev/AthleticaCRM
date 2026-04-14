@@ -6,6 +6,7 @@ import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
@@ -64,7 +65,7 @@ class CreateClientTest {
         runTest {
             val orgId = insertOrg()
             val userId = insertUser(orgId)
-            val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров", gender = Gender.MALE)
+            val request = CreateClientRequest(id = ClientId.new(), name = "Иван Петров", gender = Gender.MALE)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = createClient(request)
@@ -79,7 +80,7 @@ class CreateClientTest {
         runTest {
             val orgId = insertOrg()
             val userId = insertUser(orgId)
-            val request = CreateClientRequest(id = Uuid.generateV7(), name = "Иван Петров", gender = Gender.MALE)
+            val request = CreateClientRequest(id = ClientId.new(), name = "Иван Петров", gender = Gender.MALE)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 createClient(request)
@@ -104,7 +105,7 @@ class CreateClientTest {
                     id
                 }
             val userId = insertUser(orgId1)
-            val sharedId = Uuid.generateV7()
+            val sharedId = ClientId.new()
 
             context(TestPostgres.db, ctx(userId, orgId1), TestAuditLog()) {
                 assertIs<Either.Right<ClientDetailResponse>>(
@@ -127,10 +128,10 @@ class CreateClientTest {
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 assertIs<Either.Right<ClientDetailResponse>>(
-                    createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей", gender = Gender.MALE)),
+                    createClient(CreateClientRequest(id = ClientId.new(), name = "Алексей", gender = Gender.MALE)),
                 )
                 assertIs<Either.Right<ClientDetailResponse>>(
-                    createClient(CreateClientRequest(id = Uuid.generateV7(), name = "Алексей", gender = Gender.MALE)),
+                    createClient(CreateClientRequest(id = ClientId.new(), name = "Алексей", gender = Gender.MALE)),
                 )
             }
         }

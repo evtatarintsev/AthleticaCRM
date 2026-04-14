@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.ClientId
 import kotlin.uuid.Uuid
 
 /**
@@ -11,7 +12,7 @@ import kotlin.uuid.Uuid
 @Serializable
 data class RemoveClientFromGroupRequest(
     /** Идентификаторы клиентов, удаляемых из группы. */
-    val clientIds: List<Uuid>,
+    val clientIds: List<ClientId>,
     /** Идентификатор группы, из которой удаляются клиенты. */
     val groupId: Uuid,
 )

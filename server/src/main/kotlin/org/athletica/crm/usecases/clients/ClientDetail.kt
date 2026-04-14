@@ -7,7 +7,9 @@ import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.toClientId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.db.Database
 import org.athletica.crm.db.asDouble
@@ -17,10 +19,9 @@ import org.athletica.crm.db.asString
 import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
-import kotlin.uuid.Uuid
 
 context(db: Database, ctx: RequestContext)
-suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailResponse> =
+suspend fun clientDetail(id: ClientId): Either<CommonDomainError, ClientDetailResponse> =
     either {
         val client =
             db
@@ -36,7 +37,7 @@ suspend fun clientDetail(id: Uuid): Either<CommonDomainError, ClientDetailRespon
                 .bind("orgId", ctx.orgId)
                 .firstOrNull { row ->
                     ClientDetailResponse(
-                        id = row.asUuid("id"),
+                        id = row.asUuid("id").toClientId(),
                         name = row.asString("name"),
                         avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
                         birthday = row.asLocalDateOrNull("birthday"),

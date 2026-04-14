@@ -33,6 +33,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_delete_selected
@@ -42,7 +43,6 @@ import org.athletica.crm.generated.resources.clients_empty
 import org.athletica.crm.generated.resources.empty_search_results
 import org.athletica.crm.generated.resources.label_selected_count
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран списка клиентов с поиском, фильтрами и выбором записей.
@@ -54,13 +54,13 @@ fun ClientsScreen(
     api: ApiClient,
     onNavigateToCreate: () -> Unit = {},
     refreshKey: Int = 0,
-    onClientClick: (Uuid) -> Unit = {},
+    onClientClick: (ClientId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var clients by remember { mutableStateOf<List<ClientListItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
+    var selectedIds by remember { mutableStateOf<Set<ClientId>>(emptySet()) }
     var filter by remember { mutableStateOf(ClientFilterState()) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }

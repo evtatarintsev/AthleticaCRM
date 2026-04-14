@@ -51,6 +51,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.generated.resources.Res
@@ -71,7 +72,6 @@ import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_client_create
 import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран создания нового клиента.
@@ -120,7 +120,7 @@ fun ClientCreateScreen(
                                 api
                                     .createClient(
                                         CreateClientRequest(
-                                            id = Uuid.generateV7(),
+                                            id = ClientId.new(),
                                             name = name,
                                             avatarId = avatarId,
                                             birthday = birthday,

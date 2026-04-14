@@ -59,6 +59,7 @@ import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.UploadId
 import kotlin.uuid.Uuid
 
@@ -113,7 +114,7 @@ class ApiClient(private val http: HttpClient) {
     suspend fun clientList(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
 
     /** Возвращает полные данные клиента по [id]. */
-    suspend fun clientDetail(id: Uuid): Either<ApiClientError, ClientDetailResponse> = execute { http.get("/api/clients/detail") { url { parameters.append("id", id.toString()) } } }
+    suspend fun clientDetail(id: ClientId): Either<ApiClientError, ClientDetailResponse> = execute { http.get("/api/clients/detail") { url { parameters.append("id", id.toString()) } } }
 
     /** Возвращает список групп организации по параметрам [request]. */
     suspend fun groupList(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = execute { http.get("/api/groups/list") }
@@ -158,7 +159,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Возвращает историю операций по балансу клиента с [id], отсортированную от новых к старым. */
-    suspend fun clientBalanceHistory(id: Uuid): Either<ApiClientError, ClientBalanceHistoryResponse> = execute { http.get("/api/clients/balance/history") { url { parameters.append("id", id.toString()) } } }
+    suspend fun clientBalanceHistory(id: ClientId): Either<ApiClientError, ClientBalanceHistoryResponse> = execute { http.get("/api/clients/balance/history") { url { parameters.append("id", id.toString()) } } }
 
     /** Выполняет административную корректировку баланса клиента. Возвращает обновлённые данные клиента. */
     suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<ApiClientError, ClientDetailResponse> =

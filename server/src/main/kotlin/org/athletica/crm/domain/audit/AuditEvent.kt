@@ -190,6 +190,14 @@ fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = l
  */
 context(ctx: RequestContext)
 fun AuditLog.logBalanceAdjust(
+    clientId: EntityId,
+    amount: Double,
+    operationType: String,
+    note: String,
+) = logBalanceAdjust(clientId.value, amount, operationType, note)
+
+context(ctx: RequestContext)
+fun AuditLog.logBalanceAdjust(
     clientId: Uuid,
     amount: Double,
     operationType: String,

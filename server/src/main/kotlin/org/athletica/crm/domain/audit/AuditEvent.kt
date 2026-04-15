@@ -44,7 +44,24 @@ data class AuditEvent(
     val entityId: Uuid? = null,
     val data: String? = null,
     val ipAddress: String? = null,
-)
+) {
+    constructor(
+        ctx: RequestContext,
+        actionType: AuditActionType,
+        entityType: String? = null,
+        entityId: Uuid? = null,
+        data: String? = null,
+    ) : this(
+        ctx.orgId,
+        ctx.userId,
+        ctx.username,
+        actionType,
+        entityType,
+        entityId,
+        data,
+        ctx.clientIp,
+    )
+}
 
 /**
  * Логирует успешный вход пользователя с идентификатором [userId] из организации [orgId].

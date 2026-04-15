@@ -16,7 +16,7 @@ fun Route.disciplinesRoutes(disciplines: Disciplines) {
         getWithContext("/list") {
             call.eitherToResponse {
                 val disciplines =
-                    disciplines.list().bind()
+                    disciplines.list()
                         .map { DisciplineDetailResponse(id = it.id, name = it.name) }
                 DisciplineListResponse(disciplines)
             }
@@ -25,21 +25,21 @@ fun Route.disciplinesRoutes(disciplines: Disciplines) {
         postWithContext("/create") {
             call.eitherToResponse {
                 val request = call.receive<CreateDisciplineRequest>()
-                disciplines.create(Discipline(request.id, request.name)).bind()
+                disciplines.create(Discipline(request.id, request.name))
             }
         }
 
         postWithContext("/update") {
             call.eitherToResponse {
                 val request = call.receive<UpdateDisciplineRequest>()
-                disciplines.update(Discipline(request.id, request.name)).bind()
+                disciplines.update(Discipline(request.id, request.name))
             }
         }
 
         postWithContext("/delete") {
             call.eitherToResponse {
                 val request = call.receive<DeleteDisciplineRequest>()
-                disciplines.delete(request.ids).bind()
+                disciplines.delete(request.ids)
             }
         }
     }

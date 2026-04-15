@@ -39,6 +39,7 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
@@ -175,7 +176,7 @@ fun Application.configureServer(
                 authRoutes()
             }
             authenticate("auth-jwt") {
-                clientsRoutes()
+                clientsRoutes(DbClients())
                 groupsRoutes()
                 orgRoutes()
                 disciplinesRoutes(DbDisciplines(db, audit))

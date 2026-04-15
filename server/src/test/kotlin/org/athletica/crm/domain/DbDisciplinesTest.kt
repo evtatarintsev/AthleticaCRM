@@ -1,6 +1,8 @@
 package org.athletica.crm.domain
 
 import arrow.core.Either
+import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestAuditLog
@@ -10,7 +12,7 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
-import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.discipline.Discipline
@@ -19,6 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class DbDisciplinesTest {
     private val orgId = OrgId.new()
@@ -48,36 +51,38 @@ class DbDisciplinesTest {
     @Test
     fun `list возвращает пустой список если дисциплин нет`() =
         runTest {
-            context(ctx) {
-                val result = disciplines.list()
-                assertTrue(assertIs<Either.Right<List<Discipline>>>(result).value.isEmpty())
-            }
+            either {
+                val list = context(ctx) { disciplines.list() }
+                assertTrue(list.isEmpty())
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `list возвращает только дисциплины своей организации`() =
         runTest {
-            context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Теннис")) }
-            context(otherCtx) { disciplines.create(Discipline(DisciplineId.new(), "Волейбол")) }
+            either<DomainError, Unit> {
+                context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Теннис")) }
+                context(otherCtx) { disciplines.create(Discipline(DisciplineId.new(), "Волейбол")) }
 
-            context(ctx) {
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
+                val list = context(ctx) { disciplines.list() }
                 assertEquals(1, list.size)
                 assertEquals("Теннис", list.first().name)
-            }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `list возвращает дисциплины отсортированные по имени`() =
         runTest {
-            context(ctx) {
-                disciplines.create(Discipline(DisciplineId.new(), "Хоккей"))
-                disciplines.create(Discipline(DisciplineId.new(), "Бокс"))
-                disciplines.create(Discipline(DisciplineId.new(), "Плавание"))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(DisciplineId.new(), "Хоккей"))
+                    disciplines.create(Discipline(DisciplineId.new(), "Бокс"))
+                    disciplines.create(Discipline(DisciplineId.new(), "Плавание"))
 
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
-                assertEquals(listOf("Бокс", "Плавание", "Хоккей"), list.map { it.name })
-            }
+                    val list = disciplines.list()
+                    assertEquals(listOf("Бокс", "Плавание", "Хоккей"), list.map { it.name })
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     // ─── create ───────────────────────────────────────────────────────────────
@@ -86,42 +91,48 @@ class DbDisciplinesTest {
     fun `create добавляет дисциплину`() =
         runTest {
             val discipline = Discipline(DisciplineId.new(), "Футбол")
-            context(ctx) {
-                assertIs<Either.Right<Unit>>(disciplines.create(discipline))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(discipline)
 
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
-                assertEquals(1, list.size)
-                assertEquals(discipline.id, list.first().id)
-                assertEquals("Футбол", list.first().name)
-            }
+                    val list = disciplines.list()
+                    assertEquals(1, list.size)
+                    assertEquals(discipline.id, list.first().id)
+                    assertEquals("Футбол", list.first().name)
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `create возвращает ошибку при дублировании имени в той же организации`() =
         runTest {
-            context(ctx) {
-                disciplines.create(Discipline(DisciplineId.new(), "Хоккей"))
-                val result = disciplines.create(Discipline(DisciplineId.new(), "Хоккей"))
-                assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<CommonDomainError>>(result).value.code)
-            }
+            either<DomainError, Unit> {
+                context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Хоккей")) }
+            }.getOrElse { fail("Setup failed: $it") }
+
+            val result =
+                either<DomainError, Unit> {
+                    context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Хоккей")) }
+                }
+            assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
         }
 
     @Test
     fun `create допускает одинаковое имя в разных организациях`() =
         runTest {
-            context(ctx) {
-                assertIs<Either.Right<Unit>>(disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")))
-            }
-            context(otherCtx) {
-                assertIs<Either.Right<Unit>>(disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")))
-            }
+            either<DomainError, Unit> {
+                context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")) }
+                context(otherCtx) { disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")) }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `create пишет событие в audit log`() =
         runTest {
             val discipline = Discipline(DisciplineId.new(), "Бег")
-            context(ctx) { disciplines.create(discipline) }
+            either<DomainError, Unit> {
+                context(ctx) { disciplines.create(discipline) }
+            }.getOrElse { fail("Unexpected error: $it") }
 
             val event = audit.channel.tryReceive().getOrNull()!!
             assertEquals(AuditActionType.CREATE, event.actionType)
@@ -135,66 +146,76 @@ class DbDisciplinesTest {
     fun `update изменяет название дисциплины`() =
         runTest {
             val id = DisciplineId.new()
-            context(ctx) {
-                disciplines.create(Discipline(id, "Старое название"))
-                assertIs<Either.Right<Unit>>(disciplines.update(Discipline(id, "Новое название")))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(id, "Старое название"))
+                    disciplines.update(Discipline(id, "Новое название"))
 
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
-                assertEquals("Новое название", list.first().name)
-            }
+                    val list = disciplines.list()
+                    assertEquals("Новое название", list.first().name)
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `update возвращает DISCIPLINE_NOT_FOUND для неизвестного id`() =
         runTest {
-            context(ctx) {
-                val result = disciplines.update(Discipline(DisciplineId.new(), "Что угодно"))
-                assertEquals("DISCIPLINE_NOT_FOUND", assertIs<Either.Left<CommonDomainError>>(result).value.code)
-            }
+            val result =
+                either<DomainError, Unit> {
+                    context(ctx) { disciplines.update(Discipline(DisciplineId.new(), "Что угодно")) }
+                }
+            assertEquals("DISCIPLINE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
         }
 
     @Test
     fun `update возвращает ошибку при конфликте имени с существующей дисциплиной`() =
         runTest {
             val id = DisciplineId.new()
-            context(ctx) {
-                disciplines.create(Discipline(id, "Бег"))
-                disciplines.create(Discipline(DisciplineId.new(), "Прыжки"))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(id, "Бег"))
+                    disciplines.create(Discipline(DisciplineId.new(), "Прыжки"))
+                }
+            }.getOrElse { fail("Setup failed: $it") }
 
-                val result = disciplines.update(Discipline(id, "Прыжки"))
-                assertEquals(
-                    "DISCIPLINE_NAME_ALREADY_EXISTS",
-                    assertIs<Either.Left<CommonDomainError>>(result).value.code,
-                )
-            }
+            val result =
+                either<DomainError, Unit> {
+                    context(ctx) { disciplines.update(Discipline(id, "Прыжки")) }
+                }
+            assertEquals("DISCIPLINE_NAME_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
         }
 
     @Test
     fun `update не затрагивает дисциплины другой организации`() =
         runTest {
             val id = DisciplineId.new()
-            context(ctx) { disciplines.create(Discipline(id, "Гимнастика")) }
+            either<DomainError, Unit> {
+                context(ctx) { disciplines.create(Discipline(id, "Гимнастика")) }
+            }.getOrElse { fail("Setup failed: $it") }
 
-            context(otherCtx) {
-                val result = disciplines.update(Discipline(id, "Другое"))
-                assertIs<Either.Left<CommonDomainError>>(result)
-            }
+            val updateResult =
+                either<DomainError, Unit> {
+                    context(otherCtx) { disciplines.update(Discipline(id, "Другое")) }
+                }
+            assertIs<Either.Left<DomainError>>(updateResult)
 
-            context(ctx) {
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
+            either<DomainError, Unit> {
+                val list = context(ctx) { disciplines.list() }
                 assertEquals("Гимнастика", list.first().name)
-            }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `update пишет событие в audit log`() =
         runTest {
             val id = DisciplineId.new()
-            context(ctx) {
-                disciplines.create(Discipline(id, "Старое"))
-                audit.channel.tryReceive() // сбрасываем событие create
-                disciplines.update(Discipline(id, "Новое"))
-            }
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(id, "Старое"))
+                    audit.channel.tryReceive() // сбрасываем событие create
+                    disciplines.update(Discipline(id, "Новое"))
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
 
             val event = audit.channel.tryReceive().getOrNull()!!
             assertEquals(AuditActionType.UPDATE, event.actionType)
@@ -208,25 +229,29 @@ class DbDisciplinesTest {
     fun `delete удаляет дисциплину`() =
         runTest {
             val id = DisciplineId.new()
-            context(ctx) {
-                disciplines.create(Discipline(id, "Фехтование"))
-                assertIs<Either.Right<Unit>>(disciplines.delete(listOf(id)))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(id, "Фехтование"))
+                    disciplines.delete(listOf(id))
 
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
-                assertTrue(list.isEmpty())
-            }
+                    val list = disciplines.list()
+                    assertTrue(list.isEmpty())
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `delete с пустым списком не меняет данные`() =
         runTest {
-            context(ctx) {
-                disciplines.create(Discipline(DisciplineId.new(), "Самбо"))
-                assertIs<Either.Right<Unit>>(disciplines.delete(emptyList()))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(DisciplineId.new(), "Самбо"))
+                    disciplines.delete(emptyList())
 
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
-                assertEquals(1, list.size)
-            }
+                    val list = disciplines.list()
+                    assertEquals(1, list.size)
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
@@ -235,32 +260,31 @@ class DbDisciplinesTest {
             val id1 = DisciplineId.new()
             val id2 = DisciplineId.new()
             val id3 = DisciplineId.new()
-            context(ctx) {
-                disciplines.create(Discipline(id1, "Дзюдо"))
-                disciplines.create(Discipline(id2, "Карате"))
-                disciplines.create(Discipline(id3, "Айкидо"))
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(id1, "Дзюдо"))
+                    disciplines.create(Discipline(id2, "Карате"))
+                    disciplines.create(Discipline(id3, "Айкидо"))
 
-                disciplines.delete(listOf(id1, id2))
+                    disciplines.delete(listOf(id1, id2))
 
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
-                assertEquals(listOf("Айкидо"), list.map { it.name })
-            }
+                    val list = disciplines.list()
+                    assertEquals(listOf("Айкидо"), list.map { it.name })
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
     fun `delete игнорирует id из другой организации`() =
         runTest {
             val id = DisciplineId.new()
-            context(ctx) { disciplines.create(Discipline(id, "Лыжи")) }
+            either<DomainError, Unit> {
+                context(ctx) { disciplines.create(Discipline(id, "Лыжи")) }
+                context(otherCtx) { disciplines.delete(listOf(id)) }
 
-            context(otherCtx) {
-                assertIs<Either.Right<Unit>>(disciplines.delete(listOf(id)))
-            }
-
-            context(ctx) {
-                val list = assertIs<Either.Right<List<Discipline>>>(disciplines.list()).value
+                val list = context(ctx) { disciplines.list() }
                 assertEquals(1, list.size)
-            }
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
@@ -268,15 +292,17 @@ class DbDisciplinesTest {
         runTest {
             val id1 = DisciplineId.new()
             val id2 = DisciplineId.new()
-            context(ctx) {
-                disciplines.create(Discipline(id1, "Борьба"))
-                disciplines.create(Discipline(id2, "Тхэквондо"))
-                // сбрасываем два события create
-                audit.channel.tryReceive()
-                audit.channel.tryReceive()
+            either<DomainError, Unit> {
+                context(ctx) {
+                    disciplines.create(Discipline(id1, "Борьба"))
+                    disciplines.create(Discipline(id2, "Тхэквондо"))
+                    // сбрасываем два события create
+                    audit.channel.tryReceive()
+                    audit.channel.tryReceive()
 
-                disciplines.delete(listOf(id1, id2))
-            }
+                    disciplines.delete(listOf(id1, id2))
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
 
             val events =
                 buildList {

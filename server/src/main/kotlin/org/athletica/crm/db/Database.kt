@@ -25,6 +25,10 @@ interface ConnectionScope {
     suspend fun <R> use(block: suspend (Connection) -> R): R
 }
 
+interface Transaction {
+    fun sql(sql: String): QueryBuilder
+}
+
 /**
  * Обёртка над R2DBC [ConnectionPool] с fluent DSL.
  *
@@ -76,11 +80,13 @@ class Database(private val pool: ConnectionPool) : ConnectionScope {
  * Контекст транзакции: предоставляет DSL для выполнения запросов
  * в рамках [connection] с активной транзакцией.
  */
-class TransactionScope(private val connection: Connection) : ConnectionScope {
+class TransactionScope(private val connection: Connection) :
+    ConnectionScope,
+    Transaction {
     override suspend fun <R> use(block: suspend (Connection) -> R): R = block(connection)
 
     /** Начинает построение запроса с заданным SQL. */
-    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
+    override fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
 }
 
 /**
@@ -110,6 +116,18 @@ class QueryBuilder(
     /** Привязывает именованный [LocalDate] параметр. */
     fun bind(name: String, value: LocalDate?) = bind(name, value?.toJavaLocalDate())
 
+    /** Привязывает именованный [Instant] параметр, конвертируя в [java.time.OffsetDateTime] для R2DBC. */
+    fun bind(name: String, value: Instant?) =
+        bind(
+            name,
+            value?.let {
+                java.time.OffsetDateTime.ofInstant(
+                    java.time.Instant.ofEpochMilli(it.toEpochMilliseconds()),
+                    java.time.ZoneOffset.UTC,
+                )
+            },
+        )
+
     /** Привязывает список [EntityId] как массив UUID. */
     @JvmName("bindEntityIds")
     fun bind(name: String, value: List<EntityId>) = bind(name, value.map { it.value.toJavaUuid() }.toTypedArray())
@@ -130,8 +148,7 @@ class QueryBuilder(
      *
      * [mapper] — функция преобразования строки результата в доменный объект.
      */
-    suspend fun <T : Any> firstOrNull(mapper: (Row) -> T): T? =
-        execute { row, _ -> mapper(row) }.firstOrNull()
+    suspend fun <T : Any> firstOrNull(mapper: (Row) -> T): T? = execute { row, _ -> mapper(row) }.firstOrNull()
 
     /**
      * Выполняет запрос и возвращает список результатов.
@@ -150,9 +167,10 @@ class QueryBuilder(
     /**
      * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
      */
-    suspend fun execute(): Long = scope.use { connection ->
-        connection.executeStatement(sql, bindings)
-    }
+    suspend fun execute(): Long =
+        scope.use { connection ->
+            connection.executeStatement(sql, bindings)
+        }
 
     private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
         scope.use { connection ->
@@ -253,8 +271,7 @@ fun Row.asLocalDate(column: String) = asLocalDateOrNull(column)!!
 
 fun Row.asLocalDateOrNull(pos: Int): LocalDate? = get(pos, java.time.LocalDate::class.java)?.toKotlinLocalDate()
 
-fun Row.asLocalDateOrNull(column: String): LocalDate? =
-    get(column, java.time.LocalDate::class.java)?.toKotlinLocalDate()
+fun Row.asLocalDateOrNull(column: String): LocalDate? = get(column, java.time.LocalDate::class.java)?.toKotlinLocalDate()
 
 fun Row.asBooleanOrNull(pos: Int): Boolean? = get(pos, Boolean::class.java)
 

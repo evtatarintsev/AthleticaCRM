@@ -8,7 +8,6 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
-import org.athletica.crm.db.asBoolean
 import org.athletica.crm.db.asLong
 import org.athletica.crm.db.asString
 import org.athletica.crm.db.asStringOrNull

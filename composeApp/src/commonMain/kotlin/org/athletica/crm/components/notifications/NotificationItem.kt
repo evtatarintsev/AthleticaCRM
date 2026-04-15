@@ -2,13 +2,14 @@ package org.athletica.crm.components.notifications
 
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
+import org.athletica.crm.core.ClientId
 
 /**
  * Ссылка внутри уведомления — куда перейти при нажатии на кнопку «Открыть».
  */
 sealed interface NotificationLink {
     /** Переход в карточку клиента. */
-    data class ToClient(val clientId: Uuid, val clientName: String) : NotificationLink
+    data class ToClient(val clientId: ClientId, val clientName: String) : NotificationLink
 
     /** Переход в раздел «Расписание». */
     data object ToSchedule : NotificationLink

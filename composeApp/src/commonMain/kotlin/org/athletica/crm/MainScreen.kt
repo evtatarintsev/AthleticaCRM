@@ -101,6 +101,7 @@ import org.athletica.crm.generated.resources.nav_groups
 import org.athletica.crm.generated.resources.nav_home
 import org.athletica.crm.generated.resources.nav_schedule
 import org.athletica.crm.generated.resources.nav_settings
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.seconds
@@ -157,7 +158,7 @@ fun MainScreen(
 ) {
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
-    var selectedClientId by remember { mutableStateOf<Uuid?>(null) }
+    var selectedClientId by remember { mutableStateOf<ClientId?>(null) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -730,7 +731,7 @@ private fun MainTopAppBar(
 private fun ContentArea(
     api: ApiClient,
     selectedItem: NavItem,
-    onClientClick: (Uuid) -> Unit = {},
+    onClientClick: (ClientId) -> Unit = {},
     onNavigateToCreateClient: () -> Unit = {},
     clientsRefreshKey: Int = 0,
     onNavigateToCreateGroup: () -> Unit = {},

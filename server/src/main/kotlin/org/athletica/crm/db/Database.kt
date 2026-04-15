@@ -37,9 +37,9 @@ interface ConnectionScope {
  *
  * Принимает [pool] — пул соединений с базой данных.
  */
-class Database(private val pool: ConnectionPool) {
+class Database(private val pool: ConnectionPool) : ConnectionScope {
     /** Начинает построение запроса с заданным SQL. */
-    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, poolScope())
+    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
 
     /**
      * Выполняет [block] в рамках одной транзакции.
@@ -62,31 +62,25 @@ class Database(private val pool: ConnectionPool) {
         }
     }
 
-    private fun poolScope() =
-        object : ConnectionScope {
-            override suspend fun <R> use(block: suspend (Connection) -> R): R {
-                val connection = pool.create().awaitSingle()
-                return try {
-                    block(connection)
-                } finally {
-                    connection.close().awaitFirstOrNull()
-                }
-            }
+    override suspend fun <R> use(block: suspend (Connection) -> R): R {
+        val connection = pool.create().awaitSingle()
+        return try {
+            block(connection)
+        } finally {
+            connection.close().awaitFirstOrNull()
         }
+    }
 }
 
 /**
  * Контекст транзакции: предоставляет DSL для выполнения запросов
  * в рамках [connection] с активной транзакцией.
  */
-class TransactionScope(private val connection: Connection) {
-    private val scope =
-        object : ConnectionScope {
-            override suspend fun <R> use(block: suspend (Connection) -> R): R = block(connection)
-        }
+class TransactionScope(private val connection: Connection) : ConnectionScope {
+    override suspend fun <R> use(block: suspend (Connection) -> R): R = block(connection)
 
     /** Начинает построение запроса с заданным SQL. */
-    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, scope)
+    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
 }
 
 /**
@@ -259,7 +253,8 @@ fun Row.asLocalDate(column: String) = asLocalDateOrNull(column)!!
 
 fun Row.asLocalDateOrNull(pos: Int): LocalDate? = get(pos, java.time.LocalDate::class.java)?.toKotlinLocalDate()
 
-fun Row.asLocalDateOrNull(column: String): LocalDate? = get(column, java.time.LocalDate::class.java)?.toKotlinLocalDate()
+fun Row.asLocalDateOrNull(column: String): LocalDate? =
+    get(column, java.time.LocalDate::class.java)?.toKotlinLocalDate()
 
 fun Row.asBooleanOrNull(pos: Int): Boolean? = get(pos, Boolean::class.java)
 

@@ -80,6 +80,7 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
@@ -117,7 +118,6 @@ import org.athletica.crm.generated.resources.tab_history
 import org.athletica.crm.generated.resources.tab_parents
 import org.athletica.crm.generated.resources.tab_payments
 import org.athletica.crm.generated.resources.visits_remaining
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.openUrl
 import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize

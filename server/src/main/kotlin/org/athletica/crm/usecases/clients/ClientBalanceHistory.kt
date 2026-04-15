@@ -5,6 +5,7 @@ import arrow.core.raise.either
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.PerformedBy
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -14,7 +15,6 @@ import org.athletica.crm.db.asString
 import org.athletica.crm.db.asStringOrNull
 import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.i18n.Messages
 
 context(db: Database, ctx: RequestContext)

@@ -185,7 +185,7 @@ class AdjustClientBalanceTest {
             val userId = insertUser(orgId)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
-                val result = adjustClientBalance(AdjustBalanceRequest(Uuid.generateV7(), 100.0, "Комментарий"))
+                val result = adjustClientBalance(AdjustBalanceRequest(ClientId.new(), 100.0, "Комментарий"))
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("CLIENT_NOT_FOUND", error.code)
             }

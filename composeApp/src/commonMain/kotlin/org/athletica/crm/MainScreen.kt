@@ -84,6 +84,7 @@ import org.athletica.crm.components.settings.DisciplinesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client
 import org.athletica.crm.generated.resources.action_collapse_menu
@@ -101,7 +102,6 @@ import org.athletica.crm.generated.resources.nav_groups
 import org.athletica.crm.generated.resources.nav_home
 import org.athletica.crm.generated.resources.nav_schedule
 import org.athletica.crm.generated.resources.nav_settings
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.seconds

@@ -1,8 +1,8 @@
 package org.athletica.crm.components.notifications
 
+import org.athletica.crm.core.ClientId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
-import org.athletica.crm.core.ClientId
 
 /**
  * Ссылка внутри уведомления — куда перейти при нажатии на кнопку «Открыть».

@@ -170,7 +170,7 @@ class AddClientsToGroupTest {
             context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
                 val result =
                     addClientsToGroup(
-                        AddClientsToGroupRequest(listOf(Uuid.generateV7()), groupId),
+                        AddClientsToGroupRequest(listOf(ClientId.new()), groupId),
                     )
                 val error = assertIs<Either.Left<CommonDomainError>>(result).value
                 assertEquals("CLIENT_NOT_FOUND", error.code)

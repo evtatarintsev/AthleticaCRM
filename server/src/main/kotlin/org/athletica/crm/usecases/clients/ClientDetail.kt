@@ -5,9 +5,9 @@ import arrow.core.raise.either
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toClientId
 import org.athletica.crm.core.toUploadId

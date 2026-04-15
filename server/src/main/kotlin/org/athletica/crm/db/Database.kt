@@ -12,12 +12,18 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.EntityId
-import org.athletica.crm.core.OrgId
-import org.athletica.crm.core.UserId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
+
+/**
+ * Абстракция над «откуда брать соединение».
+ * [Database] реализует её через пул, [TransactionScope] — через уже открытое соединение.
+ */
+interface ConnectionScope {
+    suspend fun <R> use(block: suspend (Connection) -> R): R
+}
 
 /**
  * Обёртка над R2DBC [ConnectionPool] с fluent DSL.
@@ -31,11 +37,9 @@ import kotlin.uuid.toKotlinUuid
  *
  * Принимает [pool] — пул соединений с базой данных.
  */
-class Database(
-    private val pool: ConnectionPool,
-) {
+class Database(private val pool: ConnectionPool) {
     /** Начинает построение запроса с заданным SQL. */
-    fun sql(sql: String): QueryBuilder = QueryBuilder(pool, sql)
+    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, poolScope())
 
     /**
      * Выполняет [block] в рамках одной транзакции.
@@ -57,26 +61,43 @@ class Database(
             connection.close().awaitFirstOrNull()
         }
     }
+
+    private fun poolScope() =
+        object : ConnectionScope {
+            override suspend fun <R> use(block: suspend (Connection) -> R): R {
+                val connection = pool.create().awaitSingle()
+                return try {
+                    block(connection)
+                } finally {
+                    connection.close().awaitFirstOrNull()
+                }
+            }
+        }
 }
 
 /**
  * Контекст транзакции: предоставляет DSL для выполнения запросов
  * в рамках [connection] с активной транзакцией.
  */
-class TransactionScope(
-    private val connection: Connection,
-) {
+class TransactionScope(private val connection: Connection) {
+    private val scope =
+        object : ConnectionScope {
+            override suspend fun <R> use(block: suspend (Connection) -> R): R = block(connection)
+        }
+
     /** Начинает построение запроса с заданным SQL. */
-    fun sql(sql: String): ConnectionQueryBuilder = ConnectionQueryBuilder(connection, sql)
+    fun sql(sql: String): QueryBuilder = QueryBuilder(sql, scope)
 }
 
 /**
  * Построитель SQL-запроса с поддержкой именованных параметров (`:name`).
  * При выполнении `:name` заменяются на `$1`, `$2`, ... в порядке появления в SQL.
+ * Используется как из [Database], так и из [TransactionScope] — источник соединения
+ * скрыт за [ConnectionScope].
  */
 class QueryBuilder(
-    private val pool: ConnectionPool,
     private val sql: String,
+    private val scope: ConnectionScope,
 ) {
     private val bindings = mutableListOf<Pair<String, Any?>>()
 
@@ -89,13 +110,17 @@ class QueryBuilder(
     /** Привязывает именованный [Uuid] параметр, конвертируя в [java.util.UUID] для R2DBC. */
     fun bind(name: String, value: Uuid?) = bind(name, value?.toJavaUuid())
 
+    /** Привязывает именованный [EntityId] параметр (любой подтип: ClientId, EmployeeId, …). */
     fun bind(name: String, value: EntityId?) = bind(name, value?.value)
 
+    /** Привязывает именованный [LocalDate] параметр. */
     fun bind(name: String, value: LocalDate?) = bind(name, value?.toJavaLocalDate())
 
+    /** Привязывает список [EntityId] как массив UUID. */
     @JvmName("bindEntityIds")
     fun bind(name: String, value: List<EntityId>) = bind(name, value.map { it.value.toJavaUuid() }.toTypedArray())
 
+    /** Привязывает список [Uuid] как массив UUID. */
     @JvmName("bindUuids")
     fun bind(name: String, value: List<Uuid>) = bind(name, value.map { it.toJavaUuid() }.toTypedArray())
 
@@ -112,9 +137,7 @@ class QueryBuilder(
      * [mapper] — функция преобразования строки результата в доменный объект.
      */
     suspend fun <T : Any> firstOrNull(mapper: (Row) -> T): T? =
-        execute { row, _ ->
-            mapper(row)
-        }.firstOrNull()
+        execute { row, _ -> mapper(row) }.firstOrNull()
 
     /**
      * Выполняет запрос и возвращает список результатов.
@@ -133,80 +156,14 @@ class QueryBuilder(
     /**
      * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
      */
-    suspend fun execute(): Long {
-        val connection = pool.create().awaitSingle()
-        return try {
-            connection.executeStatement(sql, bindings)
-        } finally {
-            connection.close().awaitFirstOrNull()
-        }
+    suspend fun execute(): Long = scope.use { connection ->
+        connection.executeStatement(sql, bindings)
     }
 
-    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> {
-        val connection = pool.create().awaitSingle()
-        return try {
+    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
+        scope.use { connection ->
             connection.executeStatement(sql, bindings, mapper)
-        } finally {
-            connection.close().awaitFirstOrNull()
         }
-    }
-}
-
-/**
- * Построитель SQL-запроса, выполняющий запросы в рамках существующего соединения.
- * Используется внутри [TransactionScope].
- * Поддерживает именованные параметры (`:name`).
- */
-class ConnectionQueryBuilder(
-    private val connection: Connection,
-    private val sql: String,
-) {
-    private val bindings = mutableListOf<Pair<String, Any?>>()
-
-    /** Привязывает именованный параметр к значению. */
-    fun bind(name: String, value: Any?): ConnectionQueryBuilder {
-        bindings.add(name to value)
-        return this
-    }
-
-    /** Привязывает именованный Uuid к значению. */
-    fun bind(name: String, value: Uuid): ConnectionQueryBuilder {
-        bindings.add(name to value.toJavaUuid())
-        return this
-    }
-
-    /** Привязывает именованный [UserId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
-    fun bind(name: String, value: UserId): ConnectionQueryBuilder {
-        bindings.add(name to value.value.toJavaUuid())
-        return this
-    }
-
-    /** Привязывает именованный [OrgId] параметр, конвертируя в [java.util.UUID] для R2DBC. */
-    fun bind(name: String, value: OrgId): ConnectionQueryBuilder {
-        bindings.add(name to value.value.toJavaUuid())
-        return this
-    }
-
-    /**
-     * Выполняет запрос и возвращает первый результат или `null`.
-     *
-     * [mapper] — функция преобразования строки результата в доменный объект.
-     */
-    suspend fun <T : Any> firstOrNull(mapper: (Row, RowMetadata) -> T): T? = execute(mapper).firstOrNull()
-
-    /**
-     * Выполняет запрос и возвращает список результатов.
-     *
-     * [mapper] — функция преобразования строки результата в доменный объект.
-     */
-    suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
-
-    /**
-     * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
-     */
-    suspend fun execute(): Long = connection.executeStatement(sql, bindings)
-
-    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> = connection.executeStatement(sql, bindings, mapper)
 }
 
 private suspend fun Connection.executeStatement(

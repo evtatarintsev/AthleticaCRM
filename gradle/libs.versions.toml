@@ -71,6 +71,7 @@ ktor-server-contentNegotiation = { module = "io.ktor:ktor-server-content-negotia
 ktor-server-netty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor-server-cors = { module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor" }
 ktor-server-statusPages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
+ktor-server-callLogging = { module = "io.ktor:ktor-server-call-logging-jvm", version.ref = "ktor" }
 ktor-server-testHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers" }

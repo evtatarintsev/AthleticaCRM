@@ -15,6 +15,7 @@ import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
@@ -121,6 +122,8 @@ fun Application.configureServer(
     jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",
 ) {
+    install(CallLogging)
+
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             logger.error("Unhandled exception", cause)

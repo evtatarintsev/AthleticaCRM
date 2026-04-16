@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.ktor.serializationKotlinxJson)
     implementation(libs.ktor.server.cors)
     implementation(libs.ktor.server.statusPages)
+    implementation(libs.ktor.server.callLogging)
     implementation(libs.ktor.server.netty)
     implementation(libs.liquibase.core)
     implementation(libs.postgresql.jdbc)

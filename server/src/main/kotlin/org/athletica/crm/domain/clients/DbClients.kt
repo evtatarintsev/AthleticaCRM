@@ -2,9 +2,12 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toClientId
@@ -87,5 +90,48 @@ class DbClients : Clients {
                 }
 
         return client.copy(groups = groups, docs = docs)
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: arrow.core.raise.context.Raise<DomainError>)
+    override suspend fun new(
+        id: ClientId,
+        name: String,
+        avatarId: UploadId?,
+        birthday: LocalDate?,
+        gender: Gender,
+    ): Client {
+        val inserted =
+            try {
+                tr
+                    .sql(
+                        """
+                        INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender)
+                        VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender)
+                        """.trimIndent(),
+                    )
+                    .bind("id", id)
+                    .bind("orgId", ctx.orgId)
+                    .bind("name", name)
+                    .bind("avatarId", avatarId)
+                    .bind("birthday", birthday)
+                    .bind("gender", gender.name)
+                    .execute()
+            } catch (e: R2dbcDataIntegrityViolationException) {
+                raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
+            }
+
+        if (inserted == 0L) raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
+
+        return DbClient(
+            id = id,
+            name = name,
+            avatarId = avatarId,
+            birthday = birthday,
+            gender = gender,
+            groups = emptyList(),
+            balance = 0.0,
+            docs = emptyList(),
+            orgId = ctx.orgId,
+        )
     }
 }

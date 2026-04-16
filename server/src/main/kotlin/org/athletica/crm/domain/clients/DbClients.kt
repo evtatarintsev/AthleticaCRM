@@ -22,7 +22,7 @@ import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
 
 class DbClients : Clients {
-    context(ctx: RequestContext, tr: Transaction, raise: arrow.core.raise.context.Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: ClientId): Client {
         val client =
             tr

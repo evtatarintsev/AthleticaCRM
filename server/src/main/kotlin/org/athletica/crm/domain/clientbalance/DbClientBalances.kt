@@ -1,14 +1,15 @@
-package org.athletica.crm.usecases.clients
+package org.athletica.crm.domain.clientbalance
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
+import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.db.Transaction
 import org.athletica.crm.db.asDouble
 import org.athletica.crm.db.asInstant
 import org.athletica.crm.db.asString
@@ -17,11 +18,10 @@ import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
 
-context(db: Database, ctx: RequestContext)
-suspend fun clientBalanceHistory(clientId: ClientId): Either<CommonDomainError, ClientBalanceHistoryResponse> =
-    either {
-        // Проверяем принадлежность клиента организации
-        db
+class DbClientBalances: ClientBalances {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun forClient(clientId: ClientId): ClientBalance {
+        tr
             .sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId")
             .bind("id", clientId)
             .bind("orgId", ctx.orgId)
@@ -29,7 +29,7 @@ suspend fun clientBalanceHistory(clientId: ClientId): Either<CommonDomainError, 
             ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
 
         val entries =
-            db
+            tr
                 .sql(
                     """
                     SELECT j.id,
@@ -51,7 +51,7 @@ suspend fun clientBalanceHistory(clientId: ClientId): Either<CommonDomainError, 
                 .list { row ->
                     val performedById = row.asUuidOrNull("performed_by_id")
                     val performedByName = row.asStringOrNull("performed_by_name")
-                    BalanceJournalEntry(
+                    ClientBalanceEntry(
                         id = row.asUuid("id"),
                         amount = row.asDouble("amount"),
                         balanceAfter = row.asDouble("balance_after"),
@@ -67,5 +67,7 @@ suspend fun clientBalanceHistory(clientId: ClientId): Either<CommonDomainError, 
                     )
                 }
 
-        ClientBalanceHistoryResponse(entries)
+        return DbClientBalance(clientId, entries, totalAmount = entries.sumOf { it.amount })
     }
+
+}

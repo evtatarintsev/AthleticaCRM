@@ -8,6 +8,8 @@ import io.ktor.server.routing.Route
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
+import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
+import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
@@ -22,13 +24,14 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toClientId
 import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.clientbalance.ClientBalance
+import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
+import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.usecases.clients.addClientsToGroup
-import org.athletica.crm.usecases.clients.adjustClientBalance
-import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
@@ -38,7 +41,7 @@ import kotlin.uuid.Uuid
  * Требует контекстных параметров [Database] и [AuditLog].
  */
 context(db: Database, audit: AuditLog)
-fun Route.clientsRoutes(clients: Clients) {
+fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
     getWithContext("/clients/list") {
         call.eitherToResponse {
             val clients = clientList(ClientListRequest()).bind()
@@ -107,9 +110,11 @@ fun Route.clientsRoutes(clients: Clients) {
     postWithContext("/clients/balance/adjust") {
         call.eitherToResponse {
             val request = call.receive<AdjustBalanceRequest>()
-            adjustClientBalance(request).bind()
             db.transaction {
-                clients.byId(request.clientId)
+                balances
+                    .forClient(request.clientId)
+                    .adjust(request.amount, request.note)
+                clients.byId(request.clientId).detailResponse()
             }
         }
     }
@@ -140,14 +145,10 @@ fun Route.clientsRoutes(clients: Clients) {
 
     getWithContext("/clients/balance/history") {
         call.eitherToResponse {
-            val idParam =
-                call.request.queryParameters["id"]
-                    ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
-            val id =
-                runCatching { Uuid.parse(idParam).toClientId() }.getOrElse {
-                    raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
-                }
-            clientBalanceHistory(id).bind()
+            val id = call.request.queryParameters.asUuid("id").toClientId()
+            db.transaction {
+                balances.forClient(id).historyResponse()
+            }
         }
     }
 }
@@ -162,6 +163,22 @@ fun Client.detailResponse() =
         groups = groups.map { ClientGroup(it.id, it.name) },
         balance = balance,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
+    )
+
+fun ClientBalance.historyResponse() =
+    ClientBalanceHistoryResponse(
+        entries = history.map { it.toJournalEntry() },
+    )
+
+private fun ClientBalanceEntry.toJournalEntry() =
+    BalanceJournalEntry(
+        id = id,
+        amount = amount,
+        balanceAfter = balanceAfter,
+        operationType = operationType,
+        note = note,
+        performedBy = performedBy,
+        createdAt = createdAt,
     )
 
 context(ctx: RequestContext, raise: Raise<CommonDomainError>)

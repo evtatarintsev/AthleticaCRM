@@ -46,6 +46,14 @@ interface Client {
 
     context(ctx: RequestContext, raise: Raise<DomainError>)
     fun deleteDoc(docId: Uuid): Client
+
+    context(ctx: RequestContext, raise: Raise<DomainError>)
+    fun withNew(
+        newName: String,
+        newAvatarId: UploadId?,
+        newBirthday: LocalDate?,
+        newGender: Gender,
+    ): Client
 }
 
 @Serializable

@@ -65,4 +65,12 @@ internal data class DbClient(
 
     context(ctx: RequestContext, raise: Raise<DomainError>)
     override fun deleteDoc(docId: Uuid) = copy(docs = docs.filterNot { it.id == docId })
+
+    context(ctx: RequestContext, raise: Raise<DomainError>)
+    override fun withNew(
+        newName: String,
+        newAvatarId: UploadId?,
+        newBirthday: LocalDate?,
+        newGender: Gender,
+    ) = copy(name = newName, avatarId = newAvatarId, birthday = newBirthday, gender = newGender)
 }

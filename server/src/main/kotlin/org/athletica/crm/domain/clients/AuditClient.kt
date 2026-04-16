@@ -2,8 +2,11 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import jdk.internal.misc.Signal.raise
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
+import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.db.Transaction
@@ -59,5 +62,30 @@ data class AuditClient(
                 docToDelete.id.toString(),
             )
         return AuditClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
+    }
+
+    context(ctx: RequestContext, raise: Raise<DomainError>)
+    override fun withNew(
+        newName: String,
+        newAvatarId: UploadId?,
+        newBirthday: LocalDate?,
+        newGender: Gender,
+    ): Client {
+        val newValues =
+            mapOf(
+                "name" to newName,
+                "avatarId" to newAvatarId,
+                "birthday" to newBirthday,
+                "gender" to newGender,
+            )
+        val auditEvent =
+            AuditEvent(
+                ctx,
+                AuditActionType.UPDATE,
+                "client",
+                id.value,
+                Json.encodeToString(newValues),
+            )
+        return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender), audit, auditEvents + auditEvent)
     }
 }

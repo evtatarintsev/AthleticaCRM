@@ -31,7 +31,6 @@ import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
-import org.athletica.crm.usecases.clients.editClient
 import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
 
@@ -68,7 +67,18 @@ fun Route.clientsRoutes(clients: Clients) {
     postWithContext("/clients/edit") {
         call.eitherToResponse {
             val request = call.receive<EditClientRequest>()
-            editClient(request).bind()
+            db.transaction {
+                clients
+                    .byId(request.id)
+                    .withNew(
+                        request.name,
+                        request.avatarId,
+                        request.birthday,
+                        request.gender,
+                    )
+                    .apply { save() }
+                    .detailResponse()
+            }
         }
     }
 

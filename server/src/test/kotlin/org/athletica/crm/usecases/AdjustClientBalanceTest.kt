@@ -5,13 +5,13 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
-import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.db.asDouble
 import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.junit.Before
 import kotlin.test.Test
@@ -82,6 +82,12 @@ class AdjustClientBalanceTest {
             .execute()
     }
 
+    private suspend fun getBalance(clientId: ClientId): Double =
+        TestPostgres.db
+            .sql("SELECT COALESCE(SUM(amount), 0) FROM client_balance_journal WHERE client_id = :id")
+            .bind("id", clientId)
+            .firstOrNull { row -> row.asDouble(0) } ?: 0.0
+
     private fun ctx(userId: Uuid, orgId: Uuid) =
         RequestContext(
             lang = Lang.EN,
@@ -99,10 +105,10 @@ class AdjustClientBalanceTest {
             val clientId = insertClient(orgId)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
-                val result = adjustClientBalance(AdjustBalanceRequest(clientId, 500.0, "Бонус"))
-                val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
-                assertEquals(500.0, client.balance)
+                adjustClientBalance(AdjustBalanceRequest(clientId, 500.0, "Бонус"))
             }
+
+            assertEquals(500.0, getBalance(clientId))
         }
 
     @Test
@@ -114,10 +120,10 @@ class AdjustClientBalanceTest {
             insertBalanceEntry(orgId, clientId, amount = 1000.0, balanceAfter = 1000.0)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
-                val result = adjustClientBalance(AdjustBalanceRequest(clientId, -300.0, "Корректировка"))
-                val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
-                assertEquals(700.0, client.balance)
+                adjustClientBalance(AdjustBalanceRequest(clientId, -300.0, "Корректировка"))
             }
+
+            assertEquals(700.0, getBalance(clientId))
         }
 
     @Test
@@ -128,12 +134,12 @@ class AdjustClientBalanceTest {
             val clientId = insertClient(orgId)
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
-                assertIs<Either.Right<ClientDetailResponse>>(adjustClientBalance(AdjustBalanceRequest(clientId, 200.0, "Первое пополнение")))
-                assertIs<Either.Right<ClientDetailResponse>>(adjustClientBalance(AdjustBalanceRequest(clientId, 300.0, "Второе пополнение")))
-                val result = adjustClientBalance(AdjustBalanceRequest(clientId, -100.0, "Списание"))
-                val client = assertIs<Either.Right<ClientDetailResponse>>(result).value
-                assertEquals(400.0, client.balance)
+                adjustClientBalance(AdjustBalanceRequest(clientId, 200.0, "Первое пополнение"))
+                adjustClientBalance(AdjustBalanceRequest(clientId, 300.0, "Второе пополнение"))
+                adjustClientBalance(AdjustBalanceRequest(clientId, -100.0, "Списание"))
             }
+
+            assertEquals(400.0, getBalance(clientId))
         }
 
     @Test
@@ -145,8 +151,7 @@ class AdjustClientBalanceTest {
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = adjustClientBalance(AdjustBalanceRequest(clientId, 0.0, "Комментарий"))
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("BALANCE_AMOUNT_ZERO", error.code)
+                assertEquals("BALANCE_AMOUNT_ZERO", assertIs<Either.Left<CommonDomainError>>(result).value.code)
             }
         }
 
@@ -159,8 +164,7 @@ class AdjustClientBalanceTest {
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = adjustClientBalance(AdjustBalanceRequest(clientId, 100.0, ""))
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("BALANCE_NOTE_REQUIRED", error.code)
+                assertEquals("BALANCE_NOTE_REQUIRED", assertIs<Either.Left<CommonDomainError>>(result).value.code)
             }
         }
 
@@ -173,8 +177,7 @@ class AdjustClientBalanceTest {
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = adjustClientBalance(AdjustBalanceRequest(clientId, 100.0, "   "))
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("BALANCE_NOTE_REQUIRED", error.code)
+                assertEquals("BALANCE_NOTE_REQUIRED", assertIs<Either.Left<CommonDomainError>>(result).value.code)
             }
         }
 
@@ -186,8 +189,7 @@ class AdjustClientBalanceTest {
 
             context(TestPostgres.db, ctx(userId, orgId), TestAuditLog()) {
                 val result = adjustClientBalance(AdjustBalanceRequest(ClientId.new(), 100.0, "Комментарий"))
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("CLIENT_NOT_FOUND", error.code)
+                assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<CommonDomainError>>(result).value.code)
             }
         }
 
@@ -201,8 +203,8 @@ class AdjustClientBalanceTest {
 
             context(TestPostgres.db, ctx(userId2, orgId2), TestAuditLog()) {
                 val result = adjustClientBalance(AdjustBalanceRequest(clientId, 500.0, "Попытка корректировки"))
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("CLIENT_NOT_FOUND", error.code)
+                assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<CommonDomainError>>(result).value.code)
             }
+            assertEquals(0.0, getBalance(clientId))
         }
 }

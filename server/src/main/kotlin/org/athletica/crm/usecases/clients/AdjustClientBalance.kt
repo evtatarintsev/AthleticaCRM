@@ -3,7 +3,6 @@ package org.athletica.crm.usecases.clients
 import arrow.core.Either
 import arrow.core.raise.either
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
-import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.db.Database
@@ -19,7 +18,7 @@ import kotlin.uuid.Uuid
  * Возвращает обновлённые данные клиента.
  */
 context(db: Database, ctx: RequestContext, audit: AuditLog)
-suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDomainError, ClientDetailResponse> =
+suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDomainError, Unit> =
     either {
         if (request.amount == 0.0) {
             raise(CommonDomainError("BALANCE_AMOUNT_ZERO", Messages.BalanceAmountZero.localize()))
@@ -67,6 +66,4 @@ suspend fun adjustClientBalance(request: AdjustBalanceRequest): Either<CommonDom
             operationType = operationType,
             note = request.note,
         )
-
-        clientDetail(request.clientId).bind()
     }

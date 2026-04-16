@@ -30,7 +30,6 @@ import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientList
-import org.athletica.crm.usecases.clients.createClient
 import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
 
@@ -59,8 +58,17 @@ fun Route.clientsRoutes(clients: Clients) {
     postWithContext("/clients/create") {
         call.eitherToResponse {
             val request = call.receive<CreateClientRequest>()
-            val result = createClient(request).bind()
-            result
+            db.transaction {
+                clients
+                    .new(
+                        request.id,
+                        request.name,
+                        request.avatarId,
+                        request.birthday,
+                        request.gender,
+                    )
+                    .detailResponse()
+            }
         }
     }
 
@@ -100,6 +108,9 @@ fun Route.clientsRoutes(clients: Clients) {
         call.eitherToResponse {
             val request = call.receive<AdjustBalanceRequest>()
             adjustClientBalance(request).bind()
+            db.transaction {
+                clients.byId(request.clientId)
+            }
         }
     }
 

@@ -37,6 +37,7 @@ import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
@@ -61,7 +62,6 @@ import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.UploadId
-import kotlin.uuid.Uuid
 
 /**
  * Клиент для взаимодействия с API сервера.
@@ -242,11 +242,12 @@ class ApiClient(private val http: HttpClient) {
             }
         }
 
-    /** Удаляет документ [docId], прикреплённый к клиенту. */
-    suspend fun deleteClientDoc(docId: Uuid): Either<ApiClientError, Unit> =
+    /** Удаляет документ [docId], прикреплённый к клиенту [clientId]. */
+    suspend fun deleteClientDoc(request: DeleteClientDocRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/clients/docs/delete") {
-                url { parameters.append("id", docId.toString()) }
+                contentType(ContentType.Application.Json)
+                setBody(request)
             }
         }
 

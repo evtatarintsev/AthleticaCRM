@@ -43,6 +43,9 @@ interface Client {
 
     context(ctx: RequestContext)
     fun attachDoc(doc: ClientDoc): Client
+
+    context(ctx: RequestContext, raise: Raise<DomainError>)
+    fun deleteDoc(docId: Uuid): Client
 }
 
 @Serializable

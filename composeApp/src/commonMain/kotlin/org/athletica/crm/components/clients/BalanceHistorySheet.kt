@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
@@ -179,8 +180,8 @@ private fun BalanceEntryItem(entry: BalanceJournalEntry) {
 
 private fun Instant.formatDateTime(): String {
     val local = toLocalDateTime(TimeZone.currentSystemDefault())
-    val day = local.dayOfMonth.toString().padStart(2, '0')
-    val month = local.monthNumber.toString().padStart(2, '0')
+    val day = local.day.toString().padStart(2, '0')
+    val month = local.month.number.toString().padStart(2, '0')
     val year = local.year
     val hour = local.hour.toString().padStart(2, '0')
     val minute = local.minute.toString().padStart(2, '0')

@@ -9,6 +9,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.db.Transaction
+import kotlin.uuid.Uuid
 
 internal data class DbClient(
     override val id: ClientId,
@@ -60,5 +61,8 @@ internal data class DbClient(
     }
 
     context(ctx: RequestContext)
-    override fun attachDoc(doc: ClientDoc): Client = copy(docs = docs + doc)
+    override fun attachDoc(doc: ClientDoc) = copy(docs = docs + doc)
+
+    context(ctx: RequestContext, raise: Raise<DomainError>)
+    override fun deleteDoc(docId: Uuid) = copy(docs = docs.filterNot { it.id == docId })
 }

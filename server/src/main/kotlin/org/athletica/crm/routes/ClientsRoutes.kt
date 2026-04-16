@@ -9,10 +9,12 @@ import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.core.RequestContext
@@ -29,7 +31,6 @@ import org.athletica.crm.usecases.clients.adjustClientBalance
 import org.athletica.crm.usecases.clients.clientBalanceHistory
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.createClient
-import org.athletica.crm.usecases.clients.deleteClientDoc
 import org.athletica.crm.usecases.clients.editClient
 import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
@@ -106,14 +107,13 @@ fun Route.clientsRoutes(clients: Clients) {
 
     postWithContext("/clients/docs/delete") {
         call.eitherToResponse {
-            val idParam =
-                call.request.queryParameters["id"]
-                    ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
-            val id =
-                runCatching { Uuid.parse(idParam) }.getOrElse {
-                    raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
-                }
-            deleteClientDoc(id).bind()
+            val request = call.receive<DeleteClientDocRequest>()
+            db.transaction {
+                clients
+                    .byId(request.clientId)
+                    .deleteDoc(request.docId)
+                    .save()
+            }
         }
     }
 
@@ -140,6 +140,7 @@ fun Client.detailResponse() =
         gender = gender,
         groups = groups.map { ClientGroup(it.id, it.name) },
         balance = balance,
+        docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
     )
 
 context(ctx: RequestContext, raise: Raise<CommonDomainError>)

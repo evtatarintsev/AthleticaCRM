@@ -79,6 +79,7 @@ import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.generated.resources.Res
@@ -793,7 +794,7 @@ private fun DocumentsSection(
                         docToDelete = null
                         if (target != null) {
                             scope.launch {
-                                api.deleteClientDoc(target.id).onRight { onRefresh() }
+                                api.deleteClientDoc(DeleteClientDocRequest(clientId, target.id)).onRight { onRefresh() }
                             }
                         }
                     },
@@ -936,7 +937,7 @@ private fun LocalDate.formatRu(): String {
             Month.NOVEMBER -> "ноября"
             Month.DECEMBER -> "декабря"
         }
-    return "$dayOfMonth $month $year"
+    return "$day $month $year"
 }
 
 @Composable

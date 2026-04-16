@@ -44,6 +44,7 @@ suspend fun clientDetail(id: ClientId): Either<CommonDomainError, ClientDetailRe
                         gender = Gender.valueOf(row.asString("gender")),
                         groups = emptyList(),
                         balance = row.asDouble("balance"),
+                        docs = emptyList(),
                     )
                 }
                 ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
@@ -85,6 +86,5 @@ suspend fun clientDetail(id: ClientId): Either<CommonDomainError, ClientDetailRe
                         createdAt = row.asInstant("created_at"),
                     )
                 }
-
         client.copy(groups = groups, docs = docs)
     }

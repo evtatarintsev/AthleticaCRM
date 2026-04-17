@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.UserId
+import org.athletica.crm.db.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -17,6 +18,13 @@ interface Employee {
     val roles: List<EmployeeRole>
     val phoneNo: String?
     val email: String?
+
+    context(tr: Transaction)
+    suspend fun save()
+
+    fun withUserId(userId: UserId): Employee
+
+    fun activate(): Employee
 }
 
 data class EmployeeRole(

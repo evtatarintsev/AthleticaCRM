@@ -51,8 +51,10 @@ class DbEmployees : Employees {
             throw e
         }
         return DbEmployee(
-            id, userId = null,
-            name, avatarId, isOwner = false, isActive = false, Clock.System.now(), roles = emptyList(), phoneNo, email,
+            id = id, userId = null,
+            name = name, avatarId = avatarId, isOwner = false, isActive = false,
+            joinedAt = Clock.System.now(), roles = emptyList(), phoneNo = phoneNo, email = email,
+            orgId = ctx.orgId,
         )
     }
 
@@ -81,6 +83,7 @@ class DbEmployees : Employees {
                         roles = emptyList(),
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email"),
+                        orgId = ctx.orgId,
                     )
                 }
                 ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
@@ -114,6 +117,7 @@ class DbEmployees : Employees {
             roles = roles,
             phoneNo = employee.phoneNo,
             email = employee.email,
+            orgId = ctx.orgId,
         )
     }
 }

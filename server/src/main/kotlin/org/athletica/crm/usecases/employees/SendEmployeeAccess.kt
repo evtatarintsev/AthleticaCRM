@@ -14,7 +14,7 @@ import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.infra.mail.Email
-import org.athletica.infra.mail.EmailAddress
+import org.athletica.crm.core.EmailAddress
 import org.athletica.infra.mail.EmailHtmlBody
 import org.athletica.infra.mail.EmailTextBody
 import org.athletica.infra.mail.Mailbox

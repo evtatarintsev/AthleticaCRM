@@ -1,7 +1,6 @@
 package org.athletica.crm.domain.mail
 
 import org.athletica.infra.mail.Email
-import org.athletica.infra.mail.EmailAddress
 import org.athletica.infra.mail.EmailHtmlBody
 import org.athletica.infra.mail.EmailTextBody
 import org.athletica.infra.mail.Mailbox
@@ -30,5 +29,5 @@ private fun OrgEmail.toSmtpEmail() =
         subject = Subject(subject),
         text = EmailTextBody(textBody),
         html = EmailHtmlBody(htmlBody),
-        to = to.map { EmailAddress(it) },
+        to = to, // List<core.EmailAddress> — тот же тип что и в Email.to
     )

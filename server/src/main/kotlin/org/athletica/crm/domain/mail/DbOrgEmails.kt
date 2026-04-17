@@ -1,11 +1,14 @@
 package org.athletica.crm.domain.mail
 
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.OrgEmailId
+import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.toOrgEmailId
 import org.athletica.crm.db.Database
 import org.athletica.crm.db.Transaction
 import org.athletica.crm.db.asInstant
+import org.athletica.crm.db.asInt
 import org.athletica.crm.db.asString
 import org.athletica.crm.db.asStringOrNull
 import org.athletica.crm.db.asUuid
@@ -21,7 +24,7 @@ class DbOrgEmails(private val db: Database) : OrgEmails {
         )
             .bind("id", email.id)
             .bind("orgId", ctx.orgId)
-            .bind("to", email.to.joinToString(","))
+            .bind("to", email.to.map { it.value }.toTypedArray())
             .bind("subject", email.subject)
             .bind("textBody", email.textBody)
             .bind("htmlBody", email.htmlBody)
@@ -41,17 +44,19 @@ class DbOrgEmails(private val db: Database) : OrgEmails {
         )
             .bind("limit", limit)
             .list { row ->
+                @Suppress("UNCHECKED_CAST")
+                val toArr = row.get("to_addresses", Array<String>::class.java) as Array<String>
                 OrgEmail(
                     id = row.asUuid("id").toOrgEmailId(),
-                    orgId = org.athletica.crm.core.OrgId(row.asUuid("org_id")),
-                    to = row.asString("to_addresses").split(","),
+                    orgId = OrgId(row.asUuid("org_id")),
+                    to = toArr.map { EmailAddress(it) },
                     subject = row.asString("subject"),
                     textBody = row.asString("text_body"),
                     htmlBody = row.asString("html_body"),
                     status = OrgEmailStatus.valueOf(row.asString("status")),
-                    attemptCount = row.asString("attempt_count").toInt(),
+                    attemptCount = row.asInt("attempt_count"),
                     createdAt = row.asInstant("created_at"),
-                    sentAt = null, // PENDING письма ещё не отправлены
+                    sentAt = null,
                     lastError = row.asStringOrNull("last_error"),
                 )
             }

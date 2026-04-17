@@ -251,6 +251,10 @@ fun Row.asLong(column: String) = get(column, java.lang.Long::class.java)!!.toLon
 
 fun Row.asLong(pos: Int) = get(pos, java.lang.Long::class.java)!!.toLong()
 
+fun Row.asInt(column: String) = get(column, java.lang.Integer::class.java)!!.toInt()
+
+fun Row.asInt(pos: Int) = get(pos, java.lang.Integer::class.java)!!.toInt()
+
 fun Row.asInstant(pos: Int) =
     get(pos, java.time.OffsetDateTime::class.java)!!
         .toInstant()

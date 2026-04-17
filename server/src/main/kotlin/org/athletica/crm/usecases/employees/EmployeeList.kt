@@ -57,9 +57,9 @@ suspend fun employeeList(): Either<CommonDomainError, List<EmployeeListItem>> =
                     EmployeeRow(
                         id = row.asUuid("id").toEmployeeId(),
                         name = row.asString("name"),
-                        avatarId = row.asUuidOrNull("upload_id")?.toUploadId(),
-                        isOwner = row.asBoolean("owner"),
-                        isActive = row.asBoolean("active"),
+                        avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
+                        isOwner = row.asBoolean("is_owner"),
+                        isActive = row.asBoolean("is_active"),
                         joinedAt = row.asInstant("joined_at"),
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email"),

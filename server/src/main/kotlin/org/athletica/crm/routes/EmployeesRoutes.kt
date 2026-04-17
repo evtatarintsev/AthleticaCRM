@@ -4,18 +4,20 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
+import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.usecases.employees.createEmployee
 import org.athletica.crm.usecases.employees.employeeList
 import org.athletica.crm.usecases.employees.sendEmployeeAccess
 import org.athletica.infra.mail.Mailbox
 
 context(db: Database, audit: AuditLog, passwordHasher: PasswordHasher, mailbox: Mailbox)
-fun Route.employeesRoutes() {
+fun Route.employeesRoutes(employees: Employees) {
     route("/employees") {
         getWithContext("/list") {
             call.eitherToResponse {
@@ -27,7 +29,21 @@ fun Route.employeesRoutes() {
         postWithContext("/create") {
             call.eitherToResponse {
                 val request = call.receive<CreateEmployeeRequest>()
-                createEmployee(request).bind()
+                db.transaction {
+                    employees
+                        .new(request.id, request.name, request.phoneNo, request.email, request.avatarId)
+                        .also {
+                            EmployeeListItem(
+                                it.id,
+                                it.name,
+                                it.avatarId,
+                                it.isOwner,
+                                it.isActive,
+                                it.joinedAt,
+                                it.roles.map { role -> EmployeeRole(role.id, role.name) },
+                            )
+                        }
+                }
             }
         }
 

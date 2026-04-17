@@ -6,7 +6,6 @@ import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
-import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toEmployeeId

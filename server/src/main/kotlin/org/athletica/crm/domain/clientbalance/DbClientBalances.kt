@@ -2,8 +2,6 @@ package org.athletica.crm.domain.clientbalance
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
-import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.RequestContext
@@ -18,7 +16,7 @@ import org.athletica.crm.db.asUuid
 import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
 
-class DbClientBalances: ClientBalances {
+class DbClientBalances : ClientBalances {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun forClient(clientId: ClientId): ClientBalance {
         tr
@@ -69,5 +67,4 @@ class DbClientBalances: ClientBalances {
 
         return DbClientBalance(clientId, entries, totalAmount = entries.sumOf { it.amount })
     }
-
 }

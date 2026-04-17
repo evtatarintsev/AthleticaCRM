@@ -20,7 +20,6 @@ interface ClientBalance {
     suspend fun adjust(amount: Double, note: String): ClientBalance
 }
 
-
 /** Одна запись в журнале операций по балансу клиента. */
 @Serializable
 data class ClientBalanceEntry(

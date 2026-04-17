@@ -14,8 +14,8 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.netty.EngineMain
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
@@ -43,6 +43,7 @@ import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.discipline.DbDisciplines
+import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -184,7 +185,7 @@ fun Application.configureServer(
                 groupsRoutes()
                 orgRoutes()
                 disciplinesRoutes(DbDisciplines(db, audit))
-                employeesRoutes()
+                employeesRoutes(DbEmployees())
                 profileRoutes()
                 uploadRoutes()
                 auditRoutes()

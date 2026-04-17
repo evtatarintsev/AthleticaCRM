@@ -18,7 +18,6 @@ class DbClientBalance(
     override val history: List<ClientBalanceEntry>,
     override val totalAmount: Double,
 ) : ClientBalance {
-
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>, audit: AuditLog)
     override suspend fun adjust(amount: Double, note: String): ClientBalance {
         ensure(amount != 0.0) {
@@ -62,15 +61,16 @@ class DbClientBalance(
             note = note,
         )
 
-        val entry = ClientBalanceEntry(
-            id = entryId,
-            amount = amount,
-            balanceAfter = balanceAfter,
-            operationType = operationType,
-            note = note,
-            performedBy = PerformedBy(id = ctx.userId.value, name = ctx.username),
-            createdAt = Clock.System.now(),
-        )
+        val entry =
+            ClientBalanceEntry(
+                id = entryId,
+                amount = amount,
+                balanceAfter = balanceAfter,
+                operationType = operationType,
+                note = note,
+                performedBy = PerformedBy(id = ctx.userId.value, name = ctx.username),
+                createdAt = Clock.System.now(),
+            )
 
         return DbClientBalance(clientId, listOf(entry) + history, balanceAfter)
     }

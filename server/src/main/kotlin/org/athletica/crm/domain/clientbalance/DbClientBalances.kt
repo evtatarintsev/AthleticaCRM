@@ -7,14 +7,14 @@ import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
-import org.athletica.crm.db.asDouble
-import org.athletica.crm.db.asInstant
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asStringOrNull
-import org.athletica.crm.db.asUuid
-import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asDouble
+import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 
 class DbClientBalances : ClientBalances {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

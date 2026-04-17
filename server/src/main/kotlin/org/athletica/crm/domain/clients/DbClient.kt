@@ -8,7 +8,7 @@ import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
+import org.athletica.crm.storage.Transaction
 import kotlin.uuid.Uuid
 
 internal data class DbClient(

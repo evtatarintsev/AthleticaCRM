@@ -4,7 +4,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
-import org.athletica.crm.db.Database
+import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.org.getOrgSettings
 import org.athletica.crm.usecases.org.updateOrgSettings
 

@@ -4,7 +4,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
-import org.athletica.crm.db.Database
+import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.notifications.markAllNotificationsRead
 import org.athletica.crm.usecases.notifications.markNotificationsRead
 import org.athletica.crm.usecases.notifications.notificationList

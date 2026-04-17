@@ -9,11 +9,11 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Transaction
 import kotlin.collections.plus
 import kotlin.uuid.Uuid
 

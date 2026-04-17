@@ -8,10 +8,10 @@ import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
-import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.employees.employeeList
 import org.athletica.crm.usecases.employees.sendEmployeeAccess
 import org.athletica.infra.mail.Mailbox

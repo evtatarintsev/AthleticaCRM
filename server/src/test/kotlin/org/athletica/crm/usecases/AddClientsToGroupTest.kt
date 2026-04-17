@@ -11,7 +11,7 @@ import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.asLong
+import org.athletica.crm.storage.asLong
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.junit.Before
 import kotlin.test.Test

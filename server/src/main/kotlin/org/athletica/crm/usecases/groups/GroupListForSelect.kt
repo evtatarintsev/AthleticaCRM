@@ -5,9 +5,9 @@ import arrow.core.right
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 
 /**
  * Возвращает минимальный список групп организации из [ctx] для использования в селекторах.

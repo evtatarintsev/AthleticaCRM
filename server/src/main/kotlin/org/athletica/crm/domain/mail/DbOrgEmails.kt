@@ -5,13 +5,13 @@ import org.athletica.crm.core.OrgEmailId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.toOrgEmailId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.Transaction
-import org.athletica.crm.db.asInstant
-import org.athletica.crm.db.asInt
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asStringOrNull
-import org.athletica.crm.db.asUuid
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asInt
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
 
 class DbOrgEmails(private val db: Database) : OrgEmails {
     context(ctx: RequestContext, tr: Transaction)

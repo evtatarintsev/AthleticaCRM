@@ -9,14 +9,14 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toDisciplineId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.domain.audit.logDelete
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 
 class DbDisciplines(private val db: Database, private val audit: AuditLog) : Disciplines {
     context(ctx: RequestContext, raise: Raise<DomainError>)

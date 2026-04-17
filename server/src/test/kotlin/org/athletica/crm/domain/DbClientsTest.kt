@@ -16,9 +16,9 @@ import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toUploadId
-import org.athletica.crm.db.asLong
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.clients.clientDoc
+import org.athletica.crm.storage.asLong
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

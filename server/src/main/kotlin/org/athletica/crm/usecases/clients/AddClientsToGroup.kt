@@ -7,10 +7,10 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
 
 /**
  * Добавляет список клиентов из [request] в группу.

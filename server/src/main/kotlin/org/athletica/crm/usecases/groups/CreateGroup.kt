@@ -11,12 +11,12 @@ import org.athletica.crm.api.schemas.groups.ScheduleSlot
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toDisciplineId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 
 private val TIME_REGEX = Regex("""^([01]\d|2[0-3]):[0-5]\d$""")
 

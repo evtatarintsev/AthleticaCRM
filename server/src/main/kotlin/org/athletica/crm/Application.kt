@@ -31,19 +31,22 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.mail.DbOrgEmails
+import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -56,11 +59,14 @@ import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.infra.mail.Mailbox
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
 import java.sql.DriverManager
+import kotlin.context
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
@@ -102,9 +108,19 @@ fun Application.module() {
 
     val auditScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val auditService = PostgresAuditLog(database, auditScope)
-    monitor.subscribe(ApplicationStopped) { auditService.close() }
 
-    context(database, PasswordHasher(), minioService, mailbox()) {
+    val emailScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    val mb = mailbox()
+    val orgEmails = DbOrgEmails(database)
+    emailScope.launch {
+        EmailDispatcher(orgEmails, mb, 10.seconds).dispatchPending()
+    }
+    monitor.subscribe(ApplicationStopped) {
+        auditService.close()
+        emailScope.cancel()
+    }
+
+    context(database, PasswordHasher(), minioService, mb) {
         context(auditService) {
             configureServer(jwtConfig, corsAllowedHosts)
         }

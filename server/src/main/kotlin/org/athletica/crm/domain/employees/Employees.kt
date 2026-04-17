@@ -5,7 +5,7 @@ import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
+import org.athletica.crm.storage.Transaction
 
 interface Employees {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

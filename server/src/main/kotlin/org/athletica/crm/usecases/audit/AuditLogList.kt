@@ -6,12 +6,12 @@ import org.athletica.crm.api.schemas.audit.AuditLogItem
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asLong
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asStringOrNull
-import org.athletica.crm.db.asUuid
-import org.athletica.crm.db.asUuidOrNull
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 
 data class AuditLogListRequest(
     val page: Int = 0,

@@ -13,12 +13,12 @@ import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toClientId
 import org.athletica.crm.core.toUploadId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asDouble
-import org.athletica.crm.db.asLocalDateOrNull
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
-import org.athletica.crm.db.asUuidOrNull
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asDouble
+import org.athletica.crm.storage.asLocalDateOrNull
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 
 context(db: Database, ctx: RequestContext)
 suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, List<ClientListItem>> =

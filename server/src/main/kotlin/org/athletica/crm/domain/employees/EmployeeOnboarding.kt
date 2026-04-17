@@ -1,14 +1,15 @@
 package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.OrgEmailId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.mail.OrgEmail
 import org.athletica.crm.domain.mail.OrgEmails
+import org.athletica.crm.storage.Transaction
 
 /**
  * Application service: координирует создание учётной записи и отправку письма доступа сотруднику.
@@ -26,15 +27,20 @@ class EmployeeOnboarding(
      * - планирует отправку письма с реквизитами (в той же транзакции)
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun register(id: EmployeeId, email: String, password: String) {
-        val employee = employees.byId(id)
-        val user = users.new(email, password)
-        employee.withUserId(user.id).activate().save()
-        scheduleAccessEmail(name = employee.name, email = email, password = password)
+    suspend fun register(id: EmployeeId, email: EmailAddress, password: String) {
+        val user = users.new(email.value, password)
+        employees
+            .byId(id)
+            .withUserId(user.id)
+            .activate()
+            .also {
+                scheduleAccessEmail(name = it.name, email = email, password = password)
+            }
+            .save()
     }
 
     context(ctx: RequestContext, tr: Transaction)
-    private suspend fun scheduleAccessEmail(name: String, email: String, password: String) {
+    private suspend fun scheduleAccessEmail(name: String, email: EmailAddress, password: String) {
         val textBody =
             """
             Здравствуйте, $name!

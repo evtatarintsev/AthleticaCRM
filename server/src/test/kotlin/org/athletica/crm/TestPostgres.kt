@@ -1,6 +1,7 @@
 package org.athletica.crm
 
 import kotlinx.coroutines.runBlocking
+import org.athletica.crm.storage.Database
 import org.testcontainers.containers.PostgreSQLContainer
 
 /**
@@ -14,7 +15,7 @@ object TestPostgres {
             runMigrations(it.jdbcUrl, it.username, it.password)
         }
 
-    val db: org.athletica.crm.db.Database =
+    val db: Database =
         createDatabase(container.jdbcUrl, container.username, container.password)
 
     /**

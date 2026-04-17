@@ -10,13 +10,13 @@ import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toEmployeeId
 import org.athletica.crm.core.toUploadId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asBoolean
-import org.athletica.crm.db.asInstant
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asStringOrNull
-import org.athletica.crm.db.asUuid
-import org.athletica.crm.db.asUuidOrNull
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Instant
 
 /**

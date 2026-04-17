@@ -7,11 +7,11 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asLong
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asLong
 
 /**
  * Устанавливает список дисциплин для группы из [request].

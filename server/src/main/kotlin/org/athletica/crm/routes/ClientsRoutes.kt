@@ -22,7 +22,6 @@ import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toClientId
-import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
@@ -31,6 +30,7 @@ import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.clientList
 import org.athletica.crm.usecases.clients.removeClientsFromGroup
@@ -70,8 +70,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
                         request.birthday,
                         request.gender,
                     )
-                    .detailResponse()
-            }
+            }.detailResponse()
         }
     }
 
@@ -88,8 +87,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
                         request.gender,
                     )
                     .apply { save() }
-                    .detailResponse()
-            }
+            }.detailResponse()
         }
     }
 

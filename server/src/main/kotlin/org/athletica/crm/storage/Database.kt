@@ -1,4 +1,4 @@
-package org.athletica.crm.db
+package org.athletica.crm.storage
 
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.spi.Connection

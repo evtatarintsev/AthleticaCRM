@@ -5,7 +5,7 @@ import arrow.core.right
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
+import org.athletica.crm.storage.Database
 
 /**
  * Отмечает уведомления из [request] прочитанными для текущего пользователя ([ctx]).

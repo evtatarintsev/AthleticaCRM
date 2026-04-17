@@ -5,9 +5,9 @@ import io.ktor.server.routing.Route
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.UpdateMeRequest
-import org.athletica.crm.db.Database
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.auth.changePassword
 import org.athletica.crm.usecases.auth.profile
 import org.athletica.crm.usecases.auth.updateMe

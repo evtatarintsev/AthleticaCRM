@@ -4,7 +4,7 @@ import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.UserId
-import org.athletica.crm.db.Transaction
+import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
 internal data class DbEmployee(

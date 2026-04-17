@@ -6,10 +6,10 @@ import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logBalanceAdjust
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 

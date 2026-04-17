@@ -13,8 +13,8 @@ import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.asDouble
 import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.storage.asDouble
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

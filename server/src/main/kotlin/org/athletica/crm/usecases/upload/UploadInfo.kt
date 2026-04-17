@@ -7,12 +7,12 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.toUploadId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asLong
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
 

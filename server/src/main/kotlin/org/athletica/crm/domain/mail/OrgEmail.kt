@@ -1,16 +1,21 @@
 package org.athletica.crm.domain.mail
 
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.OrgEmailId
 import org.athletica.crm.core.OrgId
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-enum class OrgEmailStatus { PENDING, SENT, FAILED }
+enum class OrgEmailStatus {
+    PENDING,
+    SENT,
+    FAILED,
+}
 
 data class OrgEmail(
     val id: OrgEmailId = OrgEmailId.new(),
     val orgId: OrgId,
-    val to: List<String>,
+    val to: List<EmailAddress>,
     val subject: String,
     val textBody: String,
     val htmlBody: String,

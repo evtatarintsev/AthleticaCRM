@@ -1,11 +1,10 @@
 package org.athletica.crm.domain.audit
 
-import arrow.core.raise.context.bind
 import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import org.athletica.crm.db.Database
+import org.athletica.crm.storage.Database
 
 private val logger = KtorSimpleLogger("org.athletica.crm.audit.PostgresAuditLog")
 

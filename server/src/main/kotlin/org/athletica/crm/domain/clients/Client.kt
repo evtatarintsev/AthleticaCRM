@@ -8,7 +8,7 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.db.Transaction
+import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.Uuid

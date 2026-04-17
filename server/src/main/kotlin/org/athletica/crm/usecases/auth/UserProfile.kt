@@ -15,10 +15,10 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toOrgId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.core.toUserId
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
 import org.athletica.crm.security.UserNotFound
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 import kotlin.uuid.toKotlinUuid
 
 /**

@@ -6,12 +6,12 @@ import org.athletica.crm.api.schemas.notifications.NotificationItem
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asBoolean
-import org.athletica.crm.db.asInstant
-import org.athletica.crm.db.asLong
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asUuid
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 
 /**
  * Возвращает уведомления текущего пользователя ([ctx]) в рамках его организации.

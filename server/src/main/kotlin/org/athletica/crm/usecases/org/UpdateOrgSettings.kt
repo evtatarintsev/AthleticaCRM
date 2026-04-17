@@ -6,8 +6,8 @@ import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
 
 /**
  * Обновляет название и часовой пояс организации текущего пользователя из [ctx].

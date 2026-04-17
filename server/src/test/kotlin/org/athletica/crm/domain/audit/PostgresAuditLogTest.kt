@@ -8,11 +8,11 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
-import org.athletica.crm.db.asLong
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asStringOrNull
-import org.athletica.crm.db.asUuid
-import org.athletica.crm.db.asUuidOrNull
+import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

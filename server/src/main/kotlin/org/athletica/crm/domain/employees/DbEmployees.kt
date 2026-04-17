@@ -11,14 +11,14 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toEmployeeId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.core.toUserId
-import org.athletica.crm.db.Transaction
-import org.athletica.crm.db.asBoolean
-import org.athletica.crm.db.asInstant
-import org.athletica.crm.db.asString
-import org.athletica.crm.db.asStringOrNull
-import org.athletica.crm.db.asUuid
-import org.athletica.crm.db.asUuidOrNull
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
 
 class DbEmployees : Employees {

@@ -5,9 +5,9 @@ import arrow.core.raise.either
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.db.Database
-import org.athletica.crm.db.asString
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asString
 
 /**
  * Возвращает основные настройки организации текущего пользователя из [ctx].

@@ -79,10 +79,13 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
-                val result = addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
-                assertIs<Either.Right<Unit>>(result)
-            }
+            val result =
+                TestPostgres.db.transaction {
+                    context(ctx(orgId), this, TestAuditLog()) {
+                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
+                    }
+                }
+            assertIs<Either.Right<Unit>>(result)
 
             assertEquals(1L, clientGroupCount(clientId, groupId))
         }
@@ -96,13 +99,13 @@ class AddClientsToGroupTest {
             val clientId3 = insertClient(orgId, "Клиент 3")
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
-                val result =
-                    addClientsToGroup(
-                        AddClientsToGroupRequest(listOf(clientId1, clientId2, clientId3), groupId),
-                    )
-                assertIs<Either.Right<Unit>>(result)
-            }
+            val result =
+                TestPostgres.db.transaction {
+                    context(ctx(orgId), this, TestAuditLog()) {
+                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId1, clientId2, clientId3), groupId))
+                    }
+                }
+            assertIs<Either.Right<Unit>>(result)
 
             assertEquals(1L, clientGroupCount(clientId1, groupId))
             assertEquals(1L, clientGroupCount(clientId2, groupId))
@@ -116,11 +119,18 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
-                addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
-                val result = addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
-                assertIs<Either.Right<Unit>>(result)
+            TestPostgres.db.transaction {
+                context(ctx(orgId), this, TestAuditLog()) {
+                    addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
+                }
             }
+            val result =
+                TestPostgres.db.transaction {
+                    context(ctx(orgId), this, TestAuditLog()) {
+                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
+                    }
+                }
+            assertIs<Either.Right<Unit>>(result)
 
             assertEquals(1L, clientGroupCount(clientId, groupId))
         }
@@ -131,14 +141,14 @@ class AddClientsToGroupTest {
             val orgId = insertOrg()
             val clientId = insertClient(orgId)
 
-            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
-                val result =
-                    addClientsToGroup(
-                        AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()),
-                    )
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("GROUP_NOT_FOUND", error.code)
-            }
+            val result =
+                TestPostgres.db.transaction {
+                    context(ctx(orgId), this, TestAuditLog()) {
+                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()))
+                    }
+                }
+            val error = assertIs<Either.Left<CommonDomainError>>(result).value
+            assertEquals("GROUP_NOT_FOUND", error.code)
         }
 
     @Test
@@ -149,14 +159,14 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId1)
             val foreignGroupId = insertGroup(orgId2)
 
-            context(TestPostgres.db, ctx(orgId1), TestAuditLog()) {
-                val result =
-                    addClientsToGroup(
-                        AddClientsToGroupRequest(listOf(clientId), foreignGroupId),
-                    )
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("GROUP_NOT_FOUND", error.code)
-            }
+            val result =
+                TestPostgres.db.transaction {
+                    context(ctx(orgId1), this, TestAuditLog()) {
+                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), foreignGroupId))
+                    }
+                }
+            val error = assertIs<Either.Left<CommonDomainError>>(result).value
+            assertEquals("GROUP_NOT_FOUND", error.code)
 
             assertEquals(0L, clientGroupCount(clientId, foreignGroupId))
         }
@@ -167,14 +177,19 @@ class AddClientsToGroupTest {
             val orgId = insertOrg()
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
-                val result =
-                    addClientsToGroup(
-                        AddClientsToGroupRequest(listOf(ClientId.new()), groupId),
-                    )
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("CLIENT_NOT_FOUND", error.code)
+            // addClientsToGroup поглощает R2DBC-исключение FK и возвращает Either.Left.
+            // При этом PostgreSQL переводит транзакцию в error-state, и commit падает.
+            // Захватываем Either до коммита; PostgresqlRollbackException игнорируем.
+            var result: Either<CommonDomainError, Unit>? = null
+            runCatching {
+                TestPostgres.db.transaction {
+                    context(ctx(orgId), this, TestAuditLog()) {
+                        result = addClientsToGroup(AddClientsToGroupRequest(listOf(ClientId.new()), groupId))
+                    }
+                }
             }
+            val error = assertIs<Either.Left<CommonDomainError>>(result).value
+            assertEquals("CLIENT_NOT_FOUND", error.code)
         }
 
     @Test
@@ -183,9 +198,12 @@ class AddClientsToGroupTest {
             val orgId = insertOrg()
             val groupId = insertGroup(orgId)
 
-            context(TestPostgres.db, ctx(orgId), TestAuditLog()) {
-                val result = addClientsToGroup(AddClientsToGroupRequest(emptyList(), groupId))
-                assertIs<Either.Right<Unit>>(result)
-            }
+            val result =
+                TestPostgres.db.transaction {
+                    context(ctx(orgId), this, TestAuditLog()) {
+                        addClientsToGroup(AddClientsToGroupRequest(emptyList(), groupId))
+                    }
+                }
+            assertIs<Either.Right<Unit>>(result)
         }
 }

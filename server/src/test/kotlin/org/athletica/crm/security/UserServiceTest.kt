@@ -1,6 +1,7 @@
 package org.athletica.crm.security
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.OrgId
@@ -50,19 +51,22 @@ class UserServiceTest {
     fun `findById returns user when exists`() =
         runTest {
             val id = insertUser("user1", "pass")
-            context(TestPostgres.db) {
-                val result = userById(id)
-                val user = assertIs<Either.Right<User>>(result).value
-                assertEquals("user1", user.username)
-            }
+            val result =
+                either<UserNotFound, User> {
+                    TestPostgres.db.transaction { context(this) { userById(id) } }
+                }
+            val user = assertIs<Either.Right<User>>(result).value
+            assertEquals("user1", user.username)
         }
 
     @Test
     fun `findById returns UserNotFound when user does not exist`() =
         runTest {
-            context(TestPostgres.db) {
-                assertIs<Either.Left<UserNotFound>>(userById(UserId.new()))
-            }
+            val result =
+                either<UserNotFound, User> {
+                    TestPostgres.db.transaction { context(this) { userById(UserId.new()) } }
+                }
+            assertIs<Either.Left<UserNotFound>>(result)
         }
 
     @Test

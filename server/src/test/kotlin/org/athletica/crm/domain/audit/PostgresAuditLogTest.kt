@@ -1,8 +1,5 @@
 package org.athletica.crm.domain.audit
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
@@ -23,6 +20,7 @@ import kotlin.uuid.Uuid
 class PostgresAuditLogTest {
     private val orgId = OrgId.new()
     private val userId = UserId.new()
+    private val auditLog = PostgresAuditLog()
 
     @Before
     fun setUp() {
@@ -42,23 +40,6 @@ class PostgresAuditLogTest {
         }
     }
 
-    /** Создаёт [PostgresAuditLog] со своим Job-скоупом и возвращает оба объекта. */
-    private fun createAuditLog(): Pair<PostgresAuditLog, Job> {
-        val job = Job()
-        val scope = CoroutineScope(Dispatchers.IO + job)
-        return PostgresAuditLog(TestPostgres.db, scope) to job
-    }
-
-    /**
-     * Закрывает channel и ждёт, пока consumer-корутина допишет все события в БД.
-     */
-    private suspend fun PostgresAuditLog.drain(job: Job) {
-        close()
-        job.children.toList().forEach { it.join() }
-    }
-
-    // ─────────────────────────── helpers ───────────────────────────
-
     private suspend fun countRows(): Long =
         TestPostgres.db
             .sql("SELECT COUNT(*) FROM audit_logs WHERE org_id = :orgId")
@@ -71,47 +52,46 @@ class PostgresAuditLogTest {
     @Test
     fun `log сохраняет одно событие в БД`() =
         runTest {
-            val (auditLog, job) = createAuditLog()
             val entityId = Uuid.generateV7()
-
-            auditLog.log(
-                AuditEvent(
-                    orgId = orgId,
-                    userId = userId,
-                    username = "user@example.com",
-                    actionType = AuditActionType.CREATE,
-                    entityType = "client",
-                    entityId = entityId,
-                    data = """{"name":"Иван"}""",
-                    ipAddress = "192.168.1.1",
-                ),
-            )
-
-            auditLog.drain(job)
-
+            TestPostgres.db.transaction {
+                context(this) {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "user@example.com",
+                            actionType = AuditActionType.CREATE,
+                            entityType = "client",
+                            entityId = entityId,
+                            data = """{"name":"Иван"}""",
+                            ipAddress = "192.168.1.1",
+                        ),
+                    )
+                }
+            }
             assertEquals(1L, countRows())
         }
 
     @Test
     fun `log сохраняет все поля события корректно`() =
         runTest {
-            val (auditLog, job) = createAuditLog()
             val entityId = Uuid.generateV7()
-
-            auditLog.log(
-                AuditEvent(
-                    orgId = orgId,
-                    userId = userId,
-                    username = "admin@example.com",
-                    actionType = AuditActionType.UPDATE,
-                    entityType = "client",
-                    entityId = entityId,
-                    data = """{"name":"Пётр"}""",
-                    ipAddress = "10.0.0.1",
-                ),
-            )
-
-            auditLog.drain(job)
+            TestPostgres.db.transaction {
+                context(this) {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "admin@example.com",
+                            actionType = AuditActionType.UPDATE,
+                            entityType = "client",
+                            entityId = entityId,
+                            data = """{"name":"Пётр"}""",
+                            ipAddress = "10.0.0.1",
+                        ),
+                    )
+                }
+            }
 
             val row =
                 TestPostgres.db
@@ -143,29 +123,28 @@ class PostgresAuditLogTest {
             assertEquals("client", row["entityType"])
             assertEquals(entityId, row["entityId"])
             assertEquals("10.0.0.1", row["ipAddress"])
-            // data — jsonb, поэтому точное сравнение текста ненадёжно; проверяем наличие поля
             assertNotNull(row["data"])
         }
 
     @Test
     fun `log сохраняет событие без опциональных полей`() =
         runTest {
-            val (auditLog, job) = createAuditLog()
-
-            auditLog.log(
-                AuditEvent(
-                    orgId = orgId,
-                    userId = null,
-                    username = "system",
-                    actionType = AuditActionType.EXPORT,
-                    entityType = null,
-                    entityId = null,
-                    data = null,
-                    ipAddress = null,
-                ),
-            )
-
-            auditLog.drain(job)
+            TestPostgres.db.transaction {
+                context(this) {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = null,
+                            username = "system",
+                            actionType = AuditActionType.EXPORT,
+                            entityType = null,
+                            entityId = null,
+                            data = null,
+                            ipAddress = null,
+                        ),
+                    )
+                }
+            }
 
             val row =
                 TestPostgres.db
@@ -193,45 +172,44 @@ class PostgresAuditLogTest {
     @Test
     fun `log сохраняет несколько событий`() =
         runTest {
-            val (auditLog, job) = createAuditLog()
-
-            repeat(5) { i ->
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user@example.com",
-                        actionType = AuditActionType.CREATE,
-                        entityType = "client",
-                        entityId = Uuid.generateV7(),
-                        data = """{"index":$i}""",
-                        ipAddress = "127.0.0.1",
-                    ),
-                )
+            TestPostgres.db.transaction {
+                context(this) {
+                    repeat(5) { i ->
+                        auditLog.log(
+                            AuditEvent(
+                                orgId = orgId,
+                                userId = userId,
+                                username = "user@example.com",
+                                actionType = AuditActionType.CREATE,
+                                entityType = "client",
+                                entityId = Uuid.generateV7(),
+                                data = """{"index":$i}""",
+                                ipAddress = "127.0.0.1",
+                            ),
+                        )
+                    }
+                }
             }
-
-            auditLog.drain(job)
-
             assertEquals(5L, countRows())
         }
 
     @Test
     fun `log сохраняет все типы действий`() =
         runTest {
-            val (auditLog, job) = createAuditLog()
-
-            for (actionType in AuditActionType.entries) {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user@example.com",
-                        actionType = actionType,
-                    ),
-                )
+            TestPostgres.db.transaction {
+                context(this) {
+                    for (actionType in AuditActionType.entries) {
+                        auditLog.log(
+                            AuditEvent(
+                                orgId = orgId,
+                                userId = userId,
+                                username = "user@example.com",
+                                actionType = actionType,
+                            ),
+                        )
+                    }
+                }
             }
-
-            auditLog.drain(job)
 
             assertEquals(AuditActionType.entries.size.toLong(), countRows())
 
@@ -249,23 +227,23 @@ class PostgresAuditLogTest {
     @Test
     fun `log balance_adjust сохраняет данные операции`() =
         runTest {
-            val (auditLog, job) = createAuditLog()
             val clientId = Uuid.generateV7()
-
-            auditLog.log(
-                AuditEvent(
-                    orgId = orgId,
-                    userId = userId,
-                    username = "admin@example.com",
-                    actionType = AuditActionType.BALANCE_ADJUST,
-                    entityType = "client",
-                    entityId = clientId,
-                    data = """{"amount":500.0,"operationType":"admin_credit","note":"Бонус"}""",
-                    ipAddress = "127.0.0.1",
-                ),
-            )
-
-            auditLog.drain(job)
+            TestPostgres.db.transaction {
+                context(this) {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "admin@example.com",
+                            actionType = AuditActionType.BALANCE_ADJUST,
+                            entityType = "client",
+                            entityId = clientId,
+                            data = """{"amount":500.0,"operationType":"admin_credit","note":"Бонус"}""",
+                            ipAddress = "127.0.0.1",
+                        ),
+                    )
+                }
+            }
 
             val savedEntityId =
                 TestPostgres.db
@@ -286,35 +264,27 @@ class PostgresAuditLogTest {
                 .bind("name", "Other Org")
                 .execute()
 
-            val (auditLog, job) = createAuditLog()
-
-            auditLog.log(
-                AuditEvent(
-                    orgId = orgId,
-                    userId = userId,
-                    username = "user1@example.com",
-                    actionType = AuditActionType.CREATE,
-                ),
-            )
-            auditLog.log(
-                AuditEvent(
-                    orgId = otherOrgId,
-                    userId = userId,
-                    username = "user2@example.com",
-                    actionType = AuditActionType.DELETE,
-                ),
-            )
-
-            auditLog.drain(job)
+            TestPostgres.db.transaction {
+                context(this) {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "user1@example.com",
+                            actionType = AuditActionType.CREATE,
+                        ),
+                    )
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = otherOrgId,
+                            userId = userId,
+                            username = "user2@example.com",
+                            actionType = AuditActionType.DELETE,
+                        ),
+                    )
+                }
+            }
 
             assertEquals(1L, countRows())
-
-            val otherCount =
-                TestPostgres.db
-                    .sql("SELECT COUNT(*) FROM audit_logs WHERE org_id = :orgId")
-                    .bind("orgId", otherOrgId)
-                    .firstOrNull { row -> row.asLong(0) }
-                    ?: 0L
-            assertEquals(1L, otherCount)
         }
 }

@@ -8,6 +8,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
@@ -31,7 +33,7 @@ class ApplicationTest {
     fun testLoginWithInvalidCredentials() =
         testApplication {
             application {
-                context(TestPostgres.db, PasswordHasher(), TestMinio.minioService, TestAuditLog(), TestMailbox()) {
+                context(TestPostgres.db, TestMinio.minioService, TestAuditLog(), DbOrgEmails(), DbUsers(PasswordHasher()), PasswordHasher()) {
                     configureServer(testJwtConfig)
                 }
             }
@@ -47,7 +49,7 @@ class ApplicationTest {
     fun testMeWithoutToken() =
         testApplication {
             application {
-                context(TestPostgres.db, PasswordHasher(), TestMinio.minioService, TestAuditLog(), TestMailbox()) {
+                context(TestPostgres.db, TestMinio.minioService, TestAuditLog(), DbOrgEmails(), DbUsers(PasswordHasher()), PasswordHasher()) {
                     configureServer(testJwtConfig)
                 }
             }

@@ -29,29 +29,32 @@ class SignUpTest {
     @Test
     fun `signUp returns user on success`() =
         runTest {
-            context(TestPostgres.db, PasswordHasher()) {
-                val result = signUp(request())
-                val user = assertIs<Either.Right<User>>(result).value
-                assertEquals("user@example.com", user.username)
-            }
+            val result = TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request()) } }
+            val user = assertIs<Either.Right<User>>(result).value
+            assertEquals("user@example.com", user.username)
         }
 
     @Test
     fun `signUp returns UserAlreadyRegistered when login is taken`() =
         runTest {
-            context(TestPostgres.db, PasswordHasher()) {
-                signUp(request())
-                val result = signUp(request())
-                assertIs<Either.Left<SignUpError.UserAlreadyRegistered>>(result)
+            TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request()) } }
+            // signUp поглощает R2DBC-исключение и возвращает Either.Left;
+            // PostgreSQL переходит в error-state → commit падает. Захватываем результат до коммита.
+            var result: Either<SignUpError, User>? = null
+            runCatching {
+                TestPostgres.db.transaction { context(this, PasswordHasher()) { result = signUp(request()) } }
             }
+            assertIs<Either.Left<SignUpError.UserAlreadyRegistered>>(result)
         }
 
     @Test
     fun `signUp allows different logins`() =
         runTest {
-            context(TestPostgres.db, PasswordHasher()) {
-                assertIs<Either.Right<User>>(signUp(request(login = "user1@example.com")))
-                assertIs<Either.Right<User>>(signUp(request(login = "user2@example.com")))
-            }
+            assertIs<Either.Right<User>>(
+                TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request(login = "user1@example.com")) } },
+            )
+            assertIs<Either.Right<User>>(
+                TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request(login = "user2@example.com")) } },
+            )
         }
 }

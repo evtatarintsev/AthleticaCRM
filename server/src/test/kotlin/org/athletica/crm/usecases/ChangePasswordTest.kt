@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
@@ -64,16 +65,29 @@ class ChangePasswordTest {
         clientIp = "127.0.0.1",
     )
 
+    private suspend fun runChangePassword(
+        userId: UserId,
+        orgId: OrgId,
+        request: ChangePasswordRequest,
+        username: String = "user",
+        audit: TestAuditLog = TestAuditLog(),
+    ): Either<DomainError, Unit> =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx(userId, orgId, username), this, hasher, audit) {
+                    changePassword(request)
+                }
+            }
+        }
+
     // ── успешная смена ────────────────────────────────────────────────────────
 
     @Test
     fun `changePassword succeeds with correct old password`() =
         runTest {
             val (userId, orgId) = insertUser("user@example.com")
-            context(TestPostgres.db, ctx(userId, orgId), hasher, TestAuditLog()) {
-                val result = changePassword(ChangePasswordRequest("oldPass123", "newPass456"))
-                assertIs<Either.Right<Unit>>(result)
-            }
+            val result = runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"))
+            assertIs<Either.Right<Unit>>(result)
         }
 
     @Test
@@ -81,9 +95,7 @@ class ChangePasswordTest {
         runTest {
             val login = "user@example.com"
             val (userId, orgId) = insertUser(login, "oldPass123")
-            context(TestPostgres.db, ctx(userId, orgId), hasher, TestAuditLog()) {
-                changePassword(ChangePasswordRequest("oldPass123", "newPass456"))
-            }
+            runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"))
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Right<*>>(findByCredentials(login, "newPass456"))
             }
@@ -94,9 +106,7 @@ class ChangePasswordTest {
         runTest {
             val login = "user@example.com"
             val (userId, orgId) = insertUser(login, "oldPass123")
-            context(TestPostgres.db, ctx(userId, orgId), hasher, TestAuditLog()) {
-                changePassword(ChangePasswordRequest("oldPass123", "newPass456"))
-            }
+            runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"))
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Left<*>>(findByCredentials(login, "oldPass123"))
             }
@@ -108,20 +118,16 @@ class ChangePasswordTest {
     fun `changePassword returns WRONG_PASSWORD for incorrect old password`() =
         runTest {
             val (userId, orgId) = insertUser("user@example.com", "oldPass123")
-            context(TestPostgres.db, ctx(userId, orgId), hasher, TestAuditLog()) {
-                val result = changePassword(ChangePasswordRequest("wrongPass", "newPass456"))
-                val error = assertIs<Either.Left<CommonDomainError>>(result).value
-                assertEquals("WRONG_PASSWORD", error.code)
-            }
+            val result = runChangePassword(userId, orgId, ChangePasswordRequest("wrongPass", "newPass456"))
+            val error = assertIs<Either.Left<CommonDomainError>>(result).value
+            assertEquals("WRONG_PASSWORD", error.code)
         }
 
     @Test
     fun `changePassword returns error when user does not exist`() =
         runTest {
-            context(TestPostgres.db, ctx(UserId.new(), OrgId.new()), hasher, TestAuditLog()) {
-                val result = changePassword(ChangePasswordRequest("oldPass123", "newPass456"))
-                assertIs<Either.Left<DomainError>>(result)
-            }
+            val result = runChangePassword(UserId.new(), OrgId.new(), ChangePasswordRequest("oldPass123", "newPass456"))
+            assertIs<Either.Left<DomainError>>(result)
         }
 
     @Test
@@ -129,9 +135,7 @@ class ChangePasswordTest {
         runTest {
             val login = "user@example.com"
             val (userId, orgId) = insertUser(login, "oldPass123")
-            context(TestPostgres.db, ctx(userId, orgId), hasher, TestAuditLog()) {
-                changePassword(ChangePasswordRequest("wrongPass", "newPass456"))
-            }
+            runChangePassword(userId, orgId, ChangePasswordRequest("wrongPass", "newPass456"))
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Right<*>>(findByCredentials(login, "oldPass123"))
             }
@@ -144,9 +148,7 @@ class ChangePasswordTest {
         runTest {
             val (userId, orgId) = insertUser("user@example.com")
             val audit = TestAuditLog()
-            context(TestPostgres.db, ctx(userId, orgId, username = "user@example.com"), hasher, audit) {
-                changePassword(ChangePasswordRequest("oldPass123", "newPass456"))
-            }
+            runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"), "user@example.com", audit)
             val event = audit.channel.tryReceive().getOrNull()
             assertEquals(AuditActionType.AUTH_CHANGE_PASSWORD, event?.actionType)
             assertEquals(userId, event?.userId)
@@ -158,9 +160,7 @@ class ChangePasswordTest {
         runTest {
             val (userId, orgId) = insertUser("user@example.com")
             val audit = TestAuditLog()
-            context(TestPostgres.db, ctx(userId, orgId), hasher, audit) {
-                changePassword(ChangePasswordRequest("wrongPass", "newPass456"))
-            }
+            runChangePassword(userId, orgId, ChangePasswordRequest("wrongPass", "newPass456"), audit = audit)
             assertEquals(null, audit.channel.tryReceive().getOrNull())
         }
 
@@ -168,9 +168,7 @@ class ChangePasswordTest {
     fun `changePassword does not log audit event when user does not exist`() =
         runTest {
             val audit = TestAuditLog()
-            context(TestPostgres.db, ctx(UserId.new(), OrgId.new()), hasher, audit) {
-                changePassword(ChangePasswordRequest("oldPass123", "newPass456"))
-            }
+            runChangePassword(UserId.new(), OrgId.new(), ChangePasswordRequest("oldPass123", "newPass456"), audit = audit)
             assertEquals(null, audit.channel.tryReceive().getOrNull())
         }
 }

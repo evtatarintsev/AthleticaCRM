@@ -20,4 +20,7 @@ interface Employees {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: EmployeeId): Employee
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun list(): List<Employee>
 }

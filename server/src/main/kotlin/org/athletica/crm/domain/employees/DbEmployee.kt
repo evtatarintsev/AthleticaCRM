@@ -13,7 +13,7 @@ import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
-internal data class DbEmployee(
+data class DbEmployee(
     override val id: EmployeeId,
     override val userId: UserId?,
     override val name: String,

@@ -9,18 +9,24 @@ import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.domain.auth.Users
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.employees.employeeList
 
 context(db: Database, orgEmails: OrgEmails, users: Users)
 fun Route.employeesRoutes(employees: Employees) {
     route("/employees") {
         getWithContext("/list") {
             call.eitherToResponse {
-                val employees = employeeList().bind()
-                EmployeeListResponse(employees, employees.size.toUInt())
+                db.transaction {
+                    employees.list()
+                }.also {
+                    EmployeeListResponse(
+                        it.map { it.toListItem() },
+                        it.size.toUInt(),
+                    )
+                }
             }
         }
 
@@ -30,18 +36,7 @@ fun Route.employeesRoutes(employees: Employees) {
                 db.transaction {
                     employees
                         .new(request.id, request.name, request.phoneNo, request.email, request.avatarId)
-                        .also {
-                            EmployeeListItem(
-                                it.id,
-                                it.name,
-                                it.avatarId,
-                                it.isOwner,
-                                it.isActive,
-                                it.joinedAt,
-                                it.roles.map { role -> EmployeeRole(role.id, role.name) },
-                            )
-                        }
-                }
+                }.toListItem()
             }
         }
 
@@ -57,3 +52,14 @@ fun Route.employeesRoutes(employees: Employees) {
         }
     }
 }
+
+fun Employee.toListItem() =
+    EmployeeListItem(
+        id,
+        name,
+        avatarId,
+        isOwner,
+        isActive,
+        joinedAt,
+        roles.map { role -> EmployeeRole(role.id, role.name) },
+    )

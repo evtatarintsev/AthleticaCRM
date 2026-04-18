@@ -20,17 +20,15 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toUserId
-import org.athletica.crm.domain.audit.AuditActionType
-import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logLogin
 import org.athletica.crm.domain.audit.logSignUp
+import org.athletica.crm.domain.audit.logout
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
@@ -50,44 +48,32 @@ fun Route.authRoutes() {
     post("/auth/sign-up") {
         call.eitherToAuthResponse {
             val request = call.receive<SignUpRequest>()
-            val user = signUp(request).bind()
-            audit.logSignUp(
-                user.orgId, userId = user.id, username = user.username, call.clientIp(),
-            )
-            user
+            db.transaction {
+                signUp(request).bind()
+                    .also {
+                        audit.logSignUp(
+                            it.orgId, it.id, it.username, call.clientIp(),
+                        )
+                    }
+            }
         }
     }
 
     post("/auth/login") {
         call.eitherToAuthResponse {
             val request = call.receive<LoginRequest>()
-            val user = findByCredentials(request.username, request.password).bind()
-            audit.logLogin(user.orgId, user.id, user.username, call.clientIp())
-            user
+            db.transaction {
+                findByCredentials(request.username, request.password).bind()
+                    .also {
+                        audit.logLogin(it.orgId, it.id, it.username, call.clientIp())
+                    }
+            }
         }
     }
 
-    post("/auth/logout") {
-        val ip = call.clientIp()
-        val accessToken = call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
-        if (accessToken != null) {
-            runCatching { jwtConfig.verifier.verify(accessToken) }.getOrNull()?.let { decoded ->
-                val userId =
-                    runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_USER_ID).asString()) }.getOrNull()
-                val orgId = runCatching { Uuid.parse(decoded.getClaim(JwtConfig.CLAIM_ORG_ID).asString()) }.getOrNull()
-                val username = decoded.getClaim(JwtConfig.CLAIM_USERNAME).asString().orEmpty()
-                if (userId != null && orgId != null) {
-                    audit.log(
-                        AuditEvent(
-                            orgId = OrgId(orgId),
-                            userId = UserId(userId),
-                            username = username,
-                            actionType = AuditActionType.AUTH_LOGOUT,
-                            ipAddress = ip,
-                        ),
-                    )
-                }
-            }
+    postWithContext("/auth/logout") {
+        db.transaction {
+            audit.logout()
         }
         call.response.cookies.setJwtCookies("", "")
         call.respond(HttpStatusCode.OK)
@@ -95,11 +81,13 @@ fun Route.authRoutes() {
 
     post("/auth/refresh-token") {
         call.eitherToAuthResponse {
-            call.request
-                .refreshToken().bind()
-                .verifiedJwtToken(jwtConfig).bind()
-                .userIdClaim().bind()
-                .mapUserById().bind()
+            db.transaction {
+                call.request
+                    .refreshToken().bind()
+                    .verifiedJwtToken(jwtConfig).bind()
+                    .userIdClaim().bind()
+                    .mapUserById()
+            }
         }
     }
 }

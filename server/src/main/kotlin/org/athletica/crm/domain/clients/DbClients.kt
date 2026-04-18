@@ -92,7 +92,7 @@ class DbClients : Clients {
         return client.copy(groups = groups, docs = docs)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: arrow.core.raise.context.Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: ClientId,
         name: String,

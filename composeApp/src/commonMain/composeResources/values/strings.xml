@@ -218,6 +218,7 @@
     <string name="cd_send_access">Отправить доступ сотруднику</string>
     <string name="dialog_send_access_title">Отправить доступ</string>
     <string name="dialog_send_access_hint">Введите пароль для сотрудника</string>
+    <string name="label_email_for_employee">Email сотрудника</string>
     <string name="label_password_for_employee">Пароль</string>
     <string name="settings_section_clients">Клиенты</string>
     <string name="settings_item_client_display">Отображение клиентов</string>

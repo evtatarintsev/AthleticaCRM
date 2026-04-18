@@ -1,6 +1,9 @@
 package org.athletica.crm.components.employees
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -14,29 +17,35 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_send_access
 import org.athletica.crm.generated.resources.dialog_send_access_title
+import org.athletica.crm.generated.resources.label_email_for_employee
 import org.athletica.crm.generated.resources.label_password_for_employee
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Диалог отправки доступа сотруднику.
- * Запрашивает пароль, вызывает `/api/employees/send-access` и сигнализирует об успехе через [onSuccess].
+ * Запрашивает email и пароль; email предзаполняется из профиля сотрудника ([defaultEmail]).
+ * Вызывает `/api/employees/send-access` и сигнализирует об успехе через [onSuccess].
  */
 @Composable
 fun SendAccessDialog(
     api: ApiClient,
     employeeId: EmployeeId,
+    defaultEmail: String? = null,
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var email by remember { mutableStateOf(defaultEmail ?: "") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -46,7 +55,20 @@ fun SendAccessDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text(stringResource(Res.string.dialog_send_access_title)) },
         text = {
-            androidx.compose.foundation.layout.Column {
+            Column {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {
+                        email = it
+                        error = null
+                    },
+                    label = { Text(stringResource(Res.string.label_email_for_employee)) },
+                    singleLine = true,
+                    enabled = !isLoading,
+                    isError = error != null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = password,
                     onValueChange = {
@@ -60,6 +82,7 @@ fun SendAccessDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (error != null) {
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = error!!,
                         color = MaterialTheme.colorScheme.error,
@@ -74,25 +97,30 @@ fun SendAccessDialog(
                     scope.launch {
                         isLoading = true
                         error = null
-                        api.sendEmployeeAccess(SendEmployeeAccessRequest(employeeId, password))
-                            .fold(
-                                ifLeft = { err ->
-                                    error =
-                                        when (err) {
-                                            is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                            is ApiClientError.ValidationError -> err.message
-                                            is ApiClientError.Unavailable -> "Сервис недоступен"
-                                        }
-                                    isLoading = false
-                                },
-                                ifRight = {
-                                    isLoading = false
-                                    onSuccess()
-                                },
-                            )
+                        api.sendEmployeeAccess(
+                            SendEmployeeAccessRequest(
+                                employeeId = employeeId,
+                                email = EmailAddress(email.trim()),
+                                password = password,
+                            ),
+                        ).fold(
+                            ifLeft = { err ->
+                                error =
+                                    when (err) {
+                                        is ApiClientError.Unauthenticated -> "Сессия истекла"
+                                        is ApiClientError.ValidationError -> err.message
+                                        is ApiClientError.Unavailable -> "Сервис недоступен"
+                                    }
+                                isLoading = false
+                            },
+                            ifRight = {
+                                isLoading = false
+                                onSuccess()
+                            },
+                        )
                     }
                 },
-                enabled = password.isNotBlank() && !isLoading,
+                enabled = email.isNotBlank() && password.isNotBlank() && !isLoading,
             ) {
                 if (isLoading) {
                     CircularProgressIndicator()

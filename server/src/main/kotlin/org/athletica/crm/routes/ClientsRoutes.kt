@@ -94,14 +94,18 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
     postWithContext("/clients/add-to-group") {
         call.eitherToResponse {
             val request = call.receive<AddClientsToGroupRequest>()
-            addClientsToGroup(request).bind()
+            db.transaction {
+                addClientsToGroup(request)
+            }
         }
     }
 
     postWithContext("/clients/remove-from-group") {
         call.eitherToResponse {
             val request = call.receive<RemoveClientFromGroupRequest>()
-            removeClientsFromGroup(request).bind()
+            db.transaction {
+                removeClientsFromGroup(request)
+            }
         }
     }
 

@@ -65,7 +65,7 @@ fun EmployeesScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<EmployeeId>>(emptySet()) }
-    var showSendAccessFor by remember { mutableStateOf<EmployeeId?>(null) }
+    var showSendAccessFor by remember { mutableStateOf<EmployeeListItem?>(null) }
     var internalRefreshKey by remember { mutableStateOf(0) }
 
     LaunchedEffect(refreshKey, internalRefreshKey) {
@@ -85,10 +85,11 @@ fun EmployeesScreen(
     }
 
     // Send-access dialog
-    showSendAccessFor?.let { employeeId ->
+    showSendAccessFor?.let { emp ->
         SendAccessDialog(
             api = api,
-            employeeId = employeeId,
+            employeeId = emp.id,
+            defaultEmail = emp.email,
             onSuccess = {
                 showSendAccessFor = null
                 selectedIds = emptySet()
@@ -99,11 +100,11 @@ fun EmployeesScreen(
     }
 
     // Determine if send-access is available: exactly 1 selected and that employee is inactive
-    val sendAccessTarget: EmployeeId? =
+    val sendAccessTarget: EmployeeListItem? =
         if (selectedIds.size == 1) {
             val id = selectedIds.first()
             val emp = employees.find { it.id == id }
-            if (emp != null && !emp.isActive) id else null
+            if (emp != null && !emp.isActive) emp else null
         } else {
             null
         }
@@ -124,7 +125,7 @@ fun EmployeesScreen(
                 EmployeesBottomActionBar(
                     selectedCount = selectedIds.size,
                     sendAccessEnabled = sendAccessTarget != null,
-                    onSendAccess = { sendAccessTarget?.let { showSendAccessFor = it } },
+                    onSendAccess = { showSendAccessFor = sendAccessTarget },
                     onNotify = {},
                     onDeactivate = {},
                     onExport = {},

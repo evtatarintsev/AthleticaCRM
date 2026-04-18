@@ -41,12 +41,16 @@ import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
-import org.athletica.crm.domain.mail.EmailDispatcher
+import org.athletica.crm.domain.mail.Mailbox
+import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -61,7 +65,6 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
-import org.athletica.infra.mail.Mailbox
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
 import java.sql.DriverManager
@@ -106,22 +109,18 @@ fun Application.module() {
             bucket = config.property("minio.bucket").getString(),
         ).also { it.ensureBucketExists() }
 
-    val auditScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val auditService = PostgresAuditLog(database, auditScope)
-
     val emailScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val mb = mailbox()
-    val orgEmails = DbOrgEmails(database)
+    val orgEmails = DbOrgEmails()
     emailScope.launch {
-        EmailDispatcher(orgEmails, mb, 10.seconds).dispatchPending()
+        DbEmailDispatcher(database, orgEmails, mb, 10.seconds).dispatchPending()
     }
     monitor.subscribe(ApplicationStopped) {
-        auditService.close()
         emailScope.cancel()
     }
 
-    context(database, PasswordHasher(), minioService, mb) {
-        context(auditService) {
+    context(database, PasswordHasher(), minioService, orgEmails, DbUsers(PasswordHasher())) {
+        context(PostgresAuditLog()) {
             configureServer(jwtConfig, corsAllowedHosts)
         }
     }
@@ -134,7 +133,14 @@ fun Application.module() {
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(db: Database, passwordHasher: PasswordHasher, minioService: MinioService, audit: AuditLog, mailbox: Mailbox)
+context(
+    db: Database,
+    minioService: MinioService,
+    audit: AuditLog,
+    orgEmails: OrgEmails,
+    users: Users,
+    passwordHasher: PasswordHasher
+)
 fun Application.configureServer(
     jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",
@@ -200,7 +206,7 @@ fun Application.configureServer(
                 clientsRoutes(DbClients(), DbClientBalances())
                 groupsRoutes()
                 orgRoutes()
-                disciplinesRoutes(DbDisciplines(db, audit))
+                disciplinesRoutes(DbDisciplines(audit))
                 employeesRoutes(DbEmployees())
                 profileRoutes()
                 uploadRoutes()

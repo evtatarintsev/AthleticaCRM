@@ -11,6 +11,7 @@ import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.athletica.crm.domain.mail.Mailbox
 import java.util.Properties
 
 data class SmtpConfig(

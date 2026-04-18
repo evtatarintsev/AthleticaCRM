@@ -49,7 +49,9 @@ fun Route.profileRoutes() {
     postWithContext("/auth/me/change-password") {
         call.eitherToResponse {
             val request = call.receive<ChangePasswordRequest>()
-            changePassword(request).bind()
+            db.transaction {
+                changePassword(request)
+            }
         }
     }
 }

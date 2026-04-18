@@ -10,7 +10,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
-import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
 
 /**
  * Добавляет список клиентов из [request] в группу.
@@ -18,10 +18,10 @@ import org.athletica.crm.storage.Database
  * Уже существующие связи клиент–группа игнорируются (ON CONFLICT DO NOTHING).
  * Возвращает ошибку если группа не найдена или один из клиентов не существует.
  */
-context(db: Database, ctx: RequestContext, audit: AuditLog)
+context(ctx: RequestContext, tr: Transaction, audit: AuditLog)
 suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<CommonDomainError, Unit> =
     either {
-        db
+        tr
             .sql("SELECT id FROM groups WHERE id = :groupId AND org_id = :orgId")
             .bind("groupId", request.groupId)
             .bind("orgId", ctx.orgId)
@@ -29,15 +29,13 @@ suspend fun addClientsToGroup(request: AddClientsToGroupRequest): Either<CommonD
             ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
 
         try {
-            db.transaction {
-                for (clientId in request.clientIds) {
-                    sql(
-                        "INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId) ON CONFLICT ON CONSTRAINT uq_client_groups DO NOTHING",
-                    )
-                        .bind("clientId", clientId)
-                        .bind("groupId", request.groupId)
-                        .execute()
-                }
+            for (clientId in request.clientIds) {
+                tr.sql(
+                    "INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId) ON CONFLICT ON CONSTRAINT uq_client_groups DO NOTHING",
+                )
+                    .bind("clientId", clientId)
+                    .bind("groupId", request.groupId)
+                    .execute()
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))

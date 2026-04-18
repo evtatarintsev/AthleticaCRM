@@ -1,7 +1,7 @@
 package org.athletica.crm.usecases.auth
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.core.PasswordHash
 import org.athletica.crm.core.RequestContext
@@ -12,7 +12,7 @@ import org.athletica.crm.domain.audit.logChangePassword
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.userById
-import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
 
 /**
  * Меняет пароль текущего авторизованного пользователя.
@@ -23,23 +23,22 @@ import org.athletica.crm.storage.Database
  *
  * Возвращает [Unit] при успехе или [DomainError] при неверном старом пароле / отсутствии пользователя.
  */
-context(db: Database, ctx: RequestContext, passwordHasher: PasswordHasher, audit: AuditLog)
-suspend fun changePassword(request: ChangePasswordRequest): Either<DomainError, Unit> =
-    either {
-        val user = userById(ctx.userId).bind()
+context(ctx: RequestContext, tr: Transaction, passwordHasher: PasswordHasher, audit: AuditLog, raise: Raise<DomainError>)
+suspend fun changePassword(request: ChangePasswordRequest) {
+    val user = userById(ctx.userId)
 
-        val oldPasswordValid = passwordHasher.verify(request.oldPassword, PasswordHash(user.password))
-        if (!oldPasswordValid) {
-            raise(CommonDomainError(code = "WRONG_PASSWORD", message = Messages.WrongPassword.localize()))
-        }
-
-        val newHash = passwordHasher.hash(request.newPassword)
-
-        db
-            .sql("UPDATE users SET password_hash = :hash WHERE id = :id")
-            .bind("hash", newHash.value)
-            .bind("id", ctx.userId)
-            .execute()
-
-        audit.logChangePassword()
+    val oldPasswordValid = passwordHasher.verify(request.oldPassword, PasswordHash(user.password))
+    if (!oldPasswordValid) {
+        raise(CommonDomainError(code = "WRONG_PASSWORD", message = Messages.WrongPassword.localize()))
     }
+
+    val newHash = passwordHasher.hash(request.newPassword)
+
+    tr
+        .sql("UPDATE users SET password_hash = :hash WHERE id = :id")
+        .bind("hash", newHash.value)
+        .bind("id", ctx.userId)
+        .execute()
+
+    audit.logChangePassword()
+}

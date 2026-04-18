@@ -3,11 +3,13 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.core.toEmployeeId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.core.toUserId
@@ -27,7 +29,7 @@ class DbEmployees : Employees {
         id: EmployeeId,
         name: String,
         phoneNo: String?,
-        email: String?,
+        email: EmailAddress?,
         avatarId: UploadId?,
     ): Employee {
         try {
@@ -82,7 +84,7 @@ class DbEmployees : Employees {
                         joinedAt = row.asInstant("joined_at"),
                         roles = emptyList(),
                         phoneNo = row.asStringOrNull("phone_no"),
-                        email = row.asStringOrNull("email"),
+                        email = row.asStringOrNull("email")?.toEmailAddress(),
                         orgId = ctx.orgId,
                     )
                 }

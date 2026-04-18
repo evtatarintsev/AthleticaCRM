@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UploadId
@@ -13,7 +14,7 @@ interface Employees {
         id: EmployeeId,
         name: String,
         phoneNo: String?,
-        email: String?,
+        email: EmailAddress?,
         avatarId: UploadId?,
     ): Employee
 

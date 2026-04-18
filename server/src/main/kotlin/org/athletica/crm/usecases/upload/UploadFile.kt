@@ -12,6 +12,7 @@ import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.storage.Transaction
 
 /**
  * Загружает файл в MinIO и сохраняет метаданные в таблице uploads.
@@ -39,30 +40,31 @@ suspend fun uploadFile(
             contentType = contentType,
         )
 
-        db
-            .sql(
+        db.transaction {
+            sql(
                 """
                 INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
                 VALUES (:id, :orgId, :uploadedBy, :objectKey, :originalName, :contentType, :sizeBytes)
                 """.trimIndent(),
             ).bind("id", uploadId)
-            .bind("orgId", ctx.orgId)
-            .bind("uploadedBy", ctx.userId)
-            .bind("objectKey", objectKey)
-            .bind("originalName", originalName)
-            .bind("contentType", contentType)
-            .bind("sizeBytes", bytes.size.toLong())
-            .execute()
+                .bind("orgId", ctx.orgId)
+                .bind("uploadedBy", ctx.userId)
+                .bind("objectKey", objectKey)
+                .bind("originalName", originalName)
+                .bind("contentType", contentType)
+                .bind("sizeBytes", bytes.size.toLong())
+                .execute()
 
-        UploadResponse(
-            id = uploadId,
-            url = minioService.presignedGetUrl(objectKey),
-            originalName = originalName,
-            contentType = contentType,
-            sizeBytes = bytes.size.toLong(),
-        ).also { audit.logCreate(it) }
+            UploadResponse(
+                id = uploadId,
+                url = minioService.presignedGetUrl(objectKey),
+                originalName = originalName,
+                contentType = contentType,
+                sizeBytes = bytes.size.toLong(),
+            ).also { audit.logCreate(it) }
+        }
     }
 
 /** Логирует загрузку файла: тип сущности `"upload"`, данные — JSON-снапшот [result]. */
-context(ctx: RequestContext)
-fun AuditLog.logCreate(result: UploadResponse) = logCreate("upload", result.id, Json.encodeToString(result))
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logCreate(result: UploadResponse) = logCreate("upload", result.id, Json.encodeToString(result))

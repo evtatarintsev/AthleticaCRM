@@ -8,15 +8,13 @@ import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
-import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.employees.Employees
-import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.employees.employeeList
-import org.athletica.crm.usecases.employees.sendEmployeeAccess
-import org.athletica.infra.mail.Mailbox
 
-context(db: Database, audit: AuditLog, passwordHasher: PasswordHasher, mailbox: Mailbox)
+context(db: Database, orgEmails: OrgEmails, users: Users)
 fun Route.employeesRoutes(employees: Employees) {
     route("/employees") {
         getWithContext("/list") {
@@ -50,7 +48,11 @@ fun Route.employeesRoutes(employees: Employees) {
         postWithContext("/send-access") {
             call.eitherToResponse {
                 val request = call.receive<SendEmployeeAccessRequest>()
-                sendEmployeeAccess(request).bind()
+                db.transaction {
+                    employees
+                        .byId(request.employeeId)
+                        .invite(request.email, request.password)
+                }
             }
         }
     }

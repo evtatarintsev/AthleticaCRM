@@ -46,6 +46,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -110,7 +111,7 @@ fun EmployeeCreateScreen(
                                             id = EmployeeId.new(),
                                             name = name.trim(),
                                             phoneNo = phoneNo.trim().ifBlank { null },
-                                            email = email.trim().ifBlank { null },
+                                            email = email.trim().ifBlank { null }?.toEmailAddress(),
                                             avatarId = avatarId,
                                         ),
                                     ).fold(

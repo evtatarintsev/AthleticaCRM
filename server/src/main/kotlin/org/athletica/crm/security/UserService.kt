@@ -2,6 +2,8 @@ package org.athletica.crm.security
 
 import arrow.core.Either
 import arrow.core.left
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import arrow.core.right
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.OrgId
@@ -12,6 +14,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toOrgId
 import org.athletica.crm.core.toUserId
 import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
 import kotlin.uuid.toKotlinUuid
 
 /**
@@ -34,23 +37,22 @@ data class UserNotFound(override val message: String) : DomainError {
  * Ищет пользователя по идентификатору [id].
  * Возвращает найденного пользователя, либо [UserNotFound].
  */
-context(db: Database)
-suspend fun userById(id: UserId): Either<UserNotFound, User> =
-    db
-        .sql(
-            """
-            SELECT u.*, e.org_id
-            FROM users u
-            JOIN employees e ON e.user_id = u.id
-            WHERE u.id = :id AND e.is_active = true
-            """.trimIndent(),
-        )
+context(tr: Transaction, raise: Raise<UserNotFound>)
+suspend fun userById(id: UserId): User =
+    tr.sql(
+        """
+        SELECT u.*, e.org_id
+        FROM users u
+        JOIN employees e ON e.user_id = u.id
+        WHERE u.id = :id AND e.is_active = true
+        """.trimIndent(),
+    )
         .bind("id", id)
         .firstOrNull { it.toUser() }
-        ?.right() ?: UserNotFound("User with id='$id' not found").left()
+        ?: raise(UserNotFound("User with id='$id' not found"))
 
 /** Делегирует вызов [userById] для данного UUID. Удобен при цепочке Either-операций. */
-context(db: Database)
+context(tr: Transaction, raise: Raise<UserNotFound>)
 suspend fun UserId.mapUserById() = userById(this)
 
 /**

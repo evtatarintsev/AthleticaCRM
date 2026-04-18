@@ -15,6 +15,7 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
@@ -105,6 +106,13 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                         .bind("disciplineId", disciplineId)
                         .execute()
                 }
+
+                GroupDetailResponse(
+                    id = request.id,
+                    name = request.name,
+                    schedule = request.schedule,
+                    disciplines = disciplines,
+                ).also { audit.logCreate(it) }
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
             if (e.message?.contains("uq_groups_org_name") == true) {
@@ -113,15 +121,8 @@ suspend fun createGroup(request: GroupCreateRequest): Either<CommonDomainError, 
                 raise(CommonDomainError("GROUP_ALREADY_EXISTS", Messages.GroupAlreadyExists.localize()))
             }
         }
-
-        GroupDetailResponse(
-            id = request.id,
-            name = request.name,
-            schedule = request.schedule,
-            disciplines = disciplines,
-        ).also { audit.logCreate(it) }
     }
 
 /** Логирует создание группы: тип сущности `"group"`, данные — JSON-снапшот [result]. */
-context(ctx: RequestContext)
-fun AuditLog.logCreate(result: GroupDetailResponse) = logCreate("group", result.id, Json.encodeToString(result))
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logCreate(result: GroupDetailResponse) = logCreate("group", result.id, Json.encodeToString(result))

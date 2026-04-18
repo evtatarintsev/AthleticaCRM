@@ -5,6 +5,7 @@ import org.athletica.crm.core.EntityId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
+import org.athletica.crm.storage.Transaction
 import kotlin.text.iterator
 import kotlin.uuid.Uuid
 
@@ -67,7 +68,8 @@ data class AuditEvent(
  * Логирует успешный вход пользователя с идентификатором [userId] из организации [orgId].
  * [clientIp] — IP-адрес клиента; null если определить не удалось.
  */
-fun AuditLog.logLogin(
+context(tr: Transaction)
+suspend fun AuditLog.logLogin(
     orgId: OrgId,
     userId: UserId,
     username: String,
@@ -90,7 +92,8 @@ fun AuditLog.logLogin(
  * Логирует регистрацию нового пользователя с идентификатором [userId] в организации [orgId].
  * [clientIp] — IP-адрес клиента; null если определить не удалось.
  */
-fun AuditLog.logSignUp(
+context(tr: Transaction)
+suspend fun AuditLog.logSignUp(
     orgId: OrgId,
     userId: UserId,
     username: String,
@@ -109,13 +112,25 @@ fun AuditLog.logSignUp(
     )
 }
 
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logout() =
+    log(
+        AuditEvent(
+            orgId = ctx.orgId,
+            userId = ctx.userId,
+            username = ctx.username,
+            actionType = AuditActionType.AUTH_LOGOUT,
+            ipAddress = ctx.clientIp,
+        ),
+    )
+
 /**
  * Логирует создание сущности типа [entityType] с идентификатором [entityId].
  * [data] — JSON-снапшот созданной сущности на момент события.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: RequestContext)
-fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String) {
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String) {
     log(
         AuditEvent(
             orgId = ctx.orgId,
@@ -130,16 +145,16 @@ fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String) {
     )
 }
 
-context(ctx: RequestContext)
-fun AuditLog.logCreate(entityType: String, entityId: EntityId, data: String) = logCreate(entityType, entityId.value, data)
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logCreate(entityType: String, entityId: EntityId, data: String) = logCreate(entityType, entityId.value, data)
 
 /**
  * Логирует обновление сущности типа [entityType] с идентификатором [entityId].
  * [data] — JSON-снапшот сущности после изменения.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: RequestContext)
-fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
     log(
         AuditEvent(
             orgId = ctx.orgId,
@@ -154,15 +169,15 @@ fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
     )
 }
 
-context(ctx: RequestContext)
-fun AuditLog.logUpdate(entityType: String, entityId: EntityId, data: String) = logUpdate(entityType, entityId.value, data)
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logUpdate(entityType: String, entityId: EntityId, data: String) = logUpdate(entityType, entityId.value, data)
 
 /**
  * Логирует смену пароля текущим авторизованным пользователем.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: RequestContext)
-fun AuditLog.logChangePassword() {
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logChangePassword() {
     log(
         AuditEvent(
             orgId = ctx.orgId,
@@ -179,8 +194,8 @@ fun AuditLog.logChangePassword() {
  * [data] — JSON-снапшот сущности после изменения.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: RequestContext)
-fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
     log(
         AuditEvent(
             orgId = ctx.orgId,
@@ -195,8 +210,8 @@ fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
     )
 }
 
-context(ctx: RequestContext)
-fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = logDelete(entityType, entityId.value, data)
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = logDelete(entityType, entityId.value, data)
 
 /**
  * Логирует корректировку баланса клиента с идентификатором [clientId].
@@ -205,31 +220,21 @@ fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = l
  * [note] — комментарий администратора.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: RequestContext)
-fun AuditLog.logBalanceAdjust(
+context(ctx: RequestContext, tr: Transaction)
+suspend fun AuditLog.logBalanceAdjust(
     clientId: EntityId,
     amount: Double,
     operationType: String,
     note: String,
-) = logBalanceAdjust(clientId.value, amount, operationType, note)
-
-context(ctx: RequestContext)
-fun AuditLog.logBalanceAdjust(
-    clientId: Uuid,
-    amount: Double,
-    operationType: String,
-    note: String,
-) {
-    log(
-        AuditEvent(
-            orgId = ctx.orgId,
-            userId = ctx.userId,
-            username = ctx.username,
-            actionType = AuditActionType.BALANCE_ADJUST,
-            ipAddress = ctx.clientIp,
-            entityType = "client",
-            entityId = clientId,
-            data = """{"amount":$amount,"operationType":"$operationType","note":${Json.encodeToString(note)}}""",
-        ),
-    )
-}
+) = log(
+    AuditEvent(
+        orgId = ctx.orgId,
+        userId = ctx.userId,
+        username = ctx.username,
+        actionType = AuditActionType.BALANCE_ADJUST,
+        ipAddress = ctx.clientIp,
+        entityType = "client",
+        entityId = clientId.value,
+        data = """{"amount":$amount,"operationType":"$operationType","note":${Json.encodeToString(note)}}""",
+    ),
+)

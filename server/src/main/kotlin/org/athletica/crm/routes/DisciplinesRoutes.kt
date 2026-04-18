@@ -10,36 +10,45 @@ import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
+import org.athletica.crm.storage.Database
 
+context(db: Database)
 fun Route.disciplinesRoutes(disciplines: Disciplines) {
     route("/disciplines") {
         getWithContext("/list") {
             call.eitherToResponse {
-                val disciplines =
+                db.transaction {
                     disciplines.list()
                         .map { DisciplineDetailResponse(id = it.id, name = it.name) }
-                DisciplineListResponse(disciplines)
+                        .let { DisciplineListResponse(it) }
+                }
             }
         }
 
         postWithContext("/create") {
             call.eitherToResponse {
-                val request = call.receive<CreateDisciplineRequest>()
-                disciplines.create(Discipline(request.id, request.name))
+                db.transaction {
+                    val request = call.receive<CreateDisciplineRequest>()
+                    disciplines.create(Discipline(request.id, request.name))
+                }
             }
         }
 
         postWithContext("/update") {
             call.eitherToResponse {
-                val request = call.receive<UpdateDisciplineRequest>()
-                disciplines.update(Discipline(request.id, request.name))
+                db.transaction {
+                    val request = call.receive<UpdateDisciplineRequest>()
+                    disciplines.update(Discipline(request.id, request.name))
+                }
             }
         }
 
         postWithContext("/delete") {
             call.eitherToResponse {
-                val request = call.receive<DeleteDisciplineRequest>()
-                disciplines.delete(request.ids)
+                db.transaction {
+                    val request = call.receive<DeleteDisciplineRequest>()
+                    disciplines.delete(request.ids)
+                }
             }
         }
     }

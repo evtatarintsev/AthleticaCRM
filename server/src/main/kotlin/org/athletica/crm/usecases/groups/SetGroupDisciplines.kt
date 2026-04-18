@@ -55,11 +55,10 @@ suspend fun setGroupDisciplines(request: SetGroupDisciplinesRequest): Either<Com
                         .bind("disciplineId", disciplineId)
                         .execute()
                 }
+                val auditData = Json.encodeToString(request)
+                audit.logUpdate("group", request.groupId, auditData)
             }
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
         }
-
-        val auditData = Json.encodeToString(request)
-        audit.logUpdate("group", request.groupId, auditData)
     }

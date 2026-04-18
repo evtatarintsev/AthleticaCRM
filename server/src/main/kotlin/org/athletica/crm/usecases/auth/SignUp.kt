@@ -10,7 +10,7 @@ import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
 
 /** Зарегистрированный пользователь без данных о пароле. */
 data class User(
@@ -32,30 +32,28 @@ sealed class SignUpError : DomainError {
  * Регистрирует новую организацию и её владельца по данным [request].
  * Возвращает созданного пользователя, либо [SignUpError.UserAlreadyRegistered] если логин занят.
  */
-context(db: Database, passwordHasher: PasswordHasher)
+context(tr: Transaction, passwordHasher: PasswordHasher)
 suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
     val orgId = OrgId.new()
     val userId = UserId.new()
     try {
-        db.transaction {
-            sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
-                .bind("orgId", orgId)
-                .bind("orgName", request.companyName)
-                .bind("timezone", request.timezone)
-                .execute()
+        tr.sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
+            .bind("orgId", orgId)
+            .bind("orgName", request.companyName)
+            .bind("timezone", request.timezone)
+            .execute()
 
-            sql("INSERT INTO users (id, login, password_hash) VALUES (:userId, :login, :hash)")
-                .bind("userId", userId)
-                .bind("login", request.login)
-                .bind("hash", passwordHasher.hash(request.password).value)
-                .execute()
+        tr.sql("INSERT INTO users (id, login, password_hash) VALUES (:userId, :login, :hash)")
+            .bind("userId", userId)
+            .bind("login", request.login)
+            .bind("hash", passwordHasher.hash(request.password).value)
+            .execute()
 
-            sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
-                .bind("orgId", orgId)
-                .bind("userId", userId)
-                .bind("name", request.userName)
-                .execute()
-        }
+        tr.sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
+            .bind("orgId", orgId)
+            .bind("userId", userId)
+            .bind("name", request.userName)
+            .execute()
     } catch (e: R2dbcDataIntegrityViolationException) {
         if (e.message?.contains("users_login_key") == true) {
             return SignUpError.UserAlreadyRegistered.left()

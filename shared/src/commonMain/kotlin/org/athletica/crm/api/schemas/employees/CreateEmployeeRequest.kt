@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.employees
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.UploadId
 
@@ -10,6 +11,6 @@ data class CreateEmployeeRequest(
     val id: EmployeeId,
     val name: String,
     val phoneNo: String? = null,
-    val email: String? = null,
+    val email: EmailAddress? = null,
     val avatarId: UploadId? = null,
 )

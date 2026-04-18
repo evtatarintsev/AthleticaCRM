@@ -14,9 +14,9 @@ object TestPostgres {
             it.start()
             runMigrations(it.jdbcUrl, it.username, it.password)
         }
-
+    val dbConfig = DatabaseConfig(container.jdbcUrl, container.username, container.password)
     val db: Database =
-        createDatabase(container.jdbcUrl, container.username, container.password)
+        createDatabase(dbConfig)
 
     /**
      * Очищает все таблицы приложения перед каждым тестом.

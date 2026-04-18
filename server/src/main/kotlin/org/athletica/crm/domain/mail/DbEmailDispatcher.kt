@@ -12,6 +12,10 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+interface EmailDispatcher {
+    suspend fun dispatchPending()
+}
+
 /**
  * Фоновый диспетчер: читает PENDING-письма из [OrgEmails] и отправляет через [smtp].
  * Запускается периодически воркером (например, каждые 30 секунд).
@@ -22,8 +26,8 @@ class DbEmailDispatcher(
     private val emails: DbOrgEmails,
     private val smtp: Mailbox,
     private val checkEvery: Duration = 10.seconds,
-) {
-    suspend fun dispatchPending() {
+) : EmailDispatcher {
+    override suspend fun dispatchPending() {
         while (currentCoroutineContext().isActive) {
             val pendingEmails = db.transaction { emails.pending() }
             pendingEmails.forEach { email ->

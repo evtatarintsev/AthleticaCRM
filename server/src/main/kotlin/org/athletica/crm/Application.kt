@@ -23,11 +23,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.KtorSimpleLogger
-import io.minio.MinioClient
-import io.r2dbc.pool.ConnectionPool
-import io.r2dbc.pool.ConnectionPoolConfiguration
-import io.r2dbc.spi.ConnectionFactories
-import io.r2dbc.spi.ConnectionFactoryOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,18 +34,10 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.crm.domain.audit.AuditLog
-import org.athletica.crm.domain.audit.PostgresAuditLog
-import org.athletica.crm.domain.auth.DbUsers
-import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.employees.DbEmployees
-import org.athletica.crm.domain.mail.DbEmailDispatcher
-import org.athletica.crm.domain.mail.DbOrgEmails
-import org.athletica.crm.domain.mail.Mailbox
-import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -64,12 +51,8 @@ import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
-import org.athletica.crm.storage.MinioService
-import org.athletica.infra.mail.SmtpConfig
-import org.athletica.infra.mail.SmtpMailbox
 import java.sql.DriverManager
 import kotlin.context
-import kotlin.time.Duration.Companion.seconds
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
@@ -78,51 +61,23 @@ fun main(args: Array<String>): Unit = EngineMain.main(args)
 
 /** Модуль приложения: инициализирует конфигурацию, запускает миграции и настраивает плагины. */
 fun Application.module() {
-    val config = environment.config
+    val di = di()
 
-    val jwtConfig =
-        JwtConfig(
-            secret = config.property("jwt.secret").getString(),
-            accessTokenTtlMinutes = config.property("jwt.accessTokenTtlMinutes").getString().toLong(),
-            refreshTokenTtlDays = config.property("jwt.refreshTokenTtlDays").getString().toLong(),
-        )
+    runMigrations(di.databaseConfig)
 
-    val dbUrl = config.property("database.url").getString()
-    val dbUser = config.property("database.user").getString()
-    val dbPassword = config.property("database.password").getString()
+    val corsAllowedHosts = environment.config.property("cors.allowedHosts").getString()
 
-    runMigrations(url = dbUrl, user = dbUser, password = dbPassword)
-
-    val database = createDatabase(jdbcUrl = dbUrl, user = dbUser, password = dbPassword)
-    val corsAllowedHosts = config.property("cors.allowedHosts").getString()
-
-    val minioService =
-        MinioService(
-            client =
-                MinioClient
-                    .builder()
-                    .endpoint(config.property("minio.endpoint").getString())
-                    .credentials(
-                        config.property("minio.accessKey").getString(),
-                        config.property("minio.secretKey").getString(),
-                    ).build(),
-            bucket = config.property("minio.bucket").getString(),
-        ).also { it.ensureBucketExists() }
-
-    val emailScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val mb = mailbox()
-    val orgEmails = DbOrgEmails()
-    emailScope.launch {
-        DbEmailDispatcher(database, orgEmails, mb, 10.seconds).dispatchPending()
-    }
-    monitor.subscribe(ApplicationStopped) {
-        emailScope.cancel()
-    }
-
-    context(database, PasswordHasher(), minioService, orgEmails, DbUsers(PasswordHasher())) {
-        context(PostgresAuditLog()) {
-            configureServer(jwtConfig, corsAllowedHosts)
+    CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
+        launch {
+            di.emailDispatcher.dispatchPending()
         }
+        monitor.subscribe(ApplicationStopped) {
+            cancel()
+        }
+    }
+
+    context(di) {
+        configureServer(corsAllowedHosts)
     }
 }
 
@@ -133,16 +88,8 @@ fun Application.module() {
  * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
  * Требует контекстных параметров [Database] и [PasswordHasher].
  */
-context(
-    db: Database,
-    minioService: MinioService,
-    audit: AuditLog,
-    orgEmails: OrgEmails,
-    users: Users,
-    passwordHasher: PasswordHasher
-)
+context(di: Di)
 fun Application.configureServer(
-    jwtConfig: JwtConfig,
     corsAllowedHost: String = "localhost:8081",
 ) {
     install(CallLogging)
@@ -186,7 +133,7 @@ fun Application.configureServer(
                     ?: call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
                         ?.let { HttpAuthHeader.Single("Bearer", it) }
             }
-            verifier(jwtConfig.verifier)
+            verifier(di.jwtConfig.verifier)
             validate { credential ->
                 val type = credential.payload.getClaim(JwtConfig.CLAIM_TYPE).asString()
                 if (type == JwtConfig.TYPE_ACCESS) JWTPrincipal(credential.payload) else null
@@ -196,70 +143,32 @@ fun Application.configureServer(
             }
         }
     }
-
-    routing {
-        route("/api") {
-            context(jwtConfig) {
-                authRoutes()
-            }
-            authenticate("auth-jwt") {
-                clientsRoutes(DbClients(), DbClientBalances())
-                groupsRoutes()
-                orgRoutes()
-                disciplinesRoutes(DbDisciplines(audit))
-                employeesRoutes(DbEmployees())
-                profileRoutes()
-                uploadRoutes()
-                auditRoutes()
-                notificationsRoutes()
+    context(di.database, di.audit) {
+        routing {
+            route("/api") {
+                context(di.jwtConfig, di.passwordHasher) {
+                    authRoutes()
+                }
+                authenticate("auth-jwt") {
+                    clientsRoutes(DbClients(), DbClientBalances())
+                    groupsRoutes()
+                    orgRoutes()
+                    disciplinesRoutes(DbDisciplines(di.audit))
+                    context(di.orgEmails, di.users) {
+                        employeesRoutes(DbEmployees())
+                    }
+                    context(di.passwordHasher) {
+                        profileRoutes()
+                    }
+                    context(di.minio) {
+                        uploadRoutes()
+                    }
+                    auditRoutes()
+                    notificationsRoutes()
+                }
             }
         }
     }
-}
-
-/**
- * Создаёт [Mailbox] на основе SMTP-настроек из конфигурации.
- */
-fun Application.mailbox(): Mailbox =
-    SmtpMailbox(
-        SmtpConfig(
-            host = environment.config.property("smtp.host").getString(),
-            port = environment.config.property("smtp.port").getString().toInt(),
-            username = environment.config.property("smtp.username").getString(),
-            password = environment.config.property("smtp.password").getString(),
-            fromAddress = environment.config.property("smtp.fromAddress").getString(),
-            fromName = environment.config.property("smtp.fromName").getString(),
-        ),
-    )
-
-/**
- * Создаёт [Database] с R2DBC пулом соединений.
- * JDBC URL автоматически преобразуется в R2DBC URL.
- * [jdbcUrl] — JDBC URL вида `jdbc:postgresql://host:port/db`,
- * [user] и [password] — учётные данные пользователя БД.
- */
-fun createDatabase(
-    jdbcUrl: String,
-    user: String,
-    password: String,
-): Database {
-    val r2dbcUrl = jdbcUrl.replace("jdbc:postgresql", "r2dbc:postgresql")
-    val options =
-        ConnectionFactoryOptions
-            .parse(r2dbcUrl)
-            .mutate()
-            .option(ConnectionFactoryOptions.USER, user)
-            .option(ConnectionFactoryOptions.PASSWORD, password)
-            .build()
-    val pool =
-        ConnectionPool(
-            ConnectionPoolConfiguration
-                .builder(ConnectionFactories.get(options))
-                .initialSize(2)
-                .maxSize(10)
-                .build(),
-        )
-    return Database(pool)
 }
 
 /**
@@ -280,3 +189,5 @@ fun runMigrations(
     Liquibase("db/changelog/db.changelog-master.yaml", ClassLoaderResourceAccessor(), database)
         .use { it.update("") }
 }
+
+fun runMigrations(dbConfig: DatabaseConfig) = runMigrations(dbConfig.url, dbConfig.user, dbConfig.password)

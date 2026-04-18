@@ -11,6 +11,7 @@ import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EntityId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -112,6 +113,9 @@ class QueryBuilder(
 
     /** Привязывает именованный [EntityId] параметр (любой подтип: ClientId, EmployeeId, …). */
     fun bind(name: String, value: EntityId?) = bind(name, value?.value)
+
+    /** Привязывает именованный [EmailAddress] параметр как строку. */
+    fun bind(name: String, value: EmailAddress?) = bind(name, value?.value)
 
     /** Привязывает именованный [LocalDate] параметр. */
     fun bind(name: String, value: LocalDate?) = bind(name, value?.toJavaLocalDate())

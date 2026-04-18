@@ -45,6 +45,10 @@ data class AuditEvent(
     val entityId: Uuid? = null,
     val data: String? = null,
     val ipAddress: String? = null,
+    /** Заполняется при чтении из БД; null при создании нового события. */
+    val id: Uuid? = null,
+    /** Заполняется при чтении из БД; null при создании нового события. */
+    val createdAt: String? = null,
 ) {
     constructor(
         ctx: RequestContext,

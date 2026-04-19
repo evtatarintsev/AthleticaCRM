@@ -23,5 +23,6 @@ class EmailEmployees(private val delegate: Employees, private val orgEmails: Org
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-    ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId), orgEmails)
+        permissions: EmployeePermission,
+    ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId, permissions), orgEmails)
 }

@@ -34,18 +34,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.core.permissions.Permission
-import kotlin.uuid.Uuid
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_role
 import org.athletica.crm.generated.resources.action_back
@@ -53,6 +52,7 @@ import org.athletica.crm.generated.resources.permission_can_view_client_balance
 import org.athletica.crm.generated.resources.roles_empty
 import org.athletica.crm.generated.resources.screen_roles
 import org.jetbrains.compose.resources.stringResource
+import kotlin.uuid.Uuid
 
 /**
  * Экран «Роли» — список ролей организации с набором прав для каждой.

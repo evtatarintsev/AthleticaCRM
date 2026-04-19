@@ -11,15 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +26,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -55,7 +53,6 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.core.toEmailAddress
-import kotlin.uuid.Uuid
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -70,6 +67,7 @@ import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.generated.resources.screen_employee_create
 import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
+import kotlin.uuid.Uuid
 
 /**
  * Экран создания нового сотрудника.
@@ -260,14 +258,15 @@ fun EmployeeCreateScreen(
                         ListItem(
                             headlineContent = { Text(role.name) },
                             trailingContent = {
-                                Checkbox(
+                                Switch(
                                     checked = role.id in selectedRoleIds,
                                     onCheckedChange = { checked ->
-                                        selectedRoleIds = if (checked) {
-                                            selectedRoleIds + role.id
-                                        } else {
-                                            selectedRoleIds - role.id
-                                        }
+                                        selectedRoleIds =
+                                            if (checked) {
+                                                selectedRoleIds + role.id
+                                            } else {
+                                                selectedRoleIds - role.id
+                                            }
                                     },
                                 )
                             },
@@ -293,14 +292,15 @@ fun EmployeeCreateScreen(
                     ListItem(
                         headlineContent = { Text(permission.displayName()) },
                         trailingContent = {
-                            Checkbox(
+                            Switch(
                                 checked = permission in grantedPermissions,
                                 onCheckedChange = { checked ->
-                                    grantedPermissions = if (checked) {
-                                        grantedPermissions + permission
-                                    } else {
-                                        grantedPermissions - permission
-                                    }
+                                    grantedPermissions =
+                                        if (checked) {
+                                            grantedPermissions + permission
+                                        } else {
+                                            grantedPermissions - permission
+                                        }
                                 },
                             )
                         },
@@ -325,14 +325,15 @@ fun EmployeeCreateScreen(
                     ListItem(
                         headlineContent = { Text(permission.displayName()) },
                         trailingContent = {
-                            Checkbox(
+                            Switch(
                                 checked = permission in revokedPermissions,
                                 onCheckedChange = { checked ->
-                                    revokedPermissions = if (checked) {
-                                        revokedPermissions + permission
-                                    } else {
-                                        revokedPermissions - permission
-                                    }
+                                    revokedPermissions =
+                                        if (checked) {
+                                            revokedPermissions + permission
+                                        } else {
+                                            revokedPermissions - permission
+                                        }
                                 },
                             )
                         },

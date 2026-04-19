@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.PasswordHasher

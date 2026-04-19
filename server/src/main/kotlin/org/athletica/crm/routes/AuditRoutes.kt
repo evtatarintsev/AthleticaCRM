@@ -4,7 +4,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.audit.AuditLogItem
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
-import org.athletica.crm.core.toUserId
+import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog

@@ -1,8 +1,8 @@
 package org.athletica.crm.domain.mail
 
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.OrgEmailId
-import org.athletica.crm.core.OrgId
+import org.athletica.crm.core.entityids.OrgEmailId
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant

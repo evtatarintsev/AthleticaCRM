@@ -4,9 +4,9 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate

@@ -1,5 +1,8 @@
 package org.athletica.crm.core
 
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
+
 /**
  * Контекст аутентифицированного HTTP-запроса.
  *

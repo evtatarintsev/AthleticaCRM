@@ -14,9 +14,9 @@ import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.JwtConfig
 import kotlin.uuid.Uuid

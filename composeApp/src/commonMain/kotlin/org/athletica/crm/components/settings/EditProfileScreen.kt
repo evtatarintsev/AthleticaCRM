@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.UpdateMeRequest
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back

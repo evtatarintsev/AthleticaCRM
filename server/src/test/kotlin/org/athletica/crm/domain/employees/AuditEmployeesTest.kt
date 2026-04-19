@@ -2,11 +2,11 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.core.EmployeeId
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.EmployeesStub

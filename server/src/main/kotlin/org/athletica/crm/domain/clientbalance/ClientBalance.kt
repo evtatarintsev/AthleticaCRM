@@ -3,8 +3,8 @@ package org.athletica.crm.domain.clientbalance
 import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.clients.PerformedBy
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant

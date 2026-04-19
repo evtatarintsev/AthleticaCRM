@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
@@ -12,7 +13,7 @@ import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 class DbClientBalance(
-    override val clientId: org.athletica.crm.core.ClientId,
+    override val clientId: ClientId,
     override val history: List<ClientBalanceEntry>,
     override val totalAmount: Double,
 ) : ClientBalance {

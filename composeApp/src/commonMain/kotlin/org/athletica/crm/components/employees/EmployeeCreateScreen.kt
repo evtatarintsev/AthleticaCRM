@@ -44,8 +44,8 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
-import org.athletica.crm.core.EmployeeId
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo

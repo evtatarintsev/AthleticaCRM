@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.auth
 
-import org.athletica.crm.core.OrgId
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 
 class DbUser(
     override val id: UserId,

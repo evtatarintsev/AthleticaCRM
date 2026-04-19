@@ -47,7 +47,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel

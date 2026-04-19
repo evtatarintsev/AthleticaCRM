@@ -1,8 +1,8 @@
 package org.athletica.crm.api.schemas
 
 import kotlinx.serialization.Serializable
-import org.athletica.crm.core.UploadId
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.UserId
 
 /** Ответ с данными авторизованного пользователя. */
 @Serializable

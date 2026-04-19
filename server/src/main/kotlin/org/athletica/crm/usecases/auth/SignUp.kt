@@ -5,9 +5,9 @@ import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.api.schemas.auth.SignUpRequest
-import org.athletica.crm.core.OrgId
-import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Transaction

@@ -1,11 +1,10 @@
 package org.athletica.crm.domain.audit
 
-import org.athletica.crm.core.EntityId
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.EntityId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.storage.Transaction
-import kotlin.text.iterator
 import kotlin.uuid.Uuid
 
 /** Типы действий, которые логируются в системе аудита. */

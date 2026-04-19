@@ -2,7 +2,7 @@ package org.athletica.crm.api.schemas.employees
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.EmployeeId
+import org.athletica.crm.core.entityids.EmployeeId
 
 @Serializable
 data class SendEmployeeAccessRequest(

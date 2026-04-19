@@ -1,10 +1,10 @@
 package org.athletica.crm.domain.mail
 
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.OrgEmailId
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.toOrgEmailId
+import org.athletica.crm.core.entityids.OrgEmailId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.toOrgEmailId
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInt

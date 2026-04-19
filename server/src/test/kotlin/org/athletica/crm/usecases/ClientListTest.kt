@@ -5,11 +5,11 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.usecases.clients.clientList
 import org.junit.Before
 import kotlin.test.Test

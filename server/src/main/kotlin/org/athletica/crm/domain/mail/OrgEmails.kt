@@ -1,8 +1,8 @@
 package org.athletica.crm.domain.mail
 
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.storage.Transaction
 
 interface OrgEmails {

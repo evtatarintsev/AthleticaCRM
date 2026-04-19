@@ -30,7 +30,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
-import org.athletica.crm.core.ClientId
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.balance_history_empty
 import org.athletica.crm.generated.resources.section_balance_history

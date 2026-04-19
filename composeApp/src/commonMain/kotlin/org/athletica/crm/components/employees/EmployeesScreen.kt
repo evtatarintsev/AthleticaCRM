@@ -12,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
-import org.athletica.crm.core.EmployeeId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_employee
 import org.athletica.crm.generated.resources.action_deactivate_selected

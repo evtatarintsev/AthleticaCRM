@@ -9,8 +9,8 @@ import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.toDisciplineId
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages

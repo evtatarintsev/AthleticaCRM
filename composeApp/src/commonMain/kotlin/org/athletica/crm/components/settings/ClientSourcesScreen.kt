@@ -6,8 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import org.athletica.crm.core.DisciplineId
-import org.athletica.crm.core.EntityId
+import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EntityId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.screen_client_source_create
 import org.athletica.crm.generated.resources.screen_client_sources

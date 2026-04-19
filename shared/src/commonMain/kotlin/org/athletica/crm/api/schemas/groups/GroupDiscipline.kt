@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
-import org.athletica.crm.core.DisciplineId
+import org.athletica.crm.core.entityids.DisciplineId
 
 /**
  * Дисциплина, привязанная к группе.

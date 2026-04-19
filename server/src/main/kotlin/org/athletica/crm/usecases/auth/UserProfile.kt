@@ -6,19 +6,20 @@ import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.UpdateMeRequest
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UploadId
-import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toOrgId
+import org.athletica.crm.core.entityids.toUploadId
+import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.toOrgId
-import org.athletica.crm.core.toUploadId
-import org.athletica.crm.core.toUserId
 import org.athletica.crm.security.UserNotFound
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
+import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 
 /**
@@ -78,5 +79,5 @@ private fun Row.toUserProfile() =
         orgId = asUuid("org_id").toOrgId(),
         username = asString("login"),
         name = asString("name"),
-        avatarId = get("avatar_id", java.util.UUID::class.java)?.toKotlinUuid()?.toUploadId(),
+        avatarId = get("avatar_id", UUID::class.java)?.toKotlinUuid()?.toUploadId(),
     )

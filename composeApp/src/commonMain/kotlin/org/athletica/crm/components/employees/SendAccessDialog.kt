@@ -23,7 +23,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.EmployeeId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_send_access

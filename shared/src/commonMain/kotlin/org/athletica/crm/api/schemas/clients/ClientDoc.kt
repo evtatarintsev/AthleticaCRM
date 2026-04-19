@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.UploadId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 

@@ -20,8 +20,8 @@ import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.toClientId
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry

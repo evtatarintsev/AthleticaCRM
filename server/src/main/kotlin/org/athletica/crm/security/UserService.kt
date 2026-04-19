@@ -6,15 +6,16 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import arrow.core.right
 import io.r2dbc.spi.Row
-import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.PasswordHash
-import org.athletica.crm.core.UserId
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toOrgId
+import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.toOrgId
-import org.athletica.crm.core.toUserId
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
+import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 
 /**
@@ -87,8 +88,8 @@ suspend fun findByCredentials(username: String, password: String): Either<UserNo
 
 private fun Row.toUser() =
     User(
-        id = get("id", java.util.UUID::class.java)!!.toKotlinUuid().toUserId(),
-        orgId = get("org_id", java.util.UUID::class.java)!!.toKotlinUuid().toOrgId(),
+        id = get("id", UUID::class.java)!!.toKotlinUuid().toUserId(),
+        orgId = get("org_id", UUID::class.java)!!.toKotlinUuid().toOrgId(),
         username = get("login", String::class.java)!!,
         password = get("password_hash", String::class.java)!!,
     )

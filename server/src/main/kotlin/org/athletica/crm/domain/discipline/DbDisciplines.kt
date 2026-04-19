@@ -3,11 +3,11 @@ package org.athletica.crm.domain.discipline
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.core.DisciplineId
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.toDisciplineId
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString

@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.audit
 
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.storage.Transaction
 
 interface AuditLog {

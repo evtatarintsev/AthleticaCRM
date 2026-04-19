@@ -1,7 +1,7 @@
 package org.athletica.crm.core.auth
 
-import org.athletica.crm.core.OrgId
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 
 /** Аутентифицированный пользователь системы. Реализуется разными доменными моделями (security, usecases). */
 interface AuthenticatedUser {

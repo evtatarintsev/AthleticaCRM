@@ -35,7 +35,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
-import org.athletica.crm.core.ClientId
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.groups_empty

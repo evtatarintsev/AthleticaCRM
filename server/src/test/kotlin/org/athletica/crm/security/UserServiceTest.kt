@@ -4,8 +4,8 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.OrgId
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

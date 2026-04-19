@@ -44,7 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.core.EntityId
+import org.athletica.crm.core.entityids.EntityId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add
 import org.athletica.crm.generated.resources.action_back

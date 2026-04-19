@@ -81,7 +81,7 @@ import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
-import org.athletica.crm.core.ClientId
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back

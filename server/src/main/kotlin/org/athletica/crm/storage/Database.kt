@@ -12,7 +12,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.EntityId
+import org.athletica.crm.core.entityids.EntityId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid

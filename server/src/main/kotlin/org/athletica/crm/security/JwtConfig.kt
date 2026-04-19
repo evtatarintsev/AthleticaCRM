@@ -3,8 +3,8 @@ package org.athletica.crm.security
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
-import org.athletica.crm.core.OrgId
-import org.athletica.crm.core.UserId
+import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UserId
 import java.util.Date
 
 /**

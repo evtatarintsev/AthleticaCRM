@@ -60,8 +60,8 @@ import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
-import org.athletica.crm.core.ClientId
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.UploadId
 
 /**
  * Клиент для взаимодействия с API сервера.

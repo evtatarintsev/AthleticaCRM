@@ -5,7 +5,7 @@ import arrow.core.raise.either
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate

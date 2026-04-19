@@ -6,13 +6,13 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.toClientId
+import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.toClientId
-import org.athletica.crm.core.toUploadId
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asLocalDateOrNull

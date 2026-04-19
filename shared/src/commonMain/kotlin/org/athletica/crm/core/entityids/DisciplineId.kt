@@ -1,4 +1,4 @@
-package org.athletica.crm.core
+package org.athletica.crm.core.entityids
 
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline

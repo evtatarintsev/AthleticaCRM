@@ -2,9 +2,9 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
-import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.UploadId
 
 /** Полные данные клиента, возвращаемые после создания или запроса деталей. */
 @Serializable

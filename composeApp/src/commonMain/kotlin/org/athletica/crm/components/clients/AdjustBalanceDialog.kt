@@ -28,7 +28,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
-import org.athletica.crm.core.ClientId
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_apply
 import org.athletica.crm.generated.resources.action_cancel

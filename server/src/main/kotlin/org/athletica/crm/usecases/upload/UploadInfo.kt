@@ -4,9 +4,9 @@ import arrow.core.Either
 import arrow.core.raise.either
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.toUploadId
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService

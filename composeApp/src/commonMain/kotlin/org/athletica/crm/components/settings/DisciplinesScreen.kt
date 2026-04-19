@@ -14,7 +14,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
-import org.athletica.crm.core.DisciplineId
+import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.screen_discipline_create
 import org.athletica.crm.generated.resources.screen_discipline_edit

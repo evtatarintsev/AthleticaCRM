@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas
 
 import kotlinx.serialization.Serializable
-import org.athletica.crm.core.UploadId
+import org.athletica.crm.core.entityids.UploadId
 
 /** Запрос на обновление профиля авторизованного пользователя. */
 @Serializable

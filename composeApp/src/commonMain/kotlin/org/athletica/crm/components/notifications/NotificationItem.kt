@@ -1,6 +1,6 @@
 package org.athletica.crm.components.notifications
 
-import org.athletica.crm.core.ClientId
+import org.athletica.crm.core.entityids.ClientId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 

@@ -19,10 +19,10 @@ fun Route.employeesRoutes(employees: Employees) {
             call.eitherToResponse {
                 db.transaction {
                     employees.list()
-                }.also {
+                }.let { employees ->
                     EmployeeListResponse(
-                        it.map { it.toListItem() },
-                        it.size.toUInt(),
+                        employees.map { it.toListItem() },
+                        employees.size.toUInt(),
                     )
                 }
             }

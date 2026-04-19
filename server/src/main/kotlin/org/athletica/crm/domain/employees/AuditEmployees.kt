@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeId
@@ -20,5 +21,16 @@ class AuditEmployees(private val delegate: Employees, private val audit: AuditLo
         email: EmailAddress?,
         avatarId: UploadId?,
     ) = delegate.new(id, name, phoneNo, email, avatarId)
-        .also { audit.logCreate("employee", id, Json.encodeToString(it)) }
+        .also {
+            val data = NewEmployeeAuditRecord(it.id, it.name, it.phoneNo, it.email)
+            audit.logCreate("employee", id, Json.encodeToString(data))
+        }
 }
+
+@Serializable
+data class NewEmployeeAuditRecord(
+    val id: EmployeeId,
+    val name: String,
+    val phoneNo: String?,
+    val email: EmailAddress?,
+)

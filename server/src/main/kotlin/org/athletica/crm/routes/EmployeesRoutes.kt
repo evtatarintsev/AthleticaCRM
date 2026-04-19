@@ -13,6 +13,7 @@ import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
@@ -38,8 +39,15 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             call.eitherToResponse {
                 val request = call.receive<CreateEmployeeRequest>()
                 db.transaction {
+                    val allRoles = roles.list()
+                    val selectedRoles = allRoles.filter { it.id in request.roleIds }
+                    val permissions = EmployeePermission(
+                        roles = selectedRoles,
+                        grantedPermissions = request.grantedPermissions,
+                        revokedPermissions = request.revokedPermissions,
+                    )
                     employees
-                        .new(request.id, request.name, request.phoneNo, request.email, request.avatarId)
+                        .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
                 }.toListItem()
             }
         }

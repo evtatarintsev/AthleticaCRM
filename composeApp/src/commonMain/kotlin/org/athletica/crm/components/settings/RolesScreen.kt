@@ -1,5 +1,6 @@
 package org.athletica.crm.components.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
+import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.core.permissions.Permission
 import kotlin.uuid.Uuid
 import org.athletica.crm.generated.resources.Res
@@ -70,6 +72,7 @@ fun RolesScreen(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var selectedRoleForEdit by remember { mutableStateOf<RoleItem?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
 
     if (showCreate) {
@@ -96,6 +99,37 @@ fun RolesScreen(
                     )
                 }
             },
+            modifier = modifier,
+        )
+        return
+    }
+
+    if (selectedRoleForEdit != null) {
+        RoleCreateScreen(
+            onBack = { selectedRoleForEdit = null },
+            onSave = { name, permissions ->
+                scope.launch {
+                    isLoading = true
+                    error = null
+                    api.updateRole(UpdateRoleRequest(selectedRoleForEdit!!.id, name, permissions)).fold(
+                        ifLeft = { err: ApiClientError ->
+                            error =
+                                when (err) {
+                                    is ApiClientError.ValidationError -> err.message
+                                    is ApiClientError.Unavailable -> "Сервис недоступен"
+                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                }
+                            isLoading = false
+                        },
+                        ifRight = {
+                            selectedRoleForEdit = null
+                            refreshKey++
+                        },
+                    )
+                }
+            },
+            initialName = selectedRoleForEdit!!.name,
+            initialPermissions = selectedRoleForEdit!!.permissions,
             modifier = modifier,
         )
         return
@@ -179,7 +213,7 @@ fun RolesScreen(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 ) {
                     items(roles) { role ->
-                        RoleCard(role)
+                        RoleCard(role, onEdit = { selectedRoleForEdit = role })
                     }
                 }
         }
@@ -188,10 +222,10 @@ fun RolesScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RoleCard(role: RoleItem) {
+private fun RoleCard(role: RoleItem, onEdit: () -> Unit = {}) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(

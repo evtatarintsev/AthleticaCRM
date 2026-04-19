@@ -29,7 +29,20 @@ class DbRoles : Roles {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun update(role: EmployeeRole) {
-        TODO("Not yet implemented")
+        tr.sql("UPDATE roles SET name = :name WHERE id = :id AND org_id = :orgId")
+            .bind("id", role.id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", role.name)
+            .execute()
+        tr.sql("DELETE FROM role_permissions WHERE role_id = :roleId")
+            .bind("roleId", role.id)
+            .execute()
+        for (permission in role.permissions) {
+            tr.sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
+                .bind("roleId", role.id)
+                .bind("key", permission.name)
+                .execute()
+        }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

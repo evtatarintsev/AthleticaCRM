@@ -11,6 +11,7 @@ import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 import org.athletica.crm.domain.employees.Employees
@@ -69,6 +70,16 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
                 val request = call.receive<CreateRoleRequest>()
                 db.transaction {
                     roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
+                }
+                RoleItem(request.id, request.name, request.permissions)
+            }
+        }
+
+        postWithContext("/roles/update") {
+            call.eitherToResponse {
+                val request = call.receive<UpdateRoleRequest>()
+                db.transaction {
+                    roles.update(DomainEmployeeRole(request.id, request.name, request.permissions))
                 }
                 RoleItem(request.id, request.name, request.permissions)
             }

@@ -52,6 +52,7 @@ import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
@@ -222,6 +223,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun createRole(request: CreateRoleRequest): Either<ApiClientError, RoleItem> =
         execute {
             http.post("/api/employees/roles/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Обновляет существующую роль по данным [request]. Возвращает обновлённую роль. */
+    suspend fun updateRole(request: UpdateRoleRequest): Either<ApiClientError, RoleItem> =
+        execute {
+            http.post("/api/employees/roles/update") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

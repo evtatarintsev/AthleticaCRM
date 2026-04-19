@@ -40,10 +40,12 @@ import org.athletica.crm.generated.resources.screen_role_create
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Экран создания роли.
+ * Экран создания или редактирования роли.
  *
  * [onBack] — возврат без сохранения.
  * [onSave] — вызывается с названием и набором выбранных прав.
+ * [initialName] — начальное имя для режима редактирования.
+ * [initialPermissions] — начальные права для режима редактирования.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,9 +53,12 @@ fun RoleCreateScreen(
     onBack: () -> Unit,
     onSave: (name: String, permissions: Set<Permission>) -> Unit,
     modifier: Modifier = Modifier,
+    initialName: String = "",
+    initialPermissions: Set<Permission> = emptySet(),
 ) {
-    var name by remember { mutableStateOf("") }
-    var selectedPermissions by remember { mutableStateOf(emptySet<Permission>()) }
+    val isEditMode = initialName.isNotEmpty()
+    var name by remember { mutableStateOf(initialName) }
+    var selectedPermissions by remember { mutableStateOf(initialPermissions) }
 
     Scaffold(
         topBar = {

@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.i18n.Messages
@@ -23,6 +24,11 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
+
+private data class PermissionOverrides(
+    val granted: Set<Permission>,
+    val revoked: Set<Permission>,
+)
 
 class DbEmployees(private val users: Users) : Employees {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -56,14 +62,16 @@ class DbEmployees(private val users: Users) : Employees {
         return DbEmployee(
             id = id, userId = null,
             name = name, avatarId = avatarId, isOwner = false, isActive = false,
-            joinedAt = Clock.System.now(), roles = emptyList(), phoneNo = phoneNo, email = email,
+            joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
+            permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
         )
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: EmployeeId): Employee {
         val roles = rolesByEmployeeId()
+        val permissions = permissionsByEmployeeId()
         return tr
             .sql(
                 """
@@ -75,18 +83,25 @@ class DbEmployees(private val users: Users) : Employees {
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .firstOrNull { row ->
+                val employeeId = row.asUuid("id").toEmployeeId()
+                val overrides = permissions[employeeId] ?: PermissionOverrides(emptySet(), emptySet())
                 DbEmployee(
-                    id = row.asUuid("id").toEmployeeId(),
+                    id = employeeId,
                     userId = row.asUuidOrNull("user_id")?.toUserId(),
                     name = row.asString("name"),
                     avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
                     isOwner = row.asBoolean("is_owner"),
                     isActive = row.asBoolean("is_active"),
                     joinedAt = row.asInstant("joined_at"),
-                    roles = roles[id] ?: emptyList(),
                     phoneNo = row.asStringOrNull("phone_no"),
                     email = row.asStringOrNull("email")?.toEmailAddress(),
                     users = users,
+                    permissions =
+                        EmployeePermission(
+                            roles = roles[employeeId] ?: emptyList(),
+                            grantedPermissions = overrides.granted,
+                            revokedPermissions = overrides.revoked,
+                        ),
                 )
             }
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
@@ -95,6 +110,7 @@ class DbEmployees(private val users: Users) : Employees {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> {
         val roles = rolesByEmployeeId()
+        val permissions = permissionsByEmployeeId()
         return tr
             .sql(
                 """
@@ -107,6 +123,7 @@ class DbEmployees(private val users: Users) : Employees {
             .bind("orgId", ctx.orgId)
             .list { row ->
                 val id = row.asUuid("id").toEmployeeId()
+                val overrides = permissions[id] ?: PermissionOverrides(emptySet(), emptySet())
                 DbEmployee(
                     id = id,
                     name = row.asString("name"),
@@ -117,33 +134,99 @@ class DbEmployees(private val users: Users) : Employees {
                     phoneNo = row.asStringOrNull("phone_no"),
                     email = row.asStringOrNull("email")?.toEmailAddress(),
                     userId = row.asUuidOrNull("user_id")?.toUserId(),
-                    roles = roles[id] ?: emptyList(),
                     users = users,
+                    permissions =
+                        EmployeePermission(
+                            roles = roles[id] ?: emptyList(),
+                            grantedPermissions = overrides.granted,
+                            revokedPermissions = overrides.revoked,
+                        ),
                 )
             }
     }
 
     context(ctx: RequestContext, tr: Transaction)
-    suspend fun rolesByEmployeeId(): Map<EmployeeId, List<EmployeeRole>> =
-        tr
+    private suspend fun permissionsByEmployeeId(): Map<EmployeeId, PermissionOverrides> {
+        data class Row(val employeeId: EmployeeId, val permission: Permission, val isGranted: Boolean)
+
+        val rows =
+            tr
+                .sql(
+                    """
+                    SELECT po.employee_id, po.permission_key, po.is_granted
+                    FROM employee_permission_overrides po
+                    JOIN employees e ON e.id = po.employee_id
+                    WHERE e.org_id = :orgId
+                    """.trimIndent(),
+                )
+                .bind("orgId", ctx.orgId)
+                .list { row ->
+                    Row(
+                        employeeId = row.asUuid("employee_id").toEmployeeId(),
+                        permission = Permission.valueOf(row.asString("permission_key")),
+                        isGranted = row.asBoolean("is_granted"),
+                    )
+                }
+
+        return rows
+            .groupBy { it.employeeId }
+            .mapValues { (_, overrides) ->
+                PermissionOverrides(
+                    granted = overrides.filter { it.isGranted }.map { it.permission }.toSet(),
+                    revoked = overrides.filter { !it.isGranted }.map { it.permission }.toSet(),
+                )
+            }
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun rolesByEmployeeId(): Map<EmployeeId, List<EmployeeRole>> {
+        val rolesById = roles().associateBy { it.id }
+        return tr
             .sql(
                 """
-                SELECT er.employee_id, r.id AS role_id, r.name AS role_name
+                SELECT er.employee_id, er.role_id
                 FROM employee_roles er
-                JOIN roles r ON r.id = er.role_id
                 JOIN employees e ON e.id = er.employee_id
                 WHERE e.org_id = :orgId
                 """.trimIndent(),
             )
             .bind("orgId", ctx.orgId)
             .list { row ->
-                val employeeId = row.asUuid("employee_id").toEmployeeId()
-                val role =
-                    EmployeeRole(
-                        id = row.asUuid("role_id"),
-                        name = row.asString("role_name"),
-                    )
-                employeeId to role
+                row.asUuid("employee_id").toEmployeeId() to row.asUuid("role_id")
             }
-            .groupBy({ it.first }, { it.second })
+            .groupBy({ it.first }, { rolesById[it.second] })
+            .mapValues { (_, roles) -> roles.filterNotNull() }
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun roles(): List<EmployeeRole> =
+        tr
+            .sql(
+                """
+                SELECT r.id, r.name, rp.permission_key
+                FROM roles r
+                LEFT JOIN role_permissions rp ON rp.role_id = r.id
+                WHERE r.org_id = :orgId
+                """.trimIndent(),
+            )
+            .bind("orgId", ctx.orgId)
+            .list { row ->
+                Triple(
+                    row.asUuid("id"),
+                    row.asString("name"),
+                    row.asStringOrNull("permission_key"),
+                )
+            }
+            .groupBy({ it.first }, { it.second to it.third })
+            .map { (roleId, rows) ->
+                EmployeeRole(
+                    id = roleId,
+                    name = rows.first().first,
+                    permissions =
+                        rows
+                            .mapNotNull { it.second }
+                            .map { Permission.valueOf(it) }
+                            .toSet(),
+                )
+            }
 }

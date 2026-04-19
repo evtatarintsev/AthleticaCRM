@@ -73,7 +73,7 @@ class DbEmployeesTest {
             assertEquals(false, employee.isActive)
             assertEquals(false, employee.isOwner)
             assertNull(employee.userId)
-            assertTrue(employee.roles.isEmpty())
+            assertTrue(employee.permissions.roles.isEmpty())
         }
 
     @Test
@@ -195,9 +195,9 @@ class DbEmployeesTest {
                     TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(1, employee.roles.size)
-            assertEquals(roleId, employee.roles.first().id)
-            assertEquals("Тренер", employee.roles.first().name)
+            assertEquals(1, employee.permissions.roles.size)
+            assertEquals(roleId, employee.permissions.roles.first().id)
+            assertEquals("Тренер", employee.permissions.roles.first().name)
         }
 
     @Test
@@ -215,7 +215,7 @@ class DbEmployeesTest {
                     TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            assertTrue(employee.roles.isEmpty())
+            assertTrue(employee.permissions.roles.isEmpty())
         }
 
     // ─── list ─────────────────────────────────────────────────────────────────
@@ -290,8 +290,8 @@ class DbEmployeesTest {
             either<DomainError, _> {
                 val list = TestPostgres.db.transaction { context(ctx, this) { employees.list() } }
                 val employee = list.first()
-                assertEquals(1, employee.roles.size)
-                assertEquals("Администратор", employee.roles.first().name)
+                assertEquals(1, employee.permissions.roles.size)
+                assertEquals("Администратор", employee.permissions.roles.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 

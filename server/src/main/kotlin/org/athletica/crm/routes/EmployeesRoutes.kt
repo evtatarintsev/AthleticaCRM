@@ -59,5 +59,5 @@ fun Employee.toListItem() =
         isOwner,
         isActive,
         joinedAt,
-        roles.map { role -> EmployeeRole(role.id, role.name) },
+        permissions.roles.map { role -> EmployeeRole(role.id, role.name) },
     )

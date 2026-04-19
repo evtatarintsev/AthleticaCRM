@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.storage.Transaction
@@ -22,7 +23,7 @@ data class EmployeeStub(
     override val isOwner: Boolean,
     override val isActive: Boolean,
     override val joinedAt: Instant,
-    override val roles: List<EmployeeRole>,
+    override val permissions: EmployeePermission,
     override val phoneNo: String?,
     override val email: EmailAddress?,
 ) : Employee {
@@ -52,11 +53,11 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             isOwner = false,
             isActive = false,
             joinedAt = clock.now(),
-            roles = emptyList(),
             name = name,
             phoneNo = phoneNo,
             email = email,
             avatarId = avatarId,
+            permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
         ).also { employees.add(it) }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -64,4 +65,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> = employees
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun roles(): List<EmployeeRole> = emptyList()
 }

@@ -19,9 +19,9 @@ data class DbEmployee(
     override val isOwner: Boolean,
     override val isActive: Boolean,
     override val joinedAt: Instant,
-    override val roles: List<EmployeeRole>,
     override val phoneNo: String?,
     override val email: EmailAddress?,
+    override val permissions: EmployeePermission,
     private val users: Users,
 ) : Employee {
     context(ctx: RequestContext, tr: Transaction)
@@ -47,6 +47,34 @@ data class DbEmployee(
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .execute()
+
+        tr.sql("DELETE FROM employee_permission_overrides WHERE employee_id = :id")
+            .bind("id", id)
+            .execute()
+
+        for (permission in permissions.grantedPermissions) {
+            tr.sql(
+                """
+                INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
+                VALUES (:employeeId, :key, true)
+                """.trimIndent(),
+            )
+                .bind("employeeId", id)
+                .bind("key", permission.name)
+                .execute()
+        }
+
+        for (permission in permissions.revokedPermissions) {
+            tr.sql(
+                """
+                INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
+                VALUES (:employeeId, :key, false)
+                """.trimIndent(),
+            )
+                .bind("employeeId", id)
+                .bind("key", permission.name)
+                .execute()
+        }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

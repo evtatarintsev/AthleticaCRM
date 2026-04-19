@@ -7,6 +7,8 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.permissions.Actor
+import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -19,7 +21,7 @@ interface Employee {
     val isOwner: Boolean
     val isActive: Boolean
     val joinedAt: Instant
-    val roles: List<EmployeeRole>
+    val permissions: EmployeePermission
     val phoneNo: String?
     val email: EmailAddress?
 
@@ -33,4 +35,17 @@ interface Employee {
 data class EmployeeRole(
     val id: Uuid,
     val name: String,
+    val permissions: Set<Permission>,
 )
+
+data class EmployeePermission(
+    val roles: List<EmployeeRole>,
+    val grantedPermissions: Set<Permission>,
+    val revokedPermissions: Set<Permission>,
+) : Actor {
+    override fun hasPermission(permission: Permission): Boolean {
+        if (permission in revokedPermissions) return false
+        if (permission in grantedPermissions) return true
+        return roles.any { permission in it.permissions }
+    }
+}

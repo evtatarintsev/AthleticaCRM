@@ -16,6 +16,7 @@ interface Employees {
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
+        permissions: EmployeePermission,
     ): Employee
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

@@ -38,6 +38,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
+        permissions: EmployeePermission,
     ): Employee {
         try {
             tr.sql(
@@ -59,12 +60,30 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
             throw e
         }
+        for (role in permissions.roles) {
+            tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
+                .bind("employeeId", id)
+                .bind("roleId", role.id)
+                .execute()
+        }
+        for (permission in permissions.grantedPermissions) {
+            tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, true)")
+                .bind("employeeId", id)
+                .bind("key", permission.name)
+                .execute()
+        }
+        for (permission in permissions.revokedPermissions) {
+            tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, false)")
+                .bind("employeeId", id)
+                .bind("key", permission.name)
+                .execute()
+        }
         return DbEmployee(
             id = id, userId = null,
             name = name, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
-            permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
+            permissions = permissions,
         )
     }
 

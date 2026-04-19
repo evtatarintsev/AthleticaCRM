@@ -26,7 +26,8 @@ class AuditEmployees(private val delegate: Employees, private val audit: AuditLo
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-    ) = delegate.new(id, name, phoneNo, email, avatarId)
+        permissions: EmployeePermission,
+    ) = delegate.new(id, name, phoneNo, email, avatarId, permissions)
         .also {
             val data = NewEmployeeAuditRecord(it.id, it.name, it.phoneNo, it.email)
             audit.logCreate("employee", id, Json.encodeToString(data))

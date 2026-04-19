@@ -31,15 +31,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
+import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.core.permissions.Permission
+import kotlin.uuid.Uuid
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_role
 import org.athletica.crm.generated.resources.action_back
@@ -61,21 +65,43 @@ fun RolesScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
     var roles by remember { mutableStateOf<List<RoleItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableStateOf(0) }
 
     if (showCreate) {
         RoleCreateScreen(
             onBack = { showCreate = false },
-            onSave = { _, _ -> showCreate = false },
+            onSave = { name, permissions ->
+                scope.launch {
+                    isLoading = true
+                    error = null
+                    api.createRole(CreateRoleRequest(Uuid.random(), name, permissions)).fold(
+                        ifLeft = { err: ApiClientError ->
+                            error =
+                                when (err) {
+                                    is ApiClientError.ValidationError -> err.message
+                                    is ApiClientError.Unavailable -> "Сервис недоступен"
+                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
+                                }
+                            isLoading = false
+                        },
+                        ifRight = {
+                            showCreate = false
+                            refreshKey++
+                        },
+                    )
+                }
+            },
             modifier = modifier,
         )
         return
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(refreshKey) {
         isLoading = true
         error = null
         api.roles().fold(

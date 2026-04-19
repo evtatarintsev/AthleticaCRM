@@ -46,8 +46,10 @@ import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
 import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
+import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
@@ -215,6 +217,15 @@ class ApiClient(private val http: HttpClient) {
 
     /** Возвращает список ролей организации. */
     suspend fun roles(): Either<ApiClientError, RoleListResponse> = execute { http.get("/api/employees/roles") }
+
+    /** Создаёт новую роль по данным [request]. Возвращает созданную роль. */
+    suspend fun createRole(request: CreateRoleRequest): Either<ApiClientError, RoleItem> =
+        execute {
+            http.post("/api/employees/roles/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Отправляет сотруднику доступ: устанавливает пароль, активирует аккаунт, высылает email. */
     suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<ApiClientError, Unit> =

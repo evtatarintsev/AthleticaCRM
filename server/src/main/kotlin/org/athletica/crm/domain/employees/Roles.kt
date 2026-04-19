@@ -12,6 +12,9 @@ interface Roles {
     suspend fun new(role: EmployeeRole)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun update(role: EmployeeRole)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun list(): List<EmployeeRole>
 }
 

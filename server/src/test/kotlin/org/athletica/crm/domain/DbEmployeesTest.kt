@@ -18,7 +18,6 @@ import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
-import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
 import kotlin.test.Test
@@ -38,7 +37,6 @@ class DbEmployeesTest {
     private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "other@example.com", "127.0.0.1")
     private val users = DbUsers(PasswordHasher())
     private val employees = DbEmployees(users, DbRoles())
-    private val orgEmails = DbOrgEmails()
 
     @Before
     fun setUp() {

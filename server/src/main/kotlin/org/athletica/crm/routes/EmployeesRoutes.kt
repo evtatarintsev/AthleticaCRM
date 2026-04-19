@@ -4,6 +4,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
@@ -11,6 +12,7 @@ import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.storage.Database
@@ -59,6 +61,16 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
                 }.let { roles ->
                     RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
                 }
+            }
+        }
+
+        postWithContext("/roles/create") {
+            call.eitherToResponse {
+                val request = call.receive<CreateRoleRequest>()
+                db.transaction {
+                    roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
+                }
+                RoleItem(request.id, request.name, request.permissions)
             }
         }
     }

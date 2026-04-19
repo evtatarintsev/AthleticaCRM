@@ -14,6 +14,21 @@ import kotlin.collections.component2
 class DbRoles : Roles {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(role: EmployeeRole) {
+        tr.sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
+            .bind("id", role.id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", role.name)
+            .execute()
+        for (permission in role.permissions) {
+            tr.sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
+                .bind("roleId", role.id)
+                .bind("key", permission.name)
+                .execute()
+        }
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun update(role: EmployeeRole) {
         TODO("Not yet implemented")
     }
 

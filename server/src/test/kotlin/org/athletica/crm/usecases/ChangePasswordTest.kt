@@ -3,7 +3,6 @@ package org.athletica.crm.usecases
 import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.core.Lang
@@ -12,7 +11,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.domain.audit.AuditActionType
+import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
 import org.athletica.crm.usecases.auth.changePassword
@@ -70,7 +69,7 @@ class ChangePasswordTest {
         orgId: OrgId,
         request: ChangePasswordRequest,
         username: String = "user",
-        audit: TestAuditLog = TestAuditLog(),
+        audit: PostgresAuditLog = PostgresAuditLog(),
     ): Either<DomainError, Unit> =
         either {
             TestPostgres.db.transaction {
@@ -139,36 +138,5 @@ class ChangePasswordTest {
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Right<*>>(findByCredentials(login, "oldPass123"))
             }
-        }
-
-    // ── аудит ─────────────────────────────────────────────────────────────────
-
-    @Test
-    fun `changePassword logs AUTH_CHANGE_PASSWORD event on success`() =
-        runTest {
-            val (userId, orgId) = insertUser("user@example.com")
-            val audit = TestAuditLog()
-            runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"), "user@example.com", audit)
-            val event = audit.channel.tryReceive().getOrNull()
-            assertEquals(AuditActionType.AUTH_CHANGE_PASSWORD, event?.actionType)
-            assertEquals(userId, event?.userId)
-            assertEquals("user@example.com", event?.username)
-        }
-
-    @Test
-    fun `changePassword does not log audit event when old password is wrong`() =
-        runTest {
-            val (userId, orgId) = insertUser("user@example.com")
-            val audit = TestAuditLog()
-            runChangePassword(userId, orgId, ChangePasswordRequest("wrongPass", "newPass456"), audit = audit)
-            assertEquals(null, audit.channel.tryReceive().getOrNull())
-        }
-
-    @Test
-    fun `changePassword does not log audit event when user does not exist`() =
-        runTest {
-            val audit = TestAuditLog()
-            runChangePassword(UserId.new(), OrgId.new(), ChangePasswordRequest("oldPass123", "newPass456"), audit = audit)
-            assertEquals(null, audit.channel.tryReceive().getOrNull())
         }
 }

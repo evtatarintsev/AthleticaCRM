@@ -8,11 +8,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
-import org.athletica.crm.domain.auth.DbUsers
-import org.athletica.crm.domain.mail.DbEmailDispatcher
-import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.security.JwtConfig
-import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -20,27 +16,30 @@ import kotlin.test.assertEquals
 
 /** Интеграционные тесты сервера с изолированной БД в Docker-контейнере. */
 class ApplicationTest {
+    private lateinit var testDi: Di
+
     @Before
-    fun setUp() = TestPostgres.truncate()
+    fun setUp() {
+        TestPostgres.truncate()
+        testApplication {
+            application {
+                testDi =
+                    di().copy(
+                        databaseConfig = TestPostgres.dbConfig,
+                        database = TestPostgres.db,
+                        mailbox = TestMailbox(),
+                        jwtConfig = testJwtConfig,
+                        minio = TestMinio.minioService,
+                    )
+            }
+        }
+    }
 
     private val testJwtConfig =
         JwtConfig(
             secret = "test-secret-key-for-unit-tests",
             accessTokenTtlMinutes = 15L,
             refreshTokenTtlDays = 30L,
-        )
-    val testDi =
-        Di(
-            databaseConfig = TestPostgres.dbConfig,
-            database = TestPostgres.db,
-            mailbox = TestMailbox(),
-            passwordHasher = PasswordHasher(),
-            minio = TestMinio.minioService,
-            audit = TestAuditLog(),
-            jwtConfig = testJwtConfig,
-            orgEmails = DbOrgEmails(),
-            users = DbUsers(PasswordHasher()),
-            emailDispatcher = DbEmailDispatcher(TestPostgres.db, DbOrgEmails(), TestMailbox()),
         )
 
     @Test

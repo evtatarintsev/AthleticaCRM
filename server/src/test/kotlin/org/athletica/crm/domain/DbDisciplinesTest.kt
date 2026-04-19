@@ -5,7 +5,6 @@ import arrow.core.getOrElse
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.DisciplineId
 import org.athletica.crm.core.Lang
@@ -13,7 +12,6 @@ import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.discipline.Discipline
 import org.junit.Before
@@ -30,14 +28,12 @@ class DbDisciplinesTest {
     private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "user@example.com", "127.0.0.1")
     private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "user@example.com", "127.0.0.1")
 
-    private lateinit var audit: TestAuditLog
     private lateinit var disciplines: DbDisciplines
 
     @Before
     fun setUp() {
         TestPostgres.truncate()
-        audit = TestAuditLog()
-        disciplines = DbDisciplines(audit)
+        disciplines = DbDisciplines()
         runBlocking {
             TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
                 .bind("id", orgId).bind("name", "Org 1").execute()
@@ -124,20 +120,6 @@ class DbDisciplinesTest {
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
-    @Test
-    fun `create пишет событие в audit log`() =
-        runTest {
-            val discipline = Discipline(DisciplineId.new(), "Бег")
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(discipline) } }
-            }.getOrElse { fail("Unexpected error: $it") }
-
-            val event = audit.channel.tryReceive().getOrNull()!!
-            assertEquals(AuditActionType.CREATE, event.actionType)
-            assertEquals("discipline", event.entityType)
-            assertEquals(discipline.id.value, event.entityId)
-        }
-
     // ─── update ───────────────────────────────────────────────────────────────
 
     @Test
@@ -200,22 +182,6 @@ class DbDisciplinesTest {
                 val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
                 assertEquals("Гимнастика", list.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
-        }
-
-    @Test
-    fun `update пишет событие в audit log`() =
-        runTest {
-            val id = DisciplineId.new()
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(id, "Старое")) } }
-                audit.channel.tryReceive() // сбрасываем событие create
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.update(Discipline(id, "Новое")) } }
-            }.getOrElse { fail("Unexpected error: $it") }
-
-            val event = audit.channel.tryReceive().getOrNull()!!
-            assertEquals(AuditActionType.UPDATE, event.actionType)
-            assertEquals("discipline", event.entityType)
-            assertEquals(id.value, event.entityId)
         }
 
     // ─── delete ───────────────────────────────────────────────────────────────
@@ -281,36 +247,5 @@ class DbDisciplinesTest {
                 val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
                 assertEquals(1, list.size)
             }.getOrElse { fail("Unexpected error: $it") }
-        }
-
-    @Test
-    fun `delete пишет событие в audit log для каждой удалённой дисциплины`() =
-        runTest {
-            val id1 = DisciplineId.new()
-            val id2 = DisciplineId.new()
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction {
-                    context(ctx, this) {
-                        disciplines.create(Discipline(id1, "Борьба"))
-                        disciplines.create(Discipline(id2, "Тхэквондо"))
-                    }
-                }
-                // сбрасываем два события create
-                audit.channel.tryReceive()
-                audit.channel.tryReceive()
-                TestPostgres.db.transaction {
-                    context(ctx, this) {
-                        disciplines.delete(listOf(id1, id2))
-                    }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
-
-            val events =
-                buildList {
-                    repeat(2) { audit.channel.tryReceive().getOrNull()?.let(::add) }
-                }
-            assertEquals(2, events.size)
-            assertTrue(events.all { it.actionType == AuditActionType.DELETE })
-            assertTrue(events.all { it.entityType == "discipline" })
         }
 }

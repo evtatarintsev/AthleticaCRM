@@ -35,9 +35,8 @@ class DbEmployeesTest {
 
     private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "owner@example.com", "127.0.0.1")
     private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "other@example.com", "127.0.0.1")
-
-    private val employees = DbEmployees()
     private val users = DbUsers(PasswordHasher())
+    private val employees = DbEmployees(users)
     private val orgEmails = DbOrgEmails()
 
     @Before
@@ -302,14 +301,14 @@ class DbEmployeesTest {
     fun `save обновляет поля сотрудника в БД`() =
         runTest {
             val id = EmployeeId.new()
-            either<DomainError, _> {
+            either {
                 val employee =
                     TestPostgres.db.transaction {
                         context(ctx, this) { employees.new(id, "Старое имя", null, null, null) }
                     }
 
                 TestPostgres.db.transaction {
-                    context(this) {
+                    context(this, ctx) {
                         (employee as DbEmployee)
                             .copy(name = "Новое имя", phoneNo = "+79001112233", isActive = true)
                             .save()
@@ -334,7 +333,7 @@ class DbEmployeesTest {
                     }
 
                 TestPostgres.db.transaction {
-                    context(this) {
+                    context(this, ctx) {
                         (employee as DbEmployee)
                             .copy(email = EmailAddress("newemail@example.com"))
                             .save()

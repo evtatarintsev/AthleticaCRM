@@ -1,6 +1,5 @@
 package org.athletica.crm.domain.audit
 
-import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EntityId
 import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
@@ -216,29 +215,3 @@ suspend fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String)
 
 context(ctx: RequestContext, tr: Transaction)
 suspend fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = logDelete(entityType, entityId.value, data)
-
-/**
- * Логирует корректировку баланса клиента с идентификатором [clientId].
- * [amount] — сумма операции (положительная — пополнение, отрицательная — списание).
- * [operationType] — строковый код типа операции (`admin_credit` / `admin_debit`).
- * [note] — комментарий администратора.
- * Организация, пользователь и IP берутся из контекста запроса [ctx].
- */
-context(ctx: RequestContext, tr: Transaction)
-suspend fun AuditLog.logBalanceAdjust(
-    clientId: EntityId,
-    amount: Double,
-    operationType: String,
-    note: String,
-) = log(
-    AuditEvent(
-        orgId = ctx.orgId,
-        userId = ctx.userId,
-        username = ctx.username,
-        actionType = AuditActionType.BALANCE_ADJUST,
-        ipAddress = ctx.clientIp,
-        entityType = "client",
-        entityId = clientId.value,
-        data = """{"amount":$amount,"operationType":"$operationType","note":${Json.encodeToString(note)}}""",
-    ),
-)

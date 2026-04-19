@@ -8,13 +8,11 @@ import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
-import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.Employees
-import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.storage.Database
 
-context(db: Database, orgEmails: OrgEmails, users: Users)
+context(db: Database)
 fun Route.employeesRoutes(employees: Employees) {
     route("/employees") {
         getWithContext("/list") {

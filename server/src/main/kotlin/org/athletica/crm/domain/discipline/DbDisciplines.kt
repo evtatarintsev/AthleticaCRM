@@ -3,22 +3,17 @@ package org.athletica.crm.domain.discipline
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import kotlinx.serialization.json.Json
 import org.athletica.crm.core.DisciplineId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.toDisciplineId
-import org.athletica.crm.domain.audit.AuditLog
-import org.athletica.crm.domain.audit.logCreate
-import org.athletica.crm.domain.audit.logDelete
-import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
-class DbDisciplines(private val audit: AuditLog) : Disciplines {
+class DbDisciplines : Disciplines {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Discipline> =
         tr.sql("SELECT s.id, s.name FROM disciplines s WHERE s.org_id = :orgId ORDER BY s.name")
@@ -39,8 +34,6 @@ class DbDisciplines(private val audit: AuditLog) : Disciplines {
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("DISCIPLINE_ALREADY_EXISTS", Messages.DisciplineAlreadyExists.localize()))
         }
-
-        audit.logCreate("discipline", discipline.id, Json.encodeToString(discipline))
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -65,8 +58,6 @@ class DbDisciplines(private val audit: AuditLog) : Disciplines {
         if (updatedRows == 0L) {
             raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
         }
-
-        audit.logUpdate("discipline", discipline.id, Json.encodeToString(discipline))
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -82,7 +73,6 @@ class DbDisciplines(private val audit: AuditLog) : Disciplines {
                 .list { Discipline(id = it.asUuid("id").toDisciplineId(), name = it.asString("name")) }
 
         deleted.forEach {
-            audit.logDelete("discipline", it.id, Json.encodeToString(it))
         }
     }
 }

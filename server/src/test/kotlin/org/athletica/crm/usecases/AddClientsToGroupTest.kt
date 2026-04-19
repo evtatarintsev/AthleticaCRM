@@ -2,7 +2,6 @@ package org.athletica.crm.usecases
 
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.core.ClientId
@@ -11,6 +10,7 @@ import org.athletica.crm.core.OrgId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.UserId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.junit.Before
@@ -81,7 +81,7 @@ class AddClientsToGroupTest {
 
             val result =
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this, TestAuditLog()) {
+                    context(ctx(orgId), this, PostgresAuditLog()) {
                         addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
                     }
                 }
@@ -101,7 +101,7 @@ class AddClientsToGroupTest {
 
             val result =
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this, TestAuditLog()) {
+                    context(ctx(orgId), this, PostgresAuditLog()) {
                         addClientsToGroup(AddClientsToGroupRequest(listOf(clientId1, clientId2, clientId3), groupId))
                     }
                 }
@@ -120,13 +120,13 @@ class AddClientsToGroupTest {
             val groupId = insertGroup(orgId)
 
             TestPostgres.db.transaction {
-                context(ctx(orgId), this, TestAuditLog()) {
+                context(ctx(orgId), this, PostgresAuditLog()) {
                     addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
                 }
             }
             val result =
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this, TestAuditLog()) {
+                    context(ctx(orgId), this, PostgresAuditLog()) {
                         addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), groupId))
                     }
                 }
@@ -143,7 +143,7 @@ class AddClientsToGroupTest {
 
             val result =
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this, TestAuditLog()) {
+                    context(ctx(orgId), this, PostgresAuditLog()) {
                         addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()))
                     }
                 }
@@ -161,7 +161,7 @@ class AddClientsToGroupTest {
 
             val result =
                 TestPostgres.db.transaction {
-                    context(ctx(orgId1), this, TestAuditLog()) {
+                    context(ctx(orgId1), this, PostgresAuditLog()) {
                         addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), foreignGroupId))
                     }
                 }
@@ -183,7 +183,7 @@ class AddClientsToGroupTest {
             var result: Either<CommonDomainError, Unit>? = null
             runCatching {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this, TestAuditLog()) {
+                    context(ctx(orgId), this, PostgresAuditLog()) {
                         result = addClientsToGroup(AddClientsToGroupRequest(listOf(ClientId.new()), groupId))
                     }
                 }
@@ -200,7 +200,7 @@ class AddClientsToGroupTest {
 
             val result =
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this, TestAuditLog()) {
+                    context(ctx(orgId), this, PostgresAuditLog()) {
                         addClientsToGroup(AddClientsToGroupRequest(emptyList(), groupId))
                     }
                 }

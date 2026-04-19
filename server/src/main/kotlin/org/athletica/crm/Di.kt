@@ -9,10 +9,11 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
-import org.athletica.crm.domain.auth.Users
+import org.athletica.crm.domain.employees.AuditEmployees
+import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.employees.EmailEmployees
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
-import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.security.JwtConfig
@@ -32,9 +33,17 @@ data class Di(
     val audit: AuditLog,
     val jwtConfig: JwtConfig,
     val orgEmails: OrgEmails,
-    val emailDispatcher: EmailDispatcher,
-    val users: Users,
-)
+) {
+    val users = DbUsers(passwordHasher)
+    val employees =
+        AuditEmployees(
+            EmailEmployees(
+                DbEmployees(users), orgEmails,
+            ),
+            audit,
+        )
+    val emailDispatcher = DbEmailDispatcher(database, DbOrgEmails(), mailbox, checkEvery = 10.seconds)
+}
 
 data class DatabaseConfig(
     val url: String,
@@ -44,10 +53,10 @@ data class DatabaseConfig(
 
 fun Application.di(): Di {
     val dbConfig = databaseConfig()
-    val orgEmails = DbOrgEmails()
     val db = createDatabase(dbConfig)
     val mb = mailbox()
     val passwordHasher = PasswordHasher()
+
     return Di(
         dbConfig,
         db,
@@ -56,9 +65,7 @@ fun Application.di(): Di {
         passwordHasher,
         PostgresAuditLog(),
         jwtConfig(),
-        orgEmails,
-        DbEmailDispatcher(db, orgEmails, mb, checkEvery = 10.seconds),
-        DbUsers(passwordHasher),
+        DbOrgEmails(),
     )
 }
 

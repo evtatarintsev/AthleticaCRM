@@ -13,6 +13,7 @@ import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.core.toEmployeeId
 import org.athletica.crm.core.toUploadId
 import org.athletica.crm.core.toUserId
+import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -23,7 +24,7 @@ import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
 
-class DbEmployees : Employees {
+class DbEmployees(private val users: Users) : Employees {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
@@ -56,7 +57,7 @@ class DbEmployees : Employees {
             id = id, userId = null,
             name = name, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), roles = emptyList(), phoneNo = phoneNo, email = email,
-            orgId = ctx.orgId,
+            users = users,
         )
     }
 
@@ -85,7 +86,7 @@ class DbEmployees : Employees {
                     roles = roles[id] ?: emptyList(),
                     phoneNo = row.asStringOrNull("phone_no"),
                     email = row.asStringOrNull("email")?.toEmailAddress(),
-                    orgId = ctx.orgId,
+                    users = users,
                 )
             }
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
@@ -115,9 +116,9 @@ class DbEmployees : Employees {
                     joinedAt = row.asInstant("joined_at"),
                     phoneNo = row.asStringOrNull("phone_no"),
                     email = row.asStringOrNull("email")?.toEmailAddress(),
-                    orgId = ctx.orgId,
                     userId = row.asUuidOrNull("user_id")?.toUserId(),
                     roles = roles[id] ?: emptyList(),
+                    users = users,
                 )
             }
     }

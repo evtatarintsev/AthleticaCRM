@@ -2,7 +2,6 @@ package org.athletica.crm.usecases
 
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.OrgId
@@ -59,7 +58,7 @@ class ProfileTest {
     fun `profile returns user for authenticated user`() =
         runTest {
             val (userId, orgId) = insertUser("user@example.com")
-            context(TestPostgres.db, requestContext(userId, orgId), TestAuditLog()) {
+            context(TestPostgres.db, requestContext(userId, orgId), ChangePasswordTest()) {
                 val result = profile()
                 val user = assertIs<Either.Right<UserProfile>>(result).value
                 assertEquals("user@example.com", user.username)

@@ -6,7 +6,6 @@ import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -16,7 +15,7 @@ interface ClientBalance {
     val totalAmount: Double
     val history: List<ClientBalanceEntry>
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>, audit: AuditLog)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun adjust(amount: Double, note: String): ClientBalance
 }
 

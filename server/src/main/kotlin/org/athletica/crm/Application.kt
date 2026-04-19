@@ -34,10 +34,11 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.discipline.AuditDisciplines
 import org.athletica.crm.domain.discipline.DbDisciplines
-import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -150,13 +151,11 @@ fun Application.configureServer(
                     authRoutes()
                 }
                 authenticate("auth-jwt") {
-                    clientsRoutes(DbClients(), DbClientBalances())
+                    clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
                     groupsRoutes()
                     orgRoutes()
-                    disciplinesRoutes(DbDisciplines(di.audit))
-                    context(di.orgEmails, di.users) {
-                        employeesRoutes(DbEmployees())
-                    }
+                    disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
+                    employeesRoutes(di.employees)
                     context(di.passwordHasher) {
                         profileRoutes()
                     }

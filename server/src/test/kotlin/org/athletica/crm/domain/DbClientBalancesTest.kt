@@ -5,7 +5,6 @@ import arrow.core.getOrElse
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.TestAuditLog
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.ClientId
 import org.athletica.crm.core.Lang
@@ -154,7 +153,7 @@ class DbClientBalancesTest {
 
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
-                    context(ctx, this, TestAuditLog()) {
+                    context(ctx, this) {
                         balances.forClient(clientId).adjust(500.0, "Бонус")
                     }
                 }
@@ -171,7 +170,7 @@ class DbClientBalancesTest {
 
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
-                    context(ctx, this, TestAuditLog()) {
+                    context(ctx, this) {
                         balances.forClient(clientId).adjust(-300.0, "Корректировка")
                     }
                 }
@@ -187,7 +186,7 @@ class DbClientBalancesTest {
 
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
-                    context(ctx, this, TestAuditLog()) {
+                    context(ctx, this) {
                         val b = balances.forClient(clientId)
                         val b2 = b.adjust(200.0, "Первое пополнение")
                         val b3 = b2.adjust(300.0, "Второе пополнение")
@@ -207,7 +206,7 @@ class DbClientBalancesTest {
             val updated =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this, TestAuditLog()) {
+                        context(ctx, this) {
                             balances.forClient(clientId).adjust(750.0, "Пополнение")
                         }
                     }
@@ -226,7 +225,7 @@ class DbClientBalancesTest {
             val result =
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
-                        context(ctx, this, TestAuditLog()) {
+                        context(ctx, this) {
                             balances.forClient(clientId).adjust(0.0, "Комментарий")
                         }
                     }
@@ -244,7 +243,7 @@ class DbClientBalancesTest {
             val result =
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
-                        context(ctx, this, TestAuditLog()) {
+                        context(ctx, this) {
                             balances.forClient(clientId).adjust(100.0, "")
                         }
                     }
@@ -262,7 +261,7 @@ class DbClientBalancesTest {
             val result =
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
-                        context(ctx, this, TestAuditLog()) {
+                        context(ctx, this) {
                             balances.forClient(clientId).adjust(100.0, "   ")
                         }
                     }
@@ -280,7 +279,7 @@ class DbClientBalancesTest {
             val result =
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this, TestAuditLog()) {
+                        context(otherCtx, this) {
                             balances.forClient(clientId).adjust(500.0, "Попытка корректировки")
                         }
                     }

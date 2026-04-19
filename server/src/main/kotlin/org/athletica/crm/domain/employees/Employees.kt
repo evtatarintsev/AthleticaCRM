@@ -23,7 +23,4 @@ interface Employees {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun list(): List<Employee>
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun roles(): List<EmployeeRole>
 }

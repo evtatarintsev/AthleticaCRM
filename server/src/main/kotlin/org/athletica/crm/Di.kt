@@ -11,6 +11,7 @@ import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
@@ -37,9 +38,10 @@ data class Di(
     val emailDispatcher: EmailDispatcher,
 ) {
     val users = DbUsers(passwordHasher)
+    val roles = DbRoles()
     val employees =
         AuditEmployees(
-            EmailEmployees(DbEmployees(users), orgEmails),
+            EmailEmployees(DbEmployees(users, roles), orgEmails),
             audit,
         )
 }

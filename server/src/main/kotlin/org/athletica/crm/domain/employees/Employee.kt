@@ -11,7 +11,6 @@ import org.athletica.crm.core.permissions.Actor
 import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
-import kotlin.uuid.Uuid
 
 interface Employee {
     val id: EmployeeId
@@ -31,12 +30,6 @@ interface Employee {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun invite(email: EmailAddress, password: String)
 }
-
-data class EmployeeRole(
-    val id: Uuid,
-    val name: String,
-    val permissions: Set<Permission>,
-)
 
 data class EmployeePermission(
     val roles: List<EmployeeRole>,

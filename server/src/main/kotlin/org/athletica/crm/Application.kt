@@ -7,7 +7,6 @@ import io.ktor.http.auth.HttpAuthHeader
 import io.ktor.http.auth.parseAuthorizationHeader
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
@@ -23,11 +22,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.KtorSimpleLogger
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
@@ -155,7 +149,7 @@ fun Application.configureServer(
                     groupsRoutes()
                     orgRoutes()
                     disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
-                    employeesRoutes(di.employees)
+                    employeesRoutes(di.employees, di.roles)
                     context(di.passwordHasher) {
                         profileRoutes()
                     }

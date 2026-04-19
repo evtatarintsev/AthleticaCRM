@@ -9,7 +9,6 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
-import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
@@ -65,7 +64,4 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> = employees
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun roles(): List<EmployeeRole> = emptyList()
 }

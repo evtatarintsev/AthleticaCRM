@@ -17,6 +17,7 @@ import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
@@ -36,7 +37,7 @@ class DbEmployeesTest {
     private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "owner@example.com", "127.0.0.1")
     private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "other@example.com", "127.0.0.1")
     private val users = DbUsers(PasswordHasher())
-    private val employees = DbEmployees(users)
+    private val employees = DbEmployees(users, DbRoles())
     private val orgEmails = DbOrgEmails()
 
     @Before
@@ -361,7 +362,7 @@ class DbEmployeesTest {
                 assertEquals(false, employee.isActive)
 
                 TestPostgres.db.transaction {
-                    context(ctx, this, users, orgEmails) {
+                    context(ctx, this) {
                         employee.invite("invite@example.com".toEmailAddress(), "secret123")
                     }
                 }
@@ -386,7 +387,7 @@ class DbEmployeesTest {
                         context(ctx, this) { employees.new(id1, "Первый", null, null, null) }
                     }
                 TestPostgres.db.transaction {
-                    context(ctx, this, users, orgEmails) { emp1.invite(email, "pass1") }
+                    context(ctx, this) { emp1.invite(email, "pass1") }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -400,7 +401,7 @@ class DbEmployeesTest {
             val result =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this, users, orgEmails) { emp2.invite(email, "pass2") }
+                        context(ctx, this) { emp2.invite(email, "pass2") }
                     }
                 }
             assertEquals("LOGIN_TAKEN", assertIs<Either.Left<DomainError>>(result).value.code)

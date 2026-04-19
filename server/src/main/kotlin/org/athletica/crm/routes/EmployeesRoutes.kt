@@ -12,10 +12,11 @@ import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.storage.Database
 
 context(db: Database)
-fun Route.employeesRoutes(employees: Employees) {
+fun Route.employeesRoutes(employees: Employees, roles: Roles) {
     route("/employees") {
         getWithContext("/list") {
             call.eitherToResponse {
@@ -54,7 +55,7 @@ fun Route.employeesRoutes(employees: Employees) {
         getWithContext("/roles") {
             call.eitherToResponse {
                 db.transaction {
-                    employees.roles()
+                    roles.list()
                 }.let { roles ->
                     RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
                 }

@@ -30,7 +30,7 @@ private data class PermissionOverrides(
     val revoked: Set<Permission>,
 )
 
-class DbEmployees(private val users: Users) : Employees {
+class DbEmployees(private val users: Users, private val roles: Roles) : Employees {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
@@ -180,7 +180,7 @@ class DbEmployees(private val users: Users) : Employees {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun rolesByEmployeeId(): Map<EmployeeId, List<EmployeeRole>> {
-        val rolesById = roles().associateBy { it.id }
+        val rolesById = roles.list().associateBy { it.id }
         return tr
             .sql(
                 """
@@ -197,36 +197,4 @@ class DbEmployees(private val users: Users) : Employees {
             .groupBy({ it.first }, { rolesById[it.second] })
             .mapValues { (_, roles) -> roles.filterNotNull() }
     }
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun roles(): List<EmployeeRole> =
-        tr
-            .sql(
-                """
-                SELECT r.id, r.name, rp.permission_key
-                FROM roles r
-                LEFT JOIN role_permissions rp ON rp.role_id = r.id
-                WHERE r.org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("orgId", ctx.orgId)
-            .list { row ->
-                Triple(
-                    row.asUuid("id"),
-                    row.asString("name"),
-                    row.asStringOrNull("permission_key"),
-                )
-            }
-            .groupBy({ it.first }, { it.second to it.third })
-            .map { (roleId, rows) ->
-                EmployeeRole(
-                    id = roleId,
-                    name = rows.first().first,
-                    permissions =
-                        rows
-                            .mapNotNull { it.second }
-                            .map { Permission.valueOf(it) }
-                            .toSet(),
-                )
-            }
 }

@@ -81,10 +81,10 @@ import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.ChangePasswordScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
-import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
+import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client

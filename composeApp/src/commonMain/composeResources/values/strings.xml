@@ -199,6 +199,9 @@
     <string name="settings_item_activity_log_subtitle">Логируются все действия пользователей с системой</string>
     <string name="settings_item_roles">Роли</string>
     <string name="settings_item_roles_subtitle">Кому что позволено</string>
+    <string name="screen_roles">Роли</string>
+    <string name="roles_empty">Роли не созданы</string>
+    <string name="permission_can_view_client_balance">Просмотр баланса клиента</string>
     <string name="settings_item_employees">Сотрудники</string>
     <string name="settings_item_employees_subtitle">Список сотрудников организации</string>
     <string name="screen_employees">Сотрудники</string>

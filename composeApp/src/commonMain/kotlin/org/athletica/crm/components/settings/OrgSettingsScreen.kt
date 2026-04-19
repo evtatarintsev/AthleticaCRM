@@ -121,6 +121,7 @@ private fun buildSections(
     onNavigateToActivityLog: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
+    onNavigateToRoles: () -> Unit,
 ) = listOf(
     SettingSection(
         label = stringResource(Res.string.settings_section_user),
@@ -191,6 +192,7 @@ private fun buildSections(
                     icon = Icons.AutoMirrored.Filled.Article,
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
+                    onClick = onNavigateToRoles,
                 ),
             ),
     ),
@@ -284,6 +286,7 @@ fun OrgSettingsScreen(
     onNavigateToActivityLog: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToRoles: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val sections =
@@ -294,6 +297,7 @@ fun OrgSettingsScreen(
             onNavigateToActivityLog = onNavigateToActivityLog,
             onNavigateToChangePassword = onNavigateToChangePassword,
             onNavigateToEditProfile = onNavigateToEditProfile,
+            onNavigateToRoles = onNavigateToRoles,
         )
     LazyColumn(
         contentPadding = PaddingValues(bottom = 24.dp),

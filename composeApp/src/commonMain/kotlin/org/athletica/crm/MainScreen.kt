@@ -81,6 +81,7 @@ import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.ChangePasswordScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
+import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
@@ -190,6 +191,7 @@ fun MainScreen(
     var showOrgBasicSettings by remember { mutableStateOf(false) }
     var showClientSources by remember { mutableStateOf(false) }
     var showDisciplines by remember { mutableStateOf(false) }
+    var showRoles by remember { mutableStateOf(false) }
     var showActivityLog by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
     var showEditProfile by remember { mutableStateOf(false) }
@@ -261,6 +263,11 @@ fun MainScreen(
 
     if (showDisciplines) {
         DisciplinesScreen(api = api, onBack = { showDisciplines = false })
+        return
+    }
+
+    if (showRoles) {
+        RolesScreen(api = api, onBack = { showRoles = false })
         return
     }
 
@@ -355,6 +362,7 @@ fun MainScreen(
                             onNavigateToActivityLog = { showActivityLog = true },
                             onNavigateToChangePassword = { showChangePassword = true },
                             onNavigateToEditProfile = { showEditProfile = true },
+                            onNavigateToRoles = { showRoles = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -419,6 +427,7 @@ fun MainScreen(
                             onNavigateToActivityLog = { showActivityLog = true },
                             onNavigateToChangePassword = { showChangePassword = true },
                             onNavigateToEditProfile = { showEditProfile = true },
+                            onNavigateToRoles = { showRoles = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -470,6 +479,7 @@ fun MainScreen(
                             onNavigateToActivityLog = { showActivityLog = true },
                             onNavigateToChangePassword = { showChangePassword = true },
                             onNavigateToEditProfile = { showEditProfile = true },
+                            onNavigateToRoles = { showRoles = true },
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
@@ -744,6 +754,7 @@ private fun ContentArea(
     onNavigateToActivityLog: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToRoles: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     when (selectedItem) {
@@ -777,6 +788,7 @@ private fun ContentArea(
                 onNavigateToActivityLog = onNavigateToActivityLog,
                 onNavigateToChangePassword = onNavigateToChangePassword,
                 onNavigateToEditProfile = onNavigateToEditProfile,
+                onNavigateToRoles = onNavigateToRoles,
                 modifier = modifier,
             )
         else ->

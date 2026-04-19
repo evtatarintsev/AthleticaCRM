@@ -67,15 +67,15 @@ fun Application.module() {
     runMigrations(di.databaseConfig)
 
     val corsAllowedHosts = environment.config.property("cors.allowedHosts").getString()
-
-    CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
-        launch {
-            di.emailDispatcher.dispatchPending()
-        }
-        monitor.subscribe(ApplicationStopped) {
-            cancel()
-        }
-    }
+//
+//    CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
+//        launch {
+//            di.emailDispatcher.dispatchPending()
+//        }
+//        monitor.subscribe(ApplicationStopped) {
+//            cancel()
+//        }
+//    }
 
     context(di) {
         configureServer(corsAllowedHosts)

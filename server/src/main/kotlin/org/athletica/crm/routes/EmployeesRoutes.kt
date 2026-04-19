@@ -7,6 +7,8 @@ import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
+import org.athletica.crm.api.schemas.employees.RoleItem
+import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.Employees
@@ -45,6 +47,16 @@ fun Route.employeesRoutes(employees: Employees) {
                     employees
                         .byId(request.employeeId)
                         .invite(request.email, request.password)
+                }
+            }
+        }
+
+        getWithContext("/roles") {
+            call.eitherToResponse {
+                db.transaction {
+                    employees.roles()
+                }.let { roles ->
+                    RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
                 }
             }
         }

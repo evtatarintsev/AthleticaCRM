@@ -48,6 +48,7 @@ import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
+import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
@@ -211,6 +212,9 @@ class ApiClient(private val http: HttpClient) {
                 setBody(request)
             }
         }
+
+    /** Возвращает список ролей организации. */
+    suspend fun roles(): Either<ApiClientError, RoleListResponse> = execute { http.get("/api/employees/roles") }
 
     /** Отправляет сотруднику доступ: устанавливает пароль, активирует аккаунт, высылает email. */
     suspend fun sendEmployeeAccess(request: SendEmployeeAccessRequest): Either<ApiClientError, Unit> =

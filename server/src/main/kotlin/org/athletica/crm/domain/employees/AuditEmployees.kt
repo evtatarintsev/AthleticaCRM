@@ -14,6 +14,12 @@ import org.athletica.crm.storage.Transaction
 
 class AuditEmployees(private val delegate: Employees, private val audit: AuditLog) : Employees by delegate {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byId(id: EmployeeId) = AuditEmployee(delegate.byId(id), audit)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun list() = delegate.list().map { AuditEmployee(it, audit) }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,

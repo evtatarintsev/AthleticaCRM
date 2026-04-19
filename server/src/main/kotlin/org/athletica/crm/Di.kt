@@ -39,9 +39,7 @@ data class Di(
     val users = DbUsers(passwordHasher)
     val employees =
         AuditEmployees(
-            EmailEmployees(
-                DbEmployees(users), orgEmails,
-            ),
+            EmailEmployees(DbEmployees(users), orgEmails),
             audit,
         )
 }

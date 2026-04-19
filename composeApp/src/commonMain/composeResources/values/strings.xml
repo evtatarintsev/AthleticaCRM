@@ -200,8 +200,14 @@
     <string name="settings_item_roles">Роли</string>
     <string name="settings_item_roles_subtitle">Кому что позволено</string>
     <string name="screen_roles">Роли</string>
+    <string name="screen_role_create">Новая роль</string>
     <string name="roles_empty">Роли не созданы</string>
+    <string name="action_add_role">Добавить роль</string>
+    <string name="label_role_name">Название роли</string>
+    <string name="label_permissions">Права доступа</string>
     <string name="permission_can_view_client_balance">Просмотр баланса клиента</string>
+    <string name="permission_can_view_client_balance_name">Может видеть баланс клиента</string>
+    <string name="permission_can_view_client_balance_description">Сотрудник сможет видеть сумму на счёте клиентов</string>
     <string name="settings_item_employees">Сотрудники</string>
     <string name="settings_item_employees_subtitle">Список сотрудников организации</string>
     <string name="screen_employees">Сотрудники</string>

@@ -13,10 +13,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_role
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.permission_can_view_client_balance
 import org.athletica.crm.generated.resources.roles_empty
@@ -61,6 +64,16 @@ fun RolesScreen(
     var roles by remember { mutableStateOf<List<RoleItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var showCreate by remember { mutableStateOf(false) }
+
+    if (showCreate) {
+        RoleCreateScreen(
+            onBack = { showCreate = false },
+            onSave = { _, _ -> showCreate = false },
+            modifier = modifier,
+        )
+        return
+    }
 
     LaunchedEffect(Unit) {
         isLoading = true
@@ -91,6 +104,13 @@ fun RolesScreen(
                         )
                     }
                 },
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { showCreate = true },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(stringResource(Res.string.action_add_role)) },
             )
         },
         modifier = modifier,

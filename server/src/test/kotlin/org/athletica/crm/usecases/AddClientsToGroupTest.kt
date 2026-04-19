@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases
 
 import arrow.core.Either
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
@@ -20,8 +21,20 @@ import kotlin.test.assertIs
 import kotlin.uuid.Uuid
 
 class AddClientsToGroupTest {
+    private val userId = UserId.new()
+
     @Before
-    fun setUp() = TestPostgres.truncate()
+    fun setUp() {
+        TestPostgres.truncate()
+        runBlocking {
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId)
+                .bind("login", "${userId.value}@example.com")
+                .bind("hash", "hash")
+                .execute()
+        }
+    }
 
     private suspend fun insertOrg(name: String = "Test Org"): Uuid {
         val orgId = Uuid.generateV7()
@@ -66,7 +79,7 @@ class AddClientsToGroupTest {
     private fun ctx(orgId: Uuid) =
         RequestContext(
             lang = Lang.EN,
-            userId = UserId.new(),
+            userId = userId,
             orgId = OrgId(orgId),
             username = "user@example.com",
             clientIp = "127.0.0.1",

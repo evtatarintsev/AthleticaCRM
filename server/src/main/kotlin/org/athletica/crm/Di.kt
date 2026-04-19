@@ -14,6 +14,7 @@ import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.EmailEmployees
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
+import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.security.JwtConfig
@@ -33,6 +34,7 @@ data class Di(
     val audit: AuditLog,
     val jwtConfig: JwtConfig,
     val orgEmails: OrgEmails,
+    val emailDispatcher: EmailDispatcher,
 ) {
     val users = DbUsers(passwordHasher)
     val employees =
@@ -42,7 +44,6 @@ data class Di(
             ),
             audit,
         )
-    val emailDispatcher = DbEmailDispatcher(database, DbOrgEmails(), mailbox, checkEvery = 10.seconds)
 }
 
 data class DatabaseConfig(
@@ -66,6 +67,7 @@ fun Application.di(): Di {
         PostgresAuditLog(),
         jwtConfig(),
         DbOrgEmails(),
+        emailDispatcher = DbEmailDispatcher(db, DbOrgEmails(), mb, checkEvery = 10.seconds),
     )
 }
 

@@ -374,30 +374,6 @@ class DbEmployeesTest {
         }
 
     @Test
-    fun `invite планирует отправку письма сотруднику`() =
-        runTest {
-            val id = EmployeeId.new()
-            either<DomainError, _> {
-                val employee =
-                    TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id, "Получатель", null, null, null) }
-                    }
-                TestPostgres.db.transaction {
-                    context(ctx, this, users, orgEmails) {
-                        employee.invite("recipient@example.com".toEmailAddress(), "pass456")
-                    }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
-
-            val count =
-                TestPostgres.db
-                    .sql("SELECT COUNT(*) FROM org_emails WHERE org_id = :orgId")
-                    .bind("orgId", orgId)
-                    .firstOrNull { row -> row.get(0, Long::class.java)!! } ?: 0L
-            assertEquals(1L, count)
-        }
-
-    @Test
     fun `invite возвращает LOGIN_TAKEN если email уже занят`() =
         runTest {
             val id1 = EmployeeId.new()

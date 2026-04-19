@@ -8,11 +8,19 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.mail.DbOrgEmails
+import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+
+class FakeEmailDispatcher : EmailDispatcher {
+    override suspend fun dispatchPending() {}
+}
 
 /** Интеграционные тесты сервера с изолированной БД в Docker-контейнере. */
 class ApplicationTest {
@@ -24,12 +32,16 @@ class ApplicationTest {
         testApplication {
             application {
                 testDi =
-                    di().copy(
+                    Di(
                         databaseConfig = TestPostgres.dbConfig,
                         database = TestPostgres.db,
                         mailbox = TestMailbox(),
                         jwtConfig = testJwtConfig,
                         minio = TestMinio.minioService,
+                        passwordHasher = PasswordHasher(),
+                        audit = PostgresAuditLog(),
+                        orgEmails = DbOrgEmails(),
+                        emailDispatcher = FakeEmailDispatcher(),
                     )
             }
         }

@@ -11,16 +11,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -28,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,9 +50,12 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
+import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.core.toEmailAddress
+import kotlin.uuid.Uuid
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
@@ -82,9 +91,23 @@ fun EmployeeCreateScreen(
     var isUploadingAvatar by remember { mutableStateOf(false) }
     var isCreating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var roles by remember { mutableStateOf<List<RoleItem>>(emptyList()) }
+    var selectedRoleIds by remember { mutableStateOf(emptySet<Uuid>()) }
+    var grantedPermissions by remember { mutableStateOf(emptySet<Permission>()) }
+    var revokedPermissions by remember { mutableStateOf(emptySet<Permission>()) }
+    var isLoadingRoles by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val busy = isCreating || isUploadingAvatar
+
+    LaunchedEffect(Unit) {
+        isLoadingRoles = true
+        api.roles().fold(
+            ifLeft = { error = "Не удалось загрузить роли" },
+            ifRight = { response -> roles = response.roles },
+        )
+        isLoadingRoles = false
+    }
 
     Scaffold(
         modifier = modifier,
@@ -113,6 +136,9 @@ fun EmployeeCreateScreen(
                                             phoneNo = phoneNo.trim().ifBlank { null },
                                             email = email.trim().ifBlank { null }?.toEmailAddress(),
                                             avatarId = avatarId,
+                                            roleIds = selectedRoleIds.toList(),
+                                            grantedPermissions = grantedPermissions,
+                                            revokedPermissions = revokedPermissions,
                                         ),
                                     ).fold(
                                         ifLeft = { err ->
@@ -218,6 +244,106 @@ fun EmployeeCreateScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            if (isLoadingRoles) {
+                CircularProgressIndicator()
+            } else if (roles.isNotEmpty()) {
+                Text(
+                    text = "Роли",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    roles.forEachIndexed { index, role ->
+                        ListItem(
+                            headlineContent = { Text(role.name) },
+                            trailingContent = {
+                                Checkbox(
+                                    checked = role.id in selectedRoleIds,
+                                    onCheckedChange = { checked ->
+                                        selectedRoleIds = if (checked) {
+                                            selectedRoleIds + role.id
+                                        } else {
+                                            selectedRoleIds - role.id
+                                        }
+                                    },
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (index < roles.lastIndex) {
+                            HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                        }
+                    }
+                }
+            }
+
+            Text(
+                text = "Явно выданные права",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Permission.entries.forEachIndexed { index, permission ->
+                    ListItem(
+                        headlineContent = { Text(permission.displayName()) },
+                        trailingContent = {
+                            Checkbox(
+                                checked = permission in grantedPermissions,
+                                onCheckedChange = { checked ->
+                                    grantedPermissions = if (checked) {
+                                        grantedPermissions + permission
+                                    } else {
+                                        grantedPermissions - permission
+                                    }
+                                },
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (index < Permission.entries.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
+            }
+
+            Text(
+                text = "Явно отозванные права",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Permission.entries.forEachIndexed { index, permission ->
+                    ListItem(
+                        headlineContent = { Text(permission.displayName()) },
+                        trailingContent = {
+                            Checkbox(
+                                checked = permission in revokedPermissions,
+                                onCheckedChange = { checked ->
+                                    revokedPermissions = if (checked) {
+                                        revokedPermissions + permission
+                                    } else {
+                                        revokedPermissions - permission
+                                    }
+                                },
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (index < Permission.entries.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
+            }
+
             if (error != null) {
                 Text(
                     text = error!!,
@@ -228,6 +354,12 @@ fun EmployeeCreateScreen(
         }
     }
 }
+
+@Composable
+private fun Permission.displayName(): String =
+    when (this) {
+        Permission.CAN_VIEW_CLIENT_BALANCE -> "Просмотр баланса клиента"
+    }
 
 @Composable
 private fun EmployeeAvatarPicker(

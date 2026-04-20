@@ -16,13 +16,13 @@ import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import kotlin.collections.emptyList
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
-import kotlin.collections.emptyList
 
 private object FakeTransaction : Transaction {
     override fun sql(sql: String): QueryBuilder = error("not supported in stub")

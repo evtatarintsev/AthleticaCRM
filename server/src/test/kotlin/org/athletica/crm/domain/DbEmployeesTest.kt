@@ -41,6 +41,7 @@ class DbEmployeesTest {
     private val employees = DbEmployees(users, DbRoles())
 
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
+
     @Before
     fun setUp() {
         TestPostgres.truncate()

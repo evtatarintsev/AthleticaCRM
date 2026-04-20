@@ -82,4 +82,20 @@ data class DbEmployee(
         val user = users.new(email.value, password)
         copy(userId = user.id, isActive = true, email = email).save()
     }
+
+    context(ctx: RequestContext)
+    override fun withNew(
+        newName: String,
+        newPermissions: EmployeePermission,
+        newAvatarId: UploadId?,
+        newPhoneNo: String?,
+        newEmail: EmailAddress?,
+    ): Employee =
+        copy(
+            name = newName,
+            permissions = newPermissions,
+            email = newEmail,
+            avatarId = newAvatarId,
+            phoneNo = newPhoneNo,
+        )
 }

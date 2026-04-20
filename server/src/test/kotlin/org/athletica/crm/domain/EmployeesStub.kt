@@ -33,6 +33,21 @@ data class EmployeeStub(
     context(ctx: RequestContext, tr: Transaction, raise: arrow.core.raise.Raise<DomainError>)
     override suspend fun invite(email: EmailAddress, password: String) {
     }
+
+    context(ctx: RequestContext)
+    override fun withNew(
+        newName: String,
+        newPermissions: EmployeePermission,
+        newAvatarId: UploadId?,
+        newPhoneNo: String?,
+        newEmail: EmailAddress?,
+    ) = copy(
+        name = newName,
+        permissions = newPermissions,
+        email = newEmail,
+        avatarId = newAvatarId,
+        phoneNo = newPhoneNo,
+    )
 }
 
 class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : Employees {

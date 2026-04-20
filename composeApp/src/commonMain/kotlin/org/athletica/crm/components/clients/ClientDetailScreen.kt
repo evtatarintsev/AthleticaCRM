@@ -71,7 +71,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
-import kotlin.time.Clock
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
@@ -124,6 +123,7 @@ import org.athletica.crm.openUrl
 import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
@@ -868,12 +868,13 @@ private fun DocumentsSection(
                                                 // Handle error silently or show toast
                                             },
                                             ifRight = {
-                                                val newDoc = ClientDoc(
-                                                    id = docId,
-                                                    uploadId = upload.id,
-                                                    name = upload.originalName,
-                                                    createdAt = Clock.System.now(),
-                                                )
+                                                val newDoc =
+                                                    ClientDoc(
+                                                        id = docId,
+                                                        uploadId = upload.id,
+                                                        name = upload.originalName,
+                                                        createdAt = Clock.System.now(),
+                                                    )
                                                 docsList = docsList + newDoc
                                             },
                                         )

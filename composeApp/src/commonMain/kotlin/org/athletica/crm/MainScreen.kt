@@ -64,13 +64,13 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreen
 import org.athletica.crm.components.clients.ClientsScreen
-import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.components.employees.EmployeeCreateScreen
 import org.athletica.crm.components.employees.EmployeeDetailScreen
 import org.athletica.crm.components.employees.EmployeeEditScreen

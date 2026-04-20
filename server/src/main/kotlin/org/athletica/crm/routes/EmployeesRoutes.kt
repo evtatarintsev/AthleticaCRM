@@ -3,7 +3,6 @@ package org.athletica.crm.routes
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
-import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
@@ -15,7 +14,7 @@ import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
-import org.athletica.crm.domain.employees.DbEmployee
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
@@ -78,17 +77,16 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
                             grantedPermissions = request.grantedPermissions,
                             revokedPermissions = request.revokedPermissions,
                         )
-                    val employee = employees.byId(request.id) as DbEmployee
-                    employee
-                        .copy(
-                            name = request.name,
-                            phoneNo = request.phoneNo,
-                            email = request.email,
-                            avatarId = request.avatarId,
-                            permissions = permissions,
+                    employees
+                        .byId(request.id)
+                        .withNew(
+                            newName = request.name,
+                            newPhoneNo = request.phoneNo,
+                            newEmail = request.email,
+                            newAvatarId = request.avatarId,
+                            newPermissions = permissions,
                         ).save()
                 }
-                "Updated"
             }
         }
 

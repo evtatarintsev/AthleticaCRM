@@ -50,7 +50,6 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
-import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.core.permissions.displayName
 import org.athletica.crm.core.toEmailAddress
@@ -65,7 +64,6 @@ import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /** Экран редактирования сотрудника. */
 @OptIn(ExperimentalMaterial3Api::class)

@@ -29,6 +29,15 @@ interface Employee {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun invite(email: EmailAddress, password: String)
+
+    context(ctx: RequestContext)
+    fun withNew(
+        newName: String,
+        newPermissions: EmployeePermission,
+        newAvatarId: UploadId?,
+        newPhoneNo: String?,
+        newEmail: EmailAddress?,
+    ): Employee
 }
 
 data class EmployeePermission(

@@ -210,8 +210,7 @@ class ApiClient(private val http: HttpClient) {
     suspend fun employeeList(): Either<ApiClientError, EmployeeListResponse> = execute { http.get("/api/employees/list") }
 
     /** Возвращает полные данные сотрудника по ID. */
-    suspend fun employeeDetail(id: EmployeeId): Either<ApiClientError, EmployeeDetailResponse> =
-        execute { http.get("/api/employees/detail?id=$id") }
+    suspend fun employeeDetail(id: EmployeeId): Either<ApiClientError, EmployeeDetailResponse> = execute { http.get("/api/employees/detail?id=$id") }
 
     /** Создаёт нового сотрудника по данным [request]. Возвращает созданного сотрудника. */
     suspend fun createEmployee(request: CreateEmployeeRequest): Either<ApiClientError, EmployeeListItem> =
@@ -223,7 +222,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Обновляет данные сотрудника по [request]. */
-    suspend fun updateEmployee(request: UpdateEmployeeRequest): Either<ApiClientError, String> =
+    suspend fun updateEmployee(request: UpdateEmployeeRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/employees/update") {
                 contentType(ContentType.Application.Json)

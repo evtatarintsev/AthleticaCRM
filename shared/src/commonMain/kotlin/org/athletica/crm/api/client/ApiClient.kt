@@ -33,7 +33,6 @@ import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
-import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -276,8 +275,8 @@ class ApiClient(private val http: HttpClient) {
             }
         }
 
-    /** Прикрепляет загруженный файл к клиенту как документ. Возвращает созданный [ClientDoc]. */
-    suspend fun attachClientDoc(request: AttachClientDocRequest): Either<ApiClientError, ClientDoc> =
+    /** Прикрепляет загруженный файл к клиенту как документ. */
+    suspend fun attachClientDoc(request: AttachClientDocRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/clients/docs/attach") {
                 contentType(ContentType.Application.Json)

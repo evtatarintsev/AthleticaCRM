@@ -57,15 +57,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
+import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreen
@@ -86,6 +86,7 @@ import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client
 import org.athletica.crm.generated.resources.action_collapse_menu
@@ -94,7 +95,6 @@ import org.athletica.crm.generated.resources.action_open_menu
 import org.athletica.crm.generated.resources.action_toggle_nav
 import org.athletica.crm.generated.resources.app_name
 import org.athletica.crm.generated.resources.cd_app_logo
-import org.athletica.crm.generated.resources.cd_avatar
 import org.athletica.crm.generated.resources.hint_search
 import org.athletica.crm.generated.resources.label_balance_value
 import org.athletica.crm.generated.resources.nav_clients
@@ -495,27 +495,15 @@ fun MainScreen(
  */
 @Composable
 private fun DrawerAccountHeader(api: ApiClient) {
-    var name by remember { mutableStateOf("") }
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    val noResponse = AuthMeResponse(UserId.new(), "", "", null)
+    var me by remember { mutableStateOf(noResponse) }
 
     LaunchedEffect(Unit) {
-        api.me().onRight { profile ->
-            name = profile.name
-            val avatarId = profile.avatarId
-            if (avatarId != null) {
-                api.uploadInfo(avatarId).onRight { avatarUrl = it.url }
-            }
-        }
+        api.me().onRight { me = it }
     }
 
     val orgName = "ООО «Атлетика»"
     val balance = "12 400 ₽"
-    val initials =
-        name
-            .split(" ")
-            .take(2)
-            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-            .joinToString("")
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -532,27 +520,14 @@ private fun DrawerAccountHeader(api: ApiClient) {
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
-            if (avatarUrl != null) {
-                AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = stringResource(Res.string.cd_avatar),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(48.dp).clip(CircleShape),
-                )
-            } else {
-                Text(
-                    text = initials,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
+            Avatar(me.avatarId, me.name, api)
         }
 
         Spacer(Modifier.width(12.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = name,
+                text = me.name,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,

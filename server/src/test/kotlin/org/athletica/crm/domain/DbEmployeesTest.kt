@@ -18,8 +18,10 @@ import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
+import kotlin.collections.emptyList
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -38,6 +40,7 @@ class DbEmployeesTest {
     private val users = DbUsers(PasswordHasher())
     private val employees = DbEmployees(users, DbRoles())
 
+    private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
     @Before
     fun setUp() {
         TestPostgres.truncate()
@@ -59,7 +62,7 @@ class DbEmployeesTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            employees.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null)
+                            employees.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -83,7 +86,7 @@ class DbEmployeesTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            employees.new(id, "Анна", null, null, null)
+                            employees.new(id, "Анна", null, null, null, emptyPermission)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -100,14 +103,14 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either<DomainError, _> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { employees.new(id, "Первый", null, null, null) }
+                    context(ctx, this) { employees.new(id, "Первый", null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id, "Второй", null, null, null) }
+                        context(ctx, this) { employees.new(id, "Второй", null, null, null, emptyPermission) }
                     }
                 }
             assertEquals("EMPLOYEE_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
@@ -122,7 +125,7 @@ class DbEmployeesTest {
             either<DomainError, _> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        employees.new(id, "Пётр Петров", "89001234567", "petr@example.com".toEmailAddress(), null)
+                        employees.new(id, "Пётр Петров", "89001234567", "petr@example.com".toEmailAddress(), null, emptyPermission)
                     }
                 }
                 val employee = TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
@@ -152,7 +155,7 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either<DomainError, _> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { employees.new(id, "Сотрудник", null, null, null) }
+                    context(ctx, this) { employees.new(id, "Сотрудник", null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -171,7 +174,9 @@ class DbEmployeesTest {
 
             either<DomainError, _> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { employees.new(id, "Менеджер", null, null, null) }
+                    context(ctx, this) {
+                        employees.new(id, "Менеджер", null, null, null, emptyPermission)
+                    }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -205,7 +210,7 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either<DomainError, _> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { employees.new(id, "Без ролей", null, null, null) }
+                    context(ctx, this) { employees.new(id, "Без ролей", null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -233,10 +238,10 @@ class DbEmployeesTest {
         runTest {
             either<DomainError, _> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { employees.new(EmployeeId.new(), "Свой", null, null, null) }
+                    context(ctx, this) { employees.new(EmployeeId.new(), "Свой", null, null, null, emptyPermission) }
                 }
                 TestPostgres.db.transaction {
-                    context(otherCtx, this) { employees.new(EmployeeId.new(), "Чужой", null, null, null) }
+                    context(otherCtx, this) { employees.new(EmployeeId.new(), "Чужой", null, null, null, emptyPermission) }
                 }
                 val list = TestPostgres.db.transaction { context(ctx, this) { employees.list() } }
                 assertEquals(1, list.size)
@@ -250,9 +255,9 @@ class DbEmployeesTest {
             either<DomainError, _> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        employees.new(EmployeeId.new(), "Яков", null, null, null)
-                        employees.new(EmployeeId.new(), "Антон", null, null, null)
-                        employees.new(EmployeeId.new(), "Михаил", null, null, null)
+                        employees.new(EmployeeId.new(), "Яков", null, null, null, emptyPermission)
+                        employees.new(EmployeeId.new(), "Антон", null, null, null, emptyPermission)
+                        employees.new(EmployeeId.new(), "Михаил", null, null, null, emptyPermission)
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx, this) { employees.list() } }
@@ -268,7 +273,7 @@ class DbEmployeesTest {
 
             either<DomainError, _> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { employees.new(id, "Сотрудник", null, null, null) }
+                    context(ctx, this) { employees.new(id, "Сотрудник", null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -303,7 +308,7 @@ class DbEmployeesTest {
             either {
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id, "Старое имя", null, null, null) }
+                        context(ctx, this) { employees.new(id, "Старое имя", null, null, null, emptyPermission) }
                     }
 
                 TestPostgres.db.transaction {
@@ -328,7 +333,7 @@ class DbEmployeesTest {
             either<DomainError, _> {
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id, "Сотрудник", null, null, null) }
+                        context(ctx, this) { employees.new(id, "Сотрудник", null, null, null, emptyPermission) }
                     }
 
                 TestPostgres.db.transaction {
@@ -353,7 +358,7 @@ class DbEmployeesTest {
             either<DomainError, _> {
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id, "Новый сотрудник", null, null, null) }
+                        context(ctx, this) { employees.new(id, "Новый сотрудник", null, null, null, emptyPermission) }
                     }
 
                 assertNull(employee.userId)
@@ -382,7 +387,7 @@ class DbEmployeesTest {
             either<DomainError, _> {
                 val emp1 =
                     TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id1, "Первый", null, null, null) }
+                        context(ctx, this) { employees.new(id1, "Первый", null, null, null, emptyPermission) }
                     }
                 TestPostgres.db.transaction {
                     context(ctx, this) { emp1.invite(email, "pass1") }
@@ -392,7 +397,7 @@ class DbEmployeesTest {
             val emp2 =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { employees.new(id2, "Второй", null, null, null) }
+                        context(ctx, this) { employees.new(id2, "Второй", null, null, null, emptyPermission) }
                     }
                 }.getOrElse { fail("Setup failed: $it") }
 

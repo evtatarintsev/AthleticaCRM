@@ -45,10 +45,10 @@ import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.label
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_role
 import org.athletica.crm.generated.resources.action_back
-import org.athletica.crm.generated.resources.permission_can_view_client_balance
 import org.athletica.crm.generated.resources.roles_empty
 import org.athletica.crm.generated.resources.screen_roles
 import org.jetbrains.compose.resources.stringResource
@@ -249,9 +249,3 @@ private fun RoleCard(role: RoleItem, onEdit: () -> Unit = {}) {
         }
     }
 }
-
-@Composable
-private fun Permission.label(): String =
-    when (this) {
-        Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance)
-    }

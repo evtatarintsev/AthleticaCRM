@@ -52,6 +52,7 @@ import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.displayName
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
@@ -355,12 +356,6 @@ fun EmployeeCreateScreen(
         }
     }
 }
-
-@Composable
-private fun Permission.displayName(): String =
-    when (this) {
-        Permission.CAN_VIEW_CLIENT_BALANCE -> "Просмотр баланса клиента"
-    }
 
 @Composable
 private fun EmployeeAvatarPicker(

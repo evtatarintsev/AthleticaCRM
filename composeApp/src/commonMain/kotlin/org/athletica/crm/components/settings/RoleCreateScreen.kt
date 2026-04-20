@@ -29,13 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.displayDescription
+import org.athletica.crm.core.permissions.displayName
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
 import org.athletica.crm.generated.resources.label_permissions
 import org.athletica.crm.generated.resources.label_role_name
-import org.athletica.crm.generated.resources.permission_can_view_client_balance_description
-import org.athletica.crm.generated.resources.permission_can_view_client_balance_name
 import org.athletica.crm.generated.resources.screen_role_create
 import org.jetbrains.compose.resources.stringResource
 
@@ -159,15 +159,3 @@ private fun PermissionToggleItem(
         modifier = modifier,
     )
 }
-
-@Composable
-private fun Permission.displayName(): String =
-    when (this) {
-        Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_name)
-    }
-
-@Composable
-private fun Permission.displayDescription(): String =
-    when (this) {
-        Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_description)
-    }

@@ -1,6 +1,5 @@
 package org.athletica.crm.components.clients
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,11 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -41,28 +38,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
-import org.athletica.crm.generated.resources.action_change_photo
 import org.athletica.crm.generated.resources.action_clear
 import org.athletica.crm.generated.resources.action_create
 import org.athletica.crm.generated.resources.action_ok
-import org.athletica.crm.generated.resources.cd_avatar
 import org.athletica.crm.generated.resources.filter_gender_female
 import org.athletica.crm.generated.resources.filter_gender_male
 import org.athletica.crm.generated.resources.hint_date_format
@@ -70,7 +61,6 @@ import org.athletica.crm.generated.resources.label_birthday
 import org.athletica.crm.generated.resources.label_gender
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_client_create
-import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -90,13 +80,11 @@ fun ClientCreateScreen(
     var birthday by remember { mutableStateOf<LocalDate?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     var avatarId by remember { mutableStateOf<UploadId?>(null) }
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
-    var isUploadingAvatar by remember { mutableStateOf(false) }
     var isCreating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    val busy = isCreating || isUploadingAvatar
+    val busy = isCreating
 
     Scaffold(
         modifier = modifier,
@@ -166,38 +154,10 @@ fun ClientCreateScreen(
                     .padding(horizontal = 24.dp, vertical = 24.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-
             AvatarPicker(
-                avatarUrl = avatarUrl,
-                isLoading = isUploadingAvatar,
-                name = name,
-                onClick = {
-                    scope.launch {
-                        val file = pickImageFile() ?: return@launch
-                        isUploadingAvatar = true
-                        error = null
-                        api
-                            .uploadFile(
-                                bytes = file.first,
-                                filename = file.second,
-                                contentType = file.third,
-                            ).fold(
-                                ifLeft = { err ->
-                                    error =
-                                        when (err) {
-                                            is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                            is ApiClientError.ValidationError -> err.message
-                                            is ApiClientError.Unavailable -> "Сервис недоступен"
-                                        }
-                                },
-                                ifRight = { upload ->
-                                    avatarId = upload.id
-                                    avatarUrl = upload.url
-                                },
-                            )
-                        isUploadingAvatar = false
-                    }
-                },
+                avatarId,
+                api,
+                onAvatarChanged = { avatarId = it },
             )
 
             OutlinedTextField(
@@ -281,7 +241,9 @@ fun ClientCreateScreen(
                         }) { Text(stringResource(Res.string.action_ok)) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) { Text(stringResource(Res.string.action_cancel)) }
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text(stringResource(Res.string.action_cancel))
+                        }
                     },
                 ) {
                     DatePicker(state = datePickerState)
@@ -296,61 +258,5 @@ fun ClientCreateScreen(
                 )
             }
         }
-    }
-}
-
-@Composable
-internal fun AvatarPicker(
-    avatarUrl: String?,
-    isLoading: Boolean,
-    name: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable(enabled = !isLoading, onClick = onClick),
-        ) {
-            when {
-                isLoading -> CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                avatarUrl != null ->
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = stringResource(Res.string.cd_avatar),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(96.dp).clip(CircleShape),
-                    )
-                name.isNotBlank() ->
-                    Text(
-                        text = name.first().uppercaseChar().toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                else ->
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = stringResource(Res.string.action_add_photo),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(32.dp),
-                    )
-            }
-        }
-
-        Text(
-            text = if (avatarUrl != null) stringResource(Res.string.action_change_photo) else stringResource(Res.string.action_add_photo),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center,
-        )
     }
 }

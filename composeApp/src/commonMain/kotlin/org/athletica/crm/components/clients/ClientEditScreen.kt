@@ -31,7 +31,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,8 +45,8 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
+import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
@@ -61,7 +60,6 @@ import org.athletica.crm.generated.resources.label_birthday
 import org.athletica.crm.generated.resources.label_gender
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_client_edit
-import org.athletica.crm.pickImageFile
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -81,20 +79,12 @@ fun ClientEditScreen(
     var gender by remember { mutableStateOf(client.gender) }
     var birthday by remember { mutableStateOf<LocalDate?>(client.birthday) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var avatarId by remember { mutableStateOf<UploadId?>(client.avatarId) }
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
-    var isUploadingAvatar by remember { mutableStateOf(false) }
+    var avatarId by remember { mutableStateOf(client.avatarId) }
     var isSaving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    val busy = isSaving || isUploadingAvatar
-
-    LaunchedEffect(client.avatarId) {
-        client.avatarId?.let { id ->
-            api.uploadInfo(id).onRight { avatarUrl = it.url }
-        }
-    }
+    val busy = isSaving
 
     Scaffold(
         modifier = modifier,
@@ -166,36 +156,9 @@ fun ClientEditScreen(
             Spacer(Modifier.height(8.dp))
 
             AvatarPicker(
-                avatarUrl = avatarUrl,
-                isLoading = isUploadingAvatar,
-                name = name,
-                onClick = {
-                    scope.launch {
-                        val file = pickImageFile() ?: return@launch
-                        isUploadingAvatar = true
-                        error = null
-                        api
-                            .uploadFile(
-                                bytes = file.first,
-                                filename = file.second,
-                                contentType = file.third,
-                            ).fold(
-                                ifLeft = { err ->
-                                    error =
-                                        when (err) {
-                                            is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                            is ApiClientError.ValidationError -> err.message
-                                            is ApiClientError.Unavailable -> "Сервис недоступен"
-                                        }
-                                },
-                                ifRight = { upload ->
-                                    avatarId = upload.id
-                                    avatarUrl = upload.url
-                                },
-                            )
-                        isUploadingAvatar = false
-                    }
-                },
+                avatarId,
+                api,
+                onAvatarChanged = { avatarId = it },
             )
 
             OutlinedTextField(

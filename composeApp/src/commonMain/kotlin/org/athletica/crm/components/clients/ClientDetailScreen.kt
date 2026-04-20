@@ -863,6 +863,7 @@ private fun DocumentsSection(
                                             ),
                                         ).onRight { newDoc ->
                                             docsList = docsList + newDoc
+                                            onRefresh()
                                         }
                                 }
                         }

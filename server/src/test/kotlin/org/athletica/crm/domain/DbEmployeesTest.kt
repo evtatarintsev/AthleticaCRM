@@ -357,13 +357,14 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either<DomainError, _> {
-                val createdRoles = TestPostgres.db.transaction {
-                    context(ctx, this) {
-                        roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet()))
-                        roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet()))
-                        roles.list()
+                val createdRoles =
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet()))
+                            roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet()))
+                            roles.list()
+                        }
                     }
-                }
 
                 val roleIds = createdRoles.map { it.id }
                 val permission = EmployeePermission(roles = createdRoles, grantedPermissions = emptySet(), revokedPermissions = emptySet())
@@ -399,14 +400,15 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either<DomainError, _> {
-                val createdRoles = TestPostgres.db.transaction {
-                    context(ctx, this) {
-                        roles.new(EmployeeRole(Uuid.random(), "Роль 1", emptySet()))
-                        roles.new(EmployeeRole(Uuid.random(), "Роль 2", emptySet()))
-                        roles.new(EmployeeRole(Uuid.random(), "Роль 3", emptySet()))
-                        roles.list()
+                val createdRoles =
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            roles.new(EmployeeRole(Uuid.random(), "Роль 1", emptySet()))
+                            roles.new(EmployeeRole(Uuid.random(), "Роль 2", emptySet()))
+                            roles.new(EmployeeRole(Uuid.random(), "Роль 3", emptySet()))
+                            roles.list()
+                        }
                     }
-                }
 
                 val initialPermission = EmployeePermission(roles = createdRoles.take(2), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 val employee =

@@ -36,12 +36,12 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.groups_empty
 import org.athletica.crm.generated.resources.hint_search
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Шторка выбора группы для добавления одного или нескольких клиентов.
@@ -58,7 +58,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun AddToGroupSheet(
     clientIds: List<ClientId>,
-    existingGroupIds: Set<Uuid> = emptySet(),
+    existingGroupIds: Set<GroupId> = emptySet(),
     api: ApiClient,
     onDismiss: () -> Unit,
     onGroupAdded: () -> Unit,

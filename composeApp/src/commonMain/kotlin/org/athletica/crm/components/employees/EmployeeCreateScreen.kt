@@ -296,12 +296,12 @@ fun EmployeeCreateScreen(
                             Switch(
                                 checked = permission in grantedPermissions,
                                 onCheckedChange = { checked ->
-                                    grantedPermissions =
-                                        if (checked) {
-                                            grantedPermissions + permission
-                                        } else {
-                                            grantedPermissions - permission
-                                        }
+                                    if (checked) {
+                                        grantedPermissions = grantedPermissions + permission
+                                        revokedPermissions = revokedPermissions - permission
+                                    } else {
+                                        grantedPermissions = grantedPermissions - permission
+                                    }
                                 },
                             )
                         },
@@ -329,12 +329,12 @@ fun EmployeeCreateScreen(
                             Switch(
                                 checked = permission in revokedPermissions,
                                 onCheckedChange = { checked ->
-                                    revokedPermissions =
-                                        if (checked) {
-                                            revokedPermissions + permission
-                                        } else {
-                                            revokedPermissions - permission
-                                        }
+                                    if (checked) {
+                                        revokedPermissions = revokedPermissions + permission
+                                        grantedPermissions = grantedPermissions - permission
+                                    } else {
+                                        revokedPermissions = revokedPermissions - permission
+                                    }
                                 },
                             )
                         },

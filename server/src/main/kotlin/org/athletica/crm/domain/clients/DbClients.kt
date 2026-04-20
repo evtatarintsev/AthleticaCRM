@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.toClientDocId
 import org.athletica.crm.core.entityids.toClientId
+import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -65,7 +66,7 @@ class DbClients : Clients {
                 .bind("clientId", id)
                 .list { row ->
                     ClientGroup(
-                        id = row.asUuid("id"),
+                        id = row.asUuid("id").toGroupId(),
                         name = row.asString("name"),
                     )
                 }

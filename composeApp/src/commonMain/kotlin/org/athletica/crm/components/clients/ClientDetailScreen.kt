@@ -82,6 +82,7 @@ import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
@@ -124,7 +125,6 @@ import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
-import kotlin.uuid.Uuid
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
 
@@ -483,7 +483,7 @@ private fun ClientDetailHeader(
     client: ClientDetailResponse,
     api: ApiClient,
     onAddToGroup: () -> Unit,
-    onRemoveFromGroup: (groupId: Uuid) -> Unit,
+    onRemoveFromGroup: (groupId: GroupId) -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,

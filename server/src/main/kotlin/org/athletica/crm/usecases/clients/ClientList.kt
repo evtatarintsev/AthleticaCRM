@@ -11,6 +11,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.toClientId
+import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Database
@@ -71,7 +72,7 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
                     val clientId = row.asUuid("client_id").toClientId()
                     val group =
                         ClientGroup(
-                            id = row.asUuid("group_id"),
+                            id = row.asUuid("group_id").toGroupId(),
                             name = row.asString("group_name"),
                         )
                     clientId to group

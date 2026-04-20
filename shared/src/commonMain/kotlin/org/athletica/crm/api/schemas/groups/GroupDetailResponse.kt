@@ -1,13 +1,13 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.entityids.GroupId
 
 /** Полные данные группы, возвращаемые после создания или запроса деталей. */
 @Serializable
 data class GroupDetailResponse(
     /** Уникальный идентификатор группы. */
-    val id: Uuid,
+    val id: GroupId,
     /** Название группы. */
     val name: String,
     /** Слоты расписания группы. */

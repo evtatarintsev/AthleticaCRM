@@ -1,10 +1,10 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.entityids.GroupId
 
 @Serializable
 data class ClientGroup(
-    val id: Uuid,
+    val id: GroupId,
     val name: String,
 )

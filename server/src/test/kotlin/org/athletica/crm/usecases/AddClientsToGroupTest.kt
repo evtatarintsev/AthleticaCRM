@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -57,8 +58,8 @@ class AddClientsToGroupTest {
         return clientId
     }
 
-    private suspend fun insertGroup(orgId: Uuid, name: String = "Группа"): Uuid {
-        val groupId = Uuid.generateV7()
+    private suspend fun insertGroup(orgId: Uuid, name: String = "Группа"): GroupId {
+        val groupId = GroupId.new()
         TestPostgres.db
             .sql("INSERT INTO groups (id, org_id, name) VALUES (:id, :orgId, :name)")
             .bind("id", groupId)
@@ -68,7 +69,7 @@ class AddClientsToGroupTest {
         return groupId
     }
 
-    private suspend fun clientGroupCount(clientId: ClientId, groupId: Uuid): Long =
+    private suspend fun clientGroupCount(clientId: ClientId, groupId: GroupId): Long =
         TestPostgres.db
             .sql("SELECT COUNT(*) FROM client_groups WHERE client_id = :clientId AND group_id = :groupId")
             .bind("clientId", clientId)
@@ -157,7 +158,7 @@ class AddClientsToGroupTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx(orgId), this, PostgresAuditLog()) {
-                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), Uuid.generateV7()))
+                        addClientsToGroup(AddClientsToGroupRequest(listOf(clientId), GroupId.new()))
                     }
                 }
             val error = assertIs<Either.Left<CommonDomainError>>(result).value

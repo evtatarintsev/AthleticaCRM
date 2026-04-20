@@ -7,12 +7,12 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
-import kotlin.uuid.Uuid
 
 interface Client {
     /** Уникальный идентификатор клиента. */
@@ -59,7 +59,7 @@ interface Client {
 
 @Serializable
 data class ClientGroup(
-    val id: Uuid,
+    val id: GroupId,
     val name: String,
 )
 

@@ -41,6 +41,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_discipline
 import org.athletica.crm.generated.resources.action_back
@@ -50,7 +51,6 @@ import org.athletica.crm.generated.resources.screen_group_create
 import org.athletica.crm.generated.resources.section_disciplines
 import org.athletica.crm.generated.resources.section_schedule
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран создания новой группы.
@@ -95,7 +95,7 @@ fun GroupCreateScreen(
                                 api
                                     .createGroup(
                                         GroupCreateRequest(
-                                            id = Uuid.generateV7(),
+                                            id = GroupId.new(),
                                             name = name,
                                             schedule = schedule,
                                             disciplineIds = selectedDisciplines.map { it.id },

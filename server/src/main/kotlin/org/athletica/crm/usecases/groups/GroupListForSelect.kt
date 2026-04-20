@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.right
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
@@ -27,7 +28,7 @@ suspend fun groupListForSelect(): Either<CommonDomainError, List<GroupSelectItem
         .bind("orgId", ctx.orgId)
         .list { row ->
             GroupSelectItem(
-                id = row.asUuid("id"),
+                id = row.asUuid("id").toGroupId(),
                 name = row.asString("name"),
             )
         }

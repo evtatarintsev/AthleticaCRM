@@ -2,7 +2,7 @@ package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.DisciplineId
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.entityids.GroupId
 
 /**
  * Запрос на создание новой группы.
@@ -11,7 +11,7 @@ import kotlin.uuid.Uuid
 @Serializable
 data class GroupCreateRequest(
     /** Клиент-генерируемый идентификатор. Рекомендуется использовать UUIDv7. */
-    val id: Uuid,
+    val id: GroupId,
     /** Название группы. */
     val name: String,
     /** Слоты расписания группы. */

@@ -58,6 +58,7 @@ fun EmployeesScreen(
     api: ApiClient,
     onNavigateToCreate: () -> Unit = {},
     refreshKey: Int = 0,
+    onEmployeeClick: (EmployeeId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var employees by remember { mutableStateOf<List<EmployeeListItem>>(emptyList()) }
@@ -184,6 +185,7 @@ fun EmployeesScreen(
                                         selectedIds =
                                             if (checked) selectedIds + employee.id else selectedIds - employee.id
                                     },
+                                    onClick = { onEmployeeClick(employee.id) },
                                 )
                             }
                         }

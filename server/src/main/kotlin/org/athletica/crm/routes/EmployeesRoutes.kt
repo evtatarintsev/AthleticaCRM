@@ -3,8 +3,10 @@ package org.athletica.crm.routes
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
+import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
@@ -32,6 +34,15 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
                         employees.size.toUInt(),
                     )
                 }
+            }
+        }
+
+        getWithContext("/detail") {
+            call.eitherToResponse {
+                val id = call.request.queryParameters.asUuid("id").toEmployeeId()
+                db.transaction {
+                    employees.byId(id)
+                }.toDetailResponse()
             }
         }
 
@@ -105,4 +116,19 @@ fun Employee.toListItem() =
         isActive,
         joinedAt,
         permissions.roles.map { role -> EmployeeRole(role.id, role.name) },
+    )
+
+fun Employee.toDetailResponse() =
+    EmployeeDetailResponse(
+        id,
+        name,
+        avatarId,
+        isOwner,
+        isActive,
+        joinedAt,
+        permissions.roles.map { role -> EmployeeRole(role.id, role.name) },
+        phoneNo,
+        email?.value,
+        permissions.grantedPermissions,
+        permissions.revokedPermissions,
     )

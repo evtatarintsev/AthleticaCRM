@@ -1,6 +1,7 @@
 package org.athletica.crm.components.employees
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,7 @@ fun EmployeeRow(
     api: ApiClient,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit = {},
 ) {
     val statusLabel = stringResource(if (employee.isActive) Res.string.employee_status_active else Res.string.employee_status_inactive)
     val statusColor = if (employee.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -50,6 +52,7 @@ fun EmployeeRow(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onClick)
                 .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
     ) {
         // Аватар

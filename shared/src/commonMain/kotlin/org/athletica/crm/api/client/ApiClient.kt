@@ -46,6 +46,7 @@ import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
+import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.RoleItem
@@ -64,6 +65,7 @@ import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 
 /**
@@ -205,6 +207,10 @@ class ApiClient(private val http: HttpClient) {
 
     /** Возвращает список сотрудников организации. */
     suspend fun employeeList(): Either<ApiClientError, EmployeeListResponse> = execute { http.get("/api/employees/list") }
+
+    /** Возвращает полные данные сотрудника по ID. */
+    suspend fun employeeDetail(id: EmployeeId): Either<ApiClientError, EmployeeDetailResponse> =
+        execute { http.get("/api/employees/detail?id=$id") }
 
     /** Создаёт нового сотрудника по данным [request]. Возвращает созданного сотрудника. */
     suspend fun createEmployee(request: CreateEmployeeRequest): Either<ApiClientError, EmployeeListItem> =

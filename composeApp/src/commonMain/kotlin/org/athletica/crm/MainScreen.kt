@@ -71,6 +71,7 @@ import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.employees.EmployeeCreateScreen
+import org.athletica.crm.components.employees.EmployeeDetailScreen
 import org.athletica.crm.components.employees.EmployeesScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
@@ -86,6 +87,7 @@ import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client
@@ -160,6 +162,7 @@ fun MainScreen(
     var selectedItem by remember { mutableStateOf(NavItem.HOME) }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var selectedClientId by remember { mutableStateOf<ClientId?>(null) }
+    var selectedEmployeeId by remember { mutableStateOf<EmployeeId?>(null) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -235,6 +238,16 @@ fun MainScreen(
                 onEdit = { client -> editingClient = client },
             )
         }
+        return
+    }
+
+    // Карточка сотрудника накрывает весь экран поверх навигации
+    if (selectedEmployeeId != null) {
+        EmployeeDetailScreen(
+            employeeId = selectedEmployeeId!!,
+            api = api,
+            onBack = { selectedEmployeeId = null },
+        )
         return
     }
 
@@ -352,6 +365,7 @@ fun MainScreen(
                             onClientClick = { selectedClientId = it },
                             onNavigateToCreateClient = { showCreateClient = true },
                             clientsRefreshKey = clientsRefreshKey,
+                            onEmployeeClick = { selectedEmployeeId = it },
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
                             onNavigateToCreateEmployee = { showCreateEmployee = true },
@@ -417,6 +431,7 @@ fun MainScreen(
                             onClientClick = { selectedClientId = it },
                             onNavigateToCreateClient = { showCreateClient = true },
                             clientsRefreshKey = clientsRefreshKey,
+                            onEmployeeClick = { selectedEmployeeId = it },
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
                             onNavigateToCreateEmployee = { showCreateEmployee = true },
@@ -469,6 +484,7 @@ fun MainScreen(
                             onClientClick = { selectedClientId = it },
                             onNavigateToCreateClient = { showCreateClient = true },
                             clientsRefreshKey = clientsRefreshKey,
+                            onEmployeeClick = { selectedEmployeeId = it },
                             onNavigateToCreateGroup = { showCreateGroup = true },
                             groupsRefreshKey = groupsRefreshKey,
                             onNavigateToCreateEmployee = { showCreateEmployee = true },
@@ -719,6 +735,7 @@ private fun ContentArea(
     onClientClick: (ClientId) -> Unit = {},
     onNavigateToCreateClient: () -> Unit = {},
     clientsRefreshKey: Int = 0,
+    onEmployeeClick: (EmployeeId) -> Unit = {},
     onNavigateToCreateGroup: () -> Unit = {},
     groupsRefreshKey: Int = 0,
     onNavigateToCreateEmployee: () -> Unit = {},
@@ -753,6 +770,7 @@ private fun ContentArea(
                 api = api,
                 onNavigateToCreate = onNavigateToCreateEmployee,
                 refreshKey = employeesRefreshKey,
+                onEmployeeClick = onEmployeeClick,
                 modifier = modifier,
             )
         NavItem.SETTINGS ->

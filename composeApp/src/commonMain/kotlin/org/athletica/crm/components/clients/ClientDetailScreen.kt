@@ -80,6 +80,7 @@ import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.components.avatar.Avatar
+import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
@@ -122,6 +123,7 @@ import org.athletica.crm.openUrl
 import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
@@ -854,17 +856,13 @@ private fun DocumentsSection(
                                     api
                                         .attachClientDoc(
                                             AttachClientDocRequest(
+                                                ClientDocId.new(),
                                                 clientId = clientId,
                                                 uploadId = upload.id,
                                                 name = upload.originalName,
                                             ),
-                                        ).onRight {
-                                            docsList = docsList + ClientDoc(
-                                                id = upload.id,
-                                                uploadId = upload.id,
-                                                name = upload.originalName,
-                                                createdAt = "",
-                                            )
+                                        ).onRight { newDoc ->
+                                            docsList = docsList + newDoc
                                         }
                                 }
                         }

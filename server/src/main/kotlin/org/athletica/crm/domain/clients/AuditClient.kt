@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -15,7 +16,6 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.collections.plus
-import kotlin.uuid.Uuid
 
 data class AuditClient(
     private val client: Client,
@@ -44,11 +44,11 @@ data class AuditClient(
         AuditClient(
             client.attachDoc(doc),
             audit,
-            auditEvents + AuditEvent(ctx, AuditActionType.CREATE, "client_doc", doc.id, doc.id.toString()),
+            auditEvents + AuditEvent(ctx, AuditActionType.CREATE, "client_doc", doc.id.value, doc.id.toString()),
         )
 
     context(ctx: RequestContext, raise: Raise<DomainError>)
-    override fun deleteDoc(docId: Uuid): Client {
+    override fun deleteDoc(docId: ClientDocId): Client {
         val docToDelete = client.docs.firstOrNull { it.id == docId }
         if (docToDelete == null) {
             raise(CommonDomainError("DOC_NOT_FOUND", Messages.UploadNotFound.localize()))
@@ -58,7 +58,7 @@ data class AuditClient(
                 ctx,
                 AuditActionType.DELETE,
                 "client_doc",
-                docToDelete.id,
+                docToDelete.id.value,
                 docToDelete.id.toString(),
             )
         return AuditClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)

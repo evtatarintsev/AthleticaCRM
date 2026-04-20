@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
@@ -45,7 +46,7 @@ interface Client {
     fun attachDoc(doc: ClientDoc): Client
 
     context(ctx: RequestContext, raise: Raise<DomainError>)
-    fun deleteDoc(docId: Uuid): Client
+    fun deleteDoc(docId: ClientDocId): Client
 
     context(ctx: RequestContext, raise: Raise<DomainError>)
     fun withNew(
@@ -65,7 +66,7 @@ data class ClientGroup(
 /** Документ, прикреплённый к клиенту. */
 
 data class ClientDoc(
-    val id: Uuid,
+    val id: ClientDocId,
     val uploadId: UploadId,
     val name: String,
     val createdAt: Instant,
@@ -73,7 +74,7 @@ data class ClientDoc(
 
 fun clientDoc(uploadId: UploadId, name: String) =
     ClientDoc(
-        Uuid.generateV7(),
+        ClientDocId.new(),
         uploadId,
         name,
         Clock.System.now(),

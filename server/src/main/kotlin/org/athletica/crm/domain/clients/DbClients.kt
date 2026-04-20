@@ -8,6 +8,7 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.toClientDocId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -82,7 +83,7 @@ class DbClients : Clients {
                 .bind("clientId", id)
                 .list { row ->
                     ClientDoc(
-                        id = row.asUuid("id"),
+                        id = row.asUuid("id").toClientDocId(),
                         uploadId = row.asUuid("upload_id").toUploadId(),
                         name = row.asString("name"),
                         createdAt = row.asInstant("created_at"),

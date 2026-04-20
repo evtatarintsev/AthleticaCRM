@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,6 +53,7 @@ fun EmployeeDetailScreen(
     employeeId: EmployeeId,
     api: ApiClient,
     onBack: () -> Unit,
+    onEdit: (EmployeeDetailResponse) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var employee by remember { mutableStateOf<EmployeeDetailResponse?>(null) }
@@ -82,6 +84,13 @@ fun EmployeeDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.action_back))
+                    }
+                },
+                actions = {
+                    employee?.let { emp ->
+                        IconButton(onClick = { onEdit(emp) }) {
+                            Icon(Icons.Default.Edit, "Редактировать")
+                        }
                     }
                 },
             )

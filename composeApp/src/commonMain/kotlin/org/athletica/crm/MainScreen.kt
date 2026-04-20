@@ -70,8 +70,10 @@ import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreen
 import org.athletica.crm.components.clients.ClientsScreen
+import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.components.employees.EmployeeCreateScreen
 import org.athletica.crm.components.employees.EmployeeDetailScreen
+import org.athletica.crm.components.employees.EmployeeEditScreen
 import org.athletica.crm.components.employees.EmployeesScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupsScreen
@@ -163,6 +165,7 @@ fun MainScreen(
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var selectedClientId by remember { mutableStateOf<ClientId?>(null) }
     var selectedEmployeeId by remember { mutableStateOf<EmployeeId?>(null) }
+    var editingEmployee by remember { mutableStateOf<EmployeeDetailResponse?>(null) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -241,12 +244,28 @@ fun MainScreen(
         return
     }
 
+    // Экран редактирования сотрудника накрывает весь экран поверх навигации
+    if (editingEmployee != null) {
+        EmployeeEditScreen(
+            employee = editingEmployee!!,
+            api = api,
+            onBack = { editingEmployee = null },
+            onSaved = {
+                editingEmployee = null
+                // Refresh employee list and detail
+                employeesRefreshKey++
+            },
+        )
+        return
+    }
+
     // Карточка сотрудника накрывает весь экран поверх навигации
     if (selectedEmployeeId != null) {
         EmployeeDetailScreen(
             employeeId = selectedEmployeeId!!,
             api = api,
             onBack = { selectedEmployeeId = null },
+            onEdit = { employee -> editingEmployee = employee },
         )
         return
     }

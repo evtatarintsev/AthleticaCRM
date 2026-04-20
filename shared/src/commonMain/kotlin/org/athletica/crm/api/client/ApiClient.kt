@@ -52,6 +52,7 @@ import org.athletica.crm.api.schemas.employees.EmployeeListResponse
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
@@ -216,6 +217,15 @@ class ApiClient(private val http: HttpClient) {
     suspend fun createEmployee(request: CreateEmployeeRequest): Either<ApiClientError, EmployeeListItem> =
         execute {
             http.post("/api/employees/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Обновляет данные сотрудника по [request]. */
+    suspend fun updateEmployee(request: UpdateEmployeeRequest): Either<ApiClientError, String> =
+        execute {
+            http.post("/api/employees/update") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

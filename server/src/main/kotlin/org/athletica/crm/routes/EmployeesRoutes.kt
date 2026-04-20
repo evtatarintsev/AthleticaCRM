@@ -13,7 +13,9 @@ import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
+import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
@@ -61,6 +63,32 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
                     employees
                         .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
                 }.toListItem()
+            }
+        }
+
+        postWithContext("/update") {
+            call.eitherToResponse {
+                val request = call.receive<UpdateEmployeeRequest>()
+                db.transaction {
+                    val allRoles = roles.list()
+                    val selectedRoles = allRoles.filter { it.id in request.roleIds }
+                    val permissions =
+                        EmployeePermission(
+                            roles = selectedRoles,
+                            grantedPermissions = request.grantedPermissions,
+                            revokedPermissions = request.revokedPermissions,
+                        )
+                    val employee = employees.byId(request.id) as DbEmployee
+                    employee
+                        .copy(
+                            name = request.name,
+                            phoneNo = request.phoneNo,
+                            email = request.email,
+                            avatarId = request.avatarId,
+                            permissions = permissions,
+                        ).save()
+                }
+                "Updated"
             }
         }
 

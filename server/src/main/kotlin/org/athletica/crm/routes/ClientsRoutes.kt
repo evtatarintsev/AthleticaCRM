@@ -95,7 +95,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         call.eitherToResponse {
             val request = call.receive<AddClientsToGroupRequest>()
             db.transaction {
-                addClientsToGroup(request)
+                addClientsToGroup(request).bind()
             }
         }
     }
@@ -104,7 +104,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         call.eitherToResponse {
             val request = call.receive<RemoveClientFromGroupRequest>()
             db.transaction {
-                removeClientsFromGroup(request)
+                removeClientsFromGroup(request).bind()
             }
         }
     }

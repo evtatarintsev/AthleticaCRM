@@ -756,6 +756,11 @@ private fun DocumentsSection(
     val scope = rememberCoroutineScope()
     var isUploading by remember { mutableStateOf(false) }
     var docToDelete by remember { mutableStateOf<ClientDoc?>(null) }
+    var docsList by remember { mutableStateOf(docs) }
+
+    LaunchedEffect(docs) {
+        docsList = docs
+    }
 
     // Диалог подтверждения удаления
     docToDelete?.let { doc ->
@@ -770,7 +775,9 @@ private fun DocumentsSection(
                         docToDelete = null
                         if (target != null) {
                             scope.launch {
-                                api.deleteClientDoc(DeleteClientDocRequest(clientId, target.id)).onRight { onRefresh() }
+                                api.deleteClientDoc(DeleteClientDocRequest(clientId, target.id)).onRight {
+                                    docsList = docsList.filter { it.id != target.id }
+                                }
                             }
                         }
                     },
@@ -790,7 +797,7 @@ private fun DocumentsSection(
     }
 
     SectionCard(stringResource(Res.string.section_documents)) {
-        docs.forEachIndexed { index, doc ->
+        docsList.forEachIndexed { index, doc ->
             if (index > 0) HorizontalDivider()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -851,7 +858,14 @@ private fun DocumentsSection(
                                                 uploadId = upload.id,
                                                 name = upload.originalName,
                                             ),
-                                        ).onRight { onRefresh() }
+                                        ).onRight {
+                                            docsList = docsList + ClientDoc(
+                                                id = upload.id,
+                                                uploadId = upload.id,
+                                                name = upload.originalName,
+                                                createdAt = "",
+                                            )
+                                        }
                                 }
                         }
                         isUploading = false

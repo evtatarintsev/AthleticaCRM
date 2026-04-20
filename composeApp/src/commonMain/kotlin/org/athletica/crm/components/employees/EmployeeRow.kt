@@ -32,7 +32,7 @@ import org.athletica.crm.generated.resources.employee_status_inactive
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Строка сотрудника в таблице: аватар, имя, телефон, email, статус активности, чекбокс.
+ * Строка сотрудника в списке: аватар, имя, статус активности, чекбокс.
  * Аватар подгружается лениво через [api] только при появлении строки на экране.
  */
 @Composable
@@ -66,7 +66,7 @@ fun EmployeeRow(
 
         Spacer(Modifier.width(12.dp))
 
-        // Имя
+        // Имя растягивается
         Text(
             text = employee.name,
             style = MaterialTheme.typography.bodyMedium,
@@ -75,31 +75,11 @@ fun EmployeeRow(
             modifier = Modifier.weight(1f),
         )
 
-        // Телефон
-        Text(
-            text = employee.phoneNo ?: "—",
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = if (employee.phoneNo != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(PhoneColWidth),
-        )
-
-        // Email
-        Text(
-            text = employee.email ?: "—",
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = if (employee.email != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(EmailColWidth),
-        )
-
         // Статус
         Surface(
             shape = RoundedCornerShape(4.dp),
             color = statusColor.copy(alpha = 0.12f),
-            modifier = Modifier.width(StatusColWidth),
+            modifier = Modifier.padding(horizontal = 8.dp),
         ) {
             Text(
                 text = statusLabel,

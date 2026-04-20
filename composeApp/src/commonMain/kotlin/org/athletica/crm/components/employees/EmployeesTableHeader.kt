@@ -16,15 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.label_employee_email
-import org.athletica.crm.generated.resources.label_employee_phone
 import org.athletica.crm.generated.resources.label_employee_status
 import org.athletica.crm.generated.resources.label_person_name
 import org.jetbrains.compose.resources.stringResource
-
-internal val StatusColWidth = 88.dp
-internal val PhoneColWidth = 140.dp
-internal val EmailColWidth = 180.dp
 
 /**
  * Заголовок таблицы сотрудников: чекбокс «выбрать все» и названия колонок.
@@ -41,9 +35,10 @@ fun EmployeesTableHeader(
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 4.dp),
     ) {
-        // Пространство под аватар
+        // Пространство под аватар (36dp + 12dp spacing)
         Spacer(Modifier.width(50.dp))
 
+        // Имя растягивается
         Text(
             text = stringResource(Res.string.label_person_name),
             style = MaterialTheme.typography.labelMedium,
@@ -51,28 +46,16 @@ fun EmployeesTableHeader(
             modifier = Modifier.weight(1f),
         )
 
-        Text(
-            text = stringResource(Res.string.label_employee_phone),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(PhoneColWidth),
-        )
-
-        Text(
-            text = stringResource(Res.string.label_employee_email),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(EmailColWidth),
-        )
-
+        // Статус с отступом
         Text(
             text = stringResource(Res.string.label_employee_status),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            modifier = Modifier.width(StatusColWidth),
+            modifier = Modifier.padding(horizontal = 8.dp),
         )
 
+        // Место для чекбокса
         TriStateCheckbox(
             state = selectAllState,
             onClick = onSelectAllClick,

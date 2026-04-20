@@ -45,6 +45,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
+        permissions: EmployeePermission,
     ): Employee =
         EmployeeStub(
             id = id,

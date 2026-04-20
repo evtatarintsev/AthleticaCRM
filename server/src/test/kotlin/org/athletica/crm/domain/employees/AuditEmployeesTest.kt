@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.collections.emptyList
 
 private object FakeTransaction : Transaction {
     override fun sql(sql: String): QueryBuilder = error("not supported in stub")
@@ -47,6 +48,7 @@ class AuditEmployeesTest {
     private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "owner@example.com", "127.0.0.1")
     private val tr = FakeTransaction
     private val clock = Clock.System
+    private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
 
     private fun makeSubject(
         stub: org.athletica.crm.domain.EmployeesStub,
@@ -66,7 +68,7 @@ class AuditEmployeesTest {
             val employee =
                 either<DomainError, _> {
                     context(ctx, tr, this) {
-                        subject.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null)
+                        subject.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
                     }
                 }.getOrNull()
 
@@ -86,7 +88,7 @@ class AuditEmployeesTest {
 
             either<DomainError, _> {
                 context(ctx, tr, this) {
-                    subject.new(id, "Мария", null, null, null)
+                    subject.new(id, "Мария", null, null, null, emptyPermission)
                 }
             }
 
@@ -109,7 +111,7 @@ class AuditEmployeesTest {
 
             either<DomainError, _> {
                 context(ctx, tr, this) {
-                    subject.new(id, "Сергей", "+79001234567", "sergey@example.com".toEmailAddress(), null)
+                    subject.new(id, "Сергей", "+79001234567", "sergey@example.com".toEmailAddress(), null, emptyPermission)
                 }
             }
 
@@ -130,7 +132,7 @@ class AuditEmployeesTest {
 
             either<DomainError, _> {
                 context(ctx, tr, this) {
-                    subject.new(EmployeeId.new(), "Без контактов", null, null, null)
+                    subject.new(EmployeeId.new(), "Без контактов", null, null, null, emptyPermission)
                 }
             }
 
@@ -150,7 +152,7 @@ class AuditEmployeesTest {
             repeat(3) {
                 either<DomainError, _> {
                     context(ctx, tr, this) {
-                        subject.new(EmployeeId.new(), "Сотрудник $it", null, null, null)
+                        subject.new(EmployeeId.new(), "Сотрудник $it", null, null, null, emptyPermission)
                     }
                 }
             }

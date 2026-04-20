@@ -761,6 +761,7 @@ private fun DocumentsSection(
     var docsList by remember { mutableStateOf(docs) }
 
     LaunchedEffect(docs) {
+        println("DEBUG: docs changed, size=${docs.size}")
         docsList = docs
     }
 
@@ -862,8 +863,9 @@ private fun DocumentsSection(
                                                 name = upload.originalName,
                                             ),
                                         ).onRight { newDoc ->
+                                            println("DEBUG: Adding document: $newDoc")
                                             docsList = docsList + newDoc
-                                            onRefresh()
+                                            println("DEBUG: docsList now has ${docsList.size} items")
                                         }
                                 }
                         }

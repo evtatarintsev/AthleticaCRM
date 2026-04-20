@@ -44,7 +44,6 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
-import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.core.permissions.label
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_role

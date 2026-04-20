@@ -65,11 +65,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -81,6 +79,7 @@ import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
@@ -484,21 +483,6 @@ private fun ClientDetailHeader(
     onAddToGroup: () -> Unit,
     onRemoveFromGroup: (groupId: Uuid) -> Unit,
 ) {
-    val initials =
-        client.name
-            .split(" ")
-            .take(2)
-            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-            .joinToString("")
-
-    var avatarUrl by remember(client.avatarId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(client.avatarId) {
-        val id = client.avatarId
-        if (id != null) {
-            api.uploadInfo(id).onRight { avatarUrl = it.url }
-        }
-    }
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
@@ -514,20 +498,7 @@ private fun ClientDetailHeader(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
-            if (avatarUrl != null) {
-                AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(72.dp).clip(CircleShape),
-                )
-            } else {
-                Text(
-                    text = initials,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
+            Avatar(client.avatarId, client.name, api)
         }
 
         Spacer(Modifier.width(16.dp))
@@ -551,7 +522,12 @@ private fun ClientDetailHeader(
                 }
                 AssistChip(
                     onClick = onAddToGroup,
-                    label = { Text(stringResource(Res.string.action_add_client_group), style = MaterialTheme.typography.labelSmall) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.action_add_client_group),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
                 )
             }
         }

@@ -15,21 +15,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
+import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.employee_status_active
 import org.athletica.crm.generated.resources.employee_status_inactive
@@ -46,15 +42,6 @@ fun EmployeeRow(
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    var avatarUrl by remember(employee.avatarId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(employee.avatarId) {
-        val id = employee.avatarId
-        if (id != null) {
-            api.uploadInfo(id).onRight { avatarUrl = it.url }
-        }
-    }
-
-    val initial = employee.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     val statusLabel = stringResource(if (employee.isActive) Res.string.employee_status_active else Res.string.employee_status_inactive)
     val statusColor = if (employee.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -74,20 +61,7 @@ fun EmployeeRow(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
-            if (avatarUrl != null) {
-                AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(36.dp).clip(CircleShape),
-                )
-            } else {
-                Text(
-                    text = initial,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
+            Avatar(employee.avatarId, employee.name, api)
         }
 
         Spacer(Modifier.width(12.dp))

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.groups.GroupListItem
+import org.athletica.crm.components.avatar.TextAvatar
 
 /**
  * Строка группы в списке с чекбоксом и аватаром (первая буква названия).
@@ -47,11 +48,7 @@ fun GroupRow(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.secondaryContainer),
         ) {
-            Text(
-                text = group.name.first().uppercaseChar().toString(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
+            TextAvatar(group.name)
         }
 
         Spacer(Modifier.width(12.dp))

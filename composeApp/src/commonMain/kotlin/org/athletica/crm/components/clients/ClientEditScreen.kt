@@ -91,11 +91,9 @@ fun ClientEditScreen(
     val busy = isSaving || isUploadingAvatar
 
     LaunchedEffect(client.avatarId) {
-        val id = client.avatarId ?: return@LaunchedEffect
-        api.uploadInfo(id).fold(
-            ifLeft = { /* не критично — аватар просто не отобразится */ },
-            ifRight = { avatarUrl = it.url },
-        )
+        client.avatarId?.let { id ->
+            api.uploadInfo(id).onRight { avatarUrl = it.url }
+        }
     }
 
     Scaffold(

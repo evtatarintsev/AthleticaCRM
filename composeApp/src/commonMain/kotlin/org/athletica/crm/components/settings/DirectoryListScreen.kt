@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.components.avatar.TextAvatar
 import org.athletica.crm.core.entityids.EntityId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add
@@ -291,7 +292,6 @@ fun <T : EntityId> DirectoryItemAvatar(
     modifier: Modifier = Modifier,
     size: Int = 40,
 ) {
-    val initial = item.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     Box(
         contentAlignment = Alignment.Center,
         modifier =
@@ -300,10 +300,6 @@ fun <T : EntityId> DirectoryItemAvatar(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.secondaryContainer),
     ) {
-        Text(
-            text = initial,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
+        TextAvatar(item.name)
     }
 }

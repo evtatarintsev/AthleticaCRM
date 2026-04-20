@@ -48,6 +48,17 @@ data class DbEmployee(
             .bind("orgId", ctx.orgId)
             .execute()
 
+        tr.sql("DELETE FROM employee_roles WHERE employee_id = :id")
+            .bind("id", id)
+            .execute()
+
+        for (role in permissions.roles) {
+            tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
+                .bind("employeeId", id)
+                .bind("roleId", role.id)
+                .execute()
+        }
+
         tr.sql("DELETE FROM employee_permission_overrides WHERE employee_id = :id")
             .bind("id", id)
             .execute()

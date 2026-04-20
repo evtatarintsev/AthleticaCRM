@@ -19,6 +19,7 @@ import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
 import kotlin.collections.emptyList
@@ -38,7 +39,8 @@ class DbEmployeesTest {
     private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "owner@example.com", "127.0.0.1")
     private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "other@example.com", "127.0.0.1")
     private val users = DbUsers(PasswordHasher())
-    private val employees = DbEmployees(users, DbRoles())
+    private val roles = DbRoles()
+    private val employees = DbEmployees(users, roles)
 
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
 
@@ -347,6 +349,84 @@ class DbEmployeesTest {
 
                 val updated = TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
                 assertEquals("newemail@example.com", updated.email?.value)
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
+    @Test
+    fun `save сохраняет роли сотрудника в БД`() =
+        runTest {
+            val id = EmployeeId.new()
+            either<DomainError, _> {
+                val createdRoles = TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet()))
+                        roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet()))
+                        roles.list()
+                    }
+                }
+
+                val roleIds = createdRoles.map { it.id }
+                val permission = EmployeePermission(roles = createdRoles, grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val employee =
+                    TestPostgres.db.transaction {
+                        context(ctx, this) { employees.new(id, "Сотрудник с ролями", null, null, null, permission) }
+                    }
+
+                // Verify roles were saved on creation
+                var retrieved = TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
+                assertEquals(2, retrieved.permissions.roles.size)
+                assertTrue(retrieved.permissions.roles.map { it.id }.containsAll(roleIds))
+
+                // Modify permissions and save
+                val updatedPermission = EmployeePermission(roles = createdRoles.drop(1), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                TestPostgres.db.transaction {
+                    context(this, ctx) {
+                        (employee as DbEmployee)
+                            .copy(permissions = updatedPermission)
+                            .save()
+                    }
+                }
+
+                // Verify role changes were persisted
+                retrieved = TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
+                assertEquals(1, retrieved.permissions.roles.size)
+                assertEquals(createdRoles[1].id, retrieved.permissions.roles.first().id)
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
+    @Test
+    fun `save удаляет роли и вставляет новые при обновлении`() =
+        runTest {
+            val id = EmployeeId.new()
+            either<DomainError, _> {
+                val createdRoles = TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        roles.new(EmployeeRole(Uuid.random(), "Роль 1", emptySet()))
+                        roles.new(EmployeeRole(Uuid.random(), "Роль 2", emptySet()))
+                        roles.new(EmployeeRole(Uuid.random(), "Роль 3", emptySet()))
+                        roles.list()
+                    }
+                }
+
+                val initialPermission = EmployeePermission(roles = createdRoles.take(2), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val employee =
+                    TestPostgres.db.transaction {
+                        context(ctx, this) { employees.new(id, "Сотрудник", null, null, null, initialPermission) }
+                    }
+
+                // Replace roles: remove first two, add the third
+                val newPermission = EmployeePermission(roles = listOf(createdRoles[2]), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                TestPostgres.db.transaction {
+                    context(this, ctx) {
+                        (employee as DbEmployee)
+                            .copy(permissions = newPermission)
+                            .save()
+                    }
+                }
+
+                val updated = TestPostgres.db.transaction { context(ctx, this) { employees.byId(id) } }
+                assertEquals(1, updated.permissions.roles.size)
+                assertEquals(createdRoles[2].id, updated.permissions.roles.first().id)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 

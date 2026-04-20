@@ -854,6 +854,7 @@ private fun DocumentsSection(
                         if (file != null) {
                             api.uploadFile(file.first, file.second, file.third)
                                 .onRight { upload ->
+                                    println("DEBUG: Upload successful: ${upload.id}")
                                     api
                                         .attachClientDoc(
                                             AttachClientDocRequest(
@@ -862,11 +863,16 @@ private fun DocumentsSection(
                                                 uploadId = upload.id,
                                                 name = upload.originalName,
                                             ),
-                                        ).onRight { newDoc ->
-                                            println("DEBUG: Adding document: $newDoc")
-                                            docsList = docsList + newDoc
-                                            println("DEBUG: docsList now has ${docsList.size} items")
-                                        }
+                                        ).fold(
+                                            ifLeft = { err ->
+                                                println("DEBUG: attachClientDoc failed: $err")
+                                            },
+                                            ifRight = { newDoc ->
+                                                println("DEBUG: Adding document: $newDoc")
+                                                docsList = docsList + newDoc
+                                                println("DEBUG: docsList now has ${docsList.size} items")
+                                            },
+                                        )
                                 }
                         }
                         isUploading = false

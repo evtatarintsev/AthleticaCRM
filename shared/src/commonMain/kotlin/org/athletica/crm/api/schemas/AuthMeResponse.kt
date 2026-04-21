@@ -16,3 +16,9 @@ data class AuthMeResponse(
     /** Имя пользователя. */
     val avatarId: UploadId? = null,
 )
+
+@Serializable
+data class OrgInfo(
+    val name: String,
+    val balance: Double,
+)

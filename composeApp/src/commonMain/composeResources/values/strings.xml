@@ -205,6 +205,9 @@
     <string name="action_add_role">Добавить роль</string>
     <string name="label_role_name">Название роли</string>
     <string name="label_permissions">Права доступа</string>
+    <string name="permission_can_manage_org_balance">Управление балансом организации</string>
+    <string name="permission_can_manage_org_balance_name">Может управлять балансом организации</string>
+    <string name="permission_can_manage_org_balance_description">Сотрудник сможет видеть и пополнять баланс организации</string>
     <string name="permission_can_view_client_balance">Просмотр баланса клиента</string>
     <string name="permission_can_view_client_balance_name">Может видеть баланс клиента</string>
     <string name="permission_can_view_client_balance_description">Сотрудник сможет видеть сумму на счёте клиентов</string>

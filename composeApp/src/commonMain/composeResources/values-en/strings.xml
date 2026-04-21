@@ -194,6 +194,12 @@
     <string name="settings_item_activity_log_subtitle">All user actions in the system are logged</string>
     <string name="settings_item_roles">Roles</string>
     <string name="settings_item_roles_subtitle">Who can do what</string>
+    <string name="permission_can_manage_org_balance">Organisation balance management</string>
+    <string name="permission_can_manage_org_balance_name">Can manage organisation balance</string>
+    <string name="permission_can_manage_org_balance_description">Employee can view and replenish the organisation balance</string>
+    <string name="permission_can_view_client_balance">Client balance view</string>
+    <string name="permission_can_view_client_balance_name">Can view client balance</string>
+    <string name="permission_can_view_client_balance_description">Employee can see the client account balance</string>
     <string name="settings_section_clients">Clients</string>
     <string name="settings_item_client_display">Client display</string>
     <string name="settings_item_client_display_subtitle">Columns and data in the client list</string>

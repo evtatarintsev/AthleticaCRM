@@ -2,6 +2,9 @@ package org.athletica.crm.core.permissions
 
 import androidx.compose.runtime.Composable
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.permission_can_manage_org_balance
+import org.athletica.crm.generated.resources.permission_can_manage_org_balance_description
+import org.athletica.crm.generated.resources.permission_can_manage_org_balance_name
 import org.athletica.crm.generated.resources.permission_can_view_client_balance
 import org.athletica.crm.generated.resources.permission_can_view_client_balance_description
 import org.athletica.crm.generated.resources.permission_can_view_client_balance_name
@@ -13,6 +16,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun Permission.displayName(): String =
     when (this) {
+        Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_name)
         Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_name)
     }
 
@@ -22,6 +26,7 @@ fun Permission.displayName(): String =
 @Composable
 fun Permission.displayDescription(): String =
     when (this) {
+        Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_description)
         Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_description)
     }
 
@@ -31,5 +36,6 @@ fun Permission.displayDescription(): String =
 @Composable
 fun Permission.label(): String =
     when (this) {
+        Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance)
         Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance)
     }

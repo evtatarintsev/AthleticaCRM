@@ -3,25 +3,38 @@ package org.athletica.crm.routes
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
+import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
+import org.athletica.crm.domain.org.Organization
+import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.org.getOrgSettings
-import org.athletica.crm.usecases.org.updateOrgSettings
 
 context(db: Database)
-fun Route.orgRoutes() {
+fun Route.orgRoutes(organizations: Organizations) {
     route("/org") {
         getWithContext("/settings") {
-            call.eitherToResponse {
-                getOrgSettings().bind()
+            call.eitherToResponse<OrgSettingsResponse> {
+                db.transaction {
+                    organizations
+                        .current()
+                        .toResponse()
+                }
             }
         }
 
         postWithContext("/settings/update") {
-            call.eitherToResponse {
+            call.eitherToResponse<OrgSettingsResponse> {
                 val request = call.receive<UpdateOrgSettingsRequest>()
-                updateOrgSettings(request).bind()
+                db.transaction {
+                    organizations
+                        .current()
+                        .withNew(request.name, request.timezone)
+                        .apply { save() }
+                        .toResponse()
+                }
             }
         }
     }
 }
+
+fun Organization.toResponse() = OrgSettingsResponse(name, timezone)

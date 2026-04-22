@@ -147,7 +147,7 @@ fun Application.configureServer(
                 authenticate("auth-jwt") {
                     clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
                     groupsRoutes()
-                    orgRoutes()
+                    orgRoutes(di.organizations)
                     disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
                     employeesRoutes(di.employees, di.roles)
                     context(di.passwordHasher) {

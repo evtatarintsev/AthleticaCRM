@@ -26,6 +26,5 @@ class LocMemCachedOrgBalances(private val delegate: OrgBalances) : OrgBalances {
     private val orgs: ConcurrentHashMap<OrgId, OrgBalance> = ConcurrentHashMap()
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun current(): OrgBalance =
-        orgs[ctx.orgId] ?: delegate.current().also { orgs[ctx.orgId] = it }
+    override suspend fun current(): OrgBalance = orgs[ctx.orgId] ?: delegate.current().also { orgs[ctx.orgId] = it }
 }

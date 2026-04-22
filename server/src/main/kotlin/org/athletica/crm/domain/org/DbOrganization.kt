@@ -14,10 +14,8 @@ class DbOrganization(
     context(ctx: RequestContext, raise: Raise<DomainError>)
     override suspend fun withNew(
         newName: String,
-        newTimezone: String
-    ): Organization {
-        return DbOrganization(id, newName, newTimezone)
-    }
+        newTimezone: String,
+    ): Organization = DbOrganization(id, newName, newTimezone)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {

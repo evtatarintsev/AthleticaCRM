@@ -17,7 +17,7 @@ data class OrgBalanceData(
     override val totalAmount: Double,
 ) : OrgBalance
 
-class DbOrgBalances : OrgBalances{
+class DbOrgBalances : OrgBalances {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun current(): OrgBalance {
         val entries =

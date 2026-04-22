@@ -13,12 +13,11 @@ interface Organizations {
 
 interface Organization {
     val id: OrgId
-    val name : String
+    val name: String
     val timezone: String
 
     context(ctx: RequestContext, raise: Raise<DomainError>)
     suspend fun withNew(newName: String, newTimezone: String): Organization
-
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()

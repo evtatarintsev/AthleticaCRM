@@ -68,62 +68,6 @@ suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile>
         profile().bind()
     }
 
-/**
- * Возвращает [OrgInfo] для текущей организации из [ctx]:
- * название и баланс (null если у сотрудника нет права CAN_MANAGE_ORG_BALANCE).
- * Проверка прав учитывает роли, явные выдачи и явные отзывы.
- */
-context(db: Database, ctx: RequestContext)
-suspend fun orgInfo(): OrgInfo =
-    db
-        .sql(
-            """
-            SELECT
-                o.name,
-                EXISTS(
-                    SELECT 1
-                    FROM employees e
-                    WHERE e.user_id = :userId AND e.org_id = :orgId
-                      AND NOT EXISTS(
-                          SELECT 1 FROM employee_permission_overrides epo
-                          WHERE epo.employee_id = e.id
-                            AND epo.permission_key = 'CAN_MANAGE_ORG_BALANCE'
-                            AND epo.is_granted = false
-                      )
-                      AND (
-                          EXISTS(
-                              SELECT 1 FROM employee_permission_overrides epo
-                              WHERE epo.employee_id = e.id
-                                AND epo.permission_key = 'CAN_MANAGE_ORG_BALANCE'
-                                AND epo.is_granted = true
-                          )
-                          OR
-                          EXISTS(
-                              SELECT 1 FROM employee_roles er
-                              JOIN role_permissions rp ON rp.role_id = er.role_id
-                              WHERE er.employee_id = e.id
-                                AND rp.permission_key = 'CAN_MANAGE_ORG_BALANCE'
-                          )
-                      )
-                ) AS has_balance_permission,
-                COALESCE(
-                    (SELECT SUM(j.amount) FROM org_balance_journal j WHERE j.org_id = o.id),
-                    0
-                ) AS org_balance
-            FROM organizations o
-            WHERE o.id = :orgId
-            """.trimIndent(),
-        )
-        .bind("orgId", ctx.orgId)
-        .bind("userId", ctx.userId)
-        .firstOrNull { row ->
-            val hasPermission = row.asBoolean("has_balance_permission")
-            OrgInfo(
-                name = row.asString("name"),
-                balance = if (hasPermission) row.asDouble("org_balance") else null,
-            )
-        } ?: OrgInfo(name = "", balance = null)
-
 data class UserProfile(
     override val id: UserId,
     override val orgId: OrgId,

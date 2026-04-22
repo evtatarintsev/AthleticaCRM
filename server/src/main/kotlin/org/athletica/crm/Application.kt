@@ -151,7 +151,7 @@ fun Application.configureServer(
                     disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
                     employeesRoutes(di.employees, di.roles)
                     context(di.passwordHasher) {
-                        profileRoutes()
+                        profileRoutes(di.organizations, di.orgBalances)
                     }
                     context(di.minio) {
                         uploadRoutes()

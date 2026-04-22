@@ -63,6 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.AuthMeResponse
+import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
@@ -530,15 +531,13 @@ fun MainScreen(
  */
 @Composable
 private fun DrawerAccountHeader(api: ApiClient) {
-    val noResponse = AuthMeResponse(UserId.new(), "", "", null)
+    val noResponse = AuthMeResponse(UserId.new(), "", "", null,
+        OrgInfo("ООО «Атлетика»", null))
     var me by remember { mutableStateOf(noResponse) }
 
     LaunchedEffect(Unit) {
         api.me().onRight { me = it }
     }
-
-    val orgName = "ООО «Атлетика»"
-    val balance = "12 400 ₽"
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -569,15 +568,17 @@ private fun DrawerAccountHeader(api: ApiClient) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = orgName,
+                text = me.orgInfo.name,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text = stringResource(Res.string.label_balance_value, balance),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            me.orgInfo.balance?.let { balance ->
+                Text(
+                    text = stringResource(Res.string.label_balance_value, balance),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

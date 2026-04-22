@@ -15,10 +15,15 @@ data class AuthMeResponse(
     val name: String,
     /** Имя пользователя. */
     val avatarId: UploadId? = null,
+    /** Информация об организации */
+    val orgInfo: OrgInfo,
 )
 
 @Serializable
 data class OrgInfo(
     val name: String,
-    val balance: Double,
+    /**
+     * Баланс организации. null если недоступен пользователю.
+     */
+    val balance: Double?,
 )

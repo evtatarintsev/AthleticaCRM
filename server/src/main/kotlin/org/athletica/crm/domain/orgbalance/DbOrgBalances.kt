@@ -12,9 +12,14 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
-class DbOrgBalances {
+data class OrgBalanceData(
+    override val history: List<OrgBalanceEntry>,
+    override val totalAmount: Double,
+) : OrgBalance
+
+class DbOrgBalances : OrgBalances{
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun get(): OrgBalance {
+    override suspend fun current(): OrgBalance {
         val entries =
             tr
                 .sql(
@@ -55,6 +60,6 @@ class DbOrgBalances {
                     )
                 }
 
-        return DbOrgBalance(entries, totalAmount = entries.sumOf { it.amount })
+        return OrgBalanceData(entries, totalAmount = entries.sumOf { it.amount })
     }
 }

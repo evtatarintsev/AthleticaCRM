@@ -9,6 +9,7 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.auth.changePassword
+import org.athletica.crm.usecases.auth.orgInfo
 import org.athletica.crm.usecases.auth.profile
 import org.athletica.crm.usecases.auth.updateMe
 
@@ -29,6 +30,7 @@ fun Route.profileRoutes() {
                 username = user.username,
                 name = user.name,
                 avatarId = user.avatarId,
+                orgInfo = orgInfo(),
             )
         }
     }
@@ -42,6 +44,7 @@ fun Route.profileRoutes() {
                 username = user.username,
                 name = user.name,
                 avatarId = user.avatarId,
+                orgInfo = orgInfo(),
             )
         }
     }

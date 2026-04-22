@@ -5,6 +5,7 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.Row
+import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
@@ -17,6 +18,8 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.UserNotFound
 import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import java.util.UUID
@@ -64,6 +67,62 @@ suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile>
 
         profile().bind()
     }
+
+/**
+ * Возвращает [OrgInfo] для текущей организации из [ctx]:
+ * название и баланс (null если у сотрудника нет права CAN_MANAGE_ORG_BALANCE).
+ * Проверка прав учитывает роли, явные выдачи и явные отзывы.
+ */
+context(db: Database, ctx: RequestContext)
+suspend fun orgInfo(): OrgInfo =
+    db
+        .sql(
+            """
+            SELECT
+                o.name,
+                EXISTS(
+                    SELECT 1
+                    FROM employees e
+                    WHERE e.user_id = :userId AND e.org_id = :orgId
+                      AND NOT EXISTS(
+                          SELECT 1 FROM employee_permission_overrides epo
+                          WHERE epo.employee_id = e.id
+                            AND epo.permission_key = 'CAN_MANAGE_ORG_BALANCE'
+                            AND epo.is_granted = false
+                      )
+                      AND (
+                          EXISTS(
+                              SELECT 1 FROM employee_permission_overrides epo
+                              WHERE epo.employee_id = e.id
+                                AND epo.permission_key = 'CAN_MANAGE_ORG_BALANCE'
+                                AND epo.is_granted = true
+                          )
+                          OR
+                          EXISTS(
+                              SELECT 1 FROM employee_roles er
+                              JOIN role_permissions rp ON rp.role_id = er.role_id
+                              WHERE er.employee_id = e.id
+                                AND rp.permission_key = 'CAN_MANAGE_ORG_BALANCE'
+                          )
+                      )
+                ) AS has_balance_permission,
+                COALESCE(
+                    (SELECT SUM(j.amount) FROM org_balance_journal j WHERE j.org_id = o.id),
+                    0
+                ) AS org_balance
+            FROM organizations o
+            WHERE o.id = :orgId
+            """.trimIndent(),
+        )
+        .bind("orgId", ctx.orgId)
+        .bind("userId", ctx.userId)
+        .firstOrNull { row ->
+            val hasPermission = row.asBoolean("has_balance_permission")
+            OrgInfo(
+                name = row.asString("name"),
+                balance = if (hasPermission) row.asDouble("org_balance") else null,
+            )
+        } ?: OrgInfo(name = "", balance = null)
 
 data class UserProfile(
     override val id: UserId,

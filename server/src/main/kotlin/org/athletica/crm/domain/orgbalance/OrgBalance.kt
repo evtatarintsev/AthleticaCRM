@@ -1,20 +1,13 @@
 package org.athletica.crm.domain.orgbalance
 
-import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.clients.PerformedBy
-import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 interface OrgBalance {
     val totalAmount: Double
     val history: List<OrgBalanceEntry>
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun adjust(amount: Double, description: String): OrgBalance
 }
 
 @Serializable

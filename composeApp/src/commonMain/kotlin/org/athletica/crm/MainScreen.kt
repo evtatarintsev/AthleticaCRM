@@ -531,8 +531,11 @@ fun MainScreen(
  */
 @Composable
 private fun DrawerAccountHeader(api: ApiClient) {
-    val noResponse = AuthMeResponse(UserId.new(), "", "", null,
-        OrgInfo("ООО «Атлетика»", null))
+    val noResponse =
+        AuthMeResponse(
+            UserId.new(), "", "", null,
+            OrgInfo("", null),
+        )
     var me by remember { mutableStateOf(noResponse) }
 
     LaunchedEffect(Unit) {

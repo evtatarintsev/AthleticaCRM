@@ -11,6 +11,8 @@ import io.ktor.server.testing.testApplication
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
+import org.athletica.crm.domain.org.DbOrganizations
+import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
@@ -42,6 +44,8 @@ class ApplicationTest {
                         audit = PostgresAuditLog(),
                         orgEmails = DbOrgEmails(),
                         emailDispatcher = FakeEmailDispatcher(),
+                        orgBalances = DbOrgBalances(),
+                        organizations = DbOrganizations(),
                     )
             }
         }

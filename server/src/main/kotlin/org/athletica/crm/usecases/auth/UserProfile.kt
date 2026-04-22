@@ -5,7 +5,6 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.Row
-import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
@@ -18,8 +17,6 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.UserNotFound
 import org.athletica.crm.storage.Database
-import org.athletica.crm.storage.asBoolean
-import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import java.util.UUID

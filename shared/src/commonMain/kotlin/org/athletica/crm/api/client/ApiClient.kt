@@ -99,7 +99,7 @@ class ApiClient(private val http: HttpClient) {
     suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
 
     /** Обновляет имя и аватар текущего авторизованного пользователя. Возвращает обновлённый профиль. */
-    suspend fun updateMe(request: UpdateMeRequest): Either<ApiClientError, AuthMeResponse> =
+    suspend fun updateMe(request: UpdateMeRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/auth/me/update") {
                 contentType(ContentType.Application.Json)

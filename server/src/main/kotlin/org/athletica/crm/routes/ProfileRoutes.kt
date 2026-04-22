@@ -1,5 +1,6 @@
 package org.athletica.crm.routes
 
+import arrow.fx.coroutines.parZip
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import org.athletica.crm.api.schemas.AuthMeResponse
@@ -25,20 +26,18 @@ import org.athletica.crm.usecases.auth.updateMe
 context(db: Database, passwordHasher: PasswordHasher, audit: AuditLog)
 fun Route.profileRoutes(organizations: Organizations, orgBalances: OrgBalances) {
     getWithContext("/auth/me") {
-        call.eitherToResponse {
+        call.eitherToResponse<AuthMeResponse> {
             val user = profile().bind()
-//            val info = db.transaction {
-//                parZip(
-//                    {orgBalances.current()},
-//                    {organizations.current()}
-//                ) { balance, org ->
-//                    OrgInfo(org.name, balance.totalAmount)
-//                }
-//            }
-            val info = db.transaction {
-                val balance = orgBalances.current()
-                organizations.current().let { OrgInfo(it.name, balance.totalAmount) }
-            }
+            val info =
+                db.transaction {
+                    parZip(
+                        { orgBalances.current() },
+                        { organizations.current() },
+                    ) { balance, org ->
+                        OrgInfo(org.name, balance.totalAmount)
+                    }
+                }
+
             AuthMeResponse(
                 id = user.id,
                 username = user.username,
@@ -50,25 +49,14 @@ fun Route.profileRoutes(organizations: Organizations, orgBalances: OrgBalances) 
     }
 
     postWithContext("/auth/me/update") {
-        call.eitherToResponse {
+        call.eitherToResponse<Unit> {
             val request = call.receive<UpdateMeRequest>()
-            val user = updateMe(request).bind()
-            val info = db.transaction {
-                val balance = orgBalances.current()
-                organizations.current().let { OrgInfo(it.name, balance.totalAmount) }
-            }
-            AuthMeResponse(
-                id = user.id,
-                username = user.username,
-                name = user.name,
-                avatarId = user.avatarId,
-                orgInfo = info,
-            )
+            updateMe(request).bind()
         }
     }
 
     postWithContext("/auth/me/change-password") {
-        call.eitherToResponse {
+        call.eitherToResponse<Unit> {
             val request = call.receive<ChangePasswordRequest>()
             db.transaction {
                 changePassword(request)

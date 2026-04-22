@@ -18,6 +18,8 @@ import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
+import org.athletica.crm.domain.org.DbOrganizations
+import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.LocMemCachedOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
@@ -40,6 +42,7 @@ data class Di(
     val orgEmails: OrgEmails,
     val emailDispatcher: EmailDispatcher,
     val orgBalances: OrgBalances,
+    val organizations: Organizations,
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -73,6 +76,7 @@ fun Application.di(): Di {
         DbOrgEmails(),
         emailDispatcher = DbEmailDispatcher(db, DbOrgEmails(), mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
+        organizations = DbOrganizations(),
     )
 }
 

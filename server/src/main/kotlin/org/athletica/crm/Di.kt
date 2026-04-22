@@ -19,6 +19,7 @@ import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.domain.org.DbOrganizations
+import org.athletica.crm.domain.org.LocMemCachedOrganizations
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.LocMemCachedOrgBalances
@@ -76,7 +77,7 @@ fun Application.di(): Di {
         DbOrgEmails(),
         emailDispatcher = DbEmailDispatcher(db, DbOrgEmails(), mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
-        organizations = DbOrganizations(),
+        organizations = LocMemCachedOrganizations(DbOrganizations()),
     )
 }
 

@@ -47,20 +47,22 @@ class Database(private val pool: ConnectionPool) : ConnectionScope {
     fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
 
     /**
-     * Выполняет [block] в рамках одной транзакции.
-     * При любом исключении транзакция откатывается, исключение пробрасывается выше.
+     * Выполняет [block] в рамках одной ленивой транзакции.
+     * BEGIN откладывается до первого реального SQL-запроса: если весь [block]
+     * отработал только через кэш — ни BEGIN ни COMMIT не отправляются.
+     * При любом исключении транзакция откатывается (если была открыта).
      *
      * Возвращает результат [block].
      */
-    suspend fun <T> transaction(block: suspend TransactionScope.() -> T): T {
+    suspend fun <T> transaction(block: suspend LazyTransactionScope.() -> T): T {
         val connection = pool.create().awaitSingle()
+        val scope = LazyTransactionScope(connection)
         return try {
-            connection.beginTransaction().awaitFirstOrNull()
-            val result = TransactionScope(connection).block()
-            connection.commitTransaction().awaitFirstOrNull()
+            val result = scope.block()
+            if (scope.begun) connection.commitTransaction().awaitFirstOrNull()
             result
         } catch (e: Exception) {
-            connection.rollbackTransaction().awaitFirstOrNull()
+            if (scope.begun) connection.rollbackTransaction().awaitFirstOrNull()
             throw e
         } finally {
             connection.close().awaitFirstOrNull()
@@ -78,16 +80,28 @@ class Database(private val pool: ConnectionPool) : ConnectionScope {
 }
 
 /**
- * Контекст транзакции: предоставляет DSL для выполнения запросов
- * в рамках [connection] с активной транзакцией.
+ * Ленивый контекст транзакции: [Connection.beginTransaction] откладывается до первого
+ * реального SQL-запроса через [sql].
+ *
+ * Если весь блок отработал только через кэш и ни одного [sql] не было вызвано —
+ * [begun] остаётся `false` и транзакция не открывается вовсе: экономим два round-trip
+ * (BEGIN + COMMIT) к БД.
  */
-class TransactionScope(private val connection: Connection) :
-    ConnectionScope,
-    Transaction {
-    override suspend fun <R> use(block: suspend (Connection) -> R): R = block(connection)
+class LazyTransactionScope(private val connection: Connection) : Transaction {
+    var begun = false
+        private set
 
-    /** Начинает построение запроса с заданным SQL. */
-    override fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
+    private val lazyScope = object : ConnectionScope {
+        override suspend fun <R> use(block: suspend (Connection) -> R): R {
+            if (!begun) {
+                connection.beginTransaction().awaitFirstOrNull()
+                begun = true
+            }
+            return block(connection)
+        }
+    }
+
+    override fun sql(sql: String): QueryBuilder = QueryBuilder(sql, lazyScope)
 }
 
 /**

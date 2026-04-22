@@ -25,8 +25,7 @@ class LocMemCachedOrganizations(private val delegate: Organizations) : Organizat
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun current(): Organization =
-        cache[ctx.orgId] ?: delegate.current()
-            .let { CachedOrganization(it, cache) }
+        cache[ctx.orgId] ?: CachedOrganization(delegate.current(), cache)
             .also { cache[ctx.orgId] = it }
 }
 
@@ -38,7 +37,7 @@ private class CachedOrganization(
     private val cache: ConcurrentHashMap<OrgId, Organization>,
 ) : Organization by delegate {
     context(ctx: RequestContext, raise: Raise<DomainError>)
-    override suspend fun withNew(newName: String, newTimezone: String): Organization =
+    override suspend fun withNew(newName: String, newTimezone: String) =
         CachedOrganization(delegate.withNew(newName, newTimezone), cache)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

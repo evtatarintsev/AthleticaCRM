@@ -19,6 +19,7 @@ import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
+import org.athletica.crm.domain.orgbalance.LocMemCachedOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -71,7 +72,7 @@ fun Application.di(): Di {
         jwtConfig(),
         DbOrgEmails(),
         emailDispatcher = DbEmailDispatcher(db, DbOrgEmails(), mb, checkEvery = 10.seconds),
-        orgBalances = DbOrgBalances(),
+        orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
     )
 }
 

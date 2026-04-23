@@ -138,7 +138,7 @@ fun Application.configureServer(
             }
         }
     }
-    context(di.database, di.audit) {
+    context(di.database, di.audit, di.employeePermissions) {
         routing {
             route("/api") {
                 context(di.jwtConfig, di.passwordHasher) {

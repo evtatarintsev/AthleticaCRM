@@ -15,6 +15,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.discipline.Discipline
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,8 +29,8 @@ class DbDisciplinesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "user@example.com", "127.0.0.1")
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "user@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "user@example.com", "127.0.0.1", EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "user@example.com", "127.0.0.1", EmployeePermission())
 
     private lateinit var disciplines: DbDisciplines
 

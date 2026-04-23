@@ -29,6 +29,7 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logLogin
 import org.athletica.crm.domain.audit.logSignUp
 import org.athletica.crm.domain.audit.logout
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
@@ -43,7 +44,7 @@ import kotlin.uuid.Uuid
  * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
  * Требует контекстных параметров [Database], [PasswordHasher] и [AuditLog].
  */
-context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog)
+context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog, _: EmployeePermissions)
 fun Route.authRoutes() {
     post("/auth/sign-up") {
         call.eitherToAuthResponse {

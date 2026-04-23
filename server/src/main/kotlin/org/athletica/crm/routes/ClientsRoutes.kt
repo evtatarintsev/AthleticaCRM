@@ -29,6 +29,7 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.clients.addClientsToGroup
@@ -40,7 +41,7 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты для работы с клиентами:
  * Требует контекстных параметров [Database] и [AuditLog].
  */
-context(db: Database, audit: AuditLog)
+context(db: Database, audit: AuditLog, _: EmployeePermissions)
 fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
     getWithContext("/clients/list") {
         call.eitherToResponse {

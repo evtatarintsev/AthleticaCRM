@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.usecases.clients.clientList
 import org.junit.Before
 import kotlin.test.Test
@@ -92,6 +93,7 @@ class ClientListTest {
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
+            permission = EmployeePermission(),
         )
 
     @Test

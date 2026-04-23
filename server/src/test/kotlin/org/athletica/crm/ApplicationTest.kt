@@ -9,6 +9,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.org.DbOrganizations
@@ -46,6 +47,7 @@ class ApplicationTest {
                         emailDispatcher = FakeEmailDispatcher(),
                         orgBalances = DbOrgBalances(),
                         organizations = DbOrganizations(),
+                        employeePermissions = EmployeePermissions(),
                     )
             }
         }

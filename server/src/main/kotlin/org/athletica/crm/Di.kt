@@ -13,6 +13,7 @@ import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -44,6 +45,7 @@ data class Di(
     val emailDispatcher: EmailDispatcher,
     val orgBalances: OrgBalances,
     val organizations: Organizations,
+    val employeePermissions: EmployeePermissions,
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -78,6 +80,7 @@ fun Application.di(): Di {
         emailDispatcher = DbEmailDispatcher(db, DbOrgEmails(), mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
         organizations = LocMemCachedOrganizations(DbOrganizations()),
+        employeePermissions = EmployeePermissions(),
     )
 }
 

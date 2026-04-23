@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.auth.UserProfile
 import org.athletica.crm.usecases.auth.profile
@@ -60,6 +61,7 @@ class ProfileTest {
         employeeId = employeeId,
         username = username,
         clientIp = "127.0.0.1",
+        permission = EmployeePermission(),
     )
 
     @Test

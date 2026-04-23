@@ -9,6 +9,7 @@ import io.ktor.server.routing.Route
 import io.ktor.utils.io.toByteArray
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
@@ -23,7 +24,7 @@ import kotlin.uuid.Uuid
  * Возвращает UploadResponse с id загрузки и presigned URL.
  * Требует контекстных параметров [Database], [MinioService] и [AuditLog].
  */
-context(db: Database, minioService: MinioService, audit: AuditLog)
+context(db: Database, minioService: MinioService, audit: AuditLog, _: EmployeePermissions)
 fun Route.uploadRoutes() {
     getWithContext("/upload/info") {
         val cacheTTL = 7.days

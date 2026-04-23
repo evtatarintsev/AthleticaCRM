@@ -45,6 +45,8 @@ data class EmployeePermission(
     val grantedPermissions: Set<Permission>,
     val revokedPermissions: Set<Permission>,
 ) : Actor {
+    constructor() : this(emptyList(), emptySet(), emptySet())
+
     override fun hasPermission(permission: Permission): Boolean {
         if (permission in revokedPermissions) return false
         if (permission in grantedPermissions) return true

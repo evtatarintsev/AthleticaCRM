@@ -38,8 +38,8 @@ class DbEmployeesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "owner@example.com", "127.0.0.1")
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "other@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "owner@example.com", "127.0.0.1", EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "other@example.com", "127.0.0.1", EmployeePermission())
     private val users = DbUsers(PasswordHasher())
     private val roles = DbRoles()
     private val employees = DbEmployees(users, roles)

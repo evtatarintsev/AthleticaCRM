@@ -17,12 +17,13 @@ import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.storage.Database
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 
-context(db: Database)
+context(db: Database, _: EmployeePermissions)
 fun Route.employeesRoutes(employees: Employees, roles: Roles) {
     route("/employees") {
         getWithContext("/list") {

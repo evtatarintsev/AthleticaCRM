@@ -8,6 +8,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -26,7 +27,7 @@ class PostgresAuditLogTest {
     private val userId = UserId.new()
     private val employeeId = EmployeeId.new()
     private val auditLog = PostgresAuditLog()
-    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "user@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "user@example.com", "127.0.0.1", EmployeePermission())
 
     @Before
     fun setUp() {

@@ -10,9 +10,10 @@ import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.storage.Database
 
-context(db: Database)
+context(db: Database, _: EmployeePermissions)
 fun Route.disciplinesRoutes(disciplines: Disciplines) {
     route("/disciplines") {
         getWithContext("/list") {

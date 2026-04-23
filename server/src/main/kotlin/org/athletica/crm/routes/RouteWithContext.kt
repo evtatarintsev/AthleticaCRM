@@ -23,13 +23,16 @@ import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.storage.Database
 import kotlin.uuid.Uuid
 
 /**
  * Регистрирует POST-маршрут с контекстным параметром [Lang].
  * Язык определяется из заголовков запроса (сейчас заглушка — всегда [Lang.EN]).
  */
+context(_: Database, _: EmployeePermissions)
 fun Route.postWithContext(
     path: String,
     body: suspend context(RequestContext) RoutingContext.() -> Unit,
@@ -46,6 +49,7 @@ fun Route.postWithContext(
  * Регистрирует GET-маршрут с контекстным параметром [Lang].
  * Язык определяется из заголовков запроса (сейчас заглушка — всегда [Lang.EN]).
  */
+context(_: Database, _: EmployeePermissions)
 fun Route.getWithContext(
     path: String,
     body: suspend context(RequestContext) RoutingContext.() -> Unit,
@@ -78,7 +82,8 @@ fun RoutingCall.langFromRequest(): Lang {
  * Извлекает [UserId], [EmployeeId] и [OrgId] из claims токена, язык — из `Accept-Language`,
  * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
  */
-fun RoutingCall.contextFromRequest(): RequestContext {
+context(db: Database, permissions: EmployeePermissions)
+suspend fun RoutingCall.contextFromRequest(): RequestContext {
     val principal = principal<JWTPrincipal>()!!
     val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
     val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
@@ -90,6 +95,7 @@ fun RoutingCall.contextFromRequest(): RequestContext {
         lang = langFromRequest(),
         username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
         clientIp = clientIp(),
+        permission = db.transaction { permissions.byId(employeeId) },
     )
 }
 

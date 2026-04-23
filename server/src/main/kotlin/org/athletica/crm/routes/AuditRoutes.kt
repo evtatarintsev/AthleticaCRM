@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.storage.Database
 import kotlin.uuid.Uuid
 
@@ -15,7 +16,7 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты для модуля аудита.
  * GET /audit/log — список действий с пагинацией и фильтрами.
  */
-context(db: Database, audit: AuditLog)
+context(db: Database, audit: AuditLog, _: EmployeePermissions)
 fun Route.auditRoutes() {
     route("/audit") {
         getWithContext("/log") {

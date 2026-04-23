@@ -46,7 +46,7 @@ private class AuditLogStub : AuditLog {
 class AuditEmployeesTest {
     private val orgId = OrgId.new()
     private val employeeId = EmployeeId.new()
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "owner@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "owner@example.com", "127.0.0.1", EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())

@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asDouble
 import org.junit.Before
 import kotlin.test.Test
@@ -29,8 +30,16 @@ class DbClientBalancesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "admin@example.com", null)
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "admin@example.com", null)
+    private val ctx =
+        RequestContext(
+            Lang.EN, userId, orgId, employeeId, "admin@example.com", null,
+            EmployeePermission(),
+        )
+    private val otherCtx =
+        RequestContext(
+            Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "admin@example.com", null,
+            EmployeePermission(),
+        )
 
     private val balances = DbClientBalances()
 

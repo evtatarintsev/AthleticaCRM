@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.security.PasswordHasher
@@ -23,7 +24,7 @@ import org.athletica.crm.usecases.auth.updateMe
  * POST /auth/me/change-password — меняет пароль (требует старый пароль).
  * Требует контекстных параметров [Database], [PasswordHasher], [AuditLog].
  */
-context(db: Database, passwordHasher: PasswordHasher, audit: AuditLog)
+context(db: Database, passwordHasher: PasswordHasher, audit: AuditLog, _: EmployeePermissions)
 fun Route.profileRoutes(organizations: Organizations, orgBalances: OrgBalances) {
     getWithContext("/auth/me") {
         call.eitherToResponse<AuthMeResponse> {

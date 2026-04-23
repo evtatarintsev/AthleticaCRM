@@ -4,7 +4,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.permissions.Actor
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.domain.employees.EmployeePermission
 
 /**
  * Контекст аутентифицированного HTTP-запроса.
@@ -23,8 +23,5 @@ data class RequestContext(
     val employeeId: EmployeeId,
     val username: String,
     val clientIp: String?,
-) : Actor {
-    override fun hasPermission(permission: Permission): Boolean {
-        TODO("Not yet implemented")
-    }
-}
+    private val permission: EmployeePermission,
+) : Actor by permission

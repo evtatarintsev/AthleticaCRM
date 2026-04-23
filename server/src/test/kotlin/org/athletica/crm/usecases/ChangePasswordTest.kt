@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
 import org.athletica.crm.usecases.auth.changePassword
@@ -67,6 +68,7 @@ class ChangePasswordTest {
         employeeId = employeeId,
         username = username,
         clientIp = "127.0.0.1",
+        permission = EmployeePermission(),
     )
 
     private suspend fun runChangePassword(

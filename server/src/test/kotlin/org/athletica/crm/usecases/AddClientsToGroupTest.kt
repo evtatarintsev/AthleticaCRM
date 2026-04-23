@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.junit.Before
@@ -86,6 +87,7 @@ class AddClientsToGroupTest {
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
+            permission = EmployeePermission(),
         )
 
     @Test

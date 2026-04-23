@@ -13,6 +13,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
+import org.athletica.crm.Di
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
@@ -28,39 +29,40 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
 import kotlin.uuid.Uuid
 
-/**
- * Регистрирует POST-маршрут с контекстным параметром [Lang].
- * Язык определяется из заголовков запроса (сейчас заглушка — всегда [Lang.EN]).
- */
-context(_: Database, _: EmployeePermissions)
-fun Route.postWithContext(
-    path: String,
-    body: suspend context(RequestContext) RoutingContext.() -> Unit,
-): Route =
-    route(path, HttpMethod.Post) {
-        handle {
-            context(call.contextFromRequest()) {
-                body()
-            }
+class RouteWithContext(val di: Di, val router: Route) {
+    fun route(path: String, build: RouteWithContext.() -> Unit): Route =
+        router.route(path) {
+            RouteWithContext(di, this).apply(build)
         }
-    }
 
-/**
- * Регистрирует GET-маршрут с контекстным параметром [Lang].
- * Язык определяется из заголовков запроса (сейчас заглушка — всегда [Lang.EN]).
- */
-context(_: Database, _: EmployeePermissions)
-fun Route.getWithContext(
-    path: String,
-    body: suspend context(RequestContext) RoutingContext.() -> Unit,
-): Route =
-    route(path, HttpMethod.Get) {
-        handle {
-            context(call.contextFromRequest()) {
-                body()
+    fun get(
+        path: String,
+        body: suspend context(RequestContext) RoutingContext.() -> Unit,
+    ): Route =
+        router.route(path, HttpMethod.Get) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    body()
+                }
             }
         }
-    }
+
+    fun post(
+        path: String,
+        body: suspend context(RequestContext) RoutingContext.() -> Unit,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    body()
+                }
+            }
+        }
+}
+
+fun Route.routeWithContext(di: Di, block: RouteWithContext.() -> Unit) {
+    RouteWithContext(di, this).apply(block)
+}
 
 /**
  * Определяет язык из заголовка `Accept-Language` (RFC 7231).
@@ -82,8 +84,7 @@ fun RoutingCall.langFromRequest(): Lang {
  * Извлекает [UserId], [EmployeeId] и [OrgId] из claims токена, язык — из `Accept-Language`,
  * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
  */
-context(db: Database, permissions: EmployeePermissions)
-suspend fun RoutingCall.contextFromRequest(): RequestContext {
+suspend fun RoutingCall.contextFromRequest(db: Database, permissions: EmployeePermissions): RequestContext {
     val principal = principal<JWTPrincipal>()!!
     val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
     val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()

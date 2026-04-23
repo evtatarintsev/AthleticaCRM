@@ -4,7 +4,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import io.ktor.http.Parameters
 import io.ktor.server.request.receive
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
@@ -29,7 +29,6 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.clients.addClientsToGroup
@@ -41,16 +40,16 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты для работы с клиентами:
  * Требует контекстных параметров [Database] и [AuditLog].
  */
-context(db: Database, audit: AuditLog, _: EmployeePermissions)
-fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
-    getWithContext("/clients/list") {
+context(db: Database, audit: AuditLog)
+fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances) {
+    get("/clients/list") {
         call.eitherToResponse {
             val clients = clientList(ClientListRequest()).bind()
             ClientListResponse(clients, clients.size.toUInt())
         }
     }
 
-    getWithContext("/clients/detail") {
+    get("/clients/detail") {
         call.eitherToResponse {
             val id = call.request.queryParameters.asUuid("id").toClientId()
             db.transaction {
@@ -59,7 +58,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/create") {
+    post("/clients/create") {
         call.eitherToResponse {
             val request = call.receive<CreateClientRequest>()
             db.transaction {
@@ -75,7 +74,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/edit") {
+    post("/clients/edit") {
         call.eitherToResponse {
             val request = call.receive<EditClientRequest>()
             db.transaction {
@@ -92,7 +91,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/add-to-group") {
+    post("/clients/add-to-group") {
         call.eitherToResponse {
             val request = call.receive<AddClientsToGroupRequest>()
             db.transaction {
@@ -101,7 +100,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/remove-from-group") {
+    post("/clients/remove-from-group") {
         call.eitherToResponse {
             val request = call.receive<RemoveClientFromGroupRequest>()
             db.transaction {
@@ -110,7 +109,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/balance/adjust") {
+    post("/clients/balance/adjust") {
         call.eitherToResponse {
             val request = call.receive<AdjustBalanceRequest>()
             db.transaction {
@@ -122,7 +121,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/docs/attach") {
+    post("/clients/docs/attach") {
         call.eitherToResponse {
             val request = call.receive<AttachClientDocRequest>()
             db.transaction {
@@ -134,7 +133,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    postWithContext("/clients/docs/delete") {
+    post("/clients/docs/delete") {
         call.eitherToResponse {
             val request = call.receive<DeleteClientDocRequest>()
             db.transaction {
@@ -146,7 +145,7 @@ fun Route.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    getWithContext("/clients/balance/history") {
+    get("/clients/balance/history") {
         call.eitherToResponse {
             val id = call.request.queryParameters.asUuid("id").toClientId()
             db.transaction {

@@ -1,10 +1,10 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.request.receive
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.notifications.markAllNotificationsRead
 import org.athletica.crm.usecases.notifications.markNotificationsRead
@@ -20,24 +20,24 @@ import org.athletica.crm.usecases.notifications.notificationList
  * Query params для GET:
  * - `isRead` (optional): `true` — только прочитанные, `false` — только непрочитанные.
  */
-context(db: Database, _: EmployeePermissions)
-fun Route.notificationsRoutes() {
+context(db: Database)
+fun RouteWithContext.notificationsRoutes() {
     route("/notifications") {
-        getWithContext("") {
+        get("") {
             call.eitherToResponse {
                 val isRead = call.request.queryParameters["isRead"]?.toBooleanStrictOrNull()
                 notificationList(isRead).bind()
             }
         }
 
-        postWithContext("/mark-as-read") {
+        post("/mark-as-read") {
             call.eitherToResponse {
                 val request = call.receive<MarkNotificationsReadRequest>()
                 markNotificationsRead(request).bind()
             }
         }
 
-        postWithContext("/mark-all-read") {
+        post("/mark-all-read") {
             call.eitherToResponse {
                 markAllNotificationsRead().bind()
             }

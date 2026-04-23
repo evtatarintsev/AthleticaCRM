@@ -5,11 +5,11 @@ import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.response.cacheControl
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
@@ -24,9 +24,9 @@ import kotlin.uuid.Uuid
  * Возвращает UploadResponse с id загрузки и presigned URL.
  * Требует контекстных параметров [Database], [MinioService] и [AuditLog].
  */
-context(db: Database, minioService: MinioService, audit: AuditLog, _: EmployeePermissions)
-fun Route.uploadRoutes() {
-    getWithContext("/upload/info") {
+context(db: Database, minioService: MinioService, audit: AuditLog)
+fun RouteWithContext.uploadRoutes() {
+    get("/upload/info") {
         val cacheTTL = 7.days
         call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = cacheTTL.inWholeSeconds.toInt()))
         call.eitherToResponse {
@@ -41,7 +41,7 @@ fun Route.uploadRoutes() {
         }
     }
 
-    postWithContext("/upload") {
+    post("/upload") {
         call.eitherToResponse {
             var fileBytes: ByteArray? = null
             var originalName = "file"

@@ -39,9 +39,11 @@ import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.disciplinesRoutes
 import org.athletica.crm.routes.employeesRoutes
 import org.athletica.crm.routes.groupsRoutes
+import org.athletica.crm.routes.logout
 import org.athletica.crm.routes.notificationsRoutes
 import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.profileRoutes
+import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -145,19 +147,22 @@ fun Application.configureServer(
                     authRoutes()
                 }
                 authenticate("auth-jwt") {
-                    clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
-                    groupsRoutes()
-                    orgRoutes(di.organizations)
-                    disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
-                    employeesRoutes(di.employees, di.roles)
-                    context(di.passwordHasher) {
-                        profileRoutes(di.organizations, di.orgBalances)
+                    routeWithContext(di) {
+                        logout()
+                        clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
+                        groupsRoutes()
+                        orgRoutes(di.organizations)
+                        disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
+                        employeesRoutes(di.employees, di.roles)
+                        context(di.passwordHasher) {
+                            profileRoutes(di.organizations, di.orgBalances)
+                        }
+                        context(di.minio) {
+                            uploadRoutes()
+                        }
+                        auditRoutes()
+                        notificationsRoutes()
                     }
-                    context(di.minio) {
-                        uploadRoutes()
-                    }
-                    auditRoutes()
-                    notificationsRoutes()
                 }
             }
         }

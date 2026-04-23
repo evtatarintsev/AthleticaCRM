@@ -1,19 +1,16 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.request.receive
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.org.Organization
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.storage.Database
 
-context(db: Database, _: EmployeePermissions)
-fun Route.orgRoutes(organizations: Organizations) {
+context(db: Database)
+fun RouteWithContext.orgRoutes(organizations: Organizations) {
     route("/org") {
-        getWithContext("/settings") {
+        get("/settings") {
             call.eitherToResponse<OrgSettingsResponse> {
                 db.transaction {
                     organizations
@@ -23,7 +20,7 @@ fun Route.orgRoutes(organizations: Organizations) {
             }
         }
 
-        postWithContext("/settings/update") {
+        post("/settings/update") {
             call.eitherToResponse<OrgSettingsResponse> {
                 val request = call.receive<UpdateOrgSettingsRequest>()
                 db.transaction {

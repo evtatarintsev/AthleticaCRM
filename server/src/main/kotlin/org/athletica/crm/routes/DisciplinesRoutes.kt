@@ -1,7 +1,6 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.request.receive
-import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
@@ -10,13 +9,12 @@ import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.storage.Database
 
-context(db: Database, _: EmployeePermissions)
-fun Route.disciplinesRoutes(disciplines: Disciplines) {
+context(db: Database)
+fun RouteWithContext.disciplinesRoutes(disciplines: Disciplines) {
     route("/disciplines") {
-        getWithContext("/list") {
+        get("/list") {
             call.eitherToResponse {
                 db.transaction {
                     disciplines.list()
@@ -26,7 +24,7 @@ fun Route.disciplinesRoutes(disciplines: Disciplines) {
             }
         }
 
-        postWithContext("/create") {
+        post("/create") {
             call.eitherToResponse {
                 db.transaction {
                     val request = call.receive<CreateDisciplineRequest>()
@@ -35,7 +33,7 @@ fun Route.disciplinesRoutes(disciplines: Disciplines) {
             }
         }
 
-        postWithContext("/update") {
+        post("/update") {
             call.eitherToResponse {
                 db.transaction {
                     val request = call.receive<UpdateDisciplineRequest>()
@@ -44,7 +42,7 @@ fun Route.disciplinesRoutes(disciplines: Disciplines) {
             }
         }
 
-        postWithContext("/delete") {
+        post("/delete") {
             call.eitherToResponse {
                 db.transaction {
                     val request = call.receive<DeleteDisciplineRequest>()

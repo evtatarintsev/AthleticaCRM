@@ -1,7 +1,6 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.request.receive
-import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
@@ -17,16 +16,15 @@ import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.storage.Database
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 
-context(db: Database, _: EmployeePermissions)
-fun Route.employeesRoutes(employees: Employees, roles: Roles) {
+context(db: Database)
+fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
     route("/employees") {
-        getWithContext("/list") {
+        get("/list") {
             call.eitherToResponse {
                 db.transaction {
                     employees.list()
@@ -39,7 +37,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        getWithContext("/detail") {
+        get("/detail") {
             call.eitherToResponse {
                 val id = call.request.queryParameters.asUuid("id").toEmployeeId()
                 db.transaction {
@@ -48,7 +46,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        postWithContext("/create") {
+        post("/create") {
             call.eitherToResponse {
                 val request = call.receive<CreateEmployeeRequest>()
                 db.transaction {
@@ -66,7 +64,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        postWithContext("/update") {
+        post("/update") {
             call.eitherToResponse {
                 val request = call.receive<UpdateEmployeeRequest>()
                 db.transaction {
@@ -91,7 +89,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        postWithContext("/send-access") {
+        post("/send-access") {
             call.eitherToResponse {
                 val request = call.receive<SendEmployeeAccessRequest>()
                 db.transaction {
@@ -102,7 +100,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        getWithContext("/roles") {
+        post("/roles") {
             call.eitherToResponse {
                 db.transaction {
                     roles.list()
@@ -112,7 +110,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        postWithContext("/roles/create") {
+        post("/roles/create") {
             call.eitherToResponse {
                 val request = call.receive<CreateRoleRequest>()
                 db.transaction {
@@ -122,7 +120,7 @@ fun Route.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        postWithContext("/roles/update") {
+        post("/roles/update") {
             call.eitherToResponse {
                 val request = call.receive<UpdateRoleRequest>()
                 db.transaction {

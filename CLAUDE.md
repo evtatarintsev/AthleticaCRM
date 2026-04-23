@@ -79,7 +79,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 │   └── notifications/    # Notification operations
 │
 ├── routes/                # HTTP route definitions
-│   ├── RouteWithContext.kt  # postWithContext/getWithContext helpers
+│   ├── RouteWithContext.kt  # post/get helpers
 │   ├── AuthRoutes.kt
 │   ├── ClientsRoutes.kt
 │   └── [domain]Routes.kt   # One per domain
@@ -134,7 +134,7 @@ context(db, requestContext) {
 ```
 HTTP Request
     ↓
-RouteWithContext (postWithContext/getWithContext)
+RouteWithContext (post/get)
     ↓
 contextFromRequest() → RequestContext (JWT claims + permissions)
     ↓
@@ -175,14 +175,14 @@ HTTP Response (ErrorResponse or data)
 fun `my test`() = runTest {
     // Setup: Insert test data directly via SQL
     val clientId = insertClient(orgId, "Test Client")
-    
+
     // Act: Call function with test context
     val result = TestPostgres.db.transaction {
         context(testContext, this) {
             clientList(ClientListRequest())
         }
     }
-    
+
     // Assert: Use Arrow assertion
     val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
     assertEquals(1, clients.size)
@@ -247,7 +247,7 @@ No reflection-based DI framework; all wiring is explicit and visible.
 ### Adding a New Usecase
 1. Create business logic in `usecases/[domain]/` (context-based)
 2. Create test in `server/src/test/kotlin/org/athletica/crm/usecases/`
-3. Register route in `routes/[Domain]Routes.kt` using `postWithContext` or `getWithContext`
+3. Register route in `routes/[Domain]Routes.kt` using `post` or `get`
 4. Return `Either<DomainError, SuccessType>`
 
 ### Adding a New Domain Aggregate

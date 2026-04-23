@@ -1,6 +1,6 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.audit.AuditLogItem
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
@@ -8,7 +8,6 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.storage.Database
 import kotlin.uuid.Uuid
 
@@ -16,10 +15,10 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты для модуля аудита.
  * GET /audit/log — список действий с пагинацией и фильтрами.
  */
-context(db: Database, audit: AuditLog, _: EmployeePermissions)
-fun Route.auditRoutes() {
+context(db: Database, audit: AuditLog)
+fun RouteWithContext.auditRoutes() {
     route("/audit") {
-        getWithContext("/log") {
+        get("/log") {
             call.eitherToResponse {
                 val params = call.request.queryParameters
                 val page = params["page"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0

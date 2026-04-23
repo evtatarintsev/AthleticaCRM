@@ -2,6 +2,7 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.Raise
 import arrow.core.raise.either
+import com.auth0.jwt.interfaces.Payload
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -18,6 +19,9 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.entityids.toOrgId
+import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.JwtConfig
 import kotlin.uuid.Uuid
@@ -76,9 +80,9 @@ fun RoutingCall.langFromRequest(): Lang {
  */
 fun RoutingCall.contextFromRequest(): RequestContext {
     val principal = principal<JWTPrincipal>()!!
-    val userId = UserId(Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_USER_ID).asString()))
-    val orgId = OrgId(Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_ORG_ID).asString()))
-    val employeeId = EmployeeId(Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_EMPLOYEE_ID).asString()))
+    val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
+    val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
+    val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
     return RequestContext(
         userId = userId,
         orgId = orgId,
@@ -88,6 +92,8 @@ fun RoutingCall.contextFromRequest(): RequestContext {
         clientIp = clientIp(),
     )
 }
+
+fun Payload.claimAsUuid(claim: String) = Uuid.parse(getClaim(claim).asString())
 
 /**
  * Выполняет [block] в контексте [Raise], оборачивает результат в [either] и отвечает:

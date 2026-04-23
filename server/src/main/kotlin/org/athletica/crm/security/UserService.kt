@@ -8,8 +8,10 @@ import arrow.core.right
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.PasswordHash
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
@@ -25,6 +27,7 @@ import kotlin.uuid.toKotlinUuid
 data class User(
     override val id: UserId,
     override val orgId: OrgId,
+    override val employeeId: EmployeeId,
     override val username: String,
     val password: String,
 ) : AuthenticatedUser
@@ -42,7 +45,7 @@ context(tr: Transaction, raise: Raise<UserNotFound>)
 suspend fun userById(id: UserId): User =
     tr.sql(
         """
-        SELECT u.*, e.org_id
+        SELECT u.*, e.id as employee_id, e.org_id
         FROM users u
         JOIN employees e ON e.user_id = u.id
         WHERE u.id = :id AND e.is_active = true
@@ -71,7 +74,7 @@ suspend fun findByCredentials(username: String, password: String): Either<UserNo
         db
             .sql(
                 """
-                SELECT u.*, e.org_id
+                SELECT u.*, e.id as employee_id, e.org_id
                 FROM users u
                 JOIN employees e ON e.user_id = u.id
                 WHERE u.login = :username AND e.is_active = true
@@ -90,6 +93,7 @@ private fun Row.toUser() =
     User(
         id = get("id", UUID::class.java)!!.toKotlinUuid().toUserId(),
         orgId = get("org_id", UUID::class.java)!!.toKotlinUuid().toOrgId(),
+        employeeId = get("employee_id", UUID::class.java)!!.toKotlinUuid().toEmployeeId(),
         username = get("login", String::class.java)!!,
         password = get("password_hash", String::class.java)!!,
     )

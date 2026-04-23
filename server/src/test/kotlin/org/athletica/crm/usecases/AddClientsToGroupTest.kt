@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -82,6 +83,7 @@ class AddClientsToGroupTest {
             lang = Lang.EN,
             userId = userId,
             orgId = OrgId(orgId),
+            employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
         )

@@ -12,10 +12,7 @@ class DbOrganization(
     override val timezone: String,
 ) : Organization {
     context(ctx: RequestContext, raise: Raise<DomainError>)
-    override suspend fun withNew(
-        newName: String,
-        newTimezone: String,
-    ): Organization = DbOrganization(id, newName, newTimezone)
+    override suspend fun withNew(newName: String, newTimezone: String) = DbOrganization(id, newName, newTimezone)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {

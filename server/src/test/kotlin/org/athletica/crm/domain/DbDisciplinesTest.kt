@@ -9,6 +9,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -24,9 +25,11 @@ import kotlin.test.fail
 class DbDisciplinesTest {
     private val orgId = OrgId.new()
     private val otherOrgId = OrgId.new()
+    private val employeeId = EmployeeId.new()
+    private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "user@example.com", "127.0.0.1")
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "user@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "user@example.com", "127.0.0.1")
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "user@example.com", "127.0.0.1")
 
     private lateinit var disciplines: DbDisciplines
 

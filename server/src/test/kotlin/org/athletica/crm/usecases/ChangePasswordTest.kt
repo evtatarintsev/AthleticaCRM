@@ -7,6 +7,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -29,9 +30,10 @@ class ChangePasswordTest {
     private suspend fun insertUser(
         login: String,
         password: String = "oldPass123",
-    ): Pair<UserId, OrgId> {
+    ): Triple<UserId, OrgId, EmployeeId> {
         val orgId = OrgId.new()
         val userId = UserId.new()
+        val employeeId = EmployeeId.new()
         TestPostgres.db
             .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
             .bind("id", orgId)
@@ -44,22 +46,25 @@ class ChangePasswordTest {
             .bind("hash", hasher.hash(password).value)
             .execute()
         TestPostgres.db
-            .sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
+            .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+            .bind("id", employeeId)
             .bind("userId", userId)
             .bind("orgId", orgId)
             .bind("name", login)
             .execute()
-        return userId to orgId
+        return Triple(userId, orgId, employeeId)
     }
 
     private fun ctx(
         userId: UserId,
         orgId: OrgId,
+        employeeId: EmployeeId,
         username: String = "user",
     ) = RequestContext(
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,
+        employeeId = employeeId,
         username = username,
         clientIp = "127.0.0.1",
     )
@@ -67,13 +72,14 @@ class ChangePasswordTest {
     private suspend fun runChangePassword(
         userId: UserId,
         orgId: OrgId,
+        employeeId: EmployeeId,
         request: ChangePasswordRequest,
         username: String = "user",
         audit: PostgresAuditLog = PostgresAuditLog(),
     ): Either<DomainError, Unit> =
         either {
             TestPostgres.db.transaction {
-                context(ctx(userId, orgId, username), this, hasher, audit) {
+                context(ctx(userId, orgId, employeeId, username), this, hasher, audit) {
                     changePassword(request)
                 }
             }
@@ -84,8 +90,8 @@ class ChangePasswordTest {
     @Test
     fun `changePassword succeeds with correct old password`() =
         runTest {
-            val (userId, orgId) = insertUser("user@example.com")
-            val result = runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"))
+            val (userId, orgId, employeeId) = insertUser("user@example.com")
+            val result = runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
             assertIs<Either.Right<Unit>>(result)
         }
 
@@ -93,8 +99,8 @@ class ChangePasswordTest {
     fun `new password works for login after change`() =
         runTest {
             val login = "user@example.com"
-            val (userId, orgId) = insertUser(login, "oldPass123")
-            runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"))
+            val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
+            runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Right<*>>(findByCredentials(login, "newPass456"))
             }
@@ -104,8 +110,8 @@ class ChangePasswordTest {
     fun `old password is rejected after change`() =
         runTest {
             val login = "user@example.com"
-            val (userId, orgId) = insertUser(login, "oldPass123")
-            runChangePassword(userId, orgId, ChangePasswordRequest("oldPass123", "newPass456"))
+            val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
+            runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Left<*>>(findByCredentials(login, "oldPass123"))
             }
@@ -116,8 +122,8 @@ class ChangePasswordTest {
     @Test
     fun `changePassword returns WRONG_PASSWORD for incorrect old password`() =
         runTest {
-            val (userId, orgId) = insertUser("user@example.com", "oldPass123")
-            val result = runChangePassword(userId, orgId, ChangePasswordRequest("wrongPass", "newPass456"))
+            val (userId, orgId, employeeId) = insertUser("user@example.com", "oldPass123")
+            val result = runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("wrongPass", "newPass456"))
             val error = assertIs<Either.Left<CommonDomainError>>(result).value
             assertEquals("WRONG_PASSWORD", error.code)
         }
@@ -125,7 +131,7 @@ class ChangePasswordTest {
     @Test
     fun `changePassword returns error when user does not exist`() =
         runTest {
-            val result = runChangePassword(UserId.new(), OrgId.new(), ChangePasswordRequest("oldPass123", "newPass456"))
+            val result = runChangePassword(UserId.new(), OrgId.new(), EmployeeId.new(), ChangePasswordRequest("oldPass123", "newPass456"))
             assertIs<Either.Left<DomainError>>(result)
         }
 
@@ -133,8 +139,8 @@ class ChangePasswordTest {
     fun `original password unchanged when old password is wrong`() =
         runTest {
             val login = "user@example.com"
-            val (userId, orgId) = insertUser(login, "oldPass123")
-            runChangePassword(userId, orgId, ChangePasswordRequest("wrongPass", "newPass456"))
+            val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
+            runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("wrongPass", "newPass456"))
             context(TestPostgres.db, hasher) {
                 assertIs<Either.Right<*>>(findByCredentials(login, "oldPass123"))
             }

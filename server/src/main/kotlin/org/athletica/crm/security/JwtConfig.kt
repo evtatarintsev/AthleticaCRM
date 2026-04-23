@@ -3,7 +3,7 @@ package org.athletica.crm.security
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
-import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.UserId
 import java.util.Date
 
@@ -28,16 +28,17 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
 
     /**
      * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId],
-     * организацией [orgId] и именем [username].
+     * организацией [orgId], идентификатором сотрудника [employeeId] и именем [username].
      */
-    fun makeAccessToken(userId: UserId, orgId: OrgId, username: String): String =
+    fun makeAccessToken(user: AuthenticatedUser): String =
         JWT
             .create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
-            .withClaim(CLAIM_USER_ID, userId.toString())
-            .withClaim(CLAIM_ORG_ID, orgId.toString())
-            .withClaim(CLAIM_USERNAME, username)
+            .withClaim(CLAIM_USER_ID, user.id.toString())
+            .withClaim(CLAIM_ORG_ID, user.orgId.toString())
+            .withClaim(CLAIM_EMPLOYEE_ID, user.employeeId.toString())
+            .withClaim(CLAIM_USERNAME, user.username)
             .withClaim(CLAIM_TYPE, TYPE_ACCESS)
             .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtlMs))
             .sign(algorithm)
@@ -67,6 +68,9 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
 
         /** Claim с идентификатором организации пользователя. */
         const val CLAIM_ORG_ID = "orgId"
+
+        /** Claim с идентификатором сотрудника пользователя. */
+        const val CLAIM_EMPLOYEE_ID = "employeeId"
 
         /** Claim с именем пользователя. */
         const val CLAIM_USERNAME = "username"

@@ -15,6 +15,7 @@ import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -70,16 +71,18 @@ fun RoutingCall.langFromRequest(): Lang {
 
 /**
  * Собирает [RequestContext] из JWT-токена и заголовков запроса.
- * Извлекает [UserId] и [OrgId] из claims токена, язык — из `Accept-Language`,
+ * Извлекает [UserId], [EmployeeId] и [OrgId] из claims токена, язык — из `Accept-Language`,
  * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
  */
 fun RoutingCall.contextFromRequest(): RequestContext {
     val principal = principal<JWTPrincipal>()!!
     val userId = UserId(Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_USER_ID).asString()))
     val orgId = OrgId(Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_ORG_ID).asString()))
+    val employeeId = EmployeeId(Uuid.parse(principal.payload.getClaim(JwtConfig.CLAIM_EMPLOYEE_ID).asString()))
     return RequestContext(
         userId = userId,
         orgId = orgId,
+        employeeId = employeeId,
         lang = langFromRequest(),
         username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
         clientIp = clientIp(),

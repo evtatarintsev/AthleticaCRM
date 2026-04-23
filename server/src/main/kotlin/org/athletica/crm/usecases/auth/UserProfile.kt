@@ -8,9 +8,11 @@ import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
@@ -32,7 +34,7 @@ suspend fun profile(): Either<DomainError, UserProfile> =
     db
         .sql(
             """
-            SELECT u.id, u.login, u.password_hash, e.org_id, e.name, e.avatar_id
+            SELECT u.id, u.login, u.password_hash, e.id as employee_id, e.org_id, e.name, e.avatar_id
             FROM users u
             JOIN employees e ON e.user_id = u.id AND e.org_id = :orgId
             WHERE u.id = :id AND e.is_active = true
@@ -68,6 +70,7 @@ suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile>
 data class UserProfile(
     override val id: UserId,
     override val orgId: OrgId,
+    override val employeeId: EmployeeId,
     override val username: String,
     val name: String,
     val avatarId: UploadId? = null,
@@ -77,6 +80,7 @@ private fun Row.toUserProfile() =
     UserProfile(
         id = asUuid("id").toUserId(),
         orgId = asUuid("org_id").toOrgId(),
+        employeeId = asUuid("employee_id").toEmployeeId(),
         username = asString("login"),
         name = asString("name"),
         avatarId = get("avatar_id", UUID::class.java)?.toKotlinUuid()?.toUploadId(),

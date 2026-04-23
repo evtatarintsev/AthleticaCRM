@@ -32,13 +32,12 @@ class LocMemCachedOrganizations(private val delegate: Organizations) : Organizat
 /**
  * Прокси над [delegate], который при [save] инвалидирует запись в [cache].
  */
-private class CachedOrganization(
+class CachedOrganization(
     private val delegate: Organization,
     private val cache: ConcurrentHashMap<OrgId, Organization>,
 ) : Organization by delegate {
     context(ctx: RequestContext, raise: Raise<DomainError>)
-    override suspend fun withNew(newName: String, newTimezone: String) =
-        CachedOrganization(delegate.withNew(newName, newTimezone), cache)
+    override suspend fun withNew(newName: String, newTimezone: String) = CachedOrganization(delegate.withNew(newName, newTimezone), cache)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {

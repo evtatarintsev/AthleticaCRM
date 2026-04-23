@@ -91,15 +91,16 @@ class LazyTransactionScope(private val connection: Connection) : Transaction {
     var begun = false
         private set
 
-    private val lazyScope = object : ConnectionScope {
-        override suspend fun <R> use(block: suspend (Connection) -> R): R {
-            if (!begun) {
-                connection.beginTransaction().awaitFirstOrNull()
-                begun = true
+    private val lazyScope =
+        object : ConnectionScope {
+            override suspend fun <R> use(block: suspend (Connection) -> R): R {
+                if (!begun) {
+                    connection.beginTransaction().awaitFirstOrNull()
+                    begun = true
+                }
+                return block(connection)
             }
-            return block(connection)
         }
-    }
 
     override fun sql(sql: String): QueryBuilder = QueryBuilder(sql, lazyScope)
 }

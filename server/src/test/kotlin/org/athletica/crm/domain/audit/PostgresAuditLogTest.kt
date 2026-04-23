@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.storage.asLong
@@ -23,8 +24,9 @@ import kotlin.uuid.Uuid
 class PostgresAuditLogTest {
     private val orgId = OrgId.new()
     private val userId = UserId.new()
+    private val employeeId = EmployeeId.new()
     private val auditLog = PostgresAuditLog()
-    private val ctx = RequestContext(Lang.EN, userId, orgId, "user@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "user@example.com", "127.0.0.1")
 
     @Before
     fun setUp() {

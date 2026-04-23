@@ -100,7 +100,7 @@ context(jwtConfig: JwtConfig)
 suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<DomainError>.() -> AuthenticatedUser) {
     either {
         val user = block()
-        val newAccessToken = jwtConfig.makeAccessToken(user.id, user.orgId, user.username)
+        val newAccessToken = jwtConfig.makeAccessToken(user)
         val newRefreshToken = jwtConfig.makeRefreshToken(user.id)
 
         response.cookies.setJwtCookies(newAccessToken, newRefreshToken)

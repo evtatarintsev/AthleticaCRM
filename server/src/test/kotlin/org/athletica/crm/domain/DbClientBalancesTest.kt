@@ -9,6 +9,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -25,9 +26,11 @@ class DbClientBalancesTest {
     private val orgId = OrgId.new()
     private val otherOrgId = OrgId.new()
     private val userId = UserId.new()
+    private val employeeId = EmployeeId.new()
+    private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, userId, orgId, "admin@example.com", null)
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "admin@example.com", null)
+    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "admin@example.com", null)
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "admin@example.com", null)
 
     private val balances = DbClientBalances()
 
@@ -41,8 +44,8 @@ class DbClientBalancesTest {
                 .bind("id", otherOrgId).bind("name", "Org 2").execute()
             TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
                 .bind("id", userId).bind("login", "admin@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
-                .bind("userId", userId).bind("orgId", orgId).bind("name", "Admin").execute()
+            TestPostgres.db.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+                .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", "Admin").execute()
         }
     }
 

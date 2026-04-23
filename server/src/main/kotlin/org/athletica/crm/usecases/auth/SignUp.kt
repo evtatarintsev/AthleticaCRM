@@ -6,6 +6,7 @@ import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -16,6 +17,7 @@ import org.athletica.crm.storage.Transaction
 data class User(
     override val id: UserId,
     override val orgId: OrgId,
+    override val employeeId: EmployeeId,
     override val username: String,
 ) : AuthenticatedUser
 
@@ -36,6 +38,7 @@ context(tr: Transaction, passwordHasher: PasswordHasher)
 suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
     val orgId = OrgId.new()
     val userId = UserId.new()
+    val employeeId = EmployeeId.new()
     try {
         tr.sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
             .bind("orgId", orgId)
@@ -49,7 +52,8 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
             .bind("hash", passwordHasher.hash(request.password).value)
             .execute()
 
-        tr.sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
+        tr.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:employeeId, :userId, :orgId, :name, true)")
+            .bind("employeeId", employeeId)
             .bind("orgId", orgId)
             .bind("userId", userId)
             .bind("name", request.userName)
@@ -61,5 +65,5 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
         throw e
     }
 
-    return User(id = userId, orgId = orgId, username = request.login).right()
+    return User(id = userId, orgId = orgId, employeeId = employeeId, username = request.login).right()
 }

@@ -35,9 +35,11 @@ import kotlin.uuid.Uuid
 class DbEmployeesTest {
     private val orgId = OrgId.new()
     private val otherOrgId = OrgId.new()
+    private val employeeId = EmployeeId.new()
+    private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, "owner@example.com", "127.0.0.1")
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "other@example.com", "127.0.0.1")
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "owner@example.com", "127.0.0.1")
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "other@example.com", "127.0.0.1")
     private val users = DbUsers(PasswordHasher())
     private val roles = DbRoles()
     private val employees = DbEmployees(users, roles)

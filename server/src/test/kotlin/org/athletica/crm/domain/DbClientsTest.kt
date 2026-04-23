@@ -11,6 +11,7 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
@@ -32,9 +33,11 @@ class DbClientsTest {
     private val orgId = OrgId.new()
     private val otherOrgId = OrgId.new()
     private val userId = UserId.new()
+    private val employeeId = EmployeeId.new()
+    private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, userId, orgId, "test@example.com", null)
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, "test@example.com", null)
+    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "test@example.com", null)
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "test@example.com", null)
 
     private val clients = DbClients()
 

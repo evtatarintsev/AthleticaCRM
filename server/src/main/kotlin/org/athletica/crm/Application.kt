@@ -1,12 +1,12 @@
 package org.athletica.crm
 
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.auth.HttpAuthHeader
 import io.ktor.http.auth.parseAuthorizationHeader
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
@@ -15,13 +15,17 @@ import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.KtorSimpleLogger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
@@ -62,33 +66,26 @@ fun Application.module() {
 
     runMigrations(di.databaseConfig)
 
-    val corsAllowedHosts = environment.config.property("cors.allowedHosts").getString()
-//
-//    CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
-//        launch {
-//            di.emailDispatcher.dispatchPending()
-//        }
-//        monitor.subscribe(ApplicationStopped) {
-//            cancel()
-//        }
-//    }
+    CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
+        launch {
+            di.emailDispatcher.dispatchPending()
+        }
+        monitor.subscribe(ApplicationStopped) {
+            cancel()
+        }
+    }
 
     context(di) {
-        configureServer(corsAllowedHosts)
+        configureServer()
     }
 }
 
 /**
  * Устанавливает плагины и маршруты без запуска миграций.
  * Выделена отдельно для возможности тестирования без подключения к БД.
- * [jwtConfig] — конфигурация JWT токенов,
- * [corsAllowedHost] — хост для кросс-доменных запросов (например, `localhost:8081`).
- * Требует контекстных параметров [Database] и [PasswordHasher].
  */
 context(di: Di)
-fun Application.configureServer(
-    corsAllowedHost: String = "localhost:8081",
-) {
+fun Application.configureServer() {
     install(CallLogging)
 
     install(StatusPages) {
@@ -105,16 +102,6 @@ fun Application.configureServer(
                 ErrorResponse(code = "NOT_FOUND", message = "Resource not found"),
             )
         }
-    }
-
-    install(CORS) {
-        allowHost(corsAllowedHost, schemes = listOf("http", "https"))
-        allowCredentials = true
-        allowHeader(HttpHeaders.Authorization)
-        allowHeader(HttpHeaders.ContentType)
-        allowMethod(HttpMethod.Get)
-        allowMethod(HttpMethod.Post)
-        allowMethod(HttpMethod.Options)
     }
 
     install(ContentNegotiation) {

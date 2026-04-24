@@ -24,6 +24,8 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.components.auth.LoginScreen
 import org.athletica.crm.components.auth.RegisterScreen
 import org.athletica.crm.navigation.applyPlatformNavSetup
+import org.athletica.crm.navigation.getInitialDeepLinkRoute
+import org.athletica.crm.navigation.AppRoute
 
 private val logger = Logger.withTag("App")
 
@@ -58,6 +60,8 @@ fun App(
     var timezone by remember { mutableStateOf(platformCurrentTimezone()) }
     val scope = rememberCoroutineScope()
     val navController = rememberNavController()
+    // Read initial URL before applyPlatformNavSetup resets it to "/"
+    val initialRoute: AppRoute = remember { getInitialDeepLinkRoute() }
 
     LaunchedEffect(navController) { applyPlatformNavSetup(navController) }
 
@@ -88,6 +92,7 @@ fun App(
                 MainScreen(
                     api = api,
                     navController = navController,
+                    initialRoute = initialRoute,
                     onLogout = {
                         scope.launch {
                             api

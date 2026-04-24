@@ -165,12 +165,19 @@ fun NavItem.label(): String =
 fun MainScreen(
     api: ApiClient,
     navController: NavHostController,
+    initialRoute: AppRoute = AppRoute.Home,
     onLogout: () -> Unit = {},
 ) {
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(initialRoute) {
+        if (initialRoute != AppRoute.Home) {
+            navController.navigate(initialRoute)
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {

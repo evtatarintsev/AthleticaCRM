@@ -84,8 +84,8 @@ fun Route.authRoutes() {
     }
 }
 
-context(db: Database, audit: AuditLog)
-fun RouteWithContext.logout() {
+context(db: Database)
+fun RouteWithContext.logout(audit: AuditLog) {
     post<Unit, Unit>("/auth/logout") { _, call ->
         db.transaction {
             audit.logout()

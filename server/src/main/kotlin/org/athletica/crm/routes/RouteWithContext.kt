@@ -13,7 +13,6 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
-import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
 import io.ktor.util.reflect.typeInfo
 import org.athletica.crm.Di
@@ -39,23 +38,20 @@ class RouteWithContext(val di: Di, val router: Route) {
             RouteWithContext(di, this).apply(build)
         }
 
-    fun get(
+    inline fun <reified Res> get(
         path: String,
-        body: suspend context(RequestContext) RoutingContext.() -> Unit,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(RoutingCall) -> Res,
     ): Route =
-        router.route(path, HttpMethod.Get) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    body()
-                }
-            }
+        route(path, HttpMethod.Get) { call ->
+            val response = body(call)
+            call.respond(response, typeInfo<Res>())
         }
 
     inline fun <reified Req, reified Res> post(
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
     ): Route =
-        postRoute(path) { call ->
+        route(path, HttpMethod.Post) { call ->
             val response = body(call.body<Req>())
             call.respond(response, typeInfo<Res>())
         }
@@ -65,7 +61,7 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Unit,
     ): Route =
-        postRoute(path) { call ->
+        route(path, HttpMethod.Post) { call ->
             body(call.body<Req>())
             call.respond(Unit)
         }
@@ -74,7 +70,7 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
     ): Route =
-        postRoute(path) { call ->
+        route(path, HttpMethod.Post) { call ->
             val response = body(call.body<Req>(), call)
             call.respond(response, typeInfo<Res>())
         }
@@ -84,7 +80,7 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit) -> Res,
     ): Route =
-        postRoute(path) { call ->
+        route(path, HttpMethod.Post) { call ->
             body(Unit)
             call.respond(Unit)
         }
@@ -94,7 +90,7 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Unit,
     ): Route =
-        postRoute(path) { call ->
+        route(path, HttpMethod.Post) { call ->
             body(Unit, call)
             call.respond(Unit)
         }
@@ -104,16 +100,17 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Res,
     ): Route =
-        postRoute(path) { call ->
+        route(path, HttpMethod.Post) { call ->
             val response = body(Unit, call)
             call.respond(response, typeInfo<Res>())
         }
 
-    inline fun postRoute(
+    inline fun route(
         path: String,
+        method: HttpMethod,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(RoutingCall) -> Unit,
     ): Route =
-        router.route(path, HttpMethod.Post) {
+        router.route(path, method) {
             handle {
                 context(call.contextFromRequest(di.database, di.employeePermissions)) {
                     either {

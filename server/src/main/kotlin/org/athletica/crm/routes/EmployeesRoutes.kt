@@ -23,26 +23,22 @@ import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 context(db: Database)
 fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
     route("/employees") {
-        get("/list") {
-            call.eitherToResponse {
-                db.transaction {
-                    employees.list()
-                }.let { employees ->
-                    EmployeeListResponse(
-                        employees.map { it.toListItem() },
-                        employees.size.toUInt(),
-                    )
-                }
+        get<EmployeeListResponse>("/list") {
+            db.transaction {
+                employees.list()
+            }.let { employees ->
+                EmployeeListResponse(
+                    employees.map { it.toListItem() },
+                    employees.size.toUInt(),
+                )
             }
         }
 
-        get("/detail") {
-            call.eitherToResponse {
-                val id = call.request.queryParameters.asUuid("id").toEmployeeId()
-                db.transaction {
-                    employees.byId(id)
-                }.toDetailResponse()
-            }
+        get<EmployeeDetailResponse>("/detail") { call ->
+            val id = call.request.queryParameters.asUuid("id").toEmployeeId()
+            db.transaction {
+                employees.byId(id)
+            }.toDetailResponse()
         }
 
         post<CreateEmployeeRequest, EmployeeListItem>("/create") { request ->
@@ -90,13 +86,11 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        get("/roles") {
-            call.eitherToResponse {
-                db.transaction {
-                    roles.list()
-                }.let { roles ->
-                    RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
-                }
+        get<RoleListResponse>("/roles") {
+            db.transaction {
+                roles.list()
+            }.let { roles ->
+                RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
             }
         }
 

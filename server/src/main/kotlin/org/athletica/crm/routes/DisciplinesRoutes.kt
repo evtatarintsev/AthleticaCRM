@@ -14,13 +14,11 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.disciplinesRoutes(disciplines: Disciplines) {
     route("/disciplines") {
-        get("/list") {
-            call.eitherToResponse {
-                db.transaction {
-                    disciplines.list()
-                        .map { DisciplineDetailResponse(id = it.id, name = it.name) }
-                        .let { DisciplineListResponse(it) }
-                }
+        get<DisciplineListResponse>("/list") {
+            db.transaction {
+                disciplines.list()
+                    .map { DisciplineDetailResponse(id = it.id, name = it.name) }
+                    .let { DisciplineListResponse(it) }
             }
         }
 

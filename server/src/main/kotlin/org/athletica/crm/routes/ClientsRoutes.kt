@@ -42,19 +42,15 @@ import kotlin.uuid.Uuid
  */
 context(db: Database, audit: AuditLog)
 fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances) {
-    get("/clients/list") {
-        call.eitherToResponse {
-            val clients = clientList(ClientListRequest()).bind()
-            ClientListResponse(clients, clients.size.toUInt())
-        }
+    get<ClientListResponse>("/clients/list") {
+        val clients = clientList(ClientListRequest()).bind()
+        ClientListResponse(clients, clients.size.toUInt())
     }
 
-    get("/clients/detail") {
-        call.eitherToResponse {
-            val id = call.request.queryParameters.asUuid("id").toClientId()
-            db.transaction {
-                clients.byId(id).detailResponse()
-            }
+    get<ClientDetailResponse>("/clients/detail") { call ->
+        val id = call.request.queryParameters.asUuid("id").toClientId()
+        db.transaction {
+            clients.byId(id).detailResponse()
         }
     }
 
@@ -124,12 +120,10 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    get("/clients/balance/history") {
-        call.eitherToResponse {
-            val id = call.request.queryParameters.asUuid("id").toClientId()
-            db.transaction {
-                balances.forClient(id).historyResponse()
-            }
+    get<ClientBalanceHistoryResponse>("/clients/balance/history") { call ->
+        val id = call.request.queryParameters.asUuid("id").toClientId()
+        db.transaction {
+            balances.forClient(id).historyResponse()
         }
     }
 }

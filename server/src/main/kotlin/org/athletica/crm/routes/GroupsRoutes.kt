@@ -7,6 +7,7 @@ import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Database
@@ -18,17 +19,13 @@ import org.athletica.crm.usecases.groups.setGroupDisciplines
 context(db: Database, audit: AuditLog)
 fun RouteWithContext.groupsRoutes() {
     route("/groups") {
-        get("/list") {
-            call.eitherToResponse {
-                val groups = groupList(GroupListRequest()).bind()
-                GroupListResponse(groups)
-            }
+        get<GroupListResponse>("/list") {
+            val groups = groupList(GroupListRequest()).bind()
+            GroupListResponse(groups)
         }
 
-        get("/list-for-select") {
-            call.eitherToResponse {
-                groupListForSelect().bind()
-            }
+        get<List<GroupSelectItem>>("/list-for-select") {
+            groupListForSelect().bind()
         }
 
         post<GroupCreateRequest, GroupDetailResponse>("/create") { request ->

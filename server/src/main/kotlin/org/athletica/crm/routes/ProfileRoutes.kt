@@ -23,27 +23,25 @@ import org.athletica.crm.usecases.auth.updateMe
  */
 context(db: Database, passwordHasher: PasswordHasher, audit: AuditLog)
 fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: OrgBalances) {
-    get("/auth/me") {
-        call.eitherToResponse<AuthMeResponse> {
-            val user = profile().bind()
-            val info =
-                db.transaction {
-                    parZip(
-                        { orgBalances.current() },
-                        { organizations.current() },
-                    ) { balance, org ->
-                        OrgInfo(org.name, balance.totalAmount)
-                    }
+    get<AuthMeResponse>("/auth/me") {
+        val user = profile().bind()
+        val info =
+            db.transaction {
+                parZip(
+                    { orgBalances.current() },
+                    { organizations.current() },
+                ) { balance, org ->
+                    OrgInfo(org.name, balance.totalAmount)
                 }
+            }
 
-            AuthMeResponse(
-                id = user.id,
-                username = user.username,
-                name = user.name,
-                avatarId = user.avatarId,
-                orgInfo = info,
-            )
-        }
+        AuthMeResponse(
+            id = user.id,
+            username = user.username,
+            name = user.name,
+            avatarId = user.avatarId,
+            orgInfo = info,
+        )
     }
 
     post<UpdateMeRequest, Unit>("/auth/me/update") { request ->

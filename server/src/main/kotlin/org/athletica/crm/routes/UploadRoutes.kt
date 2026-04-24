@@ -27,19 +27,17 @@ import kotlin.uuid.Uuid
  */
 context(db: Database, minioService: MinioService, audit: AuditLog)
 fun RouteWithContext.uploadRoutes() {
-    get("/upload/info") {
+    get<UploadResponse>("/upload/info") { call ->
         val cacheTTL = 7.days
         call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = cacheTTL.inWholeSeconds.toInt()))
-        call.eitherToResponse {
-            val idParam =
-                call.request.queryParameters["id"]
-                    ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
-            val id =
-                runCatching { Uuid.parse(idParam) }.getOrElse {
-                    raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
-                }
-            uploadInfo(id, cacheTTL).bind()
-        }
+        val idParam =
+            call.request.queryParameters["id"]
+                ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
+        val id =
+            runCatching { Uuid.parse(idParam) }.getOrElse {
+                raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
+            }
+        uploadInfo(id, cacheTTL).bind()
     }
 
     post<Unit, UploadResponse>("/upload") { _, call ->

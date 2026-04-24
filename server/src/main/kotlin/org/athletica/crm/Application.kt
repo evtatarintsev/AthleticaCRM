@@ -148,7 +148,7 @@ fun Application.configureServer(
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
-                        logout()
+                        logout(di.audit)
                         clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
                         groupsRoutes()
                         orgRoutes(di.organizations)
@@ -160,7 +160,7 @@ fun Application.configureServer(
                         context(di.minio) {
                             uploadRoutes()
                         }
-                        auditRoutes()
+                        auditRoutes(di.audit)
                         notificationsRoutes()
                     }
                 }

@@ -1,5 +1,7 @@
 package org.athletica.crm
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -359,6 +361,10 @@ private fun AppNavHost(
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home,
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { ExitTransition.None },
         modifier = modifier,
     ) {
         composable<AppRoute.Home> {

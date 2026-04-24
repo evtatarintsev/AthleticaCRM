@@ -1,6 +1,6 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.request.receive
+import io.ktor.client.request.request
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
@@ -30,17 +30,12 @@ fun RouteWithContext.notificationsRoutes() {
             }
         }
 
-        post("/mark-as-read") {
-            call.eitherToResponse {
-                val request = call.receive<MarkNotificationsReadRequest>()
-                markNotificationsRead(request).bind()
-            }
+        post<MarkNotificationsReadRequest, Unit>("/mark-as-read") { request ->
+            markNotificationsRead(request).bind()
         }
 
-        post("/mark-all-read") {
-            call.eitherToResponse {
-                markAllNotificationsRead().bind()
-            }
+        post<Unit, Unit>("/mark-all-read") {
+            markAllNotificationsRead()
         }
     }
 }

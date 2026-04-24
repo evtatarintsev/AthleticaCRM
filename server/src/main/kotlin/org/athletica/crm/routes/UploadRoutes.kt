@@ -8,6 +8,7 @@ import io.ktor.server.response.cacheControl
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
+import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.i18n.Messages
@@ -41,23 +42,21 @@ fun RouteWithContext.uploadRoutes() {
         }
     }
 
-    post("/upload") {
-        call.eitherToResponse {
-            var fileBytes: ByteArray? = null
-            var originalName = "file"
-            var contentType = "application/octet-stream"
+    post<Unit, UploadResponse>("/upload") { _, call ->
+        var fileBytes: ByteArray? = null
+        var originalName = "file"
+        var contentType = "application/octet-stream"
 
-            call.receiveMultipart().forEachPart { part ->
-                if (part is PartData.FileItem) {
-                    fileBytes = part.provider().toByteArray()
-                    originalName = part.originalFileName?.takeIf { it.isNotBlank() } ?: "file"
-                    contentType = part.contentType?.toString() ?: "application/octet-stream"
-                }
-                part.dispose()
+        call.receiveMultipart().forEachPart { part ->
+            if (part is PartData.FileItem) {
+                fileBytes = part.provider().toByteArray()
+                originalName = part.originalFileName?.takeIf { it.isNotBlank() } ?: "file"
+                contentType = part.contentType?.toString() ?: "application/octet-stream"
             }
-
-            val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", Messages.FileNotInRequest.localize()))
-            uploadFile(bytes, originalName, contentType).bind()
+            part.dispose()
         }
+
+        val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", Messages.FileNotInRequest.localize()))
+        uploadFile(bytes, originalName, contentType).bind()
     }
 }

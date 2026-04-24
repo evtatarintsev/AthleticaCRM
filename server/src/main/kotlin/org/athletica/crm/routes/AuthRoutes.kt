@@ -86,12 +86,11 @@ fun Route.authRoutes() {
 
 context(db: Database, audit: AuditLog)
 fun RouteWithContext.logout() {
-    post("/auth/logout") {
+    post<Unit, Unit>("/auth/logout") { _, call ->
         db.transaction {
             audit.logout()
         }
         call.response.cookies.setJwtCookies("", "")
-        call.respond(HttpStatusCode.OK)
     }
 }
 

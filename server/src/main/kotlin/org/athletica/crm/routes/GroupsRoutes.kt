@@ -1,8 +1,10 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.request.receive
+import arrow.core.raise.context.bind
+import io.ktor.client.request.request
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
+import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
@@ -29,19 +31,12 @@ fun RouteWithContext.groupsRoutes() {
             }
         }
 
-        post("/create") {
-            call.eitherToResponse {
-                val request = call.receive<GroupCreateRequest>()
-                val result = createGroup(request).bind()
-                result
-            }
+        post<GroupCreateRequest, GroupDetailResponse>("/create") { request ->
+            createGroup(request).bind()
         }
 
-        post("/set-disciplines") {
-            call.eitherToResponse {
-                val request = call.receive<SetGroupDisciplinesRequest>()
-                setGroupDisciplines(request).bind()
-            }
+        post<SetGroupDisciplinesRequest, Unit>("/set-disciplines") { request ->
+            setGroupDisciplines(request).bind()
         }
     }
 }

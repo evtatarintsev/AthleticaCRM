@@ -1,6 +1,5 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.request.receive
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
@@ -46,61 +45,52 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        post("/create") {
-            call.eitherToResponse {
-                val request = call.receive<CreateEmployeeRequest>()
-                db.transaction {
-                    val allRoles = roles.list()
-                    val selectedRoles = allRoles.filter { it.id in request.roleIds }
-                    val permissions =
-                        EmployeePermission(
-                            roles = selectedRoles,
-                            grantedPermissions = request.grantedPermissions,
-                            revokedPermissions = request.revokedPermissions,
-                        )
-                    employees
-                        .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
-                }.toListItem()
+        post<CreateEmployeeRequest, EmployeeListItem>("/create") { request ->
+            db.transaction {
+                val allRoles = roles.list()
+                val selectedRoles = allRoles.filter { it.id in request.roleIds }
+                val permissions =
+                    EmployeePermission(
+                        roles = selectedRoles,
+                        grantedPermissions = request.grantedPermissions,
+                        revokedPermissions = request.revokedPermissions,
+                    )
+                employees
+                    .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
+            }.toListItem()
+        }
+
+        post<UpdateEmployeeRequest, Unit>("/update") { request ->
+            db.transaction {
+                val allRoles = roles.list()
+                val selectedRoles = allRoles.filter { it.id in request.roleIds }
+                val permissions =
+                    EmployeePermission(
+                        roles = selectedRoles,
+                        grantedPermissions = request.grantedPermissions,
+                        revokedPermissions = request.revokedPermissions,
+                    )
+                employees
+                    .byId(request.id)
+                    .withNew(
+                        newName = request.name,
+                        newPhoneNo = request.phoneNo,
+                        newEmail = request.email,
+                        newAvatarId = request.avatarId,
+                        newPermissions = permissions,
+                    ).save()
             }
         }
 
-        post("/update") {
-            call.eitherToResponse {
-                val request = call.receive<UpdateEmployeeRequest>()
-                db.transaction {
-                    val allRoles = roles.list()
-                    val selectedRoles = allRoles.filter { it.id in request.roleIds }
-                    val permissions =
-                        EmployeePermission(
-                            roles = selectedRoles,
-                            grantedPermissions = request.grantedPermissions,
-                            revokedPermissions = request.revokedPermissions,
-                        )
-                    employees
-                        .byId(request.id)
-                        .withNew(
-                            newName = request.name,
-                            newPhoneNo = request.phoneNo,
-                            newEmail = request.email,
-                            newAvatarId = request.avatarId,
-                            newPermissions = permissions,
-                        ).save()
-                }
+        post<SendEmployeeAccessRequest, Unit>("/send-access") { request ->
+            db.transaction {
+                employees
+                    .byId(request.employeeId)
+                    .invite(request.email, request.password)
             }
         }
 
-        post("/send-access") {
-            call.eitherToResponse {
-                val request = call.receive<SendEmployeeAccessRequest>()
-                db.transaction {
-                    employees
-                        .byId(request.employeeId)
-                        .invite(request.email, request.password)
-                }
-            }
-        }
-
-        post("/roles") {
+        get("/roles") {
             call.eitherToResponse {
                 db.transaction {
                     roles.list()
@@ -110,24 +100,18 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        post("/roles/create") {
-            call.eitherToResponse {
-                val request = call.receive<CreateRoleRequest>()
-                db.transaction {
-                    roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
-                }
-                RoleItem(request.id, request.name, request.permissions)
+        post<CreateRoleRequest, RoleItem>("/roles/create") { request ->
+            db.transaction {
+                roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
             }
+            RoleItem(request.id, request.name, request.permissions)
         }
 
-        post("/roles/update") {
-            call.eitherToResponse {
-                val request = call.receive<UpdateRoleRequest>()
-                db.transaction {
-                    roles.update(DomainEmployeeRole(request.id, request.name, request.permissions))
-                }
-                RoleItem(request.id, request.name, request.permissions)
+        post<UpdateRoleRequest, RoleItem>("/roles/update") { request ->
+            db.transaction {
+                roles.update(DomainEmployeeRole(request.id, request.name, request.permissions))
             }
+            RoleItem(request.id, request.name, request.permissions)
         }
     }
 }

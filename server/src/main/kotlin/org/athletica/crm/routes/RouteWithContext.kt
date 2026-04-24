@@ -51,18 +51,6 @@ class RouteWithContext(val di: Di, val router: Route) {
             }
         }
 
-    fun post(
-        path: String,
-        body: suspend context(RequestContext) RoutingContext.() -> Unit,
-    ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    body()
-                }
-            }
-        }
-
     inline fun <reified Req, reified Res> post(
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
@@ -73,6 +61,112 @@ class RouteWithContext(val di: Di, val router: Route) {
                     either {
                         val request = call.body<Req>()
                         val response = body(request)
+                        call.respond(response, typeInfo<Res>())
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
+
+    @JvmName("postWithUnitResponse")
+    inline fun <reified Req, reified Res : Unit> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Unit,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        val request = call.body<Req>()
+                        body(request)
+                        call.respond(Unit)
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
+
+    inline fun <reified Req, reified Res> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        val request = call.body<Req>()
+                        val response = body(request, call)
+                        call.respond(response, typeInfo<Res>())
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
+
+    @JvmName("postWithUnitRequestResponse")
+    inline fun <reified Req : Unit, reified Res : Unit> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit) -> Res,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        body(Unit)
+                        call.respond(Unit)
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
+
+    @JvmName("postWithUnitRequestResponseAndCall")
+    inline fun <reified Req : Unit, reified Res : Unit> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Unit,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        body(Unit, call)
+                        call.respond(Unit)
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
+
+    @JvmName("postWithUnitRequestAndCall")
+    inline fun <reified Req : Unit, reified Res> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Res,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        val response = body(Unit, call)
                         call.respond(response, typeInfo<Res>())
                     }.onLeft {
                         call.respond(

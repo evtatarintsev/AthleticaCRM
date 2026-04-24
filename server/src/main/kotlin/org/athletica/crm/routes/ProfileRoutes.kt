@@ -1,7 +1,6 @@
 package org.athletica.crm.routes
 
 import arrow.fx.coroutines.parZip
-import io.ktor.server.request.receive
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.OrgInfo
@@ -47,19 +46,13 @@ fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: Or
         }
     }
 
-    post("/auth/me/update") {
-        call.eitherToResponse<Unit> {
-            val request = call.receive<UpdateMeRequest>()
-            updateMe(request).bind()
-        }
+    post<UpdateMeRequest, Unit>("/auth/me/update") { request ->
+        updateMe(request)
     }
 
-    post("/auth/me/change-password") {
-        call.eitherToResponse<Unit> {
-            val request = call.receive<ChangePasswordRequest>()
-            db.transaction {
-                changePassword(request)
-            }
+    post<ChangePasswordRequest, Unit>("/auth/me/change-password") { request ->
+        db.transaction {
+            changePassword(request)
         }
     }
 }

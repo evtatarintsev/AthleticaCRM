@@ -1,6 +1,5 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.request.receive
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.domain.org.Organization
@@ -20,16 +19,13 @@ fun RouteWithContext.orgRoutes(organizations: Organizations) {
             }
         }
 
-        post("/settings/update") {
-            call.eitherToResponse<OrgSettingsResponse> {
-                val request = call.receive<UpdateOrgSettingsRequest>()
-                db.transaction {
-                    organizations
-                        .current()
-                        .withNew(request.name, request.timezone)
-                        .apply { save() }
-                        .toResponse()
-                }
+        post<UpdateOrgSettingsRequest, OrgSettingsResponse>("/settings/update") { request ->
+            db.transaction {
+                organizations
+                    .current()
+                    .withNew(request.name, request.timezone)
+                    .apply { save() }
+                    .toResponse()
             }
         }
     }

@@ -2,8 +2,8 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
+import io.ktor.client.request.request
 import io.ktor.http.Parameters
-import io.ktor.server.request.receive
 import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
@@ -58,90 +58,69 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances) {
         }
     }
 
-    post("/clients/create") {
-        call.eitherToResponse {
-            val request = call.receive<CreateClientRequest>()
-            db.transaction {
-                clients
-                    .new(
-                        request.id,
-                        request.name,
-                        request.avatarId,
-                        request.birthday,
-                        request.gender,
-                    )
-            }.detailResponse()
+    post<CreateClientRequest, ClientDetailResponse>("/clients/create") { request ->
+        db.transaction {
+            clients
+                .new(
+                    request.id,
+                    request.name,
+                    request.avatarId,
+                    request.birthday,
+                    request.gender,
+                )
+        }.detailResponse()
+    }
+
+    post<EditClientRequest, ClientDetailResponse>("/clients/edit") { request ->
+        db.transaction {
+            clients
+                .byId(request.id)
+                .withNew(
+                    request.name,
+                    request.avatarId,
+                    request.birthday,
+                    request.gender,
+                )
+                .apply { save() }
+        }.detailResponse()
+    }
+
+    post<AddClientsToGroupRequest, Unit>("/clients/add-to-group") { request ->
+        db.transaction {
+            addClientsToGroup(request)
         }
     }
 
-    post("/clients/edit") {
-        call.eitherToResponse {
-            val request = call.receive<EditClientRequest>()
-            db.transaction {
-                clients
-                    .byId(request.id)
-                    .withNew(
-                        request.name,
-                        request.avatarId,
-                        request.birthday,
-                        request.gender,
-                    )
-                    .apply { save() }
-            }.detailResponse()
+    post<RemoveClientFromGroupRequest, Unit>("/clients/remove-from-group") { request ->
+        db.transaction {
+            removeClientsFromGroup(request)
         }
     }
 
-    post("/clients/add-to-group") {
-        call.eitherToResponse {
-            val request = call.receive<AddClientsToGroupRequest>()
-            db.transaction {
-                addClientsToGroup(request).bind()
-            }
+    post<AdjustBalanceRequest, ClientDetailResponse>("/clients/balance/adjust") { request ->
+        db.transaction {
+            balances
+                .forClient(request.clientId)
+                .adjust(request.amount, request.note)
+            clients.byId(request.clientId).detailResponse()
         }
     }
 
-    post("/clients/remove-from-group") {
-        call.eitherToResponse {
-            val request = call.receive<RemoveClientFromGroupRequest>()
-            db.transaction {
-                removeClientsFromGroup(request)
-            }
+    post<AttachClientDocRequest, Unit>("/clients/docs/attach") { request ->
+        db.transaction {
+            clients
+                .byId(request.clientId)
+                .attachDoc(clientDoc(request.uploadId, request.name))
+                .save()
         }
     }
 
-    post("/clients/balance/adjust") {
-        call.eitherToResponse {
-            val request = call.receive<AdjustBalanceRequest>()
-            db.transaction {
-                balances
-                    .forClient(request.clientId)
-                    .adjust(request.amount, request.note)
-                clients.byId(request.clientId).detailResponse()
-            }
-        }
-    }
-
-    post("/clients/docs/attach") {
-        call.eitherToResponse {
-            val request = call.receive<AttachClientDocRequest>()
-            db.transaction {
-                clients
-                    .byId(request.clientId)
-                    .attachDoc(clientDoc(request.uploadId, request.name))
-                    .save()
-            }
-        }
-    }
-
-    post("/clients/docs/delete") {
-        call.eitherToResponse {
-            val request = call.receive<DeleteClientDocRequest>()
-            db.transaction {
-                clients
-                    .byId(request.clientId)
-                    .deleteDoc(request.docId)
-                    .save()
-            }
+    post<DeleteClientDocRequest, Unit>("/clients/docs/delete") { request ->
+        db.transaction {
+            clients
+                .byId(request.clientId)
+                .deleteDoc(request.docId)
+                .save()
         }
     }
 

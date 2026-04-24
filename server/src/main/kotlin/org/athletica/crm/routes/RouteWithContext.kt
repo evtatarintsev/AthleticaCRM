@@ -1,6 +1,7 @@
 package org.athletica.crm.routes
 
 import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import arrow.core.raise.either
 import com.auth0.jwt.interfaces.Payload
 import io.ktor.http.HttpMethod
@@ -8,11 +9,13 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.header
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.route
+import io.ktor.util.reflect.typeInfo
 import org.athletica.crm.Di
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.Lang
@@ -23,6 +26,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.security.JwtConfig
@@ -58,7 +62,36 @@ class RouteWithContext(val di: Di, val router: Route) {
                 }
             }
         }
+
+    inline fun <reified Req, reified Res> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        val request = call.body<Req>()
+                        val response = body(request)
+                        call.respond(response, typeInfo<Res>())
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
 }
+
+context(raise: Raise<DomainError>)
+suspend inline fun <reified T> RoutingCall.body() =
+    try {
+        receive<T>(typeInfo<T>())
+    } catch (e: Exception) {
+        raise(CommonDomainError("INVALID_REQUEST", "Invalid request body"))
+    }
 
 fun Route.routeWithContext(di: Di, block: RouteWithContext.() -> Unit) {
     RouteWithContext(di, this).apply(block)

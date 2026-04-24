@@ -13,6 +13,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.rememberNavController
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
@@ -22,6 +23,7 @@ import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.components.auth.LoginScreen
 import org.athletica.crm.components.auth.RegisterScreen
+import org.athletica.crm.navigation.applyPlatformNavSetup
 
 private val logger = Logger.withTag("App")
 
@@ -55,6 +57,9 @@ fun App(
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
     var timezone by remember { mutableStateOf(platformCurrentTimezone()) }
     val scope = rememberCoroutineScope()
+    val navController = rememberNavController()
+
+    LaunchedEffect(navController) { applyPlatformNavSetup(navController) }
 
     LaunchedEffect(Unit) {
         authState =
@@ -82,6 +87,7 @@ fun App(
             AuthState.Authenticated ->
                 MainScreen(
                     api = api,
+                    navController = navController,
                     onLogout = {
                         scope.launch {
                             api

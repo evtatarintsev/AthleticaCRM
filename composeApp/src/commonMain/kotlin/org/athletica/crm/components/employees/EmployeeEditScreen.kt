@@ -50,6 +50,7 @@ import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.permissions.Permission
 import org.athletica.crm.core.permissions.displayName
 import org.athletica.crm.core.toEmailAddress
@@ -403,5 +404,29 @@ private fun EmployeeAvatarPicker(
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+internal fun EmployeeEditScreenLoader(
+    employeeId: EmployeeId,
+    api: ApiClient,
+    onBack: () -> Unit,
+    onSaved: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    var employee by remember { mutableStateOf<EmployeeDetailResponse?>(null) }
+
+    LaunchedEffect(employeeId) {
+        api.employeeDetail(employeeId).onRight { employee = it }
+    }
+
+    val loaded = employee
+    if (loaded != null) {
+        EmployeeEditScreen(employee = loaded, api = api, onBack = onBack, onSaved = onSaved, modifier = modifier)
+    } else {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
     }
 }

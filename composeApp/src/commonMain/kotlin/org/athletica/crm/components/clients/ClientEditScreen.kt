@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
@@ -256,6 +258,30 @@ fun ClientEditScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun ClientEditScreenLoader(
+    clientId: ClientId,
+    api: ApiClient,
+    onBack: () -> Unit,
+    onSaved: (ClientDetailResponse) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var client by remember { mutableStateOf<ClientDetailResponse?>(null) }
+
+    LaunchedEffect(clientId) {
+        api.clientDetail(clientId).onRight { client = it }
+    }
+
+    val loaded = client
+    if (loaded != null) {
+        ClientEditScreen(client = loaded, api = api, onBack = onBack, onSaved = onSaved, modifier = modifier)
+    } else {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
     }
 }

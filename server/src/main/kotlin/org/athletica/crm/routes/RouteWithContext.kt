@@ -39,137 +39,6 @@ class RouteWithContext(val di: Di, val router: Route) {
             RouteWithContext(di, this).apply(build)
         }
 
-    /**
-     * GET с автоматическим error handling и response (без параметров).
-     * Использование:
-     *   get<OrgSettingsResponse>("/settings") {
-     *       db.transaction { ... }
-     *   }
-     */
-    inline fun <reified Res> get(
-        path: String,
-        crossinline body: suspend context(RequestContext) () -> Either<DomainError, Res>,
-    ): Route =
-        router.route(path, HttpMethod.Get) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    body()
-                        .fold(
-                            { error ->
-                                call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ErrorResponse(code = error.code, message = error.message),
-                                )
-                            },
-                            { result -> call.respond(result) }
-                        )
-                }
-            }
-        }
-
-    /**
-     * GET с доступом к call и параметрам запроса.
-     * Для случаев когда нужны параметры из query, headers, etc.
-     * Использование:
-     *   getWithCall<AuditLogListResponse>("/log") { call ->
-     *       val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 0
-     *       Either.Right(AuditLogListResponse(...))
-     *   }
-     */
-    inline fun <reified Res> getWithCall(
-        path: String,
-        crossinline body: suspend context(RequestContext) (RoutingCall) -> Either<DomainError, Res>,
-    ): Route =
-        router.route(path, HttpMethod.Get) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    body(call)
-                        .fold(
-                            { error ->
-                                call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ErrorResponse(code = error.code, message = error.message),
-                                )
-                            },
-                            { result -> call.respond(result) }
-                        )
-                }
-            }
-        }
-
-    /**
-     * POST с автоматическим разбором request, error handling и response.
-     * Использование:
-     *   post<UpdateOrgSettingsRequest, OrgSettingsResponse>("/settings/update") { request ->
-     *       db.transaction { ... }
-     *   }
-     */
-    inline fun <reified Req, reified Res> post(
-        path: String,
-        crossinline body: suspend context(RequestContext) (Req) -> Either<DomainError, Res>,
-    ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    try {
-                        val request = call.receive<Req>()
-                        body(request)
-                            .fold(
-                                { error ->
-                                    call.respond(
-                                        HttpStatusCode.BadRequest,
-                                        ErrorResponse(code = error.code, message = error.message),
-                                    )
-                                },
-                                { result -> call.respond(result) }
-                            )
-                    } catch (e: Exception) {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = "INVALID_REQUEST", message = "Invalid request body"),
-                        )
-                    }
-                }
-            }
-        }
-
-    /**
-     * POST с доступом к call для сложных операций (multipart, custom parsing, etc).
-     * Использование:
-     *   postWithCall<UploadResponse>("/upload") { call ->
-     *       call.receiveMultipart() { ... }
-     *       ...
-     *   }
-     */
-    inline fun <reified Res> postWithCall(
-        path: String,
-        crossinline body: suspend context(RequestContext) (RoutingCall) -> Either<DomainError, Res>,
-    ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    body(call)
-                        .fold(
-                            { error ->
-                                call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ErrorResponse(code = error.code, message = error.message),
-                                )
-                            },
-                            { result -> call.respond(result) }
-                        )
-                }
-            }
-        }
-
-    /**
-     * GET без параметров типа (для сложных случаев с eitherToResponse).
-     * Используй это если нужен доступ к call и Raise контекст.
-     * Использование:
-     *   get("/upload/info") {
-     *       call.eitherToResponse { ... }
-     *   }
-     */
     fun get(
         path: String,
         body: suspend context(RequestContext) RoutingContext.() -> Unit,
@@ -182,14 +51,6 @@ class RouteWithContext(val di: Di, val router: Route) {
             }
         }
 
-    /**
-     * POST без параметров типа (для сложных случаев с eitherToResponse).
-     * Используй это если нужен доступ к call и Raise контекст.
-     * Использование:
-     *   post("/upload") {
-     *       call.eitherToResponse { ... }
-     *   }
-     */
     fun post(
         path: String,
         body: suspend context(RequestContext) RoutingContext.() -> Unit,
@@ -201,7 +62,36 @@ class RouteWithContext(val di: Di, val router: Route) {
                 }
             }
         }
+
+    inline fun <reified Req, reified Res> post(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
+    ): Route =
+        router.route(path, HttpMethod.Post) {
+            handle {
+                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                    either {
+                        val request = call.body<Req>()
+                        val response = body(request)
+                        call.respond(response, typeInfo<Res>())
+                    }.onLeft {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(code = it.code, message = it.message),
+                        )
+                    }
+                }
+            }
+        }
 }
+
+context(raise: Raise<DomainError>)
+suspend inline fun <reified T> RoutingCall.body() =
+    try {
+        receive<T>(typeInfo<T>())
+    } catch (e: Exception) {
+        raise(CommonDomainError("INVALID_REQUEST", "Invalid request body"))
+    }
 
 fun Route.routeWithContext(di: Di, block: RouteWithContext.() -> Unit) {
     RouteWithContext(di, this).apply(block)

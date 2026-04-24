@@ -1,6 +1,7 @@
 package org.athletica.crm.routes
 
-import arrow.core.Either
+import io.ktor.server.request.receive
+import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
@@ -12,9 +13,7 @@ import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.toEmployeeId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
@@ -25,89 +24,110 @@ import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 context(db: Database)
 fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
     route("/employees") {
-        get<EmployeeListResponse>("/list") {
-            db.transaction {
-                employees.list()
-            }.let { employees ->
-                EmployeeListResponse(
-                    employees.map { it.toListItem() },
-                    employees.size.toUInt(),
-                )
-            }
-        }
-
-        getWithCall<EmployeeDetailResponse>("/detail") { call ->
-            val id = call.request.queryParameters.asUuid("id").toEmployeeId()
-            db.transaction {
-                employees.byId(id)
-            }.toDetailResponse()
-        }
-
-        post<CreateEmployeeRequest, EmployeeListItem>("/create") { request ->
-            db.transaction {
-                val allRoles = roles.list()
-                val selectedRoles = allRoles.filter { it.id in request.roleIds }
-                val permissions =
-                    EmployeePermission(
-                        roles = selectedRoles,
-                        grantedPermissions = request.grantedPermissions,
-                        revokedPermissions = request.revokedPermissions,
+        get("/list") {
+            call.eitherToResponse {
+                db.transaction {
+                    employees.list()
+                }.let { employees ->
+                    EmployeeListResponse(
+                        employees.map { it.toListItem() },
+                        employees.size.toUInt(),
                     )
-                employees
-                    .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
-            }.toListItem()
-        }
-
-        post<UpdateEmployeeRequest, Employee>("/update") { request ->
-            db.transaction {
-                val allRoles = roles.list()
-                val selectedRoles = allRoles.filter { it.id in request.roleIds }
-                val permissions =
-                    EmployeePermission(
-                        roles = selectedRoles,
-                        grantedPermissions = request.grantedPermissions,
-                        revokedPermissions = request.revokedPermissions,
-                    )
-                employees
-                    .byId(request.id)
-                    .withNew(
-                        newName = request.name,
-                        newPhoneNo = request.phoneNo,
-                        newEmail = request.email,
-                        newAvatarId = request.avatarId,
-                        newPermissions = permissions,
-                    ).save()
+                }
             }
         }
 
-        post<SendEmployeeAccessRequest, Employee>("/send-access") { request ->
-            db.transaction {
-                employees
-                    .byId(request.employeeId)
-                    .invite(request.email, request.password)
+        get("/detail") {
+            call.eitherToResponse {
+                val id = call.request.queryParameters.asUuid("id").toEmployeeId()
+                db.transaction {
+                    employees.byId(id)
+                }.toDetailResponse()
             }
         }
 
-        post<Unit, RoleListResponse>("/roles") { _ ->
-            db.transaction {
-                roles.list()
-            }.let { roles ->
-                RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
+        post("/create") {
+            call.eitherToResponse {
+                val request = call.receive<CreateEmployeeRequest>()
+                db.transaction {
+                    val allRoles = roles.list()
+                    val selectedRoles = allRoles.filter { it.id in request.roleIds }
+                    val permissions =
+                        EmployeePermission(
+                            roles = selectedRoles,
+                            grantedPermissions = request.grantedPermissions,
+                            revokedPermissions = request.revokedPermissions,
+                        )
+                    employees
+                        .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
+                }.toListItem()
             }
         }
 
-        post<CreateRoleRequest, RoleItem>("/roles/create") { request ->
-            db.transaction {
-                roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
+        post("/update") {
+            call.eitherToResponse {
+                val request = call.receive<UpdateEmployeeRequest>()
+                db.transaction {
+                    val allRoles = roles.list()
+                    val selectedRoles = allRoles.filter { it.id in request.roleIds }
+                    val permissions =
+                        EmployeePermission(
+                            roles = selectedRoles,
+                            grantedPermissions = request.grantedPermissions,
+                            revokedPermissions = request.revokedPermissions,
+                        )
+                    employees
+                        .byId(request.id)
+                        .withNew(
+                            newName = request.name,
+                            newPhoneNo = request.phoneNo,
+                            newEmail = request.email,
+                            newAvatarId = request.avatarId,
+                            newPermissions = permissions,
+                        ).save()
+                }
             }
-            RoleItem(request.id, request.name, request.permissions)
         }
 
-        post<UpdateRoleRequest, RoleItem>("/roles/update") { request ->
-            db.transaction {
-                roles.update(DomainEmployeeRole(request.id, request.name, request.permissions))
+        post("/send-access") {
+            call.eitherToResponse {
+                val request = call.receive<SendEmployeeAccessRequest>()
+                db.transaction {
+                    employees
+                        .byId(request.employeeId)
+                        .invite(request.email, request.password)
+                }
             }
-            RoleItem(request.id, request.name, request.permissions)
+        }
+
+        post("/roles") {
+            call.eitherToResponse {
+                db.transaction {
+                    roles.list()
+                }.let { roles ->
+                    RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
+                }
+            }
+        }
+
+        post("/roles/create") {
+            call.eitherToResponse {
+                val request = call.receive<CreateRoleRequest>()
+                db.transaction {
+                    roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
+                }
+                RoleItem(request.id, request.name, request.permissions)
+            }
+        }
+
+        post("/roles/update") {
+            call.eitherToResponse {
+                val request = call.receive<UpdateRoleRequest>()
+                db.transaction {
+                    roles.update(DomainEmployeeRole(request.id, request.name, request.permissions))
+                }
+                RoleItem(request.id, request.name, request.permissions)
+            }
         }
     }
 }

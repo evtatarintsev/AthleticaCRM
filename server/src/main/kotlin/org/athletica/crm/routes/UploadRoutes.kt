@@ -1,14 +1,14 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.Raise
 import io.ktor.http.CacheControl
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.response.cacheControl
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database

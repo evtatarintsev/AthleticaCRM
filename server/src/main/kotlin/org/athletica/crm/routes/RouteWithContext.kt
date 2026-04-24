@@ -55,21 +55,9 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
     ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    either {
-                        val request = call.body<Req>()
-                        val response = body(request)
-                        call.respond(response, typeInfo<Res>())
-                    }.onLeft {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = it.code, message = it.message),
-                        )
-                    }
-                }
-            }
+        postRoute(path) { call ->
+            val response = body(call.body<Req>())
+            call.respond(response, typeInfo<Res>())
         }
 
     @JvmName("postWithUnitResponse")
@@ -77,42 +65,18 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Unit,
     ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    either {
-                        val request = call.body<Req>()
-                        body(request)
-                        call.respond(Unit)
-                    }.onLeft {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = it.code, message = it.message),
-                        )
-                    }
-                }
-            }
+        postRoute(path) { call ->
+            body(call.body<Req>())
+            call.respond(Unit)
         }
 
     inline fun <reified Req, reified Res> post(
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
     ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    either {
-                        val request = call.body<Req>()
-                        val response = body(request, call)
-                        call.respond(response, typeInfo<Res>())
-                    }.onLeft {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = it.code, message = it.message),
-                        )
-                    }
-                }
-            }
+        postRoute(path) { call ->
+            val response = body(call.body<Req>(), call)
+            call.respond(response, typeInfo<Res>())
         }
 
     @JvmName("postWithUnitRequestResponse")
@@ -120,20 +84,9 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit) -> Res,
     ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    either {
-                        body(Unit)
-                        call.respond(Unit)
-                    }.onLeft {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = it.code, message = it.message),
-                        )
-                    }
-                }
-            }
+        postRoute(path) { call ->
+            body(Unit)
+            call.respond(Unit)
         }
 
     @JvmName("postWithUnitRequestResponseAndCall")
@@ -141,20 +94,9 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Unit,
     ): Route =
-        router.route(path, HttpMethod.Post) {
-            handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
-                    either {
-                        body(Unit, call)
-                        call.respond(Unit)
-                    }.onLeft {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = it.code, message = it.message),
-                        )
-                    }
-                }
-            }
+        postRoute(path) { call ->
+            body(Unit, call)
+            call.respond(Unit)
         }
 
     @JvmName("postWithUnitRequestAndCall")
@@ -162,12 +104,20 @@ class RouteWithContext(val di: Di, val router: Route) {
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Res,
     ): Route =
+        postRoute(path) { call ->
+            val response = body(Unit, call)
+            call.respond(response, typeInfo<Res>())
+        }
+
+    inline fun postRoute(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(RoutingCall) -> Unit,
+    ): Route =
         router.route(path, HttpMethod.Post) {
             handle {
                 context(call.contextFromRequest(di.database, di.employeePermissions)) {
                     either {
-                        val response = body(Unit, call)
-                        call.respond(response, typeInfo<Res>())
+                        body(call)
                     }.onLeft {
                         call.respond(
                             HttpStatusCode.BadRequest,

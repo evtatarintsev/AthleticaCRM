@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Mandatory Checks
+
+Before reporting any task as done, always run:
+```bash
+./gradlew build
+./gradlew ktlintFormat
+```
+Never propose changes that fail to compile or violate the linter.
+
 ## Quick Start Commands
 
 ### Build and Test
@@ -110,6 +119,13 @@ suspend fun doSomething(): Either<DomainError, String> = either {
 
 // Caller uses assertIs<Either.Right<T>> in tests or .getOrElse { } in production
 ```
+
+- **Logical errors** (bad input, business constraints, unavailable resource) → `Either.Left`
+- **`fold`** — terminal handling of both branches (e.g., in routes)
+- **`map`/`mapLeft`** — transform values in a pipeline; not for side effects
+- **`when` on type** — only when different subtypes need different logic
+- **`throw`/`try-catch`** — only for true exceptional conditions (JVM bugs, OOM) or wrapping third-party libraries at the boundary; never inside business logic
+- Explicit `catch` inside business logic is a sign the error should be modelled as `Either`
 
 ### 3. Kotlin Context Parameters (Receiver Types)
 ```kotlin
@@ -272,6 +288,79 @@ No reflection-based DI framework; all wiring is explicit and visible.
 - **Use Cases**: See `docs/USECASES_CORE.md` for all 28+ business flows
 - **Client Balance**: See `docs/client-balance.md` for accounting rules
 - **Quick Reference**: See `docs/QUICK_REFERENCE.md` for developer cheat sheet
+
+## Code Style & Conventions
+
+### General Principles
+- Prefer `val` over `var`; prefer immutable data structures
+- Pass dependencies via constructor; no global state
+- Prefer pure functions; avoid side effects
+
+### Command Query Separation (CQS) — Method Naming
+- **Query** (returns a value, no state change): name as a **noun** describing the result — e.g., `accessToken`, not `makeAccessToken`
+- **Command** (performs an action, returns `Unit`): name as a **verb** describing the action — e.g., `sendEmail()`, `user.save()`
+
+### Iteration
+Use `forEach` instead of `for` for side effects over collections (internal vs external iteration).
+`for` is only acceptable when `break`, `continue`, or non-local `return` is needed inside the body.
+
+```kotlin
+// Bad
+for (clientId in request.clientIds) {
+    audit.logUpdate("client", clientId, auditData)
+}
+
+// Good
+request.clientIds.forEach {
+    audit.logUpdate("client", it, auditData)
+}
+```
+
+### Minimize Variable Span
+Declare variables as close as possible to their first use (Code Complete, Ch. 10).
+
+### Curly Braces
+Always use `{}` with `if`, `for`, `while`, even for single-expression bodies.
+
+```kotlin
+// Bad
+if (updatedRows == 0L) raise(UserNotFound(...))
+
+// Good
+if (updatedRows == 0L) {
+    raise(UserNotFound(...))
+}
+```
+
+### Comments and Documentation
+- No inline comments except `// TODO` and `// FIXME`
+- All documentation and comments must be in **Russian**
+- Every class and every function must have KDoc explaining its purpose
+- Document fields individually before each field, not in the class-level KDoc
+- Follow [Kotlin documentation comments conventions](https://kotlinlang.org/docs/coding-conventions.html#documentation-comments): avoid `@param`/`@return` tags — describe parameters inline using `[paramName]` references; tags are only acceptable when the description is too long to fit in the main text
+- No commented-out or dead code
+
+### UI String Localization (composeApp)
+All user-facing strings must use `stringResource(Res.string.key)`. Hardcoded strings in UI code are forbidden. Add missing strings to `composeApp/src/commonMain/composeResources/values/strings.xml` (and all `values-<lang>/strings.xml` files).
+
+```kotlin
+// Bad
+Text("Добавить группу")
+
+// Good
+Text(stringResource(Res.string.action_add_client_group))
+```
+
+### Dependency Injection
+Inject via constructor only. Field injection and `lateinit var` are forbidden except when no other initialization is possible. Prefer `val`; use `by lazy` when the dependency requires a resource that starts after class construction.
+
+### Compose UI Architecture (composeApp)
+Every screen (NavHost destination) must have a corresponding ViewModel class. Composables are always stateless — they accept `state: XState` and event lambdas; they never call the API directly.
+
+- Business logic (`scope.launch { api.xxx() }`) lives only in ViewModels, never in composables
+- ViewModels use a **sealed class** for async state (`Idle`, `Loading`, `Error`) to prevent invalid state combinations
+- Error types are typed (`sealed class XError`); the composable maps them to localized strings via `stringResource`
+- Form fields with multiple related inputs are grouped into a `data class XForm` with an `isValid` computed property
 
 ## Known Constraints & Gotchas
 

@@ -18,11 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
-import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_cancel
@@ -35,7 +31,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Диалог отправки доступа сотруднику.
  * Запрашивает email и пароль; email предзаполняется из профиля сотрудника ([defaultEmail]).
- * Вызывает `/api/employees/send-access` и сигнализирует об успехе через [onSuccess].
+ * Вызывает [onSuccess] при успешной отправке.
  */
 @Composable
 fun SendAccessDialog(
@@ -45,14 +41,17 @@ fun SendAccessDialog(
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { SendAccessViewModel(api, employeeId, scope) { onSuccess() } }
+
     var email by remember { mutableStateOf(defaultEmail ?: "") }
     var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+
+    val isSubmitting = viewModel.state is SendAccessState.Submitting
+    val submitError = (viewModel.state as? SendAccessState.Error)?.error
 
     AlertDialog(
-        onDismissRequest = { if (!isLoading) onDismiss() },
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
         title = { Text(stringResource(Res.string.dialog_send_access_title)) },
         text = {
             Column {
@@ -60,12 +59,12 @@ fun SendAccessDialog(
                     value = email,
                     onValueChange = {
                         email = it
-                        error = null
+                        viewModel.onErrorDismissed()
                     },
                     label = { Text(stringResource(Res.string.label_email_for_employee)) },
                     singleLine = true,
-                    enabled = !isLoading,
-                    isError = error != null,
+                    enabled = !isSubmitting,
+                    isError = submitError != null,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
@@ -73,18 +72,18 @@ fun SendAccessDialog(
                     value = password,
                     onValueChange = {
                         password = it
-                        error = null
+                        viewModel.onErrorDismissed()
                     },
                     label = { Text(stringResource(Res.string.label_password_for_employee)) },
                     singleLine = true,
-                    enabled = !isLoading,
-                    isError = error != null,
+                    enabled = !isSubmitting,
+                    isError = submitError != null,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (error != null) {
+                if (submitError != null) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = error!!,
+                        text = submitError.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -93,36 +92,10 @@ fun SendAccessDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    scope.launch {
-                        isLoading = true
-                        error = null
-                        api.sendEmployeeAccess(
-                            SendEmployeeAccessRequest(
-                                employeeId = employeeId,
-                                email = EmailAddress(email.trim()),
-                                password = password,
-                            ),
-                        ).fold(
-                            ifLeft = { err ->
-                                error =
-                                    when (err) {
-                                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                        is ApiClientError.ValidationError -> err.message
-                                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                                    }
-                                isLoading = false
-                            },
-                            ifRight = {
-                                isLoading = false
-                                onSuccess()
-                            },
-                        )
-                    }
-                },
-                enabled = email.isNotBlank() && password.isNotBlank() && !isLoading,
+                onClick = { viewModel.onSend(email, password) },
+                enabled = email.isNotBlank() && password.isNotBlank() && !isSubmitting,
             ) {
-                if (isLoading) {
+                if (isSubmitting) {
                     CircularProgressIndicator()
                 } else {
                     Text(stringResource(Res.string.action_send_access))
@@ -130,7 +103,7 @@ fun SendAccessDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
                 Text(stringResource(Res.string.action_cancel))
             }
         },

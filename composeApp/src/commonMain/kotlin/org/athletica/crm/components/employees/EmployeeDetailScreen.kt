@@ -27,23 +27,28 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_edit
+import org.athletica.crm.generated.resources.employee_status_active
+import org.athletica.crm.generated.resources.employee_status_inactive
+import org.athletica.crm.generated.resources.label_employee
+import org.athletica.crm.generated.resources.label_employee_owner
+import org.athletica.crm.generated.resources.label_employee_phone
+import org.athletica.crm.generated.resources.label_no_contact_info
+import org.athletica.crm.generated.resources.section_contact_info
+import org.athletica.crm.generated.resources.section_roles
 import org.jetbrains.compose.resources.stringResource
 
 /** Экран деталей сотрудника. */
@@ -56,40 +61,28 @@ fun EmployeeDetailScreen(
     onEdit: (EmployeeDetailResponse) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var employee by remember { mutableStateOf<EmployeeDetailResponse?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { EmployeeDetailViewModel(api, employeeId, scope) }
 
-    LaunchedEffect(employeeId) {
-        isLoading = true
-        api.employeeDetail(employeeId).fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                    }
-            },
-            ifRight = { employee = it },
-        )
-        isLoading = false
-    }
+    val title =
+        (viewModel.state as? EmployeeDetailState.Loaded)?.employee?.name
+            ?: stringResource(Res.string.label_employee)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(employee?.name ?: "Сотрудник") },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
-                    employee?.let { emp ->
+                    if (viewModel.state is EmployeeDetailState.Loaded) {
+                        val emp = (viewModel.state as EmployeeDetailState.Loaded).employee
                         IconButton(onClick = { onEdit(emp) }) {
-                            Icon(Icons.Default.Edit, "Редактировать")
+                            Icon(Icons.Default.Edit, stringResource(Res.string.action_edit))
                         }
                     }
                 },
@@ -97,32 +90,32 @@ fun EmployeeDetailScreen(
         },
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
-            when {
-                isLoading ->
+            when (val s = viewModel.state) {
+                is EmployeeDetailState.Loading ->
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-                error != null ->
+                is EmployeeDetailState.Error ->
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                employee != null ->
+                is EmployeeDetailState.Loaded ->
                     LazyColumn(Modifier.fillMaxSize().padding(16.dp)) {
                         item {
-                            EmployeeDetailHeader(employee!!, api)
+                            EmployeeDetailHeader(s.employee, api)
                             Spacer(Modifier.height(24.dp))
                         }
 
                         item {
-                            EmployeeInfoSection(employee!!)
+                            EmployeeInfoSection(s.employee)
                             Spacer(Modifier.height(24.dp))
                         }
 
-                        if (employee!!.roles.isNotEmpty()) {
+                        if (s.employee.roles.isNotEmpty()) {
                             item {
-                                EmployeeRolesSection(employee!!)
+                                EmployeeRolesSection(s.employee)
                             }
                         }
                     }
@@ -132,7 +125,10 @@ fun EmployeeDetailScreen(
 }
 
 @Composable
-private fun EmployeeDetailHeader(employee: EmployeeDetailResponse, api: ApiClient) {
+private fun EmployeeDetailHeader(
+    employee: EmployeeDetailResponse,
+    api: ApiClient,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth(),
@@ -168,7 +164,7 @@ private fun EmployeeDetailHeader(employee: EmployeeDetailResponse, api: ApiClien
             Spacer(Modifier.height(8.dp))
             Surface(color = MaterialTheme.colorScheme.primaryContainer) {
                 Text(
-                    text = "Владелец",
+                    text = stringResource(Res.string.label_employee_owner),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -180,7 +176,7 @@ private fun EmployeeDetailHeader(employee: EmployeeDetailResponse, api: ApiClien
 
         val statusColor = if (employee.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
         Text(
-            text = if (employee.isActive) "Активен" else "Неактивен",
+            text = if (employee.isActive) stringResource(Res.string.employee_status_active) else stringResource(Res.string.employee_status_inactive),
             color = statusColor,
             style = MaterialTheme.typography.bodySmall,
         )
@@ -192,7 +188,7 @@ private fun EmployeeInfoSection(employee: EmployeeDetailResponse) {
     OutlinedCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                text = "Контактная информация",
+                text = stringResource(Res.string.section_contact_info),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp),
@@ -203,12 +199,12 @@ private fun EmployeeInfoSection(employee: EmployeeDetailResponse) {
             }
 
             employee.phoneNo?.let { phone ->
-                InfoRow("Телефон", phone)
+                InfoRow(stringResource(Res.string.label_employee_phone), phone)
             }
 
             if (employee.email == null && employee.phoneNo == null) {
                 Text(
-                    text = "Контактная информация не указана",
+                    text = stringResource(Res.string.label_no_contact_info),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -222,7 +218,7 @@ private fun EmployeeRolesSection(employee: EmployeeDetailResponse) {
     OutlinedCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                text = "Роли",
+                text = stringResource(Res.string.section_roles),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp),

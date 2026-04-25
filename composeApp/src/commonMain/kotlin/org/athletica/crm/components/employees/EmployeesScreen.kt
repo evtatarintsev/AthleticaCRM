@@ -27,13 +27,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
@@ -61,30 +61,14 @@ fun EmployeesScreen(
     onEmployeeClick: (EmployeeId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var employees by remember { mutableStateOf<List<EmployeeListItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { EmployeesViewModel(api, scope) }
+
+    LaunchedEffect(refreshKey) { viewModel.load() }
+
     var selectedIds by remember { mutableStateOf<Set<EmployeeId>>(emptySet()) }
     var showSendAccessFor by remember { mutableStateOf<EmployeeListItem?>(null) }
-    var internalRefreshKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(refreshKey, internalRefreshKey) {
-        isLoading = true
-        api.employeeList().fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                    }
-            },
-            ifRight = { response -> employees = response.employees },
-        )
-        isLoading = false
-    }
-
-    // Send-access dialog
     showSendAccessFor?.let { emp ->
         SendAccessDialog(
             api = api,
@@ -93,21 +77,11 @@ fun EmployeesScreen(
             onSuccess = {
                 showSendAccessFor = null
                 selectedIds = emptySet()
-                internalRefreshKey++
+                viewModel.load()
             },
             onDismiss = { showSendAccessFor = null },
         )
     }
-
-    // Determine if send-access is available: exactly 1 selected and that employee is inactive
-    val sendAccessTarget: EmployeeListItem? =
-        if (selectedIds.size == 1) {
-            val id = selectedIds.first()
-            val emp = employees.find { it.id == id }
-            if (emp != null && !emp.isActive) emp else null
-        } else {
-            null
-        }
 
     Scaffold(
         modifier = modifier,
@@ -122,6 +96,14 @@ fun EmployeesScreen(
         },
         bottomBar = {
             if (selectedIds.isNotEmpty()) {
+                val employees = (viewModel.state as? EmployeesState.Loaded)?.employees ?: emptyList()
+                val sendAccessTarget: EmployeeListItem? =
+                    if (selectedIds.size == 1) {
+                        val id = selectedIds.first()
+                        employees.find { it.id == id }?.takeIf { !it.isActive }
+                    } else {
+                        null
+                    }
                 EmployeesBottomActionBar(
                     selectedCount = selectedIds.size,
                     sendAccessEnabled = sendAccessTarget != null,
@@ -134,59 +116,60 @@ fun EmployeesScreen(
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when {
-                isLoading ->
+            when (val s = viewModel.state) {
+                is EmployeesState.Loading ->
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-                error != null ->
+                is EmployeesState.Error ->
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                employees.isEmpty() ->
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(Res.string.employees_empty), style = MaterialTheme.typography.bodyLarge)
-                    }
-
-                else -> {
-                    val selectAllState =
-                        when {
-                            selectedIds.isEmpty() -> ToggleableState.Off
-                            selectedIds.containsAll(employees.map { it.id }) -> ToggleableState.On
-                            else -> ToggleableState.Indeterminate
+                is EmployeesState.Loaded -> {
+                    if (s.employees.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(stringResource(Res.string.employees_empty), style = MaterialTheme.typography.bodyLarge)
                         }
+                    } else {
+                        val selectAllState =
+                            when {
+                                selectedIds.isEmpty() -> ToggleableState.Off
+                                selectedIds.containsAll(s.employees.map { it.id }) -> ToggleableState.On
+                                else -> ToggleableState.Indeterminate
+                            }
 
-                    Column(Modifier.fillMaxSize()) {
-                        EmployeesTableHeader(
-                            selectAllState = selectAllState,
-                            onSelectAllClick = {
-                                selectedIds =
-                                    if (selectAllState == ToggleableState.On) {
-                                        emptySet()
-                                    } else {
-                                        employees.map { it.id }.toSet()
-                                    }
-                            },
-                        )
-                        HorizontalDivider()
-                        LazyColumn(
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp),
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            items(employees, key = { it.id }) { employee ->
-                                EmployeeRow(
-                                    employee = employee,
-                                    api = api,
-                                    selected = employee.id in selectedIds,
-                                    onCheckedChange = { checked ->
-                                        selectedIds =
-                                            if (checked) selectedIds + employee.id else selectedIds - employee.id
-                                    },
-                                    onClick = { onEmployeeClick(employee.id) },
-                                )
+                        Column(Modifier.fillMaxSize()) {
+                            EmployeesTableHeader(
+                                selectAllState = selectAllState,
+                                onSelectAllClick = {
+                                    selectedIds =
+                                        if (selectAllState == ToggleableState.On) {
+                                            emptySet()
+                                        } else {
+                                            s.employees.map { it.id }.toSet()
+                                        }
+                                },
+                            )
+                            HorizontalDivider()
+                            LazyColumn(
+                                contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp),
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                items(s.employees, key = { it.id }) { employee ->
+                                    EmployeeRow(
+                                        employee = employee,
+                                        api = api,
+                                        selected = employee.id in selectedIds,
+                                        onCheckedChange = { checked ->
+                                            selectedIds =
+                                                if (checked) selectedIds + employee.id else selectedIds - employee.id
+                                        },
+                                        onClick = { onEmployeeClick(employee.id) },
+                                    )
+                                }
                             }
                         }
                     }

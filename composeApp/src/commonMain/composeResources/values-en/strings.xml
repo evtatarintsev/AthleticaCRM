@@ -200,6 +200,15 @@
     <string name="permission_can_view_client_balance">Client balance view</string>
     <string name="permission_can_view_client_balance_name">Can view client balance</string>
     <string name="permission_can_view_client_balance_description">Employee can see the client account balance</string>
+    <string name="screen_employee_edit">Edit Employee</string>
+    <string name="label_employee">Employee</string>
+    <string name="label_employee_owner">Owner</string>
+    <string name="section_contact_info">Contact Information</string>
+    <string name="section_roles">Roles</string>
+    <string name="section_granted_permissions">Explicitly Granted Permissions</string>
+    <string name="section_revoked_permissions">Explicitly Revoked Permissions</string>
+    <string name="label_no_contact_info">No contact information</string>
+    <string name="error_roles_load_failed">Failed to load roles</string>
     <string name="settings_section_clients">Clients</string>
     <string name="settings_item_client_display">Client display</string>
     <string name="settings_item_client_display_subtitle">Columns and data in the client list</string>

@@ -217,6 +217,15 @@
     <string name="employees_empty">Сотрудников пока нет</string>
     <string name="action_add_employee">Добавить сотрудника</string>
     <string name="screen_employee_create">Новый сотрудник</string>
+    <string name="screen_employee_edit">Редактировать сотрудника</string>
+    <string name="label_employee">Сотрудник</string>
+    <string name="label_employee_owner">Владелец</string>
+    <string name="section_contact_info">Контактная информация</string>
+    <string name="section_roles">Роли</string>
+    <string name="section_granted_permissions">Явно выданные права</string>
+    <string name="section_revoked_permissions">Явно отозванные права</string>
+    <string name="label_no_contact_info">Контактная информация не указана</string>
+    <string name="error_roles_load_failed">Не удалось загрузить роли</string>
     <string name="hint_phone">+7 (999) 999-99-99</string>
     <string name="hint_email">ivan@example.com</string>
     <string name="employee_status_active">Активен</string>

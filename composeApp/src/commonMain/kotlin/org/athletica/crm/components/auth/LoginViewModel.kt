@@ -3,7 +3,6 @@ package org.athletica.crm.components.auth
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
@@ -11,12 +10,16 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.auth.LoginRequest
 
-private val logger = Logger.withTag("LoginViewModel")
+sealed class LoginError {
+    data object InvalidCredentials : LoginError()
+    data object ServiceUnavailable : LoginError()
+    data class ServerValidation(val message: String) : LoginError()
+}
 
 sealed class LoginState {
     data object Idle : LoginState()
     data object Loading : LoginState()
-    data class Error(val message: String) : LoginState()
+    data class Error(val error: LoginError) : LoginState()
 }
 
 class LoginViewModel(
@@ -35,19 +38,17 @@ class LoginViewModel(
                 .login(LoginRequest(username = login, password = password))
                 .fold(
                     ifLeft = {
-                        logger.e { "Ошибка входа: $login — $it" }
                         state =
                             LoginState.Error(
                                 when (it) {
-                                    is ApiClientError.ValidationError -> it.message
-                                    is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
-                                    is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
+                                    is ApiClientError.ValidationError -> LoginError.ServerValidation(it.message)
+                                    is ApiClientError.Unauthenticated -> LoginError.InvalidCredentials
+                                    is ApiClientError.Unavailable -> LoginError.ServiceUnavailable
                                 },
                             )
                     },
                     ifRight = {
                         tokenStorage.save(it.accessToken, it.refreshToken)
-                        logger.i { "Вход выполнен успешно: $login" }
                         onAuthenticated()
                     },
                 )

@@ -45,6 +45,8 @@ import org.athletica.crm.generated.resources.action_login
 import org.athletica.crm.generated.resources.action_register
 import org.athletica.crm.generated.resources.app_name
 import org.athletica.crm.generated.resources.auth_no_account
+import org.athletica.crm.generated.resources.error_invalid_credentials
+import org.athletica.crm.generated.resources.error_service_unavailable
 import org.athletica.crm.generated.resources.label_login
 import org.athletica.crm.generated.resources.label_password
 import org.jetbrains.compose.resources.stringResource
@@ -71,9 +73,20 @@ fun LoginScreen(
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    LaunchedEffect(state) {
+    val errorMessage: String? =
         if (state is LoginState.Error) {
-            snackbarHostState.showSnackbar(state.message)
+            when (val error = state.error) {
+                is LoginError.InvalidCredentials -> stringResource(Res.string.error_invalid_credentials)
+                is LoginError.ServiceUnavailable -> stringResource(Res.string.error_service_unavailable)
+                is LoginError.ServerValidation -> error.message
+            }
+        } else {
+            null
+        }
+
+    LaunchedEffect(state) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage)
             onErrorDismissed()
         }
     }

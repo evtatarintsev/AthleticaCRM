@@ -105,6 +105,10 @@
     <string name="notifications_mark_all_read">Прочитать все</string>
     <string name="cd_notification_mark_read">Отметить как прочитанное</string>
     <string name="notifications_open_link">Открыть</string>
+    <string name="notifications_just_now">только что</string>
+    <string name="notifications_minutes_ago">%1$d мин назад</string>
+    <string name="notifications_hours_ago">%1$d ч назад</string>
+    <string name="notifications_days_ago">%1$d дн назад</string>
     <string name="action_add_client">Добавить клиента</string>
 
     <!-- Auth screens -->

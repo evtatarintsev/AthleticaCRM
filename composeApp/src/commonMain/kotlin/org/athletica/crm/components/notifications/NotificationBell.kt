@@ -50,12 +50,17 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_notifications
 import org.athletica.crm.generated.resources.cd_notification_mark_read
+import org.athletica.crm.generated.resources.notifications_days_ago
 import org.athletica.crm.generated.resources.notifications_empty
+import org.athletica.crm.generated.resources.notifications_hours_ago
+import org.athletica.crm.generated.resources.notifications_just_now
 import org.athletica.crm.generated.resources.notifications_mark_all_read
+import org.athletica.crm.generated.resources.notifications_minutes_ago
 import org.athletica.crm.generated.resources.notifications_open_link
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -157,7 +162,7 @@ private fun NotificationPanelContent(
     onNavigate: (NotificationLink) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val nowEpochSeconds = remember { Clock.System.now().epochSeconds }
+    val now = remember { Clock.System.now() }
     Column(modifier = modifier) {
         // Заголовок панели
         Row(
@@ -202,7 +207,7 @@ private fun NotificationPanelContent(
                 notifications.forEach { notification ->
                     NotificationItemRow(
                         notification = notification,
-                        nowEpochSeconds = nowEpochSeconds,
+                        now = now,
                         onMarkRead = { onMarkRead(notification.id) },
                         onNavigate = notification.link?.let { link -> { onNavigate(link) } },
                     )
@@ -225,7 +230,7 @@ private fun NotificationPanelContent(
 @Composable
 private fun NotificationItemRow(
     notification: AppNotification,
-    nowEpochSeconds: Long,
+    now: Instant,
     onMarkRead: () -> Unit,
     onNavigate: (() -> Unit)?,
 ) {
@@ -278,7 +283,7 @@ private fun NotificationItemRow(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = formatRelativeTime(notification.createdAt, nowEpochSeconds),
+                            text = (now - notification.createdAt).relativeTimeLabel(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -320,18 +325,19 @@ private fun NotificationItemRow(
 }
 
 /**
- * Форматирует [instant] как относительное время (только что / N мин / N ч / N дн / дата).
- * Использует [nowEpochSeconds] для вычисления разницы; по умолчанию передаётся через вызывающий код.
+ * Форматирует длительность как относительное время (только что / N мин / N ч / N дн).
+ * Вызывается как `(now - notification.createdAt).relativeTimeLabel()`.
  */
-private fun formatRelativeTime(instant: Instant, nowEpochSeconds: Long): String {
-    val diffSec = nowEpochSeconds - instant.epochSeconds
+@Composable
+private fun Duration.relativeTimeLabel(): String {
+    val diffSec = inWholeSeconds
     return when {
-        diffSec < 60 -> "только что"
-        diffSec < 3_600 -> "${diffSec / 60} мин назад"
-        diffSec < 86_400 -> "${diffSec / 3_600} ч назад"
-        diffSec < 604_800 -> "${diffSec / 86_400} дн назад"
+        diffSec < 60 -> stringResource(Res.string.notifications_just_now)
+        diffSec < 3_600 -> stringResource(Res.string.notifications_minutes_ago, diffSec / 60)
+        diffSec < 86_400 -> stringResource(Res.string.notifications_hours_ago, diffSec / 3_600)
+        diffSec < 604_800 -> stringResource(Res.string.notifications_days_ago, diffSec / 86_400)
         else -> {
-            val dt = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+            val dt = (Clock.System.now() - this).toLocalDateTime(TimeZone.currentSystemDefault())
             "${dt.day}.${dt.month.number.toString().padStart(2, '0')}.${dt.year}"
         }
     }

@@ -100,6 +100,10 @@
     <string name="action_toggle_nav">Toggle navigation</string>
     <string name="action_notifications">Notifications</string>
     <string name="action_open_menu">Open menu</string>
+    <string name="notifications_just_now">just now</string>
+    <string name="notifications_minutes_ago">%1$d min ago</string>
+    <string name="notifications_hours_ago">%1$d h ago</string>
+    <string name="notifications_days_ago">%1$d d ago</string>
     <string name="action_add_client">Add client</string>
 
     <!-- Auth screens -->

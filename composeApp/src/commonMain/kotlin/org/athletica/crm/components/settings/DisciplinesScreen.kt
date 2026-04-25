@@ -1,19 +1,13 @@
 package org.athletica.crm.components.settings
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
-import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
-import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.screen_discipline_create
@@ -31,72 +25,26 @@ fun DisciplinesScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var items by remember { mutableStateOf<List<DirectoryItem<DisciplineId>>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var showCreate by remember { mutableStateOf(false) }
-    var createError by remember { mutableStateOf<String?>(null) }
-    var isSaving by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<DirectoryItem<DisciplineId>?>(null) }
-    var editError by remember { mutableStateOf<String?>(null) }
-    var refreshKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    val viewModel = remember { DisciplinesViewModel(api, scope) }
+    var showCreate by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<DirectoryItem<DisciplineId>?>(null) }
 
-    LaunchedEffect(refreshKey) {
-        isLoading = true
-        error = null
-        api.disciplineList().fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                    }
-            },
-            ifRight = { response ->
-                items =
-                    response.disciplines.map { discipline ->
-                        DirectoryItem(id = discipline.id, name = discipline.name)
-                    }
-            },
-        )
-        isLoading = false
-    }
+    val isSaving = viewModel.saveState is DisciplinesSaveState.Saving
+    val saveError = (viewModel.saveState as? DisciplinesSaveState.Error)?.error
 
-    // Экран редактирования дисциплины
     editingItem?.let { item ->
         DirectoryItemCreateScreen(
             title = stringResource(Res.string.screen_discipline_edit),
             initialItem = item,
             onBack = {
                 editingItem = null
-                editError = null
+                viewModel.onSaveErrorDismissed()
             },
             onSave = { updated ->
-                scope.launch {
-                    isSaving = true
-                    editError = null
-                    api.updateDiscipline(UpdateDisciplineRequest(id = updated.id, name = updated.name))
-                        .fold(
-                            ifLeft = { err ->
-                                editError =
-                                    when (err) {
-                                        is ApiClientError.ValidationError -> err.message
-                                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                    }
-                            },
-                            ifRight = {
-                                editingItem = null
-                                editError = null
-                                refreshKey++
-                            },
-                        )
-                    isSaving = false
-                }
+                viewModel.onUpdate(updated) { editingItem = null }
             },
-            error = editError,
+            error = saveError?.message(),
             isLoading = isSaving,
             modifier = modifier,
             newId = { DisciplineId.new() },
@@ -104,38 +52,17 @@ fun DisciplinesScreen(
         return
     }
 
-    // Экран создания дисциплины
     if (showCreate) {
         DirectoryItemCreateScreen(
             title = stringResource(Res.string.screen_discipline_create),
             onBack = {
                 showCreate = false
-                createError = null
+                viewModel.onSaveErrorDismissed()
             },
             onSave = { newItem ->
-                scope.launch {
-                    isSaving = true
-                    createError = null
-                    api.createDiscipline(CreateDisciplineRequest(id = newItem.id, name = newItem.name))
-                        .fold(
-                            ifLeft = { err ->
-                                createError =
-                                    when (err) {
-                                        is ApiClientError.ValidationError -> err.message
-                                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                    }
-                            },
-                            ifRight = {
-                                showCreate = false
-                                createError = null
-                                refreshKey++
-                            },
-                        )
-                    isSaving = false
-                }
+                viewModel.onCreate(newItem) { showCreate = false }
             },
-            error = createError,
+            error = saveError?.message(),
             isLoading = isSaving,
             modifier = modifier,
             newId = { DisciplineId.new() },
@@ -143,20 +70,18 @@ fun DisciplinesScreen(
         return
     }
 
+    val loadedItems = (viewModel.loadState as? DisciplinesLoadState.Loaded)?.items ?: emptyList()
+    val loadError = (viewModel.loadState as? DisciplinesLoadState.Error)?.error
+
     DirectoryListScreen<DisciplineId>(
         title = stringResource(Res.string.screen_disciplines),
-        items = items,
-        isLoading = isLoading,
-        error = error,
+        items = loadedItems,
+        isLoading = viewModel.loadState is DisciplinesLoadState.Loading,
+        error = loadError?.message(),
         onBack = onBack,
         onAdd = { showCreate = true },
         onItemClick = { item -> editingItem = item },
-        onDeleteSelected = { ids ->
-            scope.launch {
-                api.deleteDiscipline(DeleteDisciplineRequest(ids = ids.toList()))
-                    .onRight { refreshKey++ }
-            }
-        },
+        onDeleteSelected = { ids -> viewModel.onDelete(ids) },
         modifier = modifier,
     )
 }

@@ -28,18 +28,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.audit.AuditLogItem
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
@@ -49,8 +44,6 @@ import org.athletica.crm.generated.resources.label_ip_address
 import org.athletica.crm.generated.resources.label_pagination
 import org.athletica.crm.generated.resources.screen_activity_log
 import org.jetbrains.compose.resources.stringResource
-
-private const val PAGE_SIZE = 50
 
 /**
  * Экран «Лог действий пользователей».
@@ -66,31 +59,8 @@ fun ActivityLogScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var items by remember { mutableStateOf<List<AuditLogItem>>(emptyList()) }
-    var total by remember { mutableStateOf(0L) }
-    var page by remember { mutableIntStateOf(0) }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(page) {
-        isLoading = true
-        error = null
-        api.auditLogList(page = page, pageSize = PAGE_SIZE).fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                    }
-            },
-            ifRight = { response ->
-                items = response.items
-                total = response.total
-            },
-        )
-        isLoading = false
-    }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { ActivityLogViewModel(api, scope) }
 
     Scaffold(
         topBar = {
@@ -114,8 +84,8 @@ fun ActivityLogScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
         ) {
-            when {
-                isLoading ->
+            when (val s = viewModel.state) {
+                is ActivityLogState.Loading ->
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxSize(),
@@ -123,34 +93,34 @@ fun ActivityLogScreen(
                         CircularProgressIndicator()
                     }
 
-                error != null ->
+                is ActivityLogState.Error ->
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Text(
-                            text = error!!,
+                            text = s.error.message(),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
 
-                else -> {
+                is ActivityLogState.Loaded -> {
                     LazyColumn(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.weight(1f),
                     ) {
-                        items(items) { item ->
+                        items(s.items) { item ->
                             AuditLogItemCard(item)
                         }
                     }
 
                     PaginationBar(
-                        page = page,
-                        total = total,
-                        pageSize = PAGE_SIZE,
-                        onPrevious = { if (page > 0) page-- },
-                        onNext = { if ((page + 1) * PAGE_SIZE < total) page++ },
+                        page = viewModel.page,
+                        total = s.total,
+                        pageSize = viewModel.pageSize,
+                        onPrevious = { viewModel.prevPage() },
+                        onNext = { viewModel.nextPage() },
                     )
                 }
             }

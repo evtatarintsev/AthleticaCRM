@@ -33,10 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.generated.resources.Res
@@ -59,32 +56,21 @@ fun EditProfileScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { EditProfileViewModel(api, scope) { onBack() } }
+
     var name by remember { mutableStateOf("") }
     var avatarId by remember { mutableStateOf<UploadId?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isSaving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
 
-    val busy = isSaving
-
-    LaunchedEffect(Unit) {
-        api.me().fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                    }
-            },
-            ifRight = { profile ->
-                name = profile.name
-                avatarId = profile.avatarId
-            },
-        )
-        isLoading = false
+    LaunchedEffect(viewModel.loadState) {
+        val ls = viewModel.loadState as? EditProfileLoadState.Loaded ?: return@LaunchedEffect
+        name = ls.name
+        avatarId = ls.avatarId
     }
+
+    val isSaving = viewModel.saveState is EditProfileSaveState.Saving
+    val saveError = (viewModel.saveState as? EditProfileSaveState.Error)?.error
+    val isLoading = viewModel.loadState is EditProfileLoadState.Loading
 
     Scaffold(
         modifier = modifier,
@@ -92,40 +78,14 @@ fun EditProfileScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.screen_edit_profile)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !busy) {
+                    IconButton(onClick = onBack, enabled = !isSaving) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            scope.launch {
-                                isSaving = true
-                                error = null
-                                api
-                                    .updateMe(
-                                        UpdateMeRequest(
-                                            name = name.trim(),
-                                            avatarId = avatarId,
-                                        ),
-                                    ).fold(
-                                        ifLeft = { err ->
-                                            error =
-                                                when (err) {
-                                                    is ApiClientError.ValidationError -> err.message
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                                }
-                                            isSaving = false
-                                        },
-                                        ifRight = {
-                                            isSaving = false
-                                            onBack()
-                                        },
-                                    )
-                            }
-                        },
-                        enabled = name.isNotBlank() && !isLoading && !busy,
+                        onClick = { viewModel.onSave(name, avatarId) },
+                        enabled = name.isNotBlank() && !isLoading && !isSaving,
                     ) {
                         if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -137,51 +97,64 @@ fun EditProfileScreen(
             )
         },
     ) { innerPadding ->
-        if (isLoading) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
+        when (val ls = viewModel.loadState) {
+            is EditProfileLoadState.Loading ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    CircularProgressIndicator()
+                }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-        ) {
-            Spacer(Modifier.height(8.dp))
+            is EditProfileLoadState.Error ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    Text(
+                        text = ls.error.message(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
 
-            AvatarPicker(
-                avatarId,
-                api,
-                onAvatarChanged = { avatarId = it },
-            )
+            is EditProfileLoadState.Loaded ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
+                ) {
+                    Spacer(Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(Res.string.label_person_name)) },
-                singleLine = true,
-                isError = error != null,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                    AvatarPicker(
+                        currentAvatarId = avatarId,
+                        api = api,
+                        onAvatarChanged = { avatarId = it },
+                    )
 
-            if (error != null) {
-                Text(
-                    text = error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(Res.string.label_person_name)) },
+                        singleLine = true,
+                        isError = saveError != null,
+                        enabled = !isSaving,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    if (saveError != null) {
+                        Text(
+                            text = saveError.message(),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
         }
     }
 }

@@ -28,7 +28,6 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,12 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
-import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.core.permissions.label
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_role
@@ -51,7 +46,6 @@ import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.roles_empty
 import org.athletica.crm.generated.resources.screen_roles
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран «Роли» — список ролей организации с набором прав для каждой.
@@ -67,36 +61,15 @@ fun RolesScreen(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
-    var roles by remember { mutableStateOf<List<RoleItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val viewModel = remember { RolesViewModel(api, scope) }
     var showCreate by remember { mutableStateOf(false) }
     var selectedRoleForEdit by remember { mutableStateOf<RoleItem?>(null) }
-    var refreshKey by remember { mutableStateOf(0) }
 
     if (showCreate) {
         RoleCreateScreen(
             onBack = { showCreate = false },
             onSave = { name, permissions ->
-                scope.launch {
-                    isLoading = true
-                    error = null
-                    api.createRole(CreateRoleRequest(Uuid.random(), name, permissions)).fold(
-                        ifLeft = { err: ApiClientError ->
-                            error =
-                                when (err) {
-                                    is ApiClientError.ValidationError -> err.message
-                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                }
-                            isLoading = false
-                        },
-                        ifRight = {
-                            showCreate = false
-                            refreshKey++
-                        },
-                    )
-                }
+                viewModel.onCreate(name, permissions) { showCreate = false }
             },
             modifier = modifier,
         )
@@ -107,48 +80,13 @@ fun RolesScreen(
         RoleCreateScreen(
             onBack = { selectedRoleForEdit = null },
             onSave = { name, permissions ->
-                scope.launch {
-                    isLoading = true
-                    error = null
-                    api.updateRole(UpdateRoleRequest(selectedRoleForEdit!!.id, name, permissions)).fold(
-                        ifLeft = { err: ApiClientError ->
-                            error =
-                                when (err) {
-                                    is ApiClientError.ValidationError -> err.message
-                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                }
-                            isLoading = false
-                        },
-                        ifRight = {
-                            selectedRoleForEdit = null
-                            refreshKey++
-                        },
-                    )
-                }
+                viewModel.onUpdate(selectedRoleForEdit!!.id, name, permissions) { selectedRoleForEdit = null }
             },
             initialName = selectedRoleForEdit!!.name,
             initialPermissions = selectedRoleForEdit!!.permissions,
             modifier = modifier,
         )
         return
-    }
-
-    LaunchedEffect(refreshKey) {
-        isLoading = true
-        error = null
-        api.roles().fold(
-            ifLeft = { err: ApiClientError ->
-                error =
-                    when (err) {
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                    }
-            },
-            ifRight = { response -> roles = response.roles },
-        )
-        isLoading = false
     }
 
     Scaffold(
@@ -174,8 +112,8 @@ fun RolesScreen(
         },
         modifier = modifier,
     ) { innerPadding ->
-        when {
-            isLoading ->
+        when (val s = viewModel.loadState) {
+            is RolesLoadState.Loading ->
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -183,36 +121,37 @@ fun RolesScreen(
                     CircularProgressIndicator()
                 }
 
-            error != null ->
+            is RolesLoadState.Error ->
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 ) {
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
 
-            roles.isEmpty() ->
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                ) {
-                    Text(
-                        text = stringResource(Res.string.roles_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-            else ->
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                ) {
-                    items(roles) { role ->
-                        RoleCard(role, onEdit = { selectedRoleForEdit = role })
+            is RolesLoadState.Loaded ->
+                if (s.roles.isEmpty()) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.roles_empty),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    ) {
+                        items(s.roles) { role ->
+                            RoleCard(role, onEdit = { selectedRoleForEdit = role })
+                        }
                     }
                 }
         }
@@ -221,7 +160,10 @@ fun RolesScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RoleCard(role: RoleItem, onEdit: () -> Unit = {}) {
+private fun RoleCard(
+    role: RoleItem,
+    onEdit: () -> Unit = {},
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),

@@ -18,6 +18,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -35,10 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
@@ -62,49 +60,35 @@ fun OrgBasicSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { OrgBasicSettingsViewModel(api, scope) { onBack() } }
+
     var name by remember { mutableStateOf("") }
     var timezone by remember { mutableStateOf(platformCurrentTimezone()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isSaving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(viewModel.loadState) {
+        val ls = viewModel.loadState as? OrgSettingsLoadState.Loaded ?: return@LaunchedEffect
+        name = ls.name
+        timezone = ls.timezone
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    val isLoading = viewModel.loadState is OrgSettingsLoadState.Loading
+    val isSaving = viewModel.saveState is OrgSettingsSaveState.Saving
+    val saveError = (viewModel.saveState as? OrgSettingsSaveState.Error)?.error
+    val saveErrorMessage = saveError?.message()
 
     val availableZones = remember { platformAvailableTimezones() }
     var timezoneExpanded by remember { mutableStateOf(false) }
     var timezoneQuery by remember { mutableStateOf("") }
     val filteredZones =
         remember(timezoneQuery) {
-            if (timezoneQuery.isEmpty()) {
-                availableZones
-            } else {
-                availableZones.filter { it.contains(timezoneQuery, ignoreCase = true) }
-            }
+            if (timezoneQuery.isEmpty()) availableZones else availableZones.filter { it.contains(timezoneQuery, ignoreCase = true) }
         }
 
-    LaunchedEffect(Unit) {
-        api.orgSettings().fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                        ApiClientError.Unauthenticated -> "Необходима авторизация"
-                    }
-            },
-            ifRight = { settings ->
-                name = settings.name
-                timezone = settings.timezone
-            },
-        )
-        isLoading = false
-    }
-
-    LaunchedEffect(error) {
-        if (error != null) {
-            snackbarHostState.showSnackbar(error!!)
-            error = null
+    LaunchedEffect(saveErrorMessage) {
+        if (saveErrorMessage != null) {
+            snackbarHostState.showSnackbar(saveErrorMessage)
         }
     }
 
@@ -121,29 +105,7 @@ fun OrgBasicSettingsScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            scope.launch {
-                                isSaving = true
-                                api
-                                    .updateOrgSettings(
-                                        UpdateOrgSettingsRequest(
-                                            name = name.trim(),
-                                            timezone = timezone,
-                                        ),
-                                    ).fold(
-                                        ifLeft = { err ->
-                                            error =
-                                                when (err) {
-                                                    is ApiClientError.ValidationError -> err.message
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                                    ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                                }
-                                        },
-                                        ifRight = { onBack() },
-                                    )
-                                isSaving = false
-                            }
-                        },
+                        onClick = { viewModel.onSave(name, timezone) },
                         enabled = name.isNotBlank() && !isLoading && !isSaving,
                     ) {
                         Text(stringResource(Res.string.action_save))
@@ -152,75 +114,85 @@ fun OrgBasicSettingsScreen(
             )
         },
     ) { innerPadding ->
-        if (isLoading) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-            ) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
+        when (val ls = viewModel.loadState) {
+            is OrgSettingsLoadState.Loading ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    CircularProgressIndicator()
+                }
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-        ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(Res.string.label_org_name)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            is OrgSettingsLoadState.Error ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    Text(
+                        text = ls.error.message(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
 
-            ExposedDropdownMenuBox(
-                expanded = timezoneExpanded,
-                onExpandedChange = { expanded ->
-                    timezoneExpanded = expanded
-                    if (!expanded) {
-                        timezoneQuery = ""
-                    }
-                },
-            ) {
-                OutlinedTextField(
-                    value = if (timezoneExpanded) timezoneQuery else timezone,
-                    onValueChange = { query ->
-                        timezoneQuery = query
-                        timezoneExpanded = true
-                    },
-                    label = { Text(stringResource(Res.string.label_timezone)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = timezoneExpanded) },
-                    singleLine = true,
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            is OrgSettingsLoadState.Loaded ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier =
                         Modifier
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                            .fillMaxWidth(),
-                )
-                ExposedDropdownMenu(
-                    expanded = timezoneExpanded,
-                    onDismissRequest = { timezoneExpanded = false },
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
                 ) {
-                    filteredZones.take(100).forEach { zone ->
-                        DropdownMenuItem(
-                            text = { Text(zone) },
-                            onClick = {
-                                timezone = zone
-                                timezoneExpanded = false
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(Res.string.label_org_name)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = timezoneExpanded,
+                        onExpandedChange = { expanded ->
+                            timezoneExpanded = expanded
+                            if (!expanded) {
+                                timezoneQuery = ""
+                            }
+                        },
+                    ) {
+                        OutlinedTextField(
+                            value = if (timezoneExpanded) timezoneQuery else timezone,
+                            onValueChange = { query ->
+                                timezoneQuery = query
+                                timezoneExpanded = true
                             },
+                            label = { Text(stringResource(Res.string.label_timezone)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = timezoneExpanded) },
+                            singleLine = true,
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            modifier =
+                                Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                                    .fillMaxWidth(),
                         )
+                        ExposedDropdownMenu(
+                            expanded = timezoneExpanded,
+                            onDismissRequest = { timezoneExpanded = false },
+                        ) {
+                            filteredZones.take(100).forEach { zone ->
+                                DropdownMenuItem(
+                                    text = { Text(zone) },
+                                    onClick = {
+                                        timezone = zone
+                                        timezoneExpanded = false
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
-            }
         }
     }
 }

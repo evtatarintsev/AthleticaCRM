@@ -31,10 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
@@ -58,13 +55,14 @@ fun ChangePasswordScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { ChangePasswordViewModel(api, scope) { onBack() } }
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var isSaving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
 
+    val isSaving = viewModel.saveState is ChangePasswordSaveState.Saving
+    val saveError = (viewModel.saveState as? ChangePasswordSaveState.Error)?.error
     val passwordsMatch = newPassword == confirmPassword
     val canSave =
         oldPassword.isNotBlank() &&
@@ -85,32 +83,7 @@ fun ChangePasswordScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            scope.launch {
-                                isSaving = true
-                                error = null
-                                api.changePassword(
-                                    ChangePasswordRequest(
-                                        oldPassword = oldPassword,
-                                        newPassword = newPassword,
-                                    ),
-                                ).fold(
-                                    ifLeft = { err ->
-                                        error =
-                                            when (err) {
-                                                is ApiClientError.ValidationError -> err.message
-                                                is ApiClientError.Unavailable -> "Сервис недоступен"
-                                                ApiClientError.Unauthenticated -> "Необходима авторизация"
-                                            }
-                                        isSaving = false
-                                    },
-                                    ifRight = {
-                                        isSaving = false
-                                        onBack()
-                                    },
-                                )
-                            }
-                        },
+                        onClick = { viewModel.onSave(oldPassword, newPassword) },
                         enabled = canSave,
                     ) {
                         if (isSaving) {
@@ -134,10 +107,14 @@ fun ChangePasswordScreen(
         ) {
             OutlinedTextField(
                 value = oldPassword,
-                onValueChange = { oldPassword = it },
+                onValueChange = {
+                    oldPassword = it
+                    viewModel.onErrorDismissed()
+                },
                 label = { Text(stringResource(Res.string.label_current_password)) },
                 singleLine = true,
                 enabled = !isSaving,
+                isError = saveError != null,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
@@ -145,7 +122,10 @@ fun ChangePasswordScreen(
 
             OutlinedTextField(
                 value = newPassword,
-                onValueChange = { newPassword = it },
+                onValueChange = {
+                    newPassword = it
+                    viewModel.onErrorDismissed()
+                },
                 label = { Text(stringResource(Res.string.label_new_password)) },
                 singleLine = true,
                 enabled = !isSaving,
@@ -157,7 +137,10 @@ fun ChangePasswordScreen(
 
             OutlinedTextField(
                 value = confirmPassword,
-                onValueChange = { confirmPassword = it },
+                onValueChange = {
+                    confirmPassword = it
+                    viewModel.onErrorDismissed()
+                },
                 label = { Text(stringResource(Res.string.label_confirm_password)) },
                 singleLine = true,
                 enabled = !isSaving,
@@ -173,9 +156,9 @@ fun ChangePasswordScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (error != null) {
+            if (saveError != null) {
                 Text(
-                    text = error!!,
+                    text = saveError.message(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )

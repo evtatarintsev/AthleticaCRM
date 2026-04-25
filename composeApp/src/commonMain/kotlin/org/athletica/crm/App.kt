@@ -19,9 +19,9 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.components.auth.LoginScreen
+import org.athletica.crm.components.auth.LoginViewModel
 import org.athletica.crm.components.auth.RegisterScreen
 import org.athletica.crm.navigation.applyPlatformNavSetup
 import org.athletica.crm.navigation.getInitialDeepLinkRoute
@@ -54,11 +54,13 @@ fun App(
     api: ApiClient,
 ) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
-    var loginError by remember { mutableStateOf<String?>(null) }
     var registerError by remember { mutableStateOf<String?>(null) }
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
     var timezone by remember { mutableStateOf(platformCurrentTimezone()) }
     val scope = rememberCoroutineScope()
+    val loginViewModel = remember {
+        LoginViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
+    }
     val navController = rememberNavController()
     // Read initial URL before applyPlatformNavSetup resets it to "/"
     val initialRoute: AppRoute = remember { getInitialDeepLinkRoute() }
@@ -108,31 +110,9 @@ fun App(
                 when (unauthScreen) {
                     UnauthScreen.Login ->
                         LoginScreen(
-                            errorMessage = loginError,
-                            onErrorDismissed = { loginError = null },
-                            onLogin = { login, password ->
-                                scope.launch {
-                                    loginError = null
-                                    api
-                                        .login(LoginRequest(username = login, password = password))
-                                        .fold(
-                                            ifLeft = {
-                                                logger.e { "Ошибка входа: $login — $it" }
-                                                loginError =
-                                                    when (it) {
-                                                        is ApiClientError.ValidationError -> it.message
-                                                        is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
-                                                        is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                                                    }
-                                            },
-                                            ifRight = {
-                                                tokenStorage.save(it.accessToken, it.refreshToken)
-                                                logger.i { "Вход выполнен успешно: $login" }
-                                                authState = AuthState.Authenticated
-                                            },
-                                        )
-                                }
-                            },
+                            state = loginViewModel.state,
+                            onLogin = loginViewModel::onLogin,
+                            onErrorDismissed = loginViewModel::onErrorDismissed,
                             onNavigateToRegister = { unauthScreen = UnauthScreen.Register },
                         )
 

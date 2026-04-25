@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -52,16 +53,16 @@ import org.jetbrains.compose.resources.stringResource
  * Экран авторизации с полями логина и пароля.
  * Ошибка входа отображается через [Snackbar].
  *
- * [errorMessage] — сообщение об ошибке, `null` если ошибки нет,
+ * [state] — текущее состояние экрана (ошибка, загрузка),
+ * [onLogin] — вызывается при нажатии "Войти", принимает логин и пароль,
  * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
- * [onLogin] — callback кнопки "Войти", принимает логин и пароль,
  * [onNavigateToRegister] — вызывается при нажатии "Зарегистрироваться".
  */
 @Composable
 fun LoginScreen(
-    errorMessage: String? = null,
-    onErrorDismissed: () -> Unit = {},
+    state: LoginState = LoginState(),
     onLogin: (login: String, password: String) -> Unit = { _, _ -> },
+    onErrorDismissed: () -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
@@ -70,9 +71,9 @@ fun LoginScreen(
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    LaunchedEffect(errorMessage) {
-        if (errorMessage != null) {
-            snackbarHostState.showSnackbar(errorMessage)
+    LaunchedEffect(state.errorMessage) {
+        if (state.errorMessage != null) {
+            snackbarHostState.showSnackbar(state.errorMessage)
             onErrorDismissed()
         }
     }
@@ -147,10 +148,18 @@ fun LoginScreen(
 
                 Button(
                     onClick = { onLogin(login, password) },
-                    enabled = login.isNotBlank() && password.isNotBlank(),
+                    enabled = login.isNotBlank() && password.isNotBlank() && !state.isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(stringResource(Res.string.action_login))
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.height(18.dp).width(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    } else {
+                        Text(stringResource(Res.string.action_login))
+                    }
                 }
 
                 val primary = MaterialTheme.colorScheme.primary

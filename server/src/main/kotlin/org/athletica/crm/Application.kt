@@ -50,8 +50,6 @@ import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
-import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.storage.Database
 import java.sql.DriverManager
 import kotlin.context
 

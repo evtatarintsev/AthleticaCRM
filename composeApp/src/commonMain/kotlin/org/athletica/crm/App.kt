@@ -23,9 +23,9 @@ import org.athletica.crm.components.auth.LoginScreen
 import org.athletica.crm.components.auth.LoginViewModel
 import org.athletica.crm.components.auth.RegisterScreen
 import org.athletica.crm.components.auth.RegisterViewModel
+import org.athletica.crm.navigation.AppRoute
 import org.athletica.crm.navigation.applyPlatformNavSetup
 import org.athletica.crm.navigation.getInitialDeepLinkRoute
-import org.athletica.crm.navigation.AppRoute
 
 private val logger = Logger.withTag("App")
 
@@ -56,12 +56,14 @@ fun App(
     var authState by remember { mutableStateOf(AuthState.Checking) }
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
     val scope = rememberCoroutineScope()
-    val loginViewModel = remember {
-        LoginViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
-    }
-    val registerViewModel = remember {
-        RegisterViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
-    }
+    val loginViewModel =
+        remember {
+            LoginViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
+        }
+    val registerViewModel =
+        remember {
+            RegisterViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
+        }
     val navController = rememberNavController()
     // Read initial URL before applyPlatformNavSetup resets it to "/"
     val initialRoute: AppRoute = remember { getInitialDeepLinkRoute() }

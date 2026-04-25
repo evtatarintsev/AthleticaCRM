@@ -12,13 +12,17 @@ import org.athletica.crm.api.schemas.auth.LoginRequest
 
 sealed class LoginError {
     data object InvalidCredentials : LoginError()
+
     data object ServiceUnavailable : LoginError()
+
     data class ServerValidation(val message: String) : LoginError()
 }
 
 sealed class LoginState {
     data object Idle : LoginState()
+
     data object Loading : LoginState()
+
     data class Error(val error: LoginError) : LoginState()
 }
 

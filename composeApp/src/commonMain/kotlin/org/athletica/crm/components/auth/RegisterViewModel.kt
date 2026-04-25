@@ -13,7 +13,9 @@ import org.athletica.crm.platformCurrentTimezone
 
 sealed class RegisterError {
     data object RegistrationFailed : RegisterError()
+
     data object ServiceUnavailable : RegisterError()
+
     data class ServerValidation(val message: String) : RegisterError()
 }
 
@@ -29,7 +31,9 @@ data class RegisterForm(
 
 sealed class RegisterState {
     data object Idle : RegisterState()
+
     data object Loading : RegisterState()
+
     data class Error(val error: RegisterError) : RegisterState()
 }
 

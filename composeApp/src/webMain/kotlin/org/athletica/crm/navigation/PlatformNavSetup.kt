@@ -5,8 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.bindToNavigation
 import kotlinx.browser.window
 
-actual fun getInitialDeepLinkRoute(): AppRoute =
-    AppNavUrlEncoder.decodeUrl(window.location.pathname)
+actual fun getInitialDeepLinkRoute(): AppRoute = AppNavUrlEncoder.decodeUrl(window.location.pathname)
 
 @OptIn(ExperimentalBrowserHistoryApi::class)
 actual suspend fun applyPlatformNavSetup(navController: NavHostController) {

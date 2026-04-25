@@ -60,7 +60,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun LoginScreen(
-    state: LoginState = LoginState(),
+    state: LoginState = LoginState.Idle,
     onLogin: (login: String, password: String) -> Unit = { _, _ -> },
     onErrorDismissed: () -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
@@ -71,9 +71,9 @@ fun LoginScreen(
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    LaunchedEffect(state.errorMessage) {
-        if (state.errorMessage != null) {
-            snackbarHostState.showSnackbar(state.errorMessage)
+    LaunchedEffect(state) {
+        if (state is LoginState.Error) {
+            snackbarHostState.showSnackbar(state.message)
             onErrorDismissed()
         }
     }
@@ -148,17 +148,17 @@ fun LoginScreen(
 
                 Button(
                     onClick = { onLogin(login, password) },
-                    enabled = login.isNotBlank() && password.isNotBlank() && !state.isLoading,
+                    enabled = login.isNotBlank() && password.isNotBlank() && state !is LoginState.Loading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.height(18.dp).width(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    } else {
-                        Text(stringResource(Res.string.action_login))
+                    when (state) {
+                        is LoginState.Loading ->
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(18.dp).width(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        else -> Text(stringResource(Res.string.action_login))
                     }
                 }
 

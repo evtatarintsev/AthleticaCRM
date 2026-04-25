@@ -13,10 +13,11 @@ import org.athletica.crm.api.schemas.auth.LoginRequest
 
 private val logger = Logger.withTag("LoginViewModel")
 
-data class LoginState(
-    val errorMessage: String? = null,
-    val isLoading: Boolean = false,
-)
+sealed class LoginState {
+    data object Idle : LoginState()
+    data object Loading : LoginState()
+    data class Error(val message: String) : LoginState()
+}
 
 class LoginViewModel(
     private val api: ApiClient,
@@ -24,26 +25,24 @@ class LoginViewModel(
     private val scope: CoroutineScope,
     private val onAuthenticated: () -> Unit,
 ) {
-    var state by mutableStateOf(LoginState())
+    var state by mutableStateOf<LoginState>(LoginState.Idle)
         private set
 
     fun onLogin(login: String, password: String) {
         scope.launch {
-            state = state.copy(isLoading = true, errorMessage = null)
+            state = LoginState.Loading
             api
                 .login(LoginRequest(username = login, password = password))
                 .fold(
                     ifLeft = {
                         logger.e { "Ошибка входа: $login — $it" }
                         state =
-                            state.copy(
-                                isLoading = false,
-                                errorMessage =
-                                    when (it) {
-                                        is ApiClientError.ValidationError -> it.message
-                                        is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
-                                        is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                                    },
+                            LoginState.Error(
+                                when (it) {
+                                    is ApiClientError.ValidationError -> it.message
+                                    is ApiClientError.Unauthenticated -> "Неверный логин или пароль"
+                                    is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
+                                },
                             )
                     },
                     ifRight = {
@@ -56,6 +55,6 @@ class LoginViewModel(
     }
 
     fun onErrorDismissed() {
-        state = state.copy(errorMessage = null)
+        state = LoginState.Idle
     }
 }

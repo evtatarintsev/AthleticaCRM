@@ -15,11 +15,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +25,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
@@ -49,28 +45,8 @@ fun BalanceHistorySheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    var entries by remember { mutableStateOf<List<BalanceJournalEntry>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(clientId) {
-        api.clientBalanceHistory(clientId).fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                    }
-                isLoading = false
-            },
-            ifRight = { response ->
-                entries = response.entries
-                isLoading = false
-            },
-        )
-    }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { BalanceHistoryViewModel(api, clientId, scope) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -90,8 +66,8 @@ fun BalanceHistorySheet(
             )
             HorizontalDivider()
 
-            when {
-                isLoading -> {
+            when (val s = viewModel.state) {
+                is BalanceHistoryState.Loading -> {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -100,29 +76,29 @@ fun BalanceHistorySheet(
                     }
                 }
 
-                error != null -> {
+                is BalanceHistoryState.Error -> {
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(16.dp),
                     )
                 }
 
-                entries.isEmpty() -> {
-                    Text(
-                        text = stringResource(Res.string.balance_history_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-
-                else -> {
-                    LazyColumn {
-                        items(entries, key = { it.id }) { entry ->
-                            BalanceEntryItem(entry)
-                            HorizontalDivider()
+                is BalanceHistoryState.Loaded -> {
+                    if (s.entries.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.balance_history_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    } else {
+                        LazyColumn {
+                            items(s.entries, key = { it.id }) { entry ->
+                                BalanceEntryItem(entry)
+                                HorizontalDivider()
+                            }
                         }
                     }
                 }

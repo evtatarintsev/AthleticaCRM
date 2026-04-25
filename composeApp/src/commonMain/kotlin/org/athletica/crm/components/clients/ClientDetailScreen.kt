@@ -54,7 +54,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,19 +67,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
-import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
-import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.components.avatar.Avatar
-import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
@@ -120,11 +113,8 @@ import org.athletica.crm.generated.resources.tab_history
 import org.athletica.crm.generated.resources.tab_parents
 import org.athletica.crm.generated.resources.tab_payments
 import org.athletica.crm.generated.resources.visits_remaining
-import org.athletica.crm.openUrl
-import org.athletica.crm.pickAnyFile
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
-import kotlin.time.Clock
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
 
@@ -199,7 +189,6 @@ private fun ClientDetailTab.title(): String =
 /**
  * Карточка клиента — основная информация, абонементы, неоплаченные занятия
  * и дополнительные вкладки (платежи, родители, документы, история).
- * Загружает данные клиента через [api] по [clientId].
  * TODO: заменить заглушки на реальные данные.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -211,52 +200,34 @@ fun ClientDetailScreen(
     onEdit: (ClientDetailResponse) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var client by remember { mutableStateOf<ClientDetailResponse?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { ClientDetailViewModel(api, clientId, scope) }
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var showOverflow by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
     var showAdjustBalanceDialog by remember { mutableStateOf(false) }
     var showBalanceHistorySheet by remember { mutableStateOf(false) }
     var groupToRemove by remember { mutableStateOf<ClientGroup?>(null) }
-    var refreshKey by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
     val tabs = ClientDetailTab.entries
-
-    LaunchedEffect(clientId, refreshKey) {
-        isLoading = true
-        error = null
-        api.clientDetail(clientId).fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                    }
-                isLoading = false
-            },
-            ifRight = { detail ->
-                client = detail
-                isLoading = false
-            },
-        )
-    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(client?.name ?: "") },
+                title = {
+                    val name = (viewModel.state as? ClientDetailState.Loaded)?.client?.name ?: ""
+                    Text(name)
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 actions = {
-                    if (client != null) {
-                        IconButton(onClick = { onEdit(client!!) }) {
+                    if (viewModel.state is ClientDetailState.Loaded) {
+                        val loadedClient = (viewModel.state as ClientDetailState.Loaded).client
+                        IconButton(onClick = { onEdit(loadedClient) }) {
                             Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
                         }
                         Box {
@@ -279,7 +250,7 @@ fun ClientDetailScreen(
             )
         },
         floatingActionButton = {
-            if (client != null) {
+            if (viewModel.state is ClientDetailState.Loaded) {
                 ExtendedFloatingActionButton(
                     onClick = {},
                     icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
@@ -288,8 +259,8 @@ fun ClientDetailScreen(
             }
         },
     ) { innerPadding ->
-        when {
-            isLoading -> {
+        when (val s = viewModel.state) {
+            is ClientDetailState.Loading -> {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -298,13 +269,13 @@ fun ClientDetailScreen(
                 }
             }
 
-            error != null -> {
+            is ClientDetailState.Error -> {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
                 ) {
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
@@ -312,8 +283,8 @@ fun ClientDetailScreen(
                 }
             }
 
-            client != null -> {
-                val loadedClient = client!!
+            is ClientDetailState.Loaded -> {
+                val client = s.client
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 ) {
@@ -325,11 +296,11 @@ fun ClientDetailScreen(
                     ) {
                         item {
                             ClientDetailHeader(
-                                client = loadedClient,
+                                client = client,
                                 api = api,
                                 onAddToGroup = { showAddToGroupSheet = true },
                                 onRemoveFromGroup = { groupId ->
-                                    groupToRemove = loadedClient.groups.find { it.id == groupId }
+                                    groupToRemove = client.groups.find { it.id == groupId }
                                 },
                             )
                         }
@@ -343,15 +314,16 @@ fun ClientDetailScreen(
                                     Box(Modifier.weight(1f)) {
                                         Column {
                                             BasicInfoSection(
-                                                client = loadedClient,
+                                                client = client,
                                                 onAdjustBalance = { showAdjustBalanceDialog = true },
                                                 onBalanceHistory = { showBalanceHistorySheet = true },
                                             )
                                             DocumentsSection(
-                                                docs = loadedClient.docs,
-                                                clientId = clientId,
-                                                api = api,
-                                                onRefresh = { refreshKey++ },
+                                                docs = client.docs,
+                                                isUploading = viewModel.isUploadingDoc,
+                                                onUpload = { viewModel.onUploadDoc() },
+                                                onShare = { viewModel.onShareDoc(it) },
+                                                onDelete = { viewModel.onDeleteDoc(it) },
                                             )
                                         }
                                     }
@@ -364,7 +336,7 @@ fun ClientDetailScreen(
                         } else {
                             item {
                                 BasicInfoSection(
-                                    client = loadedClient,
+                                    client = client,
                                     onAdjustBalance = { showAdjustBalanceDialog = true },
                                     onBalanceHistory = { showBalanceHistorySheet = true },
                                 )
@@ -373,10 +345,11 @@ fun ClientDetailScreen(
                             item { UnpaidLessonsSection() }
                             item {
                                 DocumentsSection(
-                                    docs = loadedClient.docs,
-                                    clientId = clientId,
-                                    api = api,
-                                    onRefresh = { refreshKey++ },
+                                    docs = client.docs,
+                                    isUploading = viewModel.isUploadingDoc,
+                                    onUpload = { viewModel.onUploadDoc() },
+                                    onShare = { viewModel.onShareDoc(it) },
+                                    onDelete = { viewModel.onDeleteDoc(it) },
                                 )
                             }
                         }
@@ -412,15 +385,16 @@ fun ClientDetailScreen(
         }
     }
 
-    if (showAddToGroupSheet && client != null) {
+    if (showAddToGroupSheet && viewModel.state is ClientDetailState.Loaded) {
+        val client = (viewModel.state as ClientDetailState.Loaded).client
         AddToGroupSheet(
             clientIds = listOf(clientId),
-            existingGroupIds = client!!.groups.map { it.id }.toSet(),
+            existingGroupIds = client.groups.map { it.id }.toSet(),
             api = api,
             onDismiss = { showAddToGroupSheet = false },
             onGroupAdded = {
                 showAddToGroupSheet = false
-                refreshKey++
+                viewModel.load()
             },
         )
     }
@@ -434,10 +408,7 @@ fun ClientDetailScreen(
                 TextButton(
                     onClick = {
                         groupToRemove = null
-                        scope.launch {
-                            api.removeClientFromGroup(RemoveClientFromGroupRequest(listOf(clientId), group.id))
-                            refreshKey++
-                        }
+                        viewModel.onRemoveFromGroup(group.id)
                     },
                 ) {
                     Text(
@@ -467,7 +438,7 @@ fun ClientDetailScreen(
             api = api,
             clientId = clientId,
             onSuccess = { updated ->
-                client = updated
+                viewModel.onClientUpdated(updated)
                 showAdjustBalanceDialog = false
             },
             onDismiss = { showAdjustBalanceDialog = false },
@@ -751,21 +722,13 @@ private fun ParentRow(parent: FakeParent) {
 @Composable
 private fun DocumentsSection(
     docs: List<ClientDoc>,
-    clientId: ClientId,
-    api: ApiClient,
-    onRefresh: () -> Unit,
+    isUploading: Boolean,
+    onUpload: () -> Unit,
+    onShare: (org.athletica.crm.core.entityids.UploadId) -> Unit,
+    onDelete: (org.athletica.crm.core.entityids.ClientDocId) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    var isUploading by remember { mutableStateOf(false) }
     var docToDelete by remember { mutableStateOf<ClientDoc?>(null) }
-    var docsList by remember { mutableStateOf(docs) }
 
-    LaunchedEffect(docs) {
-        println("DEBUG: docs changed, size=${docs.size}")
-        docsList = docs
-    }
-
-    // Диалог подтверждения удаления
     docToDelete?.let { doc ->
         AlertDialog(
             onDismissRequest = { docToDelete = null },
@@ -774,15 +737,8 @@ private fun DocumentsSection(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val target = docToDelete
+                        onDelete(doc.id)
                         docToDelete = null
-                        if (target != null) {
-                            scope.launch {
-                                api.deleteClientDoc(DeleteClientDocRequest(clientId, target.id)).onRight {
-                                    docsList = docsList.filter { it.id != target.id }
-                                }
-                            }
-                        }
                     },
                 ) {
                     Text(
@@ -800,7 +756,7 @@ private fun DocumentsSection(
     }
 
     SectionCard(stringResource(Res.string.section_documents)) {
-        docsList.forEachIndexed { index, doc ->
+        docs.forEachIndexed { index, doc ->
             if (index > 0) HorizontalDivider()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -814,22 +770,14 @@ private fun DocumentsSection(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(
-                    onClick = {
-                        scope.launch {
-                            api.uploadInfo(doc.uploadId).onRight { openUrl(it.url) }
-                        }
-                    },
-                ) {
+                IconButton(onClick = { onShare(doc.uploadId) }) {
                     Icon(
                         Icons.Default.Share,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )
                 }
-                IconButton(
-                    onClick = { docToDelete = doc },
-                ) {
+                IconButton(onClick = { docToDelete = doc }) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = null,
@@ -847,42 +795,7 @@ private fun DocumentsSection(
         ) {
             AssistChip(
                 enabled = !isUploading,
-                onClick = {
-                    scope.launch {
-                        isUploading = true
-                        val file = pickAnyFile()
-                        if (file != null) {
-                            api.uploadFile(file.first, file.second, file.third)
-                                .onRight { upload ->
-                                    val docId = ClientDocId.new()
-                                    api
-                                        .attachClientDoc(
-                                            AttachClientDocRequest(
-                                                docId,
-                                                clientId = clientId,
-                                                uploadId = upload.id,
-                                                name = upload.originalName,
-                                            ),
-                                        ).fold(
-                                            ifLeft = { err ->
-                                                // Handle error silently or show toast
-                                            },
-                                            ifRight = {
-                                                val newDoc =
-                                                    ClientDoc(
-                                                        id = docId,
-                                                        uploadId = upload.id,
-                                                        name = upload.originalName,
-                                                        createdAt = Clock.System.now(),
-                                                    )
-                                                docsList = docsList + newDoc
-                                            },
-                                        )
-                                }
-                        }
-                        isUploading = false
-                    }
-                },
+                onClick = onUpload,
                 label = { Text(stringResource(Res.string.action_upload_document)) },
                 leadingIcon = {
                     Icon(

@@ -24,15 +24,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.clients.ClientListItem
-import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
@@ -48,6 +46,7 @@ import org.jetbrains.compose.resources.stringResource
  * Экран списка клиентов с поиском, фильтрами и выбором записей.
  * [refreshKey] — при изменении перезагружает список (например, после создания клиента).
  * [onNavigateToCreate] — переход к экрану создания клиента.
+ * [onClientClick] — переход к карточке клиента.
  */
 @Composable
 fun ClientsScreen(
@@ -57,33 +56,17 @@ fun ClientsScreen(
     onClientClick: (ClientId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var clients by remember { mutableStateOf<List<ClientListItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { ClientsViewModel(api, scope) }
+
+    LaunchedEffect(refreshKey) { viewModel.load() }
+
     var selectedIds by remember { mutableStateOf<Set<ClientId>>(emptySet()) }
     var filter by remember { mutableStateOf(ClientFilterState()) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf(ClientDisplaySettings()) }
     var showSettingsDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(refreshKey) {
-        isLoading = true
-        api
-            .clientList(ClientListRequest())
-            .fold(
-                ifLeft = { err ->
-                    error =
-                        when (err) {
-                            is ApiClientError.Unauthenticated -> "Сессия истекла"
-                            is ApiClientError.ValidationError -> err.message
-                            is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                        }
-                },
-                ifRight = { response -> clients = response.clients },
-            )
-        isLoading = false
-    }
 
     if (showSettingsDialog) {
         ClientsSettingsDialog(
@@ -102,20 +85,20 @@ fun ClientsScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        when {
-            isLoading ->
+        when (val s = viewModel.state) {
+            is ClientsState.Loading ->
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-            error != null ->
+            is ClientsState.Error ->
                 Text(
-                    text = error!!,
+                    text = s.error.message(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.align(Alignment.Center),
                 )
 
-            else -> {
-                val filteredClients = filter.applyTo(clients)
+            is ClientsState.Loaded -> {
+                val filteredClients = filter.applyTo(s.clients)
 
                 val selectAllState =
                     when {
@@ -133,7 +116,7 @@ fun ClientsScreen(
                     )
 
                     when {
-                        clients.isEmpty() ->
+                        s.clients.isEmpty() ->
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(stringResource(Res.string.clients_empty), style = MaterialTheme.typography.bodyLarge)
                             }

@@ -21,7 +21,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,11 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
-import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
@@ -45,12 +40,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Шторка выбора группы для добавления одного или нескольких клиентов.
- * Загружает список групп через [api], исключает группы из [existingGroupIds].
- * При выборе группы добавляет всех [clientIds] в неё и вызывает [onGroupAdded].
- *
  * [clientIds] — идентификаторы клиентов, добавляемых в группу.
  * [existingGroupIds] — группы, исключаемые из списка (уже добавленные).
- * [api] — клиент API.
  * [onDismiss] — вызывается при закрытии шторки.
  * [onGroupAdded] — вызывается после успешного добавления клиентов в группу.
  */
@@ -65,34 +56,9 @@ fun AddToGroupSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    val viewModel = remember { AddToGroupViewModel(api, clientIds, existingGroupIds, scope) { onGroupAdded() } }
 
-    var groups by remember { mutableStateOf<List<GroupSelectItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
-    var isAdding by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        api.groupListForSelect().fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                    }
-            },
-            ifRight = { groups = it },
-        )
-        isLoading = false
-    }
-
-    val filtered =
-        remember(groups, query, existingGroupIds) {
-            groups
-                .filter { it.id !in existingGroupIds }
-                .filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
-        }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -128,8 +94,8 @@ fun AddToGroupSheet(
 
             HorizontalDivider()
 
-            when {
-                isLoading -> {
+            when (val s = viewModel.state) {
+                is AddToGroupState.Loading -> {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -137,46 +103,40 @@ fun AddToGroupSheet(
                         CircularProgressIndicator()
                     }
                 }
-                error != null -> {
+
+                is AddToGroupState.Error -> {
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
                     )
                 }
-                filtered.isEmpty() -> {
-                    Text(
-                        text = stringResource(Res.string.groups_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                        items(filtered, key = { it.id }) { group ->
-                            ListItem(
-                                headlineContent = { Text(group.name) },
-                                modifier =
-                                    Modifier.clickable(enabled = !isAdding) {
-                                        isAdding = true
-                                        scope.launch {
-                                            api.addClientsToGroup(
-                                                AddClientsToGroupRequest(
-                                                    clientIds = clientIds,
-                                                    groupId = group.id,
-                                                ),
-                                            ).onRight {
-                                                onGroupAdded()
-                                                sheetState.hide()
-                                                onDismiss()
-                                            }.onLeft {
-                                                isAdding = false
-                                            }
-                                        }
-                                    },
-                            )
+
+                is AddToGroupState.Loaded -> {
+                    val filtered =
+                        remember(s.groups, query) {
+                            s.groups.filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
+                        }
+
+                    if (filtered.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.groups_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        )
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                            items(filtered, key = { it.id }) { group ->
+                                ListItem(
+                                    headlineContent = { Text(group.name) },
+                                    modifier =
+                                        Modifier.clickable(enabled = !s.isAdding) {
+                                            viewModel.onGroupSelected(group.id)
+                                        },
+                                )
+                            }
                         }
                     }
                 }

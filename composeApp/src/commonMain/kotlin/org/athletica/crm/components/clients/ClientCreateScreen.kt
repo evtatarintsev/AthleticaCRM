@@ -39,15 +39,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
@@ -75,16 +70,14 @@ fun ClientCreateScreen(
     onCreated: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var name by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf(Gender.MALE) }
-    var birthday by remember { mutableStateOf<LocalDate?>(null) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var avatarId by remember { mutableStateOf<UploadId?>(null) }
-    var isCreating by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val viewModel = remember { ClientCreateViewModel(api, scope) { onCreated() } }
 
-    val busy = isCreating
+    var form by remember { mutableStateOf(ClientForm()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val isSaving = viewModel.state is ClientSaveState.Saving
+    val saveError = (viewModel.state as? ClientSaveState.Error)?.error
 
     Scaffold(
         modifier = modifier,
@@ -92,7 +85,7 @@ fun ClientCreateScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.screen_client_create)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !busy) {
+                    IconButton(onClick = onBack, enabled = !isSaving) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(Res.string.action_back),
@@ -101,39 +94,10 @@ fun ClientCreateScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            scope.launch {
-                                isCreating = true
-                                error = null
-                                api
-                                    .createClient(
-                                        CreateClientRequest(
-                                            id = ClientId.new(),
-                                            name = name,
-                                            avatarId = avatarId,
-                                            birthday = birthday,
-                                            gender = gender,
-                                        ),
-                                    ).fold(
-                                        ifLeft = { err ->
-                                            error =
-                                                when (err) {
-                                                    is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                                    is ApiClientError.ValidationError -> err.message
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                                }
-                                            isCreating = false
-                                        },
-                                        ifRight = {
-                                            isCreating = false
-                                            onCreated()
-                                        },
-                                    )
-                            }
-                        },
-                        enabled = name.isNotBlank() && !busy,
+                        onClick = { viewModel.onCreate(form) },
+                        enabled = form.isValid && !isSaving,
                     ) {
-                        if (isCreating) {
+                        if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
                             Text(stringResource(Res.string.action_create))
@@ -155,18 +119,18 @@ fun ClientCreateScreen(
         ) {
             Spacer(Modifier.height(8.dp))
             AvatarPicker(
-                avatarId,
+                form.avatarId,
                 api,
-                onAvatarChanged = { avatarId = it },
+                onAvatarChanged = { form = form.copy(avatarId = it) },
             )
 
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = form.name,
+                onValueChange = { form = form.copy(name = it) },
                 label = { Text(stringResource(Res.string.label_person_name)) },
                 singleLine = true,
-                isError = error != null,
-                enabled = !busy,
+                isError = saveError != null,
+                enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -182,8 +146,8 @@ fun ClientCreateScreen(
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     Gender.entries.forEachIndexed { index, g ->
                         SegmentedButton(
-                            selected = gender == g,
-                            onClick = { if (!busy) gender = g },
+                            selected = form.gender == g,
+                            onClick = { if (!isSaving) form = form.copy(gender = g) },
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = Gender.entries.size),
                             label = {
                                 Text(
@@ -202,16 +166,18 @@ fun ClientCreateScreen(
 
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = birthday?.toString() ?: "",
+                    value = form.birthday?.toString() ?: "",
                     onValueChange = {},
                     label = { Text(stringResource(Res.string.label_birthday)) },
                     placeholder = { Text(stringResource(Res.string.hint_date_format)) },
                     singleLine = true,
                     readOnly = true,
-                    enabled = !busy,
+                    enabled = !isSaving,
                     trailingIcon = {
-                        if (birthday != null) {
-                            TextButton(onClick = { birthday = null }) { Text(stringResource(Res.string.action_clear)) }
+                        if (form.birthday != null) {
+                            TextButton(onClick = { form = form.copy(birthday = null) }) {
+                                Text(stringResource(Res.string.action_clear))
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -222,7 +188,7 @@ fun ClientCreateScreen(
                     modifier =
                         Modifier
                             .matchParentSize()
-                            .clickable(enabled = !busy) { showDatePicker = true },
+                            .clickable(enabled = !isSaving) { showDatePicker = true },
                 )
             }
 
@@ -235,7 +201,7 @@ fun ClientCreateScreen(
                             datePickerState.selectedDateMillis?.let { millis ->
                                 // DatePicker возвращает миллисекунды UTC-полуночи;
                                 // делим на количество мс в сутках → epoch days
-                                birthday = LocalDate.fromEpochDays((millis / 86_400_000L).toInt())
+                                form = form.copy(birthday = LocalDate.fromEpochDays((millis / 86_400_000L).toInt()))
                             }
                             showDatePicker = false
                         }) { Text(stringResource(Res.string.action_ok)) }
@@ -250,9 +216,9 @@ fun ClientCreateScreen(
                 }
             }
 
-            if (error != null) {
+            if (saveError != null) {
                 Text(
-                    text = error!!,
+                    text = saveError.message(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )

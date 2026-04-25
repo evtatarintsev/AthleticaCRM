@@ -31,7 +31,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,12 +39,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
-import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
@@ -66,27 +62,25 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран редактирования существующего клиента.
- * По завершении вызывает [onSaved] с обновлёнными данными, по отмене — [onBack].
+ * По завершении вызывает [onSave] с данными формы, по отмене — [onBack].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditScreen(
     client: ClientDetailResponse,
-    api: ApiClient,
+    saveState: ClientSaveState,
+    onSave: (ClientForm) -> Unit,
     onBack: () -> Unit,
-    onSaved: (ClientDetailResponse) -> Unit,
+    api: ApiClient,
     modifier: Modifier = Modifier,
 ) {
-    var name by remember { mutableStateOf(client.name) }
-    var gender by remember { mutableStateOf(client.gender) }
-    var birthday by remember { mutableStateOf<LocalDate?>(client.birthday) }
+    var form by remember(client.id) {
+        mutableStateOf(ClientForm(client.name, client.gender, client.birthday, client.avatarId))
+    }
     var showDatePicker by remember { mutableStateOf(false) }
-    var avatarId by remember { mutableStateOf(client.avatarId) }
-    var isSaving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
 
-    val busy = isSaving
+    val isSaving = saveState is ClientSaveState.Saving
+    val saveError = (saveState as? ClientSaveState.Error)?.error
 
     Scaffold(
         modifier = modifier,
@@ -94,7 +88,7 @@ fun ClientEditScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.screen_client_edit)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !busy) {
+                    IconButton(onClick = onBack, enabled = !isSaving) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(Res.string.action_back),
@@ -103,37 +97,8 @@ fun ClientEditScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            scope.launch {
-                                isSaving = true
-                                error = null
-                                api
-                                    .editClient(
-                                        EditClientRequest(
-                                            id = client.id,
-                                            name = name,
-                                            avatarId = avatarId,
-                                            birthday = birthday,
-                                            gender = gender,
-                                        ),
-                                    ).fold(
-                                        ifLeft = { err ->
-                                            error =
-                                                when (err) {
-                                                    is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                                    is ApiClientError.ValidationError -> err.message
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                                }
-                                            isSaving = false
-                                        },
-                                        ifRight = { updated ->
-                                            isSaving = false
-                                            onSaved(updated)
-                                        },
-                                    )
-                            }
-                        },
-                        enabled = name.isNotBlank() && !busy,
+                        onClick = { onSave(form) },
+                        enabled = form.isValid && !isSaving,
                     ) {
                         if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -158,18 +123,18 @@ fun ClientEditScreen(
             Spacer(Modifier.height(8.dp))
 
             AvatarPicker(
-                avatarId,
+                form.avatarId,
                 api,
-                onAvatarChanged = { avatarId = it },
+                onAvatarChanged = { form = form.copy(avatarId = it) },
             )
 
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = form.name,
+                onValueChange = { form = form.copy(name = it) },
                 label = { Text(stringResource(Res.string.label_person_name)) },
                 singleLine = true,
-                isError = error != null,
-                enabled = !busy,
+                isError = saveError != null,
+                enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -185,8 +150,8 @@ fun ClientEditScreen(
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     Gender.entries.forEachIndexed { index, g ->
                         SegmentedButton(
-                            selected = gender == g,
-                            onClick = { if (!busy) gender = g },
+                            selected = form.gender == g,
+                            onClick = { if (!isSaving) form = form.copy(gender = g) },
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = Gender.entries.size),
                             label = {
                                 Text(
@@ -205,16 +170,18 @@ fun ClientEditScreen(
 
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = birthday?.toString() ?: "",
+                    value = form.birthday?.toString() ?: "",
                     onValueChange = {},
                     label = { Text(stringResource(Res.string.label_birthday)) },
                     placeholder = { Text(stringResource(Res.string.hint_date_format)) },
                     singleLine = true,
                     readOnly = true,
-                    enabled = !busy,
+                    enabled = !isSaving,
                     trailingIcon = {
-                        if (birthday != null) {
-                            TextButton(onClick = { birthday = null }) { Text(stringResource(Res.string.action_clear)) }
+                        if (form.birthday != null) {
+                            TextButton(onClick = { form = form.copy(birthday = null) }) {
+                                Text(stringResource(Res.string.action_clear))
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -223,12 +190,12 @@ fun ClientEditScreen(
                     modifier =
                         Modifier
                             .matchParentSize()
-                            .clickable(enabled = !busy) { showDatePicker = true },
+                            .clickable(enabled = !isSaving) { showDatePicker = true },
                 )
             }
 
             if (showDatePicker) {
-                val initialDays = birthday?.toEpochDays()
+                val initialDays = form.birthday?.toEpochDays()
                 val datePickerState =
                     rememberDatePickerState(
                         initialSelectedDateMillis = if (initialDays != null) initialDays * 86_400_000L else null,
@@ -238,7 +205,7 @@ fun ClientEditScreen(
                     confirmButton = {
                         TextButton(onClick = {
                             datePickerState.selectedDateMillis?.let { millis ->
-                                birthday = LocalDate.fromEpochDays((millis / 86_400_000L).toInt())
+                                form = form.copy(birthday = LocalDate.fromEpochDays((millis / 86_400_000L).toInt()))
                             }
                             showDatePicker = false
                         }) { Text(stringResource(Res.string.action_ok)) }
@@ -251,9 +218,9 @@ fun ClientEditScreen(
                 }
             }
 
-            if (error != null) {
+            if (saveError != null) {
                 Text(
-                    text = error!!,
+                    text = saveError.message(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -270,18 +237,35 @@ internal fun ClientEditScreenLoader(
     onSaved: (ClientDetailResponse) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var client by remember { mutableStateOf<ClientDetailResponse?>(null) }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { ClientEditViewModel(api, clientId, scope) { onSaved(it) } }
 
-    LaunchedEffect(clientId) {
-        api.clientDetail(clientId).onRight { client = it }
-    }
+    when (val loadState = viewModel.loadState) {
+        is ClientEditLoadState.Loading ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
-    val loaded = client
-    if (loaded != null) {
-        ClientEditScreen(client = loaded, api = api, onBack = onBack, onSaved = onSaved, modifier = modifier)
-    } else {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        is ClientEditLoadState.Error ->
+            Box(
+                Modifier.fillMaxSize().padding(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = loadState.error.message(),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
+        is ClientEditLoadState.Loaded ->
+            ClientEditScreen(
+                client = loadState.client,
+                saveState = viewModel.saveState,
+                onSave = { viewModel.onSave(it) },
+                onBack = onBack,
+                api = api,
+                modifier = modifier,
+            )
     }
 }

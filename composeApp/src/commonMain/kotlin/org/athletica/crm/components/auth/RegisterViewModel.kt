@@ -17,6 +17,16 @@ sealed class RegisterError {
     data class ServerValidation(val message: String) : RegisterError()
 }
 
+data class RegisterForm(
+    val organizationName: String = "",
+    val name: String = "",
+    val email: String = "",
+    val password: String = "",
+) {
+    val isValid: Boolean
+        get() = organizationName.isNotBlank() && name.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+}
+
 sealed class RegisterState {
     data object Idle : RegisterState()
     data object Loading : RegisterState()
@@ -39,16 +49,16 @@ class RegisterViewModel(
         timezone = tz
     }
 
-    fun onRegister(organizationName: String, name: String, email: String, password: String) {
+    fun onRegister(form: RegisterForm) {
         scope.launch {
             state = RegisterState.Loading
             api
                 .signUp(
                     SignUpRequest(
-                        companyName = organizationName,
-                        userName = name,
-                        login = email,
-                        password = password,
+                        companyName = form.organizationName,
+                        userName = form.name,
+                        login = form.email,
+                        password = form.password,
                         timezone = timezone,
                     ),
                 ).fold(

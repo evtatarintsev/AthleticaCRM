@@ -75,7 +75,7 @@ import org.jetbrains.compose.resources.stringResource
 fun RegisterScreen(
     state: RegisterState = RegisterState.Idle,
     timezone: String = "",
-    onRegister: (organizationName: String, name: String, email: String, password: String) -> Unit = { _, _, _, _ -> },
+    onRegister: (RegisterForm) -> Unit = {},
     onTimezoneChange: (String) -> Unit = {},
     onErrorDismissed: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
@@ -83,10 +83,7 @@ fun RegisterScreen(
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var organizationName by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var form by remember { mutableStateOf(RegisterForm()) }
 
     val availableZones = remember { platformAvailableTimezones() }
     var timezoneExpanded by remember { mutableStateOf(false) }
@@ -118,11 +115,7 @@ fun RegisterScreen(
         }
     }
 
-    val isFormValid =
-        organizationName.isNotBlank() &&
-            name.isNotBlank() &&
-            email.isNotBlank() &&
-            password.isNotBlank()
+    val isFormValid = form.isValid
 
     Scaffold(
         snackbarHost = {
@@ -155,8 +148,8 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
-                    value = organizationName,
-                    onValueChange = { organizationName = it },
+                    value = form.organizationName,
+                    onValueChange = { form = form.copy(organizationName = it) },
                     label = { Text(stringResource(Res.string.label_org_name)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -168,8 +161,8 @@ fun RegisterScreen(
                 )
 
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
+                    value = form.name,
+                    onValueChange = { form = form.copy(name = it) },
                     label = { Text(stringResource(Res.string.label_your_name)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -181,8 +174,8 @@ fun RegisterScreen(
                 )
 
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
+                    value = form.email,
+                    onValueChange = { form = form.copy(email = it) },
                     label = { Text(stringResource(Res.string.label_email)) },
                     singleLine = true,
                     keyboardOptions =
@@ -198,8 +191,8 @@ fun RegisterScreen(
                 )
 
                 OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
+                    value = form.password,
+                    onValueChange = { form = form.copy(password = it) },
                     label = { Text(stringResource(Res.string.label_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -212,9 +205,7 @@ fun RegisterScreen(
                         KeyboardActions(
                             onDone = {
                                 focusManager.clearFocus()
-                                if (isFormValid) {
-                                    onRegister(organizationName, name, email, password)
-                                }
+                                if (isFormValid) onRegister(form)
                             },
                         ),
                     modifier = Modifier.fillMaxWidth(),
@@ -256,7 +247,7 @@ fun RegisterScreen(
                 }
 
                 Button(
-                    onClick = { onRegister(organizationName, name, email, password) },
+                    onClick = { onRegister(form) },
                     enabled = isFormValid && state !is RegisterState.Loading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {

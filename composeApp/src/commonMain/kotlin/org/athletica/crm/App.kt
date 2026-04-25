@@ -19,10 +19,10 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.components.auth.LoginScreen
 import org.athletica.crm.components.auth.LoginViewModel
 import org.athletica.crm.components.auth.RegisterScreen
+import org.athletica.crm.components.auth.RegisterViewModel
 import org.athletica.crm.navigation.applyPlatformNavSetup
 import org.athletica.crm.navigation.getInitialDeepLinkRoute
 import org.athletica.crm.navigation.AppRoute
@@ -54,12 +54,13 @@ fun App(
     api: ApiClient,
 ) {
     var authState by remember { mutableStateOf(AuthState.Checking) }
-    var registerError by remember { mutableStateOf<String?>(null) }
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }
-    var timezone by remember { mutableStateOf(platformCurrentTimezone()) }
     val scope = rememberCoroutineScope()
     val loginViewModel = remember {
         LoginViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
+    }
+    val registerViewModel = remember {
+        RegisterViewModel(api, tokenStorage, scope) { authState = AuthState.Authenticated }
     }
     val navController = rememberNavController()
     // Read initial URL before applyPlatformNavSetup resets it to "/"
@@ -118,40 +119,11 @@ fun App(
 
                     UnauthScreen.Register ->
                         RegisterScreen(
-                            errorMessage = registerError,
-                            onErrorDismissed = { registerError = null },
-                            timezone = timezone,
-                            onTimezoneChange = { timezone = it },
-                            onRegister = { organizationName, name, email, password, selectedTimezone ->
-                                scope.launch {
-                                    registerError = null
-                                    api
-                                        .signUp(
-                                            SignUpRequest(
-                                                companyName = organizationName,
-                                                userName = name,
-                                                login = email,
-                                                password = password,
-                                                timezone = selectedTimezone,
-                                            ),
-                                        ).fold(
-                                            ifLeft = {
-                                                logger.e { "Ошибка регистрации: $email — $it" }
-                                                registerError =
-                                                    when (it) {
-                                                        is ApiClientError.ValidationError -> it.message
-                                                        is ApiClientError.Unauthenticated -> "Ошибка регистрации. Попробуйте ещё раз"
-                                                        is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                                                    }
-                                            },
-                                            ifRight = {
-                                                tokenStorage.save(it.accessToken, it.refreshToken)
-                                                logger.i { "Регистрация выполнена успешно: $email" }
-                                                authState = AuthState.Authenticated
-                                            },
-                                        )
-                                }
-                            },
+                            state = registerViewModel.state,
+                            timezone = registerViewModel.timezone,
+                            onRegister = registerViewModel::onRegister,
+                            onTimezoneChange = registerViewModel::onTimezoneChange,
+                            onErrorDismissed = registerViewModel::onErrorDismissed,
                             onNavigateToLogin = { unauthScreen = UnauthScreen.Login },
                         )
                 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -48,6 +49,8 @@ import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_login
 import org.athletica.crm.generated.resources.action_register
 import org.athletica.crm.generated.resources.auth_already_have_account
+import org.athletica.crm.generated.resources.error_registration_failed
+import org.athletica.crm.generated.resources.error_service_unavailable
 import org.athletica.crm.generated.resources.label_email
 import org.athletica.crm.generated.resources.label_org_name
 import org.athletica.crm.generated.resources.label_password
@@ -55,27 +58,26 @@ import org.athletica.crm.generated.resources.label_timezone
 import org.athletica.crm.generated.resources.label_your_name
 import org.athletica.crm.generated.resources.screen_register
 import org.athletica.crm.platformAvailableTimezones
-import org.athletica.crm.platformCurrentTimezone
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран регистрации новой организации.
  *
- * [errorMessage] — сообщение об ошибке, `null` если ошибки нет,
- * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
+ * [state] — текущее состояние экрана (ошибка, загрузка),
  * [timezone] — выбранный часовой пояс,
- * [onTimezoneChange] — callback изменения часового пояса,
  * [onRegister] — callback кнопки "Зарегистрироваться",
+ * [onTimezoneChange] — callback изменения часового пояса,
+ * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
  * [onNavigateToLogin] — вызывается при нажатии "Войти".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-    errorMessage: String? = null,
-    onErrorDismissed: () -> Unit = {},
-    timezone: String = platformCurrentTimezone(),
+    state: RegisterState = RegisterState.Idle,
+    timezone: String = "",
+    onRegister: (organizationName: String, name: String, email: String, password: String) -> Unit = { _, _, _, _ -> },
     onTimezoneChange: (String) -> Unit = {},
-    onRegister: (organizationName: String, name: String, email: String, password: String, timezone: String) -> Unit = { _, _, _, _, _ -> },
+    onErrorDismissed: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
@@ -98,7 +100,18 @@ fun RegisterScreen(
             }
         }
 
-    LaunchedEffect(errorMessage) {
+    val errorMessage: String? =
+        if (state is RegisterState.Error) {
+            when (val error = state.error) {
+                is RegisterError.RegistrationFailed -> stringResource(Res.string.error_registration_failed)
+                is RegisterError.ServiceUnavailable -> stringResource(Res.string.error_service_unavailable)
+                is RegisterError.ServerValidation -> error.message
+            }
+        } else {
+            null
+        }
+
+    LaunchedEffect(state) {
         if (errorMessage != null) {
             snackbarHostState.showSnackbar(errorMessage)
             onErrorDismissed()
@@ -200,7 +213,7 @@ fun RegisterScreen(
                             onDone = {
                                 focusManager.clearFocus()
                                 if (isFormValid) {
-                                    onRegister(organizationName, name, email, password, timezone)
+                                    onRegister(organizationName, name, email, password)
                                 }
                             },
                         ),
@@ -243,11 +256,19 @@ fun RegisterScreen(
                 }
 
                 Button(
-                    onClick = { onRegister(organizationName, name, email, password, timezone) },
-                    enabled = isFormValid,
+                    onClick = { onRegister(organizationName, name, email, password) },
+                    enabled = isFormValid && state !is RegisterState.Loading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(stringResource(Res.string.action_register))
+                    when (state) {
+                        is RegisterState.Loading ->
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(18.dp).width(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        else -> Text(stringResource(Res.string.action_register))
+                    }
                 }
 
                 val primary = MaterialTheme.colorScheme.primary

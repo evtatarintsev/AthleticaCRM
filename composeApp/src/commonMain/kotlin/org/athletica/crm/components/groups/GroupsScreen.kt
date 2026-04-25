@@ -32,15 +32,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.groups.GroupListItem
-import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_group
 import org.athletica.crm.generated.resources.action_clear_search
@@ -65,28 +63,13 @@ fun GroupsScreen(
     refreshKey: Int = 0,
     modifier: Modifier = Modifier,
 ) {
-    var groups by remember { mutableStateOf<List<GroupListItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { GroupsViewModel(api, scope) }
     var filter by remember { mutableStateOf(GroupFilterState()) }
     var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
 
     LaunchedEffect(refreshKey) {
-        isLoading = true
-        api
-            .groupList(GroupListRequest())
-            .fold(
-                ifLeft = { err ->
-                    error =
-                        when (err) {
-                            is ApiClientError.Unauthenticated -> "Сессия истекла"
-                            is ApiClientError.ValidationError -> err.message
-                            is ApiClientError.Unavailable -> "Сервис недоступен. Проверьте соединение"
-                        }
-                },
-                ifRight = { response -> groups = response.groups },
-            )
-        isLoading = false
+        viewModel.load()
     }
 
     Scaffold(
@@ -111,20 +94,20 @@ fun GroupsScreen(
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when {
-                isLoading ->
+            when (val s = viewModel.state) {
+                is GroupsState.Loading ->
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-                error != null ->
+                is GroupsState.Error ->
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.align(Alignment.Center),
                     )
 
-                else -> {
-                    val filteredGroups = filter.applyTo(groups)
+                is GroupsState.Loaded -> {
+                    val filteredGroups = filter.applyTo(s.groups)
 
                     Column(Modifier.fillMaxSize()) {
                         Row(
@@ -171,14 +154,20 @@ fun GroupsScreen(
                         HorizontalDivider()
 
                         when {
-                            groups.isEmpty() ->
+                            s.groups.isEmpty() ->
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(Res.string.groups_empty), style = MaterialTheme.typography.bodyLarge)
+                                    Text(
+                                        stringResource(Res.string.groups_empty),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
                                 }
 
                             filteredGroups.isEmpty() ->
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(Res.string.empty_search_results), style = MaterialTheme.typography.bodyLarge)
+                                    Text(
+                                        stringResource(Res.string.empty_search_results),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
                                 }
 
                             else ->

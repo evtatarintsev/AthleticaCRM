@@ -35,13 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
-import org.athletica.crm.api.schemas.groups.GroupCreateRequest
-import org.athletica.crm.api.schemas.groups.ScheduleSlot
-import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_discipline
 import org.athletica.crm.generated.resources.action_back
@@ -65,13 +59,13 @@ fun GroupCreateScreen(
     onCreated: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var name by remember { mutableStateOf("") }
-    var schedule by remember { mutableStateOf<List<ScheduleSlot>>(emptyList()) }
-    var selectedDisciplines by remember { mutableStateOf<List<DisciplineDetailResponse>>(emptyList()) }
-    var showDisciplineSheet by remember { mutableStateOf(false) }
-    var isCreating by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val viewModel = remember { GroupCreateViewModel(api, scope) { onCreated() } }
+    var form by remember { mutableStateOf(GroupForm()) }
+    var showDisciplineSheet by remember { mutableStateOf(false) }
+
+    val isSaving = viewModel.saveState is GroupSaveState.Saving
+    val saveError = (viewModel.saveState as? GroupSaveState.Error)?.error
 
     Scaffold(
         modifier = modifier,
@@ -79,7 +73,7 @@ fun GroupCreateScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.screen_group_create)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !isCreating) {
+                    IconButton(onClick = onBack, enabled = !isSaving) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(Res.string.action_back),
@@ -88,38 +82,10 @@ fun GroupCreateScreen(
                 },
                 actions = {
                     TextButton(
-                        onClick = {
-                            scope.launch {
-                                isCreating = true
-                                error = null
-                                api
-                                    .createGroup(
-                                        GroupCreateRequest(
-                                            id = GroupId.new(),
-                                            name = name,
-                                            schedule = schedule,
-                                            disciplineIds = selectedDisciplines.map { it.id },
-                                        ),
-                                    ).fold(
-                                        ifLeft = { err ->
-                                            error =
-                                                when (err) {
-                                                    is ApiClientError.Unauthenticated -> "Сессия истекла"
-                                                    is ApiClientError.ValidationError -> err.message
-                                                    is ApiClientError.Unavailable -> "Сервис недоступен"
-                                                }
-                                            isCreating = false
-                                        },
-                                        ifRight = {
-                                            isCreating = false
-                                            onCreated()
-                                        },
-                                    )
-                            }
-                        },
-                        enabled = name.isNotBlank() && !isCreating,
+                        onClick = { viewModel.onCreate(form) },
+                        enabled = form.isValid && !isSaving,
                     ) {
-                        if (isCreating) {
+                        if (isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp))
                         } else {
                             Text(stringResource(Res.string.action_create))
@@ -139,18 +105,18 @@ fun GroupCreateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = form.name,
+                onValueChange = { form = form.copy(name = it) },
                 label = { Text(stringResource(Res.string.label_name)) },
                 singleLine = true,
-                isError = error != null,
-                enabled = !isCreating,
+                isError = saveError != null,
+                enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (error != null) {
+            if (saveError != null) {
                 Text(
-                    text = error!!,
+                    text = saveError.message(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -161,10 +127,10 @@ fun GroupCreateScreen(
             Text(stringResource(Res.string.section_disciplines), style = MaterialTheme.typography.titleMedium)
 
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                selectedDisciplines.forEach { discipline ->
+                form.selectedDisciplines.forEach { discipline ->
                     InputChip(
                         selected = true,
-                        onClick = { selectedDisciplines = selectedDisciplines - discipline },
+                        onClick = { form = form.copy(selectedDisciplines = form.selectedDisciplines - discipline) },
                         label = { Text(discipline.name) },
                         trailingIcon = {
                             Icon(
@@ -185,7 +151,7 @@ fun GroupCreateScreen(
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    enabled = !isCreating,
+                    enabled = !isSaving,
                 )
             }
 
@@ -194,19 +160,19 @@ fun GroupCreateScreen(
             Text(stringResource(Res.string.section_schedule), style = MaterialTheme.typography.titleMedium)
 
             ScheduleEditor(
-                slots = schedule,
-                onSlotsChange = { schedule = it },
+                slots = form.schedule,
+                onSlotsChange = { form = form.copy(schedule = it) },
             )
         }
     }
 
     if (showDisciplineSheet) {
         AddDisciplineSheet(
-            existingDisciplineIds = selectedDisciplines.map { it.id }.toSet(),
+            existingDisciplineIds = form.selectedDisciplines.map { it.id }.toSet(),
             api = api,
             onDismiss = { showDisciplineSheet = false },
             onDisciplineSelected = { discipline ->
-                selectedDisciplines = selectedDisciplines + discipline
+                form = form.copy(selectedDisciplines = form.selectedDisciplines + discipline)
                 showDisciplineSheet = false
             },
         )

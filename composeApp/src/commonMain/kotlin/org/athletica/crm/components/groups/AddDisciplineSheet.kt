@@ -21,7 +21,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,9 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.generated.resources.Res
@@ -61,33 +58,8 @@ fun AddDisciplineSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-
-    var disciplines by remember { mutableStateOf<List<DisciplineDetailResponse>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val viewModel = remember(existingDisciplineIds) { AddDisciplineViewModel(api, scope, existingDisciplineIds) }
     var query by remember { mutableStateOf("") }
-
-    LaunchedEffect(Unit) {
-        api.disciplineList().fold(
-            ifLeft = { err ->
-                error =
-                    when (err) {
-                        is ApiClientError.Unauthenticated -> "Сессия истекла"
-                        is ApiClientError.ValidationError -> err.message
-                        is ApiClientError.Unavailable -> "Сервис недоступен"
-                    }
-            },
-            ifRight = { disciplines = it.disciplines },
-        )
-        isLoading = false
-    }
-
-    val filtered =
-        remember(disciplines, query, existingDisciplineIds) {
-            disciplines
-                .filter { it.id !in existingDisciplineIds }
-                .filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
-        }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -123,8 +95,8 @@ fun AddDisciplineSheet(
 
             HorizontalDivider()
 
-            when {
-                isLoading -> {
+            when (val s = viewModel.state) {
+                is AddDisciplineState.Loading -> {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -132,36 +104,34 @@ fun AddDisciplineSheet(
                         CircularProgressIndicator()
                     }
                 }
-                error != null -> {
+                is AddDisciplineState.Error -> {
                     Text(
-                        text = error!!,
+                        text = s.error.message(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
                     )
                 }
-                filtered.isEmpty() -> {
-                    Text(
-                        text = stringResource(Res.string.disciplines_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                        items(filtered, key = { it.id }) { discipline ->
-                            ListItem(
-                                headlineContent = { Text(discipline.name) },
-                                modifier =
-                                    Modifier.clickable {
-                                        scope.launch {
-                                            onDisciplineSelected(discipline)
-                                            sheetState.hide()
-                                            onDismiss()
-                                        }
-                                    },
-                            )
+                is AddDisciplineState.Loaded -> {
+                    val filtered =
+                        remember(s.disciplines, query) {
+                            if (query.isBlank()) s.disciplines else s.disciplines.filter { it.name.contains(query, ignoreCase = true) }
+                        }
+                    if (filtered.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.disciplines_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        )
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                            items(filtered, key = { it.id }) { discipline ->
+                                ListItem(
+                                    headlineContent = { Text(discipline.name) },
+                                    modifier = Modifier.clickable { onDisciplineSelected(discipline) },
+                                )
+                            }
                         }
                     }
                 }

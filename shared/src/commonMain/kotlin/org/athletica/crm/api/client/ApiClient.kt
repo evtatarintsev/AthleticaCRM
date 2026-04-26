@@ -41,7 +41,6 @@ import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.disciplines.CreateDisciplineRequest
 import org.athletica.crm.api.schemas.disciplines.DeleteDisciplineRequest
-import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
 import org.athletica.crm.api.schemas.disciplines.DisciplineListResponse
 import org.athletica.crm.api.schemas.disciplines.UpdateDisciplineRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
@@ -264,7 +263,7 @@ class ApiClient(private val http: HttpClient) {
     suspend fun disciplineList(): Either<ApiClientError, DisciplineListResponse> = execute { http.get("/api/disciplines/list") }
 
     /** Создаёт новую дисциплину по данным [request]. Возвращает созданную дисциплину. */
-    suspend fun createDiscipline(request: CreateDisciplineRequest): Either<ApiClientError, DisciplineDetailResponse> =
+    suspend fun createDiscipline(request: CreateDisciplineRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/disciplines/create") {
                 contentType(ContentType.Application.Json)
@@ -273,7 +272,7 @@ class ApiClient(private val http: HttpClient) {
         }
 
     /** Обновляет название дисциплины по данным [request]. Возвращает обновлённую дисциплину. */
-    suspend fun updateDiscipline(request: UpdateDisciplineRequest): Either<ApiClientError, DisciplineDetailResponse> =
+    suspend fun updateDiscipline(request: UpdateDisciplineRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/disciplines/update") {
                 contentType(ContentType.Application.Json)

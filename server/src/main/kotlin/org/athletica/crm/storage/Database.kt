@@ -9,8 +9,10 @@ import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinLocalTime
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.entityids.EntityId
 import kotlin.time.Instant
@@ -303,3 +305,5 @@ fun Row.asBooleanOrNull(column: String): Boolean? = get(column, Boolean::class.j
 fun Row.asBoolean(pos: Int) = asBooleanOrNull(pos)!!
 
 fun Row.asBoolean(column: String) = asBooleanOrNull(column)!!
+
+fun Row.asLocalTime(column: String): LocalTime = get(column, java.time.LocalTime::class.java)!!.toKotlinLocalTime()

@@ -1,5 +1,6 @@
 package org.athletica.crm.api.schemas.groups
 
+import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.DayOfWeek
 
@@ -11,6 +12,6 @@ import org.athletica.crm.core.DayOfWeek
 @Serializable
 data class ScheduleSlot(
     val dayOfWeek: DayOfWeek,
-    val startAt: String,
-    val endAt: String,
+    val startAt: LocalTime,
+    val endAt: LocalTime,
 )

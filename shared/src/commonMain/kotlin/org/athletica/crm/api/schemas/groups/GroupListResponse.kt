@@ -1,7 +1,7 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
-import kotlin.uuid.Uuid
+import org.athletica.crm.core.entityids.GroupId
 
 @Serializable
 data class GroupListResponse(
@@ -11,7 +11,7 @@ data class GroupListResponse(
 @Serializable
 data class GroupListItem(
     /** Уникальный идентификатор группы. */
-    val id: Uuid,
+    val id: GroupId,
     /** Название группы. */
     val name: String,
 )

@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_group
 import org.athletica.crm.generated.resources.action_clear_search
@@ -49,7 +50,6 @@ import org.athletica.crm.generated.resources.groups_empty
 import org.athletica.crm.generated.resources.hint_search_by_title
 import org.athletica.crm.generated.resources.label_selected_count
 import org.jetbrains.compose.resources.stringResource
-import kotlin.uuid.Uuid
 
 /**
  * Экран списка групп организации с поиском, чекбоксами и меню действий.
@@ -66,7 +66,7 @@ fun GroupsScreen(
     val scope = rememberCoroutineScope()
     val viewModel = remember { GroupsViewModel(api, scope) }
     var filter by remember { mutableStateOf(GroupFilterState()) }
-    var selectedIds by remember { mutableStateOf<Set<Uuid>>(emptySet()) }
+    var selectedIds by remember { mutableStateOf<Set<GroupId>>(emptySet()) }
 
     LaunchedEffect(refreshKey) {
         viewModel.load()

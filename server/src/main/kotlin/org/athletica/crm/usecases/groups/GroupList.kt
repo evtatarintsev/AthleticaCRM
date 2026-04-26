@@ -5,6 +5,7 @@ import arrow.core.right
 import org.athletica.crm.api.schemas.groups.GroupListItem
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
@@ -27,7 +28,7 @@ suspend fun groupList(request: GroupListRequest): Either<CommonDomainError, List
         .let { if (nameFilter != null) it.bind("name", "%$nameFilter%") else it }
         .list { row ->
             GroupListItem(
-                id = row.asUuid("id"),
+                id = row.asUuid("id").toGroupId(),
                 name = row.asString("name"),
             )
         }

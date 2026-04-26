@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.LocalTime
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.generated.resources.Res
@@ -72,7 +73,14 @@ fun ScheduleEditor(
 
         TextButton(
             onClick = {
-                onSlotsChange(slots + ScheduleSlot(dayOfWeek = DayOfWeek.MONDAY, startAt = "", endAt = ""))
+                onSlotsChange(
+                    slots +
+                        ScheduleSlot(
+                            dayOfWeek = DayOfWeek.MONDAY,
+                            startAt = LocalTime(0, 0),
+                            endAt = LocalTime(1, 0),
+                        ),
+                )
             },
             modifier = Modifier.align(Alignment.Start),
             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
@@ -161,21 +169,33 @@ private fun ScheduleSlotRow(
     }
 }
 
+private val TIME_REGEX = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
+
+private fun LocalTime.toHhMm() = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+
+private fun String.toLocalTimeOrNull(): LocalTime? {
+    if (!matches(TIME_REGEX)) return null
+    val parts = split(":")
+    return LocalTime(parts[0].toInt(), parts[1].toInt())
+}
+
 @Composable
 private fun TimeTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: LocalTime,
+    onValueChange: (LocalTime) -> Unit,
 ) {
-    val isValid = value.matches(Regex("^([01]\\d|2[0-3]):[0-5]\\d$"))
+    var text by remember(value) { mutableStateOf(value.toHhMm()) }
+    val isValid = text.matches(TIME_REGEX)
     OutlinedTextField(
-        value = value,
+        value = text,
         onValueChange = { input ->
             val filtered = input.filter { it.isDigit() || it == ':' }
             if (filtered.length <= 5) {
-                onValueChange(filtered)
+                text = filtered
+                filtered.toLocalTimeOrNull()?.let { onValueChange(it) }
             }
         },
-        isError = value.isNotEmpty() && !isValid,
+        isError = text.isNotEmpty() && !isValid,
         placeholder = { Text("00:00", style = MaterialTheme.typography.bodySmall) },
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium,

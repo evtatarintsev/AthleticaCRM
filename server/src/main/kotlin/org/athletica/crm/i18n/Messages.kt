@@ -1,5 +1,6 @@
 package org.athletica.crm.i18n
 
+import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 
@@ -171,9 +172,9 @@ object Messages {
         override val en = { time: String -> "Invalid slot end time: \"$time\"" }
     }
 
-    object ScheduleEndBeforeStart : LocalizationTemplate2<String, String> {
-        override val ru = { start: String, end: String -> "Время окончания должно быть позже времени начала: $start – $end" }
-        override val en = { start: String, end: String -> "End time must be after start time: $start – $end" }
+    object ScheduleEndBeforeStart : LocalizationTemplate2<LocalTime, LocalTime> {
+        override val ru = { start: LocalTime, end: LocalTime -> "Время окончания должно быть позже времени начала: $start – $end" }
+        override val en = { start: LocalTime, end: LocalTime -> "End time must be after start time: $start – $end" }
     }
 
     object EmptyFile : LocalizationKey {

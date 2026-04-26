@@ -9,11 +9,17 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.discipline.AuditDisciplines
+import org.athletica.crm.domain.discipline.DbDisciplines
+import org.athletica.crm.domain.discipline.Disciplines
 import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
 import org.athletica.crm.domain.employees.EmployeePermissions
+import org.athletica.crm.domain.groups.AuditGroups
+import org.athletica.crm.domain.groups.DbGroups
+import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -54,6 +60,8 @@ data class Di(
             EmailEmployees(DbEmployees(users, roles), orgEmails),
             audit,
         )
+    val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
+    val groups: Groups = AuditGroups(DbGroups(), audit)
 }
 
 data class DatabaseConfig(

@@ -19,16 +19,8 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
-private val TIME_REGEX = Regex("""^([01]\d|2[0-3]):[0-5]\d$""")
-
 context(ctx: RequestContext)
 private fun ScheduleSlot.validate(): CommonDomainError? {
-    if (!TIME_REGEX.matches(startAt)) {
-        return CommonDomainError("INVALID_SCHEDULE_TIME", Messages.InvalidScheduleStartTime.localize(ctx.lang, startAt))
-    }
-    if (!TIME_REGEX.matches(endAt)) {
-        return CommonDomainError("INVALID_SCHEDULE_TIME", Messages.InvalidScheduleEndTime.localize(ctx.lang, endAt))
-    }
     if (endAt <= startAt) {
         return CommonDomainError(
             "INVALID_SCHEDULE_TIME",

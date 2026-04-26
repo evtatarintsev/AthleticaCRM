@@ -35,8 +35,6 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
-import org.athletica.crm.domain.discipline.AuditDisciplines
-import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -135,9 +133,9 @@ fun Application.configureServer() {
                     routeWithContext(di) {
                         logout(di.audit)
                         clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
-                        groupsRoutes()
+                        groupsRoutes(di.groups, di.disciplines)
                         orgRoutes(di.organizations)
-                        disciplinesRoutes(AuditDisciplines(DbDisciplines(), di.audit))
+                        disciplinesRoutes(di.disciplines)
                         employeesRoutes(di.employees, di.roles)
                         context(di.passwordHasher) {
                             profileRoutes(di.organizations, di.orgBalances)

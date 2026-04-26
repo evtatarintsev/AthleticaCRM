@@ -9,6 +9,11 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.clientbalance.AuditClientBalances
+import org.athletica.crm.domain.clientbalance.ClientBalances
+import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clients.Clients
+import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.discipline.AuditDisciplines
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.discipline.Disciplines
@@ -52,6 +57,8 @@ data class Di(
     val orgBalances: OrgBalances,
     val organizations: Organizations,
     val employeePermissions: EmployeePermissions,
+    val clientBalances: ClientBalances,
+    val clients: Clients,
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -75,20 +82,23 @@ fun Application.di(): Di {
     val db = createDatabase(dbConfig)
     val mb = mailbox()
     val passwordHasher = PasswordHasher()
-
+    val orgEmails = DbOrgEmails()
+    val audit = PostgresAuditLog()
     return Di(
         dbConfig,
         db,
         mb,
         minio(),
         passwordHasher,
-        PostgresAuditLog(),
+        audit,
         jwtConfig(),
-        DbOrgEmails(),
-        emailDispatcher = DbEmailDispatcher(db, DbOrgEmails(), mb, checkEvery = 10.seconds),
+        orgEmails,
+        emailDispatcher = DbEmailDispatcher(db, orgEmails, mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
         organizations = LocMemCachedOrganizations(DbOrganizations()),
         employeePermissions = EmployeePermissions(),
+        clientBalances = AuditClientBalances(DbClientBalances(), audit),
+        clients = DbClients(),
     )
 }
 

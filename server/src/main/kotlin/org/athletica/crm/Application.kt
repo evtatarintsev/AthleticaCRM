@@ -32,9 +32,6 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
-import org.athletica.crm.domain.clientbalance.AuditClientBalances
-import org.athletica.crm.domain.clientbalance.DbClientBalances
-import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -123,7 +120,7 @@ fun Application.configureServer() {
             }
         }
     }
-    context(di.database, di.audit, di.employeePermissions) {
+    context(di.database, di.audit) {
         routing {
             route("/api") {
                 context(di.jwtConfig, di.passwordHasher) {
@@ -132,7 +129,7 @@ fun Application.configureServer() {
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         logout(di.audit)
-                        clientsRoutes(DbClients(), AuditClientBalances(DbClientBalances(), di.audit))
+                        clientsRoutes(di.clients, di.clientBalances)
                         groupsRoutes(di.groups, di.disciplines)
                         orgRoutes(di.organizations)
                         disciplinesRoutes(di.disciplines)

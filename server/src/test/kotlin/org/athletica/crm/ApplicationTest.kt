@@ -9,6 +9,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.clientbalance.AuditClientBalances
+import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -34,6 +37,7 @@ class ApplicationTest {
         TestPostgres.truncate()
         testApplication {
             application {
+                val audit = PostgresAuditLog()
                 testDi =
                     Di(
                         databaseConfig = TestPostgres.dbConfig,
@@ -42,12 +46,14 @@ class ApplicationTest {
                         jwtConfig = testJwtConfig,
                         minio = TestMinio.minioService,
                         passwordHasher = PasswordHasher(),
-                        audit = PostgresAuditLog(),
+                        audit = audit,
                         orgEmails = DbOrgEmails(),
                         emailDispatcher = FakeEmailDispatcher(),
                         orgBalances = DbOrgBalances(),
                         organizations = DbOrganizations(),
                         employeePermissions = EmployeePermissions(),
+                        clientBalances = AuditClientBalances(DbClientBalances(), audit),
+                        clients = DbClients(),
                     )
             }
         }

@@ -58,7 +58,7 @@ class ClientListTest {
 
     private suspend fun addClientToGroup(clientId: ClientId, groupId: Uuid) {
         TestPostgres.db
-            .sql("INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId)")
+            .sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
             .bind("clientId", clientId)
             .bind("groupId", groupId)
             .execute()

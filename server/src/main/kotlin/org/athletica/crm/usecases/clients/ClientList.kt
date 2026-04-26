@@ -60,11 +60,11 @@ suspend fun clientList(request: ClientListRequest): Either<CommonDomainError, Li
             db
                 .sql(
                     """
-                    SELECT cg.client_id, g.id AS group_id, g.name AS group_name
-                    FROM client_groups cg
-                    JOIN groups g ON g.id = cg.group_id
-                    JOIN clients c ON c.id = cg.client_id
-                    WHERE c.org_id = :orgId
+                    SELECT e.client_id, g.id AS group_id, g.name AS group_name
+                    FROM enrollments e
+                    JOIN groups g ON g.id = e.group_id
+                    JOIN clients c ON c.id = e.client_id
+                    WHERE c.org_id = :orgId AND e.left_at IS NULL
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)

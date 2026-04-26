@@ -58,9 +58,9 @@ class DbClients : Clients {
                 .sql(
                     """
                     SELECT g.id, g.name
-                    FROM client_groups cg
-                    JOIN groups g ON g.id = cg.group_id
-                    WHERE cg.client_id = :clientId
+                    FROM enrollments e
+                    JOIN groups g ON g.id = e.group_id
+                    WHERE e.client_id = :clientId AND e.left_at IS NULL
                     """.trimIndent(),
                 )
                 .bind("clientId", id)

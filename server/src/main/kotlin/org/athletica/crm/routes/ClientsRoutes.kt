@@ -29,11 +29,10 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
+import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.clients.addClientsToGroup
 import org.athletica.crm.usecases.clients.clientList
-import org.athletica.crm.usecases.clients.removeClientsFromGroup
 import kotlin.uuid.Uuid
 
 /**
@@ -41,7 +40,7 @@ import kotlin.uuid.Uuid
  * Требует контекстных параметров [Database] и [AuditLog].
  */
 context(db: Database, audit: AuditLog)
-fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances) {
+fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, enrollments: Enrollments) {
     get<ClientListResponse>("/clients/list") {
         val clients = clientList(ClientListRequest()).bind()
         ClientListResponse(clients, clients.size.toUInt())
@@ -83,13 +82,13 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances) {
 
     post<AddClientsToGroupRequest, Unit>("/clients/add-to-group") { request ->
         db.transaction {
-            addClientsToGroup(request)
+            enrollments.add(request.groupId, request.clientIds)
         }
     }
 
     post<RemoveClientFromGroupRequest, Unit>("/clients/remove-from-group") { request ->
         db.transaction {
-            removeClientsFromGroup(request)
+            enrollments.remove(request.groupId, request.clientIds)
         }
     }
 

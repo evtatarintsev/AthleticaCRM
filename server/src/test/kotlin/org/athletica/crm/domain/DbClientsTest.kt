@@ -276,7 +276,7 @@ class DbClientsTest {
             runBlocking {
                 TestPostgres.db.sql("INSERT INTO groups (id, org_id, name) VALUES (:id, :orgId, :name)")
                     .bind("id", groupId).bind("orgId", orgId).bind("name", "Группа А").execute()
-                TestPostgres.db.sql("INSERT INTO client_groups (client_id, group_id) VALUES (:clientId, :groupId)")
+                TestPostgres.db.sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
                     .bind("clientId", id).bind("groupId", groupId).execute()
             }
 

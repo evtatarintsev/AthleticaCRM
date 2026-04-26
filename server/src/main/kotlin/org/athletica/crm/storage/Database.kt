@@ -286,6 +286,11 @@ fun Row.asInstant(column: String) =
         .toInstant()
         .let { Instant.fromEpochMilliseconds(it.toEpochMilli()) }
 
+fun Row.asInstantOrNull(column: String): Instant? =
+    get(column, java.time.OffsetDateTime::class.java)
+        ?.toInstant()
+        ?.let { Instant.fromEpochMilliseconds(it.toEpochMilli()) }
+
 fun Row.asDouble(pos: Int) = get(pos, java.math.BigDecimal::class.java)!!.toDouble()
 
 fun Row.asDouble(column: String) = get(column, java.math.BigDecimal::class.java)!!.toDouble()

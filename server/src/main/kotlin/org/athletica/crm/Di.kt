@@ -22,6 +22,9 @@ import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
 import org.athletica.crm.domain.employees.EmployeePermissions
+import org.athletica.crm.domain.enrollments.AuditEnrollments
+import org.athletica.crm.domain.enrollments.DbEnrollments
+import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.domain.groups.AuditGroups
 import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.Groups
@@ -69,6 +72,7 @@ data class Di(
         )
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val groups: Groups = AuditGroups(DbGroups(), audit)
+    val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
 }
 
 data class DatabaseConfig(

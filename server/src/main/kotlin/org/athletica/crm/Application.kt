@@ -129,7 +129,7 @@ fun Application.configureServer() {
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         logout(di.audit)
-                        clientsRoutes(di.clients, di.clientBalances)
+                        clientsRoutes(di.clients, di.clientBalances, di.enrollments)
                         groupsRoutes(di.groups, di.disciplines)
                         orgRoutes(di.organizations)
                         disciplinesRoutes(di.disciplines)

@@ -1,0 +1,22 @@
+package org.athletica.crm.api.schemas.sessions
+
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
+import kotlinx.serialization.Serializable
+import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.SessionId
+
+/** Детальный ответ на запрос одного занятия. */
+@Serializable
+data class SessionDetailResponse(
+    val id: SessionId,
+    val groupId: GroupId,
+    val groupName: String,
+    val date: LocalDate,
+    val startTime: LocalTime,
+    val endTime: LocalTime,
+    val status: String,
+    val isManual: Boolean,
+    val isRescheduled: Boolean,
+    val notes: String?,
+)

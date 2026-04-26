@@ -25,7 +25,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
@@ -43,10 +45,14 @@ import org.athletica.crm.routes.notificationsRoutes
 import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
+import org.athletica.crm.routes.sessionsRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.usecases.sessions.generateSessions
+import org.athletica.crm.usecases.sessions.generationHorizon
 import java.sql.DriverManager
 import kotlin.context
+import kotlin.uuid.toKotlinUuid
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
@@ -62,6 +68,9 @@ fun Application.module() {
     CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
         launch {
             di.emailDispatcher.dispatchPending()
+        }
+        launch {
+            generateSessionsDaily(di)
         }
         monitor.subscribe(ApplicationStopped) {
             cancel()
@@ -130,7 +139,8 @@ fun Application.configureServer() {
                     routeWithContext(di) {
                         logout(di.audit)
                         clientsRoutes(di.clients, di.clientBalances, di.enrollments)
-                        groupsRoutes(di.groups, di.disciplines)
+                        groupsRoutes(di.groups, di.disciplines, di.sessions)
+                        sessionsRoutes(di.groups, di.sessions)
                         orgRoutes(di.organizations)
                         disciplinesRoutes(di.disciplines)
                         employeesRoutes(di.employees, di.roles)
@@ -169,3 +179,51 @@ fun runMigrations(
 }
 
 fun runMigrations(dbConfig: DatabaseConfig) = runMigrations(dbConfig.url, dbConfig.user, dbConfig.password)
+
+/**
+ * Ежедневно генерирует занятия для всех групп на горизонт 8 недель вперёд.
+ * Запускается в фоне при старте приложения и повторяется каждые 24 часа.
+ */
+private suspend fun generateSessionsDaily(di: Di) {
+    while (true) {
+        try {
+            val today = java.time.LocalDate.now().toKotlinLocalDate()
+            val horizon = generationHorizon()
+            val orgIds =
+                di.database.transaction {
+                    sql("SELECT DISTINCT org_id FROM groups")
+                        .list { row -> row.get("org_id", java.util.UUID::class.java)!!.toKotlinUuid() }
+                }
+            orgIds.forEach { orgUuid ->
+                try {
+                    val ctx = systemContext(orgUuid)
+                    di.database.transaction {
+                        arrow.core.raise.either {
+                            context(ctx, this@transaction, this) {
+                                di.groups.list().forEach { group ->
+                                    generateSessions(di.groups, di.sessions, group.id, today, horizon)
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.error("Failed to generate sessions for org $orgUuid", e)
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("generateSessionsDaily error", e)
+        }
+        delay(24 * 60 * 60 * 1_000L)
+    }
+}
+
+private fun systemContext(orgUuid: kotlin.uuid.Uuid) =
+    org.athletica.crm.core.RequestContext(
+        lang = org.athletica.crm.core.Lang.RU,
+        userId = org.athletica.crm.core.entityids.UserId(kotlin.uuid.Uuid.fromLongs(0L, 0L)),
+        orgId = org.athletica.crm.core.entityids.OrgId(orgUuid),
+        employeeId = org.athletica.crm.core.entityids.EmployeeId(kotlin.uuid.Uuid.fromLongs(0L, 0L)),
+        username = "system",
+        clientIp = null,
+        permission = org.athletica.crm.domain.employees.EmployeePermission(),
+    )

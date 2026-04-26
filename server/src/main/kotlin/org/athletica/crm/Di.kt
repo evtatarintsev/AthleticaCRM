@@ -39,6 +39,9 @@ import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.LocMemCachedOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
+import org.athletica.crm.domain.sessions.AuditSessions
+import org.athletica.crm.domain.sessions.DbSessions
+import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
@@ -73,6 +76,7 @@ data class Di(
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val groups: Groups = AuditGroups(DbGroups(), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
+    val sessions: Sessions = AuditSessions(DbSessions(), audit)
 }
 
 data class DatabaseConfig(

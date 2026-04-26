@@ -1,5 +1,7 @@
 package org.athletica.crm.routes
 
+import io.ktor.server.routing.RoutingCall
+import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
@@ -7,17 +9,29 @@ import org.athletica.crm.api.schemas.groups.GroupListItem
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
+import org.athletica.crm.api.schemas.sessions.UpdateGroupScheduleRequest
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
 import org.athletica.crm.domain.groups.Group
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.ScheduleSlot
+import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Database
+import org.athletica.crm.usecases.sessions.generateSessions
+import org.athletica.crm.usecases.sessions.generationHorizon
+import org.athletica.crm.usecases.sessions.updateGroupSchedule
+import kotlin.uuid.Uuid
 import org.athletica.crm.api.schemas.groups.ScheduleSlot as ScheduleSlotSchema
 
 context(db: Database)
-fun RouteWithContext.groupsRoutes(groups: Groups, disciplines: Disciplines) {
+fun RouteWithContext.groupsRoutes(
+    groups: Groups,
+    disciplines: Disciplines,
+    sessions: Sessions,
+) {
     route("/groups") {
         get<GroupListResponse>("/list") {
             db.transaction {
@@ -33,14 +47,17 @@ fun RouteWithContext.groupsRoutes(groups: Groups, disciplines: Disciplines) {
 
         post<GroupCreateRequest, GroupDetailResponse>("/create") { request ->
             db.transaction {
-                groups
-                    .new(
-                        request.id,
-                        request.name,
-                        request.schedule.map { it.toDomain() },
-                        request.disciplineIds,
-                    )
-                    .toGroupDetailResponse(disciplines.list())
+                val group =
+                    groups
+                        .new(
+                            request.id,
+                            request.name,
+                            request.schedule.map { it.toDomain() },
+                            request.disciplineIds,
+                        )
+                val today = java.time.LocalDate.now().toKotlinLocalDate()
+                generateSessions(groups, sessions, group.id, today, generationHorizon())
+                group.toGroupDetailResponse(disciplines.list())
             }
         }
 
@@ -52,8 +69,17 @@ fun RouteWithContext.groupsRoutes(groups: Groups, disciplines: Disciplines) {
                     .save()
             }
         }
+
+        post<UpdateGroupScheduleRequest, Unit>("/{groupId}/schedule") { request, call ->
+            val groupId = call.pathGroupId()
+            db.transaction {
+                updateGroupSchedule(groups, sessions, groupId, request.schedule.map { it.toDomain() })
+            }
+        }
     }
 }
+
+private fun RoutingCall.pathGroupId(): GroupId = Uuid.parse(parameters["groupId"]!!).toGroupId()
 
 fun List<Group>.toListResponse() = GroupListResponse(map { GroupListItem(it.id, it.name) })
 

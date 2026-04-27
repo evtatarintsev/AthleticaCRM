@@ -34,6 +34,7 @@ import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.core.systemContext
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -68,6 +69,9 @@ fun Application.module() {
     CoroutineScope(Dispatchers.Default + SupervisorJob()).apply {
         launch {
             di.emailDispatcher.dispatchPending()
+        }
+        launch {
+            di.eventWorker.run()
         }
         launch {
             generateSessionsDaily(di)
@@ -139,7 +143,7 @@ fun Application.configureServer() {
                     routeWithContext(di) {
                         logout(di.audit)
                         clientsRoutes(di.clients, di.clientBalances, di.enrollments)
-                        groupsRoutes(di.groups, di.disciplines, di.sessions)
+                        groupsRoutes(di.groups, di.disciplines, di.sessions, di.bus)
                         sessionsRoutes(di.groups, di.sessions)
                         orgRoutes(di.organizations)
                         disciplinesRoutes(di.disciplines)
@@ -196,7 +200,7 @@ private suspend fun generateSessionsDaily(di: Di) {
                 }
             orgIds.forEach { orgUuid ->
                 try {
-                    val ctx = systemContext(orgUuid)
+                    val ctx = systemContext(org.athletica.crm.core.entityids.OrgId(orgUuid))
                     di.database.transaction {
                         arrow.core.raise.either {
                             context(ctx, this@transaction, this) {
@@ -216,14 +220,3 @@ private suspend fun generateSessionsDaily(di: Di) {
         delay(24 * 60 * 60 * 1_000L)
     }
 }
-
-private fun systemContext(orgUuid: kotlin.uuid.Uuid) =
-    org.athletica.crm.core.RequestContext(
-        lang = org.athletica.crm.core.Lang.RU,
-        userId = org.athletica.crm.core.entityids.UserId(kotlin.uuid.Uuid.fromLongs(0L, 0L)),
-        orgId = org.athletica.crm.core.entityids.OrgId(orgUuid),
-        employeeId = org.athletica.crm.core.entityids.EmployeeId(kotlin.uuid.Uuid.fromLongs(0L, 0L)),
-        username = "system",
-        clientIp = null,
-        permission = org.athletica.crm.domain.employees.EmployeePermission(),
-    )

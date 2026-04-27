@@ -1,7 +1,6 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.routing.RoutingCall
-import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
@@ -15,13 +14,13 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
+import org.athletica.crm.domain.events.DomainEventBus
+import org.athletica.crm.domain.events.GroupCreated
 import org.athletica.crm.domain.groups.Group
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.ScheduleSlot
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.sessions.generateSessions
-import org.athletica.crm.usecases.sessions.generationHorizon
 import org.athletica.crm.usecases.sessions.updateGroupSchedule
 import kotlin.uuid.Uuid
 import org.athletica.crm.api.schemas.groups.ScheduleSlot as ScheduleSlotSchema
@@ -31,6 +30,7 @@ fun RouteWithContext.groupsRoutes(
     groups: Groups,
     disciplines: Disciplines,
     sessions: Sessions,
+    bus: DomainEventBus,
 ) {
     route("/groups") {
         get<GroupListResponse>("/list") {
@@ -55,8 +55,7 @@ fun RouteWithContext.groupsRoutes(
                             request.schedule.map { it.toDomain() },
                             request.disciplineIds,
                         )
-                val today = java.time.LocalDate.now().toKotlinLocalDate()
-                generateSessions(groups, sessions, group.id, today, generationHorizon())
+                bus.publish(GroupCreated(group.id))
                 group.toGroupDetailResponse(disciplines.list())
             }
         }
@@ -73,7 +72,7 @@ fun RouteWithContext.groupsRoutes(
         post<UpdateGroupScheduleRequest, Unit>("/{groupId}/schedule") { request, call ->
             val groupId = call.pathGroupId()
             db.transaction {
-                updateGroupSchedule(groups, sessions, groupId, request.schedule.map { it.toDomain() })
+                updateGroupSchedule(groups, sessions, bus, groupId, request.schedule.map { it.toDomain() })
             }
         }
     }

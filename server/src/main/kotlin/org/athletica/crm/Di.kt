@@ -6,6 +6,8 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
+import kotlinx.datetime.toKotlinLocalDate
+import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
@@ -25,6 +27,10 @@ import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.enrollments.AuditEnrollments
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollments
+import org.athletica.crm.domain.events.DomainEventBus
+import org.athletica.crm.domain.events.DomainEventWorker
+import org.athletica.crm.domain.events.GroupCreated
+import org.athletica.crm.domain.events.GroupScheduleChanged
 import org.athletica.crm.domain.groups.AuditGroups
 import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.Groups
@@ -46,6 +52,8 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.sessions.generateSessions
+import org.athletica.crm.usecases.sessions.generationHorizon
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
 import kotlin.time.Duration.Companion.seconds
@@ -77,6 +85,30 @@ data class Di(
     val groups: Groups = AuditGroups(DbGroups(), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
     val sessions: Sessions = AuditSessions(DbSessions(), audit)
+    val bus: DomainEventBus = buildEventBus()
+    val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
+
+    private fun buildEventBus(): DomainEventBus {
+        val eventBus = DomainEventBus()
+        eventBus.on<GroupCreated> { orgId, event -> generateSessionsForGroup(orgId, event.groupId) }
+        eventBus.on<GroupScheduleChanged> { orgId, event -> generateSessionsForGroup(orgId, event.groupId) }
+        return eventBus
+    }
+
+    private suspend fun generateSessionsForGroup(
+        orgId: org.athletica.crm.core.entityids.OrgId,
+        groupId: org.athletica.crm.core.entityids.GroupId,
+    ) {
+        val ctx = systemContext(orgId)
+        val today = java.time.LocalDate.now().toKotlinLocalDate()
+        database.transaction {
+            arrow.core.raise.either {
+                context(ctx, this@transaction, this) {
+                    generateSessions(groups, sessions, groupId, today, generationHorizon())
+                }
+            }
+        }
+    }
 }
 
 data class DatabaseConfig(

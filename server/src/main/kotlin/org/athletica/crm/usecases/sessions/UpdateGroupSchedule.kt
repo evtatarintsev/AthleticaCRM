@@ -8,6 +8,8 @@ import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.events.DomainEventBus
+import org.athletica.crm.domain.events.GroupScheduleChanged
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.ScheduleSlot
 import org.athletica.crm.domain.sessions.Sessions
@@ -19,12 +21,13 @@ private const val GENERATE_WEEKS_AHEAD = 8
  * Обновляет расписание группы и синхронизирует занятия:
  * 1. Отменяет будущие `scheduled`-занятия из удалённых слотов (без посещений).
  * 2. Сохраняет новое расписание.
- * 3. Генерирует занятия из новых слотов на [GENERATE_WEEKS_AHEAD] недель вперёд.
+ * 3. Публикует событие [GroupScheduleChanged] — воркер сгенерирует занятия по новым слотам.
  */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun updateGroupSchedule(
     groups: Groups,
     sessions: Sessions,
+    bus: DomainEventBus,
     groupId: GroupId,
     newSchedule: List<ScheduleSlot>,
 ) {
@@ -49,8 +52,7 @@ suspend fun updateGroupSchedule(
 
     group.withNewSchedule(newSchedule).save()
 
-    val generateTo = today.plus(GENERATE_WEEKS_AHEAD * 7, DateTimeUnit.DAY)
-    generateSessions(groups, sessions, groupId, today, generateTo)
+    bus.publish(GroupScheduleChanged(groupId))
 }
 
 /** Граница горизонта генерации (сегодня + [GENERATE_WEEKS_AHEAD] недель). */

@@ -55,11 +55,13 @@ import org.jetbrains.compose.resources.stringResource
  * Экран списка групп организации с поиском, чекбоксами и меню действий.
  * [refreshKey] — при изменении перезагружает список (например, после создания группы).
  * [onNavigateToCreate] — переход к экрану создания группы.
+ * [onGroupClick] — клик по группе для перехода к деталям.
  */
 @Composable
 fun GroupsScreen(
     api: ApiClient,
     onNavigateToCreate: () -> Unit,
+    onGroupClick: (GroupId) -> Unit,
     refreshKey: Int = 0,
     modifier: Modifier = Modifier,
 ) {
@@ -191,6 +193,7 @@ fun GroupsScreen(
                                                         selectedIds - group.id
                                                     }
                                             },
+                                            onClick = { onGroupClick(group.id) },
                                         )
                                         HorizontalDivider()
                                     }

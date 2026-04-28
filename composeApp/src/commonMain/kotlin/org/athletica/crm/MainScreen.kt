@@ -81,6 +81,7 @@ import org.athletica.crm.components.employees.EmployeeDetailScreen
 import org.athletica.crm.components.employees.EmployeeEditScreenLoader
 import org.athletica.crm.components.employees.EmployeesScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
+import org.athletica.crm.components.groups.GroupDetailScreen
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.notifications.AppNotification
 import org.athletica.crm.components.notifications.NotificationBell
@@ -95,6 +96,7 @@ import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client
@@ -424,6 +426,7 @@ private fun AppNavHost(
             GroupsScreen(
                 api = api,
                 onNavigateToCreate = { navController.navigate(AppRoute.GroupCreate) },
+                onGroupClick = { id -> navController.navigate(AppRoute.GroupDetail(id.toString())) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -433,6 +436,15 @@ private fun AppNavHost(
                 api = api,
                 onBack = { navController.popBackStack() },
                 onCreated = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.GroupDetail> { entry ->
+            val route = entry.toRoute<AppRoute.GroupDetail>()
+            GroupDetailScreen(
+                groupId = GroupId(parse(route.id)),
+                api = api,
+                onBack = { navController.popBackStack() },
             )
         }
 

@@ -24,12 +24,14 @@ import org.athletica.crm.components.avatar.TextAvatar
 /**
  * Строка группы в списке с чекбоксом и аватаром (первая буква названия).
  * Чекбокс изолирован от кликабельной области строки.
+ * [onClick] — клик по строке (не по чекбоксу).
  */
 @Composable
 fun GroupRow(
     group: GroupListItem,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -37,7 +39,7 @@ fun GroupRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clickable { onCheckedChange(!selected) }
+                .clickable { onClick() }
                 .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Box(
@@ -62,7 +64,9 @@ fun GroupRow(
 
         Checkbox(
             checked = selected,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = { checked ->
+                onCheckedChange(checked)
+            },
         )
     }
 }

@@ -31,7 +31,7 @@ data class DomainEventRecord(
  * Публикация ([publish]) записывает событие в таблицу [domain_events] в рамках текущей транзакции.
  * [OrgId] берётся из [RequestContext], не требует явной передачи в событии.
  * Диспетчеризация ([dispatch]) вызывается воркером для каждой необработанной записи.
- * Регистрация обработчиков — через [on].
+ * Регистрация обработчиков — через [register].
  */
 class DomainEventBus : DomainEvents {
     private val logger = LoggerFactory.getLogger(DomainEventBus::class.java)
@@ -43,16 +43,33 @@ class DomainEventBus : DomainEvents {
     internal val handlers: MutableMap<String, MutableList<suspend (DomainEventRecord) -> Unit>> = mutableMapOf()
 
     /**
-     * Регистрирует обработчик для событий типа [E].
-     * Обработчик получает [OrgId] организации и десериализованное событие.
+     * Регистрирует обработчик [handler] для событий типа [E].
      * Один тип события может иметь несколько обработчиков.
+     *
+     * @param E тип события
+     * @param handler реализация [DomainEventHandler]
      */
-    inline fun <reified E : DomainEvent> on(crossinline handler: suspend (OrgId, E) -> Unit) {
+    inline fun <reified E : DomainEvent> register(handler: DomainEventHandler<E>) {
         val typeName = E::class.simpleName!!
         handlers.getOrPut(typeName) { mutableListOf() }.add { record ->
             @Suppress("UNCHECKED_CAST")
-            handler(record.orgId, json.decodeFromString<DomainEvent>(record.payload) as E)
+            handler.handle(record.orgId, json.decodeFromString<DomainEvent>(record.payload) as E)
         }
+    }
+
+    /**
+     * Регистрирует lambda-обработчик для событий типа [E].
+     * Обработчик получает [OrgId] организации и десериализованное событие.
+     *
+     * @param E тип события
+     * @param handler lambda с сигнатурой `suspend (OrgId, E) -> Unit`
+     */
+    inline fun <reified E : DomainEvent> on(crossinline handler: suspend (OrgId, E) -> Unit) {
+        register(
+            object : DomainEventHandler<E> {
+                override suspend fun handle(orgId: OrgId, event: E) = handler(orgId, event)
+            },
+        )
     }
 
     /**

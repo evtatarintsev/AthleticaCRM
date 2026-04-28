@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import arrow.core.raise.either
 import io.ktor.server.application.Application
 import io.minio.MinioClient
 import io.r2dbc.pool.ConnectionPool
@@ -7,6 +8,8 @@ import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
 import kotlinx.datetime.toKotlinLocalDate
+import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
@@ -74,6 +77,7 @@ data class Di(
     val clientBalances: ClientBalances,
     val clients: Clients,
 ) {
+    val bus: DomainEventBus = buildEventBus()
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
     val employees =
@@ -82,10 +86,9 @@ data class Di(
             audit,
         )
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
-    val groups: Groups = AuditGroups(DbGroups(), audit)
+    val groups: Groups = AuditGroups(DbGroups(bus), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
     val sessions: Sessions = AuditSessions(DbSessions(), audit)
-    val bus: DomainEventBus = buildEventBus()
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
 
     private fun buildEventBus(): DomainEventBus {
@@ -96,13 +99,13 @@ data class Di(
     }
 
     private suspend fun generateSessionsForGroup(
-        orgId: org.athletica.crm.core.entityids.OrgId,
-        groupId: org.athletica.crm.core.entityids.GroupId,
+        orgId: OrgId,
+        groupId: GroupId,
     ) {
         val ctx = systemContext(orgId)
         val today = java.time.LocalDate.now().toKotlinLocalDate()
         database.transaction {
-            arrow.core.raise.either {
+            either {
                 context(ctx, this@transaction, this) {
                     generateSessions(groups, sessions, groupId, today, generationHorizon())
                 }

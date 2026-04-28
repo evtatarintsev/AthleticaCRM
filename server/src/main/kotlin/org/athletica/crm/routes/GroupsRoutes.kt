@@ -15,7 +15,6 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
 import org.athletica.crm.domain.events.DomainEventBus
-import org.athletica.crm.domain.events.GroupCreated
 import org.athletica.crm.domain.groups.Group
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.ScheduleSlot
@@ -47,16 +46,14 @@ fun RouteWithContext.groupsRoutes(
 
         post<GroupCreateRequest, GroupDetailResponse>("/create") { request ->
             db.transaction {
-                val group =
-                    groups
-                        .new(
-                            request.id,
-                            request.name,
-                            request.schedule.map { it.toDomain() },
-                            request.disciplineIds,
-                        )
-                bus.publish(GroupCreated(group.id))
-                group.toGroupDetailResponse(disciplines.list())
+                groups
+                    .new(
+                        request.id,
+                        request.name,
+                        request.schedule.map { it.toDomain() },
+                        request.disciplineIds,
+                    )
+                    .toGroupDetailResponse(disciplines.list())
             }
         }
 

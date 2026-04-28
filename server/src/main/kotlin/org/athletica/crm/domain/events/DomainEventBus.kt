@@ -33,7 +33,7 @@ data class DomainEventRecord(
  * Диспетчеризация ([dispatch]) вызывается воркером для каждой необработанной записи.
  * Регистрация обработчиков — через [on].
  */
-class DomainEventBus {
+class DomainEventBus : DomainEvents {
     private val logger = LoggerFactory.getLogger(DomainEventBus::class.java)
 
     @PublishedApi
@@ -61,7 +61,7 @@ class DomainEventBus {
      * Обработчики будут вызваны асинхронно воркером после завершения транзакции.
      */
     context(ctx: RequestContext, tr: Transaction)
-    suspend fun publish(event: DomainEvent) {
+    override suspend fun publish(event: DomainEvent) {
         tr
             .sql(
                 """

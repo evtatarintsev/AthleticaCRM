@@ -11,6 +11,8 @@ import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.events.DomainEvents
+import org.athletica.crm.domain.events.GroupCreated
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalTime
@@ -18,7 +20,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /** Реализация [Groups] с доступом к PostgreSQL через R2DBC. */
-class DbGroups : Groups {
+class DbGroups(private val events: DomainEvents) : Groups {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: GroupId,
@@ -70,7 +72,7 @@ class DbGroups : Groups {
                 raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
             }
         }
-
+        events.publish(GroupCreated(id))
         return DbGroup(id, name, schedule, disciplineIds)
     }
 

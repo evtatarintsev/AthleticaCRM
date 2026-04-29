@@ -202,6 +202,11 @@ object Messages {
         override val en = "Adjustment note is required"
     }
 
+    object DefaultBranchName : LocalizationKey {
+        override val ru = "Основной"
+        override val en = "Main"
+    }
+
     object BranchAlreadyExists : LocalizationKey {
         override val ru = "Филиал с таким названием уже существует"
         override val en = "Branch with this name already exists"

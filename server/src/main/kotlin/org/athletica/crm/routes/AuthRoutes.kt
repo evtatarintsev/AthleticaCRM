@@ -48,8 +48,9 @@ fun Route.authRoutes() {
     post("/auth/sign-up") {
         call.eitherToAuthResponse {
             val request = call.receive<SignUpRequest>()
+            val lang = call.langFromRequest()
             db.transaction {
-                signUp(request).bind()
+                signUp(request, lang).bind()
                     .also {
                         audit.logSignUp(
                             it.orgId, it.id, it.username, call.clientIp(),

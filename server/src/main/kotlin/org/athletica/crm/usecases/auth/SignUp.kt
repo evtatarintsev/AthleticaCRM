@@ -5,11 +5,14 @@ import arrow.core.left
 import arrow.core.right
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Transaction
 
@@ -32,10 +35,14 @@ sealed class SignUpError : DomainError {
 
 /**
  * Регистрирует новую организацию и её владельца по данным [request].
+ * Создаёт филиал по умолчанию с именем, локализованным по [lang].
  * Возвращает созданного пользователя, либо [SignUpError.UserAlreadyRegistered] если логин занят.
  */
 context(tr: Transaction, passwordHasher: PasswordHasher)
-suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
+suspend fun signUp(
+    request: SignUpRequest,
+    lang: Lang = Lang.RU,
+): Either<SignUpError, User> {
     val orgId = OrgId.new()
     val userId = UserId.new()
     val employeeId = EmployeeId.new()
@@ -57,6 +64,12 @@ suspend fun signUp(request: SignUpRequest): Either<SignUpError, User> {
             .bind("orgId", orgId)
             .bind("userId", userId)
             .bind("name", request.userName)
+            .execute()
+
+        tr.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+            .bind("id", BranchId.new())
+            .bind("orgId", orgId)
+            .bind("name", Messages.DefaultBranchName.localize(lang))
             .execute()
     } catch (e: R2dbcDataIntegrityViolationException) {
         if (e.message?.contains("users_login_key") == true) {

@@ -4,6 +4,7 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -46,7 +47,7 @@ private class AuditLogStub : AuditLog {
 class AuditEmployeesTest {
     private val orgId = OrgId.new()
     private val employeeId = EmployeeId.new()
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "owner@example.com", "127.0.0.1", EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "owner@example.com", "127.0.0.1", EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())

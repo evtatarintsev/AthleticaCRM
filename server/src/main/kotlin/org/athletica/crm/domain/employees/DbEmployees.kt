@@ -5,8 +5,10 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
@@ -39,12 +41,14 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         email: EmailAddress?,
         avatarId: UploadId?,
         permissions: EmployeePermission,
+        allBranchesAccess: Boolean,
+        branchIds: List<BranchId>,
     ): Employee {
         try {
             tr.sql(
                 """
-                INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active)
-                VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false)
+                INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active, all_branches_access)
+                VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false, :allBranchesAccess)
                 """.trimIndent(),
             )
                 .bind("id", id)
@@ -53,6 +57,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 .bind("avatarId", avatarId)
                 .bind("phoneNo", phoneNo)
                 .bind("email", email)
+                .bind("allBranchesAccess", allBranchesAccess)
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
             if (e.message?.contains("employees_pkey") == true) {
@@ -78,12 +83,22 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 .bind("key", permission.name)
                 .execute()
         }
+        if (!allBranchesAccess) {
+            branchIds.forEach { branchId ->
+                tr.sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
+                    .bind("employeeId", id)
+                    .bind("branchId", branchId)
+                    .execute()
+            }
+        }
         return DbEmployee(
             id = id, userId = null,
             name = name, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
             permissions = permissions,
+            allBranchesAccess = allBranchesAccess,
+            branchIds = branchIds,
         )
     }
 
@@ -91,10 +106,11 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
     override suspend fun byId(id: EmployeeId): Employee {
         val roles = rolesByEmployeeId()
         val permissions = permissionsByEmployeeId()
+        val branchIdsByEmployee = branchIdsByEmployeeId()
         return tr
             .sql(
                 """
-                SELECT id, user_id, name, avatar_id, is_owner, is_active, joined_at, phone_no, email
+                SELECT id, user_id, name, avatar_id, is_owner, is_active, joined_at, phone_no, email, all_branches_access
                 FROM employees
                 WHERE id = :id AND org_id = :orgId
                 """.trimIndent(),
@@ -121,6 +137,8 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                             grantedPermissions = overrides.granted,
                             revokedPermissions = overrides.revoked,
                         ),
+                    allBranchesAccess = row.asBoolean("all_branches_access"),
+                    branchIds = branchIdsByEmployee[employeeId] ?: emptyList(),
                 )
             }
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
@@ -130,10 +148,11 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
     override suspend fun list(): List<Employee> {
         val roles = rolesByEmployeeId()
         val permissions = permissionsByEmployeeId()
+        val branchIdsByEmployee = branchIdsByEmployeeId()
         return tr
             .sql(
                 """
-                SELECT e.id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at, e.phone_no, e.email, e.user_id
+                SELECT e.id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at, e.phone_no, e.email, e.user_id, e.all_branches_access
                 FROM employees e
                 WHERE e.org_id = :orgId
                 ORDER BY e.is_owner DESC, e.name
@@ -160,6 +179,8 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                             grantedPermissions = overrides.granted,
                             revokedPermissions = overrides.revoked,
                         ),
+                    allBranchesAccess = row.asBoolean("all_branches_access"),
+                    branchIds = branchIdsByEmployee[id] ?: emptyList(),
                 )
             }
     }
@@ -196,6 +217,23 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 )
             }
     }
+
+    context(ctx: RequestContext, tr: Transaction)
+    private suspend fun branchIdsByEmployeeId(): Map<EmployeeId, List<BranchId>> =
+        tr
+            .sql(
+                """
+                SELECT eb.employee_id, eb.branch_id
+                FROM employee_branches eb
+                JOIN employees e ON e.id = eb.employee_id
+                WHERE e.org_id = :orgId
+                """.trimIndent(),
+            )
+            .bind("orgId", ctx.orgId)
+            .list { row ->
+                row.asUuid("employee_id").toEmployeeId() to row.asUuid("branch_id").toBranchId()
+            }
+            .groupBy({ it.first }, { it.second })
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun rolesByEmployeeId(): Map<EmployeeId, List<EmployeeRole>> {

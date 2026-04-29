@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.employees
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.permissions.Permission
@@ -20,4 +21,8 @@ data class EmployeeDetailResponse(
     val email: String? = null,
     val grantedPermissions: Set<Permission> = emptySet(),
     val revokedPermissions: Set<Permission> = emptySet(),
+    /** true — доступ ко всем филиалам. */
+    val allBranchesAccess: Boolean = true,
+    /** Конкретные филиалы; актуально только когда [allBranchesAccess] = false. */
+    val branchIds: List<BranchId> = emptyList(),
 )

@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -15,6 +16,9 @@ import org.athletica.crm.storage.Transaction
 
 interface Group {
     val id: GroupId
+
+    /** Идентификатор филиала, к которому относится группа. */
+    val branchId: BranchId
 
     /** Название группы. */
     val name: String

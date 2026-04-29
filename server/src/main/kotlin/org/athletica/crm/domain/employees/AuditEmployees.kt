@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
@@ -27,7 +28,9 @@ class AuditEmployees(private val delegate: Employees, private val audit: AuditLo
         email: EmailAddress?,
         avatarId: UploadId?,
         permissions: EmployeePermission,
-    ) = delegate.new(id, name, phoneNo, email, avatarId, permissions)
+        allBranchesAccess: Boolean,
+        branchIds: List<BranchId>,
+    ) = delegate.new(id, name, phoneNo, email, avatarId, permissions, allBranchesAccess, branchIds)
         .also {
             val data = NewEmployeeAuditRecord(it.id, it.name, it.phoneNo, it.email)
             audit.logCreate("employee", id, Json.encodeToString(data))

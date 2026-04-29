@@ -4,8 +4,10 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.security.verifyCredentials
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,7 +55,7 @@ class UserServiceTest {
             val id = insertUser("user1", "pass")
             val result =
                 either<UserNotFound, User> {
-                    TestPostgres.db.transaction { context(this) { userById(id) } }
+                    TestPostgres.db.transaction { context(this) { userById(id, BranchId.new()) } }
                 }
             val user = assertIs<Either.Right<User>>(result).value
             assertEquals("user1", user.username)
@@ -64,36 +66,36 @@ class UserServiceTest {
         runTest {
             val result =
                 either<UserNotFound, User> {
-                    TestPostgres.db.transaction { context(this) { userById(UserId.new()) } }
+                    TestPostgres.db.transaction { context(this) { userById(UserId.new(), BranchId.new()) } }
                 }
             assertIs<Either.Left<UserNotFound>>(result)
         }
 
     @Test
-    fun `findByCredentials returns user for correct credentials`() =
+    fun `verifyCredentials returns user for correct credentials`() =
         runTest {
             insertUser("user2", "secret123")
             context(TestPostgres.db, hasher) {
-                val result = findByCredentials("user2", "secret123")
-                val user = assertIs<Either.Right<User>>(result).value
+                val result = verifyCredentials("user2", "secret123")
+                val user = assertIs<Either.Right<VerifiedUser>>(result).value
                 assertEquals("user2", user.username)
             }
         }
 
     @Test
-    fun `findByCredentials returns UserNotFound for wrong password`() =
+    fun `verifyCredentials returns UserNotFound for wrong password`() =
         runTest {
             insertUser("user3", "correct_password")
             context(TestPostgres.db, hasher) {
-                assertIs<Either.Left<UserNotFound>>(findByCredentials("user3", "wrong_password"))
+                assertIs<Either.Left<UserNotFound>>(verifyCredentials("user3", "wrong_password"))
             }
         }
 
     @Test
-    fun `findByCredentials returns UserNotFound for non-existent user`() =
+    fun `verifyCredentials returns UserNotFound for non-existent user`() =
         runTest {
             context(TestPostgres.db, hasher) {
-                assertIs<Either.Left<UserNotFound>>(findByCredentials("ghost_user", "any_password"))
+                assertIs<Either.Left<UserNotFound>>(verifyCredentials("ghost_user", "any_password"))
             }
         }
 }

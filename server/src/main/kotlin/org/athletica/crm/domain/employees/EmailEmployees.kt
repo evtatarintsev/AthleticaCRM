@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
@@ -24,5 +25,7 @@ class EmailEmployees(private val delegate: Employees, private val orgEmails: Org
         email: EmailAddress?,
         avatarId: UploadId?,
         permissions: EmployeePermission,
-    ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId, permissions), orgEmails)
+        allBranchesAccess: Boolean,
+        branchIds: List<BranchId>,
+    ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId, permissions, allBranchesAccess, branchIds), orgEmails)
 }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -32,12 +33,12 @@ class DbClientBalancesTest {
 
     private val ctx =
         RequestContext(
-            Lang.EN, userId, orgId, employeeId, "admin@example.com", null,
+            Lang.EN, userId, orgId, BranchId.new(), employeeId, "admin@example.com", null,
             EmployeePermission(),
         )
     private val otherCtx =
         RequestContext(
-            Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "admin@example.com", null,
+            Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "admin@example.com", null,
             EmployeePermission(),
         )
 

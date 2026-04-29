@@ -25,9 +25,12 @@ import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
+import org.athletica.crm.api.schemas.auth.AuthBranchesRequest
+import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.api.schemas.auth.SwitchBranchRequest
 import org.athletica.crm.api.schemas.branches.BranchCreateRequest
 import org.athletica.crm.api.schemas.branches.BranchListResponse
 import org.athletica.crm.api.schemas.branches.BranchUpdateRequest
@@ -77,6 +80,15 @@ import org.athletica.crm.core.entityids.UploadId
  * Принимает настроенный [http] — Ktor HTTP клиент с аутентификацией и сериализацией.
  */
 class ApiClient(private val http: HttpClient) {
+    /** Возвращает список доступных филиалов для учётных данных из [request]. */
+    suspend fun branches(request: AuthBranchesRequest): Either<ApiClientError, AuthBranchesResponse> =
+        execute {
+            http.post("/api/auth/branches") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
     /** Выполняет вход по данным [request]. Возвращает access и refresh токены. */
     suspend fun login(request: LoginRequest): Either<ApiClientError, LoginResponse> =
         execute {
@@ -100,6 +112,18 @@ class ApiClient(private val http: HttpClient) {
 
     /** Возвращает данные текущего авторизованного пользователя. */
     suspend fun me(): Either<ApiClientError, AuthMeResponse> = execute { http.get("/api/auth/me") }
+
+    /** Возвращает список филиалов, доступных текущему аутентифицированному пользователю. */
+    suspend fun myBranches(): Either<ApiClientError, AuthBranchesResponse> = execute { http.get("/api/auth/my-branches") }
+
+    /** Переключает активный филиал текущего пользователя. Возвращает новые токены. */
+    suspend fun switchBranch(request: SwitchBranchRequest): Either<ApiClientError, LoginResponse> =
+        execute {
+            http.post("/api/auth/switch-branch") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Обновляет имя и аватар текущего авторизованного пользователя. Возвращает обновлённый профиль. */
     suspend fun updateMe(request: UpdateMeRequest): Either<ApiClientError, Unit> =

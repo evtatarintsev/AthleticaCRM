@@ -277,4 +277,9 @@
         <item quantity="other">%1$d visits</item>
     </plurals>
 
+    <!-- Employee branch access -->
+    <string name="section_branch_access">Branch access</string>
+    <string name="label_branch_access_all">All branches</string>
+    <string name="label_branch_access_specific">Specific branches</string>
+
 </resources>

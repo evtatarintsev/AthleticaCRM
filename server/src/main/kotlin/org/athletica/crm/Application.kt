@@ -43,11 +43,13 @@ import org.athletica.crm.routes.disciplinesRoutes
 import org.athletica.crm.routes.employeesRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.logout
+import org.athletica.crm.routes.myBranchesRoute
 import org.athletica.crm.routes.notificationsRoutes
 import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.sessionsRoutes
+import org.athletica.crm.routes.switchBranchRoute
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.usecases.sessions.generateSessions
@@ -137,12 +139,18 @@ fun Application.configureServer() {
     context(di.database, di.audit) {
         routing {
             route("/api") {
-                context(di.jwtConfig, di.passwordHasher) {
+                context(di.jwtConfig, di.passwordHasher, di.branches) {
                     authRoutes()
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         logout(di.audit)
+                        context(di.branches, di.jwtConfig) {
+                            switchBranchRoute()
+                        }
+                        context(di.branches) {
+                            myBranchesRoute()
+                        }
                         clientsRoutes(di.clients, di.clientBalances, di.enrollments)
                         groupsRoutes(di.groups, di.disciplines, di.sessions, di.bus)
                         sessionsRoutes(di.groups, di.sessions)

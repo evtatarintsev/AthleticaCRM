@@ -20,6 +20,7 @@ import org.athletica.crm.storage.Transaction
 data class User(
     override val id: UserId,
     override val orgId: OrgId,
+    override val branchId: BranchId,
     override val employeeId: EmployeeId,
     override val username: String,
 ) : AuthenticatedUser
@@ -46,6 +47,7 @@ suspend fun signUp(
     val orgId = OrgId.new()
     val userId = UserId.new()
     val employeeId = EmployeeId.new()
+    val branchId = BranchId.new()
     try {
         tr.sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
             .bind("orgId", orgId)
@@ -67,7 +69,7 @@ suspend fun signUp(
             .execute()
 
         tr.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-            .bind("id", BranchId.new())
+            .bind("id", branchId)
             .bind("orgId", orgId)
             .bind("name", Messages.DefaultBranchName.localize(lang))
             .execute()
@@ -78,5 +80,5 @@ suspend fun signUp(
         throw e
     }
 
-    return User(id = userId, orgId = orgId, employeeId = employeeId, username = request.login).right()
+    return User(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login).right()
 }

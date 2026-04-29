@@ -4,6 +4,7 @@ import arrow.core.raise.Raise
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
@@ -30,5 +31,11 @@ class AuditEmployee(private val delegate: Employee, private val audit: AuditLog)
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
-    ): Employee = AuditEmployee(delegate.withNew(newName, newPermissions, newAvatarId, newPhoneNo, newEmail), audit)
+        newAllBranchesAccess: Boolean,
+        newBranchIds: List<BranchId>,
+    ): Employee =
+        AuditEmployee(
+            delegate.withNew(newName, newPermissions, newAvatarId, newPhoneNo, newEmail, newAllBranchesAccess, newBranchIds),
+            audit,
+        )
 }

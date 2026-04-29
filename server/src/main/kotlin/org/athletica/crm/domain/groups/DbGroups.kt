@@ -7,6 +7,7 @@ import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -30,9 +31,10 @@ class DbGroups(private val events: DomainEvents) : Groups {
     ): Group {
         try {
             tr
-                .sql("INSERT INTO groups (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
+                .bind("branchId", ctx.branchId)
                 .bind("name", name)
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
@@ -73,7 +75,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
             }
         }
         events.publish(GroupCreated(id))
-        return DbGroup(id, name, schedule, disciplineIds)
+        return DbGroup(id, ctx.branchId, name, schedule, disciplineIds)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -82,13 +84,20 @@ class DbGroups(private val events: DomainEvents) : Groups {
             tr
                 .sql(
                     """
-                    SELECT id, name FROM groups
-                    WHERE org_id = :orgId
+                    SELECT id, branch_id, name FROM groups
+                    WHERE org_id = :orgId AND branch_id = :branchId
                     ORDER BY name
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
-                .list { row -> row.asUuid("id").toGroupId() to row.asString("name") }
+                .bind("branchId", ctx.branchId)
+                .list { row ->
+                    Triple(
+                        row.asUuid("id").toGroupId(),
+                        row.asUuid("branch_id").toBranchId(),
+                        row.asString("name"),
+                    )
+                }
 
         if (groups.isEmpty()) {
             return emptyList()
@@ -132,9 +141,10 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 }
                 .groupBy({ it.first }, { it.second })
 
-        return groups.map { (id, name) ->
+        return groups.map { (id, branchId, name) ->
             DbGroup(
                 id = id,
+                branchId = branchId,
                 name = name,
                 schedule = slotsByGroup[id] ?: emptyList(),
                 disciplines = disciplinesByGroup[id] ?: emptyList(),
@@ -144,12 +154,12 @@ class DbGroups(private val events: DomainEvents) : Groups {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: GroupId): Group {
-        val name =
+        val (branchId, name) =
             tr
-                .sql("SELECT name FROM groups WHERE id = :id AND org_id = :orgId")
+                .sql("SELECT branch_id, name FROM groups WHERE id = :id AND org_id = :orgId")
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
-                .firstOrNull { row -> row.asString("name") }
+                .firstOrNull { row -> row.asUuid("branch_id").toBranchId() to row.asString("name") }
                 ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
 
         val schedule =
@@ -177,6 +187,6 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 .bind("groupId", id)
                 .list { row -> row.asUuid("discipline_id").toDisciplineId() }
 
-        return DbGroup(id, name, schedule, disciplines)
+        return DbGroup(id, branchId, name, schedule, disciplines)
     }
 }

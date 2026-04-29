@@ -7,11 +7,13 @@ import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.storage.asUuid
 import org.athletica.crm.usecases.clients.clientList
 import org.junit.Before
 import kotlin.test.Test
@@ -45,13 +47,32 @@ class ClientListTest {
         return clientId
     }
 
+    private suspend fun ensureBranch(orgId: Uuid): Uuid {
+        val existing =
+            TestPostgres.db
+                .sql("SELECT id FROM branches WHERE org_id = :orgId LIMIT 1")
+                .bind("orgId", orgId)
+                .firstOrNull { it.asUuid("id") }
+        if (existing != null) return existing
+        val branchId = Uuid.generateV7()
+        TestPostgres.db
+            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+            .bind("id", branchId)
+            .bind("orgId", orgId)
+            .bind("name", "Основной")
+            .execute()
+        return branchId
+    }
+
     private suspend fun insertGroup(orgId: Uuid, name: String): Uuid {
         val groupId = Uuid.generateV7()
+        val branchId = ensureBranch(orgId)
         TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, name) VALUES (:id, :orgId, :name)")
+            .sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
             .bind("id", groupId)
             .bind("orgId", orgId)
             .bind("name", name)
+            .bind("branchId", branchId)
             .execute()
         return groupId
     }
@@ -90,6 +111,7 @@ class ClientListTest {
             lang = Lang.EN,
             userId = UserId.new(),
             orgId = OrgId(orgId),
+            branchId = BranchId.new(),
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -70,7 +71,10 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.OrgInfo
+import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
+import org.athletica.crm.components.auth.BranchSwitchDialog
+import org.athletica.crm.components.auth.BranchSwitchViewModel
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
@@ -95,6 +99,7 @@ import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
@@ -175,13 +180,32 @@ fun MainScreen(
 ) {
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
+    var currentBranchName by remember { mutableStateOf<String?>(null) }
+    var showBranchDialog by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val branchSwitchVm =
+        remember {
+            BranchSwitchViewModel(
+                api = api,
+                scope = scope,
+                onSwitched = {
+                    showBranchDialog = false
+                    scope.launch { api.me().onRight { currentBranchName = it.currentBranch.name } }
+                    navController.navigate(navController.currentDestination?.route ?: AppRoute.Home.toString())
+                },
+            )
+        }
 
     LaunchedEffect(initialRoute) {
         if (initialRoute != AppRoute.Home) {
             navController.navigate(initialRoute)
         }
+    }
+
+    LaunchedEffect(Unit) {
+        api.me().onRight { currentBranchName = it.currentBranch.name }
     }
 
     LaunchedEffect(Unit) {
@@ -192,6 +216,17 @@ fun MainScreen(
             )
             delay(60.seconds)
         }
+    }
+
+    if (showBranchDialog) {
+        BranchSwitchDialog(
+            state = branchSwitchVm.state,
+            onSelect = { branchId -> branchSwitchVm.switchTo(branchId) },
+            onDismiss = {
+                showBranchDialog = false
+                branchSwitchVm.reset()
+            },
+        )
     }
 
     val currentEntry by navController.currentBackStackEntryAsState()
@@ -251,6 +286,11 @@ fun MainScreen(
                                 showMenuButton = true,
                                 windowSize = windowSize,
                                 notifications = notifications,
+                                currentBranchName = currentBranchName,
+                                onBranchClick = {
+                                    showBranchDialog = true
+                                    branchSwitchVm.load()
+                                },
                                 onMarkNotificationRead = ::onMarkNotificationRead,
                                 onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                 onNotificationNavigate = ::onNotificationLink,
@@ -300,6 +340,11 @@ fun MainScreen(
                                 showMenuButton = false,
                                 windowSize = windowSize,
                                 notifications = notifications,
+                                currentBranchName = currentBranchName,
+                                onBranchClick = {
+                                    showBranchDialog = true
+                                    branchSwitchVm.load()
+                                },
                                 onMarkNotificationRead = ::onMarkNotificationRead,
                                 onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                 onNotificationNavigate = ::onNotificationLink,
@@ -336,6 +381,11 @@ fun MainScreen(
                                 showMenuButton = false,
                                 windowSize = windowSize,
                                 notifications = notifications,
+                                currentBranchName = currentBranchName,
+                                onBranchClick = {
+                                    showBranchDialog = true
+                                    branchSwitchVm.load()
+                                },
                                 onMarkNotificationRead = ::onMarkNotificationRead,
                                 onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                 onNotificationNavigate = ::onNotificationLink,
@@ -545,8 +595,12 @@ private fun AppNavHost(
 private fun DrawerAccountHeader(api: ApiClient) {
     val noResponse =
         AuthMeResponse(
-            UserId.new(), "", "", null,
-            OrgInfo("", null),
+            id = UserId.new(),
+            username = "",
+            name = "",
+            avatarId = null,
+            orgInfo = OrgInfo("", null),
+            currentBranch = BranchDetailResponse(BranchId.new(), ""),
         )
     var me by remember { mutableStateOf(noResponse) }
 
@@ -696,6 +750,8 @@ private fun MainTopAppBar(
     showMenuButton: Boolean,
     windowSize: WindowSize,
     notifications: List<AppNotification>,
+    currentBranchName: String?,
+    onBranchClick: () -> Unit,
     onMarkNotificationRead: (Uuid) -> Unit,
     onMarkAllNotificationsRead: () -> Unit,
     onNotificationNavigate: (NotificationLink) -> Unit,
@@ -727,6 +783,13 @@ private fun MainTopAppBar(
         },
         actions = {
             extraActions()
+            if (currentBranchName != null) {
+                AssistChip(
+                    onClick = onBranchClick,
+                    label = { Text(currentBranchName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    modifier = Modifier.padding(end = 4.dp),
+                )
+            }
             NotificationBell(
                 notifications = notifications,
                 windowSize = windowSize,

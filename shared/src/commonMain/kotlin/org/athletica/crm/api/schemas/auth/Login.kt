@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.auth
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.entityids.BranchId
 
 /** Запрос на вход в систему. */
 @Serializable
@@ -9,6 +10,8 @@ data class LoginRequest(
     val username: String,
     /** Пароль пользователя. */
     val password: String,
+    /** Идентификатор филиала, в который выполняется авторизация. */
+    val branchId: BranchId,
 )
 
 /** Ответ на успешный вход. Содержит JWT токены для авторизации запросов. */

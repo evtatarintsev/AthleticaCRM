@@ -7,11 +7,12 @@ import arrow.core.right
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUploadId
@@ -20,6 +21,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.security.UserNotFound
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
@@ -34,14 +36,17 @@ suspend fun profile(): Either<DomainError, UserProfile> =
     db
         .sql(
             """
-            SELECT u.id, u.login, u.password_hash, e.id as employee_id, e.org_id, e.name, e.avatar_id
+            SELECT u.id, u.login, u.password_hash, e.id as employee_id, e.org_id, e.name, e.avatar_id,
+                   b.id as branch_id, b.name as branch_name
             FROM users u
             JOIN employees e ON e.user_id = u.id AND e.org_id = :orgId
+            JOIN branches b ON b.id = :branchId
             WHERE u.id = :id AND e.is_active = true
             """.trimIndent(),
         )
         .bind("id", ctx.userId)
         .bind("orgId", ctx.orgId)
+        .bind("branchId", ctx.branchId)
         .firstOrNull { it.toUserProfile() }
         ?.right() ?: UserNotFound("User with id='${ctx.userId}' not found").left()
 
@@ -68,13 +73,15 @@ suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile>
     }
 
 data class UserProfile(
-    override val id: UserId,
-    override val orgId: OrgId,
-    override val employeeId: EmployeeId,
-    override val username: String,
+    val id: UserId,
+    val orgId: OrgId,
+    val employeeId: EmployeeId,
+    val username: String,
     val name: String,
     val avatarId: UploadId? = null,
-) : AuthenticatedUser
+    val currentBranchId: BranchId,
+    val currentBranchName: String,
+)
 
 private fun Row.toUserProfile() =
     UserProfile(
@@ -84,4 +91,6 @@ private fun Row.toUserProfile() =
         username = asString("login"),
         name = asString("name"),
         avatarId = get("avatar_id", UUID::class.java)?.toKotlinUuid()?.toUploadId(),
+        currentBranchId = asUuid("branch_id").toBranchId(),
+        currentBranchName = asStringOrNull("branch_name") ?: "",
     )

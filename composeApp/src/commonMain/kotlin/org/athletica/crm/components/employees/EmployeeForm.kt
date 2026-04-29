@@ -1,5 +1,8 @@
 package org.athletica.crm.components.employees
 
+import org.athletica.crm.api.schemas.branches.BranchDetailResponse
+import org.athletica.crm.api.schemas.employees.RoleItem
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.permissions.Permission
 import kotlin.uuid.Uuid
 
@@ -14,6 +17,10 @@ data class EmployeeForm(
     val selectedRoleIds: Set<Uuid> = emptySet(),
     val grantedPermissions: Set<Permission> = emptySet(),
     val revokedPermissions: Set<Permission> = emptySet(),
+    /** true — доступ ко всем филиалам. */
+    val allBranchesAccess: Boolean = true,
+    /** Выбранные филиалы; учитывается только когда [allBranchesAccess] = false. */
+    val selectedBranchIds: Set<BranchId> = emptySet(),
 ) {
     val isValid: Boolean get() = name.isNotBlank() && email.isNotBlank()
 }
@@ -30,32 +37,34 @@ sealed class EmployeeSaveState {
     data class Error(val error: EmployeesApiError) : EmployeeSaveState()
 }
 
-/** Состояние загрузки данных при инициализации экрана создания (список ролей). */
+/** Состояние загрузки данных при инициализации экрана создания (список ролей и филиалов). */
 sealed class EmployeeCreateLoadState {
     /** Загрузка в процессе. */
     data object Loading : EmployeeCreateLoadState()
 
-    /** Роли загружены и форма готова к заполнению. */
+    /** Роли и филиалы загружены, форма готова к заполнению. */
     data class Loaded(
-        val roles: List<org.athletica.crm.api.schemas.employees.RoleItem>,
+        val roles: List<RoleItem>,
+        val branches: List<BranchDetailResponse>,
     ) : EmployeeCreateLoadState()
 
-    /** Ошибка загрузки ролей. */
+    /** Ошибка загрузки ролей или филиалов. */
     data class Error(val error: EmployeesApiError) : EmployeeCreateLoadState()
 }
 
-/** Состояние загрузки данных при инициализации экрана редактирования (сотрудник + список ролей). */
+/** Состояние загрузки данных при инициализации экрана редактирования (сотрудник + роли + филиалы). */
 sealed class EmployeeEditLoadState {
     /** Загрузка в процессе. */
     data object Loading : EmployeeEditLoadState()
 
     /**
      * Данные загружены.
-     * [employee] — текущие данные сотрудника; [roles] — доступные роли.
+     * [employee] — текущие данные сотрудника; [roles] — доступные роли; [branches] — все филиалы организации.
      */
     data class Loaded(
         val employee: org.athletica.crm.api.schemas.employees.EmployeeDetailResponse,
-        val roles: List<org.athletica.crm.api.schemas.employees.RoleItem>,
+        val roles: List<RoleItem>,
+        val branches: List<BranchDetailResponse>,
     ) : EmployeeEditLoadState()
 
     /** Ошибка загрузки. */

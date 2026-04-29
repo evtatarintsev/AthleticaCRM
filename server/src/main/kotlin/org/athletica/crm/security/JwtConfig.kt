@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
 import java.util.Date
 
@@ -28,7 +29,7 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
 
     /**
      * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId],
-     * организацией [orgId], идентификатором сотрудника [employeeId] и именем [username].
+     * организацией [orgId], филиалом [branchId], идентификатором сотрудника [employeeId] и именем [username].
      */
     fun makeAccessToken(user: AuthenticatedUser): String =
         JWT
@@ -37,6 +38,7 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .withAudience(AUDIENCE)
             .withClaim(CLAIM_USER_ID, user.id.toString())
             .withClaim(CLAIM_ORG_ID, user.orgId.toString())
+            .withClaim(CLAIM_BRANCH_ID, user.branchId.toString())
             .withClaim(CLAIM_EMPLOYEE_ID, user.employeeId.toString())
             .withClaim(CLAIM_USERNAME, user.username)
             .withClaim(CLAIM_TYPE, TYPE_ACCESS)
@@ -44,14 +46,15 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .sign(algorithm)
 
     /**
-     * Создаёт подписанный JWT refresh токен для пользователя с идентификатором [userId].
+     * Создаёт подписанный JWT refresh токен для пользователя с идентификатором [userId] в филиале [branchId].
      */
-    fun makeRefreshToken(userId: UserId): String =
+    fun makeRefreshToken(userId: UserId, branchId: BranchId): String =
         JWT
             .create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
             .withClaim(CLAIM_USER_ID, userId.toString())
+            .withClaim(CLAIM_BRANCH_ID, branchId.toString())
             .withClaim(CLAIM_TYPE, TYPE_REFRESH)
             .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtlMs))
             .sign(algorithm)
@@ -68,6 +71,9 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
 
         /** Claim с идентификатором организации пользователя. */
         const val CLAIM_ORG_ID = "orgId"
+
+        /** Claim с идентификатором филиала, в котором авторизован пользователь. */
+        const val CLAIM_BRANCH_ID = "branchId"
 
         /** Claim с идентификатором сотрудника пользователя. */
         const val CLAIM_EMPLOYEE_ID = "employeeId"

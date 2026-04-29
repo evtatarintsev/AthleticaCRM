@@ -51,8 +51,16 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
                         grantedPermissions = request.grantedPermissions,
                         revokedPermissions = request.revokedPermissions,
                     )
-                employees
-                    .new(request.id, request.name, request.phoneNo, request.email, request.avatarId, permissions)
+                employees.new(
+                    id = request.id,
+                    name = request.name,
+                    phoneNo = request.phoneNo,
+                    email = request.email,
+                    avatarId = request.avatarId,
+                    permissions = permissions,
+                    allBranchesAccess = request.allBranchesAccess,
+                    branchIds = request.branchIds,
+                )
             }.toListItem()
         }
 
@@ -74,6 +82,8 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
                         newEmail = request.email,
                         newAvatarId = request.avatarId,
                         newPermissions = permissions,
+                        newAllBranchesAccess = request.allBranchesAccess,
+                        newBranchIds = request.branchIds,
                     ).save()
             }
         }
@@ -134,4 +144,6 @@ fun Employee.toDetailResponse() =
         email?.value,
         permissions.grantedPermissions,
         permissions.revokedPermissions,
+        allBranchesAccess,
+        branchIds,
     )

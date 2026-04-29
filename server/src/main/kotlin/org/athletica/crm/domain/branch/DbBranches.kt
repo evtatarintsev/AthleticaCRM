@@ -5,6 +5,8 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -59,6 +61,26 @@ class DbBranches : Branches {
         if (updatedRows == 0L) {
             raise(CommonDomainError("BRANCH_NOT_FOUND", Messages.BranchNotFound.localize()))
         }
+    }
+
+    context(tr: Transaction)
+    override suspend fun accessibleBranches(orgId: OrgId, employeeId: EmployeeId, allBranchesAccess: Boolean): List<Branch> {
+        val sql =
+            if (allBranchesAccess) {
+                "SELECT id, name FROM branches WHERE org_id = :orgId ORDER BY name"
+            } else {
+                """
+                SELECT b.id, b.name
+                FROM branches b
+                JOIN employee_branches eb ON eb.branch_id = b.id AND eb.employee_id = :employeeId
+                WHERE b.org_id = :orgId
+                ORDER BY b.name
+                """.trimIndent()
+            }
+        return tr.sql(sql)
+            .bind("orgId", orgId)
+            .let { if (!allBranchesAccess) it.bind("employeeId", employeeId) else it }
+            .list { Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name")) }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

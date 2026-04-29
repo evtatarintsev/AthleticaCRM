@@ -5,6 +5,7 @@ import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.UpdateMeRequest
+import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.OrgBalances
@@ -41,6 +42,7 @@ fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: Or
             name = user.name,
             avatarId = user.avatarId,
             orgInfo = info,
+            currentBranch = BranchDetailResponse(user.currentBranchId, user.currentBranchName),
         )
     }
 

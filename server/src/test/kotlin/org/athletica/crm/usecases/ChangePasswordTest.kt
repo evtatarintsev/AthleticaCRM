@@ -7,6 +7,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -15,7 +16,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.findByCredentials
+import org.athletica.crm.security.verifyCredentials
 import org.athletica.crm.usecases.auth.changePassword
 import org.junit.Before
 import kotlin.test.Test
@@ -65,6 +66,7 @@ class ChangePasswordTest {
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,
+        branchId = BranchId.new(),
         employeeId = employeeId,
         username = username,
         clientIp = "127.0.0.1",
@@ -104,7 +106,7 @@ class ChangePasswordTest {
             val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
             runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
             context(TestPostgres.db, hasher) {
-                assertIs<Either.Right<*>>(findByCredentials(login, "newPass456"))
+                assertIs<Either.Right<*>>(verifyCredentials(login, "newPass456"))
             }
         }
 
@@ -115,7 +117,7 @@ class ChangePasswordTest {
             val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
             runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
             context(TestPostgres.db, hasher) {
-                assertIs<Either.Left<*>>(findByCredentials(login, "oldPass123"))
+                assertIs<Either.Left<*>>(verifyCredentials(login, "oldPass123"))
             }
         }
 
@@ -144,7 +146,7 @@ class ChangePasswordTest {
             val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
             runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("wrongPass", "newPass456"))
             context(TestPostgres.db, hasher) {
-                assertIs<Either.Right<*>>(findByCredentials(login, "oldPass123"))
+                assertIs<Either.Right<*>>(verifyCredentials(login, "oldPass123"))
             }
         }
 }

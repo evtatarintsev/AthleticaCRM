@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -34,6 +35,11 @@ class ProfileTest {
             .bind("name", login)
             .execute()
         TestPostgres.db
+            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Main')")
+            .bind("id", branchId)
+            .bind("orgId", orgId)
+            .execute()
+        TestPostgres.db
             .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
             .bind("id", userId)
             .bind("login", login)
@@ -49,6 +55,8 @@ class ProfileTest {
         return Triple(userId, orgId, employeeId)
     }
 
+    private val branchId = BranchId.new()
+
     private fun requestContext(
         userId: UserId,
         orgId: OrgId,
@@ -58,6 +66,7 @@ class ProfileTest {
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,
+        branchId = branchId,
         employeeId = employeeId,
         username = username,
         clientIp = "127.0.0.1",

@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -25,8 +26,8 @@ class DbRolesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, employeeId, "user@example.com", "127.0.0.1", EmployeePermission())
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "user@example.com", "127.0.0.1", EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "user@example.com", "127.0.0.1", EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "user@example.com", "127.0.0.1", EmployeePermission())
 
     private lateinit var roles: DbRoles
 

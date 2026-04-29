@@ -10,11 +10,13 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.clients.DbClients
@@ -36,9 +38,10 @@ class DbClientsTest {
     private val userId = UserId.new()
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
+    private val branchId = Uuid.generateV7()
 
-    private val ctx = RequestContext(Lang.EN, userId, orgId, employeeId, "test@example.com", null, EmployeePermission())
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, otherEmployeeId, "test@example.com", null, EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, userId, orgId, branchId.toBranchId(), employeeId, "test@example.com", null, EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "test@example.com", null, EmployeePermission())
 
     private val clients = DbClients()
 
@@ -52,6 +55,8 @@ class DbClientsTest {
                 .bind("id", otherOrgId).bind("name", "Org 2").execute()
             TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
                 .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+            TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
         }
     }
 
@@ -274,8 +279,8 @@ class DbClientsTest {
                 }
             }.getOrElse { fail("Setup failed: $it") }
             runBlocking {
-                TestPostgres.db.sql("INSERT INTO groups (id, org_id, name) VALUES (:id, :orgId, :name)")
-                    .bind("id", groupId).bind("orgId", orgId).bind("name", "Группа А").execute()
+                TestPostgres.db.sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
+                    .bind("id", groupId).bind("orgId", orgId).bind("name", "Группа А").bind("branchId", branchId).execute()
                 TestPostgres.db.sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
                     .bind("clientId", id).bind("groupId", groupId).execute()
             }

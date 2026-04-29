@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
+import org.athletica.crm.api.schemas.auth.AuthBranchesRequest
 import org.athletica.crm.api.schemas.auth.LoginRequest
 
 sealed class LoginError {
@@ -38,8 +39,28 @@ class LoginViewModel(
     fun onLogin(login: String, password: String) {
         scope.launch {
             state = LoginState.Loading
+            val branchesResult = api.branches(AuthBranchesRequest(username = login, password = password))
+            val branchId =
+                branchesResult.fold(
+                    ifLeft = {
+                        state =
+                            LoginState.Error(
+                                when (it) {
+                                    is ApiClientError.ValidationError -> LoginError.InvalidCredentials
+                                    is ApiClientError.Unauthenticated -> LoginError.InvalidCredentials
+                                    is ApiClientError.Unavailable -> LoginError.ServiceUnavailable
+                                },
+                            )
+                        return@launch
+                    },
+                    ifRight = { it.branches.firstOrNull()?.id },
+                )
+            if (branchId == null) {
+                state = LoginState.Error(LoginError.InvalidCredentials)
+                return@launch
+            }
             api
-                .login(LoginRequest(username = login, password = password))
+                .login(LoginRequest(username = login, password = password, branchId = branchId))
                 .fold(
                     ifLeft = {
                         state =

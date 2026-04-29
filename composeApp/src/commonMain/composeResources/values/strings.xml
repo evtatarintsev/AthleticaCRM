@@ -315,4 +315,13 @@
         <item quantity="other">%1$d посещений</item>
     </plurals>
 
+    <!-- Branch switching -->
+    <string name="branch_switch_title">Выбор филиала</string>
+    <string name="cd_branch_chip">Текущий филиал</string>
+
+    <!-- Employee branch access -->
+    <string name="section_branch_access">Доступ к филиалам</string>
+    <string name="label_branch_access_all">Все филиалы</string>
+    <string name="label_branch_access_specific">Выбранные филиалы</string>
+
 </resources>

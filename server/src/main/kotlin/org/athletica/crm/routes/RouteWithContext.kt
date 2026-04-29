@@ -22,6 +22,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
@@ -162,10 +163,12 @@ suspend fun RoutingCall.contextFromRequest(db: Database, permissions: EmployeePe
     val principal = principal<JWTPrincipal>()!!
     val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
     val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
+    val branchId = principal.payload.claimAsUuid(JwtConfig.CLAIM_BRANCH_ID).toBranchId()
     val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
     return RequestContext(
         userId = userId,
         orgId = orgId,
+        branchId = branchId,
         employeeId = employeeId,
         lang = langFromRequest(),
         username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),

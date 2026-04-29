@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
@@ -24,6 +25,12 @@ interface Employee {
     val phoneNo: String?
     val email: EmailAddress?
 
+    /** Доступ ко всем филиалам организации, включая будущие. */
+    val allBranchesAccess: Boolean
+
+    /** Конкретные филиалы; актуален только когда [allBranchesAccess] = false. */
+    val branchIds: List<BranchId>
+
     context(ctx: RequestContext, tr: Transaction)
     suspend fun save()
 
@@ -37,6 +44,8 @@ interface Employee {
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
+        newAllBranchesAccess: Boolean,
+        newBranchIds: List<BranchId>,
     ): Employee
 }
 

@@ -79,7 +79,7 @@ class ApplicationTest {
             val response =
                 client.post("/api/auth/login") {
                     contentType(ContentType.Application.Json)
-                    setBody("""{"username":"wrong","password":"wrong"}""")
+                    setBody("""{"username":"wrong","password":"wrong","branchId":"00000000-0000-0000-0000-000000000000"}""")
                 }
             assertEquals(HttpStatusCode.BadRequest, response.status)
         }

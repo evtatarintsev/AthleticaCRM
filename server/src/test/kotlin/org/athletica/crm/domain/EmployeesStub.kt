@@ -3,6 +3,7 @@ package org.athletica.crm.domain
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
@@ -25,6 +26,8 @@ data class EmployeeStub(
     override val permissions: EmployeePermission,
     override val phoneNo: String?,
     override val email: EmailAddress?,
+    override val allBranchesAccess: Boolean = true,
+    override val branchIds: List<BranchId> = emptyList(),
 ) : Employee {
     context(ctx: RequestContext, tr: Transaction)
     override suspend fun save() {
@@ -41,12 +44,16 @@ data class EmployeeStub(
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
+        newAllBranchesAccess: Boolean,
+        newBranchIds: List<BranchId>,
     ) = copy(
         name = newName,
         permissions = newPermissions,
         email = newEmail,
         avatarId = newAvatarId,
         phoneNo = newPhoneNo,
+        allBranchesAccess = newAllBranchesAccess,
+        branchIds = newBranchIds,
     )
 }
 
@@ -61,6 +68,8 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
         email: EmailAddress?,
         avatarId: UploadId?,
         permissions: EmployeePermission,
+        allBranchesAccess: Boolean,
+        branchIds: List<BranchId>,
     ): Employee =
         EmployeeStub(
             id = id,
@@ -73,6 +82,8 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             email = email,
             avatarId = avatarId,
             permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
+            allBranchesAccess = allBranchesAccess,
+            branchIds = branchIds,
         ).also { employees.add(it) }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

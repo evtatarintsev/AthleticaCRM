@@ -11,8 +11,8 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logChangePassword
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.userById
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asString
 
 /**
  * Меняет пароль текущего авторизованного пользователя.
@@ -25,9 +25,13 @@ import org.athletica.crm.storage.Transaction
  */
 context(ctx: RequestContext, tr: Transaction, passwordHasher: PasswordHasher, audit: AuditLog, raise: Raise<DomainError>)
 suspend fun changePassword(request: ChangePasswordRequest) {
-    val user = userById(ctx.userId)
+    val passwordHash =
+        tr.sql("SELECT password_hash FROM users WHERE id = :id")
+            .bind("id", ctx.userId)
+            .firstOrNull { it.asString("password_hash") }
+            ?: raise(CommonDomainError("USER_NOT_FOUND", "User not found"))
 
-    val oldPasswordValid = passwordHasher.verify(request.oldPassword, PasswordHash(user.password))
+    val oldPasswordValid = passwordHasher.verify(request.oldPassword, PasswordHash(passwordHash))
     if (!oldPasswordValid) {
         raise(CommonDomainError(code = "WRONG_PASSWORD", message = Messages.WrongPassword.localize()))
     }

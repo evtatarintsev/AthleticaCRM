@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
@@ -22,6 +23,8 @@ data class DbEmployee(
     override val phoneNo: String?,
     override val email: EmailAddress?,
     override val permissions: EmployeePermission,
+    override val allBranchesAccess: Boolean,
+    override val branchIds: List<BranchId>,
     private val users: Users,
 ) : Employee {
     context(ctx: RequestContext, tr: Transaction)
@@ -29,12 +32,13 @@ data class DbEmployee(
         tr.sql(
             """
             UPDATE employees
-            SET user_id    = :userId,
-                is_active  = :isActive,
-                name       = :name,
-                avatar_id  = :avatarId,
-                phone_no   = :phoneNo,
-                email      = :email
+            SET user_id             = :userId,
+                is_active           = :isActive,
+                name                = :name,
+                avatar_id           = :avatarId,
+                phone_no            = :phoneNo,
+                email               = :email,
+                all_branches_access = :allBranchesAccess
             WHERE id = :id AND org_id = :orgId
             """.trimIndent(),
         )
@@ -44,6 +48,7 @@ data class DbEmployee(
             .bind("avatarId", avatarId)
             .bind("phoneNo", phoneNo)
             .bind("email", email)
+            .bind("allBranchesAccess", allBranchesAccess)
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .execute()
@@ -86,6 +91,19 @@ data class DbEmployee(
                 .bind("key", permission.name)
                 .execute()
         }
+
+        tr.sql("DELETE FROM employee_branches WHERE employee_id = :id")
+            .bind("id", id)
+            .execute()
+
+        if (!allBranchesAccess) {
+            branchIds.forEach { branchId ->
+                tr.sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
+                    .bind("employeeId", id)
+                    .bind("branchId", branchId)
+                    .execute()
+            }
+        }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -101,6 +119,8 @@ data class DbEmployee(
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
+        newAllBranchesAccess: Boolean,
+        newBranchIds: List<BranchId>,
     ): Employee =
         copy(
             name = newName,
@@ -108,5 +128,7 @@ data class DbEmployee(
             email = newEmail,
             avatarId = newAvatarId,
             phoneNo = newPhoneNo,
+            allBranchesAccess = newAllBranchesAccess,
+            branchIds = newBranchIds,
         )
 }

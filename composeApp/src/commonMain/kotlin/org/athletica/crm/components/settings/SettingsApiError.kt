@@ -17,6 +17,14 @@ sealed class SettingsApiError {
 
     /** Сервер вернул ошибку валидации с описанием [message]. */
     data class ServerValidation(val message: String) : SettingsApiError()
+
+    companion object {
+        /** Преобразует [ApiClientError] в типизированную ошибку settings-модуля. */
+        fun fromResponse(error: ApiClientError): SettingsApiError = error.toSettingsApiError()
+
+        /** Преобразует необработанное исключение в недоступность сервиса. */
+        fun fromResponse(e: Exception): SettingsApiError = ServiceUnavailable
+    }
 }
 
 /** Преобразует сетевую ошибку в типизированную ошибку settings-модуля. */

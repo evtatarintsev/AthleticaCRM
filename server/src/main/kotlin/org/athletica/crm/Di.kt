@@ -9,6 +9,8 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.branch.Branches
+import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
@@ -69,6 +71,7 @@ data class Di(
     val employeePermissions: EmployeePermissions,
     val clientBalances: ClientBalances,
     val clients: Clients,
+    val branches: Branches,
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -118,6 +121,7 @@ fun Application.di(): Di {
         employeePermissions = EmployeePermissions(),
         clientBalances = AuditClientBalances(DbClientBalances(), audit),
         clients = DbClients(),
+        branches = DbBranches(),
     )
 }
 

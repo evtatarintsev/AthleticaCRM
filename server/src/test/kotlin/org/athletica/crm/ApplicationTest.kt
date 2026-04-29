@@ -9,6 +9,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
@@ -54,6 +55,7 @@ class ApplicationTest {
                         employeePermissions = EmployeePermissions(),
                         clientBalances = AuditClientBalances(DbClientBalances(), audit),
                         clients = DbClients(),
+                        branches = DbBranches(),
                     )
             }
         }

@@ -46,6 +46,8 @@ import org.athletica.crm.generated.resources.settings_item_attendance
 import org.athletica.crm.generated.resources.settings_item_attendance_subtitle
 import org.athletica.crm.generated.resources.settings_item_basic_settings
 import org.athletica.crm.generated.resources.settings_item_basic_settings_subtitle
+import org.athletica.crm.generated.resources.settings_item_branches
+import org.athletica.crm.generated.resources.settings_item_branches_subtitle
 import org.athletica.crm.generated.resources.settings_item_cashboxes
 import org.athletica.crm.generated.resources.settings_item_cashboxes_subtitle
 import org.athletica.crm.generated.resources.settings_item_change_password
@@ -116,6 +118,7 @@ private data class SettingSection(
 @Composable
 private fun buildSections(
     onNavigateToBasicSettings: () -> Unit,
+    onNavigateToBranches: () -> Unit,
     onNavigateToDisciplines: () -> Unit,
     onNavigateToClientSources: () -> Unit,
     onNavigateToActivityLog: () -> Unit,
@@ -156,6 +159,14 @@ private fun buildSections(
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
                     onClick = onNavigateToBasicSettings,
+                ),
+                SettingItem(
+                    title = stringResource(Res.string.settings_item_branches),
+                    subtitle = stringResource(Res.string.settings_item_branches_subtitle),
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                    onClick = onNavigateToBranches,
                 ),
                 SettingItem(
                     title = stringResource(Res.string.settings_item_disciplines),
@@ -281,6 +292,7 @@ private fun buildSections(
 @Composable
 fun OrgSettingsScreen(
     onNavigateToBasicSettings: () -> Unit = {},
+    onNavigateToBranches: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
@@ -292,6 +304,7 @@ fun OrgSettingsScreen(
     val sections =
         buildSections(
             onNavigateToBasicSettings = onNavigateToBasicSettings,
+            onNavigateToBranches = onNavigateToBranches,
             onNavigateToDisciplines = onNavigateToDisciplines,
             onNavigateToClientSources = onNavigateToClientSources,
             onNavigateToActivityLog = onNavigateToActivityLog,

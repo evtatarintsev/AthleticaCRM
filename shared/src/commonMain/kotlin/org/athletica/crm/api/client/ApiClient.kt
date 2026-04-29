@@ -28,6 +28,10 @@ import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.api.schemas.branches.BranchCreateRequest
+import org.athletica.crm.api.schemas.branches.BranchListResponse
+import org.athletica.crm.api.schemas.branches.BranchUpdateRequest
+import org.athletica.crm.api.schemas.branches.DeleteBranchRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
@@ -390,6 +394,36 @@ class ApiClient(private val http: HttpClient) {
     suspend fun deleteDiscipline(request: DeleteDisciplineRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/disciplines/delete") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Возвращает список филиалов организации. */
+    suspend fun listBranches(): Either<ApiClientError, BranchListResponse> = execute { http.get("/api/branches/list") }
+
+    /** Создаёт новый филиал по данным [request]. */
+    suspend fun createBranch(request: BranchCreateRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/branches/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Обновляет существующий филиал по данным [request]. */
+    suspend fun updateBranch(request: BranchUpdateRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/branches/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Удаляет филиалы по списку id из [request]. Атомарная операция. */
+    suspend fun deleteBranches(request: DeleteBranchRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/branches/delete") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

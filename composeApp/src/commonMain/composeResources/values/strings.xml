@@ -196,6 +196,8 @@
     <string name="settings_item_basic_settings_subtitle">Название, описание, контакты, часовой пояс</string>
     <string name="settings_item_disciplines">Дисциплины</string>
     <string name="settings_item_disciplines_subtitle">Указываются для занятий и групп</string>
+    <string name="settings_item_branches">Филиалы</string>
+    <string name="settings_item_branches_subtitle">Организационные подразделения</string>
     <string name="settings_item_ranks">Разряды</string>
     <string name="settings_item_ranks_subtitle">Указываются для клиентов</string>
     <string name="settings_section_staff">Сотрудники</string>
@@ -279,6 +281,13 @@
     <string name="screen_disciplines">Дисциплины</string>
     <string name="screen_discipline_create">Новая дисциплина</string>
     <string name="screen_discipline_edit">Изменить дисциплину</string>
+
+    <!-- Branches -->
+    <string name="screen_branches">Филиалы</string>
+    <string name="screen_branch_create">Новый филиал</string>
+    <string name="screen_branch_edit">Редактировать филиал</string>
+    <string name="label_branch_name">Название филиала</string>
+    <string name="text_confirm_delete_branch">Подтвердите удаление филиала</string>
 
     <!-- Client sources -->
     <string name="screen_client_sources">Источники клиентов</string>

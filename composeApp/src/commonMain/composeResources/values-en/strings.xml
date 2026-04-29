@@ -191,6 +191,8 @@
     <string name="settings_item_basic_settings_subtitle">Name, description, contacts, time zone</string>
     <string name="settings_item_disciplines">Disciplines</string>
     <string name="settings_item_disciplines_subtitle">Used for lessons and groups</string>
+    <string name="settings_item_branches">Branches</string>
+    <string name="settings_item_branches_subtitle">Organisational subdivisions</string>
     <string name="settings_item_ranks">Ranks</string>
     <string name="settings_item_ranks_subtitle">Used for clients</string>
     <string name="settings_section_staff">Staff</string>
@@ -247,6 +249,13 @@
     <string name="screen_disciplines">Disciplines</string>
     <string name="screen_discipline_create">New discipline</string>
     <string name="screen_discipline_edit">Edit discipline</string>
+
+    <!-- Branches -->
+    <string name="screen_branches">Branches</string>
+    <string name="screen_branch_create">New branch</string>
+    <string name="screen_branch_edit">Edit branch</string>
+    <string name="label_branch_name">Branch name</string>
+    <string name="text_confirm_delete_branch">Confirm branch deletion</string>
 
     <!-- Client sources -->
     <string name="screen_client_sources">Client sources</string>

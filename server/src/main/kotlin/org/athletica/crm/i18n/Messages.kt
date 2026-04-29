@@ -201,4 +201,14 @@ object Messages {
         override val ru = "Комментарий к корректировке обязателен"
         override val en = "Adjustment note is required"
     }
+
+    object BranchAlreadyExists : LocalizationKey {
+        override val ru = "Филиал с таким названием уже существует"
+        override val en = "Branch with this name already exists"
+    }
+
+    object BranchNotFound : LocalizationKey {
+        override val ru = "Филиал не найден"
+        override val en = "Branch not found"
+    }
 }

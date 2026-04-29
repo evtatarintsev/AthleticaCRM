@@ -87,6 +87,7 @@ import org.athletica.crm.components.notifications.AppNotification
 import org.athletica.crm.components.notifications.NotificationBell
 import org.athletica.crm.components.notifications.NotificationLink
 import org.athletica.crm.components.settings.ActivityLogScreen
+import org.athletica.crm.components.settings.BranchesScreen
 import org.athletica.crm.components.settings.ChangePasswordScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
@@ -492,6 +493,7 @@ private fun AppNavHost(
         composable<AppRoute.Settings> {
             OrgSettingsScreen(
                 onNavigateToBasicSettings = { navController.navigate(AppRoute.SettingsBasic) },
+                onNavigateToBranches = { navController.navigate(AppRoute.SettingsBranches) },
                 onNavigateToClientSources = { navController.navigate(AppRoute.SettingsClientSources) },
                 onNavigateToDisciplines = { navController.navigate(AppRoute.SettingsDisciplines) },
                 onNavigateToActivityLog = { navController.navigate(AppRoute.SettingsActivityLog) },
@@ -500,6 +502,10 @@ private fun AppNavHost(
                 onNavigateToRoles = { navController.navigate(AppRoute.SettingsRoles) },
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+
+        composable<AppRoute.SettingsBranches> {
+            BranchesScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsBasic> {

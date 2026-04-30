@@ -7,10 +7,12 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.toClientDocId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.core.entityids.toLeadSourceId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -30,7 +32,7 @@ class DbClients : Clients {
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender,
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id,
                            COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
@@ -48,6 +50,7 @@ class DbClients : Clients {
                         groups = emptyList(),
                         balance = row.asDouble("balance"),
                         docs = emptyList(),
+                        leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
                         orgId = ctx.orgId,
                     )
                 }
@@ -101,14 +104,15 @@ class DbClients : Clients {
         avatarId: UploadId?,
         birthday: LocalDate?,
         gender: Gender,
+        leadSourceId: LeadSourceId?,
     ): Client {
         val inserted =
             try {
                 tr
                     .sql(
                         """
-                        INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender)
-                        VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender)
+                        INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender, lead_source_id)
+                        VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender, :leadSourceId)
                         """.trimIndent(),
                     )
                     .bind("id", id)
@@ -117,6 +121,7 @@ class DbClients : Clients {
                     .bind("avatarId", avatarId)
                     .bind("birthday", birthday)
                     .bind("gender", gender.name)
+                    .bind("leadSourceId", leadSourceId)
                     .execute()
             } catch (e: R2dbcDataIntegrityViolationException) {
                 raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
@@ -133,6 +138,7 @@ class DbClients : Clients {
             groups = emptyList(),
             balance = 0.0,
             docs = emptyList(),
+            leadSourceId = leadSourceId,
             orgId = ctx.orgId,
         )
     }

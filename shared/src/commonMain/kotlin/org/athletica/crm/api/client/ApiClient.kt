@@ -66,6 +66,10 @@ import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
+import org.athletica.crm.api.schemas.leadSources.CreateLeadSourceRequest
+import org.athletica.crm.api.schemas.leadSources.DeleteLeadSourceRequest
+import org.athletica.crm.api.schemas.leadSources.LeadSourceListResponse
+import org.athletica.crm.api.schemas.leadSources.UpdateLeadSourceRequest
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
@@ -418,6 +422,36 @@ class ApiClient(private val http: HttpClient) {
     suspend fun deleteDiscipline(request: DeleteDisciplineRequest): Either<ApiClientError, Unit> =
         execute {
             http.post("/api/disciplines/delete") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Возвращает список источников клиентов организации. */
+    suspend fun leadSourceList(): Either<ApiClientError, LeadSourceListResponse> = execute { http.get("/api/lead-sources/list") }
+
+    /** Создаёт новый источник клиента по данным [request]. */
+    suspend fun createLeadSource(request: CreateLeadSourceRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/lead-sources/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Обновляет название источника клиента по данным [request]. */
+    suspend fun updateLeadSource(request: UpdateLeadSourceRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/lead-sources/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Удаляет источники клиентов по списку id из [request]. Атомарная операция. */
+    suspend fun deleteLeadSource(request: DeleteLeadSourceRequest): Either<ApiClientError, Unit> =
+        execute {
+            http.post("/api/lead-sources/delete") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

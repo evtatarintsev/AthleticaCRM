@@ -292,6 +292,19 @@
     <!-- Client sources -->
     <string name="screen_client_sources">Источники клиентов</string>
     <string name="screen_client_source_create">Новый источник</string>
+    <string name="label_lead_source">Источник клиента</string>
+    <string name="hint_lead_source_select">Выберите источник</string>
+
+    <!-- Client additional attributes -->
+    <string name="settings_item_client_additional_attributes">Дополнительные атрибуты</string>
+    <string name="settings_item_client_additional_attributes_subtitle">Настраиваемые поля для клиентов</string>
+    <string name="screen_client_additional_attributes">Дополнительные атрибуты</string>
+    <string name="column_type">Тип</string>
+    <string name="column_required">Обязательно</string>
+    <string name="type_string">Строка</string>
+    <string name="type_number">Число</string>
+    <string name="type_select">Выбор</string>
+    <string name="action_add_attribute">Добавить атрибут</string>
 
     <!-- Plurals -->
     <plurals name="clients_count">

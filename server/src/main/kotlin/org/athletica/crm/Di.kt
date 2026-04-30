@@ -34,6 +34,9 @@ import org.athletica.crm.domain.events.handlers.GroupScheduleChangedHandler
 import org.athletica.crm.domain.groups.AuditGroups
 import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.Groups
+import org.athletica.crm.domain.leadSource.AuditLeadSources
+import org.athletica.crm.domain.leadSource.DbLeadSources
+import org.athletica.crm.domain.leadSource.LeadSources
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -81,6 +84,7 @@ data class Di(
             audit,
         )
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
+    val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
     val groups: Groups = AuditGroups(DbGroups(bus), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)

@@ -33,6 +33,7 @@ class ClientCreateViewModel(
                         avatarId = form.avatarId,
                         birthday = form.birthday,
                         gender = form.gender,
+                        leadSourceId = form.leadSourceId,
                     ),
                 ).fold(
                     ifLeft = { state = ClientSaveState.Error(it.toClientsApiError()) },

@@ -216,4 +216,14 @@ object Messages {
         override val ru = "Филиал не найден"
         override val en = "Branch not found"
     }
+
+    object LeadSourceAlreadyExists : LocalizationKey {
+        override val ru = "Источник с таким названием уже существует"
+        override val en = "Lead source with this name already exists"
+    }
+
+    object LeadSourceNotFound : LocalizationKey {
+        override val ru = "Источник не найден"
+        override val en = "Lead source not found"
+    }
 }

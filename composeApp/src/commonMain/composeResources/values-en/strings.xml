@@ -260,6 +260,19 @@
     <!-- Client sources -->
     <string name="screen_client_sources">Client sources</string>
     <string name="screen_client_source_create">New source</string>
+    <string name="label_lead_source">Lead source</string>
+    <string name="hint_lead_source_select">Select lead source</string>
+
+    <!-- Client additional attributes -->
+    <string name="settings_item_client_additional_attributes">Additional attributes</string>
+    <string name="settings_item_client_additional_attributes_subtitle">Custom fields for clients</string>
+    <string name="screen_client_additional_attributes">Additional attributes</string>
+    <string name="column_type">Type</string>
+    <string name="column_required">Required</string>
+    <string name="type_string">String</string>
+    <string name="type_number">Number</string>
+    <string name="type_select">Select</string>
+    <string name="action_add_attribute">Add attribute</string>
 
     <!-- Plurals -->
     <plurals name="clients_count">

@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 
 /** Полные данные клиента, возвращаемые после создания или запроса деталей. */
@@ -25,4 +26,6 @@ data class ClientDetailResponse(
     val balance: Double,
     /** Документы, прикреплённые к клиенту. */
     val docs: List<ClientDoc>,
+    /** Идентификатор источника клиента, либо null если не указан. */
+    val leadSourceId: LeadSourceId? = null,
 )

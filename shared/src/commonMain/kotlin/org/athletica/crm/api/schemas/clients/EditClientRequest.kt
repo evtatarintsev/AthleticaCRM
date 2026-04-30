@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 
 /**
@@ -21,4 +22,6 @@ data class EditClientRequest(
     val birthday: LocalDate? = null,
     /** Пол клиента. */
     val gender: Gender,
+    /** Идентификатор источника клиента, либо null если не указан. */
+    val leadSourceId: LeadSourceId? = null,
 )

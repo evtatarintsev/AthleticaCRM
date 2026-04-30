@@ -8,6 +8,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -39,6 +40,9 @@ interface Client {
     /** Документы, прикреплённые к клиенту. */
     val docs: List<ClientDoc>
 
+    /** Идентификатор источника клиента, либо null если не указан. */
+    val leadSourceId: LeadSourceId?
+
     context(tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
 
@@ -54,6 +58,7 @@ interface Client {
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
+        newLeadSourceId: LeadSourceId? = null,
     ): Client
 }
 

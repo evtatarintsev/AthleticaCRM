@@ -93,6 +93,7 @@ import org.athletica.crm.components.notifications.NotificationLink
 import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.BranchesScreen
 import org.athletica.crm.components.settings.ChangePasswordScreen
+import org.athletica.crm.components.settings.ClientAdditionalAttributesScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
@@ -545,6 +546,7 @@ private fun AppNavHost(
                 onNavigateToBasicSettings = { navController.navigate(AppRoute.SettingsBasic) },
                 onNavigateToBranches = { navController.navigate(AppRoute.SettingsBranches) },
                 onNavigateToClientSources = { navController.navigate(AppRoute.SettingsClientSources) },
+                onNavigateToClientAdditionalAttributes = { navController.navigate(AppRoute.SettingsClientAdditionalAttributes) },
                 onNavigateToDisciplines = { navController.navigate(AppRoute.SettingsDisciplines) },
                 onNavigateToActivityLog = { navController.navigate(AppRoute.SettingsActivityLog) },
                 onNavigateToChangePassword = { navController.navigate(AppRoute.SettingsChangePassword) },
@@ -563,7 +565,19 @@ private fun AppNavHost(
         }
 
         composable<AppRoute.SettingsClientSources> {
-            ClientSourcesScreen(onBack = { navController.popBackStack() })
+            ClientSourcesScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsClientAdditionalAttributes> {
+            ClientAdditionalAttributesScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsBranches> {
+            BranchesScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsBasic> {
+            OrgBasicSettingsScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsDisciplines> {

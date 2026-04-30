@@ -52,6 +52,8 @@ import org.athletica.crm.generated.resources.settings_item_cashboxes
 import org.athletica.crm.generated.resources.settings_item_cashboxes_subtitle
 import org.athletica.crm.generated.resources.settings_item_change_password
 import org.athletica.crm.generated.resources.settings_item_change_password_subtitle
+import org.athletica.crm.generated.resources.settings_item_client_additional_attributes
+import org.athletica.crm.generated.resources.settings_item_client_additional_attributes_subtitle
 import org.athletica.crm.generated.resources.settings_item_client_display
 import org.athletica.crm.generated.resources.settings_item_client_display_subtitle
 import org.athletica.crm.generated.resources.settings_item_client_sources
@@ -121,6 +123,7 @@ private fun buildSections(
     onNavigateToBranches: () -> Unit,
     onNavigateToDisciplines: () -> Unit,
     onNavigateToClientSources: () -> Unit,
+    onNavigateToClientAdditionalAttributes: () -> Unit,
     onNavigateToActivityLog: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
@@ -226,6 +229,14 @@ private fun buildSections(
                     iconColor = Ic.Teal,
                     onClick = onNavigateToClientSources,
                 ),
+                SettingItem(
+                    title = stringResource(Res.string.settings_item_client_additional_attributes),
+                    subtitle = stringResource(Res.string.settings_item_client_additional_attributes_subtitle),
+                    icon = Icons.Default.ManageAccounts,
+                    containerColor = Ic.TealContainer,
+                    iconColor = Ic.Teal,
+                    onClick = onNavigateToClientAdditionalAttributes,
+                ),
             ),
     ),
     SettingSection(
@@ -294,6 +305,7 @@ fun OrgSettingsScreen(
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToBranches: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
+    onNavigateToClientAdditionalAttributes: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
@@ -307,6 +319,7 @@ fun OrgSettingsScreen(
             onNavigateToBranches = onNavigateToBranches,
             onNavigateToDisciplines = onNavigateToDisciplines,
             onNavigateToClientSources = onNavigateToClientSources,
+            onNavigateToClientAdditionalAttributes = onNavigateToClientAdditionalAttributes,
             onNavigateToActivityLog = onNavigateToActivityLog,
             onNavigateToChangePassword = onNavigateToChangePassword,
             onNavigateToEditProfile = onNavigateToEditProfile,

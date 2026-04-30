@@ -62,6 +62,7 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
                     request.avatarId,
                     request.birthday,
                     request.gender,
+                    request.leadSourceId,
                 )
         }.detailResponse()
     }
@@ -75,6 +76,7 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
                     request.avatarId,
                     request.birthday,
                     request.gender,
+                    request.leadSourceId,
                 )
                 .apply { save() }
         }.detailResponse()
@@ -137,6 +139,7 @@ fun Client.detailResponse() =
         groups = groups.map { ClientGroup(it.id, it.name) },
         balance = balance,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
+        leadSourceId = leadSourceId,
     )
 
 fun ClientBalance.historyResponse() =

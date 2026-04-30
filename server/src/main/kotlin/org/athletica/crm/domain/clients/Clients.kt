@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -20,5 +21,6 @@ interface Clients {
         avatarId: UploadId?,
         birthday: LocalDate?,
         gender: Gender,
+        leadSourceId: LeadSourceId? = null,
     ): Client
 }

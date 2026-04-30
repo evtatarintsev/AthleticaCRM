@@ -6,6 +6,7 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
@@ -20,6 +21,7 @@ internal data class DbClient(
     override val groups: List<ClientGroup>,
     override val balance: Double,
     override val docs: List<ClientDoc>,
+    override val leadSourceId: LeadSourceId?,
     private val orgId: OrgId,
 ) : Client {
     context(tr: Transaction, raise: Raise<DomainError>)
@@ -27,7 +29,7 @@ internal data class DbClient(
         tr.sql(
             """
             UPDATE clients
-            SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender
+            SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender, lead_source_id = :leadSourceId
             WHERE id = :id AND org_id = :orgId
             """.trimIndent(),
         )
@@ -35,6 +37,7 @@ internal data class DbClient(
             .bind("avatarId", avatarId)
             .bind("birthday", birthday)
             .bind("gender", gender.name)
+            .bind("leadSourceId", leadSourceId)
             .bind("id", id)
             .bind("orgId", orgId)
             .execute()
@@ -72,5 +75,12 @@ internal data class DbClient(
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
-    ) = copy(name = newName, avatarId = newAvatarId, birthday = newBirthday, gender = newGender)
+        newLeadSourceId: LeadSourceId?,
+    ) = copy(
+        name = newName,
+        avatarId = newAvatarId,
+        birthday = newBirthday,
+        gender = newGender,
+        leadSourceId = newLeadSourceId,
+    )
 }

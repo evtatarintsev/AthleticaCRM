@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -30,6 +31,7 @@ data class AuditClient(
     override val groups = client.groups
     override val balance = client.balance
     override val docs = client.docs
+    override val leadSourceId = client.leadSourceId
 
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
@@ -70,6 +72,7 @@ data class AuditClient(
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
+        newLeadSourceId: LeadSourceId?,
     ): Client {
         val newValues =
             mapOf(
@@ -77,6 +80,7 @@ data class AuditClient(
                 "avatarId" to newAvatarId,
                 "birthday" to newBirthday,
                 "gender" to newGender,
+                "leadSourceId" to newLeadSourceId,
             )
         val auditEvent =
             AuditEvent(
@@ -86,6 +90,6 @@ data class AuditClient(
                 id.value,
                 Json.encodeToString(newValues),
             )
-        return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender), audit, auditEvents + auditEvent)
+        return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender, newLeadSourceId), audit, auditEvents + auditEvent)
     }
 }

@@ -2,6 +2,7 @@ package org.athletica.crm.components.clients
 
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 
 /**
@@ -13,6 +14,7 @@ data class ClientForm(
     val gender: Gender = Gender.MALE,
     val birthday: LocalDate? = null,
     val avatarId: UploadId? = null,
+    val leadSourceId: LeadSourceId? = null,
 ) {
     val isValid: Boolean get() = name.isNotBlank()
 }

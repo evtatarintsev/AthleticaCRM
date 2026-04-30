@@ -17,7 +17,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +47,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.components.avatar.AvatarPicker
+import org.athletica.crm.components.settings.DirectoryItem
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
@@ -52,8 +59,10 @@ import org.athletica.crm.generated.resources.action_ok
 import org.athletica.crm.generated.resources.filter_gender_female
 import org.athletica.crm.generated.resources.filter_gender_male
 import org.athletica.crm.generated.resources.hint_date_format
+import org.athletica.crm.generated.resources.hint_lead_source_select
 import org.athletica.crm.generated.resources.label_birthday
 import org.athletica.crm.generated.resources.label_gender
+import org.athletica.crm.generated.resources.label_lead_source
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.screen_client_create
 import org.jetbrains.compose.resources.stringResource
@@ -75,9 +84,17 @@ fun ClientCreateScreen(
 
     var form by remember { mutableStateOf(ClientForm()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var leadSources by remember { mutableStateOf<List<DirectoryItem<LeadSourceId>>>(emptyList()) }
+    var leadSourceExpanded by remember { mutableStateOf(false) }
 
     val isSaving = viewModel.state is ClientSaveState.Saving
     val saveError = (viewModel.state as? ClientSaveState.Error)?.error
+
+    LaunchedEffect(Unit) {
+        api.leadSourceList().onRight { response ->
+            leadSources = response.leadSources.map { DirectoryItem(id = it.id, name = it.name) }
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -164,6 +181,45 @@ fun ClientCreateScreen(
                 }
             }
 
+            ExposedDropdownMenuBox(
+                expanded = leadSourceExpanded,
+                onExpandedChange = { leadSourceExpanded = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OutlinedTextField(
+                    value =
+                        form.leadSourceId?.let { id ->
+                            leadSources.find { it.id == id }?.name ?: ""
+                        } ?: "",
+                    onValueChange = {},
+                    label = { Text(stringResource(Res.string.label_lead_source)) },
+                    placeholder = { Text(stringResource(Res.string.hint_lead_source_select)) },
+                    singleLine = true,
+                    readOnly = true,
+                    enabled = !isSaving,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = leadSourceExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier =
+                        Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                )
+                ExposedDropdownMenu(
+                    expanded = leadSourceExpanded,
+                    onDismissRequest = { leadSourceExpanded = false },
+                ) {
+                    leadSources.forEach { source ->
+                        DropdownMenuItem(
+                            text = { Text(source.name) },
+                            onClick = {
+                                form = form.copy(leadSourceId = source.id)
+                                leadSourceExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = form.birthday?.toString() ?: "",
@@ -182,8 +238,6 @@ fun ClientCreateScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // Прозрачный оверлей — TextField перехватывает клики сам,
-                // поэтому Modifier.clickable на нём не срабатывает
                 Box(
                     modifier =
                         Modifier

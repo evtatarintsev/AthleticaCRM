@@ -66,6 +66,7 @@ class ClientEditViewModel(
                         avatarId = form.avatarId,
                         birthday = form.birthday,
                         gender = form.gender,
+                        leadSourceId = form.leadSourceId,
                     ),
                 ).fold(
                     ifLeft = { saveState = ClientSaveState.Error(it.toClientsApiError()) },

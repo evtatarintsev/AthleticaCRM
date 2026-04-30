@@ -56,10 +56,12 @@ import org.athletica.crm.generated.resources.cd_avatar
 import org.athletica.crm.generated.resources.error_roles_load_failed
 import org.athletica.crm.generated.resources.hint_email
 import org.athletica.crm.generated.resources.hint_phone
+import org.athletica.crm.generated.resources.label_branch_access_all
 import org.athletica.crm.generated.resources.label_email
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.generated.resources.screen_employee_create
+import org.athletica.crm.generated.resources.section_branch_access
 import org.athletica.crm.generated.resources.section_granted_permissions
 import org.athletica.crm.generated.resources.section_revoked_permissions
 import org.athletica.crm.generated.resources.section_roles
@@ -180,6 +182,7 @@ fun EmployeeCreateScreen(
                         form = form,
                         onFormChange = { form = it },
                         enabled = !busy,
+                        branches = ls.branches,
                     )
             }
 
@@ -204,6 +207,7 @@ internal fun EmployeeRolesAndPermissionsForm(
     form: EmployeeForm,
     onFormChange: (EmployeeForm) -> Unit,
     enabled: Boolean,
+    branches: List<org.athletica.crm.api.schemas.branches.BranchDetailResponse> = emptyList(),
 ) {
     if (roles.isNotEmpty()) {
         Text(
@@ -311,6 +315,61 @@ internal fun EmployeeRolesAndPermissionsForm(
             )
             if (index < Permission.entries.lastIndex) {
                 HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+            }
+        }
+    }
+
+    if (branches.isNotEmpty()) {
+        Text(
+            text = stringResource(Res.string.section_branch_access),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Res.string.label_branch_access_all)) },
+            trailingContent = {
+                Switch(
+                    checked = form.allBranchesAccess,
+                    onCheckedChange = { checked ->
+                        onFormChange(form.copy(allBranchesAccess = checked))
+                    },
+                    enabled = enabled,
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        if (!form.allBranchesAccess) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                branches.forEachIndexed { index, branch ->
+                    ListItem(
+                        headlineContent = { Text(branch.name) },
+                        trailingContent = {
+                            Switch(
+                                checked = branch.id in form.selectedBranchIds,
+                                onCheckedChange = { checked ->
+                                    onFormChange(
+                                        form.copy(
+                                            selectedBranchIds =
+                                                if (checked) {
+                                                    form.selectedBranchIds + branch.id
+                                                } else {
+                                                    form.selectedBranchIds - branch.id
+                                                },
+                                        ),
+                                    )
+                                },
+                                enabled = enabled,
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (index < branches.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
             }
         }
     }

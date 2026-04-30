@@ -50,16 +50,20 @@ class EmployeeEditViewModel(
             loadState = EmployeeEditLoadState.Loading
             val employeeResult = api.employeeDetail(employeeId)
             val rolesResult = api.roles()
+            val branchesResult = api.listBranches()
             loadState =
                 when {
                     employeeResult.isLeft() ->
                         EmployeeEditLoadState.Error(employeeResult.leftOrNull()!!.toEmployeesApiError())
                     rolesResult.isLeft() ->
                         EmployeeEditLoadState.Error(rolesResult.leftOrNull()!!.toEmployeesApiError())
+                    branchesResult.isLeft() ->
+                        EmployeeEditLoadState.Error(branchesResult.leftOrNull()!!.toEmployeesApiError())
                     else ->
                         EmployeeEditLoadState.Loaded(
                             employee = employeeResult.getOrNull()!!,
                             roles = rolesResult.getOrNull()!!.roles,
+                            branches = branchesResult.getOrNull()!!.branches,
                         )
                 }
         }
@@ -97,6 +101,8 @@ class EmployeeEditViewModel(
                         roleIds = form.selectedRoleIds.toList(),
                         grantedPermissions = form.grantedPermissions,
                         revokedPermissions = form.revokedPermissions,
+                        allBranchesAccess = form.allBranchesAccess,
+                        branchIds = form.selectedBranchIds.toList(),
                     ),
                 ).fold(
                     ifLeft = { saveState = EmployeeSaveState.Error(it.toEmployeesApiError()) },

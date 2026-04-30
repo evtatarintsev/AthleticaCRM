@@ -88,6 +88,8 @@ internal fun EmployeeEditScreenLoader(
                         selectedRoleIds = employee.roles.map { it.id }.toSet(),
                         grantedPermissions = employee.grantedPermissions,
                         revokedPermissions = employee.revokedPermissions,
+                        allBranchesAccess = employee.allBranchesAccess,
+                        selectedBranchIds = employee.branchIds.toSet(),
                     ),
                 )
             }
@@ -185,6 +187,7 @@ internal fun EmployeeEditScreenLoader(
                             form = form,
                             onFormChange = { form = it },
                             enabled = !busy,
+                            branches = loadState.branches,
                         )
                     }
 

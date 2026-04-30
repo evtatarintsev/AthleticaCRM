@@ -47,10 +47,20 @@ class EmployeeCreateViewModel(
     private fun loadRoles() {
         scope.launch {
             loadState = EmployeeCreateLoadState.Loading
-            api.roles().fold(
-                ifLeft = { loadState = EmployeeCreateLoadState.Error(it.toEmployeesApiError()) },
-                ifRight = { loadState = EmployeeCreateLoadState.Loaded(it.roles) },
-            )
+            val rolesResult = api.roles()
+            val branchesResult = api.listBranches()
+            loadState =
+                when {
+                    rolesResult.isLeft() ->
+                        EmployeeCreateLoadState.Error(rolesResult.leftOrNull()!!.toEmployeesApiError())
+                    branchesResult.isLeft() ->
+                        EmployeeCreateLoadState.Error(branchesResult.leftOrNull()!!.toEmployeesApiError())
+                    else ->
+                        EmployeeCreateLoadState.Loaded(
+                            roles = rolesResult.getOrNull()!!.roles,
+                            branches = branchesResult.getOrNull()!!.branches,
+                        )
+                }
         }
     }
 
@@ -85,6 +95,8 @@ class EmployeeCreateViewModel(
                         roleIds = form.selectedRoleIds.toList(),
                         grantedPermissions = form.grantedPermissions,
                         revokedPermissions = form.revokedPermissions,
+                        allBranchesAccess = form.allBranchesAccess,
+                        branchIds = form.selectedBranchIds.toList(),
                     ),
                 ).fold(
                     ifLeft = { saveState = EmployeeSaveState.Error(it.toEmployeesApiError()) },

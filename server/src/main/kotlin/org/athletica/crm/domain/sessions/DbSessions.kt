@@ -8,8 +8,10 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -31,6 +33,7 @@ class DbSessions : Sessions {
         date: LocalDate,
         startTime: LocalTime,
         endTime: LocalTime,
+        hallId: HallId,
         notes: String?,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,
@@ -41,10 +44,10 @@ class DbSessions : Sessions {
                 .sql(
                     """
                     INSERT INTO sessions (
-                        id, org_id, group_id, date, start_time, end_time, notes,
+                        id, org_id, group_id, date, start_time, end_time, hall_id, notes,
                         is_manual, origin_day_of_week, origin_start_time, origin_date
                     ) VALUES (
-                        :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :notes,
+                        :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes,
                         :isManual, :originDayOfWeek, :originStartTime::time, :originDate
                     )
                     ON CONFLICT (group_id, origin_day_of_week, origin_start_time, origin_date)
@@ -58,6 +61,7 @@ class DbSessions : Sessions {
                 .bind("date", date.toJavaLocalDate())
                 .bind("startTime", startTime.toString())
                 .bind("endTime", endTime.toString())
+                .bind("hallId", hallId)
                 .bind("notes", notes)
                 .bind("isManual", originDayOfWeek == null)
                 .bind("originDayOfWeek", originDayOfWeek)
@@ -79,7 +83,7 @@ class DbSessions : Sessions {
         tr
             .sql(
                 """
-                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time,
+                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
                        s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                        s.origin_start_time, s.origin_date, s.notes
                 FROM sessions s
@@ -103,7 +107,7 @@ class DbSessions : Sessions {
         tr
             .sql(
                 """
-                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time,
+                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
                        s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                        s.origin_start_time, s.origin_date, s.notes
                 FROM sessions s
@@ -133,7 +137,7 @@ class DbSessions : Sessions {
         tr
             .sql(
                 """
-                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time,
+                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
                        s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                        s.origin_start_time, s.origin_date, s.notes
                 FROM sessions s
@@ -159,7 +163,7 @@ class DbSessions : Sessions {
         tr
             .sql(
                 """
-                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time,
+                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
                        s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                        s.origin_start_time, s.origin_date, s.notes
                 FROM sessions s
@@ -180,6 +184,7 @@ private fun io.r2dbc.spi.Row.toSession(): DbSession =
         date = asLocalDate("date"),
         startTime = asLocalTime("start_time"),
         endTime = asLocalTime("end_time"),
+        hallId = asUuid("hall_id").toHallId(),
         status = asString("status"),
         isManual = asBoolean("is_manual"),
         isRescheduled = asBoolean("is_rescheduled"),

@@ -45,6 +45,8 @@ sealed class AppRoute {
 
     @Serializable data object SettingsBranches : AppRoute()
 
+    @Serializable data object SettingsHalls : AppRoute()
+
     @Serializable data object SettingsDisciplines : AppRoute()
 
     @Serializable data object SettingsRoles : AppRoute()

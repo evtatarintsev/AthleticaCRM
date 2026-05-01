@@ -7,6 +7,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -20,6 +21,7 @@ class DbSession(
     override val date: LocalDate,
     override val startTime: LocalTime,
     override val endTime: LocalTime,
+    override val hallId: HallId,
     override val status: String,
     override val isManual: Boolean,
     override val isRescheduled: Boolean,
@@ -50,6 +52,7 @@ class DbSession(
         newDate: LocalDate,
         newStartTime: LocalTime,
         newEndTime: LocalTime,
+        newHallId: HallId,
     ) {
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_RESCHEDULE", "Можно перенести только запланированное занятие"))
@@ -58,7 +61,7 @@ class DbSession(
             .sql(
                 """
                 UPDATE sessions
-                SET date = :date, start_time = :startTime, end_time = :endTime, is_rescheduled = true
+                SET date = :date, start_time = :startTime, end_time = :endTime, hall_id = :hallId, is_rescheduled = true
                 WHERE id = :id AND org_id = :orgId
                 """.trimIndent(),
             )
@@ -67,6 +70,7 @@ class DbSession(
             .bind("date", newDate.toJavaLocalDate())
             .bind("startTime", newStartTime.toString())
             .bind("endTime", newEndTime.toString())
+            .bind("hallId", newHallId)
             .execute()
     }
 

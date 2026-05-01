@@ -178,8 +178,10 @@
     <string name="screen_group_create">New group</string>
     <string name="section_schedule">Schedule</string>
     <string name="schedule_empty">No schedule set</string>
+    <string name="schedule_halls_empty">Add at least one hall in the current branch</string>
     <string name="action_add_slot">Add slot</string>
     <string name="action_delete_slot">Delete slot</string>
+    <string name="label_hall">Hall</string>
 
     <!-- Settings screen -->
     <string name="settings_section_user">User</string>
@@ -194,6 +196,8 @@
     <string name="settings_item_disciplines_subtitle">Used for lessons and groups</string>
     <string name="settings_item_branches">Branches</string>
     <string name="settings_item_branches_subtitle">Organisational subdivisions</string>
+    <string name="settings_item_halls">Halls</string>
+    <string name="settings_item_halls_subtitle">Rooms for schedules and sessions</string>
     <string name="settings_item_ranks">Ranks</string>
     <string name="settings_item_ranks_subtitle">Used for clients</string>
     <string name="settings_section_staff">Staff</string>
@@ -257,6 +261,11 @@
     <string name="screen_branch_edit">Edit branch</string>
     <string name="label_branch_name">Branch name</string>
     <string name="text_confirm_delete_branch">Confirm branch deletion</string>
+
+    <!-- Halls -->
+    <string name="screen_halls">Halls</string>
+    <string name="screen_hall_create">New hall</string>
+    <string name="screen_hall_edit">Edit hall</string>
 
     <!-- Client sources -->
     <string name="screen_client_sources">Client sources</string>

@@ -83,8 +83,8 @@ fun List<Group>.toGroupSelectItems() = map { GroupSelectItem(it.id, it.name) }
 
 fun Group.toGroupDetailResponse(allDisciplines: List<Discipline>) = GroupDetailResponse(id, name, schedule.map { it.toSchema() }, allDisciplines.mapToGroupDisciplines(disciplines))
 
-fun ScheduleSlotSchema.toDomain() = ScheduleSlot(dayOfWeek, startAt, endAt)
+fun ScheduleSlotSchema.toDomain() = ScheduleSlot(dayOfWeek, startAt, endAt, hallId)
 
-fun ScheduleSlot.toSchema() = ScheduleSlotSchema(dayOfWeek, startAt, endAt)
+fun ScheduleSlot.toSchema() = ScheduleSlotSchema(dayOfWeek, startAt, endAt, hallId)
 
 fun List<Discipline>.mapToGroupDisciplines(ids: List<DisciplineId>) = filter { ids.contains(it.id) }.map { GroupDiscipline(it.id, it.name) }

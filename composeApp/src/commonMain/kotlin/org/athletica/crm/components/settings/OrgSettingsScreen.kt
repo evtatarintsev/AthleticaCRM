@@ -62,6 +62,8 @@ import org.athletica.crm.generated.resources.settings_item_disciplines
 import org.athletica.crm.generated.resources.settings_item_disciplines_subtitle
 import org.athletica.crm.generated.resources.settings_item_edit_profile
 import org.athletica.crm.generated.resources.settings_item_edit_profile_subtitle
+import org.athletica.crm.generated.resources.settings_item_halls
+import org.athletica.crm.generated.resources.settings_item_halls_subtitle
 import org.athletica.crm.generated.resources.settings_item_ranks
 import org.athletica.crm.generated.resources.settings_item_ranks_subtitle
 import org.athletica.crm.generated.resources.settings_item_roles
@@ -121,6 +123,7 @@ private data class SettingSection(
 private fun buildSections(
     onNavigateToBasicSettings: () -> Unit,
     onNavigateToBranches: () -> Unit,
+    onNavigateToHalls: () -> Unit,
     onNavigateToDisciplines: () -> Unit,
     onNavigateToClientSources: () -> Unit,
     onNavigateToClientAdditionalAttributes: () -> Unit,
@@ -178,6 +181,14 @@ private fun buildSections(
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
                     onClick = onNavigateToDisciplines,
+                ),
+                SettingItem(
+                    title = stringResource(Res.string.settings_item_halls),
+                    subtitle = stringResource(Res.string.settings_item_halls_subtitle),
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                    onClick = onNavigateToHalls,
                 ),
                 SettingItem(
                     title = stringResource(Res.string.settings_item_ranks),
@@ -304,6 +315,7 @@ private fun buildSections(
 fun OrgSettingsScreen(
     onNavigateToBasicSettings: () -> Unit = {},
     onNavigateToBranches: () -> Unit = {},
+    onNavigateToHalls: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToClientAdditionalAttributes: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
@@ -317,6 +329,7 @@ fun OrgSettingsScreen(
         buildSections(
             onNavigateToBasicSettings = onNavigateToBasicSettings,
             onNavigateToBranches = onNavigateToBranches,
+            onNavigateToHalls = onNavigateToHalls,
             onNavigateToDisciplines = onNavigateToDisciplines,
             onNavigateToClientSources = onNavigateToClientSources,
             onNavigateToClientAdditionalAttributes = onNavigateToClientAdditionalAttributes,

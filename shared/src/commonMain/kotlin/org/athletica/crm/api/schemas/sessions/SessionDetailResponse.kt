@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 
 /** Детальный ответ на запрос одного занятия. */
@@ -15,6 +16,7 @@ data class SessionDetailResponse(
     val date: LocalDate,
     val startTime: LocalTime,
     val endTime: LocalTime,
+    val hallId: HallId,
     val status: String,
     val isManual: Boolean,
     val isRescheduled: Boolean,

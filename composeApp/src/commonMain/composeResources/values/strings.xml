@@ -183,8 +183,10 @@
     <string name="screen_group_create">Новая группа</string>
     <string name="section_schedule">Расписание</string>
     <string name="schedule_empty">Расписание не задано</string>
+    <string name="schedule_halls_empty">Добавьте хотя бы один зал в текущем филиале</string>
     <string name="action_add_slot">Добавить слот</string>
     <string name="action_delete_slot">Удалить слот</string>
+    <string name="label_hall">Зал</string>
 
     <!-- Settings screen -->
     <string name="settings_section_user">Пользователь</string>
@@ -199,6 +201,8 @@
     <string name="settings_item_disciplines_subtitle">Указываются для занятий и групп</string>
     <string name="settings_item_branches">Филиалы</string>
     <string name="settings_item_branches_subtitle">Организационные подразделения</string>
+    <string name="settings_item_halls">Залы</string>
+    <string name="settings_item_halls_subtitle">Помещения для расписания и занятий</string>
     <string name="settings_item_ranks">Разряды</string>
     <string name="settings_item_ranks_subtitle">Указываются для клиентов</string>
     <string name="settings_section_staff">Сотрудники</string>
@@ -289,6 +293,11 @@
     <string name="screen_branch_edit">Редактировать филиал</string>
     <string name="label_branch_name">Название филиала</string>
     <string name="text_confirm_delete_branch">Подтвердите удаление филиала</string>
+
+    <!-- Halls -->
+    <string name="screen_halls">Залы</string>
+    <string name="screen_hall_create">Новый зал</string>
+    <string name="screen_hall_edit">Редактировать зал</string>
 
     <!-- Client sources -->
     <string name="screen_client_sources">Источники клиентов</string>

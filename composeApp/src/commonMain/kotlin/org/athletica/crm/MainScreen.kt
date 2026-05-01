@@ -98,6 +98,7 @@ import org.athletica.crm.components.settings.ClientAdditionalAttributesScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
 import org.athletica.crm.components.settings.EditProfileScreen
+import org.athletica.crm.components.settings.HallsScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
@@ -562,6 +563,7 @@ private fun AppNavHost(
             OrgSettingsScreen(
                 onNavigateToBasicSettings = { navController.navigate(AppRoute.SettingsBasic) },
                 onNavigateToBranches = { navController.navigate(AppRoute.SettingsBranches) },
+                onNavigateToHalls = { navController.navigate(AppRoute.SettingsHalls) },
                 onNavigateToClientSources = { navController.navigate(AppRoute.SettingsClientSources) },
                 onNavigateToClientAdditionalAttributes = { navController.navigate(AppRoute.SettingsClientAdditionalAttributes) },
                 onNavigateToDisciplines = { navController.navigate(AppRoute.SettingsDisciplines) },
@@ -599,6 +601,10 @@ private fun AppNavHost(
 
         composable<AppRoute.SettingsDisciplines> {
             DisciplinesScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsHalls> {
+            HallsScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsRoles> {

@@ -35,6 +35,7 @@ suspend fun generateSessions(
                     date = current,
                     startTime = slot.startAt,
                     endTime = slot.endAt,
+                    hallId = slot.hallId,
                     notes = null,
                     originDayOfWeek = slot.dayOfWeek.name,
                     originStartTime = slot.startAt,

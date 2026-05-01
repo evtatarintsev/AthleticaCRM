@@ -20,4 +20,5 @@ class ApiClient(private val http: HttpClient) {
     val audit = AuditApiClient(http)
     val notifications = NotificationsApiClient(http)
     val leadSources = LeadSourcesApiClient(http)
+    val halls = HallsApiClient(http)
 }

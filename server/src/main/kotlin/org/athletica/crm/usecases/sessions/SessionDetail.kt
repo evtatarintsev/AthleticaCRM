@@ -24,6 +24,7 @@ fun Session.toDetailResponse() =
         date = date,
         startTime = startTime,
         endTime = endTime,
+        hallId = hallId,
         status = status,
         isManual = isManual,
         isRescheduled = isRescheduled,

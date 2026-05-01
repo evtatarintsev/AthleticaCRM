@@ -4,11 +4,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 /**
- * DTO определения кастомного поля.
+ * Схема определения кастомного поля.
  * Используется как в ответах API, так и в теле запроса на сохранение.
  */
 @Serializable
-data class CustomFieldDefinitionDto(
+data class CustomFieldDefinitionSchema(
     /** Иммутабельный машинный ключ (только латинские буквы и подчёркивание). */
     val fieldKey: String,
     /** Отображаемое название поля. */

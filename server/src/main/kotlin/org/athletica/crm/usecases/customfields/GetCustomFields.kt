@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionDto
+import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldType
@@ -19,14 +19,14 @@ context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun getCustomFields(
     definitions: CustomFieldDefinitions,
     entityType: String,
-): List<CustomFieldDefinitionDto> = definitions.all(entityType).map { it.toDto() }
+): List<CustomFieldDefinitionSchema> = definitions.all(entityType).map { it.toSchema() }
 
-/** Конвертирует доменное определение в DTO для передачи по API. */
-fun CustomFieldDefinition.toDto(): CustomFieldDefinitionDto =
-    CustomFieldDefinitionDto(
+/** Конвертирует доменное определение в схему для передачи по API. */
+fun CustomFieldDefinition.toSchema(): CustomFieldDefinitionSchema =
+    CustomFieldDefinitionSchema(
         fieldKey = fieldKey,
         label = label,
-        fieldType = fieldType.typeName(),
+        fieldType = fieldType.name,
         config = fieldType.configJsonObject(),
         isRequired = isRequired,
         isSearchable = isSearchable,

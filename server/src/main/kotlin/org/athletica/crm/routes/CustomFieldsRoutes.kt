@@ -2,7 +2,7 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.context.raise
 import io.ktor.server.routing.route
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionDto
+import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.api.schemas.customfields.SaveCustomFieldsRequest
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -18,7 +18,7 @@ import org.athletica.crm.usecases.customfields.saveCustomFields
 context(db: Database)
 fun RouteWithContext.customFieldsRoutes(definitions: CustomFieldDefinitions) {
     route("/custom-fields") {
-        get<List<CustomFieldDefinitionDto>>("/list") { call ->
+        get<List<CustomFieldDefinitionSchema>>("/list") { call ->
             val entityType =
                 call.request.queryParameters["entityType"]
                     ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterEntityType.localize()))
@@ -27,7 +27,7 @@ fun RouteWithContext.customFieldsRoutes(definitions: CustomFieldDefinitions) {
             }
         }
 
-        post<SaveCustomFieldsRequest, List<CustomFieldDefinitionDto>>("/save") { request, call ->
+        post<SaveCustomFieldsRequest, List<CustomFieldDefinitionSchema>>("/save") { request, call ->
             val entityType =
                 call.request.queryParameters["entityType"]
                     ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterEntityType.localize()))

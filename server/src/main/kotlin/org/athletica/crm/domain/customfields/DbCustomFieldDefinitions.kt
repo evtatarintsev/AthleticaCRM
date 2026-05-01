@@ -65,7 +65,7 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 .bind("entityType", entityType)
                 .bind("fieldKey", def.fieldKey)
                 .bind("label", def.label)
-                .bind("fieldType", def.fieldType.typeName())
+                .bind("fieldType", def.fieldType.name)
                 .bind("config", def.fieldType.configJson())
                 .bind("isRequired", def.isRequired)
                 .bind("isSearchable", def.isSearchable)

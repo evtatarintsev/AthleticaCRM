@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionDto
+import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldType
@@ -18,14 +18,14 @@ private val FIELD_KEY_REGEX = Regex("[a-z_]+")
 
 /**
  * Заменяет весь набор полей для [entityType] и возвращает обновлённый список.
- * Валидирует каждый [field_key][CustomFieldDefinitionDto.fieldKey] по регулярному выражению `[a-z_]+`.
+ * Валидирует каждый [field_key][CustomFieldDefinitionSchema.fieldKey] по регулярному выражению `[a-z_]+`.
  */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun saveCustomFields(
     definitions: CustomFieldDefinitions,
     entityType: String,
-    fields: List<CustomFieldDefinitionDto>,
-): List<CustomFieldDefinitionDto> {
+    fields: List<CustomFieldDefinitionSchema>,
+): List<CustomFieldDefinitionSchema> {
     fields.forEach { field ->
         if (!field.fieldKey.matches(FIELD_KEY_REGEX)) {
             raise(CommonDomainError("INVALID_FIELD_KEY", Messages.InvalidFieldKey.localize()))
@@ -33,11 +33,14 @@ suspend fun saveCustomFields(
     }
     val domainDefs = fields.map { it.toDomain(ctx, entityType) }
     definitions.saveAll(entityType, domainDefs)
-    return definitions.all(entityType).map { it.toDto() }
+    return definitions.all(entityType).map { it.toSchema() }
 }
 
-/** Конвертирует DTO в доменное определение. */
-fun CustomFieldDefinitionDto.toDomain(ctx: RequestContext, entityType: String): CustomFieldDefinition {
+/** Конвертирует схему в доменное определение. */
+fun CustomFieldDefinitionSchema.toDomain(
+    ctx: RequestContext,
+    entityType: String,
+): CustomFieldDefinition {
     val fieldTypeObj =
         when (fieldType) {
             "text" -> CustomFieldType.Text

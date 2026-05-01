@@ -16,6 +16,8 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.customfields.CustomFieldDefinitions
+import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.discipline.AuditDisciplines
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.discipline.Disciplines
@@ -75,6 +77,7 @@ data class Di(
     val clientBalances: ClientBalances,
     val clients: Clients,
     val branches: Branches,
+    val customFieldDefinitions: CustomFieldDefinitions,
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -126,6 +129,7 @@ fun Application.di(): Di {
         clientBalances = AuditClientBalances(DbClientBalances(), audit),
         clients = DbClients(),
         branches = DbBranches(),
+        customFieldDefinitions = DbCustomFieldDefinitions(),
     )
 }
 

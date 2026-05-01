@@ -39,6 +39,7 @@ import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.branchesRoutes
 import org.athletica.crm.routes.clientsRoutes
+import org.athletica.crm.routes.customFieldsRoutes
 import org.athletica.crm.routes.disciplinesRoutes
 import org.athletica.crm.routes.employeesRoutes
 import org.athletica.crm.routes.groupsRoutes
@@ -159,6 +160,7 @@ fun Application.configureServer() {
                         branchesRoutes(di.branches)
                         disciplinesRoutes(di.disciplines)
                         leadSourcesRoutes(di.leadSources)
+                        customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles)
                         context(di.passwordHasher) {
                             profileRoutes(di.organizations, di.orgBalances)

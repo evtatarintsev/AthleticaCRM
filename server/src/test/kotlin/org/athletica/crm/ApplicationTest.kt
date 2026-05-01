@@ -13,6 +13,7 @@ import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -56,6 +57,7 @@ class ApplicationTest {
                         clientBalances = AuditClientBalances(DbClientBalances(), audit),
                         clients = DbClients(),
                         branches = DbBranches(),
+                        customFieldDefinitions = DbCustomFieldDefinitions(),
                     )
             }
         }

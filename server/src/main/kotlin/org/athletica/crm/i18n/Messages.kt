@@ -226,4 +226,14 @@ object Messages {
         override val ru = "Источник не найден"
         override val en = "Lead source not found"
     }
+
+    object MissingParameterEntityType : LocalizationKey {
+        override val ru = "Параметр entityType обязателен"
+        override val en = "Parameter entityType is required"
+    }
+
+    object InvalidFieldKey : LocalizationKey {
+        override val ru = "Ключ поля должен содержать только строчные латинские буквы и символ подчёркивания"
+        override val en = "Field key must contain only lowercase letters and underscores"
+    }
 }

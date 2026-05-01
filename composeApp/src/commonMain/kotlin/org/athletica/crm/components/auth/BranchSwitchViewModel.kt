@@ -42,7 +42,7 @@ class BranchSwitchViewModel(
     fun load() {
         scope.launch {
             state = BranchSwitchState.Loading
-            api.myBranches().fold(
+            api.profile.myBranches().fold(
                 ifLeft = { state = BranchSwitchState.Error },
                 ifRight = { state = BranchSwitchState.Loaded(it.branches) },
             )
@@ -53,7 +53,7 @@ class BranchSwitchViewModel(
     fun switchTo(branchId: BranchId) {
         scope.launch {
             state = BranchSwitchState.Loading
-            api.switchBranch(SwitchBranchRequest(branchId)).fold(
+            api.profile.switchBranch(SwitchBranchRequest(branchId)).fold(
                 ifLeft = { state = BranchSwitchState.Error },
                 ifRight = { onSwitched() },
             )

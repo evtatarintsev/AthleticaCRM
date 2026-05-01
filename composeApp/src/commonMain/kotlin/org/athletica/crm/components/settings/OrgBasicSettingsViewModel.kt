@@ -53,7 +53,7 @@ class OrgBasicSettingsViewModel(
 
     private fun load() {
         scope.launch {
-            api.orgSettings().fold(
+            api.org.settings().fold(
                 ifLeft = { loadState = OrgSettingsLoadState.Error(it.toSettingsApiError()) },
                 ifRight = { loadState = OrgSettingsLoadState.Loaded(it.name, it.timezone) },
             )
@@ -68,7 +68,7 @@ class OrgBasicSettingsViewModel(
         scope.launch {
             saveState = OrgSettingsSaveState.Saving
             api
-                .updateOrgSettings(UpdateOrgSettingsRequest(name = name.trim(), timezone = timezone))
+                .org.updateSettings(UpdateOrgSettingsRequest(name = name.trim(), timezone = timezone))
                 .fold(
                     ifLeft = { saveState = OrgSettingsSaveState.Error(it.toSettingsApiError()) },
                     ifRight = {

@@ -36,7 +36,7 @@ class GroupsViewModel(
     fun load() {
         scope.launch {
             state = GroupsState.Loading
-            api.groupList(GroupListRequest()).fold(
+            api.groups.list(GroupListRequest()).fold(
                 ifLeft = { state = GroupsState.Error(it.toGroupsApiError()) },
                 ifRight = { state = GroupsState.Loaded(it.groups) },
             )

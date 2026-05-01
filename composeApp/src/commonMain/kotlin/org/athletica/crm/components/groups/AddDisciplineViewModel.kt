@@ -39,7 +39,7 @@ class AddDisciplineViewModel(
 
     private fun load() {
         scope.launch {
-            api.disciplineList().fold(
+            api.disciplines.list().fold(
                 ifLeft = { state = AddDisciplineState.Error(it.toGroupsApiError()) },
                 ifRight = { response ->
                     state =

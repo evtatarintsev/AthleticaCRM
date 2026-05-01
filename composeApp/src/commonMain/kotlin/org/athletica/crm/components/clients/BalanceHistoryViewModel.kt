@@ -39,7 +39,7 @@ class BalanceHistoryViewModel(
 
     private fun load() {
         scope.launch {
-            api.clientBalanceHistory(clientId).fold(
+            api.clients.balanceHistory(clientId).fold(
                 ifLeft = { state = BalanceHistoryState.Error(it.toClientsApiError()) },
                 ifRight = { state = BalanceHistoryState.Loaded(it.entries) },
             )

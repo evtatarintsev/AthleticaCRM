@@ -26,7 +26,7 @@ class GroupCreateViewModel(
         scope.launch {
             saveState = GroupSaveState.Saving
             api
-                .createGroup(
+                .groups.create(
                     GroupCreateRequest(
                         id = GroupId.new(),
                         name = form.name,

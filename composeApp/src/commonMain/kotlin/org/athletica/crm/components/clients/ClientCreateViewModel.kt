@@ -25,8 +25,8 @@ class ClientCreateViewModel(
     fun onCreate(form: ClientForm) {
         scope.launch {
             state = ClientSaveState.Saving
-            api
-                .createClient(
+            api.clients
+                .create(
                     CreateClientRequest(
                         id = ClientId.new(),
                         name = form.name,

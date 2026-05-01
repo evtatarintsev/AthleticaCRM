@@ -50,8 +50,8 @@ fun AvatarPicker(
             val file = pickImageFile() ?: return@launch
             isLoading = true
             error = null
-            api
-                .uploadFile(
+            api.documents
+                .upload(
                     bytes = file.first,
                     filename = file.second,
                     contentType = file.third,

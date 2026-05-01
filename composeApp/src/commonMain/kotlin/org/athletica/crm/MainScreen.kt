@@ -194,7 +194,7 @@ fun MainScreen(
                 scope = scope,
                 onSwitched = {
                     showBranchDialog = false
-                    scope.launch { api.me().onRight { currentBranchName = it.currentBranch.name } }
+                    scope.launch { api.profile.me().onRight { currentBranchName = it.currentBranch.name } }
                     navController.navigate(navController.currentDestination?.route ?: AppRoute.Home.toString())
                 },
             )
@@ -207,12 +207,12 @@ fun MainScreen(
     }
 
     LaunchedEffect(Unit) {
-        api.me().onRight { currentBranchName = it.currentBranch.name }
+        api.profile.me().onRight { currentBranchName = it.currentBranch.name }
     }
 
     LaunchedEffect(Unit) {
         while (true) {
-            api.notificationList().fold(
+            api.notifications.list().fold(
                 ifLeft = { /* ошибка — оставляем пустой список */ },
                 ifRight = { response -> notifications = response.notifications.map { it.toAppNotification() } },
             )
@@ -254,12 +254,12 @@ fun MainScreen(
 
     fun onMarkNotificationRead(id: Uuid) {
         notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it }
-        scope.launch { api.markNotificationsRead(MarkNotificationsReadRequest(listOf(id))) }
+        scope.launch { api.notifications.markRead(MarkNotificationsReadRequest(listOf(id))) }
     }
 
     fun onMarkAllNotificationsRead() {
         notifications = notifications.map { it.copy(isRead = true) }
-        scope.launch { api.markAllNotificationsRead() }
+        scope.launch { api.notifications.markAllRead() }
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -636,7 +636,7 @@ private fun DrawerAccountHeader(api: ApiClient) {
     var me by remember { mutableStateOf(noResponse) }
 
     LaunchedEffect(Unit) {
-        api.me().onRight { me = it }
+        api.profile.me().onRight { me = it }
     }
 
     Row(

@@ -36,7 +36,7 @@ class ExportViewModel(
             // В будущем можно добавить фильтрацию по ID
             val request = ClientListRequest()
 
-            api.exportClients(request, format).fold(
+            api.clients.export(request, format).fold(
                 ifLeft = { error ->
                     state = ExportState.Error(error.toString())
                 },

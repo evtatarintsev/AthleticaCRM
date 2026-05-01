@@ -46,7 +46,7 @@ class ClientEditViewModel(
     private fun load() {
         scope.launch {
             loadState = ClientEditLoadState.Loading
-            api.clientDetail(clientId).fold(
+            api.clients.detail(clientId).fold(
                 ifLeft = { loadState = ClientEditLoadState.Error(it.toClientsApiError()) },
                 ifRight = { loadState = ClientEditLoadState.Loaded(it) },
             )
@@ -58,8 +58,8 @@ class ClientEditViewModel(
         val client = (loadState as? ClientEditLoadState.Loaded)?.client ?: return
         scope.launch {
             saveState = ClientSaveState.Saving
-            api
-                .editClient(
+            api.clients
+                .edit(
                     EditClientRequest(
                         id = client.id,
                         name = form.name,
@@ -70,7 +70,7 @@ class ClientEditViewModel(
                     ),
                 ).fold(
                     ifLeft = { saveState = ClientSaveState.Error(it.toClientsApiError()) },
-                    ifRight = { updated ->
+                    ifRight = { updated: ClientDetailResponse ->
                         saveState = ClientSaveState.Idle
                         onSaved(updated)
                     },

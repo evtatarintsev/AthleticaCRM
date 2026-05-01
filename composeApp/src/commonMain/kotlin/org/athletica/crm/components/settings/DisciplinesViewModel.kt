@@ -57,7 +57,7 @@ class DisciplinesViewModel(
     fun load() {
         scope.launch {
             loadState = DisciplinesLoadState.Loading
-            api.disciplineList().fold(
+            api.disciplines.list().fold(
                 ifLeft = { loadState = DisciplinesLoadState.Error(it.toSettingsApiError()) },
                 ifRight = { response ->
                     loadState =
@@ -76,7 +76,7 @@ class DisciplinesViewModel(
     ) {
         scope.launch {
             saveState = DisciplinesSaveState.Saving
-            api.createDiscipline(CreateDisciplineRequest(id = item.id, name = item.name)).fold(
+            api.disciplines.create(CreateDisciplineRequest(id = item.id, name = item.name)).fold(
                 ifLeft = { saveState = DisciplinesSaveState.Error(it.toSettingsApiError()) },
                 ifRight = {
                     saveState = DisciplinesSaveState.Idle
@@ -94,7 +94,7 @@ class DisciplinesViewModel(
     ) {
         scope.launch {
             saveState = DisciplinesSaveState.Saving
-            api.updateDiscipline(UpdateDisciplineRequest(id = item.id, name = item.name)).fold(
+            api.disciplines.update(UpdateDisciplineRequest(id = item.id, name = item.name)).fold(
                 ifLeft = { saveState = DisciplinesSaveState.Error(it.toSettingsApiError()) },
                 ifRight = {
                     saveState = DisciplinesSaveState.Idle
@@ -108,7 +108,7 @@ class DisciplinesViewModel(
     /** Удаляет дисциплины по [ids]; при успехе перезагружает список. */
     fun onDelete(ids: Set<DisciplineId>) {
         scope.launch {
-            api.deleteDiscipline(DeleteDisciplineRequest(ids = ids.toList())).onRight { load() }
+            api.disciplines.delete(DeleteDisciplineRequest(ids = ids.toList())).onRight { load() }
         }
     }
 

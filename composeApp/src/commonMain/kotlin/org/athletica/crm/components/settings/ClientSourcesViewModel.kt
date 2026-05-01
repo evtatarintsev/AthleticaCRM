@@ -57,7 +57,7 @@ class ClientSourcesViewModel(
     fun load() {
         scope.launch {
             loadState = ClientSourcesLoadState.Loading
-            api.leadSourceList().fold(
+            api.leadSources.list().fold(
                 ifLeft = { loadState = ClientSourcesLoadState.Error(it.toSettingsApiError()) },
                 ifRight = { response ->
                     loadState =
@@ -76,7 +76,7 @@ class ClientSourcesViewModel(
     ) {
         scope.launch {
             saveState = ClientSourcesSaveState.Saving
-            api.createLeadSource(CreateLeadSourceRequest(id = item.id, name = item.name)).fold(
+            api.leadSources.create(CreateLeadSourceRequest(id = item.id, name = item.name)).fold(
                 ifLeft = { saveState = ClientSourcesSaveState.Error(it.toSettingsApiError()) },
                 ifRight = {
                     saveState = ClientSourcesSaveState.Idle
@@ -94,7 +94,7 @@ class ClientSourcesViewModel(
     ) {
         scope.launch {
             saveState = ClientSourcesSaveState.Saving
-            api.updateLeadSource(UpdateLeadSourceRequest(id = item.id, name = item.name)).fold(
+            api.leadSources.update(UpdateLeadSourceRequest(id = item.id, name = item.name)).fold(
                 ifLeft = { saveState = ClientSourcesSaveState.Error(it.toSettingsApiError()) },
                 ifRight = {
                     saveState = ClientSourcesSaveState.Idle
@@ -108,7 +108,7 @@ class ClientSourcesViewModel(
     /** Удаляет источники клиентов по [ids]; при успехе перезагружает список. */
     fun onDelete(ids: Set<LeadSourceId>) {
         scope.launch {
-            api.deleteLeadSource(DeleteLeadSourceRequest(ids = ids.toList())).onRight { load() }
+            api.leadSources.delete(DeleteLeadSourceRequest(ids = ids.toList())).onRight { load() }
         }
     }
 

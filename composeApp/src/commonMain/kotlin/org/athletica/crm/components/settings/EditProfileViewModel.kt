@@ -54,7 +54,7 @@ class EditProfileViewModel(
 
     private fun load() {
         scope.launch {
-            api.me().fold(
+            api.profile.me().fold(
                 ifLeft = { loadState = EditProfileLoadState.Error(it.toSettingsApiError()) },
                 ifRight = { loadState = EditProfileLoadState.Loaded(it.name, it.avatarId) },
             )
@@ -69,7 +69,7 @@ class EditProfileViewModel(
         scope.launch {
             saveState = EditProfileSaveState.Saving
             api
-                .updateMe(UpdateMeRequest(name = name.trim(), avatarId = avatarId))
+                .profile.update(UpdateMeRequest(name = name.trim(), avatarId = avatarId))
                 .fold(
                     ifLeft = { saveState = EditProfileSaveState.Error(it.toSettingsApiError()) },
                     ifRight = {

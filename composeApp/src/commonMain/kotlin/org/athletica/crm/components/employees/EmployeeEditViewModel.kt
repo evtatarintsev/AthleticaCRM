@@ -48,9 +48,9 @@ class EmployeeEditViewModel(
     private fun load() {
         scope.launch {
             loadState = EmployeeEditLoadState.Loading
-            val employeeResult = api.employeeDetail(employeeId)
-            val rolesResult = api.roles()
-            val branchesResult = api.listBranches()
+            val employeeResult = api.employees.detail(employeeId)
+            val rolesResult = api.employees.roles()
+            val branchesResult = api.branches.list()
             loadState =
                 when {
                     employeeResult.isLeft() ->
@@ -74,7 +74,7 @@ class EmployeeEditViewModel(
         scope.launch {
             val file = pickImageFile() ?: return@launch
             isUploadingAvatar = true
-            api.uploadFile(file.first, file.second, file.third).fold(
+            api.documents.upload(file.first, file.second, file.third).fold(
                 ifLeft = { saveState = EmployeeSaveState.Error(it.toEmployeesApiError()) },
                 ifRight = { upload ->
                     avatarId = upload.id
@@ -91,7 +91,7 @@ class EmployeeEditViewModel(
         scope.launch {
             saveState = EmployeeSaveState.Saving
             api
-                .updateEmployee(
+                .employees.update(
                     UpdateEmployeeRequest(
                         id = employee.id,
                         name = form.name.trim(),

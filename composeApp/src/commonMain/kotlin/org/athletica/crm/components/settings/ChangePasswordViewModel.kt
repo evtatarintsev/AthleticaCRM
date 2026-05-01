@@ -40,7 +40,7 @@ class ChangePasswordViewModel(
         scope.launch {
             saveState = ChangePasswordSaveState.Saving
             api
-                .changePassword(ChangePasswordRequest(oldPassword = oldPassword, newPassword = newPassword))
+                .profile.changePassword(ChangePasswordRequest(oldPassword = oldPassword, newPassword = newPassword))
                 .fold(
                     ifLeft = { saveState = ChangePasswordSaveState.Error(it.toSettingsApiError()) },
                     ifRight = {

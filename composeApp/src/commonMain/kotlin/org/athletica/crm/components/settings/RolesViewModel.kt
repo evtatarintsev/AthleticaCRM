@@ -58,7 +58,7 @@ class RolesViewModel(
     fun load() {
         scope.launch {
             loadState = RolesLoadState.Loading
-            api.roles().fold(
+            api.employees.roles().fold(
                 ifLeft = { loadState = RolesLoadState.Error(it.toSettingsApiError()) },
                 ifRight = { loadState = RolesLoadState.Loaded(it.roles) },
             )
@@ -73,7 +73,7 @@ class RolesViewModel(
     ) {
         scope.launch {
             saveState = RolesSaveState.Saving
-            api.createRole(CreateRoleRequest(Uuid.random(), name, permissions)).fold(
+            api.employees.createRole(CreateRoleRequest(Uuid.random(), name, permissions)).fold(
                 ifLeft = { saveState = RolesSaveState.Error(it.toSettingsApiError()) },
                 ifRight = {
                     saveState = RolesSaveState.Idle
@@ -93,7 +93,7 @@ class RolesViewModel(
     ) {
         scope.launch {
             saveState = RolesSaveState.Saving
-            api.updateRole(UpdateRoleRequest(id, name, permissions)).fold(
+            api.employees.updateRole(UpdateRoleRequest(id, name, permissions)).fold(
                 ifLeft = { saveState = RolesSaveState.Error(it.toSettingsApiError()) },
                 ifRight = {
                     saveState = RolesSaveState.Idle

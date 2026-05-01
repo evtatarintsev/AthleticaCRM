@@ -40,7 +40,7 @@ class SendAccessViewModel(
         scope.launch {
             state = SendAccessState.Submitting
             api
-                .sendEmployeeAccess(
+                .employees.sendAccess(
                     SendEmployeeAccessRequest(
                         employeeId = employeeId,
                         email = EmailAddress(email.trim()),

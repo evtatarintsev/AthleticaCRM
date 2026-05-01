@@ -102,7 +102,7 @@ fun ClientEditScreen(
     val saveError = (saveState as? ClientSaveState.Error)?.error
 
     LaunchedEffect(Unit) {
-        api.leadSourceList().onRight { response ->
+        api.leadSources.list().onRight { response ->
             leadSources = response.leadSources.map { DirectoryItem(id = it.id, name = it.name) }
         }
     }

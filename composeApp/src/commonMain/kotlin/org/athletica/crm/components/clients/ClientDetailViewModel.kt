@@ -52,7 +52,7 @@ class ClientDetailViewModel(
     fun load() {
         scope.launch {
             state = ClientDetailState.Loading
-            api.clientDetail(clientId).fold(
+            api.clients.detail(clientId).fold(
                 ifLeft = { state = ClientDetailState.Error(it.toClientsApiError()) },
                 ifRight = { state = ClientDetailState.Loaded(it) },
             )
@@ -67,7 +67,7 @@ class ClientDetailViewModel(
     /** Удаляет клиента из группы [groupId] и перезагружает карточку. */
     fun onRemoveFromGroup(groupId: GroupId) {
         scope.launch {
-            api.removeClientFromGroup(RemoveClientFromGroupRequest(listOf(clientId), groupId))
+            api.clients.removeFromGroup(RemoveClientFromGroupRequest(listOf(clientId), groupId))
             load()
         }
     }
@@ -78,10 +78,10 @@ class ClientDetailViewModel(
             isUploadingDoc = true
             val file = pickAnyFile()
             if (file != null) {
-                api.uploadFile(file.first, file.second, file.third).onRight { upload ->
+                api.documents.upload(file.first, file.second, file.third).onRight { upload ->
                     val docId = ClientDocId.new()
-                    api
-                        .attachClientDoc(
+                    api.clients
+                        .attachDoc(
                             AttachClientDocRequest(
                                 docId,
                                 clientId = clientId,
@@ -98,14 +98,14 @@ class ClientDetailViewModel(
     /** Удаляет документ [docId] и перезагружает карточку. */
     fun onDeleteDoc(docId: ClientDocId) {
         scope.launch {
-            api.deleteClientDoc(DeleteClientDocRequest(clientId, docId)).onRight { load() }
+            api.clients.deleteDoc(DeleteClientDocRequest(clientId, docId)).onRight { load() }
         }
     }
 
     /** Открывает документ [uploadId] по URL для просмотра / скачивания. */
     fun onShareDoc(uploadId: UploadId) {
         scope.launch {
-            api.uploadInfo(uploadId).onRight { openUrl(it.url) }
+            api.documents.info(uploadId).onRight { openUrl(it.url) }
         }
     }
 }

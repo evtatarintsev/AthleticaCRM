@@ -40,7 +40,7 @@ class ClientsViewModel(
     fun load() {
         scope.launch {
             state = ClientsState.Loading
-            api.clientList(ClientListRequest()).fold(
+            api.clients.list(ClientListRequest()).fold(
                 ifLeft = { state = ClientsState.Error(it.toClientsApiError()) },
                 ifRight = { state = ClientsState.Loaded(it.clients) },
             )

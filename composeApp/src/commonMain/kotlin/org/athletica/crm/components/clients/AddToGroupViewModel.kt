@@ -50,7 +50,7 @@ class AddToGroupViewModel(
 
     private fun loadGroups() {
         scope.launch {
-            api.groupListForSelect().fold(
+            api.groups.listForSelect().fold(
                 ifLeft = { state = AddToGroupState.Error(it.toClientsApiError()) },
                 ifRight = { groups ->
                     val filtered = groups.filter { it.id !in existingGroupIds }
@@ -65,8 +65,8 @@ class AddToGroupViewModel(
         val loaded = state as? AddToGroupState.Loaded ?: return
         state = loaded.copy(isAdding = true)
         scope.launch {
-            api
-                .addClientsToGroup(AddClientsToGroupRequest(clientIds = clientIds, groupId = groupId))
+            api.clients
+                .addToGroup(AddClientsToGroupRequest(clientIds = clientIds, groupId = groupId))
                 .onRight { onGroupAdded() }
                 .onLeft { state = loaded.copy(isAdding = false) }
         }

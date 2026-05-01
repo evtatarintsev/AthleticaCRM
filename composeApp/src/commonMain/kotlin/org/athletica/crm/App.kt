@@ -72,7 +72,7 @@ fun App(
 
     LaunchedEffect(Unit) {
         authState =
-            api.me().fold(
+            api.profile.me().fold(
                 ifLeft = { error ->
                     if (error !is ApiClientError.Unauthenticated) {
                         logger.w { "Не удалось проверить сессию: $error" }
@@ -100,7 +100,7 @@ fun App(
                     initialRoute = initialRoute,
                     onLogout = {
                         scope.launch {
-                            api
+                            api.auth
                                 .logout()
                                 .onLeft { logger.e { "Ошибка при выходе: $it" } }
                             tokenStorage.clear()

@@ -47,8 +47,8 @@ class EmployeeCreateViewModel(
     private fun loadRoles() {
         scope.launch {
             loadState = EmployeeCreateLoadState.Loading
-            val rolesResult = api.roles()
-            val branchesResult = api.listBranches()
+            val rolesResult = api.employees.roles()
+            val branchesResult = api.branches.list()
             loadState =
                 when {
                     rolesResult.isLeft() ->
@@ -69,7 +69,7 @@ class EmployeeCreateViewModel(
         scope.launch {
             val file = pickImageFile() ?: return@launch
             isUploadingAvatar = true
-            api.uploadFile(file.first, file.second, file.third).fold(
+            api.documents.upload(file.first, file.second, file.third).fold(
                 ifLeft = { saveState = EmployeeSaveState.Error(it.toEmployeesApiError()) },
                 ifRight = { upload ->
                     avatarId = upload.id
@@ -85,7 +85,7 @@ class EmployeeCreateViewModel(
         scope.launch {
             saveState = EmployeeSaveState.Saving
             api
-                .createEmployee(
+                .employees.create(
                     CreateEmployeeRequest(
                         id = EmployeeId.new(),
                         name = form.name.trim(),

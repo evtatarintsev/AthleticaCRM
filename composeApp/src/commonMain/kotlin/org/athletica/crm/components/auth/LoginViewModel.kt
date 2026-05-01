@@ -39,7 +39,7 @@ class LoginViewModel(
     fun onLogin(login: String, password: String) {
         scope.launch {
             state = LoginState.Loading
-            val branchesResult = api.branches(AuthBranchesRequest(username = login, password = password))
+            val branchesResult = api.profile.branches(AuthBranchesRequest(username = login, password = password))
             val branchId =
                 branchesResult.fold(
                     ifLeft = {
@@ -59,7 +59,7 @@ class LoginViewModel(
                 state = LoginState.Error(LoginError.InvalidCredentials)
                 return@launch
             }
-            api
+            api.auth
                 .login(LoginRequest(username = login, password = password, branchId = branchId))
                 .fold(
                     ifLeft = {

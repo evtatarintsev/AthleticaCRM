@@ -42,11 +42,11 @@ class AdjustBalanceViewModel(
     fun onSubmit(amount: Double, note: String) {
         scope.launch {
             state = AdjustBalanceState.Submitting
-            api
-                .adjustClientBalance(AdjustBalanceRequest(clientId, amount, note))
+            api.clients
+                .adjustBalance(AdjustBalanceRequest(clientId, amount, note))
                 .fold(
                     ifLeft = { state = AdjustBalanceState.Error(it.toClientsApiError()) },
-                    ifRight = { updated ->
+                    ifRight = { updated: ClientDetailResponse ->
                         state = AdjustBalanceState.Idle
                         onSuccess(updated)
                     },

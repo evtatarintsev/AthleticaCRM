@@ -56,7 +56,7 @@ class RegisterViewModel(
     fun onRegister(form: RegisterForm) {
         scope.launch {
             state = RegisterState.Loading
-            api
+            api.auth
                 .signUp(
                     SignUpRequest(
                         companyName = form.organizationName,

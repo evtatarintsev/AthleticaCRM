@@ -49,7 +49,7 @@ class ActivityLogViewModel(
     fun load() {
         scope.launch {
             state = ActivityLogState.Loading
-            api.auditLogList(page = page, pageSize = pageSize).fold(
+            api.audit.logList(page = page, pageSize = pageSize).fold(
                 ifLeft = { state = ActivityLogState.Error(it.toSettingsApiError()) },
                 ifRight = { state = ActivityLogState.Loaded(it.items, it.total) },
             )

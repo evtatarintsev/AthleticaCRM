@@ -42,7 +42,7 @@ class BranchesViewModel(
         scope.launch {
             loadState = BranchesLoadState.Loading
             try {
-                val result = api.listBranches()
+                val result = api.branches.list()
                 result.fold(
                     ifRight = { response ->
                         loadState =
@@ -64,7 +64,7 @@ class BranchesViewModel(
         scope.launch {
             saveState = BranchesSaveState.Saving
             try {
-                api.createBranch(Branch(branch.id, branch.name).toBranchCreateRequest())
+                api.branches.create(Branch(branch.id, branch.name).toBranchCreateRequest())
                 saveState = BranchesSaveState.Idle
                 onSaved()
                 load()
@@ -78,7 +78,7 @@ class BranchesViewModel(
         scope.launch {
             saveState = BranchesSaveState.Saving
             try {
-                api.updateBranch(Branch(branch.id, branch.name).toBranchUpdateRequest())
+                api.branches.update(Branch(branch.id, branch.name).toBranchUpdateRequest())
                 saveState = BranchesSaveState.Idle
                 onSaved()
                 load()
@@ -92,7 +92,7 @@ class BranchesViewModel(
         scope.launch {
             saveState = BranchesSaveState.Saving
             try {
-                api.deleteBranches(DeleteBranchRequest(ids.toList()))
+                api.branches.delete(DeleteBranchRequest(ids.toList()))
                 saveState = BranchesSaveState.Idle
                 load()
             } catch (e: Exception) {

@@ -18,7 +18,7 @@ fun Avatar(uploadId: UploadId?, name: String, api: ApiClient) {
     var avatarUrl by remember(uploadId) { mutableStateOf<String?>(null) }
     LaunchedEffect(uploadId) {
         uploadId?.let { id ->
-            api.uploadInfo(id).onRight { avatarUrl = it.url }
+            api.documents.info(id).onRight { avatarUrl = it.url }
         }
     }
     if (avatarUrl != null) {

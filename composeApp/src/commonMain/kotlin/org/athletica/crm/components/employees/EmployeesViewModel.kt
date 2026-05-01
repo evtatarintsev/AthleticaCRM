@@ -35,7 +35,7 @@ class EmployeesViewModel(
     fun load() {
         scope.launch {
             state = EmployeesState.Loading
-            api.employeeList().fold(
+            api.employees.list().fold(
                 ifLeft = { state = EmployeesState.Error(it.toEmployeesApiError()) },
                 ifRight = { state = EmployeesState.Loaded(it.employees) },
             )

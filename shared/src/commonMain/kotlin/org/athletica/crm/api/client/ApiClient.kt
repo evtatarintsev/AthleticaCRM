@@ -150,6 +150,18 @@ class ApiClient(private val http: HttpClient) {
     /** Возвращает страницу клиентов организации по параметрам [request]. */
     suspend fun clientList(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = execute { http.get("/api/clients/list") }
 
+    /** Экспортирует список клиентов в CSV формате. */
+    suspend fun exportClients(request: ClientListRequest, format: String = "csv"): Either<ApiClientError, ByteArray> =
+        execute {
+            http.post("/api/clients/export") {
+                contentType(ContentType.Application.Json)
+                url {
+                    parameters.append("format", format)
+                }
+                setBody(request)
+            }
+        }
+
     /** Возвращает полные данные клиента по [id]. */
     suspend fun clientDetail(id: ClientId): Either<ApiClientError, ClientDetailResponse> = execute { http.get("/api/clients/detail") { url { parameters.append("id", id.toString()) } } }
 

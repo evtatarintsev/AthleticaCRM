@@ -25,6 +25,7 @@
     <string name="action_delete_selected">Delete selected</string>
     <string name="action_notify_selected">Notify selected</string>
     <string name="action_export_selected">Export selected</string>
+    <string name="action_download">Download</string>
     <string name="action_add_photo">Add photo</string>
     <string name="action_change_photo">Change photo</string>
     <string name="action_select_photo">Select photo</string>
@@ -294,5 +295,14 @@
     <string name="section_branch_access">Branch access</string>
     <string name="label_branch_access_all">All branches</string>
     <string name="label_branch_access_specific">Specific branches</string>
+
+    <!-- Export -->
+    <string name="export_title">Export clients</string>
+    <string name="export_fields_name">Name</string>
+    <string name="export_fields_birthday">Birthday</string>
+    <string name="export_fields_gender">Gender</string>
+    <string name="export_fields_groups">Groups</string>
+    <string name="export_fields_balance">Balance</string>
+    <string name="label_select_all">Select all</string>
 
 </resources>

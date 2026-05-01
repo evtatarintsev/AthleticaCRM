@@ -80,6 +80,7 @@ import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreenLoader
 import org.athletica.crm.components.clients.ClientsScreen
+import org.athletica.crm.components.clients.ExportScreen
 import org.athletica.crm.components.employees.EmployeeCreateScreen
 import org.athletica.crm.components.employees.EmployeeDetailScreen
 import org.athletica.crm.components.employees.EmployeeEditScreenLoader
@@ -440,6 +441,9 @@ private fun AppNavHost(
                 api = api,
                 onNavigateToCreate = { navController.navigate(AppRoute.ClientCreate) },
                 onClientClick = { id -> navController.navigate(AppRoute.ClientDetail(id.toString())) },
+                onNavigateToExport = { selectedIds ->
+                    navController.navigate(AppRoute.ClientExport(selectedIds.map { it.value.toString() }))
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -449,6 +453,19 @@ private fun AppNavHost(
                 api = api,
                 onBack = { navController.popBackStack() },
                 onCreated = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.ClientExport> { entry ->
+            val route = entry.toRoute<AppRoute.ClientExport>()
+            val selectedIds =
+                route.selectedIds.mapNotNull { id ->
+                    runCatching { org.athletica.crm.core.entityids.ClientId(kotlin.uuid.Uuid.parse(id)) }.getOrNull()
+                }
+            ExportScreen(
+                api = api,
+                selectedClientIds = selectedIds,
+                onBack = { navController.popBackStack() },
             )
         }
 

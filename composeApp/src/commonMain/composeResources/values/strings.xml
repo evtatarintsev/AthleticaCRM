@@ -25,6 +25,7 @@
     <string name="action_delete_selected">Удалить выбранные</string>
     <string name="action_notify_selected">Оповестить выбранных</string>
     <string name="action_export_selected">Экспортировать выбранных</string>
+    <string name="action_download">Скачать</string>
     <string name="action_add_photo">Добавить фото</string>
     <string name="action_change_photo">Изменить фото</string>
     <string name="action_select_photo">Выбрать фото</string>
@@ -336,5 +337,14 @@
     <string name="section_branch_access">Доступ к филиалам</string>
     <string name="label_branch_access_all">Все филиалы</string>
     <string name="label_branch_access_specific">Выбранные филиалы</string>
+
+    <!-- Export -->
+    <string name="export_title">Экспорт клиентов</string>
+    <string name="export_fields_name">Имя</string>
+    <string name="export_fields_birthday">Дата рождения</string>
+    <string name="export_fields_gender">Пол</string>
+    <string name="export_fields_groups">Группы</string>
+    <string name="export_fields_balance">Баланс</string>
+    <string name="label_select_all">Выбрать все</string>
 
 </resources>

@@ -47,11 +47,13 @@ import org.jetbrains.compose.resources.stringResource
  * [refreshKey] — при изменении перезагружает список (например, после создания клиента).
  * [onNavigateToCreate] — переход к экрану создания клиента.
  * [onClientClick] — переход к карточке клиента.
+ * [onNavigateToExport] — переход к экрану экспорта клиентов с выбранными ID.
  */
 @Composable
 fun ClientsScreen(
     api: ApiClient,
     onNavigateToCreate: () -> Unit = {},
+    onNavigateToExport: (List<ClientId>) -> Unit = {},
     refreshKey: Int = 0,
     onClientClick: (ClientId) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -176,7 +178,9 @@ fun ClientsScreen(
                         onAddToGroup = { showAddToGroupSheet = true },
                         onDelete = { selectedIds = emptySet() },
                         onNotify = {},
-                        onExport = {},
+                        onExport = {
+                            onNavigateToExport(selectedIds.toList())
+                        },
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }

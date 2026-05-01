@@ -17,6 +17,8 @@ sealed class AppRoute {
 
     @Serializable data object ClientCreate : AppRoute()
 
+    @Serializable data class ClientExport(val selectedIds: List<String> = emptyList()) : AppRoute()
+
     @Serializable data class ClientEdit(val id: String) : AppRoute()
 
     @Serializable data object Groups : AppRoute()

@@ -3,6 +3,8 @@ package org.athletica.crm.routes
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import io.ktor.client.request.request
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.Parameters
 import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
@@ -13,12 +15,14 @@ import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -44,6 +48,21 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
     get<ClientListResponse>("/clients/list") {
         val clients = clientList(ClientListRequest()).bind()
         ClientListResponse(clients, clients.size.toUInt())
+    }
+
+    post<ClientListRequest, ByteArray>("/clients/export") { request, call ->
+        val format = call.request.queryParameters["format"] ?: "csv"
+
+        val clients = clientList(request).bind()
+
+        // Generate CSV content
+        val csvContent = generateCsvContent(clients)
+
+        // Set appropriate headers for download
+        call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"clients.${format}\"")
+        call.response.headers.append(HttpHeaders.ContentType, if (format == "xlsx") "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else "text/csv")
+
+        csvContent
     }
 
     get<ClientDetailResponse>("/clients/detail") { call ->
@@ -166,4 +185,30 @@ fun Parameters.asUuid(name: String): Uuid {
     return runCatching { Uuid.parse(idParam) }.getOrElse {
         raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
     }
+}
+
+/**
+ * Генерирует CSV контент для экспорта списка клиентов.
+ * [clients] — список клиентов для экспорта.
+ * Возвращает ByteArray с CSV данными в кодировке UTF-8.
+ */
+private fun generateCsvContent(clients: List<ClientListItem>): ByteArray {
+    val sb = StringBuilder()
+
+    // Заголовок CSV
+    sb.appendLine("ID,Имя,Дата рождения,Пол,Группы,Баланс")
+
+    // Данные клиентов
+    clients.forEach { client ->
+        val groupsStr = client.groups.joinToString("; ") { it.name }
+        val birthdayStr = client.birthday?.toString() ?: ""
+        val genderStr =
+            when (client.gender) {
+                org.athletica.crm.core.Gender.MALE -> "М"
+                org.athletica.crm.core.Gender.FEMALE -> "Ж"
+            }
+        sb.appendLine("${client.id},${client.name},$birthdayStr,$genderStr,$groupsStr,${client.balance}")
+    }
+
+    return sb.toString().toByteArray(Charsets.UTF_8)
 }

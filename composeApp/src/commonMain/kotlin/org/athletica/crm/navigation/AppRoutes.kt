@@ -70,9 +70,8 @@ fun NavItem.toRoute(): AppRoute =
 
 fun NavController.navigateToSection(route: AppRoute, builder: NavOptionsBuilder.() -> Unit = {}) {
     navigate(route) {
-        popUpTo(AppRoute.Home) { saveState = true }
+        popUpTo(AppRoute.Home)
         launchSingleTop = true
-        restoreState = true
         builder()
     }
 }

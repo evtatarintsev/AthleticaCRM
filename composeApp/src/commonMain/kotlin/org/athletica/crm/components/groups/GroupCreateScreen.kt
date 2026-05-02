@@ -40,11 +40,13 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.halls.HallDetailResponse
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_discipline
+import org.athletica.crm.generated.resources.action_add_group_employee
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_create
 import org.athletica.crm.generated.resources.label_name
 import org.athletica.crm.generated.resources.screen_group_create
 import org.athletica.crm.generated.resources.section_disciplines
+import org.athletica.crm.generated.resources.section_group_employees
 import org.athletica.crm.generated.resources.section_schedule
 import org.jetbrains.compose.resources.stringResource
 
@@ -65,6 +67,7 @@ fun GroupCreateScreen(
     val viewModel = remember { GroupCreateViewModel(api, scope) { onCreated() } }
     var form by remember { mutableStateOf(GroupForm()) }
     var showDisciplineSheet by remember { mutableStateOf(false) }
+    var showEmployeeSheet by remember { mutableStateOf(false) }
     var halls by remember { mutableStateOf<List<HallDetailResponse>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -164,6 +167,39 @@ fun GroupCreateScreen(
 
             HorizontalDivider()
 
+            Text(stringResource(Res.string.section_group_employees), style = MaterialTheme.typography.titleMedium)
+
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                form.selectedEmployees.forEach { employee ->
+                    InputChip(
+                        selected = true,
+                        onClick = { form = form.copy(selectedEmployees = form.selectedEmployees - employee) },
+                        label = { Text(employee.name) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        },
+                    )
+                }
+                AssistChip(
+                    onClick = { showEmployeeSheet = true },
+                    label = { Text(stringResource(Res.string.action_add_group_employee)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    enabled = !isSaving,
+                )
+            }
+
+            HorizontalDivider()
+
             Text(stringResource(Res.string.section_schedule), style = MaterialTheme.typography.titleMedium)
 
             ScheduleEditor(
@@ -182,6 +218,17 @@ fun GroupCreateScreen(
             onDisciplineSelected = { discipline ->
                 form = form.copy(selectedDisciplines = form.selectedDisciplines + discipline)
                 showDisciplineSheet = false
+            },
+        )
+    }
+
+    if (showEmployeeSheet) {
+        PickEmployeesSheet(
+            initialSelectedIds = form.selectedEmployees.map { it.id }.toSet(),
+            api = api,
+            onDismiss = { showEmployeeSheet = false },
+            onEmployeesPicked = { employees ->
+                form = form.copy(selectedEmployees = employees)
             },
         )
     }

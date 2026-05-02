@@ -32,6 +32,7 @@ class GroupCreateViewModel(
                         name = form.name,
                         schedule = form.schedule,
                         disciplineIds = form.selectedDisciplines.map { it.id },
+                        employeeIds = form.selectedEmployees.map { it.id },
                     ),
                 ).fold(
                     ifLeft = { saveState = GroupSaveState.Error(it.toGroupsApiError()) },

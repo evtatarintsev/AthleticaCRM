@@ -1,6 +1,7 @@
 package org.athletica.crm.components.groups
 
 import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
+import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
 
 /**
@@ -11,6 +12,7 @@ data class GroupForm(
     val name: String = "",
     val schedule: List<ScheduleSlot> = emptyList(),
     val selectedDisciplines: List<DisciplineDetailResponse> = emptyList(),
+    val selectedEmployees: List<EmployeeListItem> = emptyList(),
 ) {
     val isValid: Boolean get() = name.isNotBlank()
 }

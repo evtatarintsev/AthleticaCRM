@@ -168,6 +168,12 @@
     <string name="groups_empty">No groups yet</string>
     <string name="action_add_group">Add group</string>
     <string name="hint_search_by_title">Search by name…</string>
+    <string name="screen_group_detail">Group</string>
+    <string name="section_group_employees">Teachers</string>
+    <string name="action_add_group_employee">Add teacher</string>
+    <string name="dialog_remove_employee_from_group_title">Remove teacher from group?</string>
+    <string name="dialog_remove_employee_from_group_message">Teacher "%1$s" will be removed from the group "%2$s".</string>
+    <string name="employees_empty_for_group">No teachers</string>
 
     <!-- Group disciplines -->
     <string name="section_disciplines">Disciplines</string>

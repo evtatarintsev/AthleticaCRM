@@ -173,6 +173,12 @@
     <string name="groups_empty">Групп пока нет</string>
     <string name="action_add_group">Добавить группу</string>
     <string name="hint_search_by_title">Поиск по названию…</string>
+    <string name="screen_group_detail">Группа</string>
+    <string name="section_group_employees">Преподаватели</string>
+    <string name="action_add_group_employee">Добавить преподавателя</string>
+    <string name="dialog_remove_employee_from_group_title">Убрать преподавателя из группы?</string>
+    <string name="dialog_remove_employee_from_group_message">Преподаватель «%1$s» будет убран из группы «%2$s».</string>
+    <string name="employees_empty_for_group">Нет преподавателей</string>
 
     <!-- Group disciplines -->
     <string name="section_disciplines">Дисциплины</string>

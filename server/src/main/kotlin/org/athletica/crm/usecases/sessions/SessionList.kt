@@ -34,18 +34,24 @@ suspend fun sessionList(
             }
         }
     }
-    val list =
-        db.transaction {
+    return db.transaction {
+        val list =
             if (groupId != null) {
                 sessions.list(groupId, from, to)
             } else {
                 sessions.listAll(from, to)
             }
-        }
-    return SessionListResponse(list.map { it.toListItem() })
+        val groupNames =
+            if (groupId != null) {
+                mapOf(groupId to groups.byId(groupId).name)
+            } else {
+                groups.list().associate { it.id to it.name }
+            }
+        SessionListResponse(list.map { it.toListItem(groupNames.getValue(it.groupId)) })
+    }
 }
 
-fun Session.toListItem() =
+fun Session.toListItem(groupName: String) =
     SessionListItem(
         id = id,
         groupId = groupId,

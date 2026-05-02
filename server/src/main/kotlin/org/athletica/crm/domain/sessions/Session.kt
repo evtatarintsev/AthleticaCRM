@@ -17,9 +17,6 @@ interface Session {
     /** Группа, которой принадлежит занятие. */
     val groupId: GroupId
 
-    /** Название группы (денормализовано для удобства отображения). */
-    val groupName: String
-
     /** Дата проведения занятия. */
     val date: LocalDate
 

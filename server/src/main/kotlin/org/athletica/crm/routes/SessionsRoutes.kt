@@ -36,7 +36,7 @@ fun RouteWithContext.sessionsRoutes(
         get<SessionDetailResponse>("/{id}") { call ->
             val id = call.pathSessionId()
             db.transaction {
-                sessionDetail(sessions, id)
+                sessionDetail(sessions, groups, id)
             }
         }
 
@@ -44,6 +44,7 @@ fun RouteWithContext.sessionsRoutes(
             db.transaction {
                 createSession(
                     sessions = sessions,
+                    groups = groups,
                     id = request.id,
                     groupId = request.groupId,
                     date = request.date,
@@ -65,7 +66,7 @@ fun RouteWithContext.sessionsRoutes(
         post<RescheduleSessionRequest, SessionDetailResponse>("/{id}/reschedule") { request, call ->
             val id = call.pathSessionId()
             db.transaction {
-                rescheduleSession(sessions, id, request.newDate, request.newStartTime, request.newEndTime, request.newHallId)
+                rescheduleSession(sessions, groups, id, request.newDate, request.newStartTime, request.newEndTime, request.newHallId)
             }
         }
     }

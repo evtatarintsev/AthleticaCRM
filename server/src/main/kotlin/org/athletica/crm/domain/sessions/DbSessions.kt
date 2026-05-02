@@ -107,11 +107,10 @@ class DbSessions : Sessions {
             tr
                 .sql(
                     """
-                    SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
+                    SELECT s.id, s.group_id, s.date, s.start_time, s.end_time, s.hall_id,
                            s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                            s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
                     FROM sessions s
-                    JOIN groups g ON g.id = s.group_id
                     WHERE s.org_id = :orgId AND s.group_id = :groupId
                       AND s.date >= :from AND s.date <= :to
                     ORDER BY s.date, s.start_time
@@ -140,11 +139,10 @@ class DbSessions : Sessions {
             tr
                 .sql(
                     """
-                    SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
+                    SELECT s.id, s.group_id, s.date, s.start_time, s.end_time, s.hall_id,
                            s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                            s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
                     FROM sessions s
-                    JOIN groups g ON g.id = s.group_id
                     WHERE s.org_id = :orgId
                       AND s.date >= :from AND s.date <= :to
                     ORDER BY s.date, s.start_time
@@ -253,11 +251,10 @@ class DbSessions : Sessions {
         tr
             .sql(
                 """
-                SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
+                SELECT s.id, s.group_id, s.date, s.start_time, s.end_time, s.hall_id,
                        s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
                        s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
                 FROM sessions s
-                JOIN groups g ON g.id = s.group_id
                 WHERE s.id = :id AND s.org_id = :orgId
                 """.trimIndent(),
             ).bind("id", id)
@@ -307,7 +304,6 @@ class DbSessions : Sessions {
 private data class SessionRow(
     val id: SessionId,
     val groupId: GroupId,
-    val groupName: String,
     val date: LocalDate,
     val startTime: LocalTime,
     val endTime: LocalTime,
@@ -326,7 +322,6 @@ private fun io.r2dbc.spi.Row.toSessionRow(): SessionRow =
     SessionRow(
         id = asUuid("id").toSessionId(),
         groupId = asUuid("group_id").toGroupId(),
-        groupName = asString("group_name"),
         date = asLocalDate("date"),
         startTime = asLocalTime("start_time"),
         endTime = asLocalTime("end_time"),
@@ -348,7 +343,6 @@ private fun SessionRow.toSession(employeeIds: List<EmployeeId>): DbSession =
     DbSession(
         id = id,
         groupId = groupId,
-        groupName = groupName,
         date = date,
         startTime = startTime,
         endTime = endTime,

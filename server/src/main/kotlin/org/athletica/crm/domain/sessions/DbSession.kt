@@ -19,7 +19,6 @@ import org.athletica.crm.storage.Transaction
 class DbSession(
     override val id: SessionId,
     override val groupId: GroupId,
-    override val groupName: String,
     override val date: LocalDate,
     override val startTime: LocalTime,
     override val endTime: LocalTime,

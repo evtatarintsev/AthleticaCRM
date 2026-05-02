@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
 
@@ -17,6 +18,7 @@ import org.athletica.crm.storage.Transaction
 context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun rescheduleSession(
     sessions: Sessions,
+    groups: Groups,
     id: SessionId,
     newDate: LocalDate,
     newStartTime: LocalTime,
@@ -28,5 +30,5 @@ suspend fun rescheduleSession(
     }
     val session = sessions.byId(id)
     session.reschedule(newDate, newStartTime, newEndTime, newHallId)
-    return sessions.byId(id).toDetailResponse()
+    return sessions.byId(id).toDetailResponse(groups)
 }

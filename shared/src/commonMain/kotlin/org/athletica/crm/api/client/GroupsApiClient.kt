@@ -14,10 +14,14 @@ import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
+import org.athletica.crm.core.entityids.GroupId
 
 class GroupsApiClient(private val http: HttpClient) {
     /** Возвращает список групп организации по параметрам [request]. */
     suspend fun list(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = requestCatching { http.get("/api/groups/list") }
+
+    /** Возвращает полные данные группы по ID. */
+    suspend fun detail(id: GroupId): Either<ApiClientError, GroupDetailResponse> = requestCatching { http.get("/api/groups/detail?id=$id") }
 
     /** Возвращает минимальный список групп организации (только id и name) для использования в селекторах. */
     suspend fun listForSelect(): Either<ApiClientError, List<GroupSelectItem>> = requestCatching { http.get("/api/groups/list-for-select") }

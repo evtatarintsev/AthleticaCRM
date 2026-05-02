@@ -11,6 +11,7 @@ object AppNavUrlEncoder {
             "AppRoute.ClientCreate" in route -> "clients/new"
             "AppRoute.ClientEdit" in route -> "clients/${runCatching { entry.toRoute<AppRoute.ClientEdit>().id }.getOrElse { "" }}/edit"
             "AppRoute.Clients" in route -> "clients"
+            "AppRoute.GroupDetail" in route -> "groups/${runCatching { entry.toRoute<AppRoute.GroupDetail>().id }.getOrElse { "" }}"
             "AppRoute.GroupCreate" in route -> "groups/new"
             "AppRoute.Groups" in route -> "groups"
             "AppRoute.EmployeeDetail" in route -> "employees/${runCatching { entry.toRoute<AppRoute.EmployeeDetail>().id }.getOrElse { "" }}"
@@ -43,6 +44,7 @@ object AppNavUrlEncoder {
             segments.size == 3 && segments[0] == "clients" && segments[2] == "edit" -> AppRoute.ClientEdit(segments[1])
             segments == listOf("groups") -> AppRoute.Groups
             segments == listOf("groups", "new") -> AppRoute.GroupCreate
+            segments.size == 2 && segments[0] == "groups" -> AppRoute.GroupDetail(segments[1])
             segments == listOf("employees") -> AppRoute.Employees
             segments == listOf("employees", "new") -> AppRoute.EmployeeCreate
             segments.size == 2 && segments[0] == "employees" -> AppRoute.EmployeeDetail(segments[1])

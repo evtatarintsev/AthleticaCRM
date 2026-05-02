@@ -588,7 +588,7 @@ private fun AppNavHost(
         }
 
         composable<AppRoute.SettingsClientAdditionalAttributes> {
-            ClientAdditionalAttributesScreen(onBack = { navController.popBackStack() })
+            ClientAdditionalAttributesScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsBranches> {

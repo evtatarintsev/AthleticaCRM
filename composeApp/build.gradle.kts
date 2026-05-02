@@ -34,6 +34,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.kermit)
             implementation(libs.arrow.core)
+            implementation(libs.kotlinx.serializationJson)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(libs.androidx.navigation.compose)

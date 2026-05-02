@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -27,6 +28,9 @@ interface Session {
 
     /** Время окончания занятия. */
     val endTime: LocalTime
+
+    /** Зал проведения занятия. */
+    val hallId: HallId
 
     /**
      * Статус занятия: `scheduled`, `completed`, `cancelled`.
@@ -60,6 +64,7 @@ interface Session {
         newDate: LocalDate,
         newStartTime: LocalTime,
         newEndTime: LocalTime,
+        newHallId: HallId,
     )
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

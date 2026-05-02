@@ -21,6 +21,7 @@ object AppNavUrlEncoder {
             "AppRoute.SettingsBasic" in route -> "settings/basic"
             "AppRoute.SettingsClientSources" in route -> "settings/client-sources"
             "AppRoute.SettingsClientAdditionalAttributes" in route -> "settings/client-additional-attributes"
+            "AppRoute.SettingsHalls" in route -> "settings/halls"
             "AppRoute.SettingsDisciplines" in route -> "settings/disciplines"
             "AppRoute.SettingsRoles" in route -> "settings/roles"
             "AppRoute.SettingsActivityLog" in route -> "settings/activity-log"
@@ -51,6 +52,7 @@ object AppNavUrlEncoder {
             segments == listOf("settings", "basic") -> AppRoute.SettingsBasic
             segments == listOf("settings", "client-sources") -> AppRoute.SettingsClientSources
             segments == listOf("settings", "client-additional-attributes") -> AppRoute.SettingsClientAdditionalAttributes
+            segments == listOf("settings", "halls") -> AppRoute.SettingsHalls
             segments == listOf("settings", "disciplines") -> AppRoute.SettingsDisciplines
             segments == listOf("settings", "roles") -> AppRoute.SettingsRoles
             segments == listOf("settings", "activity-log") -> AppRoute.SettingsActivityLog

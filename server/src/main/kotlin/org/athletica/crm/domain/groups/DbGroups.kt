@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.events.DomainEvents
@@ -46,11 +47,21 @@ class DbGroups(private val events: DomainEvents) : Groups {
         }
 
         schedule.forEach { slot ->
+            val hallExists =
+                tr
+                    .sql("SELECT 1 FROM halls WHERE id = :hallId AND org_id = :orgId AND branch_id = :branchId")
+                    .bind("hallId", slot.hallId)
+                    .bind("orgId", ctx.orgId)
+                    .bind("branchId", ctx.branchId)
+                    .firstOrNull { 1 } != null
+            if (!hallExists) {
+                raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
+            }
             tr
                 .sql(
                     """
-                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time)
-                    VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time)
+                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id)
+                    VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time, :hallId)
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
@@ -58,6 +69,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 .bind("dayOfWeek", slot.dayOfWeek.name)
                 .bind("startAt", slot.startAt.toString())
                 .bind("endAt", slot.endAt.toString())
+                .bind("hallId", slot.hallId)
                 .execute()
         }
 
@@ -109,7 +121,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
             tr
                 .sql(
                     """
-                    SELECT group_id, day_of_week, start_time, end_time
+                    SELECT group_id, day_of_week, start_time, end_time, hall_id
                     FROM schedule_slots
                     WHERE group_id = ANY(:ids)
                     ORDER BY day_of_week, start_time
@@ -122,6 +134,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
                             dayOfWeek = DayOfWeek.valueOf(row.asString("day_of_week")),
                             startAt = row.asLocalTime("start_time"),
                             endAt = row.asLocalTime("end_time"),
+                            hallId = row.asUuid("hall_id").toHallId(),
                         )
                 }
                 .groupBy({ it.first }, { it.second })
@@ -166,7 +179,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
             tr
                 .sql(
                     """
-                    SELECT day_of_week, start_time, end_time
+                    SELECT day_of_week, start_time, end_time, hall_id
                     FROM schedule_slots
                     WHERE group_id = :groupId
                     ORDER BY day_of_week, start_time
@@ -178,6 +191,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
                         dayOfWeek = DayOfWeek.valueOf(row.asString("day_of_week")),
                         startAt = row.asLocalTime("start_time"),
                         endAt = row.asLocalTime("end_time"),
+                        hallId = row.asUuid("hall_id").toHallId(),
                     )
                 }
 

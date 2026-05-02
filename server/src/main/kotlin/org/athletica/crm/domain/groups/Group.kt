@@ -9,6 +9,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
@@ -53,6 +54,7 @@ data class ScheduleSlot(
     val dayOfWeek: DayOfWeek,
     val startAt: LocalTime,
     val endAt: LocalTime,
+    val hallId: HallId,
 ) {
     context(ctx: RequestContext, raise: Raise<DomainError>)
     fun validate() {

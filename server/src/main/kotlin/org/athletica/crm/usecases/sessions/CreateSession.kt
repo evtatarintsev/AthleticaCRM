@@ -7,6 +7,7 @@ import kotlinx.datetime.LocalTime
 import org.athletica.crm.api.schemas.sessions.SessionDetailResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -22,6 +23,7 @@ suspend fun createSession(
     date: LocalDate,
     startTime: LocalTime,
     endTime: LocalTime,
+    hallId: HallId,
     notes: String?,
 ): SessionDetailResponse {
     if (endTime <= startTime) {
@@ -34,6 +36,7 @@ suspend fun createSession(
             date = date,
             startTime = startTime,
             endTime = endTime,
+            hallId = hallId,
             notes = notes,
             originDayOfWeek = null,
             originStartTime = null,

@@ -45,11 +45,21 @@ class DbGroup(
             .execute()
 
         schedule.forEach { slot ->
+            val hallExists =
+                tr
+                    .sql("SELECT 1 FROM halls WHERE id = :hallId AND org_id = :orgId AND branch_id = :branchId")
+                    .bind("hallId", slot.hallId)
+                    .bind("orgId", ctx.orgId)
+                    .bind("branchId", branchId)
+                    .firstOrNull { 1 } != null
+            if (!hallExists) {
+                raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
+            }
             tr
                 .sql(
                     """
-                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time)
-                    VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time)
+                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id)
+                    VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time, :hallId)
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
@@ -57,6 +67,7 @@ class DbGroup(
                 .bind("dayOfWeek", slot.dayOfWeek.name)
                 .bind("startAt", slot.startAt.toString())
                 .bind("endAt", slot.endAt.toString())
+                .bind("hallId", slot.hallId)
                 .execute()
         }
 

@@ -49,6 +49,7 @@ fun RouteWithContext.sessionsRoutes(
                     date = request.date,
                     startTime = request.startTime,
                     endTime = request.endTime,
+                    hallId = request.hallId,
                     notes = request.notes,
                 )
             }
@@ -64,7 +65,7 @@ fun RouteWithContext.sessionsRoutes(
         post<RescheduleSessionRequest, SessionDetailResponse>("/{id}/reschedule") { request, call ->
             val id = call.pathSessionId()
             db.transaction {
-                rescheduleSession(sessions, id, request.newDate, request.newStartTime, request.newEndTime)
+                rescheduleSession(sessions, id, request.newDate, request.newStartTime, request.newEndTime, request.newHallId)
             }
         }
     }

@@ -217,6 +217,21 @@ object Messages {
         override val en = "Branch not found"
     }
 
+    object HallAlreadyExists : LocalizationKey {
+        override val ru = "Зал с таким названием уже существует"
+        override val en = "Hall with this name already exists"
+    }
+
+    object HallNotFound : LocalizationKey {
+        override val ru = "Зал не найден"
+        override val en = "Hall not found"
+    }
+
+    object HallInUse : LocalizationKey {
+        override val ru = "Зал используется в расписании или занятиях"
+        override val en = "Hall is used in schedule or sessions"
+    }
+
     object LeadSourceAlreadyExists : LocalizationKey {
         override val ru = "Источник с таким названием уже существует"
         override val en = "Lead source with this name already exists"

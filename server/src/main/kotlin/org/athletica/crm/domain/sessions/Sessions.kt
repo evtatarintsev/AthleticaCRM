@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -23,6 +24,7 @@ interface Sessions {
         date: LocalDate,
         startTime: LocalTime,
         endTime: LocalTime,
+        hallId: HallId,
         notes: String?,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,

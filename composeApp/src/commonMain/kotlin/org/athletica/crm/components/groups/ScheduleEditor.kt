@@ -32,11 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
+import org.athletica.crm.api.schemas.halls.HallDetailResponse
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_slot
 import org.athletica.crm.generated.resources.action_delete_slot
+import org.athletica.crm.generated.resources.label_hall
 import org.athletica.crm.generated.resources.schedule_empty
+import org.athletica.crm.generated.resources.schedule_halls_empty
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -47,6 +50,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ScheduleEditor(
     slots: List<ScheduleSlot>,
+    halls: List<HallDetailResponse>,
     onSlotsChange: (List<ScheduleSlot>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,6 +66,7 @@ fun ScheduleEditor(
         slots.forEachIndexed { index, slot ->
             ScheduleSlotRow(
                 slot = slot,
+                halls = halls,
                 onSlotChange = { updated ->
                     onSlotsChange(slots.toMutableList().also { it[index] = updated })
                 },
@@ -73,21 +78,34 @@ fun ScheduleEditor(
 
         TextButton(
             onClick = {
+                if (halls.isEmpty()) {
+                    return@TextButton
+                }
                 onSlotsChange(
                     slots +
                         ScheduleSlot(
                             dayOfWeek = DayOfWeek.MONDAY,
                             startAt = LocalTime(0, 0),
                             endAt = LocalTime(1, 0),
+                            hallId = halls.first().id,
                         ),
                 )
             },
+            enabled = halls.isNotEmpty(),
             modifier = Modifier.align(Alignment.Start),
             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
         ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
             Text(stringResource(Res.string.action_add_slot))
+        }
+
+        if (halls.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.schedule_halls_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -96,10 +114,13 @@ fun ScheduleEditor(
 @Composable
 private fun ScheduleSlotRow(
     slot: ScheduleSlot,
+    halls: List<HallDetailResponse>,
     onSlotChange: (ScheduleSlot) -> Unit,
     onDelete: () -> Unit,
 ) {
     var dayExpanded by remember { mutableStateOf(false) }
+    var hallExpanded by remember { mutableStateOf(false) }
+    val hallName = halls.firstOrNull { it.id == slot.hallId }?.name ?: ""
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -155,6 +176,41 @@ private fun ScheduleSlotRow(
             value = slot.endAt,
             onValueChange = { onSlotChange(slot.copy(endAt = it)) },
         )
+
+        ExposedDropdownMenuBox(
+            expanded = hallExpanded,
+            onExpandedChange = { hallExpanded = it },
+            modifier = Modifier.width(180.dp),
+        ) {
+            OutlinedTextField(
+                value = hallName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(Res.string.label_hall)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = hallExpanded) },
+                modifier =
+                    Modifier
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        .width(180.dp),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            )
+            ExposedDropdownMenu(
+                expanded = hallExpanded,
+                onDismissRequest = { hallExpanded = false },
+            ) {
+                halls.forEach { hall ->
+                    DropdownMenuItem(
+                        text = { Text(hall.name) },
+                        onClick = {
+                            onSlotChange(slot.copy(hallId = hall.id))
+                            hallExpanded = false
+                        },
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.weight(1f))
 

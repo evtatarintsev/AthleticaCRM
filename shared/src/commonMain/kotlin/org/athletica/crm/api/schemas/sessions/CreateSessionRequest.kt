@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 
 /** Запрос на создание разового занятия вне расписания. */
@@ -14,5 +15,6 @@ data class CreateSessionRequest(
     val date: LocalDate,
     val startTime: LocalTime,
     val endTime: LocalTime,
+    val hallId: HallId,
     val notes: String? = null,
 )

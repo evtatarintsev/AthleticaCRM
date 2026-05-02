@@ -6,6 +6,7 @@ import org.athletica.crm.api.schemas.sessions.CreateSessionRequest
 import org.athletica.crm.api.schemas.sessions.RescheduleSessionRequest
 import org.athletica.crm.api.schemas.sessions.SessionDetailResponse
 import org.athletica.crm.api.schemas.sessions.SessionListResponse
+import org.athletica.crm.api.schemas.sessions.SetSessionEmployeesRequest
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toGroupId
@@ -43,6 +44,7 @@ fun RouteWithContext.sessionsRoutes(
         post<CreateSessionRequest, SessionDetailResponse>("/create") { request ->
             db.transaction {
                 createSession(
+                    groups = groups,
                     sessions = sessions,
                     id = request.id,
                     groupId = request.groupId,
@@ -66,6 +68,15 @@ fun RouteWithContext.sessionsRoutes(
             val id = call.pathSessionId()
             db.transaction {
                 rescheduleSession(sessions, id, request.newDate, request.newStartTime, request.newEndTime, request.newHallId)
+            }
+        }
+
+        post<SetSessionEmployeesRequest, SessionDetailResponse>("/{id}/set-employees") { request, call ->
+            val id = call.pathSessionId()
+            db.transaction {
+                val session = sessions.byId(id)
+                session.setEmployees(request.employeeIds)
+                sessionDetail(sessions, id)
             }
         }
     }

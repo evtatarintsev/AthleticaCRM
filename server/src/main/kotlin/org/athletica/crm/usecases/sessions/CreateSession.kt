@@ -11,12 +11,14 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
 
 /** Создаёт разовое занятие вне расписания. */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun createSession(
+    groups: Groups,
     sessions: Sessions,
     id: SessionId,
     groupId: GroupId,
@@ -29,6 +31,7 @@ suspend fun createSession(
     if (endTime <= startTime) {
         raise(CommonDomainError("INVALID_SESSION_TIME", "Время окончания должно быть позже времени начала"))
     }
+    val group = groups.byId(groupId)
     val session =
         sessions.new(
             id = id,
@@ -38,6 +41,7 @@ suspend fun createSession(
             endTime = endTime,
             hallId = hallId,
             notes = notes,
+            employeeIds = group.employeeIds,
             originDayOfWeek = null,
             originStartTime = null,
             originDate = null,

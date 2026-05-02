@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
@@ -19,9 +20,10 @@ private data class GroupSnapshot(
     val name: String,
     val schedule: List<ScheduleSlot>,
     val disciplines: List<DisciplineId>,
+    val employeeIds: List<EmployeeId>,
 )
 
-private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, schedule, disciplines))
+private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, schedule, disciplines, employeeIds))
 
 /**
  * Декоратор [Group], добавляющий запись в журнал аудита при мутирующих операциях.
@@ -40,6 +42,9 @@ class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Gro
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = AuditGroup(delegate.withNewDisciplines(disciplines), audit)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group = AuditGroup(delegate.withNewEmployees(employeeIds), audit)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewName(name: String): Group = AuditGroup(delegate.withNewName(name), audit)

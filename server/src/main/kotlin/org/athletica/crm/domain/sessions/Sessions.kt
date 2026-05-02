@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
@@ -26,6 +27,7 @@ interface Sessions {
         endTime: LocalTime,
         hallId: HallId,
         notes: String?,
+        employeeIds: List<EmployeeId>,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,
         originDate: LocalDate?,
@@ -61,4 +63,12 @@ interface Sessions {
         startTime: LocalTime,
         from: LocalDate,
     ): List<Session>
+
+    /** Синхронизирует преподавателей группы в будущих занятиях без ручного override. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun syncFutureEmployeesFromGroup(
+        groupId: GroupId,
+        employeeIds: List<EmployeeId>,
+        from: LocalDate,
+    )
 }

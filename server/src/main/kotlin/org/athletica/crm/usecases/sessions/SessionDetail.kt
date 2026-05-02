@@ -29,4 +29,6 @@ fun Session.toDetailResponse() =
         isManual = isManual,
         isRescheduled = isRescheduled,
         notes = notes,
+        employeeIds = employeeIds,
+        isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
     )

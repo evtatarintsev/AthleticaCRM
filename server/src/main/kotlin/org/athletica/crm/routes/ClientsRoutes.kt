@@ -60,7 +60,7 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
 
         // Set appropriate headers for download
         call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"clients.${format}\"")
-        call.response.headers.append(HttpHeaders.ContentType, if (format == "xlsx") "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else "text/csv")
+        call.response.headers.append(HttpHeaders.ContentType, if (format == "xlsx") "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else "text/csv; charset=UTF-8")
 
         csvContent
     }

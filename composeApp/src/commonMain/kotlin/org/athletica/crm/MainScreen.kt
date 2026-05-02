@@ -88,6 +88,7 @@ import org.athletica.crm.components.employees.EmployeesScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupDetailScreen
 import org.athletica.crm.components.groups.GroupsScreen
+import org.athletica.crm.components.home.HomeScreen
 import org.athletica.crm.components.notifications.AppNotification
 import org.athletica.crm.components.notifications.NotificationBell
 import org.athletica.crm.components.notifications.NotificationLink
@@ -424,9 +425,7 @@ private fun AppNavHost(
         modifier = modifier,
     ) {
         composable<AppRoute.Home> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(NavItem.HOME.label(), style = MaterialTheme.typography.headlineMedium)
-            }
+            HomeScreen(api = api, modifier = Modifier.fillMaxSize())
         }
 
         composable<AppRoute.Schedule> {

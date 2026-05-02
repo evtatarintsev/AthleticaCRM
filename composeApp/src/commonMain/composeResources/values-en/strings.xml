@@ -350,4 +350,9 @@
     <string name="export_fields_balance">Balance</string>
     <string name="label_select_all">Select all</string>
 
+    <!-- Home -->
+    <string name="home_today_sessions_title">Today\'s sessions</string>
+    <string name="home_today_sessions_empty">No sessions today</string>
+    <string name="home_today_sessions_error">Failed to load sessions</string>
+
 </resources>

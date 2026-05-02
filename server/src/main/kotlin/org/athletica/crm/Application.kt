@@ -44,6 +44,7 @@ import org.athletica.crm.routes.disciplinesRoutes
 import org.athletica.crm.routes.employeesRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.hallsRoutes
+import org.athletica.crm.routes.homeRoutes
 import org.athletica.crm.routes.leadSourcesRoutes
 import org.athletica.crm.routes.logout
 import org.athletica.crm.routes.myBranchesRoute
@@ -160,6 +161,7 @@ fun Application.configureServer() {
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
+                        homeRoutes(di.groups, di.sessions, di.halls)
                         disciplinesRoutes(di.disciplines)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)

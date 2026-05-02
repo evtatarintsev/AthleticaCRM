@@ -71,12 +71,11 @@ fun RouteWithContext.sessionsRoutes(
             }
         }
 
-        post<SetSessionEmployeesRequest, SessionDetailResponse>("/{id}/set-employees") { request, call ->
-            val id = call.pathSessionId()
+        post<SetSessionEmployeesRequest, SessionDetailResponse>("/set-employees") { request ->
             db.transaction {
-                val session = sessions.byId(id)
+                val session = sessions.byId(request.sessionId)
                 session.setEmployees(request.employeeIds)
-                sessionDetail(sessions, groups, id)
+                sessionDetail(sessions, groups, request.sessionId)
             }
         }
     }

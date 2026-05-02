@@ -67,13 +67,10 @@ class SessionsApiClient(private val http: HttpClient) {
             }
         }
 
-    /** Устанавливает преподавателей занятия по идентификатору [id]. */
-    suspend fun setEmployees(
-        id: SessionId,
-        request: SetSessionEmployeesRequest,
-    ): Either<ApiClientError, SessionDetailResponse> =
+    /** Устанавливает преподавателей занятия. Идентификатор занятия передаётся в [request]. */
+    suspend fun setEmployees(request: SetSessionEmployeesRequest): Either<ApiClientError, SessionDetailResponse> =
         requestCatching {
-            http.post("/api/sessions/$id/set-employees") {
+            http.post("/api/sessions/set-employees") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
@@ -22,6 +23,7 @@ private data class NewSessionSnapshot(
     val startTime: LocalTime,
     val endTime: LocalTime,
     val hallId: HallId,
+    val employeeIds: List<EmployeeId>,
     val isManual: Boolean,
 )
 
@@ -39,16 +41,17 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
         endTime: LocalTime,
         hallId: HallId,
         notes: String?,
+        employeeIds: List<EmployeeId>,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,
         originDate: LocalDate?,
     ): Session? {
-        val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, originDayOfWeek, originStartTime, originDate)
+        val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employeeIds, originDayOfWeek, originStartTime, originDate)
         if (session != null && originDayOfWeek == null) {
             audit.logCreate(
                 "session",
                 id,
-                Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, isManual = true)),
+                Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, employeeIds, isManual = true)),
             )
         }
         return session?.let { AuditSession(it, audit) }

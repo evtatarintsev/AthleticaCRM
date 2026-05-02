@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
@@ -19,9 +20,22 @@ private data class SessionSnapshot(
     val status: String,
     val isRescheduled: Boolean,
     val notes: String?,
+    val employeeIds: List<EmployeeId>,
+    val isEmployeeAssignmentOverridden: Boolean,
 )
 
-private fun Session.snapshot() = Json.encodeToString(SessionSnapshot(date, hallId, status, isRescheduled, notes))
+private fun Session.snapshot() =
+    Json.encodeToString(
+        SessionSnapshot(
+            date = date,
+            hallId = hallId,
+            status = status,
+            isRescheduled = isRescheduled,
+            notes = notes,
+            employeeIds = employeeIds,
+            isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
+        ),
+    )
 
 /**
  * Декоратор [Session], добавляющий запись в журнал аудита при изменении состояния занятия.
@@ -46,6 +60,12 @@ class AuditSession(private val delegate: Session, private val audit: AuditLog) :
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun complete() =
         delegate.complete().also {
+            audit.logUpdate("session", id, delegate.snapshot())
+        }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun setEmployees(employeeIds: List<EmployeeId>) =
+        delegate.setEmployees(employeeIds).also {
             audit.logUpdate("session", id, delegate.snapshot())
         }
 }

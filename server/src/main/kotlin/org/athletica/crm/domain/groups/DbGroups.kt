@@ -5,10 +5,13 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toDisciplineId
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -29,6 +32,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
         name: String,
         schedule: List<ScheduleSlot>,
         disciplineIds: List<DisciplineId>,
+        employeeIds: List<EmployeeId>,
     ): Group {
         try {
             tr
@@ -86,8 +90,21 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
             }
         }
+        employeeIds.forEach { employeeId ->
+            validateEmployeeForBranch(employeeId, ctx.branchId)
+            try {
+                tr
+                    .sql(
+                        "INSERT INTO group_employees (group_id, employee_id) VALUES (:groupId, :employeeId)",
+                    ).bind("groupId", id)
+                    .bind("employeeId", employeeId)
+                    .execute()
+            } catch (e: R2dbcDataIntegrityViolationException) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+            }
+        }
         events.publish(GroupCreated(id))
-        return DbGroup(id, ctx.branchId, name, schedule, disciplineIds)
+        return DbGroup(id, ctx.branchId, name, schedule, disciplineIds, employeeIds)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -154,6 +171,20 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 }
                 .groupBy({ it.first }, { it.second })
 
+        val employeeIdsByGroup =
+            tr
+                .sql(
+                    """
+                    SELECT group_id, employee_id
+                    FROM group_employees
+                    WHERE group_id = ANY(:ids)
+                    """.trimIndent(),
+                ).bind("ids", groupIds)
+                .list { row ->
+                    row.asUuid("group_id").toGroupId() to row.asUuid("employee_id").toEmployeeId()
+                }
+                .groupBy({ it.first }, { it.second })
+
         return groups.map { (id, branchId, name) ->
             DbGroup(
                 id = id,
@@ -161,6 +192,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 name = name,
                 schedule = slotsByGroup[id] ?: emptyList(),
                 disciplines = disciplinesByGroup[id] ?: emptyList(),
+                employeeIds = employeeIdsByGroup[id] ?: emptyList(),
             )
         }
     }
@@ -201,6 +233,34 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 .bind("groupId", id)
                 .list { row -> row.asUuid("discipline_id").toDisciplineId() }
 
-        return DbGroup(id, branchId, name, schedule, disciplines)
+        val employeeIds =
+            tr
+                .sql("SELECT employee_id FROM group_employees WHERE group_id = :groupId")
+                .bind("groupId", id)
+                .list { row -> row.asUuid("employee_id").toEmployeeId() }
+
+        return DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    private suspend fun validateEmployeeForBranch(employeeId: EmployeeId, branchId: BranchId) {
+        val allBranchesAccess =
+            tr
+                .sql("SELECT all_branches_access FROM employees WHERE id = :employeeId AND org_id = :orgId AND is_active = true")
+                .bind("employeeId", employeeId)
+                .bind("orgId", ctx.orgId)
+                .firstOrNull { row -> row.get("all_branches_access", java.lang.Boolean::class.java) ?: false }
+                ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+        if (allBranchesAccess != true) {
+            val branchAllowed =
+                tr
+                    .sql("SELECT 1 FROM employee_branches WHERE employee_id = :employeeId AND branch_id = :branchId")
+                    .bind("employeeId", employeeId)
+                    .bind("branchId", branchId)
+                    .firstOrNull { 1 } != null
+            if (!branchAllowed) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+            }
+        }
     }
 }

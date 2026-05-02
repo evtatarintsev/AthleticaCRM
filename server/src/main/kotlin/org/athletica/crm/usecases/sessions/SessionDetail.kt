@@ -32,4 +32,6 @@ suspend fun Session.toDetailResponse(groups: Groups) =
         isManual = isManual,
         isRescheduled = isRescheduled,
         notes = notes,
+        employeeIds = employeeIds,
+        isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
     )

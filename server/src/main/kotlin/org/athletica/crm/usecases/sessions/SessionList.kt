@@ -64,4 +64,6 @@ fun Session.toListItem(groupName: String) =
         isManual = isManual,
         isRescheduled = isRescheduled,
         notes = notes,
+        employeeIds = employeeIds,
+        isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
     )

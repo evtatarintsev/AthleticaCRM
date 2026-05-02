@@ -8,6 +8,7 @@ import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -30,6 +31,9 @@ interface Group {
     /** Дисциплины, привязанные к группе. */
     val disciplines: List<DisciplineId>
 
+    /** Преподаватели группы, используемые как шаблон при генерации занятий. */
+    val employeeIds: List<EmployeeId>
+
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
 
@@ -40,12 +44,21 @@ interface Group {
     suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewName(name: String): Group
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun withNew(name: String, disciplines: List<DisciplineId>, schedule: List<ScheduleSlot>): Group =
+    suspend fun withNew(
+        name: String,
+        disciplines: List<DisciplineId>,
+        schedule: List<ScheduleSlot>,
+        employeeIds: List<EmployeeId>,
+    ): Group =
         withNewName(name)
             .withNewDisciplines(disciplines)
+            .withNewEmployees(employeeIds)
             .withNewSchedule(schedule)
 }
 

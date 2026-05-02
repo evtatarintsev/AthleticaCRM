@@ -13,6 +13,7 @@ import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
+import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
 
 class GroupsApiClient(private val http: HttpClient) {
     /** Возвращает список групп организации по параметрам [request]. */
@@ -34,6 +35,15 @@ class GroupsApiClient(private val http: HttpClient) {
     suspend fun setDisciplines(request: SetGroupDisciplinesRequest): Either<ApiClientError, Unit> =
         requestCatching {
             http.post("/api/groups/set-disciplines") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Устанавливает список преподавателей группы по данным [request]. Полностью заменяет текущий список. */
+    suspend fun setEmployees(request: SetGroupEmployeesRequest): Either<ApiClientError, Unit> =
+        requestCatching {
+            http.post("/api/groups/set-employees") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

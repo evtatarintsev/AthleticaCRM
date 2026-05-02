@@ -22,4 +22,5 @@ class ApiClient(private val http: HttpClient) {
     val leadSources = LeadSourcesApiClient(http)
     val customFields = CustomFieldsApiClient(http)
     val halls = HallsApiClient(http)
+    val sessions = SessionsApiClient(http)
 }

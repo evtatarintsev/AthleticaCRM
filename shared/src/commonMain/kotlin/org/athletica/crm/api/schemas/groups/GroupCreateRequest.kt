@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 
 /**
@@ -18,4 +19,6 @@ data class GroupCreateRequest(
     val schedule: List<ScheduleSlot> = emptyList(),
     /** Идентификаторы дисциплин, привязываемых к группе. */
     val disciplineIds: List<DisciplineId> = emptyList(),
+    /** Идентификаторы преподавателей группы, наследуемые новыми занятиями. */
+    val employeeIds: List<EmployeeId> = emptyList(),
 )

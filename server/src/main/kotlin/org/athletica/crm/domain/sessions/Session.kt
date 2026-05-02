@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
@@ -53,6 +54,12 @@ interface Session {
     /** Произвольные заметки к занятию. */
     val notes: String?
 
+    /** Преподаватели, закреплённые за занятием. */
+    val employeeIds: List<EmployeeId>
+
+    /** Признак, что состав преподавателей меняли вручную на уровне занятия. */
+    val isEmployeeAssignmentOverridden: Boolean
+
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun cancel()
 
@@ -66,4 +73,7 @@ interface Session {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun complete()
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun setEmployees(employeeIds: List<EmployeeId>)
 }

@@ -6,6 +6,7 @@ import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -19,6 +20,7 @@ class DbGroup(
     override val name: String,
     override val schedule: List<ScheduleSlot>,
     override val disciplines: List<DisciplineId>,
+    override val employeeIds: List<EmployeeId>,
 ) : Group {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
@@ -89,14 +91,53 @@ class DbGroup(
                 raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
             }
         }
+
+        tr
+            .sql("DELETE FROM group_employees WHERE group_id = :groupId")
+            .bind("groupId", id)
+            .execute()
+
+        employeeIds.forEach { employeeId ->
+            val allBranchesAccess =
+                tr
+                    .sql("SELECT all_branches_access FROM employees WHERE id = :employeeId AND org_id = :orgId AND is_active = true")
+                    .bind("employeeId", employeeId)
+                    .bind("orgId", ctx.orgId)
+                    .firstOrNull { row -> row.get("all_branches_access", java.lang.Boolean::class.java) ?: false }
+                    ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+            if (allBranchesAccess != true) {
+                val branchAllowed =
+                    tr
+                        .sql("SELECT 1 FROM employee_branches WHERE employee_id = :employeeId AND branch_id = :branchId")
+                        .bind("employeeId", employeeId)
+                        .bind("branchId", branchId)
+                        .firstOrNull { 1 } != null
+                if (!branchAllowed) {
+                    raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+                }
+            }
+            try {
+                tr
+                    .sql(
+                        "INSERT INTO group_employees (group_id, employee_id) VALUES (:groupId, :employeeId)",
+                    ).bind("groupId", id)
+                    .bind("employeeId", employeeId)
+                    .execute()
+            } catch (e: R2dbcDataIntegrityViolationException) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+            }
+        }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group = DbGroup(id, branchId, name, schedule, disciplines)
+    override suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, schedule, disciplines)
+    override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, schedule, disciplines)
+    override suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.utils.downloadFile
 
 /**
  * ViewModel для экрана экспорта клиентов.
@@ -41,9 +42,7 @@ class ExportViewModel(
                     state = ExportState.Error(error.toString())
                 },
                 ifRight = { csvData ->
-                    // TODO: Реализовать скачивание файла
-                    // Для веб-платформы нужно использовать browser API
-                    // Для Android/iOS - файловую систему
+                    downloadFile("clients.$format", csvData)
                     state = ExportState.Success(csvData)
                     onExportComplete()
                 },

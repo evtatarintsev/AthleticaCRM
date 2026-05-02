@@ -386,4 +386,9 @@
     <string name="export_fields_balance">Баланс</string>
     <string name="label_select_all">Выбрать все</string>
 
+    <!-- Home -->
+    <string name="home_today_sessions_title">Занятия сегодня</string>
+    <string name="home_today_sessions_empty">Занятий сегодня нет</string>
+    <string name="home_today_sessions_error">Не удалось загрузить занятия</string>
+
 </resources>

@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
+import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.halls.HallDetailResponse
 import org.athletica.crm.core.entityids.GroupId
@@ -53,6 +55,7 @@ import org.athletica.crm.generated.resources.section_disciplines
 import org.athletica.crm.generated.resources.section_group_employees
 import org.athletica.crm.generated.resources.section_schedule
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Instant
 
 /**
  * Экран редактирования существующей группы.
@@ -74,8 +77,20 @@ fun GroupEditScreen(
             GroupForm(
                 name = group.name,
                 schedule = group.schedule,
-                selectedDisciplines = group.disciplines.map { it },
-                selectedEmployees = group.employees.map { it },
+                selectedDisciplines =
+                    group.disciplines.map { DisciplineDetailResponse(id = it.id, name = it.name) },
+                selectedEmployees =
+                    group.employees.map {
+                        EmployeeListItem(
+                            id = it.id,
+                            name = it.name,
+                            avatarId = it.avatarId,
+                            isOwner = false,
+                            isActive = true,
+                            joinedAt = Instant.DISTANT_PAST,
+                            roles = emptyList(),
+                        )
+                    },
             ),
         )
     }

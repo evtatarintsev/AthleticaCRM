@@ -187,6 +187,7 @@
 
     <!-- Group create / schedule editor -->
     <string name="screen_group_create">Новая группа</string>
+    <string name="screen_group_edit">Редактировать группу</string>
     <string name="section_schedule">Расписание</string>
     <string name="schedule_empty">Расписание не задано</string>
     <string name="schedule_halls_empty">Добавьте хотя бы один зал в текущем филиале</string>

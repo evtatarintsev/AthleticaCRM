@@ -1,6 +1,7 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.routing.RoutingCall
+import org.athletica.crm.api.schemas.groups.EditGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
@@ -70,6 +71,21 @@ fun RouteWithContext.groupsRoutes(
                         request.disciplineIds,
                         request.employeeIds,
                     )
+                    .toGroupDetailResponse(disciplines.list(), employees.list())
+            }
+        }
+
+        post<EditGroupRequest, GroupDetailResponse>("/edit") { request ->
+            db.transaction {
+                groups
+                    .byId(request.id)
+                    .withNew(
+                        request.name,
+                        request.disciplineIds,
+                        request.schedule.map { it.toDomain() },
+                        request.employeeIds,
+                    )
+                    .apply { save() }
                     .toGroupDetailResponse(disciplines.list(), employees.list())
             }
         }

@@ -87,6 +87,7 @@ import org.athletica.crm.components.employees.EmployeeEditScreenLoader
 import org.athletica.crm.components.employees.EmployeesScreen
 import org.athletica.crm.components.groups.GroupCreateScreen
 import org.athletica.crm.components.groups.GroupDetailScreen
+import org.athletica.crm.components.groups.GroupEditScreenLoader
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.home.HomeScreen
 import org.athletica.crm.components.notifications.AppNotification
@@ -514,6 +515,17 @@ private fun AppNavHost(
                 groupId = GroupId(parse(route.id)),
                 api = api,
                 onBack = { navController.popBackStack() },
+                onEdit = { group -> navController.navigate(AppRoute.GroupEdit(group.id.toString())) },
+            )
+        }
+
+        composable<AppRoute.GroupEdit> { entry ->
+            val route = entry.toRoute<AppRoute.GroupEdit>()
+            GroupEditScreenLoader(
+                groupId = GroupId(parse(route.id)),
+                api = api,
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
             )
         }
 

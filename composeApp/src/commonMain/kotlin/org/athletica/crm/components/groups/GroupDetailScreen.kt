@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,6 +53,7 @@ import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_group_employee
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
+import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.dialog_remove_employee_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_employee_from_group_title
@@ -65,6 +67,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Экран детальной информации о группе.
  * Отображает основную информацию, расписание и список преподавателей.
+ * По клику на Edit вызывает [onEdit] с текущей группой.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +75,7 @@ fun GroupDetailScreen(
     groupId: GroupId,
     api: ApiClient,
     onBack: () -> Unit,
+    onEdit: (GroupDetailResponse) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -94,6 +98,17 @@ fun GroupDetailScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(Res.string.action_back),
                         )
+                    }
+                },
+                actions = {
+                    if (viewModel.state is GroupDetailState.Loaded) {
+                        val loadedGroup = (viewModel.state as GroupDetailState.Loaded).group
+                        IconButton(onClick = { onEdit(loadedGroup) }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = stringResource(Res.string.action_edit),
+                            )
+                        }
                     }
                 },
             )

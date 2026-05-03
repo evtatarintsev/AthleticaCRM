@@ -7,6 +7,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import org.athletica.crm.api.schemas.groups.EditGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
@@ -30,6 +31,15 @@ class GroupsApiClient(private val http: HttpClient) {
     suspend fun create(request: GroupCreateRequest): Either<ApiClientError, GroupDetailResponse> =
         requestCatching {
             http.post("/api/groups/create") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Редактирует существующую группу по данным [request]. Возвращает обновленную группу. */
+    suspend fun edit(request: EditGroupRequest): Either<ApiClientError, GroupDetailResponse> =
+        requestCatching {
+            http.post("/api/groups/edit") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

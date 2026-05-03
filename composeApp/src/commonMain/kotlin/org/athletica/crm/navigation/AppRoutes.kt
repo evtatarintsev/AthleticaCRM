@@ -27,6 +27,8 @@ sealed class AppRoute {
 
     @Serializable data object GroupCreate : AppRoute()
 
+    @Serializable data class GroupEdit(val id: String) : AppRoute()
+
     @Serializable data object Employees : AppRoute()
 
     @Serializable data class EmployeeDetail(val id: String) : AppRoute()

@@ -1,6 +1,7 @@
 package org.athletica.crm.api.client
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -19,6 +20,7 @@ import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.errors.DomainError
 
 class ClientsApiClient(private val http: HttpClient) {
     /** Возвращает страницу клиентов организации по параметрам [request]. */

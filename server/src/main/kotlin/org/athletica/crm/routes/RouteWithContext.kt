@@ -6,6 +6,7 @@ import arrow.core.raise.either
 import com.auth0.jwt.interfaces.Payload
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.header
@@ -15,6 +16,10 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.route
 import io.ktor.util.reflect.typeInfo
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
 import org.athletica.crm.Di
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.Lang
@@ -45,6 +50,17 @@ class RouteWithContext(val di: Di, val router: Route) {
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val response = body(call)
+            call.respond(response, typeInfo<Res>())
+        }
+
+    @JvmName("getWithRequest")
+    inline fun <reified Req, reified Res> get(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
+    ): Route =
+        route(path, HttpMethod.Get) { call ->
+            val request = call.request.queryParameters.decode<Req>()
+            val response = body(request)
             call.respond(response, typeInfo<Res>())
         }
 
@@ -135,6 +151,22 @@ suspend inline fun <reified T> RoutingCall.body() =
         raise(CommonDomainError("INVALID_REQUEST", "Invalid request body"))
     }
 
+context(raise: Raise<DomainError>)
+@PublishedApi
+internal inline fun <reified T> Parameters.decode(): T {
+    val jsonObject =
+        JsonObject(
+            entries()
+                .filter { (_, values) -> values.isNotEmpty() }
+                .associate { (key, values) -> key to JsonPrimitive(values.first()) },
+        )
+    return try {
+        queryParametersJson.decodeFromJsonElement(jsonObject)
+    } catch (e: Exception) {
+        raise(CommonDomainError("INVALID_REQUEST", "Invalid query parameters"))
+    }
+}
+
 fun Route.routeWithContext(di: Di, block: RouteWithContext.() -> Unit) {
     RouteWithContext(di, this).apply(block)
 }
@@ -203,3 +235,6 @@ suspend inline fun <reified A : Any> RoutingCall.eitherToResponse(block: Raise<D
 fun RoutingCall.clientIp(): String? =
     request.headers["X-Forwarded-For"]?.split(",")?.firstOrNull()?.trim()
         ?: request.local.remoteHost
+
+@PublishedApi
+internal val queryParametersJson = Json { ignoreUnknownKeys = true }

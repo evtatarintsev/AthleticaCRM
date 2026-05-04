@@ -12,6 +12,7 @@ import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
+import org.athletica.crm.api.schemas.clients.ClientDetailRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
@@ -70,10 +71,9 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
         csvContent
     }
 
-    get<ClientDetailResponse>("/clients/detail") { call ->
-        val id = call.request.queryParameters.asUuid("id").toClientId()
+    get<ClientDetailRequest, ClientDetailResponse>("/clients/detail") { request ->
         db.transaction {
-            clients.byId(id).detailResponse()
+            clients.byId(request.id).detailResponse()
         }
     }
 

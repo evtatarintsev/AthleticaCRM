@@ -1,10 +1,9 @@
 package org.athletica.crm.usecases
 
 import arrow.core.Either
+import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.clients.ClientListItem
-import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
@@ -12,9 +11,11 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.clients.Client
+import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asUuid
-import org.athletica.crm.usecases.clients.clientList
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -122,11 +123,16 @@ class ClientListTest {
     fun `clientList возвращает пустой список если клиентов нет`() =
         runTest {
             val orgId = insertOrg()
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                assertTrue(clients.isEmpty())
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            assertTrue(clients.isEmpty())
         }
 
     @Test
@@ -136,13 +142,18 @@ class ClientListTest {
             insertClient(orgId, "Анна Иванова")
             insertClient(orgId, "Борис Петров")
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                assertEquals(2, clients.size)
-                assertTrue(clients.any { it.name == "Анна Иванова" })
-                assertTrue(clients.any { it.name == "Борис Петров" })
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            assertEquals(2, clients.size)
+            assertTrue(clients.any { it.name == "Анна Иванова" })
+            assertTrue(clients.any { it.name == "Борис Петров" })
         }
 
     @Test
@@ -151,12 +162,17 @@ class ClientListTest {
             val orgId = insertOrg()
             insertClient(orgId, "Клиент Без Групп")
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                assertEquals(1, clients.size)
-                assertTrue(clients[0].groups.isEmpty())
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            assertEquals(1, clients.size)
+            assertTrue(clients[0].groups.isEmpty())
         }
 
     @Test
@@ -169,14 +185,19 @@ class ClientListTest {
             addClientToGroup(clientId, groupId1)
             addClientToGroup(clientId, groupId2)
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                val client = clients.single()
-                assertEquals(2, client.groups.size)
-                assertTrue(client.groups.any { it.name == "Боевое самбо" })
-                assertTrue(client.groups.any { it.name == "Мужчины" })
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            val client = clients.single()
+            assertEquals(2, client.groups.size)
+            assertTrue(client.groups.any { it.name == "Боевое самбо" })
+            assertTrue(client.groups.any { it.name == "Мужчины" })
         }
 
     @Test
@@ -188,14 +209,19 @@ class ClientListTest {
             val groupId = insertGroup(orgId, "Боевое самбо")
             addClientToGroup(client1Id, groupId)
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                val client1 = clients.first { it.name == "Клиент 1" }
-                val client2 = clients.first { it.name == "Клиент 2" }
-                assertEquals(1, client1.groups.size)
-                assertTrue(client2.groups.isEmpty())
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            val client1 = clients.first { it.name == "Клиент 1" }
+            val client2 = clients.first { it.name == "Клиент 2" }
+            assertEquals(1, client1.groups.size)
+            assertTrue(client2.groups.isEmpty())
         }
 
     @Test
@@ -206,12 +232,17 @@ class ClientListTest {
             insertClient(orgId1, "Клиент Орг 1")
             insertClient(orgId2, "Клиент Орг 2")
 
-            context(TestPostgres.db, ctx(orgId1)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                assertEquals(1, clients.size)
-                assertEquals("Клиент Орг 1", clients[0].name)
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId1), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            assertEquals(1, clients.size)
+            assertEquals("Клиент Орг 1", clients[0].name)
         }
 
     @Test
@@ -220,11 +251,16 @@ class ClientListTest {
             val orgId = insertOrg()
             insertClient(orgId, "Клиент")
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val client = assertIs<Either.Right<List<ClientListItem>>>(result).value.single()
-                assertEquals(0.0, client.balance)
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val client = assertIs<Either.Right<List<Client>>>(result).value.single()
+            assertEquals(0.0, client.balance)
         }
 
     @Test
@@ -235,11 +271,16 @@ class ClientListTest {
             insertBalanceEntry(orgId, clientId, amount = 2000.0, balanceAfter = 2000.0)
             insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = 200.0)
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val client = assertIs<Either.Right<List<ClientListItem>>>(result).value.single()
-                assertEquals(200.0, client.balance)
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val client = assertIs<Either.Right<List<Client>>>(result).value.single()
+            assertEquals(200.0, client.balance)
         }
 
     @Test
@@ -250,11 +291,16 @@ class ClientListTest {
             insertBalanceEntry(orgId, clientId, amount = 1000.0, balanceAfter = 1000.0)
             insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = -800.0)
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val client = assertIs<Either.Right<List<ClientListItem>>>(result).value.single()
-                assertEquals(-800.0, client.balance)
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val client = assertIs<Either.Right<List<Client>>>(result).value.single()
+            assertEquals(-800.0, client.balance)
         }
 
     @Test
@@ -265,14 +311,19 @@ class ClientListTest {
             val client2Id = insertClient(orgId, "Клиент 2")
             insertBalanceEntry(orgId, client1Id, amount = 500.0, balanceAfter = 500.0)
 
-            context(TestPostgres.db, ctx(orgId)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                val client1 = clients.first { it.name == "Клиент 1" }
-                val client2 = clients.first { it.name == "Клиент 2" }
-                assertEquals(500.0, client1.balance)
-                assertEquals(0.0, client2.balance)
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            val client1 = clients.first { it.name == "Клиент 1" }
+            val client2 = clients.first { it.name == "Клиент 2" }
+            assertEquals(500.0, client1.balance)
+            assertEquals(0.0, client2.balance)
         }
 
     @Test
@@ -286,12 +337,17 @@ class ClientListTest {
             // но убеждаемся что clientList не возвращает чужие группы
             insertGroup(orgId1, "Своя группа").also { addClientToGroup(clientId, it) }
 
-            context(TestPostgres.db, ctx(orgId1)) {
-                val result = clientList(ClientListRequest())
-                val clients = assertIs<Either.Right<List<ClientListItem>>>(result).value
-                val client = clients.single()
-                assertEquals(1, client.groups.size)
-                assertEquals("Своя группа", client.groups[0].name)
-            }
+            val result =
+                either<DomainError, List<Client>> {
+                    TestPostgres.db.transaction {
+                        context(ctx(orgId1), this) {
+                            DbClients().list()
+                        }
+                    }
+                }
+            val clients = assertIs<Either.Right<List<Client>>>(result).value
+            val client = clients.single()
+            assertEquals(1, client.groups.size)
+            assertEquals("Своя группа", client.groups[0].name)
         }
 }

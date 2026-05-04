@@ -36,27 +36,32 @@ import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.clients.clientList
 import kotlin.uuid.Uuid
 
 /**
  * Регистрирует маршруты для работы с клиентами:
  * Требует контекстных параметров [Database] и [AuditLog].
  */
-context(db: Database, audit: AuditLog)
+context(db: Database)
 fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, enrollments: Enrollments) {
     get<ClientListResponse>("/clients/list") {
-        val clients = clientList(ClientListRequest()).bind()
-        ClientListResponse(clients, clients.size.toUInt())
+        val clientList =
+            db.transaction {
+                clients.list()
+            }
+        ClientListResponse(clientList.map { it.toListItem() }, clientList.size.toUInt())
     }
 
     post<ClientListRequest, ByteArray>("/clients/export") { request, call ->
         val format = call.request.queryParameters["format"] ?: "csv"
 
-        val clients = clientList(request).bind()
+        val clientList =
+            db.transaction {
+                clients.list()
+            }
 
         // Generate CSV content
-        val csvContent = generateCsvContent(clients)
+        val csvContent = generateCsvContent(clientList.map { it.toListItem() })
 
         // Set appropriate headers for download
         call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"clients.${format}\"")
@@ -159,6 +164,17 @@ fun Client.detailResponse() =
         balance = balance,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
         leadSourceId = leadSourceId,
+    )
+
+fun Client.toListItem() =
+    ClientListItem(
+        id = id,
+        name = name,
+        avatarId = avatarId,
+        birthday = birthday,
+        gender = gender,
+        groups = groups.map { org.athletica.crm.api.schemas.clients.ClientGroup(it.id, it.name) },
+        balance = balance,
     )
 
 fun ClientBalance.historyResponse() =

@@ -23,4 +23,7 @@ interface Clients {
         gender: Gender,
         leadSourceId: LeadSourceId? = null,
     ): Client
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun list(): List<Client>
 }

@@ -142,4 +142,87 @@ class DbClients : Clients {
             orgId = ctx.orgId,
         )
     }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun list(): List<Client> {
+        val clients =
+            tr
+                .sql(
+                    """
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id,
+                           COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
+                    FROM clients
+                    WHERE org_id = :orgId
+                    ORDER BY name
+                    """.trimIndent(),
+                )
+                .bind("orgId", ctx.orgId)
+                .list { row ->
+                    DbClient(
+                        id = row.asUuid("id").toClientId(),
+                        name = row.asString("name"),
+                        avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
+                        birthday = row.asLocalDateOrNull("birthday"),
+                        gender = Gender.valueOf(row.asString("gender")),
+                        groups = emptyList(),
+                        balance = row.asDouble("balance"),
+                        docs = emptyList(),
+                        leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
+                        orgId = ctx.orgId,
+                    )
+                }
+
+        val groupsByClientId =
+            tr
+                .sql(
+                    """
+                    SELECT e.client_id, g.id, g.name
+                    FROM enrollments e
+                    JOIN groups g ON g.id = e.group_id
+                    WHERE g.org_id = :orgId AND e.left_at IS NULL
+                    """.trimIndent(),
+                )
+                .bind("orgId", ctx.orgId)
+                .list { row ->
+                    val clientId = row.asUuid("client_id").toClientId()
+                    val group =
+                        ClientGroup(
+                            id = row.asUuid("id").toGroupId(),
+                            name = row.asString("name"),
+                        )
+                    clientId to group
+                }
+                .groupBy({ it.first }, { it.second })
+
+        val docsByClientId =
+            tr
+                .sql(
+                    """
+                    SELECT client_id, id, upload_id, name, created_at
+                    FROM client_docs
+                    WHERE client_id IN (SELECT id FROM clients WHERE org_id = :orgId)
+                    ORDER BY created_at DESC
+                    """.trimIndent(),
+                )
+                .bind("orgId", ctx.orgId)
+                .list { row ->
+                    val clientId = row.asUuid("client_id").toClientId()
+                    val doc =
+                        ClientDoc(
+                            id = row.asUuid("id").toClientDocId(),
+                            uploadId = row.asUuid("upload_id").toUploadId(),
+                            name = row.asString("name"),
+                            createdAt = row.asInstant("created_at"),
+                        )
+                    clientId to doc
+                }
+                .groupBy({ it.first }, { it.second })
+
+        return clients.map { client ->
+            client.copy(
+                groups = groupsByClientId[client.id] ?: emptyList(),
+                docs = docsByClientId[client.id] ?: emptyList(),
+            )
+        }
+    }
 }

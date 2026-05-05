@@ -268,13 +268,13 @@ fun Row.asUuidOrNull(column: String): Uuid? = get(column, java.util.UUID::class.
 
 fun Row.asUuidOrNull(pos: Int): Uuid? = get(pos, java.util.UUID::class.java)?.toKotlinUuid()
 
-fun Row.asLong(column: String) = get(column, java.lang.Long::class.java)!!.toLong()
+fun Row.asLong(column: String) = get(column, Long::class.java)!!
 
-fun Row.asLong(pos: Int) = get(pos, java.lang.Long::class.java)!!.toLong()
+fun Row.asLong(pos: Int) = get(pos, Long::class.java)!!
 
-fun Row.asInt(column: String) = get(column, java.lang.Integer::class.java)!!.toInt()
+fun Row.asInt(column: String) = get(column, Int::class.java)!!
 
-fun Row.asInt(pos: Int) = get(pos, java.lang.Integer::class.java)!!.toInt()
+fun Row.asInt(pos: Int) = get(pos, Int::class.java)!!
 
 fun Row.asInstant(pos: Int) =
     get(pos, java.time.OffsetDateTime::class.java)!!

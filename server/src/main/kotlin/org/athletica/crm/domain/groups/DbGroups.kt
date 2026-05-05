@@ -249,7 +249,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 .sql("SELECT all_branches_access FROM employees WHERE id = :employeeId AND org_id = :orgId AND is_active = true")
                 .bind("employeeId", employeeId)
                 .bind("orgId", ctx.orgId)
-                .firstOrNull { row -> row.get("all_branches_access", java.lang.Boolean::class.java) ?: false }
+                .firstOrNull { row -> row.get("all_branches_access", Boolean::class.java) ?: false }
                 ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
         if (allBranchesAccess != true) {
             val branchAllowed =

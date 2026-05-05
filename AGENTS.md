@@ -57,6 +57,39 @@ Command методы (команды) должны выполнять дейст
 Логика сборки ответов для фронта должна находиться в обработчике запроса.
 
 
+## Независимость доменных моделей от схем запросов и ответов
+
+Доменные модели (интерфейсы репозиториев, сервисов, агрегаты) **не должны** импортировать или использовать классы из пакетов `api.schemas`, `request`, `response` и т.п.
+
+**Плохо** — доменный интерфейс зависит от API-схемы:
+```kotlin
+import org.athletica.crm.api.schemas.settings.DisplaySettings
+
+interface UserDisplaySettings {
+    context(ctx: RequestContext, tr: Transaction)
+    suspend fun get(): DisplaySettings
+
+    context(ctx: RequestContext, tr: Transaction)
+    suspend fun save(settings: DisplaySettings)
+}
+```
+
+**Хорошо** — доменный интерфейс оперирует собственными типами; маппинг происходит в обработчике запроса:
+```kotlin
+interface UserDisplaySettings {
+    context(ctx: RequestContext, tr: Transaction)
+    suspend fun get(): UserSettings
+
+    context(ctx: RequestContext, tr: Transaction)
+    suspend fun save(settings: UserSettings)
+}
+
+// В роуте/хэндлере:
+val settings = userDisplaySettings.get()
+call.respond(settings.toDisplaySettings())
+```
+
+
 ## Path-переменные в REST-роутах
 
 Не использовать path-переменные в REST-роутах.

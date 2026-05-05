@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Transaction
@@ -39,7 +40,7 @@ sealed class SignUpError : DomainError {
  * Создаёт филиал по умолчанию с именем, локализованным по [lang].
  * Возвращает созданного пользователя, либо [SignUpError.UserAlreadyRegistered] если логин занят.
  */
-context(tr: Transaction, passwordHasher: PasswordHasher)
+context(tr: Transaction, passwordHasher: PasswordHasher, userSettings: UserDisplaySettings)
 suspend fun signUp(
     request: SignUpRequest,
     lang: Lang = Lang.RU,
@@ -80,5 +81,6 @@ suspend fun signUp(
         throw e
     }
 
+    userSettings.new(userId)
     return User(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login).right()
 }

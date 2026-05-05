@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
@@ -23,7 +24,12 @@ data class ClientListItem(
     val groups: List<ClientGroup>,
     /** Баланс личного счёта клиента (отрицательный — задолженность). */
     val balance: Double,
+    /** Значения кастомных полей клиента. */
+    val customFields: List<CustomFieldValue> = emptyList(),
 )
+
+/** Возвращает значение кастомного поля по его ключу, либо null если поле не найдено. */
+fun ClientListItem.field(fieldKey: String): CustomFieldValue? = customFields.firstOrNull { it.fieldKey == fieldKey }
 
 /** Ответ на запрос списка клиентов с поддержкой пагинации. */
 @Serializable

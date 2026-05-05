@@ -4,6 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.auth.SignUpError
 import org.athletica.crm.usecases.auth.User
@@ -29,7 +30,8 @@ class SignUpTest {
     @Test
     fun `signUp returns user on success`() =
         runTest {
-            val result = TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request()) } }
+            val userSettings = DbUserDisplaySettings()
+            val result = TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { signUp(request()) } }
             val user = assertIs<Either.Right<User>>(result).value
             assertEquals("user@example.com", user.username)
         }
@@ -37,12 +39,13 @@ class SignUpTest {
     @Test
     fun `signUp returns UserAlreadyRegistered when login is taken`() =
         runTest {
-            TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request()) } }
+            val userSettings = DbUserDisplaySettings()
+            TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { signUp(request()) } }
             // signUp поглощает R2DBC-исключение и возвращает Either.Left;
             // PostgreSQL переходит в error-state → commit падает. Захватываем результат до коммита.
             var result: Either<SignUpError, User>? = null
             runCatching {
-                TestPostgres.db.transaction { context(this, PasswordHasher()) { result = signUp(request()) } }
+                TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { result = signUp(request()) } }
             }
             assertIs<Either.Left<SignUpError.UserAlreadyRegistered>>(result)
         }
@@ -50,11 +53,12 @@ class SignUpTest {
     @Test
     fun `signUp allows different logins`() =
         runTest {
+            val userSettings = DbUserDisplaySettings()
             assertIs<Either.Right<User>>(
-                TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request(login = "user1@example.com")) } },
+                TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { signUp(request(login = "user1@example.com")) } },
             )
             assertIs<Either.Right<User>>(
-                TestPostgres.db.transaction { context(this, PasswordHasher()) { signUp(request(login = "user2@example.com")) } },
+                TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { signUp(request(login = "user2@example.com")) } },
             )
         }
 }

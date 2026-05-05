@@ -190,6 +190,7 @@ fun Client.toListItem() =
         gender = gender,
         groups = groups.map { org.athletica.crm.api.schemas.clients.ClientGroup(it.id, it.name) },
         balance = balance,
+        customFields = customFields,
     )
 
 private const val CLIENT_ENTITY_TYPE = "CLIENT"

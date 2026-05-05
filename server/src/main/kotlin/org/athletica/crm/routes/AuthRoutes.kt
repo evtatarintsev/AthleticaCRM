@@ -36,6 +36,7 @@ import org.athletica.crm.domain.audit.logLogin
 import org.athletica.crm.domain.audit.logSignUp
 import org.athletica.crm.domain.audit.logout
 import org.athletica.crm.domain.branch.Branches
+import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.findByCredentials
@@ -54,7 +55,7 @@ import kotlin.uuid.Uuid
  * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
  * Требует контекстных параметров [Database], [PasswordHasher], [Branches] и [AuditLog].
  */
-context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog, branches: Branches)
+context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog, branches: Branches, userSettings: UserDisplaySettings)
 fun Route.authRoutes() {
     post("/auth/branches") {
         val request = call.receive<AuthBranchesRequest>()

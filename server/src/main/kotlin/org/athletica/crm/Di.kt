@@ -56,6 +56,8 @@ import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbSessions
 import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.domain.settings.DbUserDisplaySettings
+import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
@@ -81,6 +83,7 @@ data class Di(
     val clients: Clients,
     val branches: Branches,
     val customFieldDefinitions: CustomFieldDefinitions,
+    val userDisplaySettings: UserDisplaySettings = DbUserDisplaySettings(),
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -134,6 +137,7 @@ fun Application.di(): Di {
         clients = DbClients(),
         branches = DbBranches(),
         customFieldDefinitions = DbCustomFieldDefinitions(),
+        userDisplaySettings = DbUserDisplaySettings(),
     )
 }
 

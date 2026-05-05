@@ -41,6 +41,7 @@ import org.athletica.crm.routes.branchesRoutes
 import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.customFieldsRoutes
 import org.athletica.crm.routes.disciplinesRoutes
+import org.athletica.crm.routes.displaySettingsRoutes
 import org.athletica.crm.routes.employeesRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.hallsRoutes
@@ -143,7 +144,7 @@ fun Application.configureServer() {
     context(di.database, di.audit) {
         routing {
             route("/api") {
-                context(di.jwtConfig, di.passwordHasher, di.branches) {
+                context(di.jwtConfig, di.passwordHasher, di.branches, di.userDisplaySettings) {
                     authRoutes()
                 }
                 authenticate("auth-jwt") {
@@ -174,6 +175,7 @@ fun Application.configureServer() {
                         }
                         auditRoutes(di.audit)
                         notificationsRoutes()
+                        displaySettingsRoutes(di.userDisplaySettings)
                     }
                 }
             }

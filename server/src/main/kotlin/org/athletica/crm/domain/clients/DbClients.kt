@@ -4,6 +4,8 @@ import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
+import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
@@ -32,7 +34,7 @@ class DbClients : Clients {
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id,
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields,
                            COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
@@ -51,6 +53,7 @@ class DbClients : Clients {
                         balance = row.asDouble("balance"),
                         docs = emptyList(),
                         leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
+                        customFields = Json.decodeFromString(row.asString("custom_fields")),
                         orgId = ctx.orgId,
                     )
                 }
@@ -105,14 +108,15 @@ class DbClients : Clients {
         birthday: LocalDate?,
         gender: Gender,
         leadSourceId: LeadSourceId?,
+        customFields: List<CustomFieldValue>,
     ): Client {
         val inserted =
             try {
                 tr
                     .sql(
                         """
-                        INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender, lead_source_id)
-                        VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender, :leadSourceId)
+                        INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender, lead_source_id, custom_fields)
+                        VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender, :leadSourceId, :customFields::jsonb)
                         """.trimIndent(),
                     )
                     .bind("id", id)
@@ -122,6 +126,7 @@ class DbClients : Clients {
                     .bind("birthday", birthday)
                     .bind("gender", gender.name)
                     .bind("leadSourceId", leadSourceId)
+                    .bind("customFields", Json.encodeToString(customFields))
                     .execute()
             } catch (e: R2dbcDataIntegrityViolationException) {
                 raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
@@ -139,6 +144,7 @@ class DbClients : Clients {
             balance = 0.0,
             docs = emptyList(),
             leadSourceId = leadSourceId,
+            customFields = customFields,
             orgId = ctx.orgId,
         )
     }
@@ -149,7 +155,7 @@ class DbClients : Clients {
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id,
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields,
                            COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
                     FROM clients
                     WHERE org_id = :orgId
@@ -168,6 +174,7 @@ class DbClients : Clients {
                         balance = row.asDouble("balance"),
                         docs = emptyList(),
                         leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
+                        customFields = Json.decodeFromString(row.asString("custom_fields")),
                         orgId = ctx.orgId,
                     )
                 }

@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
@@ -32,6 +33,7 @@ data class AuditClient(
     override val balance = client.balance
     override val docs = client.docs
     override val leadSourceId = client.leadSourceId
+    override val customFields = client.customFields
 
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
@@ -73,6 +75,7 @@ data class AuditClient(
         newBirthday: LocalDate?,
         newGender: Gender,
         newLeadSourceId: LeadSourceId?,
+        newCustomFields: List<CustomFieldValue>,
     ): Client {
         val newValues =
             mapOf(
@@ -90,6 +93,6 @@ data class AuditClient(
                 id.value,
                 Json.encodeToString(newValues),
             )
-        return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender, newLeadSourceId), audit, auditEvents + auditEvent)
+        return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender, newLeadSourceId, newCustomFields), audit, auditEvents + auditEvent)
     }
 }

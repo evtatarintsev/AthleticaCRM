@@ -139,6 +139,8 @@
     <string name="action_apply">Применить</string>
     <string name="action_issue_subscription">Выдать абонемент</string>
     <string name="section_basic_info">Основная информация</string>
+    <string name="section_additional_attributes">Дополнительные атрибуты</string>
+    <string name="hint_select_option">Выберите вариант</string>
     <string name="section_subscriptions">Абонементы</string>
     <string name="section_unpaid_lessons">Неоплаченные занятия</string>
     <string name="section_documents">Документы</string>

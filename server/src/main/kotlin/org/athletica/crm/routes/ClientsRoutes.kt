@@ -23,6 +23,7 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.customfields.CustomFieldValues
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.toClientId
@@ -34,9 +35,11 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
+import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
+import org.athletica.crm.usecases.customfields.getCustomFields
 import kotlin.uuid.Uuid
 
 /**
@@ -44,7 +47,12 @@ import kotlin.uuid.Uuid
  * Требует контекстных параметров [Database] и [AuditLog].
  */
 context(db: Database)
-fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, enrollments: Enrollments) {
+fun RouteWithContext.clientsRoutes(
+    clients: Clients,
+    balances: ClientBalances,
+    enrollments: Enrollments,
+    definitions: CustomFieldDefinitions,
+) {
     get<ClientListResponse>("/clients/list") {
         val clientList =
             db.transaction {
@@ -79,6 +87,8 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
 
     post<CreateClientRequest, ClientDetailResponse>("/clients/create") { request ->
         db.transaction {
+            val defs = getCustomFields(definitions, CLIENT_ENTITY_TYPE)
+            val customFields = CustomFieldValues(defs).with(request.customFields).bind()
             clients
                 .new(
                     request.id,
@@ -87,12 +97,15 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
                     request.birthday,
                     request.gender,
                     request.leadSourceId,
+                    customFields.toList(),
                 )
         }.detailResponse()
     }
 
     post<EditClientRequest, ClientDetailResponse>("/clients/edit") { request ->
         db.transaction {
+            val defs = getCustomFields(definitions, CLIENT_ENTITY_TYPE)
+            val customFields = CustomFieldValues(defs).with(request.customFields).bind()
             clients
                 .byId(request.id)
                 .withNew(
@@ -101,6 +114,7 @@ fun RouteWithContext.clientsRoutes(clients: Clients, balances: ClientBalances, e
                     request.birthday,
                     request.gender,
                     request.leadSourceId,
+                    customFields.toList(),
                 )
                 .apply { save() }
         }.detailResponse()
@@ -164,6 +178,7 @@ fun Client.detailResponse() =
         balance = balance,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
         leadSourceId = leadSourceId,
+        customFields = customFields,
     )
 
 fun Client.toListItem() =
@@ -176,6 +191,8 @@ fun Client.toListItem() =
         groups = groups.map { org.athletica.crm.api.schemas.clients.ClientGroup(it.id, it.name) },
         balance = balance,
     )
+
+private const val CLIENT_ENTITY_TYPE = "CLIENT"
 
 fun ClientBalance.historyResponse() =
     ClientBalanceHistoryResponse(

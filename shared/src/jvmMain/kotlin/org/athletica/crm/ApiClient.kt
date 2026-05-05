@@ -13,8 +13,8 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.client.appJson
 import org.athletica.crm.api.schemas.auth.LoginResponse
 
 /**
@@ -26,15 +26,15 @@ fun apiClient(tokenStorage: FileAccessTokenStorage): ApiClient {
     val http =
         HttpClient(CIO).config {
             install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true })
+                json(appJson)
             }
             defaultRequest {
                 url("http://127.0.0.1:8080/")
             }
             install(HttpCache)
             install(HttpTimeout) {
-                connectTimeoutMillis = 1000
-                requestTimeoutMillis = 1000
+                connectTimeoutMillis = 5000
+                requestTimeoutMillis = 5000
             }
             install(Auth) {
                 bearer {

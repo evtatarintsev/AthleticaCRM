@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.customfields.CustomFieldValues
 import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.components.settings.DirectoryItem
 import org.athletica.crm.core.Gender
@@ -72,11 +73,13 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Экран редактирования существующего клиента.
  * По завершении вызывает [onSave] с данными формы, по отмене — [onBack].
+ * [initialCustomFields] — заранее построенный [CustomFieldValues] с определениями и значениями клиента.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientEditScreen(
     client: ClientDetailResponse,
+    initialCustomFields: CustomFieldValues,
     saveState: ClientSaveState,
     onSave: (ClientForm) -> Unit,
     onBack: () -> Unit,
@@ -91,6 +94,7 @@ fun ClientEditScreen(
                 birthday = client.birthday,
                 avatarId = client.avatarId,
                 leadSourceId = client.leadSourceId,
+                customFields = initialCustomFields,
             ),
         )
     }
@@ -282,6 +286,13 @@ fun ClientEditScreen(
                 }
             }
 
+            CustomFieldsSection(
+                customFields = form.customFields,
+                onUpdate = { form = form.copy(customFields = it) },
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             if (saveError != null) {
                 Text(
                     text = saveError.message(),
@@ -325,6 +336,7 @@ internal fun ClientEditScreenLoader(
         is ClientEditLoadState.Loaded ->
             ClientEditScreen(
                 client = loadState.client,
+                initialCustomFields = viewModel.buildCustomFields(loadState.client, loadState.defs),
                 saveState = viewModel.saveState,
                 onSave = { viewModel.onSave(it) },
                 onBack = onBack,

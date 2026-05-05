@@ -155,7 +155,7 @@ fun Application.configureServer() {
                         context(di.branches) {
                             myBranchesRoute()
                         }
-                        clientsRoutes(di.clients, di.clientBalances, di.enrollments)
+                        clientsRoutes(di.clients, di.clientBalances, di.enrollments, di.customFieldDefinitions)
                         groupsRoutes(di.groups, di.disciplines, di.employees, di.sessions, di.bus)
                         sessionsRoutes(di.groups, di.sessions)
                         orgRoutes(di.organizations)

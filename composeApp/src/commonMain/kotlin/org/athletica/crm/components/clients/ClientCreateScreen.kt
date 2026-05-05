@@ -90,6 +90,12 @@ fun ClientCreateScreen(
     val isSaving = viewModel.state is ClientSaveState.Saving
     val saveError = (viewModel.state as? ClientSaveState.Error)?.error
 
+    LaunchedEffect(viewModel.defsState) {
+        if (viewModel.defsState is ClientCreateDefsState.Loaded) {
+            form = form.copy(customFields = viewModel.emptyCustomFields())
+        }
+    }
+
     LaunchedEffect(Unit) {
         api.leadSources.list().onRight { response ->
             leadSources = response.leadSources.map { DirectoryItem(id = it.id, name = it.name) }
@@ -269,6 +275,13 @@ fun ClientCreateScreen(
                     DatePicker(state = datePickerState)
                 }
             }
+
+            CustomFieldsSection(
+                customFields = form.customFields,
+                onUpdate = { form = form.copy(customFields = it) },
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             if (saveError != null) {
                 Text(

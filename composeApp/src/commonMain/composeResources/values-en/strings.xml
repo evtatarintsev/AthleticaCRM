@@ -134,6 +134,8 @@
     <string name="action_apply">Apply</string>
     <string name="action_issue_subscription">Issue subscription</string>
     <string name="section_basic_info">Basic information</string>
+    <string name="section_additional_attributes">Additional attributes</string>
+    <string name="hint_select_option">Select an option</string>
     <string name="section_subscriptions">Subscriptions</string>
     <string name="section_unpaid_lessons">Unpaid lessons</string>
     <string name="section_documents">Documents</string>

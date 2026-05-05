@@ -15,9 +15,9 @@ class CustomFieldsApiClient(private val http: HttpClient) {
     suspend fun list(entityType: String): Either<ApiClientError, List<CustomFieldDefinitionSchema>> = requestCatching { http.get("/api/custom-fields/list?entityType=$entityType") }
 
     /** Сохраняет полный список кастомных полей для указанного типа сущности. */
-    suspend fun save(entityType: String, request: SaveCustomFieldsRequest): Either<ApiClientError, List<CustomFieldDefinitionSchema>> =
+    suspend fun save(request: SaveCustomFieldsRequest): Either<ApiClientError, List<CustomFieldDefinitionSchema>> =
         requestCatching {
-            http.post("/api/custom-fields/save?entityType=$entityType") {
+            http.post("/api/custom-fields/save") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

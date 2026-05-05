@@ -3,6 +3,7 @@ package org.athletica.crm.domain.clients
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
@@ -43,6 +44,9 @@ interface Client {
     /** Идентификатор источника клиента, либо null если не указан. */
     val leadSourceId: LeadSourceId?
 
+    /** Значения кастомных полей клиента. */
+    val customFields: List<CustomFieldValue>
+
     context(tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
 
@@ -59,6 +63,7 @@ interface Client {
         newBirthday: LocalDate?,
         newGender: Gender,
         newLeadSourceId: LeadSourceId? = null,
+        newCustomFields: List<CustomFieldValue> = emptyList(),
     ): Client
 }
 

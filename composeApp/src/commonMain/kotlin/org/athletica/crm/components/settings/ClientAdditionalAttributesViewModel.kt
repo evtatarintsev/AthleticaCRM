@@ -129,8 +129,7 @@ class ClientAdditionalAttributesViewModel(
     ) {
         saveState = ClientAdditionalAttributesSaveState.Saving
         api.customFields.save(
-            entityType = CLIENT_ENTITY_TYPE,
-            request = SaveCustomFieldsRequest(fields = attributes),
+            request = SaveCustomFieldsRequest(entityType = CLIENT_ENTITY_TYPE, fields = attributes),
         ).fold(
             ifLeft = { saveState = ClientAdditionalAttributesSaveState.Error(it.toSettingsApiError()) },
             ifRight = { savedFields ->

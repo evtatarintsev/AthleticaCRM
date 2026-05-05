@@ -10,8 +10,8 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.post
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.client.appJson
 import org.athletica.crm.api.schemas.auth.LoginResponse
 
 /**
@@ -24,7 +24,7 @@ fun apiClient(): ApiClient {
     val http =
         HttpClient(Js) {
             install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true })
+                json(appJson)
             }
             defaultRequest {
                 url("/")

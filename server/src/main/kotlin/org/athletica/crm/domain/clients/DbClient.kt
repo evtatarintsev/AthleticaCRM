@@ -2,6 +2,9 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientDocId
@@ -22,6 +25,7 @@ internal data class DbClient(
     override val balance: Double,
     override val docs: List<ClientDoc>,
     override val leadSourceId: LeadSourceId?,
+    override val customFields: List<CustomFieldValue>,
     private val orgId: OrgId,
 ) : Client {
     context(tr: Transaction, raise: Raise<DomainError>)
@@ -29,7 +33,8 @@ internal data class DbClient(
         tr.sql(
             """
             UPDATE clients
-            SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender, lead_source_id = :leadSourceId
+            SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender,
+                lead_source_id = :leadSourceId, custom_fields = :customFields::jsonb
             WHERE id = :id AND org_id = :orgId
             """.trimIndent(),
         )
@@ -38,6 +43,7 @@ internal data class DbClient(
             .bind("birthday", birthday)
             .bind("gender", gender.name)
             .bind("leadSourceId", leadSourceId)
+            .bind("customFields", Json.encodeToString(customFields))
             .bind("id", id)
             .bind("orgId", orgId)
             .execute()
@@ -76,11 +82,13 @@ internal data class DbClient(
         newBirthday: LocalDate?,
         newGender: Gender,
         newLeadSourceId: LeadSourceId?,
+        newCustomFields: List<CustomFieldValue>,
     ) = copy(
         name = newName,
         avatarId = newAvatarId,
         birthday = newBirthday,
         gender = newGender,
         leadSourceId = newLeadSourceId,
+        customFields = newCustomFields,
     )
 }

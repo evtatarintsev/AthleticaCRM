@@ -8,5 +8,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class SaveCustomFieldsRequest(
+    val entityType: String,
     val fields: List<CustomFieldDefinitionSchema>,
 )

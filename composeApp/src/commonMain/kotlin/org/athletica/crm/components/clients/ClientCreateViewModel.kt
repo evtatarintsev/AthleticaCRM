@@ -7,19 +7,46 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
+import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
+import org.athletica.crm.api.schemas.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
+
+/** Состояние загрузки определений кастомных полей на экране создания клиента. */
+sealed class ClientCreateDefsState {
+    /** Определения загружаются. */
+    data object Loading : ClientCreateDefsState()
+
+    /** Определения загружены. */
+    data class Loaded(val defs: List<CustomFieldDefinitionSchema>) : ClientCreateDefsState()
+}
 
 /**
  * ViewModel экрана создания клиента.
- * Отправляет запрос создания через [api] и вызывает [onCreated] при успехе.
+ * Загружает определения кастомных полей и отправляет запрос создания через [api].
+ * При успехе вызывает [onCreated].
  */
 class ClientCreateViewModel(
     private val api: ApiClient,
     private val scope: CoroutineScope,
     private val onCreated: () -> Unit,
 ) {
+    var defsState by mutableStateOf<ClientCreateDefsState>(ClientCreateDefsState.Loading)
+        private set
+
     var state by mutableStateOf<ClientSaveState>(ClientSaveState.Idle)
         private set
+
+    init {
+        loadDefs()
+    }
+
+    private fun loadDefs() {
+        scope.launch {
+            api.customFields.list(CLIENT_ENTITY_TYPE).onRight { defs ->
+                defsState = ClientCreateDefsState.Loaded(defs)
+            }
+        }
+    }
 
     /** Создаёт клиента по данным [form]. */
     fun onCreate(form: ClientForm) {
@@ -34,6 +61,7 @@ class ClientCreateViewModel(
                         birthday = form.birthday,
                         gender = form.gender,
                         leadSourceId = form.leadSourceId,
+                        customFields = form.customFields.toList(),
                     ),
                 ).fold(
                     ifLeft = { state = ClientSaveState.Error(it.toClientsApiError()) },
@@ -48,5 +76,15 @@ class ClientCreateViewModel(
     /** Сбрасывает ошибку сохранения. */
     fun onErrorDismissed() {
         state = ClientSaveState.Idle
+    }
+
+    /** Возвращает пустой [CustomFieldValues] для загруженных определений. */
+    fun emptyCustomFields(): CustomFieldValues {
+        val defs = (defsState as? ClientCreateDefsState.Loaded)?.defs ?: emptyList()
+        return CustomFieldValues(defs)
+    }
+
+    private companion object {
+        const val CLIENT_ENTITY_TYPE = "CLIENT"
     }
 }

@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -28,4 +29,6 @@ data class ClientDetailResponse(
     val docs: List<ClientDoc>,
     /** Идентификатор источника клиента, либо null если не указан. */
     val leadSourceId: LeadSourceId? = null,
+    /** Значения кастомных полей клиента. */
+    val customFields: List<CustomFieldValue> = emptyList(),
 )

@@ -44,6 +44,10 @@ class RouteWithContext(val di: Di, val router: Route) {
             RouteWithContext(di, this).apply(build)
         }
 
+    @Deprecated(
+        "Use typed route instead",
+        ReplaceWith("get<Request, Response>(path)"),
+    )
     inline fun <reified Res> get(
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(RoutingCall) -> Res,
@@ -61,6 +65,17 @@ class RouteWithContext(val di: Di, val router: Route) {
         route(path, HttpMethod.Get) { call ->
             val request = call.request.queryParameters.decode<Req>()
             val response = body(request)
+            call.respond(response, typeInfo<Res>())
+        }
+
+    @JvmName("getWithRequestAndCall")
+    inline fun <reified Req, reified Res> get(
+        path: String,
+        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
+    ): Route =
+        route(path, HttpMethod.Get) { call ->
+            val request = call.request.queryParameters.decode<Req>()
+            val response = body(request, call)
             call.respond(response, typeInfo<Res>())
         }
 

@@ -4,12 +4,12 @@ import io.ktor.server.routing.RoutingCall
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.sessions.CreateSessionRequest
 import org.athletica.crm.api.schemas.sessions.RescheduleSessionRequest
+import org.athletica.crm.api.schemas.sessions.SessionDetailRequest
 import org.athletica.crm.api.schemas.sessions.SessionDetailResponse
+import org.athletica.crm.api.schemas.sessions.SessionListRequest
 import org.athletica.crm.api.schemas.sessions.SessionListResponse
 import org.athletica.crm.api.schemas.sessions.SetSessionEmployeesRequest
-import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
@@ -27,17 +27,15 @@ fun RouteWithContext.sessionsRoutes(
     sessions: Sessions,
 ) {
     route("/sessions") {
-        get<SessionListResponse>("/list") { call ->
-            val from = call.queryDate("from") ?: LocalDate.fromEpochDays(0)
-            val to = call.queryDate("to") ?: LocalDate.fromEpochDays(Int.MAX_VALUE / 2)
-            val groupId = call.queryGroupId()
-            sessionList(db, groups, sessions, groupId, from, to)
+        get<SessionListRequest, SessionListResponse>("/list") { request ->
+            val from = request.from ?: LocalDate.fromEpochDays(0)
+            val to = request.to ?: LocalDate.fromEpochDays(Int.MAX_VALUE / 2)
+            sessionList(db, groups, sessions, request.groupId, from, to)
         }
 
-        get<SessionDetailResponse>("/{id}") { call ->
-            val id = call.pathSessionId()
+        get<SessionDetailRequest, SessionDetailResponse>("/detail") { request ->
             db.transaction {
-                sessionDetail(sessions, groups, id)
+                sessionDetail(sessions, groups, request.id)
             }
         }
 
@@ -80,9 +78,5 @@ fun RouteWithContext.sessionsRoutes(
         }
     }
 }
-
-private fun RoutingCall.queryDate(name: String): LocalDate? = request.queryParameters[name]?.let { LocalDate.parse(it) }
-
-private fun RoutingCall.queryGroupId(): GroupId? = request.queryParameters["groupId"]?.let { Uuid.parse(it).toGroupId() }
 
 private fun RoutingCall.pathSessionId(): SessionId = Uuid.parse(parameters["id"]!!).toSessionId()

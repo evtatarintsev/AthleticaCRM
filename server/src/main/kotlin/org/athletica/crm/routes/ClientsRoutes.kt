@@ -1,16 +1,13 @@
 package org.athletica.crm.routes
 
-import arrow.core.raise.Raise
-import arrow.core.raise.context.raise
-import io.ktor.client.request.request
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.Parameters
 import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
+import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
@@ -25,10 +22,6 @@ import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.customfields.CustomFieldValues
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.entityids.toClientId
-import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -37,10 +30,8 @@ import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.enrollments.Enrollments
-import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.customfields.getCustomFields
-import kotlin.uuid.Uuid
 
 /**
  * Регистрирует маршруты для работы с клиентами:
@@ -53,7 +44,7 @@ fun RouteWithContext.clientsRoutes(
     enrollments: Enrollments,
     definitions: CustomFieldDefinitions,
 ) {
-    get<ClientListResponse>("/clients/list") {
+    get<Unit, ClientListResponse>("/clients/list") {
         val clientList =
             db.transaction {
                 clients.list()
@@ -159,10 +150,9 @@ fun RouteWithContext.clientsRoutes(
         }
     }
 
-    get<ClientBalanceHistoryResponse>("/clients/balance/history") { call ->
-        val id = call.request.queryParameters.asUuid("id").toClientId()
+    get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
         db.transaction {
-            balances.forClient(id).historyResponse()
+            balances.forClient(request.id).historyResponse()
         }
     }
 }
@@ -210,16 +200,6 @@ private fun ClientBalanceEntry.toJournalEntry() =
         performedBy = performedBy,
         createdAt = createdAt,
     )
-
-context(ctx: RequestContext, raise: Raise<CommonDomainError>)
-fun Parameters.asUuid(name: String): Uuid {
-    val idParam =
-        get(name)
-            ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
-    return runCatching { Uuid.parse(idParam) }.getOrElse {
-        raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
-    }
-}
 
 /**
  * Генерирует CSV контент для экспорта списка клиентов.

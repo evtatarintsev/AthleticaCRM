@@ -9,7 +9,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.orgRoutes(organizations: Organizations) {
     route("/org") {
-        get<OrgSettingsResponse>("/settings") {
+        get<Unit, OrgSettingsResponse>("/settings") {
             db.transaction {
                 organizations
                     .current()

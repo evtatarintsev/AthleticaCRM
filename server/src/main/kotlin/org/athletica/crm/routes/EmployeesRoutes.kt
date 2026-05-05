@@ -1,8 +1,8 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
+import org.athletica.crm.api.schemas.employees.EmployeeDetailRequest
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
 import org.athletica.crm.api.schemas.employees.EmployeeListResponse
@@ -12,7 +12,6 @@ import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
-import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
@@ -23,7 +22,7 @@ import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 context(db: Database)
 fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
     route("/employees") {
-        get<EmployeeListResponse>("/list") {
+        get<Unit, EmployeeListResponse>("/list") {
             db.transaction {
                 employees.list()
             }.let { employees ->
@@ -34,10 +33,9 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        get<EmployeeDetailResponse>("/detail") { call ->
-            val id = call.request.queryParameters.asUuid("id").toEmployeeId()
+        get<EmployeeDetailRequest, EmployeeDetailResponse>("/detail") { request ->
             db.transaction {
-                employees.byId(id)
+                employees.byId(request.id)
             }.toDetailResponse()
         }
 
@@ -96,7 +94,7 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
             }
         }
 
-        get<RoleListResponse>("/roles") {
+        get<Unit, RoleListResponse>("/roles") {
             db.transaction {
                 roles.list()
             }.let { roles ->

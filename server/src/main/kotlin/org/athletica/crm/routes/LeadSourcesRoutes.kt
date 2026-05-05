@@ -13,7 +13,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.leadSourcesRoutes(leadSources: LeadSources) {
     route("/lead-sources") {
-        get<LeadSourceListResponse>("/list") {
+        get<Unit, LeadSourceListResponse>("/list") {
             db.transaction {
                 leadSources.list()
                     .map { LeadSourceDetailResponse(id = it.id, name = it.name) }

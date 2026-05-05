@@ -1,7 +1,20 @@
 package org.athletica.crm.api.schemas.audit
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.entityids.UserId
 import kotlin.uuid.Uuid
+
+/** Параметры запроса лога аудита с пагинацией и фильтрами. */
+@Serializable
+data class AuditLogListRequest(
+    val page: Int = 0,
+    val pageSize: Int = 50,
+    val actionType: String? = null,
+    val userId: UserId? = null,
+    val entityType: String? = null,
+    val from: String? = null,
+    val to: String? = null,
+)
 
 /** Одна запись в логе аудита. */
 @Serializable

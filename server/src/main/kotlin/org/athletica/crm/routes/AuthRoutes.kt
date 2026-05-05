@@ -139,7 +139,7 @@ fun RouteWithContext.logout(audit: AuditLog) {
  */
 context(db: Database, branches: Branches)
 fun RouteWithContext.myBranchesRoute() {
-    get<AuthBranchesResponse>("/auth/my-branches") {
+    get<Unit, AuthBranchesResponse>("/auth/my-branches") {
         db.transaction {
             context(branches) {
                 myBranches()

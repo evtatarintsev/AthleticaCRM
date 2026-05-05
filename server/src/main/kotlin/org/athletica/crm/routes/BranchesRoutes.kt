@@ -13,7 +13,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.branchesRoutes(branches: Branches) {
     route("/branches") {
-        get<BranchListResponse>("/list") {
+        get<Unit, BranchListResponse>("/list") {
             db.transaction {
                 branches
                     .list()

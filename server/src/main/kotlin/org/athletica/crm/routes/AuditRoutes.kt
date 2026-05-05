@@ -1,15 +1,12 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.audit.AuditLogItem
+import org.athletica.crm.api.schemas.audit.AuditLogListRequest
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
-import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Database
-import kotlin.uuid.Uuid
 
 /**
  * Регистрирует маршруты для модуля аудита.
@@ -18,23 +15,22 @@ import kotlin.uuid.Uuid
 context(db: Database)
 fun RouteWithContext.auditRoutes(audit: AuditLog) {
     route("/audit") {
-        get<AuditLogListResponse>("/log") { call ->
-            val params = call.request.queryParameters
-            val page = params["page"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-            val pageSize = params["pageSize"]?.toIntOrNull()?.coerceIn(1, 200) ?: 50
+        get<AuditLogListRequest, AuditLogListResponse>("/log") { request ->
+            val page = request.page.coerceAtLeast(0)
+            val pageSize = request.pageSize.coerceIn(1, 200)
 
             val filter =
                 AuditFilter(
                     limit = pageSize.toUInt(),
                     offset = (page * pageSize).toUInt(),
                     actionType =
-                        params["actionType"]?.let { code ->
+                        request.actionType?.let { code ->
                             AuditActionType.entries.firstOrNull { it.code == code }
                         },
-                    userId = params["userId"]?.let { runCatching { Uuid.parse(it).toUserId() }.getOrNull() },
-                    entityType = params["entityType"],
-                    from = params["from"],
-                    to = params["to"],
+                    userId = request.userId,
+                    entityType = request.entityType,
+                    from = request.from,
+                    to = request.to,
                 )
 
             db.transaction {

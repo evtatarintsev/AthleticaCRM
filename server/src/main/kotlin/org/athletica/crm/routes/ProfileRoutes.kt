@@ -24,7 +24,7 @@ import org.athletica.crm.usecases.auth.updateMe
  */
 context(db: Database, passwordHasher: PasswordHasher, audit: AuditLog)
 fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: OrgBalances) {
-    get<AuthMeResponse>("/auth/me") {
+    get<Unit, AuthMeResponse>("/auth/me") {
         val user = profile().bind()
         val info =
             db.transaction {

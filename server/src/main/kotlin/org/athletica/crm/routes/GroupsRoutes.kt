@@ -3,6 +3,7 @@ package org.athletica.crm.routes
 import io.ktor.server.routing.RoutingCall
 import org.athletica.crm.api.schemas.groups.EditGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
+import org.athletica.crm.api.schemas.groups.GroupDetailRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
 import org.athletica.crm.api.schemas.groups.GroupEmployee
@@ -40,22 +41,21 @@ fun RouteWithContext.groupsRoutes(
     bus: DomainEventBus,
 ) {
     route("/groups") {
-        get<GroupListResponse>("/list") {
+        get<Unit, GroupListResponse>("/list") {
             db.transaction {
                 groups.list().toListResponse()
             }
         }
 
-        get<GroupDetailResponse>("/detail") { call ->
-            val id = call.queryParameters["id"]?.let { Uuid.parse(it).toGroupId() } ?: error("Missing id")
+        get<GroupDetailRequest, GroupDetailResponse>("/detail") { request ->
             db.transaction {
                 groups
-                    .byId(id)
+                    .byId(request.id)
                     .toGroupDetailResponse(disciplines.list(), employees.list())
             }
         }
 
-        get<List<GroupSelectItem>>("/list-for-select") {
+        get<Unit, List<GroupSelectItem>>("/list-for-select") {
             db.transaction {
                 groups.list().toGroupSelectItems()
             }

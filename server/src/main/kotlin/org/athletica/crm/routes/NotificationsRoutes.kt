@@ -1,10 +1,7 @@
 package org.athletica.crm.routes
 
-import io.ktor.client.request.request
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
+import org.athletica.crm.api.schemas.notifications.NotificationsRequest
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.notifications.markAllNotificationsRead
@@ -17,16 +14,12 @@ import org.athletica.crm.usecases.notifications.notificationList
  * GET  /notifications             — список уведомлений текущего пользователя.
  * POST /notifications/mark-as-read — отмечает переданные id прочитанными.
  * POST /notifications/mark-all-read — отмечает все уведомления пользователя прочитанными.
- *
- * Query params для GET:
- * - `isRead` (optional): `true` — только прочитанные, `false` — только непрочитанные.
  */
 context(db: Database)
 fun RouteWithContext.notificationsRoutes() {
     route("/notifications") {
-        get<NotificationsResponse>("") { call ->
-            val isRead = call.request.queryParameters["isRead"]?.toBooleanStrictOrNull()
-            notificationList(isRead).bind()
+        get<NotificationsRequest, NotificationsResponse>("") { request ->
+            notificationList(request.isRead).bind()
         }
 
         post<MarkNotificationsReadRequest, Unit>("/mark-as-read") { request ->

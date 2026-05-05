@@ -13,7 +13,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.hallsRoutes(halls: Halls) {
     route("/halls") {
-        get<HallListResponse>("/list") {
+        get<Unit, HallListResponse>("/list") {
             db.transaction {
                 halls
                     .list()

@@ -5,9 +5,8 @@ import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.response.cacheControl
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
+import org.athletica.crm.api.schemas.upload.UploadInfoRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
@@ -17,7 +16,6 @@ import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.upload.uploadFile
 import org.athletica.crm.usecases.upload.uploadInfo
 import kotlin.time.Duration.Companion.days
-import kotlin.uuid.Uuid
 
 /**
  * Регистрирует маршрут POST /upload для загрузки файлов.
@@ -27,17 +25,10 @@ import kotlin.uuid.Uuid
  */
 context(db: Database, minioService: MinioService, audit: AuditLog)
 fun RouteWithContext.uploadRoutes() {
-    get<UploadResponse>("/upload/info") { call ->
+    get<UploadInfoRequest, UploadResponse>("/upload/info") { request, call ->
         val cacheTTL = 7.days
         call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = cacheTTL.inWholeSeconds.toInt()))
-        val idParam =
-            call.request.queryParameters["id"]
-                ?: raise(CommonDomainError("MISSING_PARAMETER", Messages.MissingParameterId.localize()))
-        val id =
-            runCatching { Uuid.parse(idParam) }.getOrElse {
-                raise(CommonDomainError("INVALID_PARAMETER", Messages.InvalidParameterId.localize()))
-            }
-        uploadInfo(id, cacheTTL).bind()
+        uploadInfo(request.id.value, cacheTTL).bind()
     }
 
     post<Unit, UploadResponse>("/upload") { _, call ->

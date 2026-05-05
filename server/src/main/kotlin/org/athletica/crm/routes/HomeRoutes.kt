@@ -18,7 +18,7 @@ fun RouteWithContext.homeRoutes(
     halls: Halls,
 ) {
     route("/home") {
-        get<TodaySessionsResponse>("/today-sessions") {
+        get<Unit, TodaySessionsResponse>("/today-sessions") {
             val today =
                 Clock.System
                     .now()

@@ -4,6 +4,12 @@ import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
+/** Параметры запроса списка уведомлений с опциональным фильтром по статусу прочтения. */
+@Serializable
+data class NotificationsRequest(
+    val isRead: Boolean? = null,
+)
+
 /** Ответ на запрос списка уведомлений. */
 @Serializable
 data class NotificationsResponse(

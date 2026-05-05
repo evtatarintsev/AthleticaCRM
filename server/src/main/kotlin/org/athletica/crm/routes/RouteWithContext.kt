@@ -84,57 +84,22 @@ class RouteWithContext(val di: Di, val router: Route) {
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
     ): Route =
         route(path, HttpMethod.Post) { call ->
-            val response = body(call.body<Req>())
-            call.respond(response, typeInfo<Res>())
+            @Suppress("UNCHECKED_CAST")
+            val req: Req = if (Req::class == Unit::class) Unit as Req else call.body<Req>()
+            val response = body(req)
+            if (Res::class == Unit::class) call.respond(Unit) else call.respond(response, typeInfo<Res>())
         }
 
-    @JvmName("postWithUnitResponse")
-    inline fun <reified Req, reified Res : Unit> post(
-        path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Unit,
-    ): Route =
-        route(path, HttpMethod.Post) { call ->
-            body(call.body<Req>())
-            call.respond(Unit)
-        }
-
+    @JvmName("postWithCall")
     inline fun <reified Req, reified Res> post(
         path: String,
         crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Post) { call ->
-            val response = body(call.body<Req>(), call)
-            call.respond(response, typeInfo<Res>())
-        }
-
-    @JvmName("postWithUnitRequestResponse")
-    inline fun <reified Req : Unit, reified Res : Unit> post(
-        path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit) -> Res,
-    ): Route =
-        route(path, HttpMethod.Post) { call ->
-            body(Unit)
-            call.respond(Unit)
-        }
-
-    @JvmName("postWithUnitRequestResponseAndCall")
-    inline fun <reified Req : Unit, reified Res : Unit> post(
-        path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Unit,
-    ): Route =
-        route(path, HttpMethod.Post) { call ->
-            body(Unit, call)
-            call.respond(Unit)
-        }
-
-    @JvmName("postWithUnitRequestAndCall")
-    inline fun <reified Req : Unit, reified Res> post(
-        path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Unit, RoutingCall) -> Res,
-    ): Route =
-        route(path, HttpMethod.Post) { call ->
-            val response = body(Unit, call)
-            call.respond(response, typeInfo<Res>())
+            @Suppress("UNCHECKED_CAST")
+            val req: Req = if (Req::class == Unit::class) Unit as Req else call.body<Req>()
+            val response = body(req, call)
+            if (Res::class == Unit::class) call.respond(Unit) else call.respond(response, typeInfo<Res>())
         }
 
     inline fun route(

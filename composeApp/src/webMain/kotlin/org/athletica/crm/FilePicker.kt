@@ -15,7 +15,10 @@ actual suspend fun pickImageFile(): Triple<ByteArray, String, String>? =
         val input = document.createElement("input") as HTMLInputElement
         input.type = "file"
         input.accept = "image/jpeg,image/png,image/webp"
-        input.style.display = "none"
+        input.setAttribute(
+            "style",
+            "position: fixed; top: -1000px; left: -1000px; opacity: 0;",
+        )
         document.body?.appendChild(input)
 
         fun cleanup() = runCatching { document.body?.removeChild(input) }
@@ -46,8 +49,17 @@ actual suspend fun pickImageFile(): Triple<ByteArray, String, String>? =
                         continuation.resume(Triple(bytes, file.name, contentType))
                     }
                 }
+                reader.onerror = { _: Event ->
+                    cleanup()
+                    continuation.resume(null)
+                }
                 reader.readAsDataURL(file)
             }
+        }
+
+        input.oncancel = { _: Event ->
+            cleanup()
+            continuation.resume(null)
         }
 
         continuation.invokeOnCancellation { cleanup() }
@@ -60,7 +72,10 @@ actual suspend fun pickAnyFile(): Triple<ByteArray, String, String>? =
         val input = document.createElement("input") as HTMLInputElement
         input.type = "file"
         input.accept = "*/*"
-        input.style.display = "none"
+        input.setAttribute(
+            "style",
+            "position: fixed; top: -1000px; left: -1000px; opacity: 0;",
+        )
         document.body?.appendChild(input)
 
         fun cleanup() = runCatching { document.body?.removeChild(input) }
@@ -97,8 +112,17 @@ actual suspend fun pickAnyFile(): Triple<ByteArray, String, String>? =
                         continuation.resume(Triple(bytes, file.name, contentType))
                     }
                 }
+                reader.onerror = { _: Event ->
+                    cleanup()
+                    continuation.resume(null)
+                }
                 reader.readAsDataURL(file)
             }
+        }
+
+        input.oncancel = { _: Event ->
+            cleanup()
+            continuation.resume(null)
         }
 
         continuation.invokeOnCancellation { cleanup() }

@@ -170,6 +170,7 @@
     <string name="filters_label">Фильтры</string>
     <string name="filters_with_count">Фильтры · %1$d</string>
     <string name="section_columns">Колонки</string>
+    <string name="section_custom_columns">Кастомные поля</string>
 
     <!-- Groups screen -->
     <string name="groups_empty">Групп пока нет</string>

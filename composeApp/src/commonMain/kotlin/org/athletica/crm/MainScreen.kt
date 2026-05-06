@@ -99,6 +99,7 @@ import org.athletica.crm.components.settings.ChangePasswordScreen
 import org.athletica.crm.components.settings.ClientAdditionalAttributesScreen
 import org.athletica.crm.components.settings.ClientSourcesScreen
 import org.athletica.crm.components.settings.DisciplinesScreen
+import org.athletica.crm.components.settings.DisplaySettingsViewModel
 import org.athletica.crm.components.settings.EditProfileScreen
 import org.athletica.crm.components.settings.HallsScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
@@ -201,6 +202,11 @@ fun MainScreen(
                     navController.navigate(navController.currentDestination?.route ?: AppRoute.Home.toString())
                 },
             )
+        }
+
+    val displaySettingsVm =
+        remember {
+            DisplaySettingsViewModel(api, scope)
         }
 
     LaunchedEffect(initialRoute) {
@@ -307,7 +313,7 @@ fun MainScreen(
                             )
                         },
                     ) { innerPadding ->
-                        AppNavHost(navController, api, Modifier.padding(innerPadding))
+                        AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
                     }
                 }
             }
@@ -361,7 +367,7 @@ fun MainScreen(
                             )
                         },
                     ) { innerPadding ->
-                        AppNavHost(navController, api, Modifier.padding(innerPadding))
+                        AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
                     }
                 }
             }
@@ -402,7 +408,7 @@ fun MainScreen(
                             )
                         },
                     ) { innerPadding ->
-                        AppNavHost(navController, api, Modifier.padding(innerPadding))
+                        AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
                     }
                 }
             }
@@ -414,6 +420,7 @@ fun MainScreen(
 private fun AppNavHost(
     navController: NavHostController,
     api: ApiClient,
+    displaySettingsVm: DisplaySettingsViewModel,
     modifier: Modifier = Modifier,
 ) {
     NavHost(
@@ -440,6 +447,7 @@ private fun AppNavHost(
         composable<AppRoute.Clients> {
             ClientsScreen(
                 api = api,
+                displaySettingsVm = displaySettingsVm,
                 onNavigateToCreate = { navController.navigate(AppRoute.ClientCreate) },
                 onClientClick = { id -> navController.navigate(AppRoute.ClientDetail(id.toString())) },
                 onNavigateToExport = { selectedIds ->

@@ -89,32 +89,42 @@ fun ClientRow(
             modifier = Modifier.weight(1f),
         )
 
-        // Опциональные колонки
-        if (ClientColumn.Gender in settings.visibleColumns) {
-            Text(
-                text = genderLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(GenderColWidth),
-            )
-        }
-
-        if (ClientColumn.BirthYear in settings.visibleColumns) {
-            Text(
-                text = data.birthYear.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(BirthYearColWidth),
-            )
-        }
-
-        if (ClientColumn.Debt in settings.visibleColumns) {
-            Text(
-                text = client.balance.formatBalance(),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.End,
-                modifier = Modifier.width(DebtColWidth),
-            )
+        // Опциональные колонки в порядке, определённом в settings
+        settings.columns.forEach { column ->
+            when (column) {
+                ClientColumn.Standard.Gender -> {
+                    Text(
+                        text = genderLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+                ClientColumn.Standard.BirthYear -> {
+                    Text(
+                        text = data.birthYear.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+                ClientColumn.Standard.Debt -> {
+                    Text(
+                        text = client.balance.formatBalance(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+                is ClientColumn.Custom -> {
+                    Text(
+                        text = client.field(column.apiKey)?.displayValue() ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+            }
         }
 
         // Чекбокс — trailing, изолирован от клика по строке

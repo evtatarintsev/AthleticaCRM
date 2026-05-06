@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_close
 import org.athletica.crm.generated.resources.action_display_settings
@@ -26,13 +27,16 @@ import org.athletica.crm.generated.resources.label_debt
 import org.athletica.crm.generated.resources.label_gender
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.section_columns
+import org.athletica.crm.generated.resources.section_custom_columns
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Диалог настроек отображения таблицы клиентов.
+ * Позволяет включать/выключать видимость стандартных и кастомных колонок.
  * Изменения применяются сразу через [onSettingsChange].
  *
  * [settings] — текущие настройки отображения.
+ * [availableCustomFields] — список доступных кастомных полей для добавления в таблицу.
  * [onSettingsChange] — вызывается при любом изменении.
  * [onDismiss] — закрытие диалога.
  */
@@ -40,6 +44,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ClientsSettingsDialog(
     settings: ClientDisplaySettings,
+    availableCustomFields: List<CustomFieldDefinitionSchema> = emptyList(),
     onSettingsChange: (ClientDisplaySettings) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -77,9 +82,9 @@ fun ClientsSettingsDialog(
                         )
                     }
 
-                    // Опциональные колонки
-                    ClientColumn.entries.forEach { column ->
-                        val checked = column in settings.visibleColumns
+                    // Стандартные опциональные колонки
+                    ClientColumn.Standard.entries.forEach { column ->
+                        val checked = column in settings.columns
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
@@ -88,11 +93,11 @@ fun ClientsSettingsDialog(
                                     .clickable {
                                         val newColumns =
                                             if (checked) {
-                                                settings.visibleColumns - column
+                                                settings.columns.filterNot { it.apiKey == column.apiKey }
                                             } else {
-                                                settings.visibleColumns + column
+                                                settings.columns + column
                                             }
-                                        onSettingsChange(settings.copy(visibleColumns = newColumns))
+                                        onSettingsChange(settings.copy(columns = newColumns))
                                     },
                         ) {
                             Checkbox(
@@ -103,12 +108,50 @@ fun ClientsSettingsDialog(
                             Text(
                                 text =
                                     when (column) {
-                                        ClientColumn.Gender -> stringResource(Res.string.label_gender)
-                                        ClientColumn.BirthYear -> stringResource(Res.string.label_birth_year)
-                                        ClientColumn.Debt -> stringResource(Res.string.label_debt)
+                                        ClientColumn.Standard.Gender -> stringResource(Res.string.label_gender)
+                                        ClientColumn.Standard.BirthYear -> stringResource(Res.string.label_birth_year)
+                                        ClientColumn.Standard.Debt -> stringResource(Res.string.label_debt)
                                     },
                                 style = MaterialTheme.typography.bodyMedium,
                             )
+                        }
+                    }
+
+                    // Кастомные поля (если есть)
+                    if (availableCustomFields.isNotEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.section_custom_columns),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+
+                        availableCustomFields.forEach { field ->
+                            val checked = field.fieldKey in settings.columns.map { it.apiKey }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val newColumns =
+                                                if (checked) {
+                                                    settings.columns.filterNot { it.apiKey == field.fieldKey }
+                                                } else {
+                                                    settings.columns + ClientColumn.Custom(field.fieldKey, field.label)
+                                                }
+                                            onSettingsChange(settings.copy(columns = newColumns))
+                                        },
+                            ) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = null,
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = field.label,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
                         }
                     }
                 }

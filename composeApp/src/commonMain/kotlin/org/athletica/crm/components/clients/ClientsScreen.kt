@@ -48,10 +48,12 @@ import org.jetbrains.compose.resources.stringResource
  * [onNavigateToCreate] — переход к экрану создания клиента.
  * [onClientClick] — переход к карточке клиента.
  * [onNavigateToExport] — переход к экрану экспорта клиентов с выбранными ID.
+ * [displaySettingsVm] — глобальный ViewModel для управления настройками отображения.
  */
 @Composable
 fun ClientsScreen(
     api: ApiClient,
+    displaySettingsVm: org.athletica.crm.components.settings.DisplaySettingsViewModel,
     onNavigateToCreate: () -> Unit = {},
     onNavigateToExport: (List<ClientId>) -> Unit = {},
     refreshKey: Int = 0,
@@ -67,13 +69,23 @@ fun ClientsScreen(
     var filter by remember { mutableStateOf(ClientFilterState()) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
-    var settings by remember { mutableStateOf(ClientDisplaySettings()) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+
+    // Получаем настройки отображения из глобального ViewModel и конвертируем в локальный формат
+    val clientSettings =
+        displaySettingsVm.displaySettings.clients.toDisplaySettings(viewModel.availableCustomFields)
 
     if (showSettingsDialog) {
         ClientsSettingsDialog(
-            settings = settings,
-            onSettingsChange = { settings = it },
+            settings = clientSettings,
+            availableCustomFields = viewModel.availableCustomFields,
+            onSettingsChange = { newSettings ->
+                displaySettingsVm.update(
+                    displaySettingsVm.displaySettings.copy(
+                        clients = newSettings.toApiModel(),
+                    ),
+                )
+            },
             onDismiss = { showSettingsDialog = false },
         )
     }
@@ -131,7 +143,7 @@ fun ClientsScreen(
                         else -> {
                             ClientsTableHeader(
                                 selectAllState = selectAllState,
-                                settings = settings,
+                                settings = clientSettings,
                                 onSelectAllClick = {
                                     selectedIds =
                                         if (selectAllState == ToggleableState.On) {
@@ -154,7 +166,7 @@ fun ClientsScreen(
                                     ClientRow(
                                         client = client,
                                         api = api,
-                                        settings = settings,
+                                        settings = clientSettings,
                                         selected = client.id in selectedIds,
                                         onClick = { onClientClick(client.id) },
                                         onCheckedChange = { checked ->

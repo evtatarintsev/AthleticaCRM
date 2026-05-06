@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
+import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 
 /** Состояние загрузки списка клиентов. */
 sealed class ClientsState {
@@ -23,7 +24,7 @@ sealed class ClientsState {
 
 /**
  * ViewModel экрана списка клиентов.
- * Загружает список через [api] и обновляет [state].
+ * Загружает список клиентов и доступные кастомные поля для динамического отображения колонок.
  */
 class ClientsViewModel(
     private val api: ApiClient,
@@ -32,17 +33,33 @@ class ClientsViewModel(
     var state by mutableStateOf<ClientsState>(ClientsState.Loading)
         private set
 
+    /**
+     * Список доступных кастомных полей для клиентов.
+     * Используется при конвертации сохранённых настроек отображения.
+     */
+    var availableCustomFields by mutableStateOf<List<CustomFieldDefinitionSchema>>(emptyList())
+        private set
+
     init {
         load()
     }
 
-    /** Перезагружает список клиентов. */
+    /** Перезагружает список клиентов и кастомные поля. */
     fun load() {
         scope.launch {
             state = ClientsState.Loading
-            api.clients.list(ClientListRequest()).fold(
+            // Параллельно загружаем клиентов и кастомные поля
+            val clientsResult = api.clients.list(ClientListRequest())
+            val customFieldsResult = api.customFields.list("CLIENT")
+
+            clientsResult.fold(
                 ifLeft = { state = ClientsState.Error(it.toClientsApiError()) },
                 ifRight = { state = ClientsState.Loaded(it.clients) },
+            )
+
+            customFieldsResult.fold(
+                ifLeft = { /* ошибка загрузки кастомных полей — продолжаем без них */ },
+                ifRight = { availableCustomFields = it },
             )
         }
     }

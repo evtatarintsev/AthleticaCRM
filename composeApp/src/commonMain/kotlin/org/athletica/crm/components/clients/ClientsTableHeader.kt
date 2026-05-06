@@ -64,34 +64,46 @@ fun ClientsTableHeader(
             )
         }
 
-        if (ClientColumn.Gender in settings.visibleColumns) {
-            Text(
-                text = stringResource(Res.string.label_gender),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(GenderColWidth),
-            )
-        }
-
-        if (ClientColumn.BirthYear in settings.visibleColumns) {
-            Text(
-                text = stringResource(Res.string.label_year_short),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(BirthYearColWidth),
-            )
-        }
-
-        if (ClientColumn.Debt in settings.visibleColumns) {
-            Text(
-                text = stringResource(Res.string.label_balance),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End,
-                modifier = Modifier.width(DebtColWidth),
-            )
+        // Опциональные колонки в порядке, определённом в settings
+        settings.columns.forEach { column ->
+            when (column) {
+                ClientColumn.Standard.Gender -> {
+                    Text(
+                        text = stringResource(Res.string.label_gender),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+                ClientColumn.Standard.BirthYear -> {
+                    Text(
+                        text = stringResource(Res.string.label_year_short),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+                ClientColumn.Standard.Debt -> {
+                    Text(
+                        text = stringResource(Res.string.label_balance),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+                is ClientColumn.Custom -> {
+                    Text(
+                        text = column.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(column.width),
+                    )
+                }
+            }
         }
 
         // Trailing: совпадает с позицией чекбокса в строках ClientRow

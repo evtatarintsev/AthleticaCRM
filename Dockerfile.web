@@ -9,4 +9,5 @@ RUN --mount=type=cache,target=/root/.gradle \
 
 FROM nginx:stable-alpine
 COPY --from=builder /build/composeApp/build/dist/wasmJs/productionExecutable/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

@@ -176,6 +176,8 @@
     <string name="dialog_remove_employee_from_group_title">Remove teacher from group?</string>
     <string name="dialog_remove_employee_from_group_message">Teacher "%1$s" will be removed from the group "%2$s".</string>
     <string name="employees_empty_for_group">No teachers</string>
+    <string name="section_group_clients">Permanent participants</string>
+    <string name="clients_empty_for_group">No permanent participants</string>
 
     <!-- Group disciplines -->
     <string name="section_disciplines">Disciplines</string>

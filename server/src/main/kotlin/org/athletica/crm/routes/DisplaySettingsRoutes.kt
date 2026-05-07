@@ -6,12 +6,12 @@ import org.athletica.crm.storage.Database
 
 context(db: Database)
 fun RouteWithContext.displaySettingsRoutes(userSettings: UserDisplaySettings) {
-    get<Unit, DisplaySettings>("/api/display-settings") {
+    get<Unit, DisplaySettings>("/display-settings") {
         db.transaction {
             userSettings.get()
         }
     }
-    post<DisplaySettings, DisplaySettings>("/api/display-settings/update") { request ->
+    post<DisplaySettings, DisplaySettings>("/display-settings/update") { request ->
         db.transaction {
             userSettings.save(request)
             userSettings.get()

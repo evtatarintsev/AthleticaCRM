@@ -157,7 +157,7 @@ fun Application.configureServer() {
                             myBranchesRoute()
                         }
                         clientsRoutes(di.clients, di.clientBalances, di.enrollments, di.customFieldDefinitions)
-                        groupsRoutes(di.groups, di.disciplines, di.employees, di.sessions, di.bus)
+                        groupsRoutes(di.groups, di.disciplines, di.employees, di.sessions, di.halls, di.enrollments, di.bus)
                         sessionsRoutes(di.groups, di.sessions)
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)

@@ -201,58 +201,30 @@ SMTP_FROM_ADDRESS=noreply@yourdomain.com
 
 Выполняется **на сервере** от пользователя `deploy`, в директории `/opt/athletica-crm`.
 
-### Шаг 1 — Подготовить файлы для Certbot
+### Шаг 1 — Авторизоваться в GitHub Container Registry
+
+Для скачивания образов сервера и веб-приложения нужен GitHub PAT с правом `read:packages`
+(создаётся по инструкции из раздела 7.1).
 
 ```bash
-# Скачать рекомендованные параметры SSL от Certbot
-curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
-  | sudo tee /etc/letsencrypt/options-ssl-nginx.conf > /dev/null
-
-# Сгенерировать DH-параметры (может занять 1–2 минуты)
-sudo openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+# Заменить <token> и <github-username> на реальные значения
+echo "<token>" | docker login ghcr.io -u <github-username> --password-stdin
 ```
 
-### Шаг 2 — Запустить nginx с временным HTTP-конфигом
+При успехе команда выведет `Login Succeeded`.
 
-Nginx не стартует, если сертификаты ещё не получены (конфиг ссылается на несуществующие файлы).
-Временно заменить конфиг на HTTP-only:
+### Шаг 2 — Получить TLS-сертификат
 
-```bash
-# Создать временный конфиг только для ACME challenge
-docker compose -f docker-compose.prod.yaml run --rm \
-  -v /opt/athletica-crm/nginx:/etc/nginx/templates \
-  --entrypoint sh nginx -c "
-cat > /etc/nginx/conf.d/default.conf <<'EOF'
-server {
-    listen 80;
-    server_name _;
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    location / {
-        return 200 'ok';
-    }
-}
-EOF
-nginx -g 'daemon off;'
-"
-```
-
-Проще: запустить nginx отдельно:
-
-```bash
-docker compose -f docker-compose.prod.yaml up -d nginx
-```
-
-Если nginx не стартует из-за отсутствия сертификатов — временно закомментировать `443`-блоки в `nginx/prod.conf.template`, запустить, получить сертификат, вернуть конфиг.
-
-### Шаг 3 — Получить TLS-сертификат
+Nginx не запускается без сертификатов, а сертификат нельзя получить без nginx — классический deadlock.
+Решение: запустить certbot в режиме `--standalone` (он сам открывает порт 80, nginx не нужен).
 
 ```bash
 # Заменить yourdomain.com и admin@yourdomain.com на реальные значения
-docker compose -f docker-compose.prod.yaml run --rm certbot certonly \
-  --webroot \
-  --webroot-path=/var/www/certbot \
+docker run --rm \
+  -v athletica-crm_letsencrypt:/etc/letsencrypt \
+  -p 80:80 \
+  certbot/certbot certonly \
+  --standalone \
   -d yourdomain.com \
   -d www.yourdomain.com \
   -d minio.yourdomain.com \
@@ -262,7 +234,23 @@ docker compose -f docker-compose.prod.yaml run --rm certbot certonly \
   --no-eff-email
 ```
 
-При успехе сертификаты появятся в `/etc/letsencrypt/live/yourdomain.com/`.
+При успехе сертификаты появятся в volume `athletica-crm_letsencrypt`.
+
+### Шаг 3 — Добавить вспомогательные файлы SSL в volume
+
+Nginx требует два файла Certbot, которые не создаются автоматически.
+Записать их прямо в Docker volume (может занять 1–2 минуты из-за генерации DH-параметров):
+
+```bash
+docker run --rm \
+  -v athletica-crm_letsencrypt:/etc/letsencrypt \
+  alpine sh -c "
+    apk add --no-cache curl openssl && \
+    curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
+      > /etc/letsencrypt/options-ssl-nginx.conf && \
+    openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+  "
+```
 
 ### Шаг 4 — Запустить весь стек
 

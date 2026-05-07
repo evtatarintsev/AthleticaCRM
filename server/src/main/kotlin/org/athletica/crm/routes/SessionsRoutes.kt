@@ -14,7 +14,6 @@ import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.sessions.cancelSession
 import org.athletica.crm.usecases.sessions.createSession
 import org.athletica.crm.usecases.sessions.rescheduleSession
 import org.athletica.crm.usecases.sessions.sessionDetail
@@ -58,7 +57,7 @@ fun RouteWithContext.sessionsRoutes(
         post<Unit, Unit>("/{id}/cancel") { _, call ->
             val id = call.pathSessionId()
             db.transaction {
-                cancelSession(sessions, id)
+                sessions.byId(id).cancel()
             }
         }
 

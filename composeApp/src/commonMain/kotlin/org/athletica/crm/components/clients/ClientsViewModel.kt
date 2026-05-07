@@ -40,10 +40,6 @@ class ClientsViewModel(
     var availableCustomFields by mutableStateOf<List<CustomFieldDefinitionSchema>>(emptyList())
         private set
 
-    init {
-        load()
-    }
-
     /** Перезагружает список клиентов и кастомные поля. */
     fun load() {
         scope.launch {

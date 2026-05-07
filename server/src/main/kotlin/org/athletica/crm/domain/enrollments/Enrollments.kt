@@ -41,4 +41,11 @@ interface Enrollments {
     /** Возвращает записи клиентов, активных в конкретный [date]. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun activeOn(groupId: GroupId, date: LocalDate): List<Enrollment> = activeIn(groupId, date, date)
+
+    /**
+     * Возвращает список пар (clientId, name) для всех клиентов,
+     * активно записанных в группу [groupId] прямо сейчас.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun activeClients(groupId: GroupId): List<Pair<ClientId, String>>
 }

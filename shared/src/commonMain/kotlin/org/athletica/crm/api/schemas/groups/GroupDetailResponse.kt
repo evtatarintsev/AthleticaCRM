@@ -16,4 +16,6 @@ data class GroupDetailResponse(
     val disciplines: List<GroupDiscipline> = emptyList(),
     /** Преподаватели группы, наследуемые новыми занятиями. */
     val employees: List<GroupEmployee> = emptyList(),
+    /** Постоянные участники группы (активные записи). */
+    val clients: List<GroupClient> = emptyList(),
 )

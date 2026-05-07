@@ -2,6 +2,7 @@ package org.athletica.crm.routes
 
 import io.ktor.server.routing.RoutingCall
 import org.athletica.crm.api.schemas.groups.EditGroupRequest
+import org.athletica.crm.api.schemas.groups.GroupClient
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
@@ -13,18 +14,22 @@ import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
 import org.athletica.crm.api.schemas.sessions.UpdateGroupScheduleRequest
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.domain.discipline.Discipline
 import org.athletica.crm.domain.discipline.Disciplines
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.domain.events.DomainEventBus
 import org.athletica.crm.domain.groups.Group
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.ScheduleSlot
+import org.athletica.crm.domain.hall.Halls
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.sessions.updateGroupEmployees
@@ -38,6 +43,8 @@ fun RouteWithContext.groupsRoutes(
     disciplines: Disciplines,
     employees: Employees,
     sessions: Sessions,
+    halls: Halls,
+    enrollments: Enrollments,
     bus: DomainEventBus,
 ) {
     route("/groups") {
@@ -49,9 +56,10 @@ fun RouteWithContext.groupsRoutes(
 
         get<GroupDetailRequest, GroupDetailResponse>("/detail") { request ->
             db.transaction {
-                groups
-                    .byId(request.id)
-                    .toGroupDetailResponse(disciplines.list(), employees.list())
+                val group = groups.byId(request.id)
+                val hallNames = halls.list().associate { it.id to it.name }
+                val activeClients = enrollments.activeClients(group.id)
+                group.toGroupDetailResponse(disciplines.list(), employees.list(), hallNames, activeClients)
             }
         }
 
@@ -71,7 +79,7 @@ fun RouteWithContext.groupsRoutes(
                         request.disciplineIds,
                         request.employeeIds,
                     )
-                    .toGroupDetailResponse(disciplines.list(), employees.list())
+                    .toGroupDetailResponse(disciplines.list(), employees.list(), emptyMap(), emptyList())
             }
         }
 
@@ -86,7 +94,7 @@ fun RouteWithContext.groupsRoutes(
                         request.employeeIds,
                     )
                     .apply { save() }
-                    .toGroupDetailResponse(disciplines.list(), employees.list())
+                    .toGroupDetailResponse(disciplines.list(), employees.list(), emptyMap(), emptyList())
             }
         }
 
@@ -123,17 +131,20 @@ fun List<Group>.toGroupSelectItems() = map { GroupSelectItem(it.id, it.name) }
 fun Group.toGroupDetailResponse(
     allDisciplines: List<Discipline>,
     allEmployees: List<Employee>,
+    hallNames: Map<HallId, String>,
+    activeClients: List<Pair<ClientId, String>>,
 ) = GroupDetailResponse(
     id = id,
     name = name,
-    schedule = schedule.map { it.toSchema() },
+    schedule = schedule.map { it.toSchema(hallNames) },
     disciplines = allDisciplines.mapToGroupDisciplines(disciplines),
     employees = allEmployees.mapToGroupEmployees(employeeIds),
+    clients = activeClients.map { (id, name) -> GroupClient(id, name) },
 )
 
 fun ScheduleSlotSchema.toDomain() = ScheduleSlot(dayOfWeek, startAt, endAt, hallId)
 
-fun ScheduleSlot.toSchema() = ScheduleSlotSchema(dayOfWeek, startAt, endAt, hallId)
+fun ScheduleSlot.toSchema(hallNames: Map<HallId, String> = emptyMap()) = ScheduleSlotSchema(dayOfWeek, startAt, endAt, hallId, hallNames[hallId])
 
 fun List<Discipline>.mapToGroupDisciplines(ids: List<DisciplineId>) = filter { ids.contains(it.id) }.map { GroupDiscipline(it.id, it.name) }
 

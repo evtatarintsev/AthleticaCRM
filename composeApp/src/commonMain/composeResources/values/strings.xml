@@ -182,6 +182,8 @@
     <string name="dialog_remove_employee_from_group_title">Убрать преподавателя из группы?</string>
     <string name="dialog_remove_employee_from_group_message">Преподаватель «%1$s» будет убран из группы «%2$s».</string>
     <string name="employees_empty_for_group">Нет преподавателей</string>
+    <string name="section_group_clients">Постоянные участники</string>
+    <string name="clients_empty_for_group">Нет постоянных участников</string>
 
     <!-- Group disciplines -->
     <string name="section_disciplines">Дисциплины</string>

@@ -1,5 +1,6 @@
 package org.athletica.crm.components.groups
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -42,12 +45,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.LocalTime
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.groups.GroupClient
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupEmployee
+import org.athletica.crm.api.schemas.groups.ScheduleSlot
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_group_employee
@@ -55,19 +63,23 @@ import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.action_remove
+import org.athletica.crm.generated.resources.clients_empty_for_group
 import org.athletica.crm.generated.resources.dialog_remove_employee_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_employee_from_group_title
 import org.athletica.crm.generated.resources.employees_empty_for_group
 import org.athletica.crm.generated.resources.label_name
 import org.athletica.crm.generated.resources.section_basic_info
 import org.athletica.crm.generated.resources.section_disciplines
+import org.athletica.crm.generated.resources.section_group_clients
 import org.athletica.crm.generated.resources.section_group_employees
+import org.athletica.crm.generated.resources.section_schedule
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Экран детальной информации о группе.
- * Отображает основную информацию, расписание и список преподавателей.
+ * Отображает основную информацию, расписание, постоянных участников и список преподавателей.
  * По клику на Edit вызывает [onEdit] с текущей группой.
+ * По клику на участника вызывает [onClientClick] с его идентификатором.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +88,7 @@ fun GroupDetailScreen(
     api: ApiClient,
     onBack: () -> Unit,
     onEdit: (GroupDetailResponse) -> Unit = {},
+    onClientClick: (ClientId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -146,6 +159,17 @@ fun GroupDetailScreen(
                 ) {
                     item {
                         GroupBasicInfoSection(group)
+                    }
+
+                    item {
+                        GroupScheduleSection(group.schedule)
+                    }
+
+                    item {
+                        GroupClientsSection(
+                            clients = group.clients,
+                            onClientClick = onClientClick,
+                        )
                     }
 
                     item {
@@ -234,11 +258,99 @@ private fun GroupBasicInfoSection(group: GroupDetailResponse) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
+            @OptIn(ExperimentalLayoutApi::class)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 group.disciplines.forEach { discipline ->
                     AssistChip(
                         onClick = {},
                         label = { Text(discipline.name) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupScheduleSection(schedule: List<ScheduleSlot>) {
+    SectionCard(stringResource(Res.string.section_schedule)) {
+        if (schedule.isEmpty()) {
+            Text(
+                text = "—",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            schedule.forEach { slot ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                ) {
+                    Text(
+                        text = slot.dayOfWeek.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.width(28.dp),
+                    )
+                    Text(
+                        text = "${slot.startAt.toHhMm()}–${slot.endAt.toHhMm()}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.width(104.dp),
+                    )
+                    Text(
+                        text = slot.hallName ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupClientsSection(
+    clients: List<GroupClient>,
+    onClientClick: (ClientId) -> Unit,
+) {
+    SectionCard(stringResource(Res.string.section_group_clients)) {
+        if (clients.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.clients_empty_for_group),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+        } else {
+            clients.forEach { client ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onClientClick(client.id) }
+                            .padding(vertical = 6.dp),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                    ) {
+                        Text(
+                            text = client.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = client.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -308,3 +420,5 @@ private fun InfoRow(label: String, value: String) {
         )
     }
 }
+
+private fun LocalTime.toHhMm() = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"

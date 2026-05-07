@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.HallId
  * Один слот в расписании группы.
  * [dayOfWeek] — день недели (Пн..Вс).
  * [startAt] и [endAt] — время в формате "HH:MM".
+ * [hallName] — название зала; заполняется только в ответах сервера, в запросах `null`.
  */
 @Serializable
 data class ScheduleSlot(
@@ -16,4 +17,5 @@ data class ScheduleSlot(
     val startAt: LocalTime,
     val endAt: LocalTime,
     val hallId: HallId,
+    val hallName: String? = null,
 )

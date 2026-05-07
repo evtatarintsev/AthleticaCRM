@@ -163,18 +163,26 @@ fun Application.mailbox(): Mailbox =
         ),
     )
 
-fun Application.minio() =
-    MinioService(
-        client =
+fun Application.minio(): MinioService {
+    val accessKey = environment.config.property("minio.accessKey").getString()
+    val secretKey = environment.config.property("minio.secretKey").getString()
+    val bucket = environment.config.property("minio.bucket").getString()
+    return MinioService(
+        internalClient =
             MinioClient
                 .builder()
                 .endpoint(environment.config.property("minio.endpoint").getString())
-                .credentials(
-                    environment.config.property("minio.accessKey").getString(),
-                    environment.config.property("minio.secretKey").getString(),
-                ).build(),
-        bucket = environment.config.property("minio.bucket").getString(),
+                .credentials(accessKey, secretKey)
+                .build(),
+        publicClient =
+            MinioClient
+                .builder()
+                .endpoint(environment.config.property("minio.publicEndpoint").getString())
+                .credentials(accessKey, secretKey)
+                .build(),
+        bucket = bucket,
     ).also { it.ensureBucketExists() }
+}
 
 /**
  * Создаёт [Database] с R2DBC пулом соединений.

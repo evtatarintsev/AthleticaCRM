@@ -12,17 +12,27 @@ import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
+/**
+ * Сервис для работы с объектным хранилищем MinIO.
+ *
+ * Использует два клиента: [internalClient] для загрузки файлов (внутренняя сеть Docker),
+ * [publicClient] для генерации presigned URL (подпись считается с публичным хостом,
+ * поэтому браузер сможет скачать файл напрямую).
+ */
 class MinioService(
-    private val client: MinioClient,
+    private val internalClient: MinioClient,
+    private val publicClient: MinioClient,
     private val bucket: String,
 ) {
+    /** Создаёт бакет, если он ещё не существует. */
     fun ensureBucketExists() {
-        val exists = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())
+        val exists = internalClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())
         if (!exists) {
-            client.makeBucket(MakeBucketArgs.builder().bucket(bucket).build())
+            internalClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build())
         }
     }
 
+    /** Загружает объект в хранилище по [key]. */
     suspend fun uploadObject(
         key: String,
         stream: InputStream,
@@ -30,7 +40,7 @@ class MinioService(
         contentType: String,
     ): Unit =
         withContext(Dispatchers.IO) {
-            client.putObject(
+            internalClient.putObject(
                 PutObjectArgs
                     .builder()
                     .bucket(bucket)
@@ -41,9 +51,10 @@ class MinioService(
             )
         }
 
+    /** Удаляет объект из хранилища по [key]. */
     suspend fun deleteObject(key: String): Unit =
         withContext(Dispatchers.IO) {
-            client.removeObject(
+            internalClient.removeObject(
                 RemoveObjectArgs
                     .builder()
                     .bucket(bucket)
@@ -52,12 +63,16 @@ class MinioService(
             )
         }
 
+    /**
+     * Возвращает presigned GET-ссылку на объект [key] с TTL [ttlSeconds].
+     * URL подписывается публичным клиентом, поэтому хост в ссылке — публичный адрес MinIO.
+     */
     suspend fun presignedGetUrl(
         key: String,
         ttlSeconds: Int = 3600,
     ): String =
         withContext(Dispatchers.IO) {
-            client.getPresignedObjectUrl(
+            publicClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs
                     .builder()
                     .method(Method.GET)

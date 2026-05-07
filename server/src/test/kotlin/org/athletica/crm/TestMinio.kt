@@ -14,14 +14,17 @@ object TestMinio {
     val container: MinIOContainer =
         MinIOContainer("minio/minio:latest").also { it.start() }
 
-    val minioService: MinioService =
+    val minioService: MinioService by lazy {
+        val client =
+            MinioClient
+                .builder()
+                .endpoint(container.s3URL)
+                .credentials(container.userName, container.password)
+                .build()
         MinioService(
-            client =
-                MinioClient
-                    .builder()
-                    .endpoint(container.s3URL)
-                    .credentials(container.userName, container.password)
-                    .build(),
+            internalClient = client,
+            publicClient = client,
             bucket = BUCKET,
         ).also { it.ensureBucketExists() }
+    }
 }

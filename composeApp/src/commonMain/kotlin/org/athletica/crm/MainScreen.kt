@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
@@ -111,7 +110,6 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.action_add_client
 import org.athletica.crm.generated.resources.action_collapse_menu
 import org.athletica.crm.generated.resources.action_logout
 import org.athletica.crm.generated.resources.action_open_menu
@@ -785,16 +783,6 @@ private fun RowScope.TopBarActions(
     selectedItem: NavItem,
     onCreateClient: () -> Unit,
 ) {
-    when (selectedItem) {
-        NavItem.CLIENTS ->
-            IconButton(onClick = onCreateClient) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(Res.string.action_add_client),
-                )
-            }
-        else -> Unit
-    }
 }
 
 /**

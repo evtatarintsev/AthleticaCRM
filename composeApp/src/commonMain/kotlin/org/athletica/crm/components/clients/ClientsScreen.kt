@@ -14,10 +14,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_client
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_delete_selected
 import org.athletica.crm.generated.resources.action_export_selected
@@ -98,115 +101,126 @@ fun ClientsScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        when (val s = viewModel.state) {
-            is ClientsState.Loading ->
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-
-            is ClientsState.Error ->
-                Text(
-                    text = s.error.message(),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.align(Alignment.Center),
+    Scaffold(
+        modifier = modifier,
+        floatingActionButton = {
+            if (selectedIds.isEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateToCreate,
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(Res.string.action_add_client)) },
                 )
+            }
+        },
+        bottomBar = {
+            if (selectedIds.isNotEmpty()) {
+                ClientsBottomActionBar(
+                    selectedCount = selectedIds.size,
+                    onAddToGroup = { showAddToGroupSheet = true },
+                    onDelete = { selectedIds = emptySet() },
+                    onNotify = {},
+                    onExport = { onNavigateToExport(selectedIds.toList()) },
+                )
+            }
+        },
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            when (val s = viewModel.state) {
+                is ClientsState.Loading ->
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-            is ClientsState.Loaded -> {
-                val filteredClients = filter.applyTo(s.clients)
-
-                val selectAllState =
-                    when {
-                        selectedIds.isEmpty() -> ToggleableState.Off
-                        selectedIds.containsAll(filteredClients.map { it.id }) -> ToggleableState.On
-                        else -> ToggleableState.Indeterminate
-                    }
-
-                Column(Modifier.fillMaxSize()) {
-                    ClientsFilterBar(
-                        filter = filter,
-                        onFilterChange = { filter = it },
-                        onOpenSheet = { showFilterSheet = true },
-                        onOpenSettings = { showSettingsDialog = true },
+                is ClientsState.Error ->
+                    Text(
+                        text = s.error.message(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.align(Alignment.Center),
                     )
 
-                    when {
-                        s.clients.isEmpty() ->
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.clients_empty), style = MaterialTheme.typography.bodyLarge)
-                            }
+                is ClientsState.Loaded -> {
+                    val filteredClients = filter.applyTo(s.clients)
 
-                        filteredClients.isEmpty() ->
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.empty_search_results), style = MaterialTheme.typography.bodyLarge)
-                            }
+                    val selectAllState =
+                        when {
+                            selectedIds.isEmpty() -> ToggleableState.Off
+                            selectedIds.containsAll(filteredClients.map { it.id }) -> ToggleableState.On
+                            else -> ToggleableState.Indeterminate
+                        }
 
-                        else -> {
-                            ClientsTableHeader(
-                                selectAllState = selectAllState,
-                                settings = clientSettings,
-                                onSelectAllClick = {
-                                    selectedIds =
-                                        if (selectAllState == ToggleableState.On) {
-                                            emptySet()
-                                        } else {
-                                            filteredClients.map { it.id }.toSet()
-                                        }
-                                },
-                            )
-                            HorizontalDivider()
-                            LazyColumn(
-                                contentPadding =
-                                    PaddingValues(
-                                        top = 4.dp,
-                                        bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
-                                    ),
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                items(filteredClients, key = { it.id }) { client ->
-                                    ClientRow(
-                                        client = client,
-                                        api = api,
-                                        settings = clientSettings,
-                                        selected = client.id in selectedIds,
-                                        onClick = { onClientClick(client.id) },
-                                        onCheckedChange = { checked ->
-                                            selectedIds =
-                                                if (checked) {
-                                                    selectedIds + client.id
-                                                } else {
-                                                    selectedIds - client.id
-                                                }
-                                        },
-                                    )
+                    Column(Modifier.fillMaxSize()) {
+                        ClientsFilterBar(
+                            filter = filter,
+                            onFilterChange = { filter = it },
+                            onOpenSheet = { showFilterSheet = true },
+                            onOpenSettings = { showSettingsDialog = true },
+                        )
+
+                        when {
+                            s.clients.isEmpty() ->
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.clients_empty), style = MaterialTheme.typography.bodyLarge)
+                                }
+
+                            filteredClients.isEmpty() ->
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.empty_search_results), style = MaterialTheme.typography.bodyLarge)
+                                }
+
+                            else -> {
+                                ClientsTableHeader(
+                                    selectAllState = selectAllState,
+                                    settings = clientSettings,
+                                    onSelectAllClick = {
+                                        selectedIds =
+                                            if (selectAllState == ToggleableState.On) {
+                                                emptySet()
+                                            } else {
+                                                filteredClients.map { it.id }.toSet()
+                                            }
+                                    },
+                                )
+                                HorizontalDivider()
+                                LazyColumn(
+                                    contentPadding =
+                                        PaddingValues(
+                                            top = 4.dp,
+                                            bottom = if (selectedIds.isNotEmpty()) 80.dp else 4.dp,
+                                        ),
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    items(filteredClients, key = { it.id }) { client ->
+                                        ClientRow(
+                                            client = client,
+                                            api = api,
+                                            settings = clientSettings,
+                                            selected = client.id in selectedIds,
+                                            onClick = { onClientClick(client.id) },
+                                            onCheckedChange = { checked ->
+                                                selectedIds =
+                                                    if (checked) {
+                                                        selectedIds + client.id
+                                                    } else {
+                                                        selectedIds - client.id
+                                                    }
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                if (selectedIds.isNotEmpty()) {
-                    ClientsBottomActionBar(
-                        selectedCount = selectedIds.size,
-                        onAddToGroup = { showAddToGroupSheet = true },
-                        onDelete = { selectedIds = emptySet() },
-                        onNotify = {},
-                        onExport = {
-                            onNavigateToExport(selectedIds.toList())
-                        },
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
-                }
-
-                if (showAddToGroupSheet && selectedIds.isNotEmpty()) {
-                    AddToGroupSheet(
-                        clientIds = selectedIds.toList(),
-                        api = api,
-                        onDismiss = { showAddToGroupSheet = false },
-                        onGroupAdded = {
-                            showAddToGroupSheet = false
-                            selectedIds = emptySet()
-                        },
-                    )
+                    if (showAddToGroupSheet && selectedIds.isNotEmpty()) {
+                        AddToGroupSheet(
+                            clientIds = selectedIds.toList(),
+                            api = api,
+                            onDismiss = { showAddToGroupSheet = false },
+                            onGroupAdded = {
+                                showAddToGroupSheet = false
+                                selectedIds = emptySet()
+                            },
+                        )
+                    }
                 }
             }
         }

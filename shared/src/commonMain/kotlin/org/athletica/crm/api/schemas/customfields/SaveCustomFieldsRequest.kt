@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.customfields
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 
 /**
  * Запрос на сохранение набора кастомных полей для одного типа сущности.
@@ -8,6 +9,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class SaveCustomFieldsRequest(
+    /** Тип сущности (например, "CLIENT", "EMPLOYEE"). */
     val entityType: String,
-    val fields: List<CustomFieldDefinitionSchema>,
+    /** Полный набор определений, который должен быть установлен после операции. */
+    val fields: List<CustomFieldDefinition>,
 )

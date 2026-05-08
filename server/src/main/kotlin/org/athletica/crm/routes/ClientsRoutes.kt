@@ -20,8 +20,8 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
-import org.athletica.crm.api.schemas.customfields.CustomFieldValues
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -128,7 +128,10 @@ fun RouteWithContext.clientsRoutes(
             balances
                 .forClient(request.clientId)
                 .adjust(request.amount, request.note)
-            clients.byId(request.clientId).detailResponse()
+
+            clients
+                .byId(request.clientId)
+                .detailResponse()
         }
     }
 
@@ -152,7 +155,9 @@ fun RouteWithContext.clientsRoutes(
 
     get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
         db.transaction {
-            balances.forClient(request.id).historyResponse()
+            balances
+                .forClient(request.id)
+                .historyResponse()
         }
     }
 }
@@ -178,7 +183,7 @@ fun Client.toListItem() =
         avatarId = avatarId,
         birthday = birthday,
         gender = gender,
-        groups = groups.map { org.athletica.crm.api.schemas.clients.ClientGroup(it.id, it.name) },
+        groups = groups.map { ClientGroup(it.id, it.name) },
         balance = balance,
         customFields = customFields,
     )
@@ -218,8 +223,8 @@ private fun generateCsvContent(clients: List<ClientListItem>): ByteArray {
         val birthdayStr = client.birthday?.toString() ?: ""
         val genderStr =
             when (client.gender) {
-                org.athletica.crm.core.Gender.MALE -> "М"
-                org.athletica.crm.core.Gender.FEMALE -> "Ж"
+                Gender.MALE -> "М"
+                Gender.FEMALE -> "Ж"
             }
         sb.appendLine("${client.id},${client.name},$birthdayStr,$genderStr,$groupsStr,${client.balance}")
     }

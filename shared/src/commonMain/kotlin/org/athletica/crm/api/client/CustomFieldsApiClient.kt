@@ -7,15 +7,15 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.api.schemas.customfields.SaveCustomFieldsRequest
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 
 class CustomFieldsApiClient(private val http: HttpClient) {
     /** Возвращает список кастомных полей для указанного типа сущности. */
-    suspend fun list(entityType: String): Either<ApiClientError, List<CustomFieldDefinitionSchema>> = requestCatching { http.get("/api/custom-fields/list?entityType=$entityType") }
+    suspend fun list(entityType: String): Either<ApiClientError, List<CustomFieldDefinition>> = requestCatching { http.get("/api/custom-fields/list?entityType=$entityType") }
 
     /** Сохраняет полный список кастомных полей для указанного типа сущности. */
-    suspend fun save(request: SaveCustomFieldsRequest): Either<ApiClientError, List<CustomFieldDefinitionSchema>> =
+    suspend fun save(request: SaveCustomFieldsRequest): Either<ApiClientError, List<CustomFieldDefinition>> =
         requestCatching {
             http.post("/api/custom-fields/save") {
                 contentType(ContentType.Application.Json)

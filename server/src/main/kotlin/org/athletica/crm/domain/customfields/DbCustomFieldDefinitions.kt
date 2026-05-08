@@ -1,9 +1,14 @@
 package org.athletica.crm.domain.customfields
 
 import arrow.core.raise.context.Raise
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import org.athletica.crm.api.client.appJson
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
-import org.athletica.crm.core.customfields.CustomFieldType
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -25,16 +30,11 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
             .bind("orgId", ctx.orgId)
             .bind("entityType", entityType)
             .list { row ->
-                CustomFieldDefinition(
-                    orgId = ctx.orgId,
-                    entityType = entityType,
+                customFieldDefinition(
+                    fieldType = row.asString("field_type"),
+                    configJson = row.asString("config"),
                     fieldKey = row.asString("field_key"),
                     label = row.asString("label"),
-                    fieldType =
-                        CustomFieldType.parse(
-                            row.asString("field_type"),
-                            row.asString("config"),
-                        ),
                     isRequired = row.asBoolean("is_required"),
                     isSearchable = row.asBoolean("is_searchable"),
                     isSortable = row.asBoolean("is_sortable"),
@@ -65,8 +65,8 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 .bind("entityType", entityType)
                 .bind("fieldKey", def.fieldKey)
                 .bind("label", def.label)
-                .bind("fieldType", def.fieldType.name)
-                .bind("config", def.fieldType.configJson())
+                .bind("fieldType", def.fieldTypeName())
+                .bind("config", def.configJson())
                 .bind("isRequired", def.isRequired)
                 .bind("isSearchable", def.isSearchable)
                 .bind("isSortable", def.isSortable)
@@ -74,4 +74,58 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 .execute()
         }
     }
+}
+
+private val COMMON_FIELDS = setOf("fieldType", "fieldKey", "label", "isRequired", "isSearchable", "isSortable")
+
+/** Имя типа поля для колонки `field_type`; совпадает с `@SerialName` подтипа. */
+private fun CustomFieldDefinition.fieldTypeName(): String =
+    when (this) {
+        is CustomFieldDefinition.Text -> "text"
+        is CustomFieldDefinition.Number -> "number"
+        is CustomFieldDefinition.Date -> "date"
+        is CustomFieldDefinition.Bool -> "boolean"
+        is CustomFieldDefinition.Phone -> "phone"
+        is CustomFieldDefinition.Email -> "email"
+        is CustomFieldDefinition.Url -> "url"
+        is CustomFieldDefinition.Select -> "select"
+    }
+
+/**
+ * Сериализует только специфичную для подтипа часть определения для колонки `config`.
+ * Общие поля (fieldKey, label, флаги) хранятся в отдельных колонках.
+ */
+private fun CustomFieldDefinition.configJson(): String {
+    val full = appJson.encodeToJsonElement<CustomFieldDefinition>(this).jsonObject
+    val typeOnly = full.filterKeys { it !in COMMON_FIELDS }
+    return JsonObject(typeOnly).toString()
+}
+
+/**
+ * Восстанавливает полиморфный [CustomFieldDefinition] из строки таблицы:
+ * сшивает дискриминатор и общие поля с распарсенным [configJson].
+ */
+private fun customFieldDefinition(
+    fieldType: String,
+    configJson: String,
+    fieldKey: String,
+    label: String,
+    isRequired: Boolean,
+    isSearchable: Boolean,
+    isSortable: Boolean,
+): CustomFieldDefinition {
+    val config = appJson.parseToJsonElement(configJson).jsonObject
+    val full =
+        JsonObject(
+            config +
+                mapOf(
+                    "fieldType" to JsonPrimitive(fieldType),
+                    "fieldKey" to JsonPrimitive(fieldKey),
+                    "label" to JsonPrimitive(label),
+                    "isRequired" to JsonPrimitive(isRequired),
+                    "isSearchable" to JsonPrimitive(isSearchable),
+                    "isSortable" to JsonPrimitive(isSortable),
+                ),
+        )
+    return appJson.decodeFromJsonElement<CustomFieldDefinition>(full)
 }

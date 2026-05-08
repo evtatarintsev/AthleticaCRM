@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 
 /** Состояние загрузки списка клиентов. */
 sealed class ClientsState {
@@ -37,7 +37,7 @@ class ClientsViewModel(
      * Список доступных кастомных полей для клиентов.
      * Используется при конвертации сохранённых настроек отображения.
      */
-    var availableCustomFields by mutableStateOf<List<CustomFieldDefinitionSchema>>(emptyList())
+    var availableCustomFields by mutableStateOf<List<CustomFieldDefinition>>(emptyList())
         private set
 
     /** Перезагружает список клиентов и кастомные поля. */

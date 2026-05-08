@@ -31,11 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
-import org.athletica.crm.api.schemas.customfields.CustomFieldTypeConfig
-import org.athletica.crm.api.schemas.customfields.CustomFieldValue
-import org.athletica.crm.api.schemas.customfields.CustomFieldValues
-import org.athletica.crm.api.schemas.customfields.toTypeConfig
+import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldValue
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_clear
@@ -119,14 +117,18 @@ fun CustomFieldsSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomFieldInput(
-    def: CustomFieldDefinitionSchema,
+    def: CustomFieldDefinition,
     customFields: CustomFieldValues,
     onUpdate: (CustomFieldValues) -> Unit,
     enabled: Boolean,
     onRequestDatePicker: () -> Unit,
 ) {
-    when (def.fieldType) {
-        "text", "phone", "email", "url" -> {
+    when (def) {
+        is CustomFieldDefinition.Text,
+        is CustomFieldDefinition.Phone,
+        is CustomFieldDefinition.Email,
+        is CustomFieldDefinition.Url,
+        -> {
             val value = (customFields[def.fieldKey] as? CustomFieldValue.Text)?.value ?: ""
             OutlinedTextField(
                 value = value,
@@ -143,7 +145,7 @@ private fun CustomFieldInput(
             )
         }
 
-        "number" -> {
+        is CustomFieldDefinition.Number -> {
             val value = (customFields[def.fieldKey] as? CustomFieldValue.Number)?.value?.toString() ?: ""
             OutlinedTextField(
                 value = value,
@@ -162,7 +164,7 @@ private fun CustomFieldInput(
             )
         }
 
-        "boolean" -> {
+        is CustomFieldDefinition.Bool -> {
             val value = (customFields[def.fieldKey] as? CustomFieldValue.Bool)?.value ?: false
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -186,7 +188,7 @@ private fun CustomFieldInput(
             }
         }
 
-        "date" -> {
+        is CustomFieldDefinition.Date -> {
             val value = (customFields[def.fieldKey] as? CustomFieldValue.Date)?.value
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
@@ -218,9 +220,7 @@ private fun CustomFieldInput(
             }
         }
 
-        "select" -> {
-            val config = def.config.toTypeConfig("select") as? CustomFieldTypeConfig.SelectConfig
-            val options = config?.options ?: emptyList()
+        is CustomFieldDefinition.Select -> {
             val currentValue = (customFields[def.fieldKey] as? CustomFieldValue.Select)?.value ?: ""
             var expanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
@@ -247,7 +247,7 @@ private fun CustomFieldInput(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                 ) {
-                    options.forEach { option ->
+                    def.options.forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option) },
                             onClick = {

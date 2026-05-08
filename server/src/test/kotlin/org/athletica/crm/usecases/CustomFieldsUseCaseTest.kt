@@ -5,11 +5,10 @@ import arrow.core.getOrElse
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonObject
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -79,7 +78,13 @@ class CustomFieldsUseCaseTest {
                         saveCustomFields(
                             definitions,
                             "client",
-                            listOf(schema("age_group", "select", """{"options":["adult","junior"]}""")),
+                            listOf(
+                                CustomFieldDefinition.Select(
+                                    fieldKey = "age_group",
+                                    label = "age_group",
+                                    options = listOf("adult", "junior"),
+                                ),
+                            ),
                         )
                     }
                 }
@@ -93,8 +98,9 @@ class CustomFieldsUseCaseTest {
                 }.getOrElse { fail("Unexpected error: $it") }
 
             assertEquals(1, result.size)
-            assertEquals("age_group", result.single().fieldKey)
-            assertEquals("select", result.single().fieldType)
+            val select = assertIs<CustomFieldDefinition.Select>(result.single())
+            assertEquals("age_group", select.fieldKey)
+            assertEquals(listOf("adult", "junior"), select.options)
         }
 
     // ─── saveCustomFields ─────────────────────────────────────────────────────
@@ -110,8 +116,8 @@ class CustomFieldsUseCaseTest {
                                 definitions,
                                 "client",
                                 listOf(
-                                    schema("name", "text"),
-                                    schema("age", "number"),
+                                    CustomFieldDefinition.Text(fieldKey = "name", label = "name"),
+                                    CustomFieldDefinition.Number(fieldKey = "age", label = "age"),
                                 ),
                             )
                         }
@@ -129,7 +135,11 @@ class CustomFieldsUseCaseTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        saveCustomFields(definitions, "client", listOf(schema("to_remove", "text")))
+                        saveCustomFields(
+                            definitions,
+                            "client",
+                            listOf(CustomFieldDefinition.Text(fieldKey = "to_remove", label = "to_remove")),
+                        )
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -150,7 +160,11 @@ class CustomFieldsUseCaseTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        saveCustomFields(definitions, "client", listOf(schema("old", "text")))
+                        saveCustomFields(
+                            definitions,
+                            "client",
+                            listOf(CustomFieldDefinition.Text(fieldKey = "old", label = "old")),
+                        )
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -159,7 +173,11 @@ class CustomFieldsUseCaseTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            saveCustomFields(definitions, "client", listOf(schema("new", "number")))
+                            saveCustomFields(
+                                definitions,
+                                "client",
+                                listOf(CustomFieldDefinition.Number(fieldKey = "new", label = "new")),
+                            )
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -177,7 +195,11 @@ class CustomFieldsUseCaseTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            saveCustomFields(definitions, "client", listOf(schema("INVALID KEY", "text")))
+                            saveCustomFields(
+                                definitions,
+                                "client",
+                                listOf(CustomFieldDefinition.Text(fieldKey = "INVALID KEY", label = "x")),
+                            )
                         }
                     }
                 }
@@ -195,7 +217,11 @@ class CustomFieldsUseCaseTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            saveCustomFields(definitions, "client", listOf(schema("AgeGroup", "text")))
+                            saveCustomFields(
+                                definitions,
+                                "client",
+                                listOf(CustomFieldDefinition.Text(fieldKey = "AgeGroup", label = "x")),
+                            )
                         }
                     }
                 }
@@ -213,7 +239,11 @@ class CustomFieldsUseCaseTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            saveCustomFields(definitions, "client", listOf(schema("age-group", "text")))
+                            saveCustomFields(
+                                definitions,
+                                "client",
+                                listOf(CustomFieldDefinition.Text(fieldKey = "age-group", label = "x")),
+                            )
                         }
                     }
                 }
@@ -234,36 +264,12 @@ class CustomFieldsUseCaseTest {
                             saveCustomFields(
                                 definitions,
                                 "client",
-                                listOf(schema("age_group", "text")),
+                                listOf(CustomFieldDefinition.Text(fieldKey = "age_group", label = "age_group")),
                             )
                         }
                     }
                 }
 
-            assertIs<Either.Right<List<CustomFieldDefinitionSchema>>>(result)
+            assertIs<Either.Right<List<CustomFieldDefinition>>>(result)
         }
-
-    // ─── helpers ──────────────────────────────────────────────────────────────
-
-    private fun schema(
-        key: String,
-        type: String,
-        configJson: String = "{}",
-    ): CustomFieldDefinitionSchema {
-        val config =
-            runCatching {
-                kotlinx.serialization.json.Json.parseToJsonElement(configJson).let {
-                    it as? JsonObject ?: JsonObject(emptyMap())
-                }
-            }.getOrElse { JsonObject(emptyMap()) }
-        return CustomFieldDefinitionSchema(
-            fieldKey = key,
-            label = key,
-            fieldType = type,
-            config = config,
-            isRequired = false,
-            isSearchable = false,
-            isSortable = false,
-        )
-    }
 }

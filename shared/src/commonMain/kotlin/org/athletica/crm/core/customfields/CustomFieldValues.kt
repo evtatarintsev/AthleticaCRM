@@ -1,4 +1,4 @@
-package org.athletica.crm.api.schemas.customfields
+package org.athletica.crm.core.customfields
 
 import arrow.core.Either
 import arrow.core.left
@@ -13,11 +13,11 @@ import org.athletica.crm.core.errors.DomainError
  */
 class CustomFieldValues private constructor(
     /** Определения полей, против которых валидируются значения. */
-    val definitions: List<CustomFieldDefinitionSchema>,
+    val definitions: List<CustomFieldDefinition>,
     private val raw: List<CustomFieldValue>,
 ) {
     /** Создаёт пустой набор для заданных определений. */
-    constructor(definitions: List<CustomFieldDefinitionSchema>) : this(definitions, emptyList())
+    constructor(definitions: List<CustomFieldDefinition>) : this(definitions, emptyList())
 
     /** Возвращает значение поля [fieldKey], либо null если оно не задано. */
     operator fun get(fieldKey: String): CustomFieldValue? = raw.find { it.fieldKey == fieldKey }
@@ -37,10 +37,10 @@ class CustomFieldValues private constructor(
             val def =
                 definitions.find { it.fieldKey == v.fieldKey }
                     ?: return CommonDomainError("UNKNOWN_CUSTOM_FIELD", "Неизвестное поле: ${v.fieldKey}").left()
-            if (!v.matchesType(def.fieldType)) {
+            if (!v.matchesType(def)) {
                 return CommonDomainError(
                     "CUSTOM_FIELD_TYPE_MISMATCH",
-                    "Неверный тип для поля ${v.fieldKey}: ожидается ${def.fieldType}",
+                    "Неверный тип для поля ${v.fieldKey}",
                 ).left()
             }
         }
@@ -59,11 +59,19 @@ class CustomFieldValues private constructor(
     fun toList(): List<CustomFieldValue> = raw
 }
 
-private fun CustomFieldValue.matchesType(fieldType: String): Boolean =
+/**
+ * Проверяет, что значение совместимо с подтипом определения.
+ * Текстовые подтипы (Text/Phone/Email/Url) принимают [CustomFieldValue.Text].
+ */
+private fun CustomFieldValue.matchesType(def: CustomFieldDefinition): Boolean =
     when (this) {
-        is CustomFieldValue.Text -> fieldType in setOf("text", "phone", "email", "url")
-        is CustomFieldValue.Number -> fieldType == "number"
-        is CustomFieldValue.Bool -> fieldType == "boolean"
-        is CustomFieldValue.Date -> fieldType == "date"
-        is CustomFieldValue.Select -> fieldType == "select"
+        is CustomFieldValue.Text ->
+            def is CustomFieldDefinition.Text ||
+                def is CustomFieldDefinition.Phone ||
+                def is CustomFieldDefinition.Email ||
+                def is CustomFieldDefinition.Url
+        is CustomFieldValue.Number -> def is CustomFieldDefinition.Number
+        is CustomFieldValue.Bool -> def is CustomFieldDefinition.Bool
+        is CustomFieldValue.Date -> def is CustomFieldDefinition.Date
+        is CustomFieldValue.Select -> def is CustomFieldDefinition.Select
     }

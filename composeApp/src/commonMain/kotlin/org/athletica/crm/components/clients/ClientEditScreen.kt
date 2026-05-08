@@ -47,10 +47,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
-import org.athletica.crm.api.schemas.customfields.CustomFieldValues
 import org.athletica.crm.components.avatar.AvatarPicker
 import org.athletica.crm.components.settings.DirectoryItem
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.generated.resources.Res

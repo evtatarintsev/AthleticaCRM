@@ -7,7 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.customfields.CustomFieldType
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -88,9 +88,9 @@ class DbCustomFieldDefinitionsTest {
         runTest {
             val fields =
                 listOf(
-                    field("first", CustomFieldType.Text),
-                    field("second", CustomFieldType.Number),
-                    field("third", CustomFieldType.Boolean),
+                    CustomFieldDefinition.Text(fieldKey = "first", label = "first"),
+                    CustomFieldDefinition.Number(fieldKey = "second", label = "second"),
+                    CustomFieldDefinition.Bool(fieldKey = "third", label = "third"),
                 )
 
             either<DomainError, Unit> {
@@ -118,7 +118,10 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("client", listOf(field("org1_field", CustomFieldType.Text)))
+                        definitions.saveAll(
+                            "client",
+                            listOf(CustomFieldDefinition.Text(fieldKey = "org1_field", label = "org1_field")),
+                        )
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -139,7 +142,10 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("client", listOf(field("client_field", CustomFieldType.Text)))
+                        definitions.saveAll(
+                            "client",
+                            listOf(CustomFieldDefinition.Text(fieldKey = "client_field", label = "client_field")),
+                        )
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -161,14 +167,14 @@ class DbCustomFieldDefinitionsTest {
         runTest {
             val fields =
                 listOf(
-                    field("text_f", CustomFieldType.Text),
-                    field("num_f", CustomFieldType.Number),
-                    field("date_f", CustomFieldType.Date),
-                    field("bool_f", CustomFieldType.Boolean),
-                    field("phone_f", CustomFieldType.Phone),
-                    field("email_f", CustomFieldType.Email),
-                    field("url_f", CustomFieldType.Url),
-                    field("sel_f", CustomFieldType.Select(listOf("A", "B"))),
+                    CustomFieldDefinition.Text(fieldKey = "text_f", label = "text_f"),
+                    CustomFieldDefinition.Number(fieldKey = "num_f", label = "num_f"),
+                    CustomFieldDefinition.Date(fieldKey = "date_f", label = "date_f"),
+                    CustomFieldDefinition.Bool(fieldKey = "bool_f", label = "bool_f"),
+                    CustomFieldDefinition.Phone(fieldKey = "phone_f", label = "phone_f"),
+                    CustomFieldDefinition.Email(fieldKey = "email_f", label = "email_f"),
+                    CustomFieldDefinition.Url(fieldKey = "url_f", label = "url_f"),
+                    CustomFieldDefinition.Select(fieldKey = "sel_f", label = "sel_f", options = listOf("A", "B")),
                 )
 
             either<DomainError, Unit> {
@@ -194,7 +200,10 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("client", listOf(field("level", CustomFieldType.Select(options))))
+                        definitions.saveAll(
+                            "client",
+                            listOf(CustomFieldDefinition.Select(fieldKey = "level", label = "level", options = options)),
+                        )
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -206,8 +215,38 @@ class DbCustomFieldDefinitionsTest {
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            val select = assertIs<CustomFieldType.Select>(result.single().fieldType)
+            val select = assertIs<CustomFieldDefinition.Select>(result.single())
             assertEquals(options, select.options)
+        }
+
+    @Test
+    fun `saveAll сохраняет границы Number и Text`() =
+        runTest {
+            val fields =
+                listOf(
+                    CustomFieldDefinition.Number(fieldKey = "age", label = "age", minValue = 0, maxValue = 120),
+                    CustomFieldDefinition.Text(fieldKey = "note", label = "note", minLength = 1, maxLength = 200),
+                )
+
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctx, this) { definitions.saveAll("client", fields) }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+
+            val result =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) { definitions.all("client") }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            val number = assertIs<CustomFieldDefinition.Number>(result.first { it.fieldKey == "age" })
+            assertEquals(0L, number.minValue)
+            assertEquals(120L, number.maxValue)
+            val text = assertIs<CustomFieldDefinition.Text>(result.first { it.fieldKey == "note" })
+            assertEquals(1, text.minLength)
+            assertEquals(200, text.maxLength)
         }
 
     @Test
@@ -219,8 +258,8 @@ class DbCustomFieldDefinitionsTest {
                         definitions.saveAll(
                             "client",
                             listOf(
-                                field("old1", CustomFieldType.Text),
-                                field("old2", CustomFieldType.Number),
+                                CustomFieldDefinition.Text(fieldKey = "old1", label = "old1"),
+                                CustomFieldDefinition.Number(fieldKey = "old2", label = "old2"),
                             ),
                         )
                     }
@@ -230,7 +269,10 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("client", listOf(field("new1", CustomFieldType.Boolean)))
+                        definitions.saveAll(
+                            "client",
+                            listOf(CustomFieldDefinition.Bool(fieldKey = "new1", label = "new1")),
+                        )
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -252,7 +294,10 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("client", listOf(field("to_delete", CustomFieldType.Text)))
+                        definitions.saveAll(
+                            "client",
+                            listOf(CustomFieldDefinition.Text(fieldKey = "to_delete", label = "to_delete")),
+                        )
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -279,7 +324,10 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("employee", listOf(field("emp_field", CustomFieldType.Text)))
+                        definitions.saveAll(
+                            "employee",
+                            listOf(CustomFieldDefinition.Text(fieldKey = "emp_field", label = "emp_field")),
+                        )
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -287,10 +335,13 @@ class DbCustomFieldDefinitionsTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        definitions.saveAll("client", listOf(field("client_field", CustomFieldType.Number)))
+                        definitions.saveAll(
+                            "client",
+                            listOf(CustomFieldDefinition.Number(fieldKey = "client_field", label = "client_field")),
+                        )
                     }
                 }
-            }.getOrElse { fail("Unexpected error: $it") }
+            }.getOrElse { fail("Setup failed: $it") }
 
             val employeeFields =
                 either<DomainError, _> {
@@ -307,7 +358,9 @@ class DbCustomFieldDefinitionsTest {
     fun `saveAll сохраняет флаги isRequired isSearchable isSortable`() =
         runTest {
             val def =
-                field("f", CustomFieldType.Text).copy(
+                CustomFieldDefinition.Text(
+                    fieldKey = "f",
+                    label = "f",
                     isRequired = true,
                     isSearchable = true,
                     isSortable = true,
@@ -330,20 +383,4 @@ class DbCustomFieldDefinitionsTest {
             assertTrue(result.isSearchable)
             assertTrue(result.isSortable)
         }
-
-    // ─── helpers ──────────────────────────────────────────────────────────────
-
-    private fun field(
-        key: String,
-        type: CustomFieldType,
-    ) = org.athletica.crm.core.customfields.CustomFieldDefinition(
-        orgId = orgId,
-        entityType = "client",
-        fieldKey = key,
-        label = key,
-        fieldType = type,
-        isRequired = false,
-        isSearchable = false,
-        isSortable = false,
-    )
 }

@@ -44,8 +44,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.components.avatar.TextAvatar
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_attribute
 import org.athletica.crm.generated.resources.action_back
@@ -80,7 +80,7 @@ fun ClientAdditionalAttributesScreen(
     val viewModel = remember { ClientAdditionalAttributesViewModel(api, scope) }
 
     var showCreate by remember { mutableStateOf(false) }
-    var editingAttribute by remember { mutableStateOf<CustomFieldDefinitionSchema?>(null) }
+    var editingAttribute by remember { mutableStateOf<CustomFieldDefinition?>(null) }
     var selectedFieldKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     val isSaving = viewModel.saveState is ClientAdditionalAttributesSaveState.Saving
@@ -286,7 +286,7 @@ private fun ClientAttributesTableHeader() {
 /** Строка таблицы атрибута с выбором и переходом к редактированию. */
 @Composable
 private fun ClientAttributeRow(
-    attribute: CustomFieldDefinitionSchema,
+    attribute: CustomFieldDefinition,
     selected: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit,
@@ -304,7 +304,7 @@ private fun ClientAttributeRow(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = attribute.fieldType.displayName(),
+                    text = attribute.typeName().displayName(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(0.8f),

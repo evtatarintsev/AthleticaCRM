@@ -1,4 +1,4 @@
-package org.athletica.crm.api.schemas.customfields
+package org.athletica.crm.core.customfields
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -8,16 +8,17 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 /**
  * Типизированное значение кастомного поля.
- * [fieldKey] — ключ поля из определения; значение без ключа не имеет смысла.
+ * [fieldKey] — ключ поля из [CustomFieldDefinition]; значение без ключа не имеет смысла.
+ * Сериализуется полиморфно с дискриминатором `type`.
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class CustomFieldValue {
-    /** Ключ поля из [CustomFieldDefinitionSchema]. */
+    /** Ключ поля, к которому относится значение. */
     abstract val fieldKey: String
 
-    /** Текстовое значение (fieldType: text, phone, email, url). */
+    /** Текстовое значение (для text, phone, email, url). */
     @Serializable
     @SerialName("text")
     data class Text(
@@ -25,7 +26,7 @@ sealed class CustomFieldValue {
         val value: String,
     ) : CustomFieldValue()
 
-    /** Числовое значение (fieldType: number). */
+    /** Числовое значение. */
     @Serializable
     @SerialName("number")
     data class Number(
@@ -33,7 +34,7 @@ sealed class CustomFieldValue {
         val value: Double,
     ) : CustomFieldValue()
 
-    /** Булево значение (fieldType: boolean). */
+    /** Логическое значение. */
     @Serializable
     @SerialName("bool")
     data class Bool(
@@ -41,7 +42,7 @@ sealed class CustomFieldValue {
         val value: Boolean,
     ) : CustomFieldValue()
 
-    /** Дата (fieldType: date). */
+    /** Дата. */
     @Serializable
     @SerialName("date")
     data class Date(
@@ -49,7 +50,7 @@ sealed class CustomFieldValue {
         val value: LocalDate,
     ) : CustomFieldValue()
 
-    /** Значение из списка вариантов (fieldType: select). */
+    /** Значение из списка вариантов. */
     @Serializable
     @SerialName("select")
     data class Select(

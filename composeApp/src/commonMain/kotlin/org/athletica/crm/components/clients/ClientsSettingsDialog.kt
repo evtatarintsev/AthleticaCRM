@@ -18,7 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_close
 import org.athletica.crm.generated.resources.action_display_settings
@@ -44,7 +44,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ClientsSettingsDialog(
     settings: ClientDisplaySettings,
-    availableCustomFields: List<CustomFieldDefinitionSchema> = emptyList(),
+    availableCustomFields: List<CustomFieldDefinition> = emptyList(),
     onSettingsChange: (ClientDisplaySettings) -> Unit,
     onDismiss: () -> Unit,
 ) {

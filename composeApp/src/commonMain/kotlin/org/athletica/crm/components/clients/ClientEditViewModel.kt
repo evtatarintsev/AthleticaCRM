@@ -8,8 +8,8 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.EditClientRequest
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
-import org.athletica.crm.api.schemas.customfields.CustomFieldValues
+import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
 
 /** Состояние загрузки данных клиента перед редактированием. */
@@ -20,7 +20,7 @@ sealed class ClientEditLoadState {
     /** Данные загружены и форма готова к редактированию. */
     data class Loaded(
         val client: ClientDetailResponse,
-        val defs: List<CustomFieldDefinitionSchema>,
+        val defs: List<CustomFieldDefinition>,
     ) : ClientEditLoadState()
 
     /** Ошибка загрузки. */
@@ -53,7 +53,7 @@ class ClientEditViewModel(
         scope.launch {
             loadState = ClientEditLoadState.Loading
             var client: ClientDetailResponse? = null
-            var defs: List<CustomFieldDefinitionSchema>? = null
+            var defs: List<CustomFieldDefinition>? = null
             var error: ClientsApiError? = null
 
             val clientJob =
@@ -110,7 +110,7 @@ class ClientEditViewModel(
     }
 
     /** Строит [CustomFieldValues] из данных клиента и загруженных определений. */
-    fun buildCustomFields(client: ClientDetailResponse, defs: List<CustomFieldDefinitionSchema>): CustomFieldValues = CustomFieldValues(defs).with(client.customFields).fold({ CustomFieldValues(defs) }, { it })
+    fun buildCustomFields(client: ClientDetailResponse, defs: List<CustomFieldDefinition>): CustomFieldValues = CustomFieldValues(defs).with(client.customFields).fold({ CustomFieldValues(defs) }, { it })
 
     private companion object {
         const val CLIENT_ENTITY_TYPE = "CLIENT"

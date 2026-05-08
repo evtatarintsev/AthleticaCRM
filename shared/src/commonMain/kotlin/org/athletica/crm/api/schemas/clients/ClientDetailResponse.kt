@@ -2,8 +2,8 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
-import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId

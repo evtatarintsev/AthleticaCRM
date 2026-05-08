@@ -7,8 +7,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
-import org.athletica.crm.api.schemas.customfields.CustomFieldValues
+import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
 
 /** Состояние загрузки определений кастомных полей на экране создания клиента. */
@@ -17,7 +17,7 @@ sealed class ClientCreateDefsState {
     data object Loading : ClientCreateDefsState()
 
     /** Определения загружены. */
-    data class Loaded(val defs: List<CustomFieldDefinitionSchema>) : ClientCreateDefsState()
+    data class Loaded(val defs: List<CustomFieldDefinition>) : ClientCreateDefsState()
 }
 
 /**

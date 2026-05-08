@@ -6,8 +6,8 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
 import org.athletica.crm.api.schemas.customfields.SaveCustomFieldsRequest
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 
 /** Состояние загрузки дополнительных атрибутов клиента. */
 sealed class ClientAdditionalAttributesLoadState {
@@ -15,7 +15,7 @@ sealed class ClientAdditionalAttributesLoadState {
     data object Loading : ClientAdditionalAttributesLoadState()
 
     /** Список успешно загружен. */
-    data class Loaded(val attributes: List<CustomFieldDefinitionSchema>) : ClientAdditionalAttributesLoadState()
+    data class Loaded(val attributes: List<CustomFieldDefinition>) : ClientAdditionalAttributesLoadState()
 
     /** Ошибка загрузки списка. */
     data class Error(val error: SettingsApiError) : ClientAdditionalAttributesLoadState()
@@ -68,7 +68,7 @@ class ClientAdditionalAttributesViewModel(
      * В API отправляется полный актуальный список полей.
      */
     fun saveAttribute(
-        updated: CustomFieldDefinitionSchema,
+        updated: CustomFieldDefinition,
         isNew: Boolean,
         onSuccess: () -> Unit = {},
     ) {
@@ -124,7 +124,7 @@ class ClientAdditionalAttributesViewModel(
 
     /** Сохраняет полный список полей в API и обновляет локальное состояние. */
     private suspend fun saveAllAttributes(
-        attributes: List<CustomFieldDefinitionSchema>,
+        attributes: List<CustomFieldDefinition>,
         onSuccess: () -> Unit,
     ) {
         saveState = ClientAdditionalAttributesSaveState.Saving

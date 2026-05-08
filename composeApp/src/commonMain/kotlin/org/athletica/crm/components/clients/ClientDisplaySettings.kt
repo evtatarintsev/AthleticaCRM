@@ -3,9 +3,9 @@ package org.athletica.crm.components.clients
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientListItem
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
-import org.athletica.crm.api.schemas.customfields.CustomFieldValue
 import org.athletica.crm.api.schemas.settings.ClientsDisplaySettings
+import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldValue
 
 /**
  * Настройки отображения таблицы клиентов.
@@ -60,7 +60,7 @@ fun ClientDisplaySettings.toApiModel(): ClientsDisplaySettings =
  * [availableCustomFields] — список доступных кастомных полей для восстановления метаданных Custom-колонок.
  */
 fun ClientsDisplaySettings.toDisplaySettings(
-    availableCustomFields: List<CustomFieldDefinitionSchema>,
+    availableCustomFields: List<CustomFieldDefinition>,
 ): ClientDisplaySettings {
     val customByKey = availableCustomFields.associateBy { it.fieldKey }
     return ClientDisplaySettings(

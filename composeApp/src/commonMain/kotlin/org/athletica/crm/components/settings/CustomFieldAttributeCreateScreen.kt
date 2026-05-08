@@ -31,10 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.api.schemas.customfields.CustomFieldDefinitionSchema
-import org.athletica.crm.api.schemas.customfields.CustomFieldTypeConfig
-import org.athletica.crm.api.schemas.customfields.toJson
-import org.athletica.crm.api.schemas.customfields.toTypeConfig
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
@@ -84,36 +81,35 @@ private data class CustomFieldTypeItem(
 @Composable
 fun CustomFieldAttributeCreateScreen(
     onBack: () -> Unit,
-    onSave: (updated: CustomFieldDefinitionSchema, isNew: Boolean) -> Unit,
+    onSave: (updated: CustomFieldDefinition, isNew: Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    initialAttribute: CustomFieldDefinitionSchema? = null,
+    initialAttribute: CustomFieldDefinition? = null,
     error: String? = null,
     isLoading: Boolean = false,
 ) {
     val isEditMode = initialAttribute != null
-    val initialConfig = initialAttribute?.config?.toTypeConfig(initialAttribute.fieldType) ?: CustomFieldTypeConfig.DefaultConfig
 
     var fieldKey by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.fieldKey ?: "") }
     var label by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.label ?: "") }
-    var fieldType by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.fieldType ?: "text") }
+    var fieldType by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.typeName() ?: "text") }
     var isRequired by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.isRequired ?: false) }
     var isSearchable by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.isSearchable ?: false) }
     var isSortable by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.isSortable ?: false) }
 
     var selectOptions by remember(initialAttribute?.fieldKey) {
-        mutableStateOf((initialConfig as? CustomFieldTypeConfig.SelectConfig)?.options?.joinToString("\n") ?: "")
+        mutableStateOf((initialAttribute as? CustomFieldDefinition.Select)?.options?.joinToString("\n") ?: "")
     }
     var minValueInput by remember(initialAttribute?.fieldKey) {
-        mutableStateOf((initialConfig as? CustomFieldTypeConfig.NumberConfig)?.minValue?.toString() ?: "")
+        mutableStateOf((initialAttribute as? CustomFieldDefinition.Number)?.minValue?.toString() ?: "")
     }
     var maxValueInput by remember(initialAttribute?.fieldKey) {
-        mutableStateOf((initialConfig as? CustomFieldTypeConfig.NumberConfig)?.maxValue?.toString() ?: "")
+        mutableStateOf((initialAttribute as? CustomFieldDefinition.Number)?.maxValue?.toString() ?: "")
     }
     var minLengthInput by remember(initialAttribute?.fieldKey) {
-        mutableStateOf((initialConfig as? CustomFieldTypeConfig.TextConfig)?.minLength?.toString() ?: "")
+        mutableStateOf((initialAttribute as? CustomFieldDefinition.Text)?.minLength?.toString() ?: "")
     }
     var maxLengthInput by remember(initialAttribute?.fieldKey) {
-        mutableStateOf((initialConfig as? CustomFieldTypeConfig.TextConfig)?.maxLength?.toString() ?: "")
+        mutableStateOf((initialAttribute as? CustomFieldDefinition.Text)?.maxLength?.toString() ?: "")
     }
 
     val trimmedFieldKey = fieldKey.trim()
@@ -189,22 +185,18 @@ fun CustomFieldAttributeCreateScreen(
                     TextButton(
                         onClick = {
                             onSave(
-                                CustomFieldDefinitionSchema(
+                                buildDefinition(
+                                    fieldType = fieldType,
                                     fieldKey = trimmedFieldKey,
                                     label = trimmedLabel,
-                                    fieldType = fieldType,
-                                    config =
-                                        configForType(
-                                            fieldType = fieldType,
-                                            options = parsedOptions,
-                                            minValue = parsedMinValue,
-                                            maxValue = parsedMaxValue,
-                                            minLength = parsedMinLength,
-                                            maxLength = parsedMaxLength,
-                                        ).toJson(),
                                     isRequired = isRequired,
                                     isSearchable = isSearchable,
                                     isSortable = isSortable,
+                                    options = parsedOptions,
+                                    minValue = parsedMinValue,
+                                    maxValue = parsedMaxValue,
+                                    minLength = parsedMinLength,
+                                    maxLength = parsedMaxLength,
                                 ),
                                 !isEditMode,
                             )
@@ -462,19 +454,101 @@ private fun parseOptions(value: String): List<String> =
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
-/** Возвращает конфигурацию, соответствующую выбранному [fieldType]. */
-private fun configForType(
+/** Имя дискриминатора для текущего подтипа определения; парная функция к [buildDefinition]. */
+fun CustomFieldDefinition.typeName(): String =
+    when (this) {
+        is CustomFieldDefinition.Text -> "text"
+        is CustomFieldDefinition.Number -> "number"
+        is CustomFieldDefinition.Date -> "date"
+        is CustomFieldDefinition.Bool -> "boolean"
+        is CustomFieldDefinition.Phone -> "phone"
+        is CustomFieldDefinition.Email -> "email"
+        is CustomFieldDefinition.Url -> "url"
+        is CustomFieldDefinition.Select -> "select"
+    }
+
+/** Конструирует подтип [CustomFieldDefinition] по строковому имени типа. */
+private fun buildDefinition(
     fieldType: String,
+    fieldKey: String,
+    label: String,
+    isRequired: Boolean,
+    isSearchable: Boolean,
+    isSortable: Boolean,
     options: List<String>,
     minValue: Long?,
     maxValue: Long?,
     minLength: Int?,
     maxLength: Int?,
-): CustomFieldTypeConfig =
+): CustomFieldDefinition =
     when (fieldType) {
-        "select" -> CustomFieldTypeConfig.SelectConfig(options = options)
-        "number" -> CustomFieldTypeConfig.NumberConfig(minValue = minValue, maxValue = maxValue)
-        "text" -> CustomFieldTypeConfig.TextConfig(minLength = minLength, maxLength = maxLength)
-        "date" -> CustomFieldTypeConfig.DateConfig
-        else -> CustomFieldTypeConfig.DefaultConfig
+        "select" ->
+            CustomFieldDefinition.Select(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+                options = options,
+            )
+        "number" ->
+            CustomFieldDefinition.Number(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+                minValue = minValue,
+                maxValue = maxValue,
+            )
+        "date" ->
+            CustomFieldDefinition.Date(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+            )
+        "boolean" ->
+            CustomFieldDefinition.Bool(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+            )
+        "phone" ->
+            CustomFieldDefinition.Phone(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+            )
+        "email" ->
+            CustomFieldDefinition.Email(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+            )
+        "url" ->
+            CustomFieldDefinition.Url(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+            )
+        else ->
+            CustomFieldDefinition.Text(
+                fieldKey = fieldKey,
+                label = label,
+                isRequired = isRequired,
+                isSearchable = isSearchable,
+                isSortable = isSortable,
+                minLength = minLength,
+                maxLength = maxLength,
+            )
     }

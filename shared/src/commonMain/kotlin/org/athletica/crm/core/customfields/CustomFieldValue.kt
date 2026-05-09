@@ -16,13 +16,13 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("type")
 sealed class CustomFieldValue {
     /** Ключ поля, к которому относится значение. */
-    abstract val fieldKey: String
+    abstract val fieldKey: CustomFieldKey
 
     /** Текстовое значение (для text, phone, email, url). */
     @Serializable
     @SerialName("text")
     data class Text(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         val value: String,
     ) : CustomFieldValue()
 
@@ -30,7 +30,7 @@ sealed class CustomFieldValue {
     @Serializable
     @SerialName("number")
     data class Number(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         val value: Double,
     ) : CustomFieldValue()
 
@@ -38,7 +38,7 @@ sealed class CustomFieldValue {
     @Serializable
     @SerialName("bool")
     data class Bool(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         val value: Boolean,
     ) : CustomFieldValue()
 
@@ -46,7 +46,7 @@ sealed class CustomFieldValue {
     @Serializable
     @SerialName("date")
     data class Date(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         val value: LocalDate,
     ) : CustomFieldValue()
 
@@ -54,7 +54,7 @@ sealed class CustomFieldValue {
     @Serializable
     @SerialName("select")
     data class Select(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         val value: String,
     ) : CustomFieldValue()
 }

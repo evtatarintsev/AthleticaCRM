@@ -62,12 +62,12 @@ fun ClientDisplaySettings.toApiModel(): ClientsDisplaySettings =
 fun ClientsDisplaySettings.toDisplaySettings(
     availableCustomFields: List<CustomFieldDefinition>,
 ): ClientDisplaySettings {
-    val customByKey = availableCustomFields.associateBy { it.fieldKey }
+    val customByKey = availableCustomFields.associateBy { it.fieldKey.value }
     return ClientDisplaySettings(
         columns =
             columns.mapNotNull { key ->
                 ClientColumn.Standard.entries.find { it.apiKey == key }
-                    ?: customByKey[key]?.let { ClientColumn.Custom(it.fieldKey, it.label) }
+                    ?: customByKey[key]?.let { ClientColumn.Custom(it.fieldKey.value, it.label) }
             },
     )
 }
@@ -93,4 +93,4 @@ fun CustomFieldValue.displayValue(): String =
 /**
  * Возвращает значение кастомного поля по его ключу, либо null если поле не найдено.
  */
-fun ClientListItem.field(fieldKey: String): CustomFieldValue? = customFields.firstOrNull { it.fieldKey == fieldKey }
+fun ClientListItem.field(fieldKey: String): CustomFieldValue? = customFields.firstOrNull { it.fieldKey.value == fieldKey }

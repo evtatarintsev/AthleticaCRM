@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("fieldType")
 sealed class CustomFieldDefinition {
     /** Иммутабельный машинный ключ (только латинские буквы и подчёркивание). */
-    abstract val fieldKey: String
+    abstract val fieldKey: CustomFieldKey
 
     /** Отображаемое название поля. */
     abstract val label: String
@@ -34,7 +34,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("text")
     data class Text(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -49,7 +49,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("number")
     data class Number(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -64,7 +64,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("date")
     data class Date(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -75,7 +75,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("boolean")
     data class Bool(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -86,7 +86,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("phone")
     data class Phone(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -97,7 +97,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("email")
     data class Email(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -108,7 +108,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("url")
     data class Url(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,
@@ -119,7 +119,7 @@ sealed class CustomFieldDefinition {
     @Serializable
     @SerialName("select")
     data class Select(
-        override val fieldKey: String,
+        override val fieldKey: CustomFieldKey,
         override val label: String,
         override val isRequired: Boolean = false,
         override val isSearchable: Boolean = false,

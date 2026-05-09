@@ -8,6 +8,8 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
+import org.athletica.crm.core.customfields.toFieldKey
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -88,9 +90,9 @@ class DbCustomFieldDefinitionsTest {
         runTest {
             val fields =
                 listOf(
-                    CustomFieldDefinition.Text(fieldKey = "first", label = "first"),
-                    CustomFieldDefinition.Number(fieldKey = "second", label = "second"),
-                    CustomFieldDefinition.Bool(fieldKey = "third", label = "third"),
+                    CustomFieldDefinition.Text(fieldKey = key("first"), label = "first"),
+                    CustomFieldDefinition.Number(fieldKey = key("second"), label = "second"),
+                    CustomFieldDefinition.Bool(fieldKey = key("third"), label = "third"),
                 )
 
             either<DomainError, Unit> {
@@ -107,9 +109,9 @@ class DbCustomFieldDefinitionsTest {
                 }.getOrElse { fail("Unexpected error: $it") }
 
             assertEquals(3, result.size)
-            assertEquals("first", result[0].fieldKey)
-            assertEquals("second", result[1].fieldKey)
-            assertEquals("third", result[2].fieldKey)
+            assertEquals(key("first"), result[0].fieldKey)
+            assertEquals(key("second"), result[1].fieldKey)
+            assertEquals(key("third"), result[2].fieldKey)
         }
 
     @Test
@@ -120,7 +122,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "client",
-                            listOf(CustomFieldDefinition.Text(fieldKey = "org1_field", label = "org1_field")),
+                            listOf(CustomFieldDefinition.Text(fieldKey = key("org_field"), label = "org_field")),
                         )
                     }
                 }
@@ -144,7 +146,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "client",
-                            listOf(CustomFieldDefinition.Text(fieldKey = "client_field", label = "client_field")),
+                            listOf(CustomFieldDefinition.Text(fieldKey = key("client_field"), label = "client_field")),
                         )
                     }
                 }
@@ -167,14 +169,14 @@ class DbCustomFieldDefinitionsTest {
         runTest {
             val fields =
                 listOf(
-                    CustomFieldDefinition.Text(fieldKey = "text_f", label = "text_f"),
-                    CustomFieldDefinition.Number(fieldKey = "num_f", label = "num_f"),
-                    CustomFieldDefinition.Date(fieldKey = "date_f", label = "date_f"),
-                    CustomFieldDefinition.Bool(fieldKey = "bool_f", label = "bool_f"),
-                    CustomFieldDefinition.Phone(fieldKey = "phone_f", label = "phone_f"),
-                    CustomFieldDefinition.Email(fieldKey = "email_f", label = "email_f"),
-                    CustomFieldDefinition.Url(fieldKey = "url_f", label = "url_f"),
-                    CustomFieldDefinition.Select(fieldKey = "sel_f", label = "sel_f", options = listOf("A", "B")),
+                    CustomFieldDefinition.Text(fieldKey = key("text_f"), label = "text_f"),
+                    CustomFieldDefinition.Number(fieldKey = key("num_f"), label = "num_f"),
+                    CustomFieldDefinition.Date(fieldKey = key("date_f"), label = "date_f"),
+                    CustomFieldDefinition.Bool(fieldKey = key("bool_f"), label = "bool_f"),
+                    CustomFieldDefinition.Phone(fieldKey = key("phone_f"), label = "phone_f"),
+                    CustomFieldDefinition.Email(fieldKey = key("email_f"), label = "email_f"),
+                    CustomFieldDefinition.Url(fieldKey = key("url_f"), label = "url_f"),
+                    CustomFieldDefinition.Select(fieldKey = key("sel_f"), label = "sel_f", options = listOf("A", "B")),
                 )
 
             either<DomainError, Unit> {
@@ -202,7 +204,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "client",
-                            listOf(CustomFieldDefinition.Select(fieldKey = "level", label = "level", options = options)),
+                            listOf(CustomFieldDefinition.Select(fieldKey = key("level"), label = "level", options = options)),
                         )
                     }
                 }
@@ -224,8 +226,8 @@ class DbCustomFieldDefinitionsTest {
         runTest {
             val fields =
                 listOf(
-                    CustomFieldDefinition.Number(fieldKey = "age", label = "age", minValue = 0, maxValue = 120),
-                    CustomFieldDefinition.Text(fieldKey = "note", label = "note", minLength = 1, maxLength = 200),
+                    CustomFieldDefinition.Number(fieldKey = key("age"), label = "age", minValue = 0, maxValue = 120),
+                    CustomFieldDefinition.Text(fieldKey = key("note"), label = "note", minLength = 1, maxLength = 200),
                 )
 
             either<DomainError, Unit> {
@@ -241,10 +243,10 @@ class DbCustomFieldDefinitionsTest {
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            val number = assertIs<CustomFieldDefinition.Number>(result.first { it.fieldKey == "age" })
+            val number = assertIs<CustomFieldDefinition.Number>(result.first { it.fieldKey == key("age") })
             assertEquals(0L, number.minValue)
             assertEquals(120L, number.maxValue)
-            val text = assertIs<CustomFieldDefinition.Text>(result.first { it.fieldKey == "note" })
+            val text = assertIs<CustomFieldDefinition.Text>(result.first { it.fieldKey == key("note") })
             assertEquals(1, text.minLength)
             assertEquals(200, text.maxLength)
         }
@@ -258,8 +260,8 @@ class DbCustomFieldDefinitionsTest {
                         definitions.saveAll(
                             "client",
                             listOf(
-                                CustomFieldDefinition.Text(fieldKey = "old1", label = "old1"),
-                                CustomFieldDefinition.Number(fieldKey = "old2", label = "old2"),
+                                CustomFieldDefinition.Text(fieldKey = key("old_one"), label = "old_one"),
+                                CustomFieldDefinition.Number(fieldKey = key("old_two"), label = "old_two"),
                             ),
                         )
                     }
@@ -271,7 +273,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "client",
-                            listOf(CustomFieldDefinition.Bool(fieldKey = "new1", label = "new1")),
+                            listOf(CustomFieldDefinition.Bool(fieldKey = key("new_one"), label = "new_one")),
                         )
                     }
                 }
@@ -285,7 +287,7 @@ class DbCustomFieldDefinitionsTest {
                 }.getOrElse { fail("Unexpected error: $it") }
 
             assertEquals(1, result.size)
-            assertEquals("new1", result.single().fieldKey)
+            assertEquals(key("new_one"), result.single().fieldKey)
         }
 
     @Test
@@ -296,7 +298,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "client",
-                            listOf(CustomFieldDefinition.Text(fieldKey = "to_delete", label = "to_delete")),
+                            listOf(CustomFieldDefinition.Text(fieldKey = key("to_delete"), label = "to_delete")),
                         )
                     }
                 }
@@ -326,7 +328,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "employee",
-                            listOf(CustomFieldDefinition.Text(fieldKey = "emp_field", label = "emp_field")),
+                            listOf(CustomFieldDefinition.Text(fieldKey = key("emp_field"), label = "emp_field")),
                         )
                     }
                 }
@@ -337,7 +339,7 @@ class DbCustomFieldDefinitionsTest {
                     context(ctx, this) {
                         definitions.saveAll(
                             "client",
-                            listOf(CustomFieldDefinition.Number(fieldKey = "client_field", label = "client_field")),
+                            listOf(CustomFieldDefinition.Number(fieldKey = key("client_field"), label = "client_field")),
                         )
                     }
                 }
@@ -351,7 +353,7 @@ class DbCustomFieldDefinitionsTest {
                 }.getOrElse { fail("Unexpected error: $it") }
 
             assertEquals(1, employeeFields.size)
-            assertEquals("emp_field", employeeFields.single().fieldKey)
+            assertEquals(key("emp_field"), employeeFields.single().fieldKey)
         }
 
     @Test
@@ -359,8 +361,8 @@ class DbCustomFieldDefinitionsTest {
         runTest {
             val def =
                 CustomFieldDefinition.Text(
-                    fieldKey = "f",
-                    label = "f",
+                    fieldKey = key("flagged"),
+                    label = "flagged",
                     isRequired = true,
                     isSearchable = true,
                     isSortable = true,
@@ -383,4 +385,6 @@ class DbCustomFieldDefinitionsTest {
             assertTrue(result.isSearchable)
             assertTrue(result.isSortable)
         }
+
+    private fun key(value: String): CustomFieldKey = value.toFieldKey().getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
 }

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.generated.resources.Res
@@ -58,7 +59,7 @@ fun CustomFieldsSection(
     val defs = customFields.definitions
     if (defs.isEmpty()) return
 
-    var datePickerField by remember { mutableStateOf<String?>(null) }
+    var datePickerField by remember { mutableStateOf<CustomFieldKey?>(null) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),

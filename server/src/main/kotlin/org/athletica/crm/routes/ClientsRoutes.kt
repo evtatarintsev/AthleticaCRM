@@ -31,7 +31,6 @@ import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.customfields.getCustomFields
 
 /**
  * Регистрирует маршруты для работы с клиентами:
@@ -78,7 +77,7 @@ fun RouteWithContext.clientsRoutes(
 
     post<CreateClientRequest, ClientDetailResponse>("/clients/create") { request ->
         db.transaction {
-            val defs = getCustomFields(definitions, CLIENT_ENTITY_TYPE)
+            val defs = definitions.all(CLIENT_ENTITY_TYPE)
             val customFields = CustomFieldValues(defs).with(request.customFields).bind()
             clients
                 .new(
@@ -95,7 +94,7 @@ fun RouteWithContext.clientsRoutes(
 
     post<EditClientRequest, ClientDetailResponse>("/clients/edit") { request ->
         db.transaction {
-            val defs = getCustomFields(definitions, CLIENT_ENTITY_TYPE)
+            val defs = definitions.all(CLIENT_ENTITY_TYPE)
             val customFields = CustomFieldValues(defs).with(request.customFields).bind()
             clients
                 .byId(request.id)

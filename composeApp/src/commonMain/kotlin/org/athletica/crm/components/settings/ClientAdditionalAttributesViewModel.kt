@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.customfields.SaveCustomFieldsRequest
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
 
 /** Состояние загрузки дополнительных атрибутов клиента. */
 sealed class ClientAdditionalAttributesLoadState {
@@ -93,7 +94,7 @@ class ClientAdditionalAttributesViewModel(
 
     /** Удаляет один атрибут по [fieldKey], после чего сохраняет полный список. */
     fun deleteAttribute(
-        fieldKey: String,
+        fieldKey: CustomFieldKey,
         onSuccess: () -> Unit = {},
     ) {
         scope.launch {
@@ -105,7 +106,7 @@ class ClientAdditionalAttributesViewModel(
 
     /** Удаляет набор атрибутов по [fieldKeys], после чего сохраняет полный список. */
     fun deleteAttributes(
-        fieldKeys: Set<String>,
+        fieldKeys: Set<CustomFieldKey>,
         onSuccess: () -> Unit = {},
     ) {
         scope.launch {

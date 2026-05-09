@@ -63,7 +63,7 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
             )
                 .bind("orgId", ctx.orgId)
                 .bind("entityType", entityType)
-                .bind("fieldKey", def.fieldKey)
+                .bind("fieldKey", def.fieldKey.value)
                 .bind("label", def.label)
                 .bind("fieldType", def.fieldTypeName())
                 .bind("config", def.configJson())

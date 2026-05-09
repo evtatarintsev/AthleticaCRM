@@ -29,7 +29,7 @@ data class ClientListItem(
 )
 
 /** Возвращает значение кастомного поля по его ключу, либо null если поле не найдено. */
-fun ClientListItem.field(fieldKey: String): CustomFieldValue? = customFields.firstOrNull { it.fieldKey == fieldKey }
+fun ClientListItem.field(fieldKey: String): CustomFieldValue? = customFields.firstOrNull { it.fieldKey.value == fieldKey }
 
 /** Ответ на запрос списка клиентов с поддержкой пагинации. */
 @Serializable

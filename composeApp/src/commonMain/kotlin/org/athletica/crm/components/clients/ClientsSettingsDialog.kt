@@ -126,7 +126,7 @@ fun ClientsSettingsDialog(
                         )
 
                         availableCustomFields.forEach { field ->
-                            val checked = field.fieldKey in settings.columns.map { it.apiKey }
+                            val checked = field.fieldKey.value in settings.columns.map { it.apiKey }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier =
@@ -135,9 +135,9 @@ fun ClientsSettingsDialog(
                                         .clickable {
                                             val newColumns =
                                                 if (checked) {
-                                                    settings.columns.filterNot { it.apiKey == field.fieldKey }
+                                                    settings.columns.filterNot { it.apiKey == field.fieldKey.value }
                                                 } else {
-                                                    settings.columns + ClientColumn.Custom(field.fieldKey, field.label)
+                                                    settings.columns + ClientColumn.Custom(field.fieldKey.value, field.label)
                                                 }
                                             onSettingsChange(settings.copy(columns = newColumns))
                                         },

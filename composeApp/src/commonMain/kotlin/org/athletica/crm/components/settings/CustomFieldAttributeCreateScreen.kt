@@ -32,6 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
+import org.athletica.crm.core.customfields.toFieldKey
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
@@ -69,8 +71,6 @@ import org.athletica.crm.generated.resources.type_url
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-private val fieldKeyRegex = Regex("[a-z_]+")
-
 private data class CustomFieldTypeItem(
     val value: String,
     val labelResource: StringResource,
@@ -89,7 +89,7 @@ fun CustomFieldAttributeCreateScreen(
 ) {
     val isEditMode = initialAttribute != null
 
-    var fieldKey by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.fieldKey ?: "") }
+    var fieldKey by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.fieldKey?.value ?: "") }
     var label by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.label ?: "") }
     var fieldType by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.typeName() ?: "text") }
     var isRequired by remember(initialAttribute?.fieldKey) { mutableStateOf(initialAttribute?.isRequired ?: false) }
@@ -120,7 +120,8 @@ fun CustomFieldAttributeCreateScreen(
     val parsedMinLength = minLengthInput.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
     val parsedMaxLength = maxLengthInput.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
 
-    val isFieldKeyInvalid = trimmedFieldKey.isNotEmpty() && !trimmedFieldKey.matches(fieldKeyRegex)
+    val parsedFieldKey = trimmedFieldKey.takeIf { it.isNotEmpty() }?.toFieldKey()?.getOrNull()
+    val isFieldKeyInvalid = trimmedFieldKey.isNotEmpty() && parsedFieldKey == null
     val isMinValueInvalid = minValueInput.trim().isNotEmpty() && parsedMinValue == null
     val isMaxValueInvalid = maxValueInput.trim().isNotEmpty() && parsedMaxValue == null
     val isMinLengthInvalid = minLengthInput.trim().isNotEmpty() && parsedMinLength == null
@@ -184,10 +185,11 @@ fun CustomFieldAttributeCreateScreen(
                 actions = {
                     TextButton(
                         onClick = {
+                            val key = parsedFieldKey ?: return@TextButton
                             onSave(
                                 buildDefinition(
                                     fieldType = fieldType,
-                                    fieldKey = trimmedFieldKey,
+                                    fieldKey = key,
                                     label = trimmedLabel,
                                     isRequired = isRequired,
                                     isSearchable = isSearchable,
@@ -470,7 +472,7 @@ fun CustomFieldDefinition.typeName(): String =
 /** Конструирует подтип [CustomFieldDefinition] по строковому имени типа. */
 private fun buildDefinition(
     fieldType: String,
-    fieldKey: String,
+    fieldKey: CustomFieldKey,
     label: String,
     isRequired: Boolean,
     isSearchable: Boolean,

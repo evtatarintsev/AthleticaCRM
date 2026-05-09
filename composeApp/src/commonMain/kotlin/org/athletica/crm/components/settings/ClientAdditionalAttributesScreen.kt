@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.components.avatar.TextAvatar
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_attribute
 import org.athletica.crm.generated.resources.action_back
@@ -81,7 +82,7 @@ fun ClientAdditionalAttributesScreen(
 
     var showCreate by remember { mutableStateOf(false) }
     var editingAttribute by remember { mutableStateOf<CustomFieldDefinition?>(null) }
-    var selectedFieldKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedFieldKeys by remember { mutableStateOf<Set<CustomFieldKey>>(emptySet()) }
 
     val isSaving = viewModel.saveState is ClientAdditionalAttributesSaveState.Saving
     val saveError = (viewModel.saveState as? ClientAdditionalAttributesSaveState.Error)?.error
@@ -226,7 +227,7 @@ fun ClientAdditionalAttributesScreen(
                             ),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        items(attributes, key = { it.fieldKey }) { attribute ->
+                        items(attributes, key = { it.fieldKey.value }) { attribute ->
                             ClientAttributeRow(
                                 attribute = attribute,
                                 selected = attribute.fieldKey in selectedFieldKeys,

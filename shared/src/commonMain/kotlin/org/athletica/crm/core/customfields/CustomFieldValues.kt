@@ -20,7 +20,7 @@ class CustomFieldValues private constructor(
     constructor(definitions: List<CustomFieldDefinition>) : this(definitions, emptyList())
 
     /** Возвращает значение поля [fieldKey], либо null если оно не задано. */
-    operator fun get(fieldKey: String): CustomFieldValue? = raw.find { it.fieldKey == fieldKey }
+    operator fun get(fieldKey: CustomFieldKey): CustomFieldValue? = raw.find { it.fieldKey == fieldKey }
 
     /**
      * Обновить или добавить одно значение.

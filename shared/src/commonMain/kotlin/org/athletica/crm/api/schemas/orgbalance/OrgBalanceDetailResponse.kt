@@ -1,16 +1,13 @@
-package org.athletica.crm.domain.orgbalance
+package org.athletica.crm.api.schemas.orgbalance
 
-import org.athletica.crm.core.entityids.EmployeeId
+import kotlinx.serialization.Serializable
+import org.athletica.crm.api.schemas.common.PerformedBy
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-interface OrgBalance {
-    val totalAmount: Double
-    val history: List<OrgBalanceEntry>
-}
-
 /** Одна запись в журнале операций по балансу организации. */
-data class OrgBalanceEntry(
+@Serializable
+data class OrgBalanceJournalEntry(
     val id: Uuid,
     /** Изменение баланса: положительное — пополнение, отрицательное — списание. */
     val amount: Double,
@@ -22,8 +19,15 @@ data class OrgBalanceEntry(
     val paymentMethod: String?,
     /** Текстовое описание операции. */
     val description: String?,
-    /** Идентификатор сотрудника, выполнившего операцию, либо null если данные удалены. */
-    val performedBy: EmployeeId?,
+    /** Сотрудник, выполнивший операцию, либо null если данные удалены. */
+    val performedBy: PerformedBy?,
     /** Время операции. */
     val createdAt: Instant,
+)
+
+/** Ответ на запрос детального баланса организации: сумма + история операций. */
+@Serializable
+data class OrgBalanceDetailResponse(
+    val totalAmount: Double,
+    val history: List<OrgBalanceJournalEntry>,
 )

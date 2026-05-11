@@ -202,6 +202,14 @@
     <string name="settings_section_basic">General</string>
     <string name="settings_item_basic_settings">Basic settings</string>
     <string name="settings_item_basic_settings_subtitle">Name, description, contacts, time zone</string>
+    <string name="settings_item_org_balance">Organisation balance</string>
+    <string name="settings_item_org_balance_subtitle">Operation history and top-up</string>
+    <string name="screen_org_balance">Organisation balance</string>
+    <string name="action_replenish_balance">Top up balance</string>
+    <string name="action_pay">Pay</string>
+    <string name="replenish_unavailable_stub">Payments are not available yet</string>
+    <string name="label_total_balance">Current balance</string>
+    <string name="org_balance_empty">No balance operations yet</string>
     <string name="settings_item_disciplines">Disciplines</string>
     <string name="settings_item_disciplines_subtitle">Used for lessons and groups</string>
     <string name="settings_item_branches">Branches</string>

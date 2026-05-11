@@ -275,6 +275,20 @@ fun String.toFieldKey(): Either<DomainError, CustomFieldKey> = CustomFieldKey.fr
 Для простых тегов-обёрток без инвариантов (Entity ID на UUID v7) приватный конструктор
 не нужен — любой `Uuid` валиден.
 
+### Ссылки между агрегатами — только по идентификатору
+
+Доменная сущность одного агрегата не должна содержать **объект** другого агрегата —
+только его идентификатор (Evans, *DDD*; Vernon, *Implementing DDD*).
+Например, в `ClientBalanceEntry` и `OrgBalanceEntry` поле `performedBy` имеет тип
+`EmployeeId?`, а не `PerformedBy(id, name)`.
+
+Сборка человекочитаемого представления (имя сотрудника, аватар и т.п.) — задача
+**слоя routes / projection**: загрузить нужные агрегаты по id и собрать DTO.
+Domain ничего не знает про DTO, сериализацию и UI-нужды.
+
+Признаки нарушения: импорт из `org.athletica.crm.api.schemas.*` внутри `domain/*`,
+`@Serializable` на доменной сущности, поля-объекты соседних агрегатов в data class-ах.
+
 ### Foreign Key Constraints
 - Database enforces FK constraints; R2DBC surfaces FK violations as exceptions
 - Tests catch FK exceptions with `runCatching` if needed (see AddClientsToGroupTest)

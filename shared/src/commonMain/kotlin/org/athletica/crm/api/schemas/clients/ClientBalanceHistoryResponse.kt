@@ -1,15 +1,9 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.api.schemas.common.PerformedBy
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
-
-/** Сотрудник, выполнивший операцию с балансом. */
-@Serializable
-data class PerformedBy(
-    val id: Uuid,
-    val name: String,
-)
 
 /** Одна запись в журнале операций по балансу клиента. */
 @Serializable

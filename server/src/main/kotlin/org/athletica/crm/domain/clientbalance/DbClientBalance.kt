@@ -2,7 +2,6 @@ package org.athletica.crm.domain.clientbalance
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
-import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -29,8 +28,6 @@ class DbClientBalance(
         val operationType = if (amount > 0) "admin_credit" else "admin_debit"
         val balanceAfter = totalAmount + amount
 
-        // balance_after вычисляется прямо в INSERT подзапросом — атомарно на уровне БД,
-        // без отдельного SELECT, который создавал бы race condition при конкурентных запросах.
         val entryId = Uuid.generateV7()
         tr
             .sql(
@@ -60,7 +57,7 @@ class DbClientBalance(
                 balanceAfter = balanceAfter,
                 operationType = operationType,
                 note = note,
-                performedBy = PerformedBy(id = ctx.userId.value, name = ctx.username),
+                performedBy = ctx.employeeId,
                 createdAt = Clock.System.now(),
             )
 

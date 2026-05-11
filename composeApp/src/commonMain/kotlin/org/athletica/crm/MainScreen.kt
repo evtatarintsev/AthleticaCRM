@@ -104,6 +104,7 @@ import org.athletica.crm.components.settings.HallsScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
+import org.athletica.crm.components.settings.orgbalance.OrgBalanceScreen
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -579,6 +580,7 @@ private fun AppNavHost(
         composable<AppRoute.Settings> {
             OrgSettingsScreen(
                 onNavigateToBasicSettings = { navController.navigate(AppRoute.SettingsBasic) },
+                onNavigateToOrgBalance = { navController.navigate(AppRoute.SettingsOrgBalance) },
                 onNavigateToBranches = { navController.navigate(AppRoute.SettingsBranches) },
                 onNavigateToHalls = { navController.navigate(AppRoute.SettingsHalls) },
                 onNavigateToClientSources = { navController.navigate(AppRoute.SettingsClientSources) },
@@ -598,6 +600,10 @@ private fun AppNavHost(
 
         composable<AppRoute.SettingsBasic> {
             OrgBasicSettingsScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsOrgBalance> {
+            OrgBalanceScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsClientSources> {

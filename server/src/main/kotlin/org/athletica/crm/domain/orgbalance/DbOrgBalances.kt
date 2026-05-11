@@ -1,8 +1,8 @@
 package org.athletica.crm.domain.orgbalance
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asDouble
@@ -31,8 +31,7 @@ class DbOrgBalances : OrgBalances {
                            j.payment_method,
                            j.description,
                            j.created_at,
-                           j.performed_by  AS performed_by_id,
-                           e.name          AS performed_by_name
+                           e.id AS performed_by_employee_id
                     FROM org_balance_journal j
                     LEFT JOIN employees e ON e.user_id = j.performed_by AND e.org_id = j.org_id
                     WHERE j.org_id = :orgId
@@ -41,8 +40,6 @@ class DbOrgBalances : OrgBalances {
                 )
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val performedById = row.asUuidOrNull("performed_by_id")
-                    val performedByName = row.asStringOrNull("performed_by_name")
                     OrgBalanceEntry(
                         id = row.asUuid("id"),
                         amount = row.asDouble("amount"),
@@ -50,12 +47,7 @@ class DbOrgBalances : OrgBalances {
                         operationType = row.asString("operation_type"),
                         paymentMethod = row.asStringOrNull("payment_method"),
                         description = row.asStringOrNull("description"),
-                        performedBy =
-                            if (performedById != null && performedByName != null) {
-                                PerformedBy(id = performedById, name = performedByName)
-                            } else {
-                                null
-                            },
+                        performedBy = row.asUuidOrNull("performed_by_employee_id")?.let { EmployeeId(it) },
                         createdAt = row.asInstant("created_at"),
                     )
                 }

@@ -20,15 +20,17 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.common.PerformedBy
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldValues
-import org.athletica.crm.domain.clientbalance.ClientBalance
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.storage.Database
 
@@ -40,6 +42,7 @@ context(db: Database)
 fun RouteWithContext.clientsRoutes(
     clients: Clients,
     balances: ClientBalances,
+    employees: Employees,
     enrollments: Enrollments,
     definitions: CustomFieldDefinitions,
 ) {
@@ -154,9 +157,11 @@ fun RouteWithContext.clientsRoutes(
 
     get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
         db.transaction {
-            balances
-                .forClient(request.id)
-                .historyResponse()
+            val balance = balances.forClient(request.id)
+            val performedById = employees.list().associate { it.id to PerformedBy(it.id.value, it.name) }
+            ClientBalanceHistoryResponse(
+                entries = balance.history.map { it.toJournalEntry(performedById) },
+            )
         }
     }
 }
@@ -189,19 +194,14 @@ fun Client.toListItem() =
 
 private const val CLIENT_ENTITY_TYPE = "CLIENT"
 
-fun ClientBalance.historyResponse() =
-    ClientBalanceHistoryResponse(
-        entries = history.map { it.toJournalEntry() },
-    )
-
-private fun ClientBalanceEntry.toJournalEntry() =
+private fun ClientBalanceEntry.toJournalEntry(performedById: Map<EmployeeId, PerformedBy>) =
     BalanceJournalEntry(
         id = id,
         amount = amount,
         balanceAfter = balanceAfter,
         operationType = operationType,
         note = note,
-        performedBy = performedBy,
+        performedBy = performedBy?.let { performedById[it] },
         createdAt = createdAt,
     )
 

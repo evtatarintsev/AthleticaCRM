@@ -14,6 +14,7 @@ class ApiClient(private val http: HttpClient) {
     val clients = ClientsApiClient(http)
     val groups = GroupsApiClient(http)
     val org = OrganizationApiClient(http)
+    val orgBalance = OrgBalanceApiClient(http)
     val employees = EmployeesApiClient(http)
     val disciplines = DisciplinesApiClient(http)
     val documents = DocumentsApiClient(http)

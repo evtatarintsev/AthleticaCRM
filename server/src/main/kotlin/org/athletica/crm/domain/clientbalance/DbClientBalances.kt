@@ -2,9 +2,9 @@ package org.athletica.crm.domain.clientbalance
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
@@ -36,8 +36,7 @@ class DbClientBalances : ClientBalances {
                            j.operation_type,
                            j.note,
                            j.created_at,
-                           j.performed_by  AS performed_by_id,
-                           e.name          AS performed_by_name
+                           e.id AS performed_by_employee_id
                     FROM client_balance_journal j
                     LEFT JOIN employees e ON e.user_id = j.performed_by AND e.org_id = j.org_id
                     WHERE j.client_id = :clientId AND j.org_id = :orgId
@@ -47,20 +46,13 @@ class DbClientBalances : ClientBalances {
                 .bind("clientId", clientId)
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val performedById = row.asUuidOrNull("performed_by_id")
-                    val performedByName = row.asStringOrNull("performed_by_name")
                     ClientBalanceEntry(
                         id = row.asUuid("id"),
                         amount = row.asDouble("amount"),
                         balanceAfter = row.asDouble("balance_after"),
                         operationType = row.asString("operation_type"),
                         note = row.asStringOrNull("note"),
-                        performedBy =
-                            if (performedById != null && performedByName != null) {
-                                PerformedBy(id = performedById, name = performedByName)
-                            } else {
-                                null
-                            },
+                        performedBy = row.asUuidOrNull("performed_by_employee_id")?.let { EmployeeId(it) },
                         createdAt = row.asInstant("created_at"),
                     )
                 }

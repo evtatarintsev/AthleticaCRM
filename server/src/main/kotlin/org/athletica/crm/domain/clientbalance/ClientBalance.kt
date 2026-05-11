@@ -1,10 +1,9 @@
 package org.athletica.crm.domain.clientbalance
 
 import arrow.core.raise.context.Raise
-import kotlinx.serialization.Serializable
-import org.athletica.crm.api.schemas.clients.PerformedBy
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
@@ -20,7 +19,6 @@ interface ClientBalance {
 }
 
 /** Одна запись в журнале операций по балансу клиента. */
-@Serializable
 data class ClientBalanceEntry(
     val id: Uuid,
     /** Изменение баланса: положительное — пополнение, отрицательное — списание. */
@@ -31,8 +29,8 @@ data class ClientBalanceEntry(
     val operationType: String,
     /** Комментарий к операции (обязателен для admin_credit / admin_debit). */
     val note: String?,
-    /** Сотрудник, выполнивший операцию, либо null если данные удалены. */
-    val performedBy: PerformedBy?,
+    /** Идентификатор сотрудника, выполнившего операцию, либо null если данные удалены. */
+    val performedBy: EmployeeId?,
     /** Время операции. */
     val createdAt: Instant,
 )

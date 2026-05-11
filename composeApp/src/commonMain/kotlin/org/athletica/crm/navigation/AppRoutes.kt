@@ -41,6 +41,8 @@ sealed class AppRoute {
 
     @Serializable data object SettingsBasic : AppRoute()
 
+    @Serializable data object SettingsOrgBalance : AppRoute()
+
     @Serializable data object SettingsClientSources : AppRoute()
 
     @Serializable data object SettingsClientAdditionalAttributes : AppRoute()

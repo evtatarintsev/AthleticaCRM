@@ -50,6 +50,7 @@ import org.athletica.crm.routes.leadSourcesRoutes
 import org.athletica.crm.routes.logout
 import org.athletica.crm.routes.myBranchesRoute
 import org.athletica.crm.routes.notificationsRoutes
+import org.athletica.crm.routes.orgBalanceRoutes
 import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
@@ -156,7 +157,7 @@ fun Application.configureServer() {
                         context(di.branches) {
                             myBranchesRoute()
                         }
-                        clientsRoutes(di.clients, di.clientBalances, di.enrollments, di.customFieldDefinitions)
+                        clientsRoutes(di.clients, di.clientBalances, di.employees, di.enrollments, di.customFieldDefinitions)
                         groupsRoutes(di.groups, di.disciplines, di.employees, di.sessions, di.halls, di.enrollments, di.bus)
                         sessionsRoutes(di.groups, di.sessions)
                         orgRoutes(di.organizations)
@@ -170,6 +171,7 @@ fun Application.configureServer() {
                         context(di.passwordHasher) {
                             profileRoutes(di.organizations, di.orgBalances)
                         }
+                        orgBalanceRoutes(di.orgBalances, di.employees)
                         context(di.minio) {
                             uploadRoutes()
                         }

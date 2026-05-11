@@ -64,6 +64,8 @@ import org.athletica.crm.generated.resources.settings_item_edit_profile
 import org.athletica.crm.generated.resources.settings_item_edit_profile_subtitle
 import org.athletica.crm.generated.resources.settings_item_halls
 import org.athletica.crm.generated.resources.settings_item_halls_subtitle
+import org.athletica.crm.generated.resources.settings_item_org_balance
+import org.athletica.crm.generated.resources.settings_item_org_balance_subtitle
 import org.athletica.crm.generated.resources.settings_item_ranks
 import org.athletica.crm.generated.resources.settings_item_ranks_subtitle
 import org.athletica.crm.generated.resources.settings_item_roles
@@ -122,6 +124,7 @@ private data class SettingSection(
 @Composable
 private fun buildSections(
     onNavigateToBasicSettings: () -> Unit,
+    onNavigateToOrgBalance: () -> Unit,
     onNavigateToBranches: () -> Unit,
     onNavigateToHalls: () -> Unit,
     onNavigateToDisciplines: () -> Unit,
@@ -165,6 +168,14 @@ private fun buildSections(
                     containerColor = Ic.PurpleContainer,
                     iconColor = Ic.Purple,
                     onClick = onNavigateToBasicSettings,
+                ),
+                SettingItem(
+                    title = stringResource(Res.string.settings_item_org_balance),
+                    subtitle = stringResource(Res.string.settings_item_org_balance_subtitle),
+                    icon = Icons.Default.AccountBalance,
+                    containerColor = Ic.PurpleContainer,
+                    iconColor = Ic.Purple,
+                    onClick = onNavigateToOrgBalance,
                 ),
                 SettingItem(
                     title = stringResource(Res.string.settings_item_branches),
@@ -314,6 +325,7 @@ private fun buildSections(
 @Composable
 fun OrgSettingsScreen(
     onNavigateToBasicSettings: () -> Unit = {},
+    onNavigateToOrgBalance: () -> Unit = {},
     onNavigateToBranches: () -> Unit = {},
     onNavigateToHalls: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
@@ -328,6 +340,7 @@ fun OrgSettingsScreen(
     val sections =
         buildSections(
             onNavigateToBasicSettings = onNavigateToBasicSettings,
+            onNavigateToOrgBalance = onNavigateToOrgBalance,
             onNavigateToBranches = onNavigateToBranches,
             onNavigateToHalls = onNavigateToHalls,
             onNavigateToDisciplines = onNavigateToDisciplines,

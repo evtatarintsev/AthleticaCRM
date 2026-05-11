@@ -209,6 +209,14 @@
     <string name="settings_section_basic">Основное</string>
     <string name="settings_item_basic_settings">Основные настройки</string>
     <string name="settings_item_basic_settings_subtitle">Название, описание, контакты, часовой пояс</string>
+    <string name="settings_item_org_balance">Баланс организации</string>
+    <string name="settings_item_org_balance_subtitle">История операций и пополнение</string>
+    <string name="screen_org_balance">Баланс организации</string>
+    <string name="action_replenish_balance">Пополнить баланс</string>
+    <string name="action_pay">Оплатить</string>
+    <string name="replenish_unavailable_stub">Оплата пока недоступна</string>
+    <string name="label_total_balance">Текущий баланс</string>
+    <string name="org_balance_empty">Операций по балансу пока нет</string>
     <string name="settings_item_disciplines">Дисциплины</string>
     <string name="settings_item_disciplines_subtitle">Указываются для занятий и групп</string>
     <string name="settings_item_branches">Филиалы</string>

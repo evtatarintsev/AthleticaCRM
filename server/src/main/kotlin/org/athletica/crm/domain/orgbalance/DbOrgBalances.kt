@@ -10,7 +10,6 @@ import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
-import org.athletica.crm.storage.asUuidOrNull
 
 data class OrgBalanceData(
     override val history: List<OrgBalanceEntry>,
@@ -31,9 +30,8 @@ class DbOrgBalances : OrgBalances {
                            j.payment_method,
                            j.description,
                            j.created_at,
-                           e.id AS performed_by_employee_id
+                           j.performed_by
                     FROM org_balance_journal j
-                    LEFT JOIN employees e ON e.user_id = j.performed_by AND e.org_id = j.org_id
                     WHERE j.org_id = :orgId
                     ORDER BY j.created_at DESC
                     """.trimIndent(),
@@ -47,7 +45,7 @@ class DbOrgBalances : OrgBalances {
                         operationType = row.asString("operation_type"),
                         paymentMethod = row.asStringOrNull("payment_method"),
                         description = row.asStringOrNull("description"),
-                        performedBy = row.asUuidOrNull("performed_by_employee_id")?.let { EmployeeId(it) },
+                        performedBy = EmployeeId(row.asUuid("performed_by")),
                         createdAt = row.asInstant("created_at"),
                     )
                 }

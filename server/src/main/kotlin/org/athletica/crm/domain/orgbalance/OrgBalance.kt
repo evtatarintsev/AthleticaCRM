@@ -22,8 +22,8 @@ data class OrgBalanceEntry(
     val paymentMethod: String?,
     /** Текстовое описание операции. */
     val description: String?,
-    /** Идентификатор сотрудника, выполнившего операцию, либо null если данные удалены. */
-    val performedBy: EmployeeId?,
+    /** Идентификатор сотрудника, выполнившего операцию. */
+    val performedBy: EmployeeId,
     /** Время операции. */
     val createdAt: Instant,
 )

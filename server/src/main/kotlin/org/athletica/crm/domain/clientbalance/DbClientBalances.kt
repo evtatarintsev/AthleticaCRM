@@ -14,7 +14,6 @@ import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
-import org.athletica.crm.storage.asUuidOrNull
 
 class DbClientBalances : ClientBalances {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -36,9 +35,8 @@ class DbClientBalances : ClientBalances {
                            j.operation_type,
                            j.note,
                            j.created_at,
-                           e.id AS performed_by_employee_id
+                           j.performed_by
                     FROM client_balance_journal j
-                    LEFT JOIN employees e ON e.user_id = j.performed_by AND e.org_id = j.org_id
                     WHERE j.client_id = :clientId AND j.org_id = :orgId
                     ORDER BY j.created_at DESC
                     """.trimIndent(),
@@ -52,7 +50,7 @@ class DbClientBalances : ClientBalances {
                         balanceAfter = row.asDouble("balance_after"),
                         operationType = row.asString("operation_type"),
                         note = row.asStringOrNull("note"),
-                        performedBy = row.asUuidOrNull("performed_by_employee_id")?.let { EmployeeId(it) },
+                        performedBy = EmployeeId(row.asUuid("performed_by")),
                         createdAt = row.asInstant("created_at"),
                     )
                 }

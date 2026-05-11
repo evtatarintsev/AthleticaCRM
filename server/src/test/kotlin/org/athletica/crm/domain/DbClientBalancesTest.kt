@@ -74,8 +74,8 @@ class DbClientBalancesTest {
         TestPostgres.db
             .sql(
                 """
-                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type)
-                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type)
+                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
+                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
                 """.trimIndent(),
             )
             .bind("id", Uuid.generateV7())
@@ -83,6 +83,7 @@ class DbClientBalancesTest {
             .bind("clientId", clientId)
             .bind("amount", java.math.BigDecimal(amount.toString()))
             .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
+            .bind("performedBy", employeeId)
             .execute()
     }
 

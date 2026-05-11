@@ -39,6 +39,6 @@ private fun OrgBalanceEntry.toJournalEntry(performedById: Map<EmployeeId, Perfor
         operationType = operationType,
         paymentMethod = paymentMethod,
         description = description,
-        performedBy = performedBy?.let { performedById[it] },
+        performedBy = performedById[performedBy],
         createdAt = createdAt,
     )

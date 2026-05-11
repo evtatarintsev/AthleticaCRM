@@ -86,17 +86,37 @@ class ClientListTest {
             .execute()
     }
 
+    private suspend fun insertEmployee(orgId: Uuid): EmployeeId {
+        val userId = UserId.new()
+        val employeeId = EmployeeId.new()
+        TestPostgres.db
+            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+            .bind("id", userId)
+            .bind("login", "$userId@example.com")
+            .bind("hash", "hash")
+            .execute()
+        TestPostgres.db
+            .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+            .bind("id", employeeId)
+            .bind("userId", userId)
+            .bind("orgId", orgId)
+            .bind("name", "Admin")
+            .execute()
+        return employeeId
+    }
+
     private suspend fun insertBalanceEntry(
         orgId: Uuid,
         clientId: ClientId,
         amount: Double,
         balanceAfter: Double,
+        performedBy: EmployeeId,
     ) {
         TestPostgres.db
             .sql(
                 """
-                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type)
-                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type)
+                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
+                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
                 """.trimIndent(),
             )
             .bind("id", Uuid.generateV7())
@@ -104,6 +124,7 @@ class ClientListTest {
             .bind("clientId", clientId)
             .bind("amount", java.math.BigDecimal(amount.toString()))
             .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
+            .bind("performedBy", performedBy)
             .execute()
     }
 
@@ -268,8 +289,9 @@ class ClientListTest {
         runTest {
             val orgId = insertOrg()
             val clientId = insertClient(orgId, "Клиент")
-            insertBalanceEntry(orgId, clientId, amount = 2000.0, balanceAfter = 2000.0)
-            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = 200.0)
+            val employeeId = insertEmployee(orgId)
+            insertBalanceEntry(orgId, clientId, amount = 2000.0, balanceAfter = 2000.0, performedBy = employeeId)
+            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = 200.0, performedBy = employeeId)
 
             val result =
                 either<DomainError, List<Client>> {
@@ -288,8 +310,9 @@ class ClientListTest {
         runTest {
             val orgId = insertOrg()
             val clientId = insertClient(orgId, "Клиент")
-            insertBalanceEntry(orgId, clientId, amount = 1000.0, balanceAfter = 1000.0)
-            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = -800.0)
+            val employeeId = insertEmployee(orgId)
+            insertBalanceEntry(orgId, clientId, amount = 1000.0, balanceAfter = 1000.0, performedBy = employeeId)
+            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = -800.0, performedBy = employeeId)
 
             val result =
                 either<DomainError, List<Client>> {
@@ -309,7 +332,8 @@ class ClientListTest {
             val orgId = insertOrg()
             val client1Id = insertClient(orgId, "Клиент 1")
             val client2Id = insertClient(orgId, "Клиент 2")
-            insertBalanceEntry(orgId, client1Id, amount = 500.0, balanceAfter = 500.0)
+            val employeeId = insertEmployee(orgId)
+            insertBalanceEntry(orgId, client1Id, amount = 500.0, balanceAfter = 500.0, performedBy = employeeId)
 
             val result =
                 either<DomainError, List<Client>> {

@@ -201,7 +201,7 @@ private fun ClientBalanceEntry.toJournalEntry(performedById: Map<EmployeeId, Per
         balanceAfter = balanceAfter,
         operationType = operationType,
         note = note,
-        performedBy = performedBy?.let { performedById[it] },
+        performedBy = performedById[performedBy],
         createdAt = createdAt,
     )
 

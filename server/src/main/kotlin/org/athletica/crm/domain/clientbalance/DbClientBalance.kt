@@ -47,7 +47,7 @@ class DbClientBalance(
             .bind("amount", java.math.BigDecimal(amount.toString()))
             .bind("operationType", operationType)
             .bind("note", note)
-            .bind("performedBy", ctx.userId)
+            .bind("performedBy", ctx.employeeId)
             .execute()
 
         val entry =

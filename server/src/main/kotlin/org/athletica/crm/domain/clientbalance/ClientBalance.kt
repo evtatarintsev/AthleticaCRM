@@ -29,8 +29,8 @@ data class ClientBalanceEntry(
     val operationType: String,
     /** Комментарий к операции (обязателен для admin_credit / admin_debit). */
     val note: String?,
-    /** Идентификатор сотрудника, выполнившего операцию, либо null если данные удалены. */
-    val performedBy: EmployeeId?,
+    /** Идентификатор сотрудника, выполнившего операцию. */
+    val performedBy: EmployeeId,
     /** Время операции. */
     val createdAt: Instant,
 )

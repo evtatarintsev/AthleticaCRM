@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
 
   metabase:
-    image: metabase/metabase:v0.55.0
+    image: metabase/metabase:v0.61.x
     environment:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabase_app

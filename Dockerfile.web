@@ -2,10 +2,11 @@ FROM eclipse-temurin:17-jdk AS builder
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 && rm -rf /var/lib/apt/lists/*
 COPY . .
-RUN --mount=type=cache,target=/root/.gradle \
+RUN --mount=type=cache,target=/root/.gradle/caches/modules-2 \
+    --mount=type=cache,target=/root/.gradle/wrapper \
     chmod +x gradlew && \
     JAVA_TOOL_OPTIONS="-Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=60000" \
-    ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon --no-build-cache
+    ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon
 
 FROM nginx:stable-alpine
 COPY --from=builder /build/composeApp/build/dist/wasmJs/productionExecutable/ /usr/share/nginx/html/

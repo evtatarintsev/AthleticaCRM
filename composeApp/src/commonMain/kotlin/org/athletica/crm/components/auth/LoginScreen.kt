@@ -84,7 +84,7 @@ fun LoginScreen(
             null
         }
 
-    LaunchedEffect(state) {
+    LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             snackbarHostState.showSnackbar(errorMessage)
             onErrorDismissed()

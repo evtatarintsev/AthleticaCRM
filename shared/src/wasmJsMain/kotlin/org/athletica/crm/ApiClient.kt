@@ -9,6 +9,7 @@ import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.post
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.appJson
@@ -32,8 +33,14 @@ fun apiClient(): ApiClient {
             install(Auth) {
                 bearer {
                     refreshTokens {
-                        val response = client.post("/api/auth/refresh-token").body<LoginResponse>()
-                        BearerTokens(response.accessToken, response.refreshToken)
+                        runCatching {
+                            val response = client.post("/api/auth/refresh-token")
+                            if (response.status.isSuccess()) {
+                                response.body<LoginResponse>().let { BearerTokens(it.accessToken, it.refreshToken) }
+                            } else {
+                                null
+                            }
+                        }.getOrNull()
                     }
                 }
             }

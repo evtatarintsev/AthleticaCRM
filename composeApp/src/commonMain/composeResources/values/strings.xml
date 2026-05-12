@@ -411,4 +411,8 @@
     <string name="home_today_sessions_empty">Занятий сегодня нет</string>
     <string name="home_today_sessions_error">Не удалось загрузить занятия</string>
 
+    <!-- Server error screen -->
+    <string name="error_server_unavailable_title">Не удалось подключиться</string>
+    <string name="action_retry">Повторить</string>
+
 </resources>

@@ -367,4 +367,8 @@
     <string name="home_today_sessions_empty">No sessions today</string>
     <string name="home_today_sessions_error">Failed to load sessions</string>
 
+    <!-- Server error screen -->
+    <string name="error_server_unavailable_title">Could not connect</string>
+    <string name="action_retry">Retry</string>
+
 </resources>

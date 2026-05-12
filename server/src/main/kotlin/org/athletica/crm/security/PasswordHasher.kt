@@ -82,7 +82,7 @@ class PasswordHasher(private val config: PasswordConfig = PasswordConfig()) {
                     k to v.toInt()
                 }
 
-            val dec = Base64.getDecoder()
+            val dec = Base64.getMimeDecoder()
             val salt = dec.decode(parts[3])
             val expected = dec.decode(parts[4])
 

@@ -12,6 +12,7 @@ import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.api.schemas.clients.ClientExportRequest
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
@@ -24,8 +25,11 @@ class ClientsApiClient(private val http: HttpClient) {
     /** Возвращает страницу клиентов организации по параметрам [request]. */
     suspend fun list(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = requestCatching { http.get("/api/clients/list") }
 
-    /** Экспортирует список клиентов в CSV формате. */
-    suspend fun export(request: ClientListRequest, format: String = "csv"): Either<ApiClientError, ByteArray> =
+    /** Экспортирует список клиентов в файл указанного [format] с полями из [request]. */
+    suspend fun export(
+        request: ClientExportRequest,
+        format: String = "csv",
+    ): Either<ApiClientError, ByteArray> =
         requestCatching {
             http.post("/api/clients/export") {
                 contentType(ContentType.Application.Json)

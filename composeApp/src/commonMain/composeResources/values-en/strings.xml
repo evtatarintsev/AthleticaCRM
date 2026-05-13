@@ -65,9 +65,7 @@
     <string name="label_sports_rank">Sports rank</string>
     <string name="label_discount">Discount</string>
     <string name="label_classes_start">Classes started</string>
-    <string name="label_debt">Debt</string>
-    <string name="label_debt_short">Debt</string>
-    <string name="label_year_short">Year</string>
+    <string name="label_groups">Groups</string>
     <string name="label_ip_address">IP: %1$s</string>
     <string name="label_from">From</string>
     <string name="label_to">To</string>
@@ -90,6 +88,7 @@
     <string name="cd_avatar">Avatar</string>
     <string name="cd_app_logo">AthleticaCRM logo</string>
     <string name="cd_sort_name_asc">Sort by name ascending</string>
+    <string name="cd_reorder_column">Drag column</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -355,11 +354,7 @@
 
     <!-- Export -->
     <string name="export_title">Export clients</string>
-    <string name="export_fields_name">Name</string>
-    <string name="export_fields_birthday">Birthday</string>
-    <string name="export_fields_gender">Gender</string>
-    <string name="export_fields_groups">Groups</string>
-    <string name="export_fields_balance">Balance</string>
+    <string name="export_select_fields">Select fields to export:</string>
     <string name="label_select_all">Select all</string>
 
     <!-- Home -->

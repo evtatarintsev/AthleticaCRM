@@ -18,20 +18,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.gender_female_abbr
 import org.athletica.crm.generated.resources.gender_male_abbr
 import org.jetbrains.compose.resources.stringResource
-
-internal val GenderColWidth: Dp = 52.dp
-internal val BirthYearColWidth: Dp = 68.dp
-internal val DebtColWidth: Dp = 84.dp
 
 // Ширина области аватара: Spacer(4dp) + Box(36dp) + Spacer(10dp)
 internal val AvatarAreaWidth: Dp = 50.dp
@@ -52,7 +52,6 @@ fun ClientRow(
     onClick: () -> Unit = {},
     settings: ClientDisplaySettings = ClientDisplaySettings(),
 ) {
-    val data = client.fakeData()
     val genderLabel =
         when (client.gender) {
             Gender.MALE -> stringResource(Res.string.gender_male_abbr)
@@ -67,7 +66,6 @@ fun ClientRow(
                 .clickable(onClick = onClick)
                 .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
     ) {
-        // Аватар — всегда leading
         Box(
             contentAlignment = Alignment.Center,
             modifier =
@@ -81,7 +79,6 @@ fun ClientRow(
 
         Spacer(Modifier.width(12.dp))
 
-        // Имя растягивается
         Text(
             text = client.name,
             style = MaterialTheme.typography.bodyMedium,
@@ -89,33 +86,15 @@ fun ClientRow(
             modifier = Modifier.weight(1f),
         )
 
-        // Опциональные колонки в порядке, определённом в settings
         settings.columns.forEach { column ->
             when (column) {
-                ClientColumn.Standard.Gender -> {
-                    Text(
-                        text = genderLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(column.width),
+                is ClientColumn.Standard ->
+                    StandardCell(
+                        field = column.clientField,
+                        client = client,
+                        genderLabel = genderLabel,
+                        width = column.width,
                     )
-                }
-                ClientColumn.Standard.BirthYear -> {
-                    Text(
-                        text = data.birthYear.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(column.width),
-                    )
-                }
-                ClientColumn.Standard.Debt -> {
-                    Text(
-                        text = client.balance.formatBalance(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.width(column.width),
-                    )
-                }
                 is ClientColumn.Custom -> {
                     Text(
                         text = client.field(column.apiKey)?.displayValue() ?: "—",
@@ -127,10 +106,50 @@ fun ClientRow(
             }
         }
 
-        // Чекбокс — trailing, изолирован от клика по строке
         Checkbox(
             checked = selected,
             onCheckedChange = onCheckedChange,
         )
+    }
+}
+
+/** Рендерит ячейку стандартного поля [field] клиента. */
+@Composable
+private fun StandardCell(
+    field: ClientField,
+    client: ClientListItem,
+    genderLabel: String,
+    width: Dp,
+) {
+    when (field) {
+        ClientField.GENDER ->
+            Text(
+                text = genderLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(width),
+            )
+        ClientField.BIRTHDAY ->
+            Text(
+                text = client.birthday?.toString() ?: "—",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(width),
+            )
+        ClientField.BALANCE ->
+            Text(
+                text = client.balance.formatBalance(),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(width),
+            )
+        ClientField.GROUPS ->
+            Text(
+                text = client.groups.joinToString(", ") { it.name },
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(width),
+            )
     }
 }

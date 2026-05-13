@@ -2,10 +2,9 @@ package org.athletica.crm.components.clients
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.settings.ClientsDisplaySettings
 import org.athletica.crm.core.customfields.CustomFieldDefinition
-import org.athletica.crm.core.customfields.CustomFieldValue
 
 /**
  * Настройки отображения таблицы клиентов.
@@ -13,12 +12,12 @@ import org.athletica.crm.core.customfields.CustomFieldValue
  * Колонка «Имя» всегда видна и не входит в этот список.
  */
 data class ClientDisplaySettings(
-    val columns: List<ClientColumn> = ClientColumn.Standard.entries.toList(),
+    val columns: List<ClientColumn> = defaultStandardColumns(),
 )
 
 /**
  * Опциональные колонки таблицы клиентов (кроме «Имя», которое всегда видно).
- * Может быть стандартной (Gender, BirthYear, Debt) или кастомной.
+ * Может быть стандартной (на основе [ClientField]) или кастомной.
  */
 sealed interface ClientColumn {
     /** Уникальный ключ, используемый при сохранении в API. */
@@ -27,13 +26,10 @@ sealed interface ClientColumn {
     /** Ширина колонки в пикселях. */
     val width: Dp
 
-    /**
-     * Стандартные колонки приложения.
-     */
-    enum class Standard(override val apiKey: String, override val width: Dp) : ClientColumn {
-        Gender("gender", 52.dp),
-        BirthYear("birth_year", 68.dp),
-        Debt("debt", 84.dp),
+    /** Стандартная колонка на основе значения [ClientField]. */
+    data class Standard(val clientField: ClientField) : ClientColumn {
+        override val apiKey: String = clientField.apiKey
+        override val width: Dp = STANDARD_WIDTHS[clientField] ?: 96.dp
     }
 
     /**
@@ -47,9 +43,24 @@ sealed interface ClientColumn {
     ) : ClientColumn
 }
 
-/**
- * Преобразует локальные настройки отображения в API-модель для сохранения на сервер.
- */
+/** Ширины колонок для стандартных полей клиента. */
+private val STANDARD_WIDTHS: Map<ClientField, Dp> =
+    mapOf(
+        ClientField.GENDER to 52.dp,
+        ClientField.BIRTHDAY to 96.dp,
+        ClientField.BALANCE to 84.dp,
+        ClientField.GROUPS to 160.dp,
+    )
+
+/** Возвращает дефолтный набор стандартных колонок таблицы клиентов. */
+private fun defaultStandardColumns(): List<ClientColumn> =
+    listOf(
+        ClientColumn.Standard(ClientField.GENDER),
+        ClientColumn.Standard(ClientField.BIRTHDAY),
+        ClientColumn.Standard(ClientField.BALANCE),
+    )
+
+/** Преобразует локальные настройки отображения в API-модель для сохранения на сервер. */
 fun ClientDisplaySettings.toApiModel(): ClientsDisplaySettings =
     ClientsDisplaySettings(
         columns = columns.map { it.apiKey },
@@ -58,39 +69,15 @@ fun ClientDisplaySettings.toApiModel(): ClientsDisplaySettings =
 /**
  * Преобразует API-модель настроек в локальные настройки отображения.
  * [availableCustomFields] — список доступных кастомных полей для восстановления метаданных Custom-колонок.
+ * Неизвестные ключи (например, удалённые поля или устаревшие) молча отбрасываются.
  */
-fun ClientsDisplaySettings.toDisplaySettings(
-    availableCustomFields: List<CustomFieldDefinition>,
-): ClientDisplaySettings {
+fun ClientsDisplaySettings.toDisplaySettings(availableCustomFields: List<CustomFieldDefinition>): ClientDisplaySettings {
     val customByKey = availableCustomFields.associateBy { it.fieldKey.value }
     return ClientDisplaySettings(
         columns =
             columns.mapNotNull { key ->
-                ClientColumn.Standard.entries.find { it.apiKey == key }
+                ClientField.byKey(key)?.let { ClientColumn.Standard(it) }
                     ?: customByKey[key]?.let { ClientColumn.Custom(it.fieldKey.value, it.label) }
             },
     )
 }
-
-/**
- * Преобразует значение кастомного поля в строку для отображения в таблице.
- */
-fun CustomFieldValue.displayValue(): String =
-    when (this) {
-        is CustomFieldValue.Text -> value
-        is CustomFieldValue.Number -> {
-            if (value == value.toLong().toDouble()) {
-                value.toLong().toString()
-            } else {
-                value.toString()
-            }
-        }
-        is CustomFieldValue.Bool -> if (value) "✓" else "—"
-        is CustomFieldValue.Date -> value.toString()
-        is CustomFieldValue.Select -> value
-    }
-
-/**
- * Возвращает значение кастомного поля по его ключу, либо null если поле не найдено.
- */
-fun ClientListItem.field(fieldKey: String): CustomFieldValue? = customFields.firstOrNull { it.fieldKey.value == fieldKey }

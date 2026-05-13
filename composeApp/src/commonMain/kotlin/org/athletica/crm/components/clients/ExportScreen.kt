@@ -1,7 +1,7 @@
 package org.athletica.crm.components.clients
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -20,9 +19,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,15 +33,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.clients.ClientField
+import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_download
-import org.athletica.crm.generated.resources.export_fields_balance
-import org.athletica.crm.generated.resources.export_fields_birthday
-import org.athletica.crm.generated.resources.export_fields_gender
-import org.athletica.crm.generated.resources.export_fields_groups
-import org.athletica.crm.generated.resources.export_fields_name
+import org.athletica.crm.generated.resources.export_select_fields
 import org.athletica.crm.generated.resources.export_title
 import org.jetbrains.compose.resources.stringResource
 
@@ -68,17 +67,10 @@ fun ExportScreen(
             )
         }
 
-    // Поля для экспорта с состояниями выбора
-    var exportFields by remember {
-        mutableStateOf(
-            setOf(
-                ExportField.NAME,
-                ExportField.BIRTHDAY,
-                ExportField.GENDER,
-                ExportField.GROUPS,
-                ExportField.BALANCE,
-            ),
-        )
+    LaunchedEffect(Unit) { viewModel.loadCustomFields() }
+
+    var selectedFields by remember {
+        mutableStateOf(ClientField.entries.map { it.apiKey }.toSet())
     }
 
     Scaffold(
@@ -105,23 +97,28 @@ fun ExportScreen(
                     .padding(16.dp),
         ) {
             Text(
-                text = "Выберите поля для экспорта:",
+                text = stringResource(Res.string.export_select_fields),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp),
             )
 
-            // Чекбоксы для выбора полей
-            ExportField.entries.forEach { field ->
+            ClientField.entries.forEach { field ->
                 ExportFieldRow(
-                    field = field,
-                    checked = field in exportFields,
+                    label = stringResource(field.labelRes()),
+                    checked = field.apiKey in selectedFields,
                     onCheckedChange = { checked ->
-                        exportFields =
-                            if (checked) {
-                                exportFields + field
-                            } else {
-                                exportFields - field
-                            }
+                        selectedFields = selectedFields.toggle(field.apiKey, checked)
+                    },
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            }
+
+            viewModel.availableCustomFields.forEach { custom ->
+                ExportFieldRow(
+                    label = custom.label,
+                    checked = custom.fieldKey.value in selectedFields,
+                    onCheckedChange = { checked ->
+                        selectedFields = selectedFields.toggle(custom.fieldKey.value, checked)
                     },
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -129,7 +126,6 @@ fun ExportScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Отображение состояния экспорта
             when (val s = viewModel.state) {
                 is ExportState.Error -> {
                     Text(
@@ -150,12 +146,9 @@ fun ExportScreen(
                 else -> {}
             }
 
-            // Кнопка экспорта
             Button(
-                onClick = {
-                    viewModel.export(exportFields, "csv")
-                },
-                enabled = viewModel.state !is ExportState.Exporting,
+                onClick = { viewModel.export(orderedFields(viewModel.availableCustomFields, selectedFields), "csv") },
+                enabled = viewModel.state !is ExportState.Exporting && selectedFields.isNotEmpty(),
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -179,56 +172,46 @@ fun ExportScreen(
     }
 }
 
-/**
- * Строка с чекбоксом для выбора поля экспорта.
- */
+/** Строка с переключателем для выбора одного поля экспорта. */
 @Composable
 private fun ExportFieldRow(
-    field: ExportField,
+    label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Box(
+    Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-        contentAlignment = Alignment.CenterStart,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-        )
-        Text(
-            text = field.getDisplayName(),
-            modifier =
-                Modifier
-                    .padding(start = 48.dp)
-                    .align(Alignment.CenterStart),
-            style = MaterialTheme.typography.bodyLarge,
         )
     }
 }
 
-/**
- * Поля для экспорта клиентов.
- */
-enum class ExportField {
-    NAME,
-    BIRTHDAY,
-    GENDER,
-    GROUPS,
-    BALANCE,
-}
+/** Возвращает множество с добавленным/удалённым элементом в зависимости от [include]. */
+private fun Set<String>.toggle(
+    key: String,
+    include: Boolean,
+): Set<String> = if (include) this + key else this - key
 
-@Composable
-private fun ExportField.getDisplayName(): String =
-    stringResource(
-        when (this) {
-            ExportField.NAME -> Res.string.export_fields_name
-            ExportField.BIRTHDAY -> Res.string.export_fields_birthday
-            ExportField.GENDER -> Res.string.export_fields_gender
-            ExportField.GROUPS -> Res.string.export_fields_groups
-            ExportField.BALANCE -> Res.string.export_fields_balance
-        },
-    )
+/**
+ * Строит упорядоченный список ключей полей для экспорта в фиксированном порядке:
+ * сначала стандартные в порядке [ClientField.entries], затем кастомные в порядке их определений.
+ */
+private fun orderedFields(
+    customFields: List<CustomFieldDefinition>,
+    selected: Set<String>,
+): List<String> {
+    val ordered = ClientField.entries.map { it.apiKey } + customFields.map { it.fieldKey.value }
+    return ordered.filter { it in selected }
+}

@@ -19,12 +19,14 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.cd_sort_name_asc
 import org.athletica.crm.generated.resources.label_balance
+import org.athletica.crm.generated.resources.label_birthday
 import org.athletica.crm.generated.resources.label_gender
+import org.athletica.crm.generated.resources.label_groups
 import org.athletica.crm.generated.resources.label_person_name
-import org.athletica.crm.generated.resources.label_year_short
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -64,33 +66,15 @@ fun ClientsTableHeader(
             )
         }
 
-        // Опциональные колонки в порядке, определённом в settings
         settings.columns.forEach { column ->
             when (column) {
-                ClientColumn.Standard.Gender -> {
+                is ClientColumn.Standard -> {
+                    val align = if (column.clientField == ClientField.BALANCE) TextAlign.End else TextAlign.Center
                     Text(
-                        text = stringResource(Res.string.label_gender),
+                        text = stringResource(column.clientField.labelRes()),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(column.width),
-                    )
-                }
-                ClientColumn.Standard.BirthYear -> {
-                    Text(
-                        text = stringResource(Res.string.label_year_short),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(column.width),
-                    )
-                }
-                ClientColumn.Standard.Debt -> {
-                    Text(
-                        text = stringResource(Res.string.label_balance),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End,
+                        textAlign = align,
                         modifier = Modifier.width(column.width),
                     )
                 }
@@ -106,10 +90,18 @@ fun ClientsTableHeader(
             }
         }
 
-        // Trailing: совпадает с позицией чекбокса в строках ClientRow
         TriStateCheckbox(
             state = selectAllState,
             onClick = onSelectAllClick,
         )
     }
 }
+
+/** Возвращает строковый ресурс с локализованным названием стандартного поля. */
+internal fun ClientField.labelRes() =
+    when (this) {
+        ClientField.GENDER -> Res.string.label_gender
+        ClientField.BIRTHDAY -> Res.string.label_birthday
+        ClientField.BALANCE -> Res.string.label_balance
+        ClientField.GROUPS -> Res.string.label_groups
+    }

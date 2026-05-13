@@ -65,9 +65,7 @@
     <string name="label_sports_rank">Спортивный разряд</string>
     <string name="label_discount">Скидка</string>
     <string name="label_classes_start">Начало занятий</string>
-    <string name="label_debt">Задолженность</string>
-    <string name="label_debt_short">Долг</string>
-    <string name="label_year_short">Год</string>
+    <string name="label_groups">Группы</string>
     <string name="label_ip_address">IP: %1$s</string>
     <string name="label_from">С</string>
     <string name="label_to">По</string>
@@ -90,6 +88,7 @@
     <string name="cd_avatar">Аватар</string>
     <string name="cd_app_logo">Логотип AthleticaCRM</string>
     <string name="cd_sort_name_asc">Сортировка по имени по возрастанию</string>
+    <string name="cd_reorder_column">Перетащить колонку</string>
 
     <!-- Navigation -->
     <string name="nav_home">Главная</string>
@@ -170,7 +169,6 @@
     <string name="filters_label">Фильтры</string>
     <string name="filters_with_count">Фильтры · %1$d</string>
     <string name="section_columns">Колонки</string>
-    <string name="section_custom_columns">Кастомные поля</string>
 
     <!-- Groups screen -->
     <string name="groups_empty">Групп пока нет</string>
@@ -399,11 +397,7 @@
 
     <!-- Export -->
     <string name="export_title">Экспорт клиентов</string>
-    <string name="export_fields_name">Имя</string>
-    <string name="export_fields_birthday">Дата рождения</string>
-    <string name="export_fields_gender">Пол</string>
-    <string name="export_fields_groups">Группы</string>
-    <string name="export_fields_balance">Баланс</string>
+    <string name="export_select_fields">Выберите поля для экспорта:</string>
     <string name="label_select_all">Выбрать все</string>
 
     <!-- Home -->

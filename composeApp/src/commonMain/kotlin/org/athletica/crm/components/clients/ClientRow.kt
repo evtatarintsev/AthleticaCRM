@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +30,7 @@ import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.gender_female_abbr
@@ -96,12 +100,17 @@ fun ClientRow(
                         width = column.width,
                     )
                 is ClientColumn.Custom -> {
-                    Text(
-                        text = client.field(column.apiKey)?.displayValue() ?: "—",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.width(column.width),
-                    )
+                    val value = client.field(column.apiKey)
+                    if (value is CustomFieldValue.Bool) {
+                        BoolCell(value = value.value, width = column.width)
+                    } else {
+                        Text(
+                            text = value?.displayValue() ?: "—",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.width(column.width),
+                        )
+                    }
                 }
             }
         }
@@ -151,5 +160,32 @@ private fun StandardCell(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.width(width),
             )
+    }
+}
+
+/** Ячейка булева кастомного поля: иконка-галочка для true, прочерк для false. */
+@Composable
+private fun BoolCell(
+    value: Boolean,
+    width: Dp,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.width(width),
+    ) {
+        if (value) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            Text(
+                text = "—",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

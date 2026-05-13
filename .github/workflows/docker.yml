@@ -75,6 +75,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [server, web]
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy infra files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "docker-compose.prod.yaml,nginx/prod.conf.template"
+          target: ${{ secrets.DEPLOY_PATH }}
+
       - name: Deploy to production via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -87,4 +98,5 @@ jobs:
             echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose -f docker-compose.prod.yaml pull
             docker compose -f docker-compose.prod.yaml up -d
+            docker compose -f docker-compose.prod.yaml restart nginx
             docker image prune -f

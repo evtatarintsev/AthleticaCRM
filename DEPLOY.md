@@ -135,7 +135,11 @@ dig +short minio.yourdomain.com
 
 ## 4. Деплой файлов проекта
 
-Скопировать необходимые файлы из репозитория на сервер. Выполняется **с локальной машины** из корня репозитория:
+Этот шаг — **bootstrap**, нужен только перед первым запуском (пока GitHub Actions ещё не настроен).
+После настройки секретов (раздел 7) файлы `docker-compose.prod.yaml` и `nginx/prod.conf.template`
+обновляются автоматически на каждый push в `master`.
+
+Выполняется **с локальной машины** из корня репозитория:
 
 ```bash
 SERVER=deploy@<IP сервера>
@@ -147,9 +151,8 @@ scp nginx/prod.conf.template    $SERVER:$DEPLOY_PATH/nginx/prod.conf.template
 scp .env.prod.example           $SERVER:$DEPLOY_PATH/.env.prod.example
 ```
 
-> **После первого деплоя** обновление этих файлов происходит автоматически через GitHub Actions.
-> Но если вы вносите изменения в `docker-compose.prod.yaml` или `nginx/prod.conf.template`,
-> нужно повторить `scp` вручную — GitHub Actions копирует только Docker-образы, не файлы.
+> **Не редактируйте `docker-compose.prod.yaml` и `nginx/prod.conf.template` напрямую на сервере** —
+> следующий push в `master` затрёт изменения. Single source of truth — git-репозиторий.
 
 ---
 

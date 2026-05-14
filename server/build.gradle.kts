@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.bouncycastle)
     implementation(libs.minio)
     implementation(libs.angus.mail)
+    implementation(libs.sentry.logback)
     testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
     testImplementation(libs.testcontainers.postgresql)

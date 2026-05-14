@@ -432,7 +432,12 @@ private fun AppNavHost(
         modifier = modifier,
     ) {
         composable<AppRoute.Home> {
-            HomeScreen(api = api, modifier = Modifier.fillMaxSize())
+            HomeScreen(
+                api = api,
+                onClientClick = { id -> navController.navigate(AppRoute.ClientDetail(id.toString())) },
+                onShowAllClients = { navController.navigateToSection(AppRoute.Clients) },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         composable<AppRoute.Schedule> {

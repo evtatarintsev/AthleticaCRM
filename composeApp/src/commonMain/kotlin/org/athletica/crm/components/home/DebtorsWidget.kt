@@ -1,5 +1,6 @@
 package org.athletica.crm.components.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +27,8 @@ import org.athletica.crm.generated.resources.home_debtors_empty
 import org.athletica.crm.generated.resources.home_debtors_title
 import org.jetbrains.compose.resources.stringResource
 
+private const val WIDGET_LIMIT = 10
+
 private val stubDebtors: List<ClientListItem> =
     listOf(
         ClientListItem(id = ClientId.new(), name = "Иванов Сергей", gender = Gender.MALE, groups = emptyList(), balance = -1500.0),
@@ -35,10 +39,18 @@ private val stubDebtors: List<ClientListItem> =
 
 /**
  * Виджет «Должники» — клиенты с отрицательным балансом.
+ * Показывает не более [WIDGET_LIMIT] записей; при превышении — футер «Показать всех».
  * Данные — заглушка для оценки интерфейса.
  */
 @Composable
-fun DebtorsWidget(modifier: Modifier = Modifier) {
+fun DebtorsWidget(
+    onClientClick: (ClientId) -> Unit,
+    onShowAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val visible = stubDebtors.take(WIDGET_LIMIT)
+    val overflow = stubDebtors.size - visible.size
+
     OutlinedCard(modifier = modifier) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -61,9 +73,22 @@ fun DebtorsWidget(modifier: Modifier = Modifier) {
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(stubDebtors) { client ->
-                        DebtorRow(client = client)
+                    items(visible) { client ->
+                        DebtorRow(
+                            client = client,
+                            onClick = { onClientClick(client.id) },
+                        )
                         HorizontalDivider()
+                    }
+                    if (overflow > 0) {
+                        item {
+                            TextButton(
+                                onClick = onShowAll,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Показать всех (${stubDebtors.size})")
+                            }
+                        }
                     }
                 }
             }
@@ -72,21 +97,27 @@ fun DebtorsWidget(modifier: Modifier = Modifier) {
 }
 
 /**
- * Строка должника с именем и суммой задолженности.
+ * Строка должника с именем-ссылкой и суммой задолженности.
  */
 @Composable
 private fun DebtorRow(
     client: ClientListItem,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = client.name,
             style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
         )
         Text(
             text = "${client.balance.toInt()} ₽",

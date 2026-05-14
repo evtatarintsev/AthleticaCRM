@@ -1,5 +1,6 @@
 package org.athletica.crm.components.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +31,8 @@ import org.athletica.crm.generated.resources.home_birthdays_title
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
 
+private const val WIDGET_LIMIT = 10
+
 private val today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
 private val stubBirthdays: List<ClientListItem> =
@@ -40,10 +44,18 @@ private val stubBirthdays: List<ClientListItem> =
 
 /**
  * Виджет «Дни рождения сегодня» — клиенты, у которых сегодня день рождения.
+ * Показывает не более [WIDGET_LIMIT] записей; при превышении — футер «Показать всех».
  * Данные — заглушка для оценки интерфейса.
  */
 @Composable
-fun BirthdaysWidget(modifier: Modifier = Modifier) {
+fun BirthdaysWidget(
+    onClientClick: (ClientId) -> Unit,
+    onShowAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val visible = stubBirthdays.take(WIDGET_LIMIT)
+    val overflow = stubBirthdays.size - visible.size
+
     OutlinedCard(modifier = modifier) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -66,9 +78,22 @@ fun BirthdaysWidget(modifier: Modifier = Modifier) {
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(stubBirthdays) { client ->
-                        BirthdayRow(client = client)
+                    items(visible) { client ->
+                        BirthdayRow(
+                            client = client,
+                            onClick = { onClientClick(client.id) },
+                        )
                         HorizontalDivider()
+                    }
+                    if (overflow > 0) {
+                        item {
+                            TextButton(
+                                onClick = onShowAll,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Показать всех (${stubBirthdays.size})")
+                            }
+                        }
                     }
                 }
             }
@@ -77,23 +102,29 @@ fun BirthdaysWidget(modifier: Modifier = Modifier) {
 }
 
 /**
- * Строка именинника с именем и возрастом.
+ * Строка именинника с именем-ссылкой и возрастом.
  */
 @Composable
 private fun BirthdayRow(
     client: ClientListItem,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val age = client.birthday?.let { today.year - it.year }
 
     Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = client.name,
             style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
         )
         if (age != null) {
             Text(

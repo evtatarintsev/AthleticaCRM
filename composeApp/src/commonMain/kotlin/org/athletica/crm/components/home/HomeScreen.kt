@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.home.TodaySessionItem
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.home_today_sessions_empty
 import org.athletica.crm.generated.resources.home_today_sessions_error
@@ -41,6 +42,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun HomeScreen(
     api: ApiClient,
+    onClientClick: (ClientId) -> Unit,
+    onShowAllClients: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -55,8 +58,8 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 SessionsWidget(viewModel = viewModel, modifier = Modifier.weight(1f))
-                DebtorsWidget(modifier = Modifier.weight(1f))
-                BirthdaysWidget(modifier = Modifier.weight(1f))
+                DebtorsWidget(onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
+                BirthdaysWidget(onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
             }
         } else {
             SessionsWidget(

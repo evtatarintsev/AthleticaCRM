@@ -126,7 +126,6 @@ class DbClientsTest {
             assertNull(result.avatarId)
             assertTrue(result.docs.isEmpty())
             assertTrue(result.groups.isEmpty())
-            assertEquals(0.0, result.balance)
         }
 
     @Test

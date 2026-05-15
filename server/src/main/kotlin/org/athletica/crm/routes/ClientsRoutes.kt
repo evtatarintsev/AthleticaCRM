@@ -1,8 +1,7 @@
 package org.athletica.crm.routes
 
-import io.ktor.http.ContentType
+import arrow.fx.coroutines.parZip
 import io.ktor.http.HttpHeaders
-import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
@@ -28,6 +27,7 @@ import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Client
@@ -51,22 +51,28 @@ fun RouteWithContext.clientsRoutes(
     definitions: CustomFieldDefinitions,
 ) {
     get<Unit, ClientListResponse>("/clients/list") {
-        val clientList =
-            db.transaction {
-                clients.list()
-            }
-        ClientListResponse(clientList.map { it.toListItem() }, clientList.size.toUInt())
+        db.transaction {
+            val clientList = clients.list()
+            val balancesByClient = balances.currentOf(clientList).associateBy { it.clientId }
+            val items = clientList.map { it.toListItem(balancesByClient.getValue(it.id)) }
+            ClientListResponse(items, items.size.toUInt())
+        }
     }
 
     post<ClientExportRequest, ByteArray>("/clients/export") { request, call ->
         val format = call.request.queryParameters["format"] ?: "csv"
 
-        val (clientList, customDefs) =
+        val (items, customDefs) =
             db.transaction {
-                clients.list() to definitions.all(CLIENT_ENTITY_TYPE)
+                val clientList = clients.list()
+                val customDefs = definitions.all(CLIENT_ENTITY_TYPE)
+                val balancesByClient = balances.currentOf(clientList).associateBy { it.clientId }
+
+                val items = clientList.map { it.toListItem(balancesByClient.getValue(it.id)) }
+                Pair(items, customDefs)
             }
 
-        val csvContent = generateCsvContent(clientList.map { it.toListItem() }, request.fields, customDefs)
+        val csvContent = generateCsvContent(items, request.fields, customDefs)
 
         call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"clients.${format}\"")
         call.response.headers.append(
@@ -79,7 +85,8 @@ fun RouteWithContext.clientsRoutes(
 
     get<ClientDetailRequest, ClientDetailResponse>("/clients/detail") { request ->
         db.transaction {
-            clients.byId(request.id).detailResponse()
+            val client = clients.byId(request.id)
+            client.detailResponse(balances.currentOf(client))
         }
     }
 
@@ -87,35 +94,41 @@ fun RouteWithContext.clientsRoutes(
         db.transaction {
             val defs = definitions.all(CLIENT_ENTITY_TYPE)
             val customFields = CustomFieldValues(defs).with(request.customFields).bind()
-            clients
-                .new(
-                    request.id,
-                    request.name,
-                    request.avatarId,
-                    request.birthday,
-                    request.gender,
-                    request.leadSourceId,
-                    customFields.toList(),
-                )
-        }.detailResponse()
+            val client =
+                clients
+                    .new(
+                        request.id,
+                        request.name,
+                        request.avatarId,
+                        request.birthday,
+                        request.gender,
+                        request.leadSourceId,
+                        customFields.toList(),
+                    )
+            val balance = balances.currentOf(client)
+            client.detailResponse(balance)
+        }
     }
 
     post<EditClientRequest, ClientDetailResponse>("/clients/edit") { request ->
         db.transaction {
             val defs = definitions.all(CLIENT_ENTITY_TYPE)
             val customFields = CustomFieldValues(defs).with(request.customFields).bind()
-            clients
-                .byId(request.id)
-                .withNew(
-                    request.name,
-                    request.avatarId,
-                    request.birthday,
-                    request.gender,
-                    request.leadSourceId,
-                    customFields.toList(),
-                )
-                .apply { save() }
-        }.detailResponse()
+            val client =
+                clients
+                    .byId(request.id)
+                    .withNew(
+                        request.name,
+                        request.avatarId,
+                        request.birthday,
+                        request.gender,
+                        request.leadSourceId,
+                        customFields.toList(),
+                    )
+                    .apply { save() }
+            val balance = balances.currentOf(client)
+            client.detailResponse(balance)
+        }
     }
 
     post<AddClientsToGroupRequest, Unit>("/clients/add-to-group") { request ->
@@ -132,13 +145,12 @@ fun RouteWithContext.clientsRoutes(
 
     post<AdjustBalanceRequest, ClientDetailResponse>("/clients/balance/adjust") { request ->
         db.transaction {
-            balances
-                .forClient(request.clientId)
-                .adjust(request.amount, request.note)
-
-            clients
-                .byId(request.clientId)
-                .detailResponse()
+            val client = clients.byId(request.clientId)
+            val balance =
+                balances
+                    .currentOf(client)
+                    .adjust(request.amount, request.note)
+            client.detailResponse(balance)
         }
     }
 
@@ -162,16 +174,19 @@ fun RouteWithContext.clientsRoutes(
 
     get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
         db.transaction {
-            val balance = balances.forClient(request.id)
-            val performedById = employees.list().associate { it.id to PerformedBy(it.id.value, it.name) }
-            ClientBalanceHistoryResponse(
-                entries = balance.history.map { it.toJournalEntry(performedById) },
-            )
+            parZip(
+                { balances.currentOf(clients.byId(request.id)) },
+                { employees.list().associate { it.id to PerformedBy(it.id.value, it.name) } },
+            ) { balance, performedById ->
+                ClientBalanceHistoryResponse(
+                    entries = balance.history().map { it.toJournalEntry(performedById) },
+                )
+            }
         }
     }
 }
 
-fun Client.detailResponse() =
+fun Client.detailResponse(balance: ClientBalance) =
     ClientDetailResponse(
         id = id,
         name = name,
@@ -179,13 +194,13 @@ fun Client.detailResponse() =
         birthday = birthday,
         gender = gender,
         groups = groups.map { ClientGroup(it.id, it.name) },
-        balance = balance,
+        balance = balance.totalAmount,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
         leadSourceId = leadSourceId,
         customFields = customFields,
     )
 
-fun Client.toListItem() =
+fun Client.toListItem(balance: ClientBalance) =
     ClientListItem(
         id = id,
         name = name,
@@ -193,7 +208,7 @@ fun Client.toListItem() =
         birthday = birthday,
         gender = gender,
         groups = groups.map { ClientGroup(it.id, it.name) },
-        balance = balance,
+        balance = balance.totalAmount,
         customFields = customFields,
     )
 
@@ -263,6 +278,7 @@ private sealed class ResolvedField {
                         Gender.MALE -> "М"
                         Gender.FEMALE -> "Ж"
                     }
+
                 ClientField.GROUPS -> client.groups.joinToString("; ") { it.name }
                 ClientField.BALANCE -> client.balance.toString()
             }

@@ -15,6 +15,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asDouble
 import org.junit.Before
@@ -26,23 +27,17 @@ import kotlin.uuid.Uuid
 
 class DbClientBalancesTest {
     private val orgId = OrgId.new()
-    private val otherOrgId = OrgId.new()
     private val userId = UserId.new()
     private val employeeId = EmployeeId.new()
-    private val otherEmployeeId = EmployeeId.new()
 
     private val ctx =
         RequestContext(
             Lang.EN, userId, orgId, BranchId.new(), employeeId, "admin@example.com", null,
             EmployeePermission(),
         )
-    private val otherCtx =
-        RequestContext(
-            Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "admin@example.com", null,
-            EmployeePermission(),
-        )
 
     private val balances = DbClientBalances()
+    private val clients = DbClients()
 
     @Before
     fun setUp() {
@@ -50,8 +45,6 @@ class DbClientBalancesTest {
         runBlocking {
             TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
                 .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Org 2").execute()
             TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
                 .bind("id", userId).bind("login", "admin@example.com").bind("hash", "hash").execute()
             TestPostgres.db.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
@@ -93,25 +86,26 @@ class DbClientBalancesTest {
             .bind("id", clientId)
             .firstOrNull { row -> row.asDouble(0) } ?: 0.0
 
-    // ── forClient ────────────────────────────────────────────────────────────
+    // ── currentOf ────────────────────────────────────────────────────────────
 
     @Test
-    fun `forClient возвращает нулевой баланс для нового клиента`() =
+    fun `currentOf возвращает нулевой баланс если нет операций`() =
         runTest {
             val clientId = insertClient()
             val balance =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { balances.forClient(clientId) }
+                        context(ctx, this) {
+                            balances.currentOf(clients.byId(clientId))
+                        }
                     }
                 }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(0.0, balance.totalAmount)
-            assertEquals(emptyList(), balance.history)
         }
 
     @Test
-    fun `forClient загружает историю операций`() =
+    fun `currentOf возвращает текущий баланс из последней записи журнала`() =
         runTest {
             val clientId = insertClient()
             insertBalanceEntry(clientId, 500.0, 500.0)
@@ -120,42 +114,74 @@ class DbClientBalancesTest {
             val balance =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { balances.forClient(clientId) }
+                        context(ctx, this) {
+                            balances.currentOf(clients.byId(clientId))
+                        }
                     }
                 }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(300.0, balance.totalAmount)
-            assertEquals(2, balance.history.size)
         }
 
     @Test
-    fun `forClient возвращает ошибку если клиент не найден`() =
+    fun `currentOf для списка клиентов возвращает баланс по каждому`() =
         runTest {
-            val result =
+            val clientId1 = insertClient(name = "Клиент 1")
+            val clientId2 = insertClient(name = "Клиент 2")
+            insertBalanceEntry(clientId1, 500.0, 500.0)
+
+            val byClient =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { balances.forClient(ClientId.new()) }
+                        context(ctx, this) {
+                            balances.currentOf(clients.list()).associateBy { it.clientId }
+                        }
                     }
-                }
+                }.getOrElse { fail("Expected success: $it") }
 
-            assertIs<Either.Left<DomainError>>(result)
-            assertEquals("CLIENT_NOT_FOUND", result.value.code)
+            assertEquals(2, byClient.size)
+            assertEquals(500.0, byClient.getValue(clientId1).totalAmount)
+            assertEquals(0.0, byClient.getValue(clientId2).totalAmount)
+        }
+
+    // ── history ──────────────────────────────────────────────────────────────
+
+    @Test
+    fun `history загружает все операции клиента в обратном хронологическом порядке`() =
+        runTest {
+            val clientId = insertClient()
+            insertBalanceEntry(clientId, 500.0, 500.0)
+            insertBalanceEntry(clientId, -200.0, 300.0)
+
+            val history =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            balances.currentOf(clients.byId(clientId)).history()
+                        }
+                    }
+                }.getOrElse { fail("Expected success: $it") }
+
+            assertEquals(2, history.size)
+            assertEquals(-200.0, history[0].amount)
+            assertEquals(500.0, history[1].amount)
         }
 
     @Test
-    fun `forClient изолирует клиентов разных организаций`() =
+    fun `history возвращает пустой список если операций нет`() =
         runTest {
-            val clientId = insertClient(orgId)
+            val clientId = insertClient()
 
-            val result =
+            val history =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this) { balances.forClient(clientId) }
+                        context(ctx, this) {
+                            balances.currentOf(clients.byId(clientId)).history()
+                        }
                     }
-                }
+                }.getOrElse { fail("Expected success: $it") }
 
-            assertIs<Either.Left<DomainError>>(result)
-            assertEquals("CLIENT_NOT_FOUND", result.value.code)
+            assertEquals(emptyList(), history)
         }
 
     // ── adjust ───────────────────────────────────────────────────────────────
@@ -168,7 +194,7 @@ class DbClientBalancesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        balances.forClient(clientId).adjust(500.0, "Бонус")
+                        balances.currentOf(clients.byId(clientId)).adjust(500.0, "Бонус")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -185,7 +211,7 @@ class DbClientBalancesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        balances.forClient(clientId).adjust(-300.0, "Корректировка")
+                        balances.currentOf(clients.byId(clientId)).adjust(-300.0, "Корректировка")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -201,7 +227,7 @@ class DbClientBalancesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        val b = balances.forClient(clientId)
+                        val b = balances.currentOf(clients.byId(clientId))
                         val b2 = b.adjust(200.0, "Первое пополнение")
                         val b3 = b2.adjust(300.0, "Второе пополнение")
                         b3.adjust(-100.0, "Списание")
@@ -221,14 +247,12 @@ class DbClientBalancesTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.forClient(clientId).adjust(750.0, "Пополнение")
+                            balances.currentOf(clients.byId(clientId)).adjust(750.0, "Пополнение")
                         }
                     }
                 }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(750.0, updated.totalAmount)
-            assertEquals(1, updated.history.size)
-            assertEquals(750.0, updated.history.first().amount)
         }
 
     @Test
@@ -240,7 +264,7 @@ class DbClientBalancesTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.forClient(clientId).adjust(0.0, "Комментарий")
+                            balances.currentOf(clients.byId(clientId)).adjust(0.0, "Комментарий")
                         }
                     }
                 }
@@ -258,7 +282,7 @@ class DbClientBalancesTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.forClient(clientId).adjust(100.0, "")
+                            balances.currentOf(clients.byId(clientId)).adjust(100.0, "")
                         }
                     }
                 }
@@ -276,31 +300,12 @@ class DbClientBalancesTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.forClient(clientId).adjust(100.0, "   ")
+                            balances.currentOf(clients.byId(clientId)).adjust(100.0, "   ")
                         }
                     }
                 }
 
             assertIs<Either.Left<DomainError>>(result)
             assertEquals("BALANCE_NOTE_REQUIRED", result.value.code)
-        }
-
-    @Test
-    fun `adjust не применяет корректировку к клиенту из чужой организации`() =
-        runTest {
-            val clientId = insertClient(orgId)
-
-            val result =
-                either<DomainError, Unit> {
-                    TestPostgres.db.transaction {
-                        context(otherCtx, this) {
-                            balances.forClient(clientId).adjust(500.0, "Попытка корректировки")
-                        }
-                    }
-                }
-
-            assertIs<Either.Left<DomainError>>(result)
-            assertEquals("CLIENT_NOT_FOUND", result.value.code)
-            assertEquals(0.0, getBalance(clientId))
         }
 }

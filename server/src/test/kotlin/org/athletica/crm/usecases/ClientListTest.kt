@@ -86,48 +86,6 @@ class ClientListTest {
             .execute()
     }
 
-    private suspend fun insertEmployee(orgId: Uuid): EmployeeId {
-        val userId = UserId.new()
-        val employeeId = EmployeeId.new()
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId)
-            .bind("login", "$userId@example.com")
-            .bind("hash", "hash")
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
-            .bind("id", employeeId)
-            .bind("userId", userId)
-            .bind("orgId", orgId)
-            .bind("name", "Admin")
-            .execute()
-        return employeeId
-    }
-
-    private suspend fun insertBalanceEntry(
-        orgId: Uuid,
-        clientId: ClientId,
-        amount: Double,
-        balanceAfter: Double,
-        performedBy: EmployeeId,
-    ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
-                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
-                """.trimIndent(),
-            )
-            .bind("id", Uuid.generateV7())
-            .bind("orgId", orgId)
-            .bind("clientId", clientId)
-            .bind("amount", java.math.BigDecimal(amount.toString()))
-            .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
-            .bind("performedBy", performedBy)
-            .execute()
-    }
-
     private fun ctx(orgId: Uuid) =
         RequestContext(
             lang = Lang.EN,
@@ -264,90 +222,6 @@ class ClientListTest {
             val clients = assertIs<Either.Right<List<Client>>>(result).value
             assertEquals(1, clients.size)
             assertEquals("Клиент Орг 1", clients[0].name)
-        }
-
-    @Test
-    fun `clientList возвращает нулевой баланс если нет операций в журнале`() =
-        runTest {
-            val orgId = insertOrg()
-            insertClient(orgId, "Клиент")
-
-            val result =
-                either<DomainError, List<Client>> {
-                    TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
-                            DbClients().list()
-                        }
-                    }
-                }
-            val client = assertIs<Either.Right<List<Client>>>(result).value.single()
-            assertEquals(0.0, client.balance)
-        }
-
-    @Test
-    fun `clientList возвращает сумму операций как баланс клиента`() =
-        runTest {
-            val orgId = insertOrg()
-            val clientId = insertClient(orgId, "Клиент")
-            val employeeId = insertEmployee(orgId)
-            insertBalanceEntry(orgId, clientId, amount = 2000.0, balanceAfter = 2000.0, performedBy = employeeId)
-            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = 200.0, performedBy = employeeId)
-
-            val result =
-                either<DomainError, List<Client>> {
-                    TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
-                            DbClients().list()
-                        }
-                    }
-                }
-            val client = assertIs<Either.Right<List<Client>>>(result).value.single()
-            assertEquals(200.0, client.balance)
-        }
-
-    @Test
-    fun `clientList возвращает отрицательный баланс при задолженности`() =
-        runTest {
-            val orgId = insertOrg()
-            val clientId = insertClient(orgId, "Клиент")
-            val employeeId = insertEmployee(orgId)
-            insertBalanceEntry(orgId, clientId, amount = 1000.0, balanceAfter = 1000.0, performedBy = employeeId)
-            insertBalanceEntry(orgId, clientId, amount = -1800.0, balanceAfter = -800.0, performedBy = employeeId)
-
-            val result =
-                either<DomainError, List<Client>> {
-                    TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
-                            DbClients().list()
-                        }
-                    }
-                }
-            val client = assertIs<Either.Right<List<Client>>>(result).value.single()
-            assertEquals(-800.0, client.balance)
-        }
-
-    @Test
-    fun `clientList баланс не пересекается между клиентами`() =
-        runTest {
-            val orgId = insertOrg()
-            val client1Id = insertClient(orgId, "Клиент 1")
-            val client2Id = insertClient(orgId, "Клиент 2")
-            val employeeId = insertEmployee(orgId)
-            insertBalanceEntry(orgId, client1Id, amount = 500.0, balanceAfter = 500.0, performedBy = employeeId)
-
-            val result =
-                either<DomainError, List<Client>> {
-                    TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
-                            DbClients().list()
-                        }
-                    }
-                }
-            val clients = assertIs<Either.Right<List<Client>>>(result).value
-            val client1 = clients.first { it.name == "Клиент 1" }
-            val client2 = clients.first { it.name == "Клиент 2" }
-            assertEquals(500.0, client1.balance)
-            assertEquals(0.0, client2.balance)
         }
 
     @Test

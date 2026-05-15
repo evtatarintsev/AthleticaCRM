@@ -12,10 +12,12 @@ import kotlin.uuid.Uuid
 interface ClientBalance {
     val clientId: ClientId
     val totalAmount: Double
-    val history: List<ClientBalanceEntry>
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun adjust(amount: Double, note: String): ClientBalance
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun history(): List<ClientBalanceEntry>
 }
 
 /** Одна запись в журнале операций по балансу клиента. */

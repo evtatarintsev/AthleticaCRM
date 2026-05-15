@@ -20,7 +20,6 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asString
@@ -34,8 +33,7 @@ class DbClients : Clients {
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields,
-                           COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
@@ -50,7 +48,6 @@ class DbClients : Clients {
                         birthday = row.asLocalDateOrNull("birthday"),
                         gender = Gender.valueOf(row.asString("gender")),
                         groups = emptyList(),
-                        balance = row.asDouble("balance"),
                         docs = emptyList(),
                         leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
                         customFields = Json.decodeFromString(row.asString("custom_fields")),
@@ -141,7 +138,6 @@ class DbClients : Clients {
             birthday = birthday,
             gender = gender,
             groups = emptyList(),
-            balance = 0.0,
             docs = emptyList(),
             leadSourceId = leadSourceId,
             customFields = customFields,
@@ -155,8 +151,7 @@ class DbClients : Clients {
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields,
-                           COALESCE((SELECT SUM(j.amount) FROM client_balance_journal j WHERE j.client_id = clients.id), 0) AS balance
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields
                     FROM clients
                     WHERE org_id = :orgId
                     ORDER BY name
@@ -171,7 +166,6 @@ class DbClients : Clients {
                         birthday = row.asLocalDateOrNull("birthday"),
                         gender = Gender.valueOf(row.asString("gender")),
                         groups = emptyList(),
-                        balance = row.asDouble("balance"),
                         docs = emptyList(),
                         leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
                         customFields = Json.decodeFromString(row.asString("custom_fields")),

@@ -30,7 +30,6 @@ data class AuditClient(
     override val birthday = client.birthday
     override val gender = client.gender
     override val groups = client.groups
-    override val balance = client.balance
     override val docs = client.docs
     override val leadSourceId = client.leadSourceId
     override val customFields = client.customFields

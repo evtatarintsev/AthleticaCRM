@@ -1,60 +1,43 @@
 package org.athletica.crm.domain.clientbalance
 
 import arrow.core.raise.context.Raise
-import arrow.core.raise.context.raise
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.i18n.Messages
+import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asDouble
-import org.athletica.crm.storage.asInstant
-import org.athletica.crm.storage.asString
-import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 
 class DbClientBalances : ClientBalances {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun forClient(clientId: ClientId): ClientBalance {
-        tr
-            .sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId")
-            .bind("id", clientId)
-            .bind("orgId", ctx.orgId)
-            .firstOrNull { true }
-            ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
+    override suspend fun currentOf(client: Client): ClientBalance = currentOf(listOf(client)).single()
 
-        val entries =
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun currentOf(clients: List<Client>): List<ClientBalance> {
+        if (clients.isEmpty()) {
+            return emptyList()
+        }
+
+        val balanceByClient =
             tr
                 .sql(
                     """
-                    SELECT j.id,
-                           j.amount,
-                           j.balance_after,
-                           j.operation_type,
-                           j.note,
-                           j.created_at,
-                           j.performed_by
-                    FROM client_balance_journal j
-                    WHERE j.client_id = :clientId AND j.org_id = :orgId
-                    ORDER BY j.created_at DESC
+                    SELECT DISTINCT ON (client_id) client_id, balance_after
+                    FROM client_balance_journal
+                    WHERE client_id = ANY(:clientIds) AND org_id = :orgId
+                    ORDER BY client_id, created_at DESC
                     """.trimIndent(),
                 )
-                .bind("clientId", clientId)
+                .bind("clientIds", clients.map { it.id.value })
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    ClientBalanceEntry(
-                        id = row.asUuid("id"),
-                        amount = row.asDouble("amount"),
-                        balanceAfter = row.asDouble("balance_after"),
-                        operationType = row.asString("operation_type"),
-                        note = row.asStringOrNull("note"),
-                        performedBy = EmployeeId(row.asUuid("performed_by")),
-                        createdAt = row.asInstant("created_at"),
-                    )
+                    row.asUuid("client_id").toClientId() to row.asDouble("balance_after")
                 }
+                .toMap()
 
-        return DbClientBalance(clientId, entries, totalAmount = entries.sumOf { it.amount })
+        return clients.map { client ->
+            DbClientBalance(client.id, totalAmount = balanceByClient[client.id] ?: 0.0)
+        }
     }
 }

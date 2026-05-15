@@ -22,7 +22,6 @@ internal data class DbClient(
     override val birthday: LocalDate?,
     override val gender: Gender,
     override val groups: List<ClientGroup>,
-    override val balance: Double,
     override val docs: List<ClientDoc>,
     override val leadSourceId: LeadSourceId?,
     override val customFields: List<CustomFieldValue>,

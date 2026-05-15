@@ -4,16 +4,20 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
-import kotlin.time.Clock
+import org.athletica.crm.storage.asDouble
+import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuid
 import kotlin.uuid.Uuid
 
 class DbClientBalance(
     override val clientId: ClientId,
-    override val history: List<ClientBalanceEntry>,
     override val totalAmount: Double,
 ) : ClientBalance {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -50,17 +54,37 @@ class DbClientBalance(
             .bind("performedBy", ctx.employeeId)
             .execute()
 
-        val entry =
-            ClientBalanceEntry(
-                id = entryId,
-                amount = amount,
-                balanceAfter = balanceAfter,
-                operationType = operationType,
-                note = note,
-                performedBy = ctx.employeeId,
-                createdAt = Clock.System.now(),
-            )
-
-        return DbClientBalance(clientId, listOf(entry) + history, balanceAfter)
+        return DbClientBalance(clientId, balanceAfter)
     }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun history(): List<ClientBalanceEntry> =
+        tr
+            .sql(
+                """
+                SELECT j.id,
+                       j.amount,
+                       j.balance_after,
+                       j.operation_type,
+                       j.note,
+                       j.created_at,
+                       j.performed_by
+                FROM client_balance_journal j
+                WHERE j.client_id = :clientId AND j.org_id = :orgId
+                ORDER BY j.created_at DESC
+                """.trimIndent(),
+            )
+            .bind("clientId", clientId)
+            .bind("orgId", ctx.orgId)
+            .list { row ->
+                ClientBalanceEntry(
+                    id = row.asUuid("id"),
+                    amount = row.asDouble("amount"),
+                    balanceAfter = row.asDouble("balance_after"),
+                    operationType = row.asString("operation_type"),
+                    note = row.asStringOrNull("note"),
+                    performedBy = EmployeeId(row.asUuid("performed_by")),
+                    createdAt = row.asInstant("created_at"),
+                )
+            }
 }

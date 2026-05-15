@@ -35,9 +35,6 @@ interface Client {
     /** Группы в которых состоит клиент. */
     val groups: List<ClientGroup>
 
-    /** Баланс личного счёта клиента (отрицательный — задолженность). */
-    val balance: Double
-
     /** Документы, прикреплённые к клиенту. */
     val docs: List<ClientDoc>
 

@@ -9,6 +9,7 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -49,6 +50,7 @@ suspend fun signUp(
     val userId = UserId.new()
     val employeeId = EmployeeId.new()
     val branchId = BranchId.new()
+    val hallId = HallId.new()
     try {
         tr.sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
             .bind("orgId", orgId)
@@ -73,6 +75,13 @@ suspend fun signUp(
             .bind("id", branchId)
             .bind("orgId", orgId)
             .bind("name", Messages.DefaultBranchName.localize(lang))
+            .execute()
+
+        tr.sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+            .bind("id", hallId)
+            .bind("orgId", orgId)
+            .bind("branchId", branchId)
+            .bind("name", Messages.DefaultHallName.localize(lang))
             .execute()
     } catch (e: R2dbcDataIntegrityViolationException) {
         if (e.message?.contains("users_login_key") == true) {

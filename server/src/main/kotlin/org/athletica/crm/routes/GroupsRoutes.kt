@@ -50,7 +50,8 @@ fun RouteWithContext.groupsRoutes(
     route("/groups") {
         get<Unit, GroupListResponse>("/list") {
             db.transaction {
-                groups.list().toListResponse()
+                val allEmployees = employees.list()
+                groups.list().toListResponse(allEmployees)
             }
         }
 
@@ -124,7 +125,17 @@ fun RouteWithContext.groupsRoutes(
 
 private fun RoutingCall.pathGroupId(): GroupId = Uuid.parse(parameters["groupId"]!!).toGroupId()
 
-fun List<Group>.toListResponse() = GroupListResponse(map { GroupListItem(it.id, it.name) })
+fun List<Group>.toListResponse(allEmployees: List<Employee> = emptyList()) =
+    GroupListResponse(
+        map { group ->
+            GroupListItem(
+                id = group.id,
+                name = group.name,
+                schedule = group.schedule.map { it.toSchema() },
+                employees = allEmployees.mapToGroupEmployees(group.employeeIds),
+            )
+        },
+    )
 
 fun List<Group>.toGroupSelectItems() = map { GroupSelectItem(it.id, it.name) }
 

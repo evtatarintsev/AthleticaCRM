@@ -14,4 +14,8 @@ data class GroupListItem(
     val id: GroupId,
     /** Название группы. */
     val name: String,
+    /** Расписание группы. */
+    val schedule: List<ScheduleSlot>,
+    /** Преподаватели группы. */
+    val employees: List<GroupEmployee>,
 )

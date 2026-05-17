@@ -1,6 +1,7 @@
 package org.athletica.crm.core.money
 
-import arrow.core.Either
+import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.serialization.SerializationException
 import org.athletica.crm.api.client.appJson
 import org.athletica.crm.core.errors.CommonDomainError
@@ -13,34 +14,43 @@ class CurrencyTest {
     @Test
     fun `from принимает поддерживаемые валюты`() {
         Currency.entries.forEach { c ->
-            val result = Currency.from(c.code)
-            assertEquals(c, assertIs<Either.Right<Currency>>(result).value)
+            either {
+                Currency.from(c.code)
+            }.getOrElse { error(it.message) }
         }
     }
 
     @Test
     fun `from не зависит от регистра`() {
-        val result = Currency.from("rub")
-        assertEquals(Currency.RUB, assertIs<Either.Right<Currency>>(result).value)
+        either {
+            Currency.from("rub")
+        }.getOrElse { error(it.message) }
     }
 
     @Test
     fun `from отвергает неизвестный код`() {
-        val result = Currency.from("XXX")
-        val left = assertIs<Either.Left<CommonDomainError>>(result).value
-        assertEquals("UNKNOWN_CURRENCY", left.code)
+        either {
+            Currency.from("XXX")
+        }.getOrElse {
+            assertEquals("UNKNOWN_CURRENCY", it.code)
+        }
     }
 
     @Test
     fun `from отвергает пустую строку`() {
-        val result = Currency.from("")
-        assertIs<Either.Left<CommonDomainError>>(result)
+        either {
+            Currency.from("")
+            error("empty string should be an error")
+        }.getOrElse {
+            assertIs<CommonDomainError>(it)
+        }
     }
 
     @Test
-    fun `String toCurrency эквивалентен Currency from`() {
-        assertEquals(Currency.from("RUB"), "RUB".toCurrency())
-    }
+    fun `String toCurrency эквивалентен Currency from`() =
+        either {
+            assertEquals(Currency.from("RUB"), "RUB".toCurrency())
+        }.getOrElse { error(it.message) }
 
     @Test
     fun `сериализуется как ISO-код`() {

@@ -1,9 +1,9 @@
 package org.athletica.crm.core.money
 
-import arrow.core.Either
 import arrow.core.getOrElse
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
+import arrow.core.raise.context.raise
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -51,11 +51,11 @@ enum class Currency(
          * Возвращает [CommonDomainError] с кодом `UNKNOWN_CURRENCY`, если код
          * не соответствует ни одной поддерживаемой валюте.
          */
-        fun from(code: String): Either<DomainError, Currency> {
+        context(raise: Raise<DomainError>)
+        fun from(code: String): Currency {
             val normalized = code.uppercase()
             val currency = BY_CODE[normalized]
-            return currency?.right()
-                ?: CommonDomainError("UNKNOWN_CURRENCY", "$UNKNOWN_CURRENCY_MESSAGE: $code").left()
+            return currency ?: raise(CommonDomainError("UNKNOWN_CURRENCY", "$UNKNOWN_CURRENCY_MESSAGE: $code"))
         }
     }
 
@@ -73,8 +73,9 @@ enum class Currency(
         }
 
         override fun deserialize(decoder: Decoder): Currency {
-            val raw = decoder.decodeString()
-            return from(raw).getOrElse { err ->
+            either {
+                return decoder.decodeString().toCurrency()
+            }.getOrElse { err ->
                 throw SerializationException(err.message)
             }
         }
@@ -82,4 +83,5 @@ enum class Currency(
 }
 
 /** Удобный синоним для [Currency.from]. */
-fun String.toCurrency(): Either<DomainError, Currency> = Currency.from(this)
+context(raise: Raise<DomainError>)
+fun String.toCurrency(): Currency = Currency.from(this)

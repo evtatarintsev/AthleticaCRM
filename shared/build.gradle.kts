@@ -35,4 +35,8 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
+        freeCompilerArgs.add("-Xcontext-parameters")
+    }
 }

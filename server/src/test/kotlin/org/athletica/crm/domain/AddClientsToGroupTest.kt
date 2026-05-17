@@ -124,7 +124,7 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
                     context(ctx(orgId), this) {
                         enrollments.add(groupId, listOf(clientId))

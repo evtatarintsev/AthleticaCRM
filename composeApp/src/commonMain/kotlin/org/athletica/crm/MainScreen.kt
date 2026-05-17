@@ -110,6 +110,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_collapse_menu
 import org.athletica.crm.generated.resources.action_logout
@@ -708,7 +709,7 @@ private fun DrawerAccountHeader(api: ApiClient) {
             )
             me.orgInfo.balance?.let { balance ->
                 Text(
-                    text = stringResource(Res.string.label_balance_value, balance),
+                    text = stringResource(Res.string.label_balance_value, balance.formatted),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )

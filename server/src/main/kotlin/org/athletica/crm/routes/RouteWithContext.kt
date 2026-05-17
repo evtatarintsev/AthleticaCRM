@@ -34,8 +34,9 @@ import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.employees.EmployeePermissions
+import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
@@ -112,7 +113,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     ): Route =
         router.route(path, method) {
             handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions)) {
+                context(call.contextFromRequest(di.database, di.employeePermissions, di.organizations)) {
                     either {
                         body(call)
                     }.onLeft {
@@ -174,37 +175,38 @@ fun RoutingCall.langFromRequest(): Lang {
  * Извлекает [UserId], [EmployeeId] и [OrgId] из claims токена, язык — из `Accept-Language`,
  * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
  */
-suspend fun RoutingCall.contextFromRequest(db: Database, permissions: EmployeePermissions): RequestContext {
-    val principal = principal<JWTPrincipal>()!!
-    val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
-    val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
-    val branchId = principal.payload.claimAsUuid(JwtConfig.CLAIM_BRANCH_ID).toBranchId()
-    val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
-    val (permission, currency) =
-        db.transaction {
-            val p = permissions.byId(employeeId)
-            val code =
-                sql("SELECT currency FROM organizations WHERE id = :orgId")
-                    .bind("orgId", orgId)
-                    .firstOrNull { row -> row.asString("currency").trim() }
-                    ?: error("Organization $orgId not found while building request context")
-            p to
-                Currency.from(code).getOrElse {
-                    error("Organization $orgId has invalid currency code '$code'")
-                }
-        }
-    return RequestContext(
-        userId = userId,
-        orgId = orgId,
-        branchId = branchId,
-        employeeId = employeeId,
-        lang = langFromRequest(),
-        username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
-        clientIp = clientIp(),
-        currency = currency,
-        permission = permission,
-    )
-}
+suspend fun RoutingCall.contextFromRequest(
+    db: Database,
+    permissions: EmployeePermissions,
+    organizations: Organizations,
+): RequestContext =
+    either {
+        val principal = principal<JWTPrincipal>()!!
+        val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
+        val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
+        val branchId = principal.payload.claimAsUuid(JwtConfig.CLAIM_BRANCH_ID).toBranchId()
+        val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
+        val (currency, permission) =
+            db.transaction {
+                val currency =
+                    context(systemContext(orgId)) {
+                        organizations.current().currency
+                    }
+                val permission = permissions.byId(employeeId)
+                currency to permission
+            }
+        RequestContext(
+            userId = userId,
+            orgId = orgId,
+            branchId = branchId,
+            employeeId = employeeId,
+            lang = langFromRequest(),
+            username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
+            clientIp = clientIp(),
+            currency = currency,
+            permission = permission,
+        )
+    }.getOrElse { throw RuntimeException("Error getting context from request: $it") }
 
 fun Payload.claimAsUuid(claim: String) = Uuid.parse(getClaim(claim).asString())
 

@@ -10,4 +10,6 @@ interface DomainError {
 data class CommonDomainError(
     override val code: String,
     override val message: String,
-) : DomainError
+) : DomainError {
+    override fun toString() = "$code: $message"
+}

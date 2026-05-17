@@ -13,7 +13,7 @@ import org.athletica.crm.api.schemas.tasks.TaskDetailResponse
 import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
 import org.athletica.crm.api.schemas.tasks.TaskListRequest
 import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
-import org.athletica.crm.core.entityids.TaskId
+import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 
 sealed class TasksState {

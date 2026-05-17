@@ -164,10 +164,12 @@ fun RouteWithContext.taskRoutes(
     }
 }
 
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 private suspend fun Clients.byIdSet(ids: Set<org.athletica.crm.core.entityids.ClientId>): Map<org.athletica.crm.core.entityids.ClientId, org.athletica.crm.domain.clients.Client> {
     return ids.associateWith { byId(it) }
 }
 
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 private suspend fun Employees.byIdSet(ids: Set<org.athletica.crm.core.entityids.EmployeeId>): Map<org.athletica.crm.core.entityids.EmployeeId, org.athletica.crm.domain.employees.Employee> {
     return ids.associateWith { byId(it) }
 }

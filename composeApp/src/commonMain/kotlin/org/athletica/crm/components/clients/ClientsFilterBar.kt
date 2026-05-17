@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_display_settings
-import org.athletica.crm.generated.resources.action_remove_birth_year_filter
 import org.athletica.crm.generated.resources.action_remove_gender_filter
 import org.athletica.crm.generated.resources.filter_chip_has_debt
 import org.athletica.crm.generated.resources.filter_gender_all
@@ -114,28 +113,6 @@ fun ClientsFilterBar(
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = stringResource(Res.string.action_remove_gender_filter),
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                    )
-                }
-
-                if (filter.birthYearFrom != null || filter.birthYearTo != null) {
-                    val label =
-                        when {
-                            filter.birthYearFrom != null && filter.birthYearTo != null ->
-                                "${filter.birthYearFrom}–${filter.birthYearTo}"
-                            filter.birthYearFrom != null -> "с ${filter.birthYearFrom}"
-                            else -> "до ${filter.birthYearTo}"
-                        }
-                    FilterChip(
-                        selected = true,
-                        onClick = { onFilterChange(filter.copy(birthYearFrom = null, birthYearTo = null)) },
-                        label = { Text(label) },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = stringResource(Res.string.action_remove_birth_year_filter),
                                 modifier = Modifier.size(16.dp),
                             )
                         },

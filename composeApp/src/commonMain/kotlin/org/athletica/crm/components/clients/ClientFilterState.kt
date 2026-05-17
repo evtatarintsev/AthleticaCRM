@@ -11,8 +11,6 @@ import kotlin.math.round
  */
 data class ClientFilterState(
     val gender: GenderFilter = GenderFilter.All,
-    val birthYearFrom: Int? = null,
-    val birthYearTo: Int? = null,
     val hasDebtOnly: Boolean = false,
     val noGroupOnly: Boolean = false,
 ) {
@@ -21,7 +19,6 @@ data class ClientFilterState(
         get() =
             listOf(
                 gender != GenderFilter.All,
-                birthYearFrom != null || birthYearTo != null,
                 hasDebtOnly,
                 noGroupOnly,
             ).count { it }
@@ -29,10 +26,7 @@ data class ClientFilterState(
     /** Применить к списку: возвращает отфильтрованный список клиентов. */
     fun applyTo(clients: List<ClientListItem>): List<ClientListItem> =
         clients.filter { client ->
-            val data = client.fakeData()
             (gender == GenderFilter.All || client.gender == gender.value) &&
-                (birthYearFrom == null || data.birthYear >= birthYearFrom) &&
-                (birthYearTo == null || data.birthYear <= birthYearTo) &&
                 (!hasDebtOnly || client.balance < 0) &&
                 (!noGroupOnly || client.groups.isEmpty())
         }
@@ -48,19 +42,6 @@ enum class GenderFilter(
     All("Все", null),
     Male("Мужской", Gender.MALE),
     Female("Женский", Gender.FEMALE),
-}
-
-// TODO: убрать после появления реального поля birthday в API.
-internal data class FakeClientData(
-    val birthYear: Int,
-)
-
-/** Вычисляет фейковые данные клиента детерминированно из имени. */
-internal fun ClientListItem.fakeData(): FakeClientData {
-    val h = abs(name.hashCode())
-    return FakeClientData(
-        birthYear = 1970 + h % 36,
-    )
 }
 
 /**

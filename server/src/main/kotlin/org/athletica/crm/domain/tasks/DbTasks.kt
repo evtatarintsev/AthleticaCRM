@@ -9,6 +9,9 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.toClientId
+import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -206,11 +209,3 @@ class DbTasks : Tasks {
         )
     }
 }
-
-private fun java.util.UUID.toOrgId(): OrgId = OrgId(this)
-private fun java.util.UUID.toEmployeeId(): EmployeeId = EmployeeId(this)
-private fun java.util.UUID.toClientId(): ClientId = ClientId(this)
-
-private fun java.util.UUID.toOrgId(): OrgId = OrgId(this)
-private fun java.util.UUID.toEmployeeId(): EmployeeId = EmployeeId(this)
-private fun java.util.UUID.toClientId(): ClientId = ClientId(this)

@@ -10,6 +10,7 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.core.entityids.toUploadId
 
 interface Uploads {
     context(ctx: RequestContext, db: Database, raise: Raise<CommonDomainError>)
@@ -52,4 +53,4 @@ class DbUploads : Uploads {
     }
 }
 
-private fun org.athletica.crm.core.entityids.UploadId.toUploadId() = this
+

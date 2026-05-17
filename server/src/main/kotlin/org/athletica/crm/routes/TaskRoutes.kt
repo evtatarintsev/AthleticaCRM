@@ -98,13 +98,13 @@ fun RouteWithContext.taskRoutes(
         }
     }
 
-    post<CreateTaskRequest, TaskDetailResponse>("/tasks/create") { request, call ->
+    post<CreateTaskRequest, TaskDetailResponse>("/tasks/create") { request ->
         db.transaction {
             val task =
                 tasks.new(
                     id = request.id,
-                    orgId = call.ctx.orgId,
-                    createdBy = call.ctx.employeeId,
+                    orgId = ctx.orgId,
+                    createdBy = ctx.employeeId,
                     title = request.title,
                     description = request.description,
                     assigneeId = request.assigneeId,

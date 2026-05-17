@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -20,7 +21,6 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
 import java.time.Instant
 import kotlin.time.Clock
-import kotlin.time.toKotlinInstant
 
 internal data class DbTask(
     override val id: TaskId,
@@ -129,6 +129,4 @@ internal data class DbTask(
     }
 }
 
-private fun java.util.UUID.toOrgId(): OrgId = OrgId(this)
-private fun java.util.UUID.toEmployeeId(): EmployeeId = EmployeeId(this)
-private fun java.util.UUID.toClientId(): ClientId = ClientId(this)
+

@@ -19,6 +19,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -40,8 +41,8 @@ class DbClientsTest {
     private val otherEmployeeId = EmployeeId.new()
     private val branchId = Uuid.generateV7()
 
-    private val ctx = RequestContext(Lang.EN, userId, orgId, branchId.toBranchId(), employeeId, "test@example.com", null, EmployeePermission())
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "test@example.com", null, EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, userId, orgId, branchId.toBranchId(), employeeId, "test@example.com", null, Currency.RUB, EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "test@example.com", null, Currency.RUB, EmployeePermission())
 
     private val clients = DbClients()
 

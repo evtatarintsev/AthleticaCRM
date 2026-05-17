@@ -52,10 +52,11 @@ suspend fun signUp(
     val branchId = BranchId.new()
     val hallId = HallId.new()
     try {
-        tr.sql("INSERT INTO organizations (id, name, timezone) VALUES (:orgId, :orgName, :timezone)")
+        tr.sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:orgId, :orgName, :timezone, :currency)")
             .bind("orgId", orgId)
             .bind("orgName", request.companyName)
             .bind("timezone", request.timezone)
+            .bind("currency", request.currency.code)
             .execute()
 
         tr.sql("INSERT INTO users (id, login, password_hash) VALUES (:userId, :login, :hash)")

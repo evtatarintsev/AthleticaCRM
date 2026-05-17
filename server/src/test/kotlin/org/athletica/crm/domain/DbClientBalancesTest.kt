@@ -14,6 +14,8 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -33,8 +35,10 @@ class DbClientBalancesTest {
     private val ctx =
         RequestContext(
             Lang.EN, userId, orgId, BranchId.new(), employeeId, "admin@example.com", null,
-            EmployeePermission(),
+            Currency.RUB, EmployeePermission(),
         )
+
+    private fun rub(amount: Double): Money = Money(java.math.BigDecimal(amount.toString()).movePointRight(Currency.RUB.fractionDigits).toLong(), Currency.RUB)
 
     private val balances = DbClientBalances()
     private val clients = DbClients()
@@ -101,7 +105,7 @@ class DbClientBalancesTest {
                     }
                 }.getOrElse { fail("Expected success: $it") }
 
-            assertEquals(0.0, balance.totalAmount)
+            assertEquals(Money.zero(Currency.RUB), balance.totalAmount)
         }
 
     @Test
@@ -120,7 +124,7 @@ class DbClientBalancesTest {
                     }
                 }.getOrElse { fail("Expected success: $it") }
 
-            assertEquals(300.0, balance.totalAmount)
+            assertEquals(rub(300.0), balance.totalAmount)
         }
 
     @Test
@@ -140,8 +144,8 @@ class DbClientBalancesTest {
                 }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(2, byClient.size)
-            assertEquals(500.0, byClient.getValue(clientId1).totalAmount)
-            assertEquals(0.0, byClient.getValue(clientId2).totalAmount)
+            assertEquals(rub(500.0), byClient.getValue(clientId1).totalAmount)
+            assertEquals(Money.zero(Currency.RUB), byClient.getValue(clientId2).totalAmount)
         }
 
     // ── history ──────────────────────────────────────────────────────────────
@@ -163,8 +167,8 @@ class DbClientBalancesTest {
                 }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(2, history.size)
-            assertEquals(-200.0, history[0].amount)
-            assertEquals(500.0, history[1].amount)
+            assertEquals(rub(-200.0), history[0].amount)
+            assertEquals(rub(500.0), history[1].amount)
         }
 
     @Test
@@ -194,7 +198,7 @@ class DbClientBalancesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        balances.currentOf(clients.byId(clientId)).adjust(500.0, "Бонус")
+                        balances.currentOf(clients.byId(clientId)).adjust(rub(500.0), "Бонус")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -211,7 +215,7 @@ class DbClientBalancesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        balances.currentOf(clients.byId(clientId)).adjust(-300.0, "Корректировка")
+                        balances.currentOf(clients.byId(clientId)).adjust(rub(-300.0), "Корректировка")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -228,9 +232,9 @@ class DbClientBalancesTest {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
                         val b = balances.currentOf(clients.byId(clientId))
-                        val b2 = b.adjust(200.0, "Первое пополнение")
-                        val b3 = b2.adjust(300.0, "Второе пополнение")
-                        b3.adjust(-100.0, "Списание")
+                        val b2 = b.adjust(rub(200.0), "Первое пополнение")
+                        val b3 = b2.adjust(rub(300.0), "Второе пополнение")
+                        b3.adjust(rub(-100.0), "Списание")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -247,12 +251,12 @@ class DbClientBalancesTest {
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.currentOf(clients.byId(clientId)).adjust(750.0, "Пополнение")
+                            balances.currentOf(clients.byId(clientId)).adjust(rub(750.0), "Пополнение")
                         }
                     }
                 }.getOrElse { fail("Expected success: $it") }
 
-            assertEquals(750.0, updated.totalAmount)
+            assertEquals(rub(750.0), updated.totalAmount)
         }
 
     @Test
@@ -264,7 +268,7 @@ class DbClientBalancesTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.currentOf(clients.byId(clientId)).adjust(0.0, "Комментарий")
+                            balances.currentOf(clients.byId(clientId)).adjust(Money.zero(Currency.RUB), "Комментарий")
                         }
                     }
                 }
@@ -282,7 +286,7 @@ class DbClientBalancesTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.currentOf(clients.byId(clientId)).adjust(100.0, "")
+                            balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "")
                         }
                     }
                 }
@@ -300,7 +304,7 @@ class DbClientBalancesTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            balances.currentOf(clients.byId(clientId)).adjust(100.0, "   ")
+                            balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "   ")
                         }
                     }
                 }

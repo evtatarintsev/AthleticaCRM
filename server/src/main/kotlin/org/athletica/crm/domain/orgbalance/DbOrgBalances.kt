@@ -4,16 +4,18 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.money.sum
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 
 data class OrgBalanceData(
     override val history: List<OrgBalanceEntry>,
-    override val totalAmount: Double,
+    override val totalAmount: Money,
 ) : OrgBalance
 
 class DbOrgBalances : OrgBalances {
@@ -40,8 +42,8 @@ class DbOrgBalances : OrgBalances {
                 .list { row ->
                     OrgBalanceEntry(
                         id = row.asUuid("id"),
-                        amount = row.asDouble("amount"),
-                        balanceAfter = row.asDouble("balance_after"),
+                        amount = row.asMoney("amount", ctx.currency),
+                        balanceAfter = row.asMoney("balance_after", ctx.currency),
                         operationType = row.asString("operation_type"),
                         paymentMethod = row.asStringOrNull("payment_method"),
                         description = row.asStringOrNull("description"),
@@ -50,6 +52,6 @@ class DbOrgBalances : OrgBalances {
                     )
                 }
 
-        return OrgBalanceData(entries, totalAmount = entries.sumOf { it.amount })
+        return OrgBalanceData(entries, totalAmount = entries.map { it.amount }.sum(ctx.currency))
     }
 }

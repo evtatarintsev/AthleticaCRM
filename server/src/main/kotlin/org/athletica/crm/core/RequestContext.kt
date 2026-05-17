@@ -4,6 +4,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.Actor
 import org.athletica.crm.domain.employees.EmployeePermission
 
@@ -17,6 +18,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
  * [employeeId] — идентификатор сотрудника из JWT-токена.
  * [username] — имя пользователя из JWT-токена (денормализовано).
  * [clientIp] — IP-адрес клиента; IPv4 или IPv6; null если определить не удалось.
+ * [currency] — валюта организации; используется для построения [org.athletica.crm.core.money.Money] из БД и форматирования.
  */
 data class RequestContext(
     val lang: Lang,
@@ -26,5 +28,6 @@ data class RequestContext(
     val employeeId: EmployeeId,
     val username: String,
     val clientIp: String?,
+    val currency: Currency,
     private val permission: EmployeePermission,
 ) : Actor by permission

@@ -4,6 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.auth.SignUpError
@@ -25,6 +26,7 @@ class SignUpTest {
             login = login,
             password = "password123",
             timezone = "UTC",
+            currency = Currency.RUB,
         )
 
     @Test

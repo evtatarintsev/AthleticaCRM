@@ -5,16 +5,17 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 interface ClientBalance {
     val clientId: ClientId
-    val totalAmount: Double
+    val totalAmount: Money
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun adjust(amount: Double, note: String): ClientBalance
+    suspend fun adjust(amount: Money, note: String): ClientBalance
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun history(): List<ClientBalanceEntry>
@@ -24,9 +25,9 @@ interface ClientBalance {
 data class ClientBalanceEntry(
     val id: Uuid,
     /** Изменение баланса: положительное — пополнение, отрицательное — списание. */
-    val amount: Double,
+    val amount: Money,
     /** Баланс клиента после операции. */
-    val balanceAfter: Double,
+    val balanceAfter: Money,
     /** Тип операции: admin_credit, admin_debit, sale_overpayment, sale_payment, refund. */
     val operationType: String,
     /** Комментарий к операции (обязателен для admin_credit / admin_debit). */

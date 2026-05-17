@@ -13,27 +13,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_pay
 import org.athletica.crm.generated.resources.action_replenish_balance
 import org.athletica.crm.generated.resources.label_amount
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.round
 
 /**
  * Диалог пополнения баланса организации.
  * Содержит единственное поле — сумму пополнения. Кнопка «Оплатить» активна,
  * пока введённая сумма распознаётся как положительное число.
- * По нажатию вызывает [onPay] с введённой суммой; диалог закрывается
- * через [onDismiss] (отмена или внешний клик).
+ * По нажатию вызывает [onPay] со суммой в виде [Money] (валюта = [currency]);
+ * диалог закрывается через [onDismiss] (отмена или внешний клик).
  */
 @Composable
 fun ReplenishBalanceDialog(
-    onPay: (amount: Double) -> Unit,
+    currency: Currency,
+    onPay: (amount: Money) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var amountText by remember { mutableStateOf("") }
-    val amount = amountText.toDoubleOrNull()
+    val amount = amountText.replace(',', '.').toDoubleOrNull()
     val isValid = amount != null && amount > 0.0
 
     AlertDialog(
@@ -44,7 +48,7 @@ fun ReplenishBalanceDialog(
                 value = amountText,
                 onValueChange = { amountText = it },
                 label = { Text(stringResource(Res.string.label_amount)) },
-                suffix = { Text("₽") },
+                suffix = { Text(currency.symbol) },
                 singleLine = true,
                 isError = amountText.isNotBlank() && !isValid,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -54,7 +58,13 @@ fun ReplenishBalanceDialog(
         confirmButton = {
             TextButton(
                 enabled = isValid,
-                onClick = { amount?.let(onPay) },
+                onClick = {
+                    amount?.let { value ->
+                        val scale = pow10(currency.fractionDigits)
+                        val minorUnits = round(value * scale).toLong()
+                        onPay(Money(minorUnits, currency))
+                    }
+                },
             ) {
                 Text(stringResource(Res.string.action_pay))
             }
@@ -65,4 +75,10 @@ fun ReplenishBalanceDialog(
             }
         },
     )
+}
+
+private fun pow10(digits: Int): Long {
+    var result = 1L
+    repeat(digits) { result *= 10 }
+    return result
 }

@@ -25,6 +25,8 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.home_birthdays_empty
 import org.athletica.crm.generated.resources.home_birthdays_title
@@ -37,9 +39,9 @@ private val today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.curre
 
 private val stubBirthdays: List<ClientListItem> =
     listOf(
-        ClientListItem(id = ClientId.new(), name = "Новикова Елена", gender = Gender.FEMALE, groups = emptyList(), balance = 0.0, birthday = today.run { LocalDate(year - 28, month, day) }),
-        ClientListItem(id = ClientId.new(), name = "Фёдоров Михаил", gender = Gender.MALE, groups = emptyList(), balance = 0.0, birthday = today.run { LocalDate(year - 15, month, day) }),
-        ClientListItem(id = ClientId.new(), name = "Морозова Татьяна", gender = Gender.FEMALE, groups = emptyList(), balance = 0.0, birthday = today.run { LocalDate(year - 42, month, day) }),
+        ClientListItem(id = ClientId.new(), name = "Новикова Елена", gender = Gender.FEMALE, groups = emptyList(), balance = Money.zero(Currency.RUB), birthday = today.run { LocalDate(year - 28, month, day) }),
+        ClientListItem(id = ClientId.new(), name = "Фёдоров Михаил", gender = Gender.MALE, groups = emptyList(), balance = Money.zero(Currency.RUB), birthday = today.run { LocalDate(year - 15, month, day) }),
+        ClientListItem(id = ClientId.new(), name = "Морозова Татьяна", gender = Gender.FEMALE, groups = emptyList(), balance = Money.zero(Currency.RUB), birthday = today.run { LocalDate(year - 42, month, day) }),
     )
 
 /**

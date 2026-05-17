@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.common.PerformedBy
+import org.athletica.crm.core.money.Money
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -10,9 +11,9 @@ import kotlin.uuid.Uuid
 data class BalanceJournalEntry(
     val id: Uuid,
     /** Изменение баланса: положительное — пополнение, отрицательное — списание. */
-    val amount: Double,
+    val amount: Money,
     /** Баланс клиента после операции. */
-    val balanceAfter: Double,
+    val balanceAfter: Money,
     /** Тип операции: admin_credit, admin_debit, sale_overpayment, sale_payment, refund. */
     val operationType: String,
     /** Комментарий к операции (обязателен для admin_credit / admin_debit). */

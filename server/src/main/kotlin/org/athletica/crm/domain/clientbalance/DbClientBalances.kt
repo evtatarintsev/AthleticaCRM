@@ -4,9 +4,10 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asDouble
+import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asUuid
 
 class DbClientBalances : ClientBalances {
@@ -32,12 +33,12 @@ class DbClientBalances : ClientBalances {
                 .bind("clientIds", clients.map { it.id.value })
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    row.asUuid("client_id").toClientId() to row.asDouble("balance_after")
+                    row.asUuid("client_id").toClientId() to row.asMoney("balance_after", ctx.currency)
                 }
                 .toMap()
 
         return clients.map { client ->
-            DbClientBalance(client.id, totalAmount = balanceByClient[client.id] ?: 0.0)
+            DbClientBalance(client.id, totalAmount = balanceByClient[client.id] ?: Money.zero(ctx.currency))
         }
     }
 }

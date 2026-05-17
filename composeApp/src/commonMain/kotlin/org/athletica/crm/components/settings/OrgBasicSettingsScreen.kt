@@ -40,6 +40,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
+import org.athletica.crm.generated.resources.label_currency
 import org.athletica.crm.generated.resources.label_org_name
 import org.athletica.crm.generated.resources.label_timezone
 import org.athletica.crm.generated.resources.settings_item_basic_settings
@@ -192,6 +193,16 @@ fun OrgBasicSettingsScreen(
                             }
                         }
                     }
+
+                    OutlinedTextField(
+                        value = "${ls.currency.code} (${ls.currency.symbol})",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text(stringResource(Res.string.label_currency)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
         }
     }

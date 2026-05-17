@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.EmployeesStub
 import org.athletica.crm.domain.audit.AuditActionType
@@ -47,7 +48,7 @@ private class AuditLogStub : AuditLog {
 class AuditEmployeesTest {
     private val orgId = OrgId.new()
     private val employeeId = EmployeeId.new()
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "owner@example.com", "127.0.0.1", EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "owner@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())

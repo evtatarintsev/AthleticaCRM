@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -95,6 +96,7 @@ class ClientListTest {
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
+            currency = Currency.RUB,
             permission = EmployeePermission(),
         )
 

@@ -32,6 +32,7 @@ import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.displayValue
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.gender_female_abbr
 import org.athletica.crm.generated.resources.gender_male_abbr
@@ -147,7 +148,7 @@ private fun StandardCell(
             )
         ClientField.BALANCE ->
             Text(
-                text = client.balance.formatBalance(),
+                text = client.balance.formatted,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.End,
                 modifier = Modifier.width(width),

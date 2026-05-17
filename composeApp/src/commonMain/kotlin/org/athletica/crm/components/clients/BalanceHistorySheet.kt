@@ -27,6 +27,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.balance_history_empty
 import org.athletica.crm.generated.resources.section_balance_history
@@ -109,15 +110,14 @@ fun BalanceHistorySheet(
 
 @Composable
 private fun BalanceEntryItem(entry: BalanceJournalEntry) {
-    val isPositive = entry.amount >= 0
     val amountColor =
-        if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-    val amountPrefix = if (isPositive) "+" else ""
+        if (entry.amount.isNegative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val amountPrefix = if (entry.amount.isPositive) "+" else ""
 
     ListItem(
         headlineContent = {
             Text(
-                text = "$amountPrefix${entry.amount.formatBalance()}",
+                text = "$amountPrefix${entry.amount.formatted}",
                 color = amountColor,
                 fontWeight = FontWeight.Medium,
             )
@@ -146,7 +146,7 @@ private fun BalanceEntryItem(entry: BalanceJournalEntry) {
         },
         trailingContent = {
             Text(
-                text = entry.balanceAfter.formatBalance(),
+                text = entry.balanceAfter.formatted,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.money.Money
 
 /** Запрос на административную корректировку баланса клиента. */
 @Serializable
@@ -11,9 +12,9 @@ data class AdjustBalanceRequest(
     /**
      * Сумма корректировки.
      * Положительная — пополнение счёта (admin_credit), отрицательная — списание (admin_debit).
-     * Не может быть равна нулю.
+     * Не может быть равна нулю; валюта должна совпадать с валютой организации.
      */
-    val amount: Double,
+    val amount: Money,
     /** Обязательный комментарий к операции. */
     val note: String,
 )

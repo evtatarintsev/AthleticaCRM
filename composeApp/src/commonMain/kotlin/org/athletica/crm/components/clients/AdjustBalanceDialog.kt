@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_apply
 import org.athletica.crm.generated.resources.action_cancel
@@ -35,6 +37,7 @@ import org.athletica.crm.generated.resources.dialog_adjust_balance_title
 import org.athletica.crm.generated.resources.label_amount
 import org.athletica.crm.generated.resources.label_comment
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.round
 
 /**
  * Диалог административной корректировки баланса клиента.
@@ -45,6 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 fun AdjustBalanceDialog(
     api: ApiClient,
     clientId: ClientId,
+    currency: Currency,
     onSuccess: (ClientDetailResponse) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -98,7 +102,7 @@ fun AdjustBalanceDialog(
                         viewModel.onErrorDismissed()
                     },
                     label = { Text(stringResource(Res.string.label_amount)) },
-                    suffix = { Text("₽") },
+                    suffix = { Text(currency.symbol) },
                     singleLine = true,
                     isError = amountText.isNotBlank() && !amountValid,
                     enabled = !isSubmitting,
@@ -134,8 +138,11 @@ fun AdjustBalanceDialog(
             TextButton(
                 enabled = canSubmit,
                 onClick = {
-                    val amount = amountText.toDouble() * (if (isCredit) 1.0 else -1.0)
-                    viewModel.onSubmit(amount, note)
+                    val raw = amountText.replace(',', '.').toDouble()
+                    val signed = raw * (if (isCredit) 1.0 else -1.0)
+                    val scale = pow10(currency.fractionDigits)
+                    val minorUnits = round(signed * scale).toLong()
+                    viewModel.onSubmit(Money(minorUnits, currency), note)
                 },
             ) {
                 if (isSubmitting) {
@@ -151,4 +158,10 @@ fun AdjustBalanceDialog(
             }
         },
     )
+}
+
+private fun pow10(digits: Int): Long {
+    var result = 1L
+    repeat(digits) { result *= 10 }
+    return result
 }

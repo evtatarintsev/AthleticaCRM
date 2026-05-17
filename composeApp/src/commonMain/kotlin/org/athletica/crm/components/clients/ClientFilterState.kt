@@ -2,8 +2,6 @@ package org.athletica.crm.components.clients
 
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.core.Gender
-import kotlin.math.abs
-import kotlin.math.round
 
 /**
  * Состояние фильтров списка клиентов.
@@ -27,7 +25,7 @@ data class ClientFilterState(
     fun applyTo(clients: List<ClientListItem>): List<ClientListItem> =
         clients.filter { client ->
             (gender == GenderFilter.All || client.gender == gender.value) &&
-                (!hasDebtOnly || client.balance < 0) &&
+                (!hasDebtOnly || client.balance.isNegative) &&
                 (!noGroupOnly || client.groups.isEmpty())
         }
 }
@@ -42,25 +40,4 @@ enum class GenderFilter(
     All("Все", null),
     Male("Мужской", Gender.MALE),
     Female("Женский", Gender.FEMALE),
-}
-
-/**
- * Форматирует баланс для отображения.
- * Положительный: "1 200,00 ₽", отрицательный: "−1 200,00 ₽", ноль: "0,00 ₽".
- */
-internal fun Double.formatBalance(): String {
-    val sign = if (this < 0) "−" else ""
-    val totalCents = round(abs(this) * 100).toLong()
-    val rubles = totalCents / 100
-    val cents = totalCents % 100
-    val rublesStr = rubles.toString()
-    val formatted =
-        buildString {
-            val len = rublesStr.length
-            rublesStr.forEachIndexed { i, c ->
-                if (i > 0 && (len - i) % 3 == 0) append('\u00a0')
-                append(c)
-            }
-        }
-    return "$sign$formatted,${cents.toString().padStart(2, '0')} ₽"
 }

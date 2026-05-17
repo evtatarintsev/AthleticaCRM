@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.home_debtors_empty
 import org.athletica.crm.generated.resources.home_debtors_title
@@ -29,12 +32,14 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val WIDGET_LIMIT = 10
 
+private fun rub(major: Long) = Money(major * 100, Currency.RUB)
+
 private val stubDebtors: List<ClientListItem> =
     listOf(
-        ClientListItem(id = ClientId.new(), name = "Иванов Сергей", gender = Gender.MALE, groups = emptyList(), balance = -1500.0),
-        ClientListItem(id = ClientId.new(), name = "Петрова Анна", gender = Gender.FEMALE, groups = emptyList(), balance = -800.0),
-        ClientListItem(id = ClientId.new(), name = "Козлов Дмитрий", gender = Gender.MALE, groups = emptyList(), balance = -3200.0),
-        ClientListItem(id = ClientId.new(), name = "Смирнова Ольга", gender = Gender.FEMALE, groups = emptyList(), balance = -450.0),
+        ClientListItem(id = ClientId.new(), name = "Иванов Сергей", gender = Gender.MALE, groups = emptyList(), balance = rub(-1500)),
+        ClientListItem(id = ClientId.new(), name = "Петрова Анна", gender = Gender.FEMALE, groups = emptyList(), balance = rub(-800)),
+        ClientListItem(id = ClientId.new(), name = "Козлов Дмитрий", gender = Gender.MALE, groups = emptyList(), balance = rub(-3200)),
+        ClientListItem(id = ClientId.new(), name = "Смирнова Ольга", gender = Gender.FEMALE, groups = emptyList(), balance = rub(-450)),
     )
 
 /**
@@ -120,7 +125,7 @@ private fun DebtorRow(
             color = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = "${client.balance.toInt()} ₽",
+            text = client.balance.formatted,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )

@@ -202,6 +202,11 @@ object Messages {
         override val en = "Adjustment note is required"
     }
 
+    object BalanceCurrencyMismatch : LocalizationKey {
+        override val ru = "Валюта суммы не совпадает с валютой организации"
+        override val en = "Amount currency does not match organization currency"
+    }
+
     object DefaultBranchName : LocalizationKey {
         override val ru = "Основной"
         override val en = "Main"

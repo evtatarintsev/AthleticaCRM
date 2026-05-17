@@ -51,6 +51,7 @@
     <string name="label_password">Password</string>
     <string name="label_org_name">Organisation name</string>
     <string name="label_timezone">Time zone</string>
+    <string name="label_currency">Currency</string>
     <string name="label_balance">Balance</string>
     <string name="label_balance_value">Balance: %1$s</string>
     <string name="label_phone">Phone</string>

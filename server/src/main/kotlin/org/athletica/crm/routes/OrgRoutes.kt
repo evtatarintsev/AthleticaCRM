@@ -29,4 +29,4 @@ fun RouteWithContext.orgRoutes(organizations: Organizations) {
     }
 }
 
-fun Organization.toResponse() = OrgSettingsResponse(name, timezone)
+fun Organization.toResponse() = OrgSettingsResponse(name, timezone, currency)

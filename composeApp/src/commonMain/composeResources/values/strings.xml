@@ -51,6 +51,7 @@
     <string name="label_password">Пароль</string>
     <string name="label_org_name">Название организации</string>
     <string name="label_timezone">Часовой пояс</string>
+    <string name="label_currency">Валюта</string>
     <string name="label_balance">Баланс</string>
     <string name="label_balance_value">Баланс: %1$s</string>
     <string name="label_phone">Телефон</string>

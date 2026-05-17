@@ -7,10 +7,11 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
@@ -18,18 +19,21 @@ import kotlin.uuid.Uuid
 
 class DbClientBalance(
     override val clientId: ClientId,
-    override val totalAmount: Double,
+    override val totalAmount: Money,
 ) : ClientBalance {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun adjust(amount: Double, note: String): ClientBalance {
-        ensure(amount != 0.0) {
+    override suspend fun adjust(amount: Money, note: String): ClientBalance {
+        ensure(amount.currency == ctx.currency) {
+            CommonDomainError("BALANCE_CURRENCY_MISMATCH", Messages.BalanceCurrencyMismatch.localize())
+        }
+        ensure(!amount.isZero) {
             CommonDomainError("BALANCE_AMOUNT_ZERO", Messages.BalanceAmountZero.localize())
         }
         ensure(note.isNotBlank()) {
             CommonDomainError("BALANCE_NOTE_REQUIRED", Messages.BalanceNoteRequired.localize())
         }
 
-        val operationType = if (amount > 0) "admin_credit" else "admin_debit"
+        val operationType = if (amount.isPositive) "admin_credit" else "admin_debit"
         val balanceAfter = totalAmount + amount
 
         val entryId = Uuid.generateV7()
@@ -48,7 +52,7 @@ class DbClientBalance(
             .bind("id", entryId)
             .bind("orgId", ctx.orgId)
             .bind("clientId", clientId)
-            .bind("amount", java.math.BigDecimal(amount.toString()))
+            .bind("amount", amount)
             .bind("operationType", operationType)
             .bind("note", note)
             .bind("performedBy", ctx.employeeId)
@@ -79,8 +83,8 @@ class DbClientBalance(
             .list { row ->
                 ClientBalanceEntry(
                     id = row.asUuid("id"),
-                    amount = row.asDouble("amount"),
-                    balanceAfter = row.asDouble("balance_after"),
+                    amount = row.asMoney("amount", ctx.currency),
+                    balanceAfter = row.asMoney("balance_after", ctx.currency),
                     operationType = row.asString("operation_type"),
                     note = row.asStringOrNull("note"),
                     performedBy = EmployeeId(row.asUuid("performed_by")),

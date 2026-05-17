@@ -1,5 +1,6 @@
 package org.athletica.crm.routes
 
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import arrow.core.raise.either
@@ -33,9 +34,11 @@ import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.asString
 import kotlin.uuid.Uuid
 
 class RouteWithContext(val di: Di, val router: Route) {
@@ -177,6 +180,19 @@ suspend fun RoutingCall.contextFromRequest(db: Database, permissions: EmployeePe
     val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
     val branchId = principal.payload.claimAsUuid(JwtConfig.CLAIM_BRANCH_ID).toBranchId()
     val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
+    val (permission, currency) =
+        db.transaction {
+            val p = permissions.byId(employeeId)
+            val code =
+                sql("SELECT currency FROM organizations WHERE id = :orgId")
+                    .bind("orgId", orgId)
+                    .firstOrNull { row -> row.asString("currency").trim() }
+                    ?: error("Organization $orgId not found while building request context")
+            p to
+                Currency.from(code).getOrElse {
+                    error("Organization $orgId has invalid currency code '$code'")
+                }
+        }
     return RequestContext(
         userId = userId,
         orgId = orgId,
@@ -185,7 +201,8 @@ suspend fun RoutingCall.contextFromRequest(db: Database, permissions: EmployeePe
         lang = langFromRequest(),
         username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
         clientIp = clientIp(),
-        permission = db.transaction { permissions.byId(employeeId) },
+        currency = currency,
+        permission = permission,
     )
 }
 

@@ -275,6 +275,31 @@ fun String.toFieldKey(): Either<DomainError, CustomFieldKey> = CustomFieldKey.fr
 Для простых тегов-обёрток без инвариантов (Entity ID на UUID v7) приватный конструктор
 не нужен — любой `Uuid` валиден.
 
+### Деньги — только через `Money`
+
+Денежные значения (балансы, суммы операций, цены, корректировки) в коде
+представляются исключительно типом `org.athletica.crm.core.money.Money`.
+Использование `Double`, `Float`, `BigDecimal` или «голых» `Long`/`Int`
+для денежных полей запрещено: `Double`/`Float` теряют точность на сложении,
+а `Long`/`BigDecimal` теряют валюту.
+
+`Money` хранит сумму в минорных единицах (`Long`, копейки/центы) и валюту
+(`Currency`). Арифметика между разными валютами — программная ошибка
+(`IllegalArgumentException`); конвертации валют в продукте нет.
+Валюта организации задаётся на регистрации и в дальнейшем readonly.
+
+На границе с БД использовать `Row.asMoney(column, currency)` и
+`Money.toDbDecimal()` (см. `storage/Database.kt`); форматирование для UI —
+через `Money.formatted`. Валюта операции совпадает с валютой организации
+(`RequestContext.currency`).
+
+```kotlin
+val amount = Money(120_050, Currency.RUB)  // 1200,50 ₽
+amount.formatted                            // "1 200,50 ₽"
+amount + Money(5_000, Currency.RUB)         // ок
+amount + Money(100, Currency.USD)           // IllegalArgumentException
+```
+
 ### Ссылки между агрегатами — только по идентификатору
 
 Доменная сущность одного агрегата не должна содержать **объект** другого агрегата —

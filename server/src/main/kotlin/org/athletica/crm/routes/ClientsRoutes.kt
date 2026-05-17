@@ -27,6 +27,7 @@ import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -280,7 +281,7 @@ private sealed class ResolvedField {
                     }
 
                 ClientField.GROUPS -> client.groups.joinToString("; ") { it.name }
-                ClientField.BALANCE -> client.balance.toString()
+                ClientField.BALANCE -> client.balance.formatted
             }
     }
 

@@ -76,6 +76,7 @@ import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_back
@@ -434,15 +435,19 @@ fun ClientDetailScreen(
     }
 
     if (showAdjustBalanceDialog) {
-        AdjustBalanceDialog(
-            api = api,
-            clientId = clientId,
-            onSuccess = { updated ->
-                viewModel.onClientUpdated(updated)
-                showAdjustBalanceDialog = false
-            },
-            onDismiss = { showAdjustBalanceDialog = false },
-        )
+        val loadedCurrency = (viewModel.state as? ClientDetailState.Loaded)?.client?.balance?.currency
+        if (loadedCurrency != null) {
+            AdjustBalanceDialog(
+                api = api,
+                clientId = clientId,
+                currency = loadedCurrency,
+                onSuccess = { updated ->
+                    viewModel.onClientUpdated(updated)
+                    showAdjustBalanceDialog = false
+                },
+                onDismiss = { showAdjustBalanceDialog = false },
+            )
+        }
     }
 }
 
@@ -576,7 +581,7 @@ private fun BasicInfoSection(
                 modifier = Modifier.weight(0.45f),
             )
             Text(
-                text = client.balance.formatBalance(),
+                text = client.balance.formatted,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )

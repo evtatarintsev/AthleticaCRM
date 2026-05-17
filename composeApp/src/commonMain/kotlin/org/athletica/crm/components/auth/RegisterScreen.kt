@@ -45,12 +45,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_login
 import org.athletica.crm.generated.resources.action_register
 import org.athletica.crm.generated.resources.auth_already_have_account
 import org.athletica.crm.generated.resources.error_registration_failed
 import org.athletica.crm.generated.resources.error_service_unavailable
+import org.athletica.crm.generated.resources.label_currency
 import org.athletica.crm.generated.resources.label_email
 import org.athletica.crm.generated.resources.label_org_name
 import org.athletica.crm.generated.resources.label_password
@@ -65,8 +67,10 @@ import org.jetbrains.compose.resources.stringResource
  *
  * [state] — текущее состояние экрана (ошибка, загрузка),
  * [timezone] — выбранный часовой пояс,
+ * [currency] — выбранная валюта организации (фиксируется на регистрации),
  * [onRegister] — callback кнопки "Зарегистрироваться",
  * [onTimezoneChange] — callback изменения часового пояса,
+ * [onCurrencyChange] — callback изменения валюты,
  * [onErrorDismissed] — вызывается после того, как snackbar скрыт,
  * [onNavigateToLogin] — вызывается при нажатии "Войти".
  */
@@ -75,8 +79,10 @@ import org.jetbrains.compose.resources.stringResource
 fun RegisterScreen(
     state: RegisterState = RegisterState.Idle,
     timezone: String = "",
+    currency: Currency = Currency.RUB,
     onRegister: (RegisterForm) -> Unit = {},
     onTimezoneChange: (String) -> Unit = {},
+    onCurrencyChange: (Currency) -> Unit = {},
     onErrorDismissed: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
 ) {
@@ -88,6 +94,7 @@ fun RegisterScreen(
     val availableZones = remember { platformAvailableTimezones() }
     var timezoneExpanded by remember { mutableStateOf(false) }
     var timezoneQuery by remember { mutableStateOf("") }
+    var currencyExpanded by remember { mutableStateOf(false) }
     val filteredZones =
         remember(timezoneQuery) {
             if (timezoneQuery.isEmpty()) {
@@ -240,6 +247,36 @@ fun RegisterScreen(
                                 onClick = {
                                     onTimezoneChange(zone)
                                     timezoneExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = currencyExpanded,
+                    onExpandedChange = { currencyExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = "${currency.code} (${currency.symbol})",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(Res.string.label_currency)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
+                        singleLine = true,
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = currencyExpanded,
+                        onDismissRequest = { currencyExpanded = false },
+                    ) {
+                        Currency.entries.forEach { c ->
+                            DropdownMenuItem(
+                                text = { Text("${c.code} (${c.symbol})") },
+                                onClick = {
+                                    onCurrencyChange(c)
+                                    currencyExpanded = false
                                 },
                             )
                         }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.orgbalance.OrgBalanceJournalEntry
 import org.athletica.crm.components.settings.SettingsApiError
+import org.athletica.crm.core.money.Money
 
 /** Состояние загрузки экрана баланса организации. */
 sealed interface OrgBalanceLoadState {
@@ -19,7 +20,7 @@ sealed interface OrgBalanceLoadState {
 
     /** Данные загружены: текущий баланс [totalAmount] и история операций [history]. */
     data class Loaded(
-        val totalAmount: Double,
+        val totalAmount: Money,
         val history: List<OrgBalanceJournalEntry>,
     ) : OrgBalanceLoadState
 }

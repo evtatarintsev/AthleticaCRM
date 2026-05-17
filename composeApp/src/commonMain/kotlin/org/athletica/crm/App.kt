@@ -187,8 +187,10 @@ fun App(
                         RegisterScreen(
                             state = registerViewModel.state,
                             timezone = registerViewModel.timezone,
+                            currency = registerViewModel.currency,
                             onRegister = registerViewModel::onRegister,
                             onTimezoneChange = registerViewModel::onTimezoneChange,
+                            onCurrencyChange = registerViewModel::onCurrencyChange,
                             onErrorDismissed = registerViewModel::onErrorDismissed,
                             onNavigateToLogin = { unauthScreen = UnauthScreen.Login },
                         )

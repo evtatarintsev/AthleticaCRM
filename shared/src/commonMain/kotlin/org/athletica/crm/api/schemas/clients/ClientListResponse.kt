@@ -6,6 +6,7 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.money.Money
 
 /** Краткая запись клиента в списке. */
 @Serializable
@@ -23,7 +24,7 @@ data class ClientListItem(
     /** Группы в которых состоит клиент. */
     val groups: List<ClientGroup>,
     /** Баланс личного счёта клиента (отрицательный — задолженность). */
-    val balance: Double,
+    val balance: Money,
     /** Значения кастомных полей клиента. */
     val customFields: List<CustomFieldValue> = emptyList(),
 )

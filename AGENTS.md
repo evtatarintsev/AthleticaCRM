@@ -140,6 +140,35 @@ call.respond(settings.toDisplaySettings())
 не нужен — любой `Uuid` валиден.
 
 
+## Деньги — только через `Money`
+
+Денежные значения (балансы, суммы операций, цены, корректировки) в коде
+представляются исключительно типом `org.athletica.crm.core.money.Money`.
+Использование `Double`, `Float`, `BigDecimal` или «голых» `Long`/`Int`
+для денежных полей запрещено: `Double`/`Float` теряют точность на сложении,
+а «голый» `Long`/`BigDecimal` теряет валюту.
+
+[Money](shared/src/commonMain/kotlin/org/athletica/crm/core/money/Money.kt)
+хранит сумму в минорных единицах (`Long`, копейки/центы) и валюту
+([Currency](shared/src/commonMain/kotlin/org/athletica/crm/core/money/Currency.kt)).
+Арифметика между разными валютами — программная ошибка
+(`IllegalArgumentException`); конвертации валют в продукте нет.
+Валюта организации задаётся на регистрации и в дальнейшем readonly —
+смена потребовала бы конвертации по курсу, что вне рамок продукта.
+
+На границе с БД использовать `Row.asMoney(column, currency)` и
+`Money.toDbDecimal()` (см. `server/src/main/kotlin/org/athletica/crm/storage/Database.kt`);
+форматирование для UI — через `Money.formatted`. Валюта операции совпадает
+с валютой организации (`RequestContext.currency`).
+
+```kotlin
+val amount = Money(120_050, Currency.RUB)  // 1200,50 ₽
+amount.formatted                            // "1 200,50 ₽"
+amount + Money(5_000, Currency.RUB)         // ок
+amount + Money(100, Currency.USD)           // IllegalArgumentException
+```
+
+
 ## Ссылки между агрегатами — только по идентификатору
 
 Доменная сущность одного агрегата не должна содержать **объект** другого агрегата —

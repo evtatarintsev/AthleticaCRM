@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.money.Money
 
 /** Ответ с данными авторизованного пользователя. */
 @Serializable
@@ -28,5 +29,5 @@ data class OrgInfo(
     /**
      * Баланс организации. null если недоступен пользователю.
      */
-    val balance: Double?,
+    val balance: Money?,
 )

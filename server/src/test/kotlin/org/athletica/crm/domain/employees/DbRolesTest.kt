@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.Permission
 import org.junit.Before
 import kotlin.test.Test
@@ -26,8 +27,8 @@ class DbRolesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "user@example.com", "127.0.0.1", EmployeePermission())
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "user@example.com", "127.0.0.1", EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "user@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "user@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
 
     private lateinit var roles: DbRoles
 

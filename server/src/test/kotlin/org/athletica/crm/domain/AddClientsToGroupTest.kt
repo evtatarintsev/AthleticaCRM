@@ -16,6 +16,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollment
@@ -112,6 +113,7 @@ class AddClientsToGroupTest {
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
+            currency = Currency.RUB,
             permission = EmployeePermission(),
         )
 

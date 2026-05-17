@@ -15,6 +15,8 @@ import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinLocalTime
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.entityids.EntityId
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -133,6 +135,9 @@ class QueryBuilder(
 
     /** Привязывает именованный [EmailAddress] параметр как строку. */
     fun bind(name: String, value: EmailAddress?) = bind(name, value?.value)
+
+    /** Привязывает [Money] в денежную колонку, преобразуя в [java.math.BigDecimal] с нужным масштабом. */
+    fun bind(name: String, value: Money?) = bind(name, value?.toDbDecimal())
 
     /** Привязывает именованный [LocalDate] параметр. */
     fun bind(name: String, value: LocalDate?) = bind(name, value?.toJavaLocalDate())
@@ -294,6 +299,21 @@ fun Row.asInstantOrNull(column: String): Instant? =
 fun Row.asDouble(pos: Int) = get(pos, java.math.BigDecimal::class.java)!!.toDouble()
 
 fun Row.asDouble(column: String) = get(column, java.math.BigDecimal::class.java)!!.toDouble()
+
+/**
+ * Читает денежную колонку (`NUMERIC(_,fractionDigits)`) и возвращает [Money]
+ * в [currency], масштабируя значение до минорных единиц.
+ */
+fun Row.asMoney(column: String, currency: Currency): Money {
+    val bd = get(column, java.math.BigDecimal::class.java)!!
+    return Money(bd.movePointRight(currency.fractionDigits).toLong(), currency)
+}
+
+/**
+ * Конвертирует [Money] обратно в [java.math.BigDecimal] с правильным масштабом
+ * для биндинга в `NUMERIC`-колонку.
+ */
+fun Money.toDbDecimal(): java.math.BigDecimal = java.math.BigDecimal.valueOf(minorUnits, currency.fractionDigits)
 
 fun Row.asLocalDate(pos: Int) = asLocalDateOrNull(pos)!!
 

@@ -47,6 +47,8 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.orgbalance.OrgBalanceJournalEntry
 import org.athletica.crm.components.settings.message
+import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_replenish_balance
@@ -55,8 +57,6 @@ import org.athletica.crm.generated.resources.org_balance_empty
 import org.athletica.crm.generated.resources.replenish_unavailable_stub
 import org.athletica.crm.generated.resources.screen_org_balance
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.abs
-import kotlin.math.round
 import kotlin.time.Instant
 
 /**
@@ -165,7 +165,9 @@ fun OrgBalanceScreen(
     }
 
     if (showReplenish) {
+        val loaded = viewModel.loadState as? OrgBalanceLoadState.Loaded
         ReplenishBalanceDialog(
+            currency = loaded?.totalAmount?.currency ?: org.athletica.crm.core.money.Currency.RUB,
             onPay = { _ ->
                 showReplenish = false
                 scope.launch { snackbarHostState.showSnackbar(stubMessage) }
@@ -176,7 +178,7 @@ fun OrgBalanceScreen(
 }
 
 @Composable
-private fun TotalBalanceCard(amount: Double) {
+private fun TotalBalanceCard(amount: Money) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         modifier =
@@ -195,7 +197,7 @@ private fun TotalBalanceCard(amount: Double) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = amount.formatBalance(),
+                text = amount.formatted,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -206,15 +208,15 @@ private fun TotalBalanceCard(amount: Double) {
 
 @Composable
 private fun OrgBalanceEntryItem(entry: OrgBalanceJournalEntry) {
-    val isPositive = entry.amount >= 0
+    val isPositive = !entry.amount.isNegative
     val amountColor =
         if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-    val amountPrefix = if (isPositive) "+" else ""
+    val amountPrefix = if (entry.amount.isPositive) "+" else ""
 
     ListItem(
         headlineContent = {
             Text(
-                text = "$amountPrefix${entry.amount.formatBalance()}",
+                text = "$amountPrefix${entry.amount.formatted}",
                 color = amountColor,
                 fontWeight = FontWeight.Medium,
             )
@@ -247,30 +249,12 @@ private fun OrgBalanceEntryItem(entry: OrgBalanceJournalEntry) {
         },
         trailingContent = {
             Text(
-                text = entry.balanceAfter.formatBalance(),
+                text = entry.balanceAfter.formatted,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
     )
-}
-
-private fun Double.formatBalance(): String {
-    val sign = if (this < 0) "−" else ""
-    val totalCents = round(abs(this) * 100).toLong()
-    val rubles = totalCents / 100
-    val cents = totalCents % 100
-    val rublesStr = rubles.toString()
-    val grouped =
-        buildString {
-            val len = rublesStr.length
-            rublesStr.forEachIndexed { i, c ->
-                if (i > 0 && (len - i) % 3 == 0) append(' ')
-                append(c)
-            }
-        }
-    val centsStr = cents.toString().padStart(2, '0')
-    return "$sign$grouped,$centsStr ₽"
 }
 
 private fun Instant.formatDateTime(): String {

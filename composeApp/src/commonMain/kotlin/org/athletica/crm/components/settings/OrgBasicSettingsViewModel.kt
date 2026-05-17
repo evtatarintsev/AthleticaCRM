@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
+import org.athletica.crm.core.money.Currency
 
 /** Состояние загрузки настроек организации. */
 sealed class OrgSettingsLoadState {
@@ -14,7 +15,7 @@ sealed class OrgSettingsLoadState {
     data object Loading : OrgSettingsLoadState()
 
     /** Настройки загружены. */
-    data class Loaded(val name: String, val timezone: String) : OrgSettingsLoadState()
+    data class Loaded(val name: String, val timezone: String, val currency: Currency) : OrgSettingsLoadState()
 
     /** Ошибка загрузки. */
     data class Error(val error: SettingsApiError) : OrgSettingsLoadState()
@@ -55,7 +56,7 @@ class OrgBasicSettingsViewModel(
         scope.launch {
             api.org.settings().fold(
                 ifLeft = { loadState = OrgSettingsLoadState.Error(it.toSettingsApiError()) },
-                ifRight = { loadState = OrgSettingsLoadState.Loaded(it.name, it.timezone) },
+                ifRight = { loadState = OrgSettingsLoadState.Loaded(it.name, it.timezone, it.currency) },
             )
         }
     }

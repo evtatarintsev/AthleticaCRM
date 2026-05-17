@@ -9,6 +9,7 @@ import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.platformCurrentTimezone
 
 sealed class RegisterError {
@@ -49,8 +50,15 @@ class RegisterViewModel(
     var timezone by mutableStateOf(platformCurrentTimezone())
         private set
 
+    var currency by mutableStateOf(Currency.RUB)
+        private set
+
     fun onTimezoneChange(tz: String) {
         timezone = tz
+    }
+
+    fun onCurrencyChange(c: Currency) {
+        currency = c
     }
 
     fun onRegister(form: RegisterForm) {
@@ -64,6 +72,7 @@ class RegisterViewModel(
                         login = form.email,
                         password = form.password,
                         timezone = timezone,
+                        currency = currency,
                     ),
                 ).fold(
                     ifLeft = {

@@ -15,6 +15,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.junit.Before
@@ -37,6 +38,7 @@ class DbCustomFieldDefinitionsTest {
             EmployeeId.new(),
             "test@example.com",
             null,
+            Currency.RUB,
             EmployeePermission(),
         )
     private val otherCtx =
@@ -48,6 +50,7 @@ class DbCustomFieldDefinitionsTest {
             EmployeeId.new(),
             "other@example.com",
             null,
+            Currency.RUB,
             EmployeePermission(),
         )
 

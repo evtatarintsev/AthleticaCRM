@@ -9,6 +9,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.money.Money
 
 /** Состояние диалога корректировки баланса. */
 sealed class AdjustBalanceState {
@@ -39,7 +40,7 @@ class AdjustBalanceViewModel(
      * Отправляет корректировку на [amount] с комментарием [note].
      * Знак [amount] задаёт направление: положительный — пополнение, отрицательный — списание.
      */
-    fun onSubmit(amount: Double, note: String) {
+    fun onSubmit(amount: Money, note: String) {
         scope.launch {
             state = AdjustBalanceState.Submitting
             api.clients

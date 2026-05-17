@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployee
@@ -39,8 +40,8 @@ class DbEmployeesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "owner@example.com", "127.0.0.1", EmployeePermission())
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "other@example.com", "127.0.0.1", EmployeePermission())
+    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "owner@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
+    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "other@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
     private val users = DbUsers(PasswordHasher())
     private val roles = DbRoles()
     private val employees = DbEmployees(users, roles)

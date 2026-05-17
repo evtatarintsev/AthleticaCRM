@@ -4,11 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,8 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -73,6 +74,7 @@ import org.athletica.crm.generated.resources.section_disciplines
 import org.athletica.crm.generated.resources.section_group_clients
 import org.athletica.crm.generated.resources.section_group_employees
 import org.athletica.crm.generated.resources.section_schedule
+import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -153,31 +155,48 @@ fun GroupDetailScreen(
 
             is GroupDetailState.Loaded -> {
                 val group = s.group
-                LazyColumn(
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp),
+                BoxWithConstraints(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 ) {
-                    item {
-                        GroupBasicInfoSection(group)
-                    }
-
-                    item {
-                        GroupScheduleSection(group.schedule)
-                    }
-
-                    item {
-                        GroupClientsSection(
-                            clients = group.clients,
-                            onClientClick = onClientClick,
-                        )
-                    }
-
-                    item {
-                        GroupEmployeesSection(
-                            employees = group.employees,
-                            onAddEmployee = { showAddEmployeeSheet = true },
-                            onRemoveEmployee = { employeeToRemove = it },
-                        )
+                    val windowSize = WindowSize.fromWidth(maxWidth)
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(top = 8.dp, bottom = 32.dp),
+                    ) {
+                        if (windowSize >= WindowSize.MEDIUM) {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    GroupBasicInfoSection(group)
+                                    GroupScheduleSection(group.schedule)
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    GroupEmployeesSection(
+                                        employees = group.employees,
+                                        onAddEmployee = { showAddEmployeeSheet = true },
+                                        onRemoveEmployee = { employeeToRemove = it },
+                                    )
+                                    GroupClientsSection(
+                                        clients = group.clients,
+                                        onClientClick = onClientClick,
+                                    )
+                                }
+                            }
+                        } else {
+                            GroupBasicInfoSection(group)
+                            GroupScheduleSection(group.schedule)
+                            GroupEmployeesSection(
+                                employees = group.employees,
+                                onAddEmployee = { showAddEmployeeSheet = true },
+                                onRemoveEmployee = { employeeToRemove = it },
+                            )
+                            GroupClientsSection(
+                                clients = group.clients,
+                                onClientClick = onClientClick,
+                            )
+                        }
                     }
                 }
             }

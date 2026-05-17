@@ -6,21 +6,17 @@ import kotlin.math.abs
 import kotlin.math.round
 
 /**
- * Состояние фильтров и поиска списка клиентов.
+ * Состояние фильтров списка клиентов.
  * Все поля имеют значения по умолчанию, соответствующие «без фильтра».
  */
 data class ClientFilterState(
-    val nameQuery: String = "",
     val gender: GenderFilter = GenderFilter.All,
     val birthYearFrom: Int? = null,
     val birthYearTo: Int? = null,
     val hasDebtOnly: Boolean = false,
     val noGroupOnly: Boolean = false,
 ) {
-    /**
-     * Количество активных фильтров, отображаемых чипами.
-     * Поиск по имени не считается — он виден прямо в поле.
-     */
+    /** Количество активных фильтров, отображаемых чипами. */
     val chipCount: Int
         get() =
             listOf(
@@ -30,15 +26,11 @@ data class ClientFilterState(
                 noGroupOnly,
             ).count { it }
 
-    /** Есть ли хоть один активный фильтр (включая поиск по имени). */
-    val isActive: Boolean get() = nameQuery.isNotBlank() || chipCount > 0
-
     /** Применить к списку: возвращает отфильтрованный список клиентов. */
     fun applyTo(clients: List<ClientListItem>): List<ClientListItem> =
         clients.filter { client ->
             val data = client.fakeData()
-            (nameQuery.isBlank() || client.name.contains(nameQuery, ignoreCase = true)) &&
-                (gender == GenderFilter.All || client.gender == gender.value) &&
+            (gender == GenderFilter.All || client.gender == gender.value) &&
                 (birthYearFrom == null || data.birthYear >= birthYearFrom) &&
                 (birthYearTo == null || data.birthYear <= birthYearTo) &&
                 (!hasDebtOnly || client.balance < 0) &&

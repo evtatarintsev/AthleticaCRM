@@ -77,7 +77,7 @@ fun ClientsFilterSheet(
                     modifier = Modifier.weight(1f),
                 )
                 if (filter.chipCount > 0) {
-                    TextButton(onClick = { onFilterChange(ClientFilterState(nameQuery = filter.nameQuery)) }) {
+                    TextButton(onClick = { onFilterChange(ClientFilterState()) }) {
                         Text(stringResource(Res.string.action_reset_filters))
                     }
                 }

@@ -13,21 +13,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.action_clear_search
 import org.athletica.crm.generated.resources.action_display_settings
 import org.athletica.crm.generated.resources.action_remove_birth_year_filter
 import org.athletica.crm.generated.resources.action_remove_gender_filter
@@ -38,14 +34,13 @@ import org.athletica.crm.generated.resources.filter_gender_male
 import org.athletica.crm.generated.resources.filter_no_group
 import org.athletica.crm.generated.resources.filters_label
 import org.athletica.crm.generated.resources.filters_with_count
-import org.athletica.crm.generated.resources.hint_search_by_name
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Панель поиска и фильтров над таблицей клиентов.
+ * Панель фильтров над таблицей клиентов.
  *
  * Состоит из двух строк:
- * 1. Поле поиска по имени + кнопка «Фильтры» (показывает счётчик активных).
+ * 1. Кнопка «Фильтры» (со счётчиком активных) и иконка настроек отображения.
  * 2. Горизонтальная прокрутка [FilterChip] для активных фильтров — видна только если [ClientFilterState.chipCount] > 0.
  *
  * [filter] — текущее состояние фильтров.
@@ -70,33 +65,10 @@ fun ClientsFilterBar(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            OutlinedTextField(
-                value = filter.nameQuery,
-                onValueChange = { onFilterChange(filter.copy(nameQuery = it)) },
-                placeholder = { Text(stringResource(Res.string.hint_search_by_name), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                },
-                trailingIcon = {
-                    if (filter.nameQuery.isNotBlank()) {
-                        IconButton(onClick = { onFilterChange(filter.copy(nameQuery = "")) }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(Res.string.action_clear_search),
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
+            OutlinedButton(
+                onClick = onOpenSheet,
                 modifier = Modifier.weight(1f),
-            )
-
-            OutlinedButton(onClick = onOpenSheet) {
+            ) {
                 Icon(
                     imageVector = Icons.Default.FilterList,
                     contentDescription = null,

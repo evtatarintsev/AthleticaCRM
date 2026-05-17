@@ -58,6 +58,10 @@ import org.athletica.crm.domain.sessions.DbSessions
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.domain.settings.UserDisplaySettings
+import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.domain.uploads.DbUploads
+import org.athletica.crm.domain.uploads.Uploads
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
@@ -99,6 +103,8 @@ data class Di(
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
     val sessions: Sessions = AuditSessions(DbSessions(), audit)
     val halls: Halls = AuditHalls(DbHalls(), audit)
+    val uploads: Uploads = DbUploads(minio)
+    val tasks: Tasks = DbTasks()
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
 
     init {

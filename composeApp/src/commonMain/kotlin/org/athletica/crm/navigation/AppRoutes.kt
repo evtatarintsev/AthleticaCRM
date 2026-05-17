@@ -47,6 +47,8 @@ sealed class AppRoute {
 
     @Serializable data object SettingsClientAdditionalAttributes : AppRoute()
 
+    @Serializable data object SettingsClientImport : AppRoute()
+
     @Serializable data object SettingsBranches : AppRoute()
 
     @Serializable data object SettingsHalls : AppRoute()

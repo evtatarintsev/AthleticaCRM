@@ -104,6 +104,7 @@ import org.athletica.crm.components.settings.HallsScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
+import org.athletica.crm.components.settings.clientimport.ClientImportScreen
 import org.athletica.crm.components.settings.orgbalance.OrgBalanceScreen
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
@@ -590,6 +591,7 @@ private fun AppNavHost(
                 onNavigateToHalls = { navController.navigate(AppRoute.SettingsHalls) },
                 onNavigateToClientSources = { navController.navigate(AppRoute.SettingsClientSources) },
                 onNavigateToClientAdditionalAttributes = { navController.navigate(AppRoute.SettingsClientAdditionalAttributes) },
+                onNavigateToClientImport = { navController.navigate(AppRoute.SettingsClientImport) },
                 onNavigateToDisciplines = { navController.navigate(AppRoute.SettingsDisciplines) },
                 onNavigateToActivityLog = { navController.navigate(AppRoute.SettingsActivityLog) },
                 onNavigateToChangePassword = { navController.navigate(AppRoute.SettingsChangePassword) },
@@ -617,6 +619,10 @@ private fun AppNavHost(
 
         composable<AppRoute.SettingsClientAdditionalAttributes> {
             ClientAdditionalAttributesScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsClientImport> {
+            ClientImportScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsBranches> {

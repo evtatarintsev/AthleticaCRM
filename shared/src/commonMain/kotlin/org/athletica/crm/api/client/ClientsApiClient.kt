@@ -19,6 +19,10 @@ import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.clients.import.ClientImportCommitRequest
+import org.athletica.crm.api.schemas.clients.import.ClientImportCommitResponse
+import org.athletica.crm.api.schemas.clients.import.ClientImportParseRequest
+import org.athletica.crm.api.schemas.clients.import.ClientImportParseResponse
 import org.athletica.crm.core.entityids.ClientId
 
 class ClientsApiClient(private val http: HttpClient) {
@@ -114,6 +118,24 @@ class ClientsApiClient(private val http: HttpClient) {
     suspend fun attachDoc(request: AttachClientDocRequest): Either<ApiClientError, Unit> =
         requestCatching {
             http.post("/api/clients/docs/attach") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Разбирает ранее загруженный CSV: возвращает заголовки, образцы и уникальные значения колонок. */
+    suspend fun importParse(request: ClientImportParseRequest): Either<ApiClientError, ClientImportParseResponse> =
+        requestCatching {
+            http.post("/api/clients/import/parse") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Валидирует или фактически выполняет импорт клиентов согласно маппингу. */
+    suspend fun importCommit(request: ClientImportCommitRequest): Either<ApiClientError, ClientImportCommitResponse> =
+        requestCatching {
+            http.post("/api/clients/import/commit") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

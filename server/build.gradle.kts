@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.minio)
     implementation(libs.angus.mail)
     implementation(libs.sentry.logback)
+    implementation(libs.commons.csv)
     testImplementation(libs.ktor.server.testHost)
     testImplementation(libs.kotlin.testJunit)
     testImplementation(libs.testcontainers.postgresql)

@@ -26,6 +26,7 @@ fun RouteWithContext.taskRoutes(
     clients: Clients,
     uploads: Uploads,
 ) {
+    context(ctx: org.athletica.crm.core.RequestContext, tr: org.athletica.crm.storage.Transaction, raise: arrow.core.raise.Raise<org.athletica.crm.core.errors.DomainError>) {
     post<TaskListRequest, TaskListResponse>("/tasks/list") { request ->
         db.transaction {
             val taskList =

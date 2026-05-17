@@ -23,6 +23,7 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asString
+import kotlinx.datetime.toJavaInstant
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import java.time.Instant

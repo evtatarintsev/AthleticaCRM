@@ -3,22 +3,24 @@ package org.athletica.crm.domain.tasks
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.datetime.toJavaInstant
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.entityids.toTaskAttachmentId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskAttachmentId
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
+import org.athletica.crm.core.tasks.toTaskAttachmentId
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asUuid
+import java.time.Instant
 import kotlin.time.Clock
+import kotlin.time.toKotlinInstant
 
 internal data class DbTask(
     override val id: TaskId,
@@ -29,11 +31,11 @@ internal data class DbTask(
     override val title: String,
     override val description: String,
     override val status: TaskStatus,
-    override val dueDate: Instant?,
-    override val dueDateEnd: Instant?,
-    override val completedAt: Instant?,
-    override val createdAt: Instant,
-    override val updatedAt: Instant,
+    override val dueDate: kotlin.time.Instant?,
+    override val dueDateEnd: kotlin.time.Instant?,
+    override val completedAt: kotlin.time.Instant?,
+    override val createdAt: kotlin.time.Instant,
+    override val updatedAt: kotlin.time.Instant,
 ) : Task {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
@@ -51,7 +53,7 @@ internal data class DbTask(
             .bind("clientId", clientId)
             .bind("dueDate", dueDate)
             .bind("dueDateEnd", dueDateEnd)
-            .bind("updatedAt", Clock.System.now())
+            .bind("updatedAt", Clock.System.now().toJavaInstant())
             .bind("id", id)
             .bind("orgId", orgId)
             .execute()
@@ -60,7 +62,7 @@ internal data class DbTask(
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun updateStatus(status: TaskStatus) {
         val now = Clock.System.now()
-        val completedAt = if (status == TaskStatus.COMPLETED) now else null
+        val completedAt = if (status == TaskStatus.COMPLETED) now.toJavaInstant() else null
         val newStatus = if (status == TaskStatus.COMPLETED) TaskStatus.COMPLETED else status
 
         tr.sql(
@@ -72,7 +74,7 @@ internal data class DbTask(
         )
             .bind("status", newStatus.name)
             .bind("completedAt", completedAt)
-            .bind("updatedAt", now)
+            .bind("updatedAt", now.toJavaInstant())
             .bind("id", id)
             .bind("orgId", orgId)
             .execute()
@@ -90,8 +92,8 @@ internal data class DbTask(
                 .bind("id", TaskAttachmentId.new())
                 .bind("taskId", id)
                 .bind("uploadId", uploadId)
-                .bind("uploadedAt", Clock.System.now())
-                .bind("uploadedBy", ctx.userId.toEmployeeId())
+                .bind("uploadedAt", Clock.System.now().toJavaInstant())
+                .bind("uploadedBy", ctx.employeeId.value)
                 .execute()
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(CommonDomainError("TASK_ATTACHMENT_FAILED", "Не удалось прикрепить файл"))
@@ -127,5 +129,6 @@ internal data class DbTask(
     }
 }
 
-private fun org.athletica.crm.core.entityids.EmployeeId.toEmployeeId(): org.athletica.crm.core.entityids.EmployeeId = this
-private fun org.athletica.crm.core.entityids.ClientId.toClientId(): org.athletica.crm.core.entityids.ClientId = this
+private fun java.util.UUID.toOrgId(): OrgId = OrgId(this)
+private fun java.util.UUID.toEmployeeId(): EmployeeId = EmployeeId(this)
+private fun java.util.UUID.toClientId(): ClientId = ClientId(this)

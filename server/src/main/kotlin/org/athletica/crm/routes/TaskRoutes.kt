@@ -98,13 +98,13 @@ fun RouteWithContext.taskRoutes(
         }
     }
 
-    post<CreateTaskRequest, TaskDetailResponse>("/tasks/create") { request ->
+    post<CreateTaskRequest, TaskDetailResponse>("/tasks/create") { request, call ->
         db.transaction {
             val task =
                 tasks.new(
                     id = request.id,
-                    orgId = ctx.orgId,
-                    createdBy = ctx.employeeId,
+                    orgId = call.ctx.orgId,
+                    createdBy = call.ctx.employeeId,
                     title = request.title,
                     description = request.description,
                     assigneeId = request.assigneeId,
@@ -151,8 +151,10 @@ fun RouteWithContext.taskRoutes(
     }
 }
 
-private val Clients.byIdSet: suspend (Set<org.athletica.crm.core.entityids.ClientId>) -> Map<org.athletica.crm.core.entityids.ClientId, org.athletica.crm.domain.clients.Client>
-    get() = { ids -> ids.associateWith { byId(it) } }
+private suspend fun Clients.byIdSet(ids: Set<org.athletica.crm.core.entityids.ClientId>): Map<org.athletica.crm.core.entityids.ClientId, org.athletica.crm.domain.clients.Client> {
+    return ids.associateWith { byId(it) }
+}
 
-private val Employees.byIdSet: suspend (Set<org.athletica.crm.core.entityids.EmployeeId>) -> Map<org.athletica.crm.core.entityids.EmployeeId, org.athletica.crm.domain.employees.Employee>
-    get() = { ids -> ids.associateWith { byId(it) } }
+private suspend fun Employees.byIdSet(ids: Set<org.athletica.crm.core.entityids.EmployeeId>): Map<org.athletica.crm.core.entityids.EmployeeId, org.athletica.crm.domain.employees.Employee> {
+    return ids.associateWith { byId(it) }
+}

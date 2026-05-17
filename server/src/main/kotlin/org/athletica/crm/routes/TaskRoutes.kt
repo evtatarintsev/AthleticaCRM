@@ -1,5 +1,6 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.Raise
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.schemas.tasks.CreateTaskRequest
@@ -10,13 +11,15 @@ import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
 import org.athletica.crm.api.schemas.tasks.TaskListRequest
 import org.athletica.crm.api.schemas.tasks.TaskListResponse
 import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
-import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.tasks.TaskFilter
 import org.athletica.crm.domain.tasks.Tasks
-import org.athletica.crm.domain.uploads.Uploads
 import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 
 context(db: Database)
@@ -26,128 +29,137 @@ fun RouteWithContext.taskRoutes(
     clients: Clients,
     uploads: Uploads,
 ) {
-    context(ctx: org.athletica.crm.core.RequestContext, tr: org.athletica.crm.storage.Transaction, raise: arrow.core.raise.Raise<org.athletica.crm.core.errors.DomainError>) {
     post<TaskListRequest, TaskListResponse>("/tasks/list") { request ->
-        db.transaction {
-            val taskList =
-                tasks.list(
-                    org.athletica.crm.domain.tasks.TaskFilter(
-                        assigneeId = request.assigneeId,
-                        createdBy = null,
-                        status = request.status.ifEmpty { null }?.toSet(),
-                        dueDateFrom = request.dueDateFrom?.let { kotlin.time.Instant.parse(it) },
-                        dueDateTo = request.dueDateTo?.let { kotlin.time.Instant.parse(it) },
-                        clientId = request.clientId,
-                        searchText = request.searchText,
-                    ),
-                )
-
-            val employeeIds = taskList.mapNotNull { it.assigneeId }.distinct()
-            val clientIds = taskList.mapNotNull { it.clientId }.distinct()
-
-            val employeesById = employees.byIdSet(employeeIds.toSet())
-            val clientsById = clients.byIdSet(clientIds.toSet())
-
-            val now = Clock.System.now()
-            val tz = TimeZone.of("Europe/Moscow")
-
-            val items =
-                taskList.map { task ->
-                    val assigneeName = task.assigneeId?.let { employeesById[it]?.name }
-                    val clientName = task.clientId?.let { clientsById[it]?.name }
-                    val isOverdue =
-                        task.dueDate?.let { dueDate ->
-                            val dueLocal = dueDate.toLocalDateTime(tz).date
-                            val nowLocal = now.toLocalDateTime(tz).date
-                            dueLocal < nowLocal && task.status != TaskStatus.COMPLETED
-                        } ?: false
-
-                    TaskListItemSchema(
-                        id = task.id,
-                        title = task.title,
-                        assigneeName = assigneeName,
-                        clientName = clientName,
-                        status = task.status,
-                        dueDate = task.dueDate?.toString(),
-                        isOverdue = isOverdue,
+        db.transaction { tr ->
+            context(ctx, tr, this) {
+                val taskList =
+                    tasks.list(
+                        TaskFilter(
+                            assigneeId = request.assigneeId,
+                            createdBy = null,
+                            status = request.status.ifEmpty { null }?.toSet(),
+                            dueDateFrom = request.dueDateFrom?.let { kotlin.time.Instant.parse(it) },
+                            dueDateTo = request.dueDateTo?.let { kotlin.time.Instant.parse(it) },
+                            clientId = request.clientId,
+                            searchText = request.searchText,
+                        ),
                     )
-                }
 
-            TaskListResponse(tasks = items, total = items.size.toUInt())
+                val employeeIds = taskList.mapNotNull { it.assigneeId }.distinct()
+                val clientIds = taskList.mapNotNull { it.clientId }.distinct()
+
+                val employeesById = employees.byIdSet(employeeIds.toSet())
+                val clientsById = clients.byIdSet(clientIds.toSet())
+
+                val now = Clock.System.now()
+                val tz = TimeZone.of("Europe/Moscow")
+
+                val items =
+                    taskList.map { task ->
+                        val assigneeName = task.assigneeId?.let { employeesById[it]?.name }
+                        val clientName = task.clientId?.let { clientsById[it]?.name }
+                        val isOverdue =
+                            task.dueDate?.let { dueDate ->
+                                val dueLocal = dueDate.toLocalDateTime(tz).date
+                                val nowLocal = now.toLocalDateTime(tz).date
+                                dueLocal < nowLocal && task.status != TaskStatus.COMPLETED
+                            } ?: false
+
+                        TaskListItemSchema(
+                            id = task.id,
+                            title = task.title,
+                            assigneeName = assigneeName,
+                            clientName = clientName,
+                            status = task.status,
+                            dueDate = task.dueDate?.toString(),
+                            isOverdue = isOverdue,
+                        )
+                    }
+
+                TaskListResponse(tasks = items, total = items.size.toUInt())
+            }
         }
     }
 
     get<TaskDetailRequest, TaskDetailResponse>("/tasks/detail") { request ->
-        db.transaction {
-            val task = tasks.byId(request.taskId)
-            val attachmentIds = task.attachmentUploadIds()
+        db.transaction { tr ->
+            context(ctx, tr, this) {
+                val task = tasks.byId(request.taskId)
+                val attachmentIds = task.attachmentUploadIds()
 
-            TaskDetailResponse(
-                id = task.id,
-                createdBy = task.createdBy,
-                assignee = task.assigneeId,
-                clientId = task.clientId,
-                title = task.title,
-                description = task.description,
-                status = task.status,
-                dueDate = task.dueDate?.toString(),
-                dueDateEnd = task.dueDateEnd?.toString(),
-                completedAt = task.completedAt?.toString(),
-                createdAt = task.createdAt.toString(),
-                attachments = attachmentIds,
-            )
+                TaskDetailResponse(
+                    id = task.id,
+                    createdBy = task.createdBy,
+                    assignee = task.assigneeId,
+                    clientId = task.clientId,
+                    title = task.title,
+                    description = task.description,
+                    status = task.status,
+                    dueDate = task.dueDate?.toString(),
+                    dueDateEnd = task.dueDateEnd?.toString(),
+                    completedAt = task.completedAt?.toString(),
+                    createdAt = task.createdAt.toString(),
+                    attachments = attachmentIds,
+                )
+            }
         }
     }
 
     post<CreateTaskRequest, TaskDetailResponse>("/tasks/create") { request ->
-        db.transaction {
-            val task =
-                tasks.new(
-                    id = request.id,
-                    orgId = ctx.orgId,
-                    createdBy = ctx.employeeId,
-                    title = request.title,
-                    description = request.description,
-                    assigneeId = request.assigneeId,
-                    clientId = request.clientId,
-                    dueDate = request.dueDate?.let { kotlin.time.Instant.parse(it) },
-                    dueDateEnd = request.dueDateEnd?.let { kotlin.time.Instant.parse(it) },
+        db.transaction { tr ->
+            context(ctx, tr, this) {
+                val task =
+                    tasks.new(
+                        id = request.id,
+                        orgId = ctx.orgId,
+                        createdBy = ctx.employeeId,
+                        title = request.title,
+                        description = request.description,
+                        assigneeId = request.assigneeId,
+                        clientId = request.clientId,
+                        dueDate = request.dueDate?.let { kotlin.time.Instant.parse(it) },
+                        dueDateEnd = request.dueDateEnd?.let { kotlin.time.Instant.parse(it) },
+                    )
+
+                request.attachments.forEach { uploadId ->
+                    task.attachUpload(uploadId)
+                }
+
+                val attachmentIds = task.attachmentUploadIds()
+
+                TaskDetailResponse(
+                    id = task.id,
+                    createdBy = task.createdBy,
+                    assignee = task.assigneeId,
+                    clientId = task.clientId,
+                    title = task.title,
+                    description = task.description,
+                    status = task.status,
+                    dueDate = task.dueDate?.toString(),
+                    dueDateEnd = task.dueDateEnd?.toString(),
+                    completedAt = task.completedAt?.toString(),
+                    createdAt = task.createdAt.toString(),
+                    attachments = attachmentIds,
                 )
-
-            request.attachments.forEach { uploadId ->
-                task.attachUpload(uploadId)
             }
-
-            val attachmentIds = task.attachmentUploadIds()
-
-            TaskDetailResponse(
-                id = task.id,
-                createdBy = task.createdBy,
-                assignee = task.assigneeId,
-                clientId = task.clientId,
-                title = task.title,
-                description = task.description,
-                status = task.status,
-                dueDate = task.dueDate?.toString(),
-                dueDateEnd = task.dueDateEnd?.toString(),
-                completedAt = task.completedAt?.toString(),
-                createdAt = task.createdAt.toString(),
-                attachments = attachmentIds,
-            )
         }
     }
 
     post<UpdateTaskStatusRequest, Unit>("/tasks/update-status") { request ->
-        db.transaction {
-            val task = tasks.byId(request.taskId)
-            task.updateStatus(request.status)
+        db.transaction { tr ->
+            context(ctx, tr, this) {
+                val task = tasks.byId(request.taskId)
+                task.updateStatus(request.status)
+            }
         }
     }
 
     post<DetachUploadRequest, Unit>("/tasks/detach-upload") { request ->
-        db.transaction {
-            val task = tasks.byId(request.taskId)
-            task.detachUpload(request.uploadId)
+        db.transaction { tr ->
+            context(ctx, tr, this) {
+                val task = tasks.byId(request.taskId)
+                task.detachUpload(request.uploadId)
+            }
         }
     }
 }

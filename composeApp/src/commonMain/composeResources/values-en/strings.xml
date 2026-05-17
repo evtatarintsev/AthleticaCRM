@@ -367,4 +367,37 @@
     <string name="error_server_unavailable_title">Could not connect</string>
     <string name="action_retry">Retry</string>
 
+    <!-- Tasks -->
+    <string name="nav_tasks">Tasks</string>
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_my">My tasks</string>
+    <string name="tasks_all">All tasks</string>
+    <string name="tasks_today">Today</string>
+    <string name="tasks_tomorrow">Tomorrow</string>
+    <string name="action_create_task">Create task</string>
+    <string name="task_status_pending">Pending</string>
+    <string name="task_status_in_progress">In progress</string>
+    <string name="task_status_paused">Paused</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="task_assignee">Assignee</string>
+    <string name="task_client">Client</string>
+    <string name="task_due_date">Due date</string>
+    <string name="task_description">Description</string>
+    <string name="task_attachments">Attachments</string>
+    <string name="action_attach_file">Attach file</string>
+    <string name="task_overdue">Overdue</string>
+    <string name="action_remove_attachment">Remove attachment</string>
+    <string name="task_title">Title</string>
+    <string name="hint_task_title">Enter task title</string>
+    <string name="hint_task_description">Enter task description</string>
+    <string name="hint_select_assignee">Select assignee</string>
+    <string name="hint_select_client">Select client</string>
+    <string name="task_no_assignee">No assignee</string>
+    <string name="task_no_client">No client</string>
+    <string name="task_created_by">Created by</string>
+    <string name="task_created_at">Created at</string>
+    <string name="task_completed_at">Completed at</string>
+    <string name="filter_by_status">Filter by status</string>
+    <string name="filter_by_date">Filter by date</string>
+
 </resources>

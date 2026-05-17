@@ -414,4 +414,37 @@
     <string name="error_server_unavailable_title">Не удалось подключиться</string>
     <string name="action_retry">Повторить</string>
 
+    <!-- Tasks -->
+    <string name="nav_tasks">Задачи</string>
+    <string name="tasks_title">Задачи</string>
+    <string name="tasks_my">Мои задачи</string>
+    <string name="tasks_all">Все задачи</string>
+    <string name="tasks_today">На сегодня</string>
+    <string name="tasks_tomorrow">На завтра</string>
+    <string name="action_create_task">Создать задачу</string>
+    <string name="task_status_pending">Ожидает</string>
+    <string name="task_status_in_progress">В работе</string>
+    <string name="task_status_paused">На паузе</string>
+    <string name="task_status_completed">Завершено</string>
+    <string name="task_assignee">Исполнитель</string>
+    <string name="task_client">Клиент</string>
+    <string name="task_due_date">Срок выполнения</string>
+    <string name="task_description">Описание</string>
+    <string name="task_attachments">Вложения</string>
+    <string name="action_attach_file">Прикрепить файл</string>
+    <string name="task_overdue">Просрочено</string>
+    <string name="action_remove_attachment">Удалить вложение</string>
+    <string name="task_title">Заголовок</string>
+    <string name="hint_task_title">Введите заголовок задачи</string>
+    <string name="hint_task_description">Введите описание задачи</string>
+    <string name="hint_select_assignee">Выберите исполнителя</string>
+    <string name="hint_select_client">Выберите клиента</string>
+    <string name="task_no_assignee">Без исполнителя</string>
+    <string name="task_no_client">Без клиента</string>
+    <string name="task_created_by">Создал</string>
+    <string name="task_created_at">Создана</string>
+    <string name="task_completed_at">Завершена</string>
+    <string name="filter_by_status">Фильтр по статусу</string>
+    <string name="filter_by_date">Фильтр по дате</string>
+
 </resources>

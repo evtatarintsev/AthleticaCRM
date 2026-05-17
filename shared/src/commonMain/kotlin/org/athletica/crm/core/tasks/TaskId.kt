@@ -15,6 +15,3 @@ value class TaskId(override val value: Uuid) : EntityId {
 }
 
 fun Uuid.toTaskId(): TaskId = TaskId(this)
-
-fun org.athletica.crm.core.entityids.TaskId.toTaskId(): org.athletica.crm.core.tasks.TaskId =
-    org.athletica.crm.core.tasks.TaskId(this.value)

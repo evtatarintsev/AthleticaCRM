@@ -19,7 +19,6 @@ import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.core.tasks.toTaskAttachmentId
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
-import java.time.Instant
 import kotlin.time.Clock
 
 internal data class DbTask(

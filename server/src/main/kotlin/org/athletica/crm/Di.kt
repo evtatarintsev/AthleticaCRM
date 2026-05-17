@@ -103,7 +103,7 @@ data class Di(
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
     val sessions: Sessions = AuditSessions(DbSessions(), audit)
     val halls: Halls = AuditHalls(DbHalls(), audit)
-    val uploads: Uploads = DbUploads(minio)
+    val uploads: Uploads = DbUploads()
     val tasks: Tasks = DbTasks()
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
 

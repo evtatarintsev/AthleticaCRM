@@ -414,4 +414,38 @@
     <string name="error_server_unavailable_title">Не удалось подключиться</string>
     <string name="action_retry">Повторить</string>
 
+    <!-- Client import from CSV -->
+    <string name="settings_item_client_import">Импорт из CSV</string>
+    <string name="settings_item_client_import_subtitle">Массовое добавление клиентов из файла</string>
+    <string name="screen_client_import">Импорт клиентов</string>
+    <string name="import_title">Импорт клиентов из CSV</string>
+    <string name="import_pick_file_subtitle">Выберите CSV-файл со списком клиентов. Поддерживаются UTF-8 и Windows-1251.</string>
+    <string name="import_action_pick_file">Выбрать файл</string>
+    <string name="import_mapping_section">Соответствие колонок</string>
+    <string name="import_mapping_column_header">Заголовок в файле</string>
+    <string name="import_mapping_target_header">Соответствие в CRM</string>
+    <string name="import_target_skip">— пропустить —</string>
+    <string name="import_target_name">ФИО клиента</string>
+    <string name="import_target_birthday">Дата рождения</string>
+    <string name="import_target_gender">Пол</string>
+    <string name="import_target_lead_source">Источник</string>
+    <string name="import_target_balance">Баланс</string>
+    <string name="import_target_custom_field">Кастомное поле: %1$s</string>
+    <string name="import_default_gender_label">Пол по умолчанию</string>
+    <string name="import_lead_source_section">Маппинг источников</string>
+    <string name="import_lead_source_existing">Связать с: %1$s</string>
+    <string name="import_lead_source_create_new">Создать «%1$s»</string>
+    <string name="import_lead_source_skip">Не проставлять</string>
+    <string name="import_date_format_label">Формат даты</string>
+    <string name="import_date_format_hint">Например, dd.MM.yyyy</string>
+    <string name="import_action_validate">Проверить</string>
+    <string name="import_action_commit">Импортировать</string>
+    <string name="import_preview_section">Предпросмотр</string>
+    <string name="import_preview_table_row">Строка %1$d</string>
+    <string name="import_preview_table_errors">Ошибки: %1$s</string>
+    <string name="import_done_title">Импорт завершён</string>
+    <string name="import_done_total">Всего строк: %1$d</string>
+    <string name="import_done_imported">Импортировано: %1$d</string>
+    <string name="import_done_skipped">Пропущено: %1$d</string>
+
 </resources>

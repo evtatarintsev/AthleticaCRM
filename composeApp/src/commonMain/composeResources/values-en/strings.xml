@@ -367,4 +367,38 @@
     <string name="error_server_unavailable_title">Could not connect</string>
     <string name="action_retry">Retry</string>
 
+    <!-- Client import from CSV -->
+    <string name="settings_item_client_import">Import from CSV</string>
+    <string name="settings_item_client_import_subtitle">Bulk add clients from a file</string>
+    <string name="screen_client_import">Import clients</string>
+    <string name="import_title">Import clients from CSV</string>
+    <string name="import_pick_file_subtitle">Pick a CSV file with client records. UTF-8 and Windows-1251 are supported.</string>
+    <string name="import_action_pick_file">Pick file</string>
+    <string name="import_mapping_section">Column mapping</string>
+    <string name="import_mapping_column_header">Header in file</string>
+    <string name="import_mapping_target_header">CRM field</string>
+    <string name="import_target_skip">— skip —</string>
+    <string name="import_target_name">Client name</string>
+    <string name="import_target_birthday">Birthday</string>
+    <string name="import_target_gender">Gender</string>
+    <string name="import_target_lead_source">Lead source</string>
+    <string name="import_target_balance">Balance</string>
+    <string name="import_target_custom_field">Custom field: %1$s</string>
+    <string name="import_default_gender_label">Default gender</string>
+    <string name="import_lead_source_section">Lead source mapping</string>
+    <string name="import_lead_source_existing">Link to: %1$s</string>
+    <string name="import_lead_source_create_new">Create “%1$s”</string>
+    <string name="import_lead_source_skip">Leave empty</string>
+    <string name="import_date_format_label">Date format</string>
+    <string name="import_date_format_hint">e.g. dd.MM.yyyy</string>
+    <string name="import_action_validate">Validate</string>
+    <string name="import_action_commit">Import</string>
+    <string name="import_preview_section">Preview</string>
+    <string name="import_preview_table_row">Row %1$d</string>
+    <string name="import_preview_table_errors">Errors: %1$s</string>
+    <string name="import_done_title">Import complete</string>
+    <string name="import_done_total">Total rows: %1$d</string>
+    <string name="import_done_imported">Imported: %1$d</string>
+    <string name="import_done_skipped">Skipped: %1$d</string>
+
 </resources>

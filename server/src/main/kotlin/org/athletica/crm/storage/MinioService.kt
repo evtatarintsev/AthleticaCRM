@@ -1,6 +1,7 @@
 package org.athletica.crm.storage
 
 import io.minio.BucketExistsArgs
+import io.minio.GetObjectArgs
 import io.minio.GetPresignedObjectUrlArgs
 import io.minio.MakeBucketArgs
 import io.minio.MinioClient
@@ -49,6 +50,19 @@ class MinioService(
                     .contentType(contentType)
                     .build(),
             )
+        }
+
+    /** Скачивает объект из хранилища по [key] и возвращает его содержимое в виде массива байт. */
+    suspend fun downloadObject(key: String): ByteArray =
+        withContext(Dispatchers.IO) {
+            internalClient
+                .getObject(
+                    GetObjectArgs
+                        .builder()
+                        .bucket(bucket)
+                        .`object`(key)
+                        .build(),
+                ).use { it.readBytes() }
         }
 
     /** Удаляет объект из хранилища по [key]. */

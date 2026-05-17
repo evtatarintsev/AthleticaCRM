@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageAccounts
@@ -56,6 +57,8 @@ import org.athletica.crm.generated.resources.settings_item_client_additional_att
 import org.athletica.crm.generated.resources.settings_item_client_additional_attributes_subtitle
 import org.athletica.crm.generated.resources.settings_item_client_display
 import org.athletica.crm.generated.resources.settings_item_client_display_subtitle
+import org.athletica.crm.generated.resources.settings_item_client_import
+import org.athletica.crm.generated.resources.settings_item_client_import_subtitle
 import org.athletica.crm.generated.resources.settings_item_client_sources
 import org.athletica.crm.generated.resources.settings_item_client_sources_subtitle
 import org.athletica.crm.generated.resources.settings_item_disciplines
@@ -130,6 +133,7 @@ private fun buildSections(
     onNavigateToDisciplines: () -> Unit,
     onNavigateToClientSources: () -> Unit,
     onNavigateToClientAdditionalAttributes: () -> Unit,
+    onNavigateToClientImport: () -> Unit,
     onNavigateToActivityLog: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
@@ -259,6 +263,14 @@ private fun buildSections(
                     iconColor = Ic.Teal,
                     onClick = onNavigateToClientAdditionalAttributes,
                 ),
+                SettingItem(
+                    title = stringResource(Res.string.settings_item_client_import),
+                    subtitle = stringResource(Res.string.settings_item_client_import_subtitle),
+                    icon = Icons.Default.FileUpload,
+                    containerColor = Ic.TealContainer,
+                    iconColor = Ic.Teal,
+                    onClick = onNavigateToClientImport,
+                ),
             ),
     ),
     SettingSection(
@@ -330,6 +342,7 @@ fun OrgSettingsScreen(
     onNavigateToHalls: () -> Unit = {},
     onNavigateToClientSources: () -> Unit = {},
     onNavigateToClientAdditionalAttributes: () -> Unit = {},
+    onNavigateToClientImport: () -> Unit = {},
     onNavigateToDisciplines: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
@@ -346,6 +359,7 @@ fun OrgSettingsScreen(
             onNavigateToDisciplines = onNavigateToDisciplines,
             onNavigateToClientSources = onNavigateToClientSources,
             onNavigateToClientAdditionalAttributes = onNavigateToClientAdditionalAttributes,
+            onNavigateToClientImport = onNavigateToClientImport,
             onNavigateToActivityLog = onNavigateToActivityLog,
             onNavigateToChangePassword = onNavigateToChangePassword,
             onNavigateToEditProfile = onNavigateToEditProfile,

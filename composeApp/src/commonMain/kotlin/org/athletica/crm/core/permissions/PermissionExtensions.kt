@@ -5,6 +5,12 @@ import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.permission_can_manage_org_balance
 import org.athletica.crm.generated.resources.permission_can_manage_org_balance_description
 import org.athletica.crm.generated.resources.permission_can_manage_org_balance_name
+import org.athletica.crm.generated.resources.permission_can_manage_tasks
+import org.athletica.crm.generated.resources.permission_can_manage_tasks_description
+import org.athletica.crm.generated.resources.permission_can_manage_tasks_name
+import org.athletica.crm.generated.resources.permission_can_view_all_tasks
+import org.athletica.crm.generated.resources.permission_can_view_all_tasks_description
+import org.athletica.crm.generated.resources.permission_can_view_all_tasks_name
 import org.athletica.crm.generated.resources.permission_can_view_client_balance
 import org.athletica.crm.generated.resources.permission_can_view_client_balance_description
 import org.athletica.crm.generated.resources.permission_can_view_client_balance_name
@@ -18,6 +24,8 @@ fun Permission.displayName(): String =
     when (this) {
         Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_name)
         Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_name)
+        Permission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks_name)
+        Permission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks_name)
     }
 
 /**
@@ -28,6 +36,8 @@ fun Permission.displayDescription(): String =
     when (this) {
         Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_description)
         Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_description)
+        Permission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks_description)
+        Permission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks_description)
     }
 
 /**
@@ -38,4 +48,6 @@ fun Permission.label(): String =
     when (this) {
         Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance)
         Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance)
+        Permission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks)
+        Permission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks)
     }

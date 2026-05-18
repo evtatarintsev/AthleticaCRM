@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
@@ -106,6 +107,9 @@ import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.components.settings.clientimport.ClientImportScreen
 import org.athletica.crm.components.settings.orgbalance.OrgBalanceScreen
+import org.athletica.crm.components.tasks.TaskCreateScreen
+import org.athletica.crm.components.tasks.TaskDetailScreen
+import org.athletica.crm.components.tasks.TasksScreen
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -127,6 +131,7 @@ import org.athletica.crm.generated.resources.nav_groups
 import org.athletica.crm.generated.resources.nav_home
 import org.athletica.crm.generated.resources.nav_schedule
 import org.athletica.crm.generated.resources.nav_settings
+import org.athletica.crm.generated.resources.nav_tasks
 import org.athletica.crm.navigation.AppRoute
 import org.athletica.crm.navigation.navigateToSection
 import org.athletica.crm.navigation.toRoute
@@ -157,6 +162,9 @@ enum class NavItem(
     /** Сотрудники организации. */
     EMPLOYEES(Icons.Default.Badge),
 
+    /** Трекер задач. */
+    TASKS(Icons.Default.CheckCircle),
+
     /** Настройки приложения. */
     SETTINGS(Icons.Default.Settings),
 }
@@ -170,6 +178,7 @@ fun NavItem.label(): String =
         NavItem.GROUPS -> stringResource(Res.string.nav_groups)
         NavItem.SCHEDULE -> stringResource(Res.string.nav_schedule)
         NavItem.EMPLOYEES -> stringResource(Res.string.nav_employees)
+        NavItem.TASKS -> stringResource(Res.string.nav_tasks)
         NavItem.SETTINGS -> stringResource(Res.string.nav_settings)
     }
 
@@ -249,6 +258,7 @@ fun MainScreen(
             currentRoute?.contains("AppRoute.Group") == true -> NavItem.GROUPS
             currentRoute?.contains("AppRoute.Schedule") == true -> NavItem.SCHEDULE
             currentRoute?.contains("AppRoute.Employee") == true -> NavItem.EMPLOYEES
+            currentRoute?.contains("AppRoute.Task") == true -> NavItem.TASKS
             currentRoute?.contains("AppRoute.Settings") == true -> NavItem.SETTINGS
             else -> NavItem.HOME
         }
@@ -656,6 +666,34 @@ private fun AppNavHost(
 
         composable<AppRoute.SettingsEditProfile> {
             EditProfileScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        // ── Tasks ─────────────────────────────────────────────────────────────
+
+        composable<AppRoute.Tasks> {
+            TasksScreen(
+                api = api,
+                onNavigateToCreate = { navController.navigate(AppRoute.TaskCreate) },
+                onTaskClick = { id -> navController.navigate(AppRoute.TaskDetail(id.toString())) },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        composable<AppRoute.TaskCreate> {
+            TaskCreateScreen(
+                api = api,
+                onBack = { navController.popBackStack() },
+                onCreated = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.TaskDetail> { entry ->
+            val route = entry.toRoute<AppRoute.TaskDetail>()
+            TaskDetailScreen(
+                taskId = org.athletica.crm.core.tasks.TaskId(kotlin.uuid.Uuid.parse(route.id)),
+                api = api,
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }

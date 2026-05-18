@@ -57,6 +57,7 @@ import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.sessionsRoutes
 import org.athletica.crm.routes.switchBranchRoute
+import org.athletica.crm.routes.tasks.taskRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.usecases.sessions.generateSessions
@@ -182,6 +183,9 @@ fun Application.configureServer() {
                         auditRoutes(di.audit)
                         notificationsRoutes()
                         displaySettingsRoutes(di.userDisplaySettings)
+                        context(di.minio) {
+                            taskRoutes(di.tasks)
+                        }
                     }
                 }
             }

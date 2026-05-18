@@ -229,6 +229,12 @@
     <string name="permission_can_view_client_balance">Client balance view</string>
     <string name="permission_can_view_client_balance_name">Can view client balance</string>
     <string name="permission_can_view_client_balance_description">Employee can see the client account balance</string>
+    <string name="permission_can_view_all_tasks">View all tasks</string>
+    <string name="permission_can_view_all_tasks_name">Can view all tasks</string>
+    <string name="permission_can_view_all_tasks_description">Employee can see tasks of all organisation members</string>
+    <string name="permission_can_manage_tasks">Manage tasks</string>
+    <string name="permission_can_manage_tasks_name">Can manage tasks</string>
+    <string name="permission_can_manage_tasks_description">Employee can edit and delete tasks of other members</string>
     <string name="screen_employee_edit">Edit Employee</string>
     <string name="label_employee">Employee</string>
     <string name="label_employee_owner">Owner</string>
@@ -400,5 +406,26 @@
     <string name="import_done_total">Total rows: %1$d</string>
     <string name="import_done_imported">Imported: %1$d</string>
     <string name="import_done_skipped">Skipped: %1$d</string>
+
+    <string name="nav_tasks">Tasks</string>
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_filter_mine">My tasks</string>
+    <string name="tasks_filter_today">Today</string>
+    <string name="tasks_filter_tomorrow">Tomorrow</string>
+    <string name="tasks_filter_overdue">Overdue</string>
+    <string name="action_create_task">Create task</string>
+    <string name="task_status_pending">Pending</string>
+    <string name="task_status_in_progress">In progress</string>
+    <string name="task_status_paused">Paused</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="label_task_title">Title</string>
+    <string name="label_task_description">Description</string>
+    <string name="label_task_assignee">Assignee</string>
+    <string name="label_task_client">Client</string>
+    <string name="label_task_due_date">Due date</string>
+    <string name="label_task_due_date_end">Until</string>
+    <string name="label_task_attachments">Attachments</string>
+    <string name="action_attach_file">Attach file</string>
+    <string name="hint_task_search">Search tasks…</string>
 
 </resources>

@@ -19,6 +19,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
@@ -102,6 +103,7 @@ class ImportClientsCommitTest {
             employeeId = EmployeeId(org.employeeId),
             username = "user@example.com",
             clientIp = "127.0.0.1",
+            currency = Currency.RUB,
             permission = EmployeePermission(),
         )
 

@@ -241,6 +241,12 @@
     <string name="permission_can_view_client_balance">Просмотр баланса клиента</string>
     <string name="permission_can_view_client_balance_name">Может видеть баланс клиента</string>
     <string name="permission_can_view_client_balance_description">Сотрудник сможет видеть сумму на счёте клиентов</string>
+    <string name="permission_can_view_all_tasks">Просмотр всех задач</string>
+    <string name="permission_can_view_all_tasks_name">Может видеть все задачи</string>
+    <string name="permission_can_view_all_tasks_description">Сотрудник сможет видеть задачи всех сотрудников организации</string>
+    <string name="permission_can_manage_tasks">Управление задачами</string>
+    <string name="permission_can_manage_tasks_name">Может управлять задачами</string>
+    <string name="permission_can_manage_tasks_description">Сотрудник сможет редактировать и удалять задачи других сотрудников</string>
     <string name="settings_item_employees">Сотрудники</string>
     <string name="settings_item_employees_subtitle">Список сотрудников организации</string>
     <string name="screen_employees">Сотрудники</string>
@@ -447,5 +453,26 @@
     <string name="import_done_total">Всего строк: %1$d</string>
     <string name="import_done_imported">Импортировано: %1$d</string>
     <string name="import_done_skipped">Пропущено: %1$d</string>
+
+    <string name="nav_tasks">Задачи</string>
+    <string name="tasks_title">Задачи</string>
+    <string name="tasks_filter_mine">Мои задачи</string>
+    <string name="tasks_filter_today">На сегодня</string>
+    <string name="tasks_filter_tomorrow">На завтра</string>
+    <string name="tasks_filter_overdue">Просрочено</string>
+    <string name="action_create_task">Создать задачу</string>
+    <string name="task_status_pending">Ожидает</string>
+    <string name="task_status_in_progress">В работе</string>
+    <string name="task_status_paused">На паузе</string>
+    <string name="task_status_completed">Завершено</string>
+    <string name="label_task_title">Заголовок</string>
+    <string name="label_task_description">Описание</string>
+    <string name="label_task_assignee">Исполнитель</string>
+    <string name="label_task_client">Клиент</string>
+    <string name="label_task_due_date">Срок</string>
+    <string name="label_task_due_date_end">До</string>
+    <string name="label_task_attachments">Вложения</string>
+    <string name="action_attach_file">Прикрепить файл</string>
+    <string name="hint_task_search">Поиск по задачам…</string>
 
 </resources>

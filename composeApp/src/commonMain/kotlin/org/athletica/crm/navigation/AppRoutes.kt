@@ -62,6 +62,12 @@ sealed class AppRoute {
     @Serializable data object SettingsChangePassword : AppRoute()
 
     @Serializable data object SettingsEditProfile : AppRoute()
+
+    @Serializable data object Tasks : AppRoute()
+
+    @Serializable data class TaskDetail(val id: String) : AppRoute()
+
+    @Serializable data object TaskCreate : AppRoute()
 }
 
 fun NavItem.toRoute(): AppRoute =
@@ -71,6 +77,7 @@ fun NavItem.toRoute(): AppRoute =
         NavItem.GROUPS -> AppRoute.Groups
         NavItem.SCHEDULE -> AppRoute.Schedule
         NavItem.EMPLOYEES -> AppRoute.Employees
+        NavItem.TASKS -> AppRoute.Tasks
         NavItem.SETTINGS -> AppRoute.Settings
     }
 

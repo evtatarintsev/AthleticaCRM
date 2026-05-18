@@ -22,7 +22,6 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.toMoney
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients

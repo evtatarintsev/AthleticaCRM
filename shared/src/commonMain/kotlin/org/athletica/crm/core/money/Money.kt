@@ -1,6 +1,7 @@
 package org.athletica.crm.core.money
 
 import kotlinx.serialization.Serializable
+import kotlin.math.pow
 
 /**
  * Денежная сумма в конкретной валюте.
@@ -69,3 +70,5 @@ data class Money(
  * совпадающей с [currency]; пустой Iterable возвращает [Money.zero].
  */
 fun Iterable<Money>.sum(currency: Currency): Money = fold(Money.zero(currency)) { acc, it -> acc + it }
+
+fun Double.toMoney(currency: Currency) = Money((this * 10.0.pow(currency.fractionDigits)).toLong(), currency)

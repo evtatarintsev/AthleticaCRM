@@ -22,6 +22,8 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.money.toMoney
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -315,7 +317,7 @@ private suspend fun processRow(
                 customFields = customFields,
             )
         if (balance != null && balance != 0.0) {
-            balances.currentOf(client).adjust(balance, balanceNote)
+            balances.currentOf(client).adjust(balance.toMoney(ctx.currency), balanceNote)
         }
         RowResult(rowNumber = rowNumber, status = Status.OK)
     }.fold(

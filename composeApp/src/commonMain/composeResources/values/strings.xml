@@ -491,5 +491,21 @@
     <string name="label_task_attachments">Вложения</string>
     <string name="action_attach_file">Прикрепить файл</string>
     <string name="hint_task_search">Поиск по задачам…</string>
+    <string name="tasks_search_placeholder">Поиск по задачам</string>
+    <string name="tasks_view_all">Все</string>
+    <string name="tasks_subtitle_count">%1$d задач</string>
+    <string name="tasks_col_title">Название</string>
+    <string name="tasks_col_status">Статус</string>
+    <string name="tasks_col_assignee">Исполнитель</string>
+    <string name="tasks_col_due_date">Срок</string>
+    <string name="tasks_filter_only_mine">Только мои</string>
+    <string name="tasks_filter_section_assignee">Исполнитель</string>
+    <string name="tasks_filter_section_status">Статус</string>
+    <string name="tasks_load_error">Ошибка загрузки задач</string>
+    <string name="tasks_empty">Нет задач</string>
+    <string name="list_sort_title">Сортировка</string>
+    <string name="list_sort_ascending">По возрастанию</string>
+    <string name="list_sort_descending">По убыванию</string>
+    <string name="list_sort_reset">Сбросить</string>
 
 </resources>

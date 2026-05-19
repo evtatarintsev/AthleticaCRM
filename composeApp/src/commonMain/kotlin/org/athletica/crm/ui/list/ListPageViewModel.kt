@@ -137,6 +137,15 @@ abstract class ListPageViewModel<T : Any, F : Any>(
     }
 
     /**
+     * Напрямую устанавливает сортировку (например, из диалога [SortBottomSheet]).
+     * Сбрасывает [activeSavedViewId], так как ручной выбор сортировки выводит за пределы вида.
+     */
+    fun applySort(newSort: SortState?) {
+        sort = newSort
+        activeSavedViewId = null
+    }
+
+    /**
      * Применяет системный сохранённый вид: устанавливает фильтр, сортировку и выбранный вид.
      */
     fun applySystemView(view: SystemSavedView<F>) {

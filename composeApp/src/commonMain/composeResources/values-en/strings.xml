@@ -444,5 +444,21 @@
     <string name="label_task_attachments">Attachments</string>
     <string name="action_attach_file">Attach file</string>
     <string name="hint_task_search">Search tasks…</string>
+    <string name="tasks_search_placeholder">Search tasks</string>
+    <string name="tasks_view_all">All</string>
+    <string name="tasks_subtitle_count">%1$d tasks</string>
+    <string name="tasks_col_title">Title</string>
+    <string name="tasks_col_status">Status</string>
+    <string name="tasks_col_assignee">Assignee</string>
+    <string name="tasks_col_due_date">Due</string>
+    <string name="tasks_filter_only_mine">Only mine</string>
+    <string name="tasks_filter_section_assignee">Assignee</string>
+    <string name="tasks_filter_section_status">Status</string>
+    <string name="tasks_load_error">Failed to load tasks</string>
+    <string name="tasks_empty">No tasks</string>
+    <string name="list_sort_title">Sort</string>
+    <string name="list_sort_ascending">Ascending</string>
+    <string name="list_sort_descending">Descending</string>
+    <string name="list_sort_reset">Reset</string>
 
 </resources>

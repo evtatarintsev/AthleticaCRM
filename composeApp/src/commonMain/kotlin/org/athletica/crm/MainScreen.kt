@@ -327,7 +327,7 @@ fun MainScreen(
                                 )
                             },
                         ) { innerPadding ->
-                            AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
+                            AppNavHost(navController, api, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
                         }
                     }
                 }
@@ -381,7 +381,7 @@ fun MainScreen(
                                 )
                             },
                         ) { innerPadding ->
-                            AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
+                            AppNavHost(navController, api, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
                         }
                     }
                 }
@@ -422,7 +422,7 @@ fun MainScreen(
                                 )
                             },
                         ) { innerPadding ->
-                            AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
+                            AppNavHost(navController, api, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
                         }
                     }
                 }
@@ -436,6 +436,7 @@ private fun AppNavHost(
     navController: NavHostController,
     api: ApiClient,
     displaySettingsVm: DisplaySettingsViewModel,
+    windowSize: WindowSize,
     modifier: Modifier = Modifier,
 ) {
     NavHost(
@@ -677,6 +678,8 @@ private fun AppNavHost(
         composable<AppRoute.Tasks> {
             TasksScreen(
                 api = api,
+                displaySettingsVm = displaySettingsVm,
+                windowSize = windowSize,
                 onNavigateToCreate = { navController.navigate(AppRoute.TaskCreate) },
                 onTaskClick = { id -> navController.navigate(AppRoute.TaskDetail(id.toString())) },
                 modifier = Modifier.fillMaxSize(),

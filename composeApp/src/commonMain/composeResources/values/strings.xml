@@ -38,6 +38,23 @@
     <string name="action_remove_gender_filter">Убрать фильтр по полу</string>
     <string name="action_remove_birth_year_filter">Убрать фильтр по году рождения</string>
 
+    <!-- List page shared UI -->
+    <string name="list_action_filters">Фильтры</string>
+    <string name="list_action_filters_with_count">Фильтры (%1$d)</string>
+    <string name="list_action_reset_filters">Сбросить</string>
+    <string name="list_action_apply">Применить</string>
+    <string name="list_action_apply_with_count">Применить (%1$d)</string>
+    <string name="list_action_save_view">Сохранить как вид</string>
+    <string name="list_action_save_view_short">Сохранить</string>
+    <string name="list_action_rename_view">Переименовать</string>
+    <string name="list_action_delete_view">Удалить</string>
+    <string name="list_action_open_search">Открыть поиск</string>
+    <string name="list_action_close_search">Закрыть поиск</string>
+    <string name="list_action_clear_search">Очистить поиск</string>
+    <string name="list_action_open_sort">Сортировка</string>
+    <string name="list_action_column_settings">Настройки колонок</string>
+    <string name="list_label_filters_title">Фильтры</string>
+
     <!-- Common hints / placeholders -->
     <string name="hint_search">Поиск…</string>
     <string name="hint_date_format">ГГГГ-ММ-ДД</string>

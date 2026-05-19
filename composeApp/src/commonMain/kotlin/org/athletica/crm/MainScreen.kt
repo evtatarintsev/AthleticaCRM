@@ -41,7 +41,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
@@ -123,7 +122,6 @@ import org.athletica.crm.generated.resources.action_open_menu
 import org.athletica.crm.generated.resources.action_toggle_nav
 import org.athletica.crm.generated.resources.app_name
 import org.athletica.crm.generated.resources.cd_app_logo
-import org.athletica.crm.generated.resources.hint_search
 import org.athletica.crm.generated.resources.label_balance_value
 import org.athletica.crm.generated.resources.nav_clients
 import org.athletica.crm.generated.resources.nav_employees
@@ -194,6 +192,7 @@ fun MainScreen(
     initialRoute: AppRoute = AppRoute.Home,
     onLogout: () -> Unit = {},
 ) {
+    val topBarController = remember { org.athletica.crm.ui.list.ListPageTopBarController() }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
     var currentBranchName by remember { mutableStateOf<String?>(null) }
@@ -263,6 +262,9 @@ fun MainScreen(
             else -> NavItem.HOME
         }
 
+    val selectedItemLabel = selectedItem.label()
+    LaunchedEffect(selectedItemLabel) { topBarController.set(selectedItemLabel) }
+
     fun onNotificationLink(link: NotificationLink) {
         when (link) {
             is NotificationLink.ToClient -> navController.navigate(AppRoute.ClientDetail(link.clientId.toString()))
@@ -282,149 +284,151 @@ fun MainScreen(
         scope.launch { api.notifications.markAllRead() }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val windowSize = WindowSize.fromWidth(maxWidth)
-        when {
-            windowSize == WindowSize.COMPACT -> {
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
-                        ModalDrawerSheet {
-                            DrawerContent(
-                                api = api,
-                                selectedItem = selectedItem,
-                                expanded = true,
-                                onItemSelected = { item ->
-                                    navController.navigateToSection(item.toRoute())
-                                    scope.launch { drawerState.close() }
-                                },
-                            )
-                        }
-                    },
-                ) {
-                    Scaffold(
-                        topBar = {
-                            MainTopAppBar(
-                                showMenuButton = true,
-                                windowSize = windowSize,
-                                notifications = notifications,
-                                currentBranchName = currentBranchName,
-                                onBranchClick = {
-                                    showBranchDialog = true
-                                    branchSwitchVm.load()
-                                },
-                                onMarkNotificationRead = ::onMarkNotificationRead,
-                                onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
-                                onNotificationNavigate = ::onNotificationLink,
-                                onMenuClick = { scope.launch { drawerState.open() } },
-                                onLogout = onLogout,
-                                extraActions = {
-                                    TopBarActions(selectedItem, onCreateClient = { navController.navigate(AppRoute.ClientCreate) })
-                                },
-                            )
-                        },
-                    ) { innerPadding ->
-                        AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
-                    }
-                }
-            }
-
-            windowSize == WindowSize.MEDIUM || !isSidebarExpanded -> {
-                Row(Modifier.fillMaxSize()) {
-                    NavigationRail(
-                        header = {
-                            IconButton(onClick = { isSidebarExpanded = !isSidebarExpanded }) {
-                                Icon(
-                                    imageVector = Icons.Default.Menu,
-                                    contentDescription = stringResource(Res.string.action_toggle_nav),
+    androidx.compose.runtime.CompositionLocalProvider(org.athletica.crm.ui.list.LocalListPageTopBar provides topBarController) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val windowSize = WindowSize.fromWidth(maxWidth)
+            when {
+                windowSize == WindowSize.COMPACT -> {
+                    ModalNavigationDrawer(
+                        drawerState = drawerState,
+                        drawerContent = {
+                            ModalDrawerSheet {
+                                DrawerContent(
+                                    api = api,
+                                    selectedItem = selectedItem,
+                                    expanded = true,
+                                    onItemSelected = { item ->
+                                        navController.navigateToSection(item.toRoute())
+                                        scope.launch { drawerState.close() }
+                                    },
                                 )
                             }
                         },
                     ) {
-                        Spacer(Modifier.height(8.dp))
-                        NavItem.entries.forEach { item ->
-                            NavigationRailItem(
-                                selected = selectedItem == item,
-                                onClick = { navController.navigateToSection(item.toRoute()) },
-                                icon = {
-                                    Icon(
-                                        imageVector = item.icon,
-                                        contentDescription = item.label(),
-                                    )
-                                },
-                            )
+                        Scaffold(
+                            topBar = {
+                                MainTopAppBar(
+                                    showMenuButton = true,
+                                    windowSize = windowSize,
+                                    notifications = notifications,
+                                    currentBranchName = currentBranchName,
+                                    onBranchClick = {
+                                        showBranchDialog = true
+                                        branchSwitchVm.load()
+                                    },
+                                    onMarkNotificationRead = ::onMarkNotificationRead,
+                                    onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
+                                    onNotificationNavigate = ::onNotificationLink,
+                                    onMenuClick = { scope.launch { drawerState.open() } },
+                                    onLogout = onLogout,
+                                    extraActions = {
+                                        TopBarActions(selectedItem, onCreateClient = { navController.navigate(AppRoute.ClientCreate) })
+                                    },
+                                )
+                            },
+                        ) { innerPadding ->
+                            AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
                         }
-                    }
-                    Scaffold(
-                        modifier = Modifier.weight(1f),
-                        topBar = {
-                            MainTopAppBar(
-                                showMenuButton = false,
-                                windowSize = windowSize,
-                                notifications = notifications,
-                                currentBranchName = currentBranchName,
-                                onBranchClick = {
-                                    showBranchDialog = true
-                                    branchSwitchVm.load()
-                                },
-                                onMarkNotificationRead = ::onMarkNotificationRead,
-                                onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
-                                onNotificationNavigate = ::onNotificationLink,
-                                onMenuClick = {},
-                                onLogout = onLogout,
-                                extraActions = {
-                                    TopBarActions(selectedItem, onCreateClient = { navController.navigate(AppRoute.ClientCreate) })
-                                },
-                            )
-                        },
-                    ) { innerPadding ->
-                        AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
                     }
                 }
-            }
 
-            else -> {
-                PermanentNavigationDrawer(
-                    drawerContent = {
-                        PermanentDrawerSheet {
-                            DrawerContent(
-                                api = api,
-                                selectedItem = selectedItem,
-                                expanded = true,
-                                onItemSelected = { navController.navigateToSection(it.toRoute()) },
-                                onToggle = { isSidebarExpanded = false },
-                            )
+                windowSize == WindowSize.MEDIUM || !isSidebarExpanded -> {
+                    Row(Modifier.fillMaxSize()) {
+                        NavigationRail(
+                            header = {
+                                IconButton(onClick = { isSidebarExpanded = !isSidebarExpanded }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Menu,
+                                        contentDescription = stringResource(Res.string.action_toggle_nav),
+                                    )
+                                }
+                            },
+                        ) {
+                            Spacer(Modifier.height(8.dp))
+                            NavItem.entries.forEach { item ->
+                                NavigationRailItem(
+                                    selected = selectedItem == item,
+                                    onClick = { navController.navigateToSection(item.toRoute()) },
+                                    icon = {
+                                        Icon(
+                                            imageVector = item.icon,
+                                            contentDescription = item.label(),
+                                        )
+                                    },
+                                )
+                            }
                         }
-                    },
-                ) {
-                    Scaffold(
-                        topBar = {
-                            MainTopAppBar(
-                                showMenuButton = false,
-                                windowSize = windowSize,
-                                notifications = notifications,
-                                currentBranchName = currentBranchName,
-                                onBranchClick = {
-                                    showBranchDialog = true
-                                    branchSwitchVm.load()
-                                },
-                                onMarkNotificationRead = ::onMarkNotificationRead,
-                                onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
-                                onNotificationNavigate = ::onNotificationLink,
-                                onMenuClick = {},
-                                onLogout = onLogout,
-                                extraActions = {
-                                    TopBarActions(selectedItem, onCreateClient = { navController.navigate(AppRoute.ClientCreate) })
-                                },
-                            )
+                        Scaffold(
+                            modifier = Modifier.weight(1f),
+                            topBar = {
+                                MainTopAppBar(
+                                    showMenuButton = false,
+                                    windowSize = windowSize,
+                                    notifications = notifications,
+                                    currentBranchName = currentBranchName,
+                                    onBranchClick = {
+                                        showBranchDialog = true
+                                        branchSwitchVm.load()
+                                    },
+                                    onMarkNotificationRead = ::onMarkNotificationRead,
+                                    onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
+                                    onNotificationNavigate = ::onNotificationLink,
+                                    onMenuClick = {},
+                                    onLogout = onLogout,
+                                    extraActions = {
+                                        TopBarActions(selectedItem, onCreateClient = { navController.navigate(AppRoute.ClientCreate) })
+                                    },
+                                )
+                            },
+                        ) { innerPadding ->
+                            AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
+                        }
+                    }
+                }
+
+                else -> {
+                    PermanentNavigationDrawer(
+                        drawerContent = {
+                            PermanentDrawerSheet {
+                                DrawerContent(
+                                    api = api,
+                                    selectedItem = selectedItem,
+                                    expanded = true,
+                                    onItemSelected = { navController.navigateToSection(it.toRoute()) },
+                                    onToggle = { isSidebarExpanded = false },
+                                )
+                            }
                         },
-                    ) { innerPadding ->
-                        AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
+                    ) {
+                        Scaffold(
+                            topBar = {
+                                MainTopAppBar(
+                                    showMenuButton = false,
+                                    windowSize = windowSize,
+                                    notifications = notifications,
+                                    currentBranchName = currentBranchName,
+                                    onBranchClick = {
+                                        showBranchDialog = true
+                                        branchSwitchVm.load()
+                                    },
+                                    onMarkNotificationRead = ::onMarkNotificationRead,
+                                    onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
+                                    onNotificationNavigate = ::onNotificationLink,
+                                    onMenuClick = {},
+                                    onLogout = onLogout,
+                                    extraActions = {
+                                        TopBarActions(selectedItem, onCreateClient = { navController.navigate(AppRoute.ClientCreate) })
+                                    },
+                                )
+                            },
+                        ) { innerPadding ->
+                            AppNavHost(navController, api, displaySettingsVm, Modifier.padding(innerPadding))
+                        }
                     }
                 }
             }
         }
-    }
+    } // CompositionLocalProvider
 }
 
 @Composable
@@ -859,17 +863,28 @@ private fun MainTopAppBar(
     onLogout: () -> Unit,
     extraActions: @Composable RowScope.() -> Unit = {},
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    val topBarCtrl = org.athletica.crm.ui.list.LocalListPageTopBar.current
 
     TopAppBar(
         title = {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text(stringResource(Res.string.hint_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(0.5f),
-            )
+            Column {
+                Text(
+                    text = topBarCtrl.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val sub = topBarCtrl.subtitle
+                if (sub != null) {
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         },
         navigationIcon = {
             if (showMenuButton) {

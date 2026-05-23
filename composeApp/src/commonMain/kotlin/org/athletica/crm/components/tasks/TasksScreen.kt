@@ -51,11 +51,13 @@ import org.athletica.crm.generated.resources.tasks_view_all
 import org.athletica.crm.ui.WindowSize
 import org.athletica.crm.ui.list.ColumnWidth
 import org.athletica.crm.ui.list.ListColumn
+import org.athletica.crm.ui.list.ListData
 import org.athletica.crm.ui.list.ListPageFilterPanel
 import org.athletica.crm.ui.list.ListPageScaffold
-import org.athletica.crm.ui.list.ListState
+import org.athletica.crm.ui.list.ListPageViewModel
 import org.athletica.crm.ui.list.ListTable
 import org.athletica.crm.ui.list.SavedView
+import org.athletica.crm.ui.list.SavedViewId
 import org.athletica.crm.ui.list.SortBottomSheet
 import org.athletica.crm.ui.list.SortDirection
 import org.athletica.crm.ui.list.SortableColumn
@@ -83,25 +85,29 @@ fun TasksScreen(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
-    val viewModel = remember { TasksViewModel(api, displaySettingsVm, scope) }
+    val viewModel =
+        remember {
+            ListPageViewModel(TasksPageDelegate(api, displaySettingsVm), scope)
+        }
 
     LaunchedEffect(refreshKey) { viewModel.load() }
 
     var filterSheetVisible by remember { mutableStateOf(false) }
     var sortSheetVisible by remember { mutableStateOf(false) }
-    var filterDraft by remember { mutableStateOf(viewModel.filter) }
+    var filterDraft by remember { mutableStateOf(viewModel.state.filter) }
 
     LaunchedEffect(filterSheetVisible) {
         if (filterSheetVisible) {
-            filterDraft = viewModel.filter
+            filterDraft = viewModel.state.filter
         }
     }
 
     val title = stringResource(Res.string.tasks_title)
     val allLabel = stringResource(Res.string.tasks_view_all)
     val myLabel = stringResource(Res.string.tasks_filter_mine)
-    val subtitleTemplate = stringResource(Res.string.tasks_subtitle_count, viewModel.total.toInt())
-    val subtitle = computeSubtitle(subtitleTemplate, viewModel, myLabel)
+    val total = (viewModel.state.data as? ListData.Loaded)?.total ?: 0
+    val subtitleTemplate = stringResource(Res.string.tasks_subtitle_count, total)
+    val subtitle = computeSubtitle(subtitleTemplate, viewModel.state.activeSavedViewId, myLabel)
 
     val savedViews =
         remember(allLabel, myLabel) {
@@ -169,7 +175,7 @@ fun TasksScreen(
         )
 
     val sortChipLabel =
-        viewModel.sort?.let { s ->
+        viewModel.state.sort?.let { s ->
             val dir = if (s.direction == SortDirection.Asc) "↑" else "↓"
             val colName =
                 when (s.columnId) {
@@ -188,20 +194,20 @@ fun TasksScreen(
         title = title,
         subtitle = subtitle,
         windowSize = windowSize,
-        searchQuery = viewModel.searchQuery,
+        searchQuery = viewModel.state.searchQuery,
         onSearchQueryChange = viewModel::setSearch,
         searchPlaceholder = stringResource(Res.string.tasks_search_placeholder),
         savedViews = savedViews,
-        activeSavedViewId = viewModel.activeSavedViewId,
+        activeSavedViewId = viewModel.state.activeSavedViewId,
         onSaveCurrentView = null,
-        activeFilterCount = viewModel.filter.activeCount,
+        activeFilterCount = viewModel.state.filter.activeCount,
         onOpenFilters = { filterSheetVisible = true },
         quickFilterChips = {
-            if (viewModel.filter.onlyMine) {
+            if (viewModel.state.filter.onlyMine) {
                 FilterChip(
                     selected = true,
                     onClick = {
-                        viewModel.updateFilter(viewModel.filter.copy(onlyMine = false))
+                        viewModel.setFilter(viewModel.state.filter.copy(onlyMine = false))
                     },
                     label = { Text(stringResource(Res.string.tasks_filter_only_mine)) },
                     trailingIcon = {
@@ -214,12 +220,14 @@ fun TasksScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            viewModel.filter.statuses.forEach { status ->
+            viewModel.state.filter.statuses.forEach { status ->
                 FilterChip(
                     selected = true,
                     onClick = {
-                        viewModel.updateFilter(
-                            viewModel.filter.copy(statuses = viewModel.filter.statuses - status),
+                        viewModel.setFilter(
+                            viewModel.state.filter.copy(
+                                statuses = viewModel.state.filter.statuses - status,
+                            ),
                         )
                     },
                     label = { Text(stringResource(statusLabelRes(status))) },
@@ -241,7 +249,7 @@ fun TasksScreen(
                 onReset = { filterDraft = TasksFilter() },
                 onSaveAsView = null,
                 onApply = {
-                    viewModel.updateFilter(filterDraft)
+                    viewModel.setFilter(filterDraft)
                     filterSheetVisible = false
                 },
                 applyEnabled = true,
@@ -289,7 +297,7 @@ fun TasksScreen(
                     SortableColumn(TasksColumns.Assignee, assigneeCol),
                     SortableColumn(TasksColumns.DueDate, dueDateCol),
                 ),
-            current = viewModel.sort,
+            current = viewModel.state.sort,
             onSortChange = { newSort ->
                 viewModel.applySort(newSort)
                 sortSheetVisible = false
@@ -303,12 +311,11 @@ fun TasksScreen(
 @Composable
 private fun computeSubtitle(
     countText: String,
-    viewModel: TasksViewModel,
+    activeSavedViewId: SavedViewId?,
     myTasksLabel: String,
 ): String? {
-    val activeId = viewModel.activeSavedViewId
     val viewName =
-        when (activeId) {
+        when (activeSavedViewId) {
             TasksSavedViews.MY_TASKS.id -> myTasksLabel
             TasksSavedViews.ALL.id -> null
             else -> null
@@ -319,19 +326,19 @@ private fun computeSubtitle(
 /** Основное содержимое списка задач с адаптацией под состояния загрузки и пустого списка. */
 @Composable
 private fun TasksContent(
-    viewModel: TasksViewModel,
+    viewModel: ListPageViewModel<TaskListItemSchema, TasksFilter>,
     columns: List<ListColumn<TaskListItemSchema>>,
     windowSize: WindowSize,
     onTaskClick: (TaskId) -> Unit,
 ) {
-    when (val s = viewModel.state) {
-        is ListState.Loading -> {
+    when (viewModel.state.data) {
+        is ListData.Loading -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         }
 
-        is ListState.Error -> {
+        is ListData.Error -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(Res.string.tasks_load_error),
@@ -340,10 +347,10 @@ private fun TasksContent(
             }
         }
 
-        is ListState.Loaded -> {
+        is ListData.Loaded -> {
             if (viewModel.visible.isEmpty()) {
                 val emptyRes =
-                    if (viewModel.searchQuery.isNotBlank() || viewModel.filter.activeCount > 0) {
+                    if (viewModel.state.searchQuery.isNotBlank() || viewModel.state.filter.activeCount > 0) {
                         Res.string.empty_search_results
                     } else {
                         Res.string.tasks_empty
@@ -382,7 +389,7 @@ private fun TasksContent(
                         },
                         windowSize = windowSize,
                         selection = null,
-                        sort = viewModel.sort,
+                        sort = viewModel.state.sort,
                         onSortChange = { columnId -> viewModel.cycleSort(columnId) },
                     )
                 }

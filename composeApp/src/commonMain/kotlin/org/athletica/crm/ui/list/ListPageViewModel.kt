@@ -3,128 +3,91 @@ package org.athletica.crm.ui.list
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import arrow.core.Either
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import org.athletica.crm.api.client.ApiClientError
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Базовая ViewModel для страницы со списком.
+ * ViewModel страницы со списком — координатор.
  *
- * Параметр [T] — тип элемента списка (DTO из API).
- * Параметр [F] — типизированный фильтр раздела (data class).
+ * Принимает специфичный для раздела [delegate] (источник данных,
+ * клиентская фильтрация/сортировка, хук персиста). Сам по себе VM
+ * не знает ни о конкретном API, ни о структуре фильтра — только о
+ * контракте [ListPageDelegate].
  *
- * Подкласс обязан реализовать [defaultFilter], [defaultSort], [fetch], [matches], [compare].
- * Остальная логика общая: загрузка, применение фильтра/поиска/сортировки, сохранённые виды.
+ * Состояние хранится в единственной изменяемой ячейке [state] —
+ * иммутабельном снимке [ListPageState]. Все переходы идут через
+ * чистые методы `with…` на снимке; экранные методы VM только
+ * присваивают новый снимок. Производное [visible] пересчитывается
+ * по [state] и автоматически инициирует рекомпозицию.
  *
- * Производное состояние [visible] пересчитывается реактивно при изменении [state], [filter],
- * [searchQuery] и [sort].
+ * Изменения [ListPageState.filter] и [ListPageState.searchQuery]
+ * автоматически перезапускают [load] (поиск — с debounce 300 мс),
+ * изменения [ListPageState.sort] — вызывают [ListPageDelegate.onSortChanged]
+ * для персиста.
+ *
+ * Параметр [T] — тип элемента списка. Параметр [F] — тип фильтра раздела.
  */
-abstract class ListPageViewModel<T : Any, F : Any>(
-    protected val scope: CoroutineScope,
+@OptIn(FlowPreview::class)
+class ListPageViewModel<T : Any, F : Any>(
+    private val delegate: ListPageDelegate<T, F>,
+    private val scope: CoroutineScope,
 ) {
-    /** Текущее состояние загрузки. */
-    var state: ListState<T> by mutableStateOf(ListState.Loading)
-        protected set
-
-    /** Текущий фильтр раздела. */
-    var filter: F by mutableStateOf(defaultFilter())
-        private set
-
-    /** Текущая сортировка. `null` — сортировка по умолчанию сервера. */
-    var sort: SortState? by mutableStateOf(defaultSort())
-        private set
-
-    /** Текущий поисковый запрос. */
-    var searchQuery: String by mutableStateOf("")
-        private set
-
-    /** Идентификатор активного сохранённого вида. `null` — ни один не выбран. */
-    var activeSavedViewId: SavedViewId? by mutableStateOf(null)
+    /** Текущий снимок состояния страницы. Единственная изменяемая ячейка. */
+    var state: ListPageState<T, F> by mutableStateOf(
+        ListPageState(
+            data = ListData.Loading,
+            filter = delegate.defaultFilter(),
+            sort = delegate.defaultSort(),
+            searchQuery = "",
+            activeSavedViewId = null,
+        ),
+    )
         private set
 
     /**
-     * Производный список после применения фильтра, поиска и сортировки.
-     * Пересчитывается при каждом обращении; Compose отслеживает зависимости через [state],
-     * [filter], [searchQuery] и [sort], автоматически инициируя рекомпозицию при изменении.
+     * Производный список после применения клиентской фильтрации, поиска и сортировки.
+     * Compose отслеживает зависимость через [state].
      */
-    val visible: List<T>
-        get() {
-            val s = state
-            if (s !is ListState.Loaded) {
-                return emptyList()
-            }
-            val filtered = s.items.filter { matches(it, searchQuery, filter) }
-            val sortDef = sort
-            return if (sortDef != null) {
-                filtered.sortedWith { a, b -> compare(a, b, sortDef) }
-            } else {
-                filtered
-            }
-        }
+    val visible: List<T> get() = computeVisible()
 
-    /** Возвращает начальное (пустое) состояние фильтра раздела. */
-    protected abstract fun defaultFilter(): F
-
-    /** Возвращает сортировку по умолчанию. `null` — без явной сортировки. */
-    protected abstract fun defaultSort(): SortState?
-
-    /**
-     * Загружает данные из API. Вызывается из [load].
-     * Должен возвращать либо ошибку, либо полный список элементов.
-     */
-    protected abstract suspend fun fetch(): Either<ApiClientError, List<T>>
-
-    /**
-     * Проверяет, попадает ли [item] в выдачу при текущих [query] и [filter].
-     * Используется для клиентской фильтрации и поиска.
-     */
-    protected abstract fun matches(
-        item: T,
-        query: String,
-        filter: F,
-    ): Boolean
-
-    /**
-     * Сравнивает элементы [a] и [b] для сортировки согласно [sort].
-     * Возвращает отрицательное, нулевое или положительное значение.
-     */
-    protected abstract fun compare(
-        a: T,
-        b: T,
-        sort: SortState,
-    ): Int
-
-    /** Перезагружает список из API. */
-    fun load() {
+    init {
         scope.launch {
-            state = ListState.Loading
-            state =
-                fetch().fold(
-                    ifLeft = { ListState.Error(it) },
-                    ifRight = { ListState.Loaded(it) },
-                )
+            snapshotFlow { state.filter }
+                .drop(1)
+                .collectLatest { load() }
+        }
+        scope.launch {
+            snapshotFlow { state.searchQuery }
+                .drop(1)
+                .debounce(300.milliseconds)
+                .collectLatest { load() }
+        }
+        scope.launch {
+            snapshotFlow { state.sort }
+                .drop(1)
+                .collectLatest { newSort -> delegate.onSortChanged(newSort) }
         }
     }
 
     /** Обновляет поисковый запрос. */
     fun setSearch(query: String) {
-        searchQuery = query
+        state = state.withSearch(query)
     }
 
-    /**
-     * Применяет новый фильтр. Сбрасывает [activeSavedViewId],
-     * так как ручное изменение фильтра выводит за пределы любого сохранённого вида.
-     */
-    fun updateFilter(newFilter: F) {
-        filter = newFilter
-        activeSavedViewId = null
+    /** Применяет новый фильтр (сбрасывает активный сохранённый вид). */
+    fun setFilter(newFilter: F) {
+        state = state.withFilter(newFilter)
     }
 
     /** Сбрасывает фильтр до значения по умолчанию. */
     fun resetFilter() {
-        filter = defaultFilter()
-        activeSavedViewId = null
+        state = state.withFilter(delegate.defaultFilter())
     }
 
     /**
@@ -132,25 +95,41 @@ abstract class ListPageViewModel<T : Any, F : Any>(
      * Цикл: none → Asc → Desc → none.
      */
     fun cycleSort(columnId: ColumnId) {
-        sort = SortState.cycle(sort, columnId)
-        activeSavedViewId = null
+        state = state.withSort(SortState.cycle(state.sort, columnId))
     }
 
-    /**
-     * Напрямую устанавливает сортировку (например, из диалога [SortBottomSheet]).
-     * Сбрасывает [activeSavedViewId], так как ручной выбор сортировки выводит за пределы вида.
-     */
+    /** Напрямую устанавливает сортировку (например, из диалога). */
     fun applySort(newSort: SortState?) {
-        sort = newSort
-        activeSavedViewId = null
+        state = state.withSort(newSort)
     }
 
-    /**
-     * Применяет системный сохранённый вид: устанавливает фильтр, сортировку и выбранный вид.
-     */
+    /** Применяет системный сохранённый вид: фильтр + сортировка + id вида. */
     fun applySystemView(view: SystemSavedView<F>) {
-        filter = view.filter
-        sort = view.sort
-        activeSavedViewId = view.id
+        state = state.withSavedView(view)
+    }
+
+    /** Перезагружает список из источника данных. */
+    fun load() {
+        scope.launch {
+            state = state.withData(ListData.Loading)
+            state =
+                state.withData(
+                    delegate.fetch(state.filter, state.searchQuery).fold(
+                        ifLeft = { ListData.Error(it) },
+                        ifRight = { ListData.Loaded(it.items, it.total) },
+                    ),
+                )
+        }
+    }
+
+    private fun computeVisible(): List<T> {
+        val loaded = state.data as? ListData.Loaded ?: return emptyList()
+        val filtered = loaded.items.filter { delegate.matches(it, state.searchQuery, state.filter) }
+        val sortDef = state.sort
+        return if (sortDef != null) {
+            filtered.sortedWith { a, b -> delegate.compare(a, b, sortDef) }
+        } else {
+            filtered
+        }
     }
 }

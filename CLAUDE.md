@@ -432,6 +432,70 @@ Every screen (NavHost destination) must have a corresponding ViewModel class. Co
 - Error types are typed (`sealed class XError`); the composable maps them to localized strings via `stringResource`
 - Form fields with multiple related inputs are grouped into a `data class XForm` with an `isValid` computed property
 
+#### ViewModel state shape — one `var`, immutable snapshot
+
+A ViewModel must hold **exactly one** mutable cell — `var state: XState by mutableStateOf(...)` (or `StateFlow<XState>`), where `XState` is a `data class` with `val`-only fields. All transitions are pure functions on `XState` returning a new instance (`copy(...)`); VM methods only assign `state = state.with…(...)`.
+
+Multiple `var`s with `mutableStateOf` in one class is a smell: connected invariants cannot be guaranteed (one transition forgets to update the related field), and each mutation is an independent effect. Collapse them into one data class — bonus: tests assert one `state`, not 5 fields.
+
+```kotlin
+// Bad — пять отдельных var, инварианты держатся «на честном слове»
+class XViewModel {
+    var data by mutableStateOf<ListData<T>>(ListData.Loading); private set
+    var filter by mutableStateOf(F()); private set
+    var sort by mutableStateOf<SortState?>(null); private set
+    var searchQuery by mutableStateOf(""); private set
+    var activeSavedViewId by mutableStateOf<SavedViewId?>(null); private set
+
+    fun setFilter(f: F) { filter = f; activeSavedViewId = null } // легко забыть сбросить id
+}
+
+// Good — одна ячейка, чистые переходы на data class
+data class XState<T, F>(
+    val data: ListData<T>,
+    val filter: F,
+    val sort: SortState?,
+    val searchQuery: String,
+    val activeSavedViewId: SavedViewId?,
+) {
+    fun withFilter(f: F) = copy(filter = f, activeSavedViewId = null)
+}
+
+class XViewModel {
+    var state: XState<T, F> by mutableStateOf(initial); private set
+    fun setFilter(f: F) { state = state.withFilter(f) }
+}
+```
+
+#### Direction of composition: generic ⊃ specific
+
+A reusable coordinator (`ListPageViewModel`, `FormViewModel`, any generic «движок») accepts the domain-specific delegate **via its constructor**. The **specific** does not own the **generic** and pass `this` into it — that's inversion. Sign of inversion: the screen reads `viewModel.subVm.X` almost everywhere and only a couple of places hit the root VM. If you catch yourself writing `vm.x.y.z` across most callsites, you've broken encapsulation — either lift the field into the coordinator or pass the delegate directly where it's needed.
+
+```kotlin
+// Bad — specific хранит generic, экран читает viewModel.list.X почти везде
+class TasksViewModel(...) : ListPageDelegate<...> {
+    val list = ListPageViewModel(this)  // ← инверсия
+}
+
+// Good — generic принимает specific
+class TasksPageDelegate(...) : ListPageDelegate<...>
+val viewModel = ListPageViewModel(TasksPageDelegate(...), scope)
+```
+
+#### Response metadata lives inside `Loaded`, not as a sibling `var`
+
+If the server returns `total` (or any other metadata) alongside the list, it belongs inside `Loaded(items, total)`, **not** in a sibling `var total: Int` on the VM that gets set as a side effect inside `.map { ... }`. Keep the fetch → state pipeline pure; no hidden assignments.
+
+```kotlin
+// Bad — побочка внутри .map
+var total: Int by mutableStateOf(0); private set
+suspend fun fetch(...) = api.list(...).map { total = it.total; it.items }
+
+// Good — total часть данных
+data class Loaded<T>(val items: List<T>, val total: Int = items.size)
+suspend fun fetch(...) = api.list(...).map { FetchResult(it.items, it.total) }
+```
+
 ## Known Constraints & Gotchas
 
 1. **Context Parameters Are Lexically Scoped**: If you `context(ctx)` and then call a function that also expects `context(RequestContext)`, the inner function must be called *within* the outer context block. No implicit shadowing.

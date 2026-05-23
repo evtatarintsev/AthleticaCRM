@@ -18,7 +18,7 @@ enum class SortDirection {
  */
 data class SortState(val columnId: ColumnId, val direction: SortDirection) {
     /** Конвертирует в схему для сохранения в [org.athletica.crm.api.schemas.settings.DisplaySettings]. */
-    fun toDto(): SortStateSchema =
+    fun toSchema(): SortStateSchema =
         SortStateSchema(
             columnId = columnId.value,
             direction =
@@ -44,11 +44,11 @@ data class SortState(val columnId: ColumnId, val direction: SortDirection) {
             }
 
         /** Восстанавливает из схемы. */
-        fun fromDto(dto: SortStateSchema): SortState =
+        fun fromSchema(schema: SortStateSchema): SortState =
             SortState(
-                columnId = ColumnId(dto.columnId),
+                columnId = ColumnId(schema.columnId),
                 direction =
-                    when (dto.direction) {
+                    when (schema.direction) {
                         SortDirectionSchema.Asc -> SortDirection.Asc
                         SortDirectionSchema.Desc -> SortDirection.Desc
                     },

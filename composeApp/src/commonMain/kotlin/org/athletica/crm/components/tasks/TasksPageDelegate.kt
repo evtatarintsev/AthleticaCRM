@@ -1,29 +1,19 @@
 package org.athletica.crm.components.tasks
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import arrow.core.Either
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
-import org.athletica.crm.api.schemas.settings.DisplaySettings
 import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
 import org.athletica.crm.api.schemas.tasks.TaskListRequest
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
 import org.athletica.crm.core.tasks.TaskStatus
-import org.athletica.crm.ui.list.ListPageViewModel
+import org.athletica.crm.ui.list.ColumnId
+import org.athletica.crm.ui.list.FetchResult
+import org.athletica.crm.ui.list.ListPageDelegate
 import org.athletica.crm.ui.list.SavedViewId
 import org.athletica.crm.ui.list.SortDirection
 import org.athletica.crm.ui.list.SortState
 import org.athletica.crm.ui.list.SystemSavedView
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Типизированный фильтр раздела «Задачи».
@@ -39,44 +29,24 @@ data class TasksFilter(
 }
 
 /**
- * ViewModel экрана списка задач.
- * Расширяет [ListPageViewModel] с серверной фильтрацией.
- * Сохраняет сортировку в [DisplaySettings.tasks].
+ * Делегат страницы списка задач для [org.athletica.crm.ui.list.ListPageViewModel].
+ *
+ * Полностью без собственного состояния и корутин: предоставляет загрузку
+ * через API, клиентскую фильтрацию/сортировку и хук персиста сортировки
+ * в [displaySettingsVm].
  */
-@OptIn(FlowPreview::class)
-class TasksViewModel(
+class TasksPageDelegate(
     private val api: ApiClient,
     private val displaySettingsVm: DisplaySettingsViewModel,
-    scope: CoroutineScope,
-) : ListPageViewModel<TaskListItemSchema, TasksFilter>(scope) {
-    /** Общее число задач, удовлетворяющих фильтру (без пагинации). */
-    var total: UInt by mutableStateOf(0u)
-        private set
-
-    init {
-        scope.launch {
-            snapshotFlow { filter }
-                .drop(1)
-                .collectLatest { load() }
-        }
-        scope.launch {
-            snapshotFlow { searchQuery }
-                .drop(1)
-                .debounce(300.milliseconds)
-                .collectLatest { load() }
-        }
-        scope.launch {
-            snapshotFlow { sort }
-                .drop(1)
-                .collectLatest { newSort -> persistSort(newSort) }
-        }
-    }
-
+) : ListPageDelegate<TaskListItemSchema, TasksFilter> {
     override fun defaultFilter(): TasksFilter = TasksFilter()
 
-    override fun defaultSort(): SortState? = displaySettingsVm.displaySettings.tasks.sort?.let { SortState.fromDto(it) }
+    override fun defaultSort(): SortState? = displaySettingsVm.displaySettings.tasks.sort?.let(SortState::fromSchema)
 
-    override suspend fun fetch(): Either<ApiClientError, List<TaskListItemSchema>> =
+    override suspend fun fetch(
+        filter: TasksFilter,
+        searchQuery: String,
+    ): Either<ApiClientError, FetchResult<TaskListItemSchema>> =
         api.tasks
             .list(
                 TaskListRequest(
@@ -85,8 +55,7 @@ class TasksViewModel(
                     searchText = searchQuery.takeIf { it.isNotBlank() },
                 ),
             ).map { response ->
-                total = response.total
-                response.tasks
+                FetchResult(items = response.tasks, total = response.total.toInt())
             }
 
     override fun matches(
@@ -112,11 +81,11 @@ class TasksViewModel(
         return if (sort.direction == SortDirection.Asc) cmp else -cmp
     }
 
-    private fun persistSort(newSort: SortState?) {
+    override fun onSortChanged(sort: SortState?) {
         val current = displaySettingsVm.displaySettings
         displaySettingsVm.update(
             current.copy(
-                tasks = current.tasks.copy(sort = newSort?.toDto()),
+                tasks = current.tasks.copy(sort = sort?.toSchema()),
             ),
         )
     }
@@ -124,10 +93,10 @@ class TasksViewModel(
 
 /** Идентификаторы колонок таблицы задач. */
 object TasksColumns {
-    val Title = org.athletica.crm.ui.list.ColumnId("title")
-    val Status = org.athletica.crm.ui.list.ColumnId("status")
-    val Assignee = org.athletica.crm.ui.list.ColumnId("assignee")
-    val DueDate = org.athletica.crm.ui.list.ColumnId("dueDate")
+    val Title = ColumnId("title")
+    val Status = ColumnId("status")
+    val Assignee = ColumnId("assignee")
+    val DueDate = ColumnId("dueDate")
 }
 
 /** Системные сохранённые виды раздела «Задачи». */

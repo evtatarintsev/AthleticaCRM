@@ -304,6 +304,79 @@ Text(stringResource(Res.string.action_add_client_group))
 ```
 
 
+## ViewModel: одна `var`-ячейка с иммутабельным снимком состояния
+
+ViewModel держит **ровно одну** изменяемую ячейку — `var state: XState by mutableStateOf(...)` (или `StateFlow<XState>`), где `XState` — `data class` с `val`-полями. Все переходы — чистые методы на `XState`, возвращающие новую копию через `copy(...)`; методы VM только присваивают `state = state.with…(...)`.
+
+Несколько `var` с `mutableStateOf` в одном классе — запах: связанные инварианты невозможно гарантировать (один переход забывает сбросить соседнее поле), каждая мутация — самостоятельный эффект. Сводим в одну data class — заодно тесты ассертят `state`, а не пять полей.
+
+**Плохо** — пять отдельных `var`, инварианты держатся «на честном слове»:
+```kotlin
+class XViewModel {
+    var data by mutableStateOf<ListData<T>>(ListData.Loading); private set
+    var filter by mutableStateOf(F()); private set
+    var sort by mutableStateOf<SortState?>(null); private set
+    var searchQuery by mutableStateOf(""); private set
+    var activeSavedViewId by mutableStateOf<SavedViewId?>(null); private set
+
+    fun setFilter(f: F) { filter = f; activeSavedViewId = null } // легко забыть сбросить id
+}
+```
+
+**Хорошо** — одна ячейка, чистые переходы на data class:
+```kotlin
+data class XState<T, F>(
+    val data: ListData<T>,
+    val filter: F,
+    val sort: SortState?,
+    val searchQuery: String,
+    val activeSavedViewId: SavedViewId?,
+) {
+    fun withFilter(f: F) = copy(filter = f, activeSavedViewId = null)
+}
+
+class XViewModel {
+    var state: XState<T, F> by mutableStateOf(initial); private set
+    fun setFilter(f: F) { state = state.withFilter(f) }
+}
+```
+
+
+## Направление композиции: общий ⊃ специфичный
+
+Переиспользуемый координатор (`ListPageViewModel`, `FormViewModel`, любой generic-«движок») принимает специфичный делегат **через конструктор**. **Не наоборот**: специфичная VM не должна хранить координатор как поле и передавать в него `this`. Признак инверсии — экран обращается к `viewModel.subVm.X` почти везде, и только пара мест — к корневой VM. Если ловите себя на `vm.x.y.z` в большинстве callsite — инкапсуляция сломана: либо поднять поле в координатор, либо передавать делегата напрямую туда, где он нужен.
+
+**Плохо** — specific хранит generic, экран читает `viewModel.list.X` почти везде:
+```kotlin
+class TasksViewModel(...) : ListPageDelegate<...> {
+    val list = ListPageViewModel(this)  // ← инверсия
+}
+```
+
+**Хорошо** — generic принимает specific:
+```kotlin
+class TasksPageDelegate(...) : ListPageDelegate<...>
+val viewModel = ListPageViewModel(TasksPageDelegate(...), scope)
+```
+
+
+## Метаданные ответа — внутри `Loaded`, а не отдельным `var`
+
+Если сервер вместе со списком возвращает `total` (или любую другую метаданность), это должно быть полем `Loaded(items, total)`, а **не** отдельным `var total: Int` на VM, выставляемым побочным эффектом внутри `.map { ... }`. Пайплайн fetch → state остаётся чистым, без скрытых присваиваний.
+
+**Плохо** — побочка внутри `.map`:
+```kotlin
+var total: Int by mutableStateOf(0); private set
+suspend fun fetch(...) = api.list(...).map { total = it.total; it.items }
+```
+
+**Хорошо** — `total` часть данных:
+```kotlin
+data class Loaded<T>(val items: List<T>, val total: Int = items.size)
+suspend fun fetch(...) = api.list(...).map { FetchResult(it.items, it.total) }
+```
+
+
 ## Инжектируй зависимости через конструктор, а не поля класса
 1. Инжектировать зависимости в поля класса (через `@Value` или `@Autowired`) запрещено.
 2. Используй конструктор класса для внедрения зависимостей.

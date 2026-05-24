@@ -16,6 +16,7 @@ import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.route
@@ -127,13 +128,7 @@ fun Application.configureServer() {
 
     install(Authentication) {
         jwt("auth-jwt") {
-            authHeader { call ->
-                call.request
-                    .header(HttpHeaders.Authorization)
-                    ?.let { parseAuthorizationHeader(it) }
-                    ?: call.request.cookies[JwtConfig.COOKIE_ACCESS_TOKEN]
-                        ?.let { HttpAuthHeader.Single("Bearer", it) }
-            }
+            authHeader { call -> call.request.httpAuthHeader() }
             verifier(di.jwtConfig.verifier)
             validate { credential ->
                 val type = credential.payload.getClaim(JwtConfig.CLAIM_TYPE).asString()
@@ -250,3 +245,15 @@ private suspend fun generateSessionsDaily(di: Di) {
         delay(24 * 60 * 60 * 1_000L)
     }
 }
+
+fun ApplicationRequest.httpAuthHeader(): HttpAuthHeader? = httpAuthHeaderFromHeaders() ?: httpAuthHeaderFromCookies()
+
+fun ApplicationRequest.httpAuthHeaderFromHeaders(): HttpAuthHeader? =
+    runCatching {
+        header(HttpHeaders.Authorization)?.let { parseAuthorizationHeader(it) }
+    }.getOrNull()
+
+fun ApplicationRequest.httpAuthHeaderFromCookies(): HttpAuthHeader? =
+    runCatching {
+        cookies[JwtConfig.COOKIE_ACCESS_TOKEN]?.let { HttpAuthHeader.Single("Bearer", it) }
+    }.getOrNull()

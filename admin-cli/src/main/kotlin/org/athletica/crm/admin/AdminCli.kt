@@ -32,12 +32,16 @@ class AdminCli : CliktCommand(name = "athletica") {
 
     private suspend fun runFind(di: AdminDi) {
         findQueries.forEach { query ->
-            val results = di.orgSearch.find(query)
-            if (results.isEmpty()) {
-                echo("Не найдено: $query")
-            } else {
-                echo("Результаты для \"$query\":")
-                results.forEach { printOrgInfo(it) }
+            try {
+                val results = di.orgSearch.find(query)
+                if (results.isEmpty()) {
+                    echo("Не найдено: $query")
+                } else {
+                    echo("Результаты для \"$query\":")
+                    results.forEach { printOrgInfo(it) }
+                }
+            } catch (e: Exception) {
+                echo("Ошибка при поиске: ${e.message}", err = true)
             }
         }
     }
@@ -57,7 +61,14 @@ class AdminCli : CliktCommand(name = "athletica") {
             return
         }
 
-        val org = di.orgSearch.resolve(orgArg!!)
+        val org =
+            try {
+                di.orgSearch.resolve(orgArg!!)
+            } catch (e: Exception) {
+                echo("Ошибка при поиске организации: ${e.message}", err = true)
+                return
+            }
+
         if (org == null) {
             echo("Организация не найдена: ${orgArg!!}", err = true)
             return
@@ -70,15 +81,18 @@ class AdminCli : CliktCommand(name = "athletica") {
         val amount = Money(minorUnits, org.currency)
         val ctx = adminContext(OrgId(org.id), org.currency)
 
-        val result =
-            either {
+        val result = either {
+            try {
                 di.database.transaction {
                     context(ctx, this) {
                         val balance = di.orgBalances.current()
                         balance.adjust(amount, description!!)
                     }
                 }
+            } catch (e: Exception) {
+                throw e
             }
+        }
 
         result.fold(
             { error -> echo("Ошибка: ${error.message}", err = true) },

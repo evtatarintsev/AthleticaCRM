@@ -19,7 +19,7 @@ private val ADMIN_UUID = Uuid.fromLongs(0L, 0L)
 fun adminContext(
     orgId: OrgId,
     currency: Currency,
-): RequestContext =
+): AdminRequestContext =
     AdminRequestContext(
         lang = Lang.RU,
         orgId = orgId,

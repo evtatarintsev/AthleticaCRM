@@ -2,6 +2,7 @@ package org.athletica.crm.domain.orgbalance
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
+import org.athletica.crm.core.AdminRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -15,11 +16,8 @@ data class DbOrgBalance(
     override val totalAmount: Money,
     override val history: List<OrgBalanceEntry>,
 ) : OrgBalance {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun adjust(
-        amount: Money,
-        description: String,
-    ): OrgBalance {
+    context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun adjust(amount: Money, description: String): OrgBalance {
         ensure(amount.currency == ctx.currency) {
             CommonDomainError("BALANCE_CURRENCY_MISMATCH", Messages.BalanceCurrencyMismatch.localize())
         }

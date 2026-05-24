@@ -24,12 +24,12 @@ class OrgSearch(private val database: Database) {
         database.transaction {
             sql(
                 """
-                SELECT o.id, o.name, o.currency, u.username AS owner_login
+                SELECT o.id, o.name, o.currency, u.login AS owner_login
                 FROM organizations o
                 JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
                 JOIN users u     ON u.id = e.user_id
                 WHERE o.name ILIKE '%' || :query || '%'
-                   OR u.username ILIKE '%' || :query || '%'
+                   OR u.login ILIKE '%' || :query || '%'
                 ORDER BY o.name
                 """.trimIndent(),
             )
@@ -49,7 +49,7 @@ class OrgSearch(private val database: Database) {
         database.transaction {
             sql(
                 """
-                SELECT o.id, o.name, o.currency, u.username AS owner_login
+                SELECT o.id, o.name, o.currency, u.login AS owner_login
                 FROM organizations o
                 JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
                 JOIN users u     ON u.id = e.user_id

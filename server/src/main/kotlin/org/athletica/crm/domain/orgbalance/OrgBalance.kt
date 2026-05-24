@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.orgbalance
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.core.AdminRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
@@ -16,11 +17,8 @@ interface OrgBalance {
      * Корректирует баланс организации: [amount] > 0 — зачисление, < 0 — списание.
      * [description] — обязательное описание причины операции.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun adjust(
-        amount: Money,
-        description: String,
-    ): OrgBalance
+    context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun adjust(amount: Money, description: String): OrgBalance
 }
 
 /** Одна запись в журнале операций по балансу организации. */

@@ -214,6 +214,8 @@
     <string name="settings_section_user">User</string>
     <string name="settings_item_edit_profile">Edit profile</string>
     <string name="settings_item_edit_profile_subtitle">Name, photo and contact details</string>
+    <string name="settings_item_switch_branch">Switch branch</string>
+    <string name="settings_item_switch_branch_subtitle">Move to another organisation branch</string>
     <string name="settings_item_change_password">Change password</string>
     <string name="settings_item_change_password_subtitle">Change your current account password</string>
     <string name="settings_section_basic">General</string>
@@ -370,6 +372,10 @@
         <item quantity="one">%1$d visit</item>
         <item quantity="other">%1$d visits</item>
     </plurals>
+
+    <!-- Branch switching -->
+    <string name="branch_switch_error">Failed to load branches</string>
+    <string name="branch_switch_current">Current branch</string>
 
     <!-- Employee branch access -->
     <string name="section_branch_access">Branch access</string>

@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -69,11 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.AuthMeResponse
-import org.athletica.crm.api.schemas.OrgInfo
-import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
-import org.athletica.crm.components.auth.BranchSwitchDialog
-import org.athletica.crm.components.auth.BranchSwitchViewModel
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
@@ -104,16 +99,15 @@ import org.athletica.crm.components.settings.HallsScreen
 import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
+import org.athletica.crm.components.settings.SwitchBranchScreen
 import org.athletica.crm.components.settings.clientimport.ClientImportScreen
 import org.athletica.crm.components.settings.orgbalance.OrgBalanceScreen
 import org.athletica.crm.components.tasks.TaskCreateScreen
 import org.athletica.crm.components.tasks.TaskDetailScreen
 import org.athletica.crm.components.tasks.TasksScreen
-import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_collapse_menu
@@ -195,23 +189,13 @@ fun MainScreen(
     val topBarController = remember { org.athletica.crm.ui.list.ListPageTopBarController() }
     var isSidebarExpanded by remember { mutableStateOf(true) }
     var notifications by remember { mutableStateOf<List<AppNotification>>(emptyList()) }
-    var currentBranchName by remember { mutableStateOf<String?>(null) }
-    var showBranchDialog by remember { mutableStateOf(false) }
+    var me by remember { mutableStateOf<AuthMeResponse?>(null) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val branchSwitchVm =
-        remember {
-            BranchSwitchViewModel(
-                api = api,
-                scope = scope,
-                onSwitched = {
-                    showBranchDialog = false
-                    scope.launch { api.profile.me().onRight { currentBranchName = it.currentBranch.name } }
-                    navController.navigate(navController.currentDestination?.route ?: AppRoute.Home.toString())
-                },
-            )
-        }
+    val reloadMe: () -> Unit = {
+        scope.launch { api.profile.me().onRight { me = it } }
+    }
 
     val displaySettingsVm =
         remember {
@@ -225,7 +209,7 @@ fun MainScreen(
     }
 
     LaunchedEffect(Unit) {
-        api.profile.me().onRight { currentBranchName = it.currentBranch.name }
+        api.profile.me().onRight { me = it }
     }
 
     LaunchedEffect(Unit) {
@@ -236,17 +220,6 @@ fun MainScreen(
             )
             delay(60.seconds)
         }
-    }
-
-    if (showBranchDialog) {
-        BranchSwitchDialog(
-            state = branchSwitchVm.state,
-            onSelect = { branchId -> branchSwitchVm.switchTo(branchId) },
-            onDismiss = {
-                showBranchDialog = false
-                branchSwitchVm.reset()
-            },
-        )
     }
 
     val currentEntry by navController.currentBackStackEntryAsState()
@@ -295,6 +268,7 @@ fun MainScreen(
                             ModalDrawerSheet {
                                 DrawerContent(
                                     api = api,
+                                    me = me,
                                     selectedItem = selectedItem,
                                     expanded = true,
                                     onItemSelected = { item ->
@@ -311,11 +285,6 @@ fun MainScreen(
                                     showMenuButton = true,
                                     windowSize = windowSize,
                                     notifications = notifications,
-                                    currentBranchName = currentBranchName,
-                                    onBranchClick = {
-                                        showBranchDialog = true
-                                        branchSwitchVm.load()
-                                    },
                                     onMarkNotificationRead = ::onMarkNotificationRead,
                                     onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                     onNotificationNavigate = ::onNotificationLink,
@@ -327,7 +296,7 @@ fun MainScreen(
                                 )
                             },
                         ) { innerPadding ->
-                            AppNavHost(navController, api, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
+                            AppNavHost(navController, api, me, reloadMe, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
                         }
                     }
                 }
@@ -365,11 +334,6 @@ fun MainScreen(
                                     showMenuButton = false,
                                     windowSize = windowSize,
                                     notifications = notifications,
-                                    currentBranchName = currentBranchName,
-                                    onBranchClick = {
-                                        showBranchDialog = true
-                                        branchSwitchVm.load()
-                                    },
                                     onMarkNotificationRead = ::onMarkNotificationRead,
                                     onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                     onNotificationNavigate = ::onNotificationLink,
@@ -381,7 +345,7 @@ fun MainScreen(
                                 )
                             },
                         ) { innerPadding ->
-                            AppNavHost(navController, api, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
+                            AppNavHost(navController, api, me, reloadMe, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
                         }
                     }
                 }
@@ -392,6 +356,7 @@ fun MainScreen(
                             PermanentDrawerSheet {
                                 DrawerContent(
                                     api = api,
+                                    me = me,
                                     selectedItem = selectedItem,
                                     expanded = true,
                                     onItemSelected = { navController.navigateToSection(it.toRoute()) },
@@ -406,11 +371,6 @@ fun MainScreen(
                                     showMenuButton = false,
                                     windowSize = windowSize,
                                     notifications = notifications,
-                                    currentBranchName = currentBranchName,
-                                    onBranchClick = {
-                                        showBranchDialog = true
-                                        branchSwitchVm.load()
-                                    },
                                     onMarkNotificationRead = ::onMarkNotificationRead,
                                     onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                     onNotificationNavigate = ::onNotificationLink,
@@ -422,7 +382,7 @@ fun MainScreen(
                                 )
                             },
                         ) { innerPadding ->
-                            AppNavHost(navController, api, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
+                            AppNavHost(navController, api, me, reloadMe, displaySettingsVm, windowSize, Modifier.padding(innerPadding))
                         }
                     }
                 }
@@ -435,6 +395,8 @@ fun MainScreen(
 private fun AppNavHost(
     navController: NavHostController,
     api: ApiClient,
+    me: AuthMeResponse?,
+    reloadMe: () -> Unit,
     displaySettingsVm: DisplaySettingsViewModel,
     windowSize: WindowSize,
     modifier: Modifier = Modifier,
@@ -612,6 +574,7 @@ private fun AppNavHost(
                 onNavigateToActivityLog = { navController.navigate(AppRoute.SettingsActivityLog) },
                 onNavigateToChangePassword = { navController.navigate(AppRoute.SettingsChangePassword) },
                 onNavigateToEditProfile = { navController.navigate(AppRoute.SettingsEditProfile) },
+                onNavigateToSwitchBranch = { navController.navigate(AppRoute.SettingsSwitchBranch) },
                 onNavigateToRoles = { navController.navigate(AppRoute.SettingsRoles) },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -673,6 +636,15 @@ private fun AppNavHost(
             EditProfileScreen(api = api, onBack = { navController.popBackStack() })
         }
 
+        composable<AppRoute.SettingsSwitchBranch> {
+            SwitchBranchScreen(
+                api = api,
+                currentBranchId = me?.currentBranch?.id,
+                onBack = { navController.popBackStack() },
+                onSwitched = reloadMe,
+            )
+        }
+
         // ── Tasks ─────────────────────────────────────────────────────────────
 
         composable<AppRoute.Tasks> {
@@ -707,24 +679,15 @@ private fun AppNavHost(
 
 /**
  * Шапка аккаунта в боковой панели навигации.
+ * Отображает аватар, имя пользователя, организацию, текущий филиал и баланс.
+ *
+ * [me] — данные о пользователе; пока `null`, рендерятся пустые поля.
  */
 @Composable
-private fun DrawerAccountHeader(api: ApiClient) {
-    val noResponse =
-        AuthMeResponse(
-            id = UserId.new(),
-            username = "",
-            name = "",
-            avatarId = null,
-            orgInfo = OrgInfo("", null),
-            currentBranch = BranchDetailResponse(BranchId.new(), ""),
-        )
-    var me by remember { mutableStateOf(noResponse) }
-
-    LaunchedEffect(Unit) {
-        api.profile.me().onRight { me = it }
-    }
-
+private fun DrawerAccountHeader(
+    api: ApiClient,
+    me: AuthMeResponse?,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
@@ -740,25 +703,36 @@ private fun DrawerAccountHeader(api: ApiClient) {
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
         ) {
-            Avatar(me.avatarId, me.name, api)
+            Avatar(me?.avatarId, me?.name.orEmpty(), api)
         }
 
         Spacer(Modifier.width(12.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = me.name,
+                text = me?.name.orEmpty(),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = me.orgInfo.name,
+                text = me?.orgInfo?.name.orEmpty(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            me.orgInfo.balance?.let { balance ->
+            me?.currentBranch?.let { branch ->
+                Text(
+                    text = branch.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            me?.orgInfo?.balance?.let { balance ->
                 Text(
                     text = stringResource(Res.string.label_balance_value, balance.formatted),
                     style = MaterialTheme.typography.bodySmall,
@@ -775,6 +749,7 @@ private fun DrawerAccountHeader(api: ApiClient) {
 @Composable
 private fun DrawerContent(
     api: ApiClient,
+    me: AuthMeResponse?,
     selectedItem: NavItem,
     expanded: Boolean,
     onItemSelected: (NavItem) -> Unit,
@@ -814,7 +789,7 @@ private fun DrawerContent(
         }
 
         if (expanded) {
-            DrawerAccountHeader(api)
+            DrawerAccountHeader(api, me)
         }
 
         HorizontalDivider()
@@ -857,8 +832,6 @@ private fun MainTopAppBar(
     showMenuButton: Boolean,
     windowSize: WindowSize,
     notifications: List<AppNotification>,
-    currentBranchName: String?,
-    onBranchClick: () -> Unit,
     onMarkNotificationRead: (Uuid) -> Unit,
     onMarkAllNotificationsRead: () -> Unit,
     onNotificationNavigate: (NotificationLink) -> Unit,
@@ -901,13 +874,6 @@ private fun MainTopAppBar(
         },
         actions = {
             extraActions()
-            if (currentBranchName != null) {
-                AssistChip(
-                    onClick = onBranchClick,
-                    label = { Text(currentBranchName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.padding(end = 4.dp),
-                )
-            }
             NotificationBell(
                 notifications = notifications,
                 windowSize = windowSize,

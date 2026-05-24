@@ -63,6 +63,8 @@ sealed class AppRoute {
 
     @Serializable data object SettingsEditProfile : AppRoute()
 
+    @Serializable data object SettingsSwitchBranch : AppRoute()
+
     @Serializable data object Tasks : AppRoute()
 
     @Serializable data class TaskDetail(val id: String) : AppRoute()

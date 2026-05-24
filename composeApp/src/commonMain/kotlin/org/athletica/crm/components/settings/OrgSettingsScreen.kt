@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PeopleAlt
 import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -77,6 +78,8 @@ import org.athletica.crm.generated.resources.settings_item_sms
 import org.athletica.crm.generated.resources.settings_item_sms_subtitle
 import org.athletica.crm.generated.resources.settings_item_subscription_templates
 import org.athletica.crm.generated.resources.settings_item_subscription_templates_subtitle
+import org.athletica.crm.generated.resources.settings_item_switch_branch
+import org.athletica.crm.generated.resources.settings_item_switch_branch_subtitle
 import org.athletica.crm.generated.resources.settings_section_basic
 import org.athletica.crm.generated.resources.settings_section_classes
 import org.athletica.crm.generated.resources.settings_section_clients
@@ -137,6 +140,7 @@ private fun buildSections(
     onNavigateToActivityLog: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
+    onNavigateToSwitchBranch: () -> Unit,
     onNavigateToRoles: () -> Unit,
 ) = listOf(
     SettingSection(
@@ -150,6 +154,14 @@ private fun buildSections(
                     containerColor = Ic.OrangeContainer,
                     iconColor = Ic.Orange,
                     onClick = onNavigateToEditProfile,
+                ),
+                SettingItem(
+                    title = stringResource(Res.string.settings_item_switch_branch),
+                    subtitle = stringResource(Res.string.settings_item_switch_branch_subtitle),
+                    icon = Icons.Default.SwapHoriz,
+                    containerColor = Ic.OrangeContainer,
+                    iconColor = Ic.Orange,
+                    onClick = onNavigateToSwitchBranch,
                 ),
                 SettingItem(
                     title = stringResource(Res.string.settings_item_change_password),
@@ -333,6 +345,7 @@ private fun buildSections(
  * [onNavigateToActivityLog] — переход к логу действий пользователей.
  * [onNavigateToChangePassword] — переход к смене пароля.
  * [onNavigateToEditProfile] — переход к редактированию профиля пользователя.
+ * [onNavigateToSwitchBranch] — переход к смене текущего филиала.
  */
 @Composable
 fun OrgSettingsScreen(
@@ -347,6 +360,7 @@ fun OrgSettingsScreen(
     onNavigateToActivityLog: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToSwitchBranch: () -> Unit = {},
     onNavigateToRoles: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -363,6 +377,7 @@ fun OrgSettingsScreen(
             onNavigateToActivityLog = onNavigateToActivityLog,
             onNavigateToChangePassword = onNavigateToChangePassword,
             onNavigateToEditProfile = onNavigateToEditProfile,
+            onNavigateToSwitchBranch = onNavigateToSwitchBranch,
             onNavigateToRoles = onNavigateToRoles,
         )
     LazyColumn(

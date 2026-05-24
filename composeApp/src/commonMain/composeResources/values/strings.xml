@@ -220,6 +220,8 @@
     <string name="settings_section_user">Пользователь</string>
     <string name="settings_item_edit_profile">Редактировать профиль</string>
     <string name="settings_item_edit_profile_subtitle">Имя, фото и контактные данные</string>
+    <string name="settings_item_switch_branch">Сменить филиал</string>
+    <string name="settings_item_switch_branch_subtitle">Перейти в другой филиал организации</string>
     <string name="settings_item_change_password">Сменить пароль</string>
     <string name="settings_item_change_password_subtitle">Изменить текущий пароль аккаунта</string>
     <string name="settings_section_basic">Основное</string>
@@ -411,8 +413,8 @@
     </plurals>
 
     <!-- Branch switching -->
-    <string name="branch_switch_title">Выбор филиала</string>
-    <string name="cd_branch_chip">Текущий филиал</string>
+    <string name="branch_switch_error">Не удалось загрузить филиалы</string>
+    <string name="branch_switch_current">Текущий филиал</string>
 
     <!-- Employee branch access -->
     <string name="section_branch_access">Доступ к филиалам</string>

@@ -24,8 +24,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -43,7 +44,6 @@ import org.athletica.crm.generated.resources.list_action_close_search
 import org.athletica.crm.generated.resources.list_action_column_settings
 import org.athletica.crm.generated.resources.list_action_filters
 import org.athletica.crm.generated.resources.list_action_filters_with_count
-import org.athletica.crm.generated.resources.list_action_open_search
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 
@@ -75,9 +75,12 @@ data class ListPageFilterPanel(
  * Корневой скаффолд для страницы со списком.
  *
  * Адаптирует верстку под три размера окна ([WindowSize]):
- * - COMPACT: мобильный (поиск — оверлей, фильтры — bottom sheet).
- * - MEDIUM: планшет/узкий десктоп (таблица, фильтры — bottom sheet).
- * - EXPANDED: широкий десктоп (поиск встроен в строку, фильтры — боковая панель).
+ * - COMPACT: мобильный — M3 [SearchBar] виден всегда; по тапу разворачивается в
+ *   полноэкранный режим, содержимое страницы (saved views, фильтры, список) рендерится
+ *   внутри expanded-слота — список остаётся виден во время поиска. Фильтры — bottom sheet.
+ * - MEDIUM: планшет/узкий десктоп — [SearchBar] inline сверху, expansion заблокирована;
+ *   фильтры — bottom sheet.
+ * - EXPANDED: широкий десктоп — [SearchBar] inline сверху, фильтры — боковая панель.
  *
  * [title] — заголовок страницы для [LocalListPageTopBar].
  * [subtitle] — подзаголовок (количество записей, активный вид и т.п.). `null` — скрыт.
@@ -127,45 +130,50 @@ fun ListPageScaffold(
     val topBarController = LocalListPageTopBar.current
     LaunchedEffect(title, subtitle) { topBarController.set(title, subtitle) }
 
-    var searchActive by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    val expandedOnCompact = expanded && windowSize == WindowSize.COMPACT
 
     val showSavedViewRow = savedViews.isNotEmpty() || onSaveCurrentView != null
 
-    val mainContent: @Composable () -> Unit = {
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (windowSize >= WindowSize.MEDIUM) {
-                SearchRow(
-                    query = searchQuery,
-                    onQueryChange = onSearchQueryChange,
-                    placeholder = searchPlaceholder,
-                )
-            }
-            if (showSavedViewRow) {
-                SavedViewRow(
-                    savedViews = savedViews,
-                    activeSavedViewId = activeSavedViewId,
-                    onSaveCurrentView = onSaveCurrentView,
-                )
-            }
-            FilterControlRow(
-                activeFilterCount = activeFilterCount,
-                onOpenFilters = onOpenFilters,
-                quickFilterChips = quickFilterChips,
-                onOpenColumnSettings = onOpenColumnSettings,
-                sortChipLabel = sortChipLabel,
-                onOpenSortDialog = onOpenSortDialog,
-                windowSize = windowSize,
-                searchActive = searchActive,
-                onOpenSearch = { searchActive = true },
+    val pageBody: @Composable () -> Unit = {
+        if (showSavedViewRow) {
+            SavedViewRow(
+                savedViews = savedViews,
+                activeSavedViewId = activeSavedViewId,
+                onSaveCurrentView = onSaveCurrentView,
             )
-            content()
         }
+        FilterControlRow(
+            activeFilterCount = activeFilterCount,
+            onOpenFilters = onOpenFilters,
+            quickFilterChips = quickFilterChips,
+            onOpenColumnSettings = onOpenColumnSettings,
+            sortChipLabel = sortChipLabel,
+            onOpenSortDialog = onOpenSortDialog,
+            windowSize = windowSize,
+        )
+        content()
+    }
+
+    val searchBarBlock: @Composable () -> Unit = {
+        SearchBarBlock(
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            placeholder = searchPlaceholder,
+            expanded = expandedOnCompact,
+            onExpandedChange = { newExpanded ->
+                if (windowSize == WindowSize.COMPACT) {
+                    expanded = newExpanded
+                }
+            },
+            expandedContent = pageBody,
+        )
     }
 
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
-            if (bulkActionBar == null) {
+            if (bulkActionBar == null && !expandedOnCompact) {
                 fab()
             }
         },
@@ -174,26 +182,18 @@ fun ListPageScaffold(
         if (windowSize == WindowSize.EXPANDED && filterPanel?.visible == true) {
             Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    mainContent()
+                    searchBarBlock()
+                    pageBody()
                 }
                 FilterSidePanel(filterPanel = filterPanel)
             }
         } else {
             Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                mainContent()
+                searchBarBlock()
+                if (!expandedOnCompact) {
+                    pageBody()
+                }
             }
-        }
-
-        if (windowSize == WindowSize.COMPACT && searchActive) {
-            SearchOverlay(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = searchPlaceholder,
-                onClose = {
-                    searchActive = false
-                    onSearchQueryChange("")
-                },
-            )
         }
 
         if (windowSize != WindowSize.EXPANDED && filterPanel?.visible == true) {
@@ -216,58 +216,71 @@ fun ListPageScaffold(
 }
 
 /**
- * Строка поиска для medium/expanded — всегда видима.
+ * Универсальный блок M3 [SearchBar] для всех размеров окна.
+ *
+ * На MEDIUM/EXPANDED — постоянно видимое поле (expansion заблокирована вызывающей
+ * стороной через [expanded]=`false`). На COMPACT при [expanded]=`true` бар становится
+ * полноэкранным, а внутри content-слота рендерится [expandedContent] — список и
+ * фильтры остаются видны во время поиска.
+ *
+ * [searchQuery] — текущий запрос.
+ * [onSearchQueryChange] — обработчик ввода.
+ * [placeholder] — подсказка.
+ * [expanded] — раскрыт ли бар (для текущей вёрстки имеет смысл только на COMPACT).
+ * [onExpandedChange] — переключатель expanded; вызывающая сторона игнорирует на больших экранах.
+ * [expandedContent] — контент, показываемый внутри раскрытого бара (видим только на COMPACT в expanded).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchRow(
-    query: String,
-    onQueryChange: (String) -> Unit,
+private fun SearchBarBlock(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     placeholder: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    expandedContent: @Composable () -> Unit,
 ) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text(placeholder) },
-        singleLine = true,
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-    )
-}
-
-/**
- * Оверлей поиска для compact — перекрывает весь экран при активации.
- */
-@Composable
-private fun SearchOverlay(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    placeholder: String,
-    onClose: () -> Unit,
-) {
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(Res.string.list_action_close_search),
-                )
-            }
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
+    SearchBar(
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onSearch = { /* ввод уже триггерит debounce-загрузку в ListPageViewModel */ },
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
                 placeholder = { Text(placeholder) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
+                leadingIcon = {
+                    if (expanded) {
+                        IconButton(onClick = { onExpandedChange(false) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(Res.string.list_action_close_search),
+                            )
+                        }
+                    } else {
+                        Icon(imageVector = Icons.Default.Search, contentDescription = null)
+                    }
+                },
             )
-        }
+        },
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        expandedContent()
     }
 }
 
 /**
  * Панель управления фильтрами: кнопка фильтров, чипы активных фильтров, сортировка, настройки.
+ *
+ * [activeFilterCount] — количество активных фильтров (0 — без счётчика на кнопке).
+ * [onOpenFilters] — открыть панель фильтров.
+ * [quickFilterChips] — слот для чипов активных фильтров.
+ * [onOpenColumnSettings] — открыть настройки колонок. `null` — кнопка скрыта.
+ * [sortChipLabel] — текст чипа сортировки на COMPACT. `null` — чип скрыт.
+ * [onOpenSortDialog] — открыть диалог сортировки. `null` — чип скрыт.
+ * [windowSize] — текущий размер окна (определяет видимость чипа сортировки).
  */
 @Composable
 private fun FilterControlRow(
@@ -278,8 +291,6 @@ private fun FilterControlRow(
     sortChipLabel: String?,
     onOpenSortDialog: (() -> Unit)?,
     windowSize: WindowSize,
-    searchActive: Boolean,
-    onOpenSearch: () -> Unit,
 ) {
     Row(
         modifier =
@@ -310,16 +321,8 @@ private fun FilterControlRow(
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
             )
         }
-        Spacer(modifier = Modifier.weight(1f))
-        if (windowSize == WindowSize.COMPACT && !searchActive) {
-            IconButton(onClick = onOpenSearch) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(Res.string.list_action_open_search),
-                )
-            }
-        }
         if (onOpenColumnSettings != null) {
+            Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onOpenColumnSettings) {
                 Icon(
                     imageVector = Icons.Default.Settings,

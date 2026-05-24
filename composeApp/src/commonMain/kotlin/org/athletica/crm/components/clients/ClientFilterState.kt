@@ -1,6 +1,5 @@
 package org.athletica.crm.components.clients
 
-import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.core.Gender
 
 /**
@@ -12,22 +11,14 @@ data class ClientFilterState(
     val hasDebtOnly: Boolean = false,
     val noGroupOnly: Boolean = false,
 ) {
-    /** Количество активных фильтров, отображаемых чипами. */
-    val chipCount: Int
+    /** Количество активных фильтров для бейджа кнопки «Фильтры». */
+    val activeCount: Int
         get() =
             listOf(
                 gender != GenderFilter.All,
                 hasDebtOnly,
                 noGroupOnly,
             ).count { it }
-
-    /** Применить к списку: возвращает отфильтрованный список клиентов. */
-    fun applyTo(clients: List<ClientListItem>): List<ClientListItem> =
-        clients.filter { client ->
-            (gender == GenderFilter.All || client.gender == gender.value) &&
-                (!hasDebtOnly || client.balance.isNegative) &&
-                (!noGroupOnly || client.groups.isEmpty())
-        }
 }
 
 /** Фильтр по полу клиента. */

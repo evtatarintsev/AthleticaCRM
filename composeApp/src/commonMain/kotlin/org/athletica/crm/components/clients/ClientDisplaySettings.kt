@@ -5,6 +5,11 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.settings.ClientsDisplaySettings
 import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.label_balance
+import org.athletica.crm.generated.resources.label_birthday
+import org.athletica.crm.generated.resources.label_gender
+import org.athletica.crm.generated.resources.label_groups
 
 /**
  * Настройки отображения таблицы клиентов.
@@ -65,6 +70,15 @@ fun ClientDisplaySettings.toApiModel(): ClientsDisplaySettings =
     ClientsDisplaySettings(
         columns = columns.map { it.apiKey },
     )
+
+/** Возвращает строковый ресурс с локализованным названием стандартного поля клиента. */
+fun ClientField.labelRes() =
+    when (this) {
+        ClientField.GENDER -> Res.string.label_gender
+        ClientField.BIRTHDAY -> Res.string.label_birthday
+        ClientField.BALANCE -> Res.string.label_balance
+        ClientField.GROUPS -> Res.string.label_groups
+    }
 
 /**
  * Преобразует API-модель настроек в локальные настройки отображения.

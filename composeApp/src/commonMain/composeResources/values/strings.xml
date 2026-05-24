@@ -510,5 +510,11 @@
     <string name="list_sort_ascending">По возрастанию</string>
     <string name="list_sort_descending">По убыванию</string>
     <string name="list_sort_reset">Сбросить</string>
+    <string name="clients_title">Клиенты</string>
+    <string name="clients_search_placeholder">Поиск по клиентам</string>
+    <string name="clients_view_all">Все</string>
+    <string name="clients_view_in_debt">Должники</string>
+    <string name="clients_view_without_group">Без группы</string>
+    <string name="clients_load_error">Ошибка загрузки клиентов</string>
 
 </resources>

@@ -116,9 +116,9 @@ import org.athletica.crm.generated.resources.action_download_desktop
 import org.athletica.crm.generated.resources.action_logout
 import org.athletica.crm.generated.resources.action_open_menu
 import org.athletica.crm.generated.resources.action_toggle_nav
-import org.athletica.crm.generated.resources.download_desktop_subtitle
 import org.athletica.crm.generated.resources.app_name
 import org.athletica.crm.generated.resources.cd_app_logo
+import org.athletica.crm.generated.resources.download_desktop_subtitle
 import org.athletica.crm.generated.resources.label_balance_value
 import org.athletica.crm.generated.resources.nav_clients
 import org.athletica.crm.generated.resources.nav_employees
@@ -434,6 +434,7 @@ private fun AppNavHost(
             ClientsScreen(
                 api = api,
                 displaySettingsVm = displaySettingsVm,
+                windowSize = windowSize,
                 onNavigateToCreate = { navController.navigate(AppRoute.ClientCreate) },
                 onClientClick = { id -> navController.navigate(AppRoute.ClientDetail(id.toString())) },
                 onNavigateToExport = { selectedIds ->

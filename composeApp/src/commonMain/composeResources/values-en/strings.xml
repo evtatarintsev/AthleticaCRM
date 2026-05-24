@@ -467,5 +467,11 @@
     <string name="list_sort_ascending">Ascending</string>
     <string name="list_sort_descending">Descending</string>
     <string name="list_sort_reset">Reset</string>
+    <string name="clients_title">Clients</string>
+    <string name="clients_search_placeholder">Search clients</string>
+    <string name="clients_view_all">All</string>
+    <string name="clients_view_in_debt">In Debt</string>
+    <string name="clients_view_without_group">No Group</string>
+    <string name="clients_load_error">Failed to load clients</string>
 
 </resources>

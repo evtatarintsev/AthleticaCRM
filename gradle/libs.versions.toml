@@ -31,6 +31,7 @@ coil3 = "3.1.0"
 reorderable = "3.1.0"
 sentry = "8.12.0"
 commons-csv = "1.11.0"
+clikt = "5.0.3"
 
 [libraries]
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
@@ -89,6 +90,7 @@ coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.r
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 sentry-logback = { module = "io.sentry:sentry-logback", version.ref = "sentry" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commons-csv" }
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 
 [plugins]
 composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }
@@ -99,3 +101,4 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version = "8.3.6" }

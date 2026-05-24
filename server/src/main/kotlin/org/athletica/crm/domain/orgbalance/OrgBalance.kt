@@ -1,13 +1,26 @@
 package org.athletica.crm.domain.orgbalance
 
-import org.athletica.crm.core.entityids.EmployeeId
+import arrow.core.raise.context.Raise
+import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 interface OrgBalance {
     val totalAmount: Money
     val history: List<OrgBalanceEntry>
+
+    /**
+     * Корректирует баланс организации: [amount] > 0 — зачисление, < 0 — списание.
+     * [description] — обязательное описание причины операции.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun adjust(
+        amount: Money,
+        description: String,
+    ): OrgBalance
 }
 
 /** Одна запись в журнале операций по балансу организации. */
@@ -17,14 +30,10 @@ data class OrgBalanceEntry(
     val amount: Money,
     /** Баланс организации после операции. */
     val balanceAfter: Money,
-    /** Тип операции: replenishment, bonus, system_fee, admin_credit, admin_debit. */
+    /** Тип операции: admin_credit, admin_debit, system_fee, replenishment, bonus. */
     val operationType: String,
-    /** Метод оплаты — заполняется только для типа replenishment. */
-    val paymentMethod: String?,
     /** Текстовое описание операции. */
-    val description: String?,
-    /** Идентификатор сотрудника, выполнившего операцию. */
-    val performedBy: EmployeeId,
+    val description: String,
     /** Время операции. */
     val createdAt: Instant,
 )

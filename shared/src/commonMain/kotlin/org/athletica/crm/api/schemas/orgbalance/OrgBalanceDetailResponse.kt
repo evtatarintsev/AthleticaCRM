@@ -1,7 +1,6 @@
 package org.athletica.crm.api.schemas.orgbalance
 
 import kotlinx.serialization.Serializable
-import org.athletica.crm.api.schemas.common.PerformedBy
 import org.athletica.crm.core.money.Money
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -14,14 +13,10 @@ data class OrgBalanceJournalEntry(
     val amount: Money,
     /** Баланс организации после операции. */
     val balanceAfter: Money,
-    /** Тип операции: replenishment, bonus, system_fee, admin_credit, admin_debit. */
+    /** Тип операции: admin_credit, admin_debit, system_fee, replenishment, bonus. */
     val operationType: String,
-    /** Метод оплаты — заполняется только для типа replenishment. */
-    val paymentMethod: String?,
     /** Текстовое описание операции. */
-    val description: String?,
-    /** Сотрудник, выполнивший операцию, либо null если данные удалены. */
-    val performedBy: PerformedBy?,
+    val description: String,
     /** Время операции. */
     val createdAt: Instant,
 )

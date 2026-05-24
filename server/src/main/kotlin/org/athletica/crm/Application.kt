@@ -171,7 +171,7 @@ fun Application.configureServer() {
                         context(di.passwordHasher) {
                             profileRoutes(di.organizations, di.orgBalances)
                         }
-                        orgBalanceRoutes(di.orgBalances, di.employees)
+                        orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {
                             uploadRoutes()
                         }

@@ -223,20 +223,15 @@ private fun OrgBalanceEntryItem(entry: OrgBalanceJournalEntry) {
         },
         supportingContent = {
             Column {
-                val description = entry.description
-                if (!description.isNullOrBlank()) {
+                if (entry.description.isNotBlank()) {
                     Text(
-                        text = description,
+                        text = entry.description,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
                 val meta =
                     buildString {
                         append(entry.operationType)
-                        entry.performedBy?.let {
-                            append(" · ")
-                            append(it.name)
-                        }
                         append(" · ")
                         append(entry.createdAt.formatDateTime())
                     }

@@ -5,8 +5,8 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -15,7 +15,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -43,7 +43,7 @@ class DbTasksTest {
     private fun ctx(
         id: EmployeeId = employeeId,
         permission: EmployeePermission = EmployeePermission(),
-    ) = RequestContext(
+    ) = EmployeeRequestContext(
         lang = Lang.RU,
         userId = userId,
         orgId = orgId,
@@ -57,7 +57,7 @@ class DbTasksTest {
 
     private val ctx = ctx()
     private val otherCtx = ctx(id = otherEmployeeId)
-    private val ctxWithViewAll = ctx(permission = EmployeePermission(emptyList(), setOf(Permission.CAN_VIEW_ALL_TASKS), emptySet()))
+    private val ctxWithViewAll = ctx(permission = EmployeePermission(emptyList(), setOf(UserPermission.CAN_VIEW_ALL_TASKS), emptySet()))
 
     @Before
     fun setUp() {

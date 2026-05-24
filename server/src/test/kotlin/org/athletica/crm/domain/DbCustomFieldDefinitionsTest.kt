@@ -5,8 +5,8 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldKey
 import org.athletica.crm.core.customfields.toFieldKey
@@ -30,28 +30,28 @@ class DbCustomFieldDefinitionsTest {
     private val otherOrgId = OrgId.new()
 
     private val ctx =
-        RequestContext(
-            Lang.EN,
-            UserId.new(),
-            orgId,
-            BranchId.new(),
-            EmployeeId.new(),
-            "test@example.com",
-            null,
-            Currency.RUB,
-            EmployeePermission(),
+        EmployeeRequestContext(
+            lang = Lang.EN,
+            orgId = orgId,
+            currency = Currency.RUB,
+            userId = UserId.new(),
+            branchId = BranchId.new(),
+            employeeId = EmployeeId.new(),
+            username = "test@example.com",
+            clientIp = null,
+            permission = EmployeePermission(),
         )
     private val otherCtx =
-        RequestContext(
-            Lang.EN,
-            UserId.new(),
-            otherOrgId,
-            BranchId.new(),
-            EmployeeId.new(),
-            "other@example.com",
-            null,
-            Currency.RUB,
-            EmployeePermission(),
+        EmployeeRequestContext(
+            lang = Lang.EN,
+            orgId = otherOrgId,
+            currency = Currency.RUB,
+            userId = UserId.new(),
+            branchId = BranchId.new(),
+            employeeId = EmployeeId.new(),
+            username = "other@example.com",
+            clientIp = null,
+            permission = EmployeePermission(),
         )
 
     private val definitions = DbCustomFieldDefinitions()

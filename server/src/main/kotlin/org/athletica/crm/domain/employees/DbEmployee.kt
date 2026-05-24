@@ -2,7 +2,7 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -27,7 +27,7 @@ data class DbEmployee(
     override val branchIds: List<BranchId>,
     private val users: Users,
 ) : Employee {
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {
         tr.sql(
             """
@@ -106,13 +106,13 @@ data class DbEmployee(
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun invite(email: EmailAddress, password: String) {
         val user = users.new(email.value, password)
         copy(userId = user.id, isActive = true, email = email).save()
     }
 
-    context(ctx: RequestContext)
+    context(ctx: EmployeeRequestContext)
     override fun withNew(
         newName: String,
         newPermissions: EmployeePermission,

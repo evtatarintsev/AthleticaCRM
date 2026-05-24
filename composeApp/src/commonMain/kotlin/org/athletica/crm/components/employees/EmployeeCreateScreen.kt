@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.employees.RoleItem
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.permissions.displayName
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_photo
@@ -254,7 +254,7 @@ internal fun EmployeeRolesAndPermissionsForm(
         modifier = Modifier.fillMaxWidth(),
     )
     Column(modifier = Modifier.fillMaxWidth()) {
-        Permission.entries.forEachIndexed { index, permission ->
+        UserPermission.entries.forEachIndexed { index, permission ->
             ListItem(
                 headlineContent = { Text(permission.displayName()) },
                 trailingContent = {
@@ -277,7 +277,7 @@ internal fun EmployeeRolesAndPermissionsForm(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (index < Permission.entries.lastIndex) {
+            if (index < UserPermission.entries.lastIndex) {
                 HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
             }
         }
@@ -290,7 +290,7 @@ internal fun EmployeeRolesAndPermissionsForm(
         modifier = Modifier.fillMaxWidth(),
     )
     Column(modifier = Modifier.fillMaxWidth()) {
-        Permission.entries.forEachIndexed { index, permission ->
+        UserPermission.entries.forEachIndexed { index, permission ->
             ListItem(
                 headlineContent = { Text(permission.displayName()) },
                 trailingContent = {
@@ -313,7 +313,7 @@ internal fun EmployeeRolesAndPermissionsForm(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (index < Permission.entries.lastIndex) {
+            if (index < UserPermission.entries.lastIndex) {
                 HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
             }
         }

@@ -3,7 +3,7 @@ package org.athletica.crm.domain.branch
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -17,7 +17,7 @@ import org.athletica.crm.storage.asUuid
 import kotlin.uuid.toJavaUuid
 
 class DbBranches : Branches {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Branch> =
         tr.sql("SELECT b.id, b.name FROM branches b WHERE b.org_id = :orgId ORDER BY b.name")
             .bind("orgId", ctx.orgId)
@@ -25,7 +25,7 @@ class DbBranches : Branches {
                 Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name"))
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun create(branch: Branch) {
         try {
             tr
@@ -39,7 +39,7 @@ class DbBranches : Branches {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun update(branch: Branch) {
         val updatedRows =
             try {
@@ -83,7 +83,7 @@ class DbBranches : Branches {
             .list { Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name")) }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun delete(ids: List<BranchId>) {
         if (ids.isEmpty()) {
             return

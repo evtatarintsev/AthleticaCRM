@@ -4,8 +4,8 @@ import arrow.core.Either
 import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -88,7 +88,7 @@ class ClientListTest {
     }
 
     private fun ctx(orgId: Uuid) =
-        RequestContext(
+        EmployeeRequestContext(
             lang = Lang.EN,
             userId = UserId.new(),
             orgId = OrgId(orgId),

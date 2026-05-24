@@ -3,7 +3,7 @@ package org.athletica.crm.domain.hall
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -15,7 +15,7 @@ import org.athletica.crm.storage.asUuid
 import kotlin.uuid.toJavaUuid
 
 class DbHalls : Halls {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Hall> =
         tr.sql("SELECT h.id, h.name FROM halls h WHERE h.org_id = :orgId AND h.branch_id = :branchId ORDER BY h.name")
             .bind("orgId", ctx.orgId)
@@ -24,7 +24,7 @@ class DbHalls : Halls {
                 Hall(id = it.asUuid("id").toHallId(), name = it.asString("name"))
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun create(hall: Hall) {
         try {
             tr
@@ -39,7 +39,7 @@ class DbHalls : Halls {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun update(hall: Hall) {
         val updatedRows =
             try {
@@ -59,7 +59,7 @@ class DbHalls : Halls {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun delete(ids: List<HallId>) {
         if (ids.isEmpty()) {
             return
@@ -91,7 +91,7 @@ class DbHalls : Halls {
             .execute()
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: HallId): Hall =
         tr.sql("SELECT h.id, h.name FROM halls h WHERE h.id = :id AND h.org_id = :orgId AND h.branch_id = :branchId")
             .bind("id", id.value)

@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.orgbalance
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
@@ -19,7 +19,7 @@ data class OrgBalanceData(
 ) : OrgBalance
 
 class DbOrgBalances : OrgBalances {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun current(): OrgBalance {
         val entries =
             tr

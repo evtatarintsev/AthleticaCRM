@@ -6,8 +6,8 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -33,9 +33,16 @@ class DbClientBalancesTest {
     private val employeeId = EmployeeId.new()
 
     private val ctx =
-        RequestContext(
-            Lang.EN, userId, orgId, BranchId.new(), employeeId, "admin@example.com", null,
-            Currency.RUB, EmployeePermission(),
+        EmployeeRequestContext(
+            lang = Lang.EN,
+            orgId = orgId,
+            currency = Currency.RUB,
+            userId = userId,
+            branchId = BranchId.new(),
+            employeeId = employeeId,
+            username = "admin@example.com",
+            clientIp = null,
+            permission = EmployeePermission(),
         )
 
     private fun rub(amount: Double): Money = Money(java.math.BigDecimal(amount.toString()).movePointRight(Currency.RUB.fractionDigits).toLong(), Currency.RUB)

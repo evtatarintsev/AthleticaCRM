@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.mail
 
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.OrgEmailId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toOrgEmailId
@@ -13,7 +13,7 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 
 class DbOrgEmails : OrgEmails {
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun schedule(
         orgId: OrgId,
         to: List<EmailAddress>,

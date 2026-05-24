@@ -5,7 +5,7 @@ import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.DayOfWeek
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -34,22 +34,22 @@ interface Group {
     /** Преподаватели группы, используемые как шаблон при генерации занятий. */
     val employeeIds: List<EmployeeId>
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewName(name: String): Group
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNew(
         name: String,
         disciplines: List<DisciplineId>,
@@ -69,7 +69,7 @@ data class ScheduleSlot(
     val endAt: LocalTime,
     val hallId: HallId,
 ) {
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     fun validate() {
         if (endAt <= startAt) {
             raise(

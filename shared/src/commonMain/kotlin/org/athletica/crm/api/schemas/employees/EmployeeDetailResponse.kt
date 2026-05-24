@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import kotlin.time.Instant
 
 /** Полные данные сотрудника. */
@@ -19,8 +19,8 @@ data class EmployeeDetailResponse(
     val roles: List<EmployeeRole>,
     val phoneNo: String? = null,
     val email: String? = null,
-    val grantedPermissions: Set<Permission> = emptySet(),
-    val revokedPermissions: Set<Permission> = emptySet(),
+    val grantedPermissions: Set<UserPermission> = emptySet(),
+    val revokedPermissions: Set<UserPermission> = emptySet(),
     /** true — доступ ко всем филиалам. */
     val allBranchesAccess: Boolean = true,
     /** Конкретные филиалы; актуально только когда [allBranchesAccess] = false. */

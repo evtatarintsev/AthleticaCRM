@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.orgbalance
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -25,6 +25,6 @@ import java.util.concurrent.ConcurrentHashMap
 class LocMemCachedOrgBalances(private val delegate: OrgBalances) : OrgBalances {
     private val orgs: ConcurrentHashMap<OrgId, OrgBalance> = ConcurrentHashMap()
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun current(): OrgBalance = orgs[ctx.orgId] ?: delegate.current().also { orgs[ctx.orgId] = it }
 }

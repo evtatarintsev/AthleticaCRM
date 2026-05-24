@@ -3,7 +3,7 @@ package org.athletica.crm.components.employees
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import kotlin.uuid.Uuid
 
 /**
@@ -15,8 +15,8 @@ data class EmployeeForm(
     val phoneNo: String = "",
     val email: String = "",
     val selectedRoleIds: Set<Uuid> = emptySet(),
-    val grantedPermissions: Set<Permission> = emptySet(),
-    val revokedPermissions: Set<Permission> = emptySet(),
+    val grantedPermissions: Set<UserPermission> = emptySet(),
+    val revokedPermissions: Set<UserPermission> = emptySet(),
     /** true — доступ ко всем филиалам. */
     val allBranchesAccess: Boolean = true,
     /** Выбранные филиалы; учитывается только когда [allBranchesAccess] = false. */

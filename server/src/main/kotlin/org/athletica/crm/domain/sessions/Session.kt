@@ -3,7 +3,7 @@ package org.athletica.crm.domain.sessions
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
@@ -60,10 +60,10 @@ interface Session {
     /** Признак, что состав преподавателей меняли вручную на уровне занятия. */
     val isEmployeeAssignmentOverridden: Boolean
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun cancel()
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun reschedule(
         newDate: LocalDate,
         newStartTime: LocalTime,
@@ -71,9 +71,9 @@ interface Session {
         newHallId: HallId,
     )
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun complete()
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun setEmployees(employeeIds: List<EmployeeId>)
 }

@@ -1,13 +1,13 @@
 package org.athletica.crm.domain.employees
 
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
 class EmployeePermissionTest {
-    private fun role(vararg permissions: Permission) =
+    private fun role(vararg permissions: UserPermission) =
         EmployeeRole(
             id = Uuid.random(),
             name = "role",
@@ -19,7 +19,7 @@ class EmployeePermissionTest {
     @Test
     fun `возвращает false если нет ролей и нет overrides`() {
         val p = EmployeePermission(emptyList(), emptySet(), emptySet())
-        assertFalse(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertFalse(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     // ─── права через роль ────────────────────────────────────────────────────
@@ -28,11 +28,11 @@ class EmployeePermissionTest {
     fun `возвращает true если право есть в роли`() {
         val p =
             EmployeePermission(
-                roles = listOf(role(Permission.CAN_VIEW_CLIENT_BALANCE)),
+                roles = listOf(role(UserPermission.CAN_VIEW_CLIENT_BALANCE)),
                 grantedPermissions = emptySet(),
                 revokedPermissions = emptySet(),
             )
-        assertTrue(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertTrue(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     @Test
@@ -43,18 +43,18 @@ class EmployeePermissionTest {
                 grantedPermissions = emptySet(),
                 revokedPermissions = emptySet(),
             )
-        assertFalse(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertFalse(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     @Test
     fun `возвращает true если право есть хотя бы в одной из нескольких ролей`() {
         val p =
             EmployeePermission(
-                roles = listOf(role(), role(Permission.CAN_VIEW_CLIENT_BALANCE)),
+                roles = listOf(role(), role(UserPermission.CAN_VIEW_CLIENT_BALANCE)),
                 grantedPermissions = emptySet(),
                 revokedPermissions = emptySet(),
             )
-        assertTrue(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertTrue(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     // ─── grantedPermissions ──────────────────────────────────────────────────
@@ -64,10 +64,10 @@ class EmployeePermissionTest {
         val p =
             EmployeePermission(
                 roles = emptyList(),
-                grantedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
+                grantedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
                 revokedPermissions = emptySet(),
             )
-        assertTrue(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertTrue(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     // ─── revokedPermissions ──────────────────────────────────────────────────
@@ -76,11 +76,11 @@ class EmployeePermissionTest {
     fun `возвращает false если право явно отозвано даже при наличии в роли`() {
         val p =
             EmployeePermission(
-                roles = listOf(role(Permission.CAN_VIEW_CLIENT_BALANCE)),
+                roles = listOf(role(UserPermission.CAN_VIEW_CLIENT_BALANCE)),
                 grantedPermissions = emptySet(),
-                revokedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
+                revokedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
             )
-        assertFalse(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertFalse(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     @Test
@@ -88,10 +88,10 @@ class EmployeePermissionTest {
         val p =
             EmployeePermission(
                 roles = emptyList(),
-                grantedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
-                revokedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
+                grantedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
+                revokedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
             )
-        assertFalse(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertFalse(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     // ─── приоритет: revoked > granted > roles ─────────────────────────────────
@@ -101,20 +101,20 @@ class EmployeePermissionTest {
         val p =
             EmployeePermission(
                 roles = listOf(role()),
-                grantedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
+                grantedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
                 revokedPermissions = emptySet(),
             )
-        assertTrue(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertTrue(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 
     @Test
     fun `revoked перекрывает и роли и granted одновременно`() {
         val p =
             EmployeePermission(
-                roles = listOf(role(Permission.CAN_VIEW_CLIENT_BALANCE)),
-                grantedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
-                revokedPermissions = setOf(Permission.CAN_VIEW_CLIENT_BALANCE),
+                roles = listOf(role(UserPermission.CAN_VIEW_CLIENT_BALANCE)),
+                grantedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
+                revokedPermissions = setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
             )
-        assertFalse(p.hasPermission(Permission.CAN_VIEW_CLIENT_BALANCE))
+        assertFalse(p.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
     }
 }

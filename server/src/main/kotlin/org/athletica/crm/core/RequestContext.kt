@@ -5,29 +5,90 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.core.permissions.Actor
+import org.athletica.crm.core.permissions.SystemActor
+import org.athletica.crm.core.permissions.SystemPermission
+import org.athletica.crm.core.permissions.UserActor
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.EmployeePermission
 
 /**
- * Контекст аутентифицированного HTTP-запроса.
+ * Базовый контекст выполнения операции.
+ * Содержит только поля, общие для всех типов actor'ов.
  *
- * [lang] — язык из заголовка `Accept-Language`.
+ * Подтипы:
+ * - [EmployeeRequestContext] — аутентифицированный HTTP-запрос от сотрудника
+ * - [SystemRequestContext] — фоновая системная операция (cron, event handlers)
+ * - [AdminRequestContext] — глобальный администратор Athletica (заглушка)
+ */
+sealed interface RequestContext {
+    /** Язык пользователя или системы. */
+    val lang: Lang
+
+    /** Идентификатор организации, в контексте которой выполняется операция. */
+    val orgId: OrgId
+
+    /** Валюта организации; используется для построения [org.athletica.crm.core.money.Money] из БД и форматирования. */
+    val currency: Currency
+}
+
+/**
+ * Контекст аутентифицированного HTTP-запроса от сотрудника организации.
+ *
  * [userId] — идентификатор пользователя из JWT-токена.
- * [orgId] — идентификатор организации из JWT-токена.
  * [branchId] — идентификатор текущего филиала из JWT-токена.
  * [employeeId] — идентификатор сотрудника из JWT-токена.
  * [username] — имя пользователя из JWT-токена (денормализовано).
  * [clientIp] — IP-адрес клиента; IPv4 или IPv6; null если определить не удалось.
- * [currency] — валюта организации; используется для построения [org.athletica.crm.core.money.Money] из БД и форматирования.
  */
-data class RequestContext(
-    val lang: Lang,
+data class EmployeeRequestContext(
+    override val lang: Lang,
+    override val orgId: OrgId,
+    override val currency: Currency,
     val userId: UserId,
-    val orgId: OrgId,
     val branchId: BranchId,
     val employeeId: EmployeeId,
     val username: String,
     val clientIp: String?,
-    val currency: Currency,
     private val permission: EmployeePermission,
-) : Actor by permission
+) : RequestContext,
+    UserActor by permission
+
+/**
+ * Контекст системных фоновых операций (cron, event handlers, воркеры).
+ * Не привязан к реальному пользователю или сотруднику.
+ *
+ * [branchId] — целевой филиал операции; null для org-wide операций.
+ */
+data class SystemRequestContext(
+    override val lang: Lang = Lang.RU,
+    override val orgId: OrgId,
+    override val currency: Currency = Currency.RUB,
+    val branchId: BranchId? = null,
+) : RequestContext,
+    SystemActor {
+    override fun hasPermission(p: SystemPermission): Boolean = true
+}
+
+/**
+ * Контекст глобального администратора системы Athletica.
+ * Имеет все пользовательские и системные права.
+ * Заглушка — реальные endpoint'ы и factory-функции появятся позже.
+ *
+ * [adminId] — идентификатор администратора.
+ * [username] — имя администратора.
+ * [clientIp] — IP-адрес клиента; null если определить не удалось.
+ */
+data class AdminRequestContext(
+    override val lang: Lang,
+    override val orgId: OrgId,
+    override val currency: Currency,
+    val adminId: UserId,
+    val username: String,
+    val clientIp: String?,
+) : RequestContext,
+    UserActor,
+    SystemActor {
+    override fun hasPermission(p: UserPermission): Boolean = true
+
+    override fun hasPermission(p: SystemPermission): Boolean = true
+}

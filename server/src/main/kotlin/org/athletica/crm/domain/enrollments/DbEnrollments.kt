@@ -5,7 +5,7 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toJavaLocalDate
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EnrollmentId
 import org.athletica.crm.core.entityids.GroupId
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [Enrollments] с доступом к PostgreSQL через R2DBC. */
 class DbEnrollments : Enrollments {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun add(groupId: GroupId, clientIds: List<ClientId>) {
         verifyGroupOwnership(groupId)
 
@@ -45,7 +45,7 @@ class DbEnrollments : Enrollments {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun remove(groupId: GroupId, clientIds: List<ClientId>) {
         verifyGroupOwnership(groupId)
 
@@ -64,7 +64,7 @@ class DbEnrollments : Enrollments {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun activeIn(
         groupId: GroupId,
         from: LocalDate,
@@ -94,7 +94,7 @@ class DbEnrollments : Enrollments {
                 )
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun activeClients(groupId: GroupId): List<Pair<ClientId, String>> =
         tr
             .sql(
@@ -111,7 +111,7 @@ class DbEnrollments : Enrollments {
             .list { row -> row.asUuid("client_id").toClientId() to row.get("name", String::class.java)!! }
 
     /** Проверяет, что группа [groupId] принадлежит организации из контекста. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     private suspend fun verifyGroupOwnership(groupId: GroupId) {
         tr
             .sql("SELECT id FROM groups WHERE id = :groupId AND org_id = :orgId")

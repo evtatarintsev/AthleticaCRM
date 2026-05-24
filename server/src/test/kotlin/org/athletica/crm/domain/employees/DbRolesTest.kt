@@ -5,15 +5,16 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.domain.employees.EmployeePermission
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,8 +28,8 @@ class DbRolesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "user@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
-    private val otherCtx = RequestContext(Lang.EN, UserId.new(), otherOrgId, BranchId.new(), otherEmployeeId, "user@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
+    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "user@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
+    private val otherCtx = EmployeeRequestContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "user@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
 
     private lateinit var roles: DbRoles
 
@@ -112,12 +113,12 @@ class DbRolesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        roles.new(EmployeeRole(id, "Менеджер", setOf(Permission.CAN_VIEW_CLIENT_BALANCE)))
+                        roles.new(EmployeeRole(id, "Менеджер", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
                 assertEquals(1, list.size)
-                assertEquals(setOf(Permission.CAN_VIEW_CLIENT_BALANCE), list.first().permissions)
+                assertEquals(setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE), list.first().permissions)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -125,7 +126,7 @@ class DbRolesTest {
     fun `new создаёт роль с несколькими правами`() =
         runTest {
             val id = Uuid.random()
-            val permissions = Permission.entries.toSet()
+            val permissions = UserPermission.entries.toSet()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) { roles.new(EmployeeRole(id, "Суперменеджер", permissions)) }
@@ -143,14 +144,14 @@ class DbRolesTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        roles.new(EmployeeRole(id1, "Роль с правами", setOf(Permission.CAN_VIEW_CLIENT_BALANCE)))
+                        roles.new(EmployeeRole(id1, "Роль с правами", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
                         roles.new(EmployeeRole(id2, "Роль без прав", emptySet()))
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
                 val role1 = list.first { it.id == id1 }
                 val role2 = list.first { it.id == id2 }
-                assertEquals(setOf(Permission.CAN_VIEW_CLIENT_BALANCE), role1.permissions)
+                assertEquals(setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE), role1.permissions)
                 assertTrue(role2.permissions.isEmpty())
             }.getOrElse { fail("Unexpected error: $it") }
         }

@@ -4,7 +4,7 @@ import arrow.core.Either
 import arrow.core.right
 import org.athletica.crm.api.schemas.notifications.NotificationItem
 import org.athletica.crm.api.schemas.notifications.NotificationsResponse
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asBoolean
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.asUuid
  *
  * Возвращает не более 50 последних уведомлений, отсортированных по убыванию [NotificationItem.createdAt].
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: EmployeeRequestContext)
 suspend fun notificationList(isRead: Boolean?): Either<CommonDomainError, NotificationsResponse> {
     val isReadFilter = if (isRead != null) "AND nr.is_read = :isRead" else ""
 

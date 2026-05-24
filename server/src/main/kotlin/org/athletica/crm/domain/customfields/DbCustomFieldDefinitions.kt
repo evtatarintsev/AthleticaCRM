@@ -7,7 +7,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import org.athletica.crm.api.client.appJson
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -16,7 +16,7 @@ import org.athletica.crm.storage.asString
 
 /** R2DBC-реализация [CustomFieldDefinitions]. */
 class DbCustomFieldDefinitions : CustomFieldDefinitions {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun all(entityType: String): List<CustomFieldDefinition> =
         tr.sql(
             """
@@ -41,7 +41,7 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 )
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun saveAll(entityType: String, definitions: List<CustomFieldDefinition>) {
         tr.sql(
             "DELETE FROM custom_field_definitions WHERE org_id = :orgId AND entity_type = :entityType",

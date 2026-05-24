@@ -3,7 +3,7 @@ package org.athletica.crm.domain.groups
 import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
@@ -31,21 +31,21 @@ private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, schedule,
  * [withNew] возвращает новый [AuditGroup], сохраняя аудит-поведение в цепочках.
  */
 class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Group by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() =
         delegate.save().also {
             audit.logUpdate("group", id, delegate.snapshot())
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group = AuditGroup(delegate.withNewSchedule(schedule), audit)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = AuditGroup(delegate.withNewDisciplines(disciplines), audit)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group = AuditGroup(delegate.withNewEmployees(employeeIds), audit)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewName(name: String): Group = AuditGroup(delegate.withNewName(name), audit)
 }

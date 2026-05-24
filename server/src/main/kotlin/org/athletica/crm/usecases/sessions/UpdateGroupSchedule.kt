@@ -5,7 +5,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 import kotlinx.datetime.toKotlinLocalDate
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.events.DomainEventBus
@@ -23,7 +23,7 @@ private const val GENERATE_WEEKS_AHEAD = 8
  * 2. Сохраняет новое расписание.
  * 3. Публикует событие [GroupScheduleChanged] — воркер сгенерирует занятия по новым слотам.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun updateGroupSchedule(
     groups: Groups,
     sessions: Sessions,

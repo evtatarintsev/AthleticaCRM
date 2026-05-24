@@ -4,8 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -42,7 +42,7 @@ data class AuditClient(
         }
     }
 
-    context(ctx: RequestContext)
+    context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc) =
         AuditClient(
             client.attachDoc(doc),
@@ -50,7 +50,7 @@ data class AuditClient(
             auditEvents + AuditEvent(ctx, AuditActionType.CREATE, "client_doc", doc.id.value, doc.id.toString()),
         )
 
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     override fun deleteDoc(docId: ClientDocId): Client {
         val docToDelete = client.docs.firstOrNull { it.id == docId }
         if (docToDelete == null) {
@@ -67,7 +67,7 @@ data class AuditClient(
         return AuditClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
     }
 
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     override fun withNew(
         newName: String,
         newAvatarId: UploadId?,

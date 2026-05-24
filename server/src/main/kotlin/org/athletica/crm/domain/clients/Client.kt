@@ -3,8 +3,8 @@ package org.athletica.crm.domain.clients
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
@@ -47,13 +47,13 @@ interface Client {
     context(tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
 
-    context(ctx: RequestContext)
+    context(ctx: EmployeeRequestContext)
     fun attachDoc(doc: ClientDoc): Client
 
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     fun deleteDoc(docId: ClientDocId): Client
 
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     fun withNew(
         newName: String,
         newAvatarId: UploadId?,

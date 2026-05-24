@@ -3,8 +3,8 @@ package org.athletica.crm.usecases
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -63,7 +63,7 @@ class ProfileTest {
         orgId: OrgId,
         employeeId: EmployeeId,
         username: String = "",
-    ) = RequestContext(
+    ) = EmployeeRequestContext(
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,

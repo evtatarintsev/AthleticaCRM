@@ -116,6 +116,8 @@
     <string name="nav_employees">Сотрудники</string>
     <string name="action_collapse_menu">Свернуть меню</string>
     <string name="action_toggle_nav">Переключить навигацию</string>
+    <string name="action_download_desktop">Скачать приложение</string>
+    <string name="download_desktop_subtitle">Для Windows, macOS и Linux</string>
     <string name="action_notifications">Уведомления</string>
     <string name="action_open_menu">Открыть меню</string>
     <string name="notifications_empty">Нет уведомлений</string>

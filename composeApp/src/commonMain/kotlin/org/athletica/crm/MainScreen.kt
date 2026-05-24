@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
@@ -111,9 +112,11 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_collapse_menu
+import org.athletica.crm.generated.resources.action_download_desktop
 import org.athletica.crm.generated.resources.action_logout
 import org.athletica.crm.generated.resources.action_open_menu
 import org.athletica.crm.generated.resources.action_toggle_nav
+import org.athletica.crm.generated.resources.download_desktop_subtitle
 import org.athletica.crm.generated.resources.app_name
 import org.athletica.crm.generated.resources.cd_app_logo
 import org.athletica.crm.generated.resources.label_balance_value
@@ -809,6 +812,32 @@ private fun DrawerContent(
                 onClick = { onItemSelected(item) },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
             )
+        }
+
+        if (currentPlatform == PlatformType.WEB) {
+            Spacer(Modifier.weight(1f))
+            NavigationDrawerItem(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = null,
+                    )
+                },
+                label = {
+                    Column {
+                        Text(stringResource(Res.string.action_download_desktop))
+                        Text(
+                            text = stringResource(Res.string.download_desktop_subtitle),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                selected = false,
+                onClick = { openUrl("https://github.com/etatarintsev/AthleticaCRM/releases/latest") },
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+            )
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

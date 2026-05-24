@@ -115,6 +115,8 @@
     <string name="nav_settings">Settings</string>
     <string name="action_collapse_menu">Collapse menu</string>
     <string name="action_toggle_nav">Toggle navigation</string>
+    <string name="action_download_desktop">Download App</string>
+    <string name="download_desktop_subtitle">For Windows, macOS and Linux</string>
     <string name="action_notifications">Notifications</string>
     <string name="action_open_menu">Open menu</string>
     <string name="notifications_just_now">just now</string>

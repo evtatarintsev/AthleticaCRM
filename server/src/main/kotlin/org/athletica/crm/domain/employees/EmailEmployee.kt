@@ -2,13 +2,13 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.storage.Transaction
 
 class EmailEmployee(private val delegate: Employee, private val orgEmails: OrgEmails) : Employee by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun invite(email: EmailAddress, password: String) {
         delegate.invite(email, password)
 

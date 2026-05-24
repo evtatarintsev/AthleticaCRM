@@ -2,6 +2,7 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
@@ -48,7 +49,7 @@ private class AuditLogStub : AuditLog {
 class AuditEmployeesTest {
     private val orgId = OrgId.new()
     private val employeeId = EmployeeId.new()
-    private val ctx = RequestContext(Lang.EN, UserId.new(), orgId, BranchId.new(), employeeId, "owner@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
+    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())

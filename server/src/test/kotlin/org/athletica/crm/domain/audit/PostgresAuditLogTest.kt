@@ -3,8 +3,8 @@ package org.athletica.crm.domain.audit
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -29,7 +29,7 @@ class PostgresAuditLogTest {
     private val userId = UserId.new()
     private val employeeId = EmployeeId.new()
     private val auditLog = PostgresAuditLog()
-    private val ctx = RequestContext(Lang.EN, userId, orgId, BranchId.new(), employeeId, "user@example.com", "127.0.0.1", Currency.RUB, EmployeePermission())
+    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = userId, branchId = BranchId.new(), employeeId = employeeId, username = "user@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
 
     @Before
     fun setUp() {

@@ -4,8 +4,8 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
@@ -68,13 +68,13 @@ internal data class DbClient(
         }
     }
 
-    context(ctx: RequestContext)
+    context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc) = copy(docs = docs + doc)
 
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     override fun deleteDoc(docId: ClientDocId) = copy(docs = docs.filterNot { it.id == docId })
 
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     override fun withNew(
         newName: String,
         newAvatarId: UploadId?,

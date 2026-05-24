@@ -23,8 +23,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.athletica.crm.Di
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -54,7 +54,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     )
     inline fun <reified Res> get(
         path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(RoutingCall) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val response = body(call)
@@ -64,7 +64,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     @JvmName("getWithRequest")
     inline fun <reified Req, reified Res> get(
         path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req) -> Res,
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val request = call.request.queryParameters.decode<Req>()
@@ -75,7 +75,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     @JvmName("getWithRequestAndCall")
     inline fun <reified Req, reified Res> get(
         path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val request = call.request.queryParameters.decode<Req>()
@@ -85,7 +85,7 @@ class RouteWithContext(val di: Di, val router: Route) {
 
     inline fun <reified Req, reified Res> post(
         path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req) -> Res,
     ): Route =
         route(path, HttpMethod.Post) { call ->
             @Suppress("UNCHECKED_CAST")
@@ -97,7 +97,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     @JvmName("postWithCall")
     inline fun <reified Req, reified Res> post(
         path: String,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Post) { call ->
             @Suppress("UNCHECKED_CAST")
@@ -109,7 +109,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     inline fun route(
         path: String,
         method: HttpMethod,
-        crossinline body: suspend context(RequestContext) Raise<DomainError>.(RoutingCall) -> Unit,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(RoutingCall) -> Unit,
     ): Route =
         router.route(path, method) {
             handle {
@@ -171,7 +171,7 @@ fun RoutingCall.langFromRequest(): Lang {
 }
 
 /**
- * Собирает [RequestContext] из JWT-токена и заголовков запроса.
+ * Собирает [EmployeeRequestContext] из JWT-токена и заголовков запроса.
  * Извлекает [UserId], [EmployeeId] и [OrgId] из claims токена, язык — из `Accept-Language`,
  * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
  */
@@ -179,7 +179,7 @@ suspend fun RoutingCall.contextFromRequest(
     db: Database,
     permissions: EmployeePermissions,
     organizations: Organizations,
-): RequestContext =
+): EmployeeRequestContext =
     either {
         val principal = principal<JWTPrincipal>()!!
         val userId = principal.payload.claimAsUuid(JwtConfig.CLAIM_USER_ID).toUserId()
@@ -195,7 +195,7 @@ suspend fun RoutingCall.contextFromRequest(
                 val permission = permissions.byId(employeeId)
                 currency to permission
             }
-        RequestContext(
+        EmployeeRequestContext(
             userId = userId,
             orgId = orgId,
             branchId = branchId,

@@ -2,7 +2,7 @@ package org.athletica.crm.usecases.auth
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -19,7 +19,7 @@ import org.athletica.crm.storage.asBoolean
  * нового [User] с обновлённым [branchId] для выпуска нового JWT-токена.
  * Если доступ запрещён — возвращает [DomainError] с кодом `BRANCH_ACCESS_DENIED`.
  */
-context(ctx: RequestContext, tr: Transaction, branches: Branches, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, branches: Branches, raise: Raise<DomainError>)
 suspend fun switchBranch(branchId: BranchId): User {
     val allBranchesAccess =
         tr.sql("SELECT all_branches_access FROM employees WHERE id = :id")

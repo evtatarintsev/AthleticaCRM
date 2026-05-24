@@ -5,8 +5,8 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -63,7 +63,7 @@ class ChangePasswordTest {
         orgId: OrgId,
         employeeId: EmployeeId,
         username: String = "user",
-    ) = RequestContext(
+    ) = EmployeeRequestContext(
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,

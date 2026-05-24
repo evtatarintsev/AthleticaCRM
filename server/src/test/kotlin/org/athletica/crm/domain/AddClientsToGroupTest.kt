@@ -6,8 +6,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -105,7 +105,7 @@ class AddClientsToGroupTest {
             ?: 0L
 
     private fun ctx(orgId: Uuid) =
-        RequestContext(
+        EmployeeRequestContext(
             lang = Lang.EN,
             userId = userId,
             orgId = OrgId(orgId),

@@ -3,7 +3,7 @@ package org.athletica.crm.usecases.notifications
 import arrow.core.Either
 import arrow.core.right
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Database
 
@@ -12,7 +12,7 @@ import org.athletica.crm.storage.Database
  * Фильтрует по [RequestContext.userId] и [RequestContext.orgId] — чужие id молча игнорируются.
  * Если список пуст — ничего не делает.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: EmployeeRequestContext)
 suspend fun markNotificationsRead(request: MarkNotificationsReadRequest): Either<CommonDomainError, Unit> {
     if (request.ids.isEmpty()) return Unit.right()
 
@@ -39,7 +39,7 @@ suspend fun markNotificationsRead(request: MarkNotificationsReadRequest): Either
 /**
  * Отмечает все уведомления текущего пользователя ([ctx]) прочитанными в рамках его организации.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: EmployeeRequestContext)
 suspend fun markAllNotificationsRead(): Either<CommonDomainError, Unit> {
     db.sql(
         """

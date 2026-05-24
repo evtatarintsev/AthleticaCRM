@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.employees
 
 import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
@@ -38,7 +38,7 @@ class EmployeePermissions {
                 )
                 .bind("employeeId", employeeId)
                 .list { row ->
-                    Permission.valueOf(row.asString("permission_key")) to row.asBoolean("is_granted")
+                    UserPermission.valueOf(row.asString("permission_key")) to row.asBoolean("is_granted")
                 }
 
         val grantedPermissions = permissionOverrides.filter { it.second }.map { it.first }.toSet()
@@ -81,7 +81,7 @@ class EmployeePermissions {
                     """.trimIndent(),
                 )
                 .list { row ->
-                    row.asUuid("role_id") to Permission.valueOf(row.asString("permission_key"))
+                    row.asUuid("role_id") to UserPermission.valueOf(row.asString("permission_key"))
                 }
                 .groupBy({ it.first }, { it.second })
 

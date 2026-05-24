@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.tasks
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -29,7 +29,7 @@ internal data class DbTask(
     override var attachments: List<UploadId>,
     private val previousStatus: TaskStatus,
 ) : Task {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
         val now = Clock.System.now()
         val newCompletedAt =

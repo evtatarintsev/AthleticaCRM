@@ -3,7 +3,7 @@ package org.athletica.crm.domain.groups
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -22,7 +22,7 @@ class DbGroup(
     override val disciplines: List<DisciplineId>,
     override val employeeIds: List<EmployeeId>,
 ) : Group {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
         val updatedRows =
             try {
@@ -129,15 +129,15 @@ class DbGroup(
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 }

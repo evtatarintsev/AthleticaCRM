@@ -2,7 +2,7 @@ package org.athletica.crm.usecases.clients.import
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -25,7 +25,7 @@ internal data class UploadRecord(
  * Загружает метаданные [UploadRecord] по [uploadId] из таблицы `uploads`,
  * фильтруя по `org_id` из [RequestContext]. Если запись не найдена — raise `UPLOAD_NOT_FOUND`.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 internal suspend fun uploadRecordById(uploadId: UploadId): UploadRecord =
     tr.sql(
         """

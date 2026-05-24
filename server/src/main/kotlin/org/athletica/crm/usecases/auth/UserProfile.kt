@@ -6,7 +6,7 @@ import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.UpdateMeRequest
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -31,7 +31,7 @@ import kotlin.uuid.toKotlinUuid
  * Использует [ctx] для получения идентификатора пользователя из JWT.
  * Возвращает [User] или [CommonDomainError], если пользователь не найден.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: EmployeeRequestContext)
 suspend fun profile(): Either<DomainError, UserProfile> =
     db
         .sql(
@@ -55,7 +55,7 @@ suspend fun profile(): Either<DomainError, UserProfile> =
  * Изменения применяются к записи [employees] организации из [ctx].
  * Возвращает обновлённый [UserProfile] или ошибку если сотрудник не найден.
  */
-context(db: Database, ctx: RequestContext)
+context(db: Database, ctx: EmployeeRequestContext)
 suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile> =
     either {
         val updatedRows =

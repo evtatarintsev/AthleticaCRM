@@ -20,34 +20,34 @@ import org.jetbrains.compose.resources.stringResource
  * Возвращает локализованное наименование прав.
  */
 @Composable
-fun Permission.displayName(): String =
+fun UserPermission.displayName(): String =
     when (this) {
-        Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_name)
-        Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_name)
-        Permission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks_name)
-        Permission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks_name)
+        UserPermission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_name)
+        UserPermission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_name)
+        UserPermission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks_name)
+        UserPermission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks_name)
     }
 
 /**
  * Возвращает локализованное описание прав.
  */
 @Composable
-fun Permission.displayDescription(): String =
+fun UserPermission.displayDescription(): String =
     when (this) {
-        Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_description)
-        Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_description)
-        Permission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks_description)
-        Permission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks_description)
+        UserPermission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance_description)
+        UserPermission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance_description)
+        UserPermission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks_description)
+        UserPermission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks_description)
     }
 
 /**
  * Возвращает локализованный ярлык прав (краткое наименование).
  */
 @Composable
-fun Permission.label(): String =
+fun UserPermission.label(): String =
     when (this) {
-        Permission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance)
-        Permission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance)
-        Permission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks)
-        Permission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks)
+        UserPermission.CAN_MANAGE_ORG_BALANCE -> stringResource(Res.string.permission_can_manage_org_balance)
+        UserPermission.CAN_VIEW_CLIENT_BALANCE -> stringResource(Res.string.permission_can_view_client_balance)
+        UserPermission.CAN_VIEW_ALL_TASKS -> stringResource(Res.string.permission_can_view_all_tasks)
+        UserPermission.CAN_MANAGE_TASKS -> stringResource(Res.string.permission_can_manage_tasks)
     }

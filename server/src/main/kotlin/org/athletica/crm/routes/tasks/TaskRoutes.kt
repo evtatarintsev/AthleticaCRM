@@ -10,7 +10,7 @@ import org.athletica.crm.api.schemas.tasks.TaskListRequest
 import org.athletica.crm.api.schemas.tasks.TaskListResponse
 import org.athletica.crm.api.schemas.tasks.UpdateTaskRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.toClientId
@@ -18,7 +18,7 @@ import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.tasks.Task
 import org.athletica.crm.domain.tasks.TaskFilter
 import org.athletica.crm.domain.tasks.Tasks
@@ -169,12 +169,12 @@ private suspend fun Transaction.loadUploadResponses(
 
 /**
  * Проверяет права на редактирование и применяет изменения из [req] к задаче.
- * Без [Permission.CAN_MANAGE_TASKS] разрешено редактировать только свои задачи.
+ * Без [UserPermission.CAN_MANAGE_TASKS] разрешено редактировать только свои задачи.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 private suspend fun Tasks.applyUpdate(req: UpdateTaskRequest): Task {
     val task = byId(req.id)
-    if (!ctx.hasPermission(Permission.CAN_MANAGE_TASKS)) {
+    if (!ctx.hasPermission(UserPermission.CAN_MANAGE_TASKS)) {
         if (task.createdBy != ctx.employeeId && task.assigneeId != ctx.employeeId) {
             raise(CommonDomainError("PERMISSION_DENIED", "Нет прав для редактирования этой задачи"))
         }

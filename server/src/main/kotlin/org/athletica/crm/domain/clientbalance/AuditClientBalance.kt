@@ -2,7 +2,7 @@ package org.athletica.crm.domain.clientbalance
 
 import arrow.core.raise.context.Raise
 import kotlinx.serialization.json.Json
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.audit.AuditActionType
@@ -11,7 +11,7 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Transaction
 
 class AuditClientBalance(private val delegate: ClientBalance, private val audit: AuditLog) : ClientBalance by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun adjust(amount: Money, note: String) =
         delegate.adjust(amount, note).also {
             audit.log(

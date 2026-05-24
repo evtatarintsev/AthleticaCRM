@@ -28,7 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.permissions.displayDescription
 import org.athletica.crm.core.permissions.displayName
 import org.athletica.crm.generated.resources.Res
@@ -51,10 +51,10 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun RoleCreateScreen(
     onBack: () -> Unit,
-    onSave: (name: String, permissions: Set<Permission>) -> Unit,
+    onSave: (name: String, permissions: Set<UserPermission>) -> Unit,
     modifier: Modifier = Modifier,
     initialName: String = "",
-    initialPermissions: Set<Permission> = emptySet(),
+    initialPermissions: Set<UserPermission> = emptySet(),
 ) {
     val isEditMode = initialName.isNotEmpty()
     var name by remember { mutableStateOf(initialName) }
@@ -107,7 +107,7 @@ fun RoleCreateScreen(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
             )
 
-            Permission.entries.forEachIndexed { index, permission ->
+            UserPermission.entries.forEachIndexed { index, permission ->
                 PermissionToggleItem(
                     permission = permission,
                     checked = permission in selectedPermissions,
@@ -120,7 +120,7 @@ fun RoleCreateScreen(
                             }
                     },
                 )
-                if (index < Permission.entries.lastIndex) {
+                if (index < UserPermission.entries.lastIndex) {
                     HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
                 }
             }
@@ -130,7 +130,7 @@ fun RoleCreateScreen(
 
 @Composable
 private fun PermissionToggleItem(
-    permission: Permission,
+    permission: UserPermission,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,

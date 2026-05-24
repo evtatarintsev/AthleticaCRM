@@ -10,9 +10,9 @@ import org.athletica.crm.api.schemas.clients.import.ClientImportCommitResponse
 import org.athletica.crm.api.schemas.clients.import.ColumnMapping
 import org.athletica.crm.api.schemas.clients.import.ImportTarget
 import org.athletica.crm.api.schemas.clients.import.LeadSourceAction
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -95,7 +95,7 @@ class ImportClientsCommitTest {
     }
 
     private fun ctx(org: TestOrg) =
-        RequestContext(
+        EmployeeRequestContext(
             lang = Lang.EN,
             userId = UserId(org.userId),
             orgId = OrgId(org.orgId),

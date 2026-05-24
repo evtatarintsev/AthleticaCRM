@@ -5,8 +5,8 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -27,7 +27,7 @@ import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
 class DbClients : Clients {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: ClientId): Client {
         val client =
             tr
@@ -97,7 +97,7 @@ class DbClients : Clients {
         return client.copy(groups = groups, docs = docs)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: ClientId,
         name: String,
@@ -145,7 +145,7 @@ class DbClients : Clients {
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Client> {
         val clients =
             tr

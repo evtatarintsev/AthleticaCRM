@@ -3,7 +3,7 @@ package org.athletica.crm.usecases.upload
 import arrow.core.Either
 import arrow.core.raise.either
 import org.athletica.crm.api.schemas.upload.UploadResponse
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -20,7 +20,7 @@ import kotlin.uuid.Uuid
  * Возвращает информацию о загрузке по [id].
  * Доступ ограничен организацией из [ctx] — чужие загрузки не видны.
  */
-context(db: Database, minioService: MinioService, ctx: RequestContext)
+context(db: Database, minioService: MinioService, ctx: EmployeeRequestContext)
 suspend fun uploadInfo(id: Uuid, ttl: Duration): Either<CommonDomainError, UploadResponse> =
     either {
         val upload =

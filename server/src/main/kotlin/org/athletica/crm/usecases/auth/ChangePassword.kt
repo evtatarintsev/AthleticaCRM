@@ -3,8 +3,8 @@ package org.athletica.crm.usecases.auth
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.ChangePasswordRequest
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.PasswordHash
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
@@ -23,7 +23,7 @@ import org.athletica.crm.storage.asString
  *
  * Возвращает [Unit] при успехе или [DomainError] при неверном старом пароле / отсутствии пользователя.
  */
-context(ctx: RequestContext, tr: Transaction, passwordHasher: PasswordHasher, audit: AuditLog, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, passwordHasher: PasswordHasher, audit: AuditLog, raise: Raise<DomainError>)
 suspend fun changePassword(request: ChangePasswordRequest) {
     val passwordHash =
         tr.sql("SELECT password_hash FROM users WHERE id = :id")

@@ -9,7 +9,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import kotlin.uuid.Uuid
 
 /** Состояние загрузки списка ролей. */
@@ -68,7 +68,7 @@ class RolesViewModel(
     /** Создаёт роль; при успехе перезагружает список и вызывает [onSuccess]. */
     fun onCreate(
         name: String,
-        permissions: Set<Permission>,
+        permissions: Set<UserPermission>,
         onSuccess: () -> Unit,
     ) {
         scope.launch {
@@ -88,7 +88,7 @@ class RolesViewModel(
     fun onUpdate(
         id: Uuid,
         name: String,
-        permissions: Set<Permission>,
+        permissions: Set<UserPermission>,
         onSuccess: () -> Unit,
     ) {
         scope.launch {

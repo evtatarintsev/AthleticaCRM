@@ -1,9 +1,9 @@
 package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -12,7 +12,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 
 class DbRoles : Roles {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(role: EmployeeRole) {
         tr.sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
             .bind("id", role.id)
@@ -27,7 +27,7 @@ class DbRoles : Roles {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun update(role: EmployeeRole) {
         tr.sql("UPDATE roles SET name = :name WHERE id = :id AND org_id = :orgId")
             .bind("id", role.id)
@@ -45,7 +45,7 @@ class DbRoles : Roles {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<EmployeeRole> =
         tr
             .sql(
@@ -72,7 +72,7 @@ class DbRoles : Roles {
                     permissions =
                         rows
                             .mapNotNull { it.second }
-                            .map { Permission.valueOf(it) }
+                            .map { UserPermission.valueOf(it) }
                             .toSet(),
                 )
             }

@@ -13,8 +13,8 @@ import org.athletica.crm.api.schemas.clients.import.ClientImportCommitResponse.S
 import org.athletica.crm.api.schemas.clients.import.ColumnMapping
 import org.athletica.crm.api.schemas.clients.import.ImportTarget
 import org.athletica.crm.api.schemas.clients.import.LeadSourceAction
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.CustomFieldValues
@@ -42,7 +42,7 @@ private const val CLIENT_ENTITY_TYPE = "CLIENT"
  * Импорт идёт в одной транзакции. Строки с ошибками не блокируют импорт остальных —
  * каждая строка обрабатывается изолированно, ошибочные попадают в [RowResult.errors].
  */
-context(db: Database, minio: MinioService, ctx: RequestContext)
+context(db: Database, minio: MinioService, ctx: EmployeeRequestContext)
 suspend fun importClientsCommit(
     request: ClientImportCommitRequest,
     clients: Clients,
@@ -193,7 +193,7 @@ private fun buildPlan(
         )
     }
 
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 private suspend fun createMissingLeadSources(
     leadSourceMapping: Map<String, LeadSourceAction>,
     existingByName: Map<String, LeadSource>,
@@ -227,7 +227,7 @@ private fun resolveLeadSourceIds(
     }.toMap()
 }
 
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 private suspend fun processRow(
     rowNumber: Int,
     row: List<String?>,

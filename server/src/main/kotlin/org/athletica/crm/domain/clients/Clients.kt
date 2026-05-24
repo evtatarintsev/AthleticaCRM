@@ -2,8 +2,8 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -12,10 +12,10 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 
 interface Clients {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: ClientId): Client
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun new(
         id: ClientId,
         name: String,
@@ -26,6 +26,6 @@ interface Clients {
         customFields: List<CustomFieldValue> = emptyList(),
     ): Client
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun list(): List<Client>
 }

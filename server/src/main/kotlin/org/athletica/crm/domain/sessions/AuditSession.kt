@@ -5,7 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.DomainError
@@ -41,13 +41,13 @@ private fun Session.snapshot() =
  * Декоратор [Session], добавляющий запись в журнал аудита при изменении состояния занятия.
  */
 class AuditSession(private val delegate: Session, private val audit: AuditLog) : Session by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun cancel() =
         delegate.cancel().also {
             audit.logUpdate("session", id, delegate.snapshot())
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun reschedule(
         newDate: LocalDate,
         newStartTime: LocalTime,
@@ -57,13 +57,13 @@ class AuditSession(private val delegate: Session, private val audit: AuditLog) :
         audit.logUpdate("session", id, delegate.snapshot())
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun complete() =
         delegate.complete().also {
             audit.logUpdate("session", id, delegate.snapshot())
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun setEmployees(employeeIds: List<EmployeeId>) =
         delegate.setEmployees(employeeIds).also {
             audit.logUpdate("session", id, delegate.snapshot())

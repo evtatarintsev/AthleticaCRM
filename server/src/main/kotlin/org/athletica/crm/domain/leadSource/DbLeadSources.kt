@@ -3,7 +3,7 @@ package org.athletica.crm.domain.leadSource
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.toLeadSourceId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -14,7 +14,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 class DbLeadSources : LeadSources {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<LeadSource> =
         tr.sql("SELECT ls.id, ls.name FROM lead_sources ls WHERE ls.org_id = :orgId ORDER BY ls.name")
             .bind("orgId", ctx.orgId)
@@ -25,7 +25,7 @@ class DbLeadSources : LeadSources {
                 )
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun create(leadSource: LeadSource) {
         try {
             tr.sql("INSERT INTO lead_sources (id, org_id, name) VALUES (:id, :orgId, :name)")
@@ -38,7 +38,7 @@ class DbLeadSources : LeadSources {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun update(leadSource: LeadSource) {
         val updatedRows =
             try {
@@ -56,7 +56,7 @@ class DbLeadSources : LeadSources {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun delete(ids: List<LeadSourceId>) {
         if (ids.isEmpty()) return
 

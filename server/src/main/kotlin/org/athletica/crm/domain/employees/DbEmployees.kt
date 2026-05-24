@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -14,7 +14,7 @@ import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.permissions.Permission
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.i18n.Messages
@@ -28,12 +28,12 @@ import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
 
 private data class PermissionOverrides(
-    val granted: Set<Permission>,
-    val revoked: Set<Permission>,
+    val granted: Set<UserPermission>,
+    val revoked: Set<UserPermission>,
 )
 
 class DbEmployees(private val users: Users, private val roles: Roles) : Employees {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,
@@ -102,7 +102,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: EmployeeId): Employee {
         val roles = rolesByEmployeeId()
         val permissions = permissionsByEmployeeId()
@@ -144,7 +144,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> {
         val roles = rolesByEmployeeId()
         val permissions = permissionsByEmployeeId()
@@ -185,9 +185,9 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
     }
 
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     private suspend fun permissionsByEmployeeId(): Map<EmployeeId, PermissionOverrides> {
-        data class Row(val employeeId: EmployeeId, val permission: Permission, val isGranted: Boolean)
+        data class Row(val employeeId: EmployeeId, val permission: UserPermission, val isGranted: Boolean)
 
         val rows =
             tr
@@ -203,7 +203,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 .list { row ->
                     Row(
                         employeeId = row.asUuid("employee_id").toEmployeeId(),
-                        permission = Permission.valueOf(row.asString("permission_key")),
+                        permission = UserPermission.valueOf(row.asString("permission_key")),
                         isGranted = row.asBoolean("is_granted"),
                     )
                 }
@@ -218,7 +218,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
     }
 
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     private suspend fun branchIdsByEmployeeId(): Map<EmployeeId, List<BranchId>> =
         tr
             .sql(
@@ -235,7 +235,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
             .groupBy({ it.first }, { it.second })
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun rolesByEmployeeId(): Map<EmployeeId, List<EmployeeRole>> {
         val rolesById = roles.list().associateBy { it.id }
         return tr

@@ -4,7 +4,9 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.DayOfWeek
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.branchIdOrNull
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -26,7 +28,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [Groups] с доступом к PostgreSQL через R2DBC. */
 class DbGroups(private val events: DomainEvents) : Groups {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: GroupId,
         name: String,
@@ -109,17 +111,19 @@ class DbGroups(private val events: DomainEvents) : Groups {
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Group> {
+        val branchId = ctx.branchIdOrNull
+        val branchFilter = if (branchId != null) "AND branch_id = :branchId" else ""
         val groups =
             tr
                 .sql(
                     """
                     SELECT id, branch_id, name FROM groups
-                    WHERE org_id = :orgId AND branch_id = :branchId
+                    WHERE org_id = :orgId $branchFilter
                     ORDER BY name
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
-                .bind("branchId", ctx.branchId)
+                .let { q -> if (branchId != null) q.bind("branchId", branchId) else q }
                 .list { row ->
                     Triple(
                         row.asUuid("id").toGroupId(),
@@ -242,7 +246,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
         return DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     private suspend fun validateEmployeeForBranch(employeeId: EmployeeId, branchId: BranchId) {
         val allBranchesAccess =
             tr

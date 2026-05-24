@@ -2,7 +2,7 @@ package org.athletica.crm.domain
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -29,15 +29,15 @@ data class EmployeeStub(
     override val allBranchesAccess: Boolean = true,
     override val branchIds: List<BranchId> = emptyList(),
 ) : Employee {
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: arrow.core.raise.Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: arrow.core.raise.Raise<DomainError>)
     override suspend fun invite(email: EmailAddress, password: String) {
     }
 
-    context(ctx: RequestContext)
+    context(ctx: EmployeeRequestContext)
     override fun withNew(
         newName: String,
         newPermissions: EmployeePermission,
@@ -60,7 +60,7 @@ data class EmployeeStub(
 class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : Employees {
     val employees: MutableList<EmployeeStub> = employees.toMutableList()
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,
@@ -86,9 +86,9 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             branchIds = branchIds,
         ).also { employees.add(it) }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: EmployeeId): Employee = employees.first { it.id == id }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> = employees
 }

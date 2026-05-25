@@ -115,6 +115,8 @@
     <string name="nav_settings">Settings</string>
     <string name="action_collapse_menu">Collapse menu</string>
     <string name="action_toggle_nav">Toggle navigation</string>
+    <string name="action_download_desktop">Download App</string>
+    <string name="download_desktop_subtitle">For Windows, macOS and Linux</string>
     <string name="action_notifications">Notifications</string>
     <string name="action_open_menu">Open menu</string>
     <string name="notifications_just_now">just now</string>
@@ -465,5 +467,15 @@
     <string name="list_sort_ascending">Ascending</string>
     <string name="list_sort_descending">Descending</string>
     <string name="list_sort_reset">Reset</string>
+
+    <string name="employees_subtitle_count">%1$d employees</string>
+    <string name="employees_search_placeholder">Search employees</string>
+    <string name="employees_load_error">Failed to load employees</string>
+    <string name="employees_view_all">All</string>
+    <string name="employees_view_active">Active</string>
+    <string name="employees_col_roles">Roles</string>
+    <string name="employees_col_contact">Contact</string>
+    <string name="employees_filter_only_active">Only active</string>
+    <string name="employees_filter_section_status">Status</string>
 
 </resources>

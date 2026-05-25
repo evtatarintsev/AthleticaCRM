@@ -116,6 +116,8 @@
     <string name="nav_employees">Сотрудники</string>
     <string name="action_collapse_menu">Свернуть меню</string>
     <string name="action_toggle_nav">Переключить навигацию</string>
+    <string name="action_download_desktop">Скачать приложение</string>
+    <string name="download_desktop_subtitle">Для Windows, macOS и Linux</string>
     <string name="action_notifications">Уведомления</string>
     <string name="action_open_menu">Открыть меню</string>
     <string name="notifications_empty">Нет уведомлений</string>
@@ -269,6 +271,15 @@
     <string name="settings_item_employees_subtitle">Список сотрудников организации</string>
     <string name="screen_employees">Сотрудники</string>
     <string name="employees_empty">Сотрудников пока нет</string>
+    <string name="employees_subtitle_count">%1$d сотрудников</string>
+    <string name="employees_search_placeholder">Поиск по сотрудникам</string>
+    <string name="employees_load_error">Ошибка загрузки сотрудников</string>
+    <string name="employees_view_all">Все</string>
+    <string name="employees_view_active">Активные</string>
+    <string name="employees_col_roles">Роли</string>
+    <string name="employees_col_contact">Контакт</string>
+    <string name="employees_filter_only_active">Только активные</string>
+    <string name="employees_filter_section_status">Статус</string>
     <string name="action_add_employee">Добавить сотрудника</string>
     <string name="screen_employee_create">Новый сотрудник</string>
     <string name="screen_employee_edit">Редактировать сотрудника</string>

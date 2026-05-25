@@ -16,8 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +31,7 @@ import org.athletica.crm.generated.resources.employee_status_inactive
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Строка сотрудника в списке: аватар, имя, статус активности, чекбокс.
+ * Карточка сотрудника для COMPACT-вёрстки списка: аватар, имя, статус активности, чекбокс.
  * Аватар подгружается лениво через [api] только при появлении строки на экране.
  */
 @Composable
@@ -44,9 +42,6 @@ fun EmployeeRow(
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit = {},
 ) {
-    val statusLabel = stringResource(if (employee.isActive) Res.string.employee_status_active else Res.string.employee_status_inactive)
-    val statusColor = if (employee.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
@@ -55,21 +50,8 @@ fun EmployeeRow(
                 .clickable(onClick = onClick)
                 .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
     ) {
-        // Аватар
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-        ) {
-            Avatar(employee.avatarId, employee.name, api)
-        }
-
+        EmployeeAvatar(employee = employee, api = api)
         Spacer(Modifier.width(12.dp))
-
-        // Имя растягивается
         Text(
             text = employee.name,
             style = MaterialTheme.typography.bodyMedium,
@@ -77,26 +59,55 @@ fun EmployeeRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-
-        // Статус
-        Surface(
-            shape = RoundedCornerShape(4.dp),
-            color = statusColor.copy(alpha = 0.12f),
+        EmployeeStatusBadge(
+            isActive = employee.isActive,
             modifier = Modifier.padding(horizontal = 8.dp),
-        ) {
-            Text(
-                text = statusLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = statusColor,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-            )
-        }
-
-        // Чекбокс — trailing
+        )
         Checkbox(
             checked = selected,
             onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
+/** Круглый аватар сотрудника фиксированного размера 36dp. */
+@Composable
+fun EmployeeAvatar(
+    employee: EmployeeListItem,
+    api: ApiClient,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Avatar(employee.avatarId, employee.name, api)
+    }
+}
+
+/** Бейдж со статусом активности сотрудника (активен / неактивен). */
+@Composable
+fun EmployeeStatusBadge(
+    isActive: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(if (isActive) Res.string.employee_status_active else Res.string.employee_status_inactive)
+    val color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = color.copy(alpha = 0.12f),
+        modifier = modifier,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
         )
     }
 }

@@ -474,4 +474,14 @@
     <string name="clients_view_without_group">No Group</string>
     <string name="clients_load_error">Failed to load clients</string>
 
+    <string name="employees_subtitle_count">%1$d employees</string>
+    <string name="employees_search_placeholder">Search employees</string>
+    <string name="employees_load_error">Failed to load employees</string>
+    <string name="employees_view_all">All</string>
+    <string name="employees_view_active">Active</string>
+    <string name="employees_col_roles">Roles</string>
+    <string name="employees_col_contact">Contact</string>
+    <string name="employees_filter_only_active">Only active</string>
+    <string name="employees_filter_section_status">Status</string>
+
 </resources>

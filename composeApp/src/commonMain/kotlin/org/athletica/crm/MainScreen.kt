@@ -529,6 +529,8 @@ private fun AppNavHost(
         composable<AppRoute.Employees> {
             EmployeesScreen(
                 api = api,
+                displaySettingsVm = displaySettingsVm,
+                windowSize = windowSize,
                 onNavigateToCreate = { navController.navigate(AppRoute.EmployeeCreate) },
                 onEmployeeClick = { id -> navController.navigate(AppRoute.EmployeeDetail(id.toString())) },
                 modifier = Modifier.fillMaxSize(),

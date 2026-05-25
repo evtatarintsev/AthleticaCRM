@@ -1,8 +1,11 @@
 package org.athletica.crm.components.settings.orgbalance
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -13,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.generated.resources.Res
@@ -26,13 +30,14 @@ import kotlin.math.round
 /**
  * Диалог пополнения баланса организации.
  * Содержит единственное поле — сумму пополнения. Кнопка «Оплатить» активна,
- * пока введённая сумма распознаётся как положительное число.
+ * пока введённая сумма распознаётся как положительное число и не выполняется запрос ([isLoading] = false).
  * По нажатию вызывает [onPay] со суммой в виде [Money] (валюта = [currency]);
  * диалог закрывается через [onDismiss] (отмена или внешний клик).
  */
 @Composable
 fun ReplenishBalanceDialog(
     currency: Currency,
+    isLoading: Boolean,
     onPay: (amount: Money) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -57,7 +62,7 @@ fun ReplenishBalanceDialog(
         },
         confirmButton = {
             TextButton(
-                enabled = isValid,
+                enabled = isValid && !isLoading,
                 onClick = {
                     amount?.let { value ->
                         val scale = pow10(currency.fractionDigits)
@@ -66,7 +71,15 @@ fun ReplenishBalanceDialog(
                     }
                 },
             ) {
-                Text(stringResource(Res.string.action_pay))
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = androidx.compose.ui.Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    Text(stringResource(Res.string.action_pay))
+                }
             }
         },
         dismissButton = {

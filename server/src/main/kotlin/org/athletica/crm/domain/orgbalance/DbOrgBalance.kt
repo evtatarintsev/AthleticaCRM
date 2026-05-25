@@ -3,7 +3,7 @@ package org.athletica.crm.domain.orgbalance
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.core.AdminRequestContext
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
@@ -47,6 +47,41 @@ data class DbOrgBalance(
             .bind("orgId", ctx.orgId)
             .bind("amount", amount)
             .bind("operationType", operationType)
+            .bind("description", description)
+            .execute()
+
+        return DbOrgBalance(balanceAfter, history)
+    }
+
+    context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun replenish(amount: Money, description: String): OrgBalance {
+        ensure(amount.currency == ctx.currency) {
+            CommonDomainError("BALANCE_CURRENCY_MISMATCH", Messages.BalanceCurrencyMismatch.localize())
+        }
+        ensure(amount.isPositive) {
+            CommonDomainError("BALANCE_AMOUNT_NOT_POSITIVE", "Сумма пополнения должна быть положительной")
+        }
+        ensure(description.isNotBlank()) {
+            CommonDomainError("BALANCE_DESCRIPTION_REQUIRED", Messages.BalanceNoteRequired.localize())
+        }
+
+        val balanceAfter = totalAmount + amount
+
+        tr
+            .sql(
+                """
+                INSERT INTO org_balance_journal
+                    (id, org_id, amount, balance_after, operation_type, description)
+                VALUES (
+                    :id, :orgId, :amount,
+                    COALESCE((SELECT SUM(j.amount) FROM org_balance_journal j WHERE j.org_id = :orgId), 0) + :amount,
+                    'replenishment'::org_balance_operation_type, :description
+                )
+                """.trimIndent(),
+            )
+            .bind("id", Uuid.generateV7())
+            .bind("orgId", ctx.orgId)
+            .bind("amount", amount)
             .bind("description", description)
             .execute()
 

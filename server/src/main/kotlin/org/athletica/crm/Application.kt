@@ -39,6 +39,7 @@ import org.athletica.crm.core.systemContext
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.branchesRoutes
+import org.athletica.crm.routes.checkoutRoutes
 import org.athletica.crm.routes.clientImportRoutes
 import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.customFieldsRoutes
@@ -54,6 +55,7 @@ import org.athletica.crm.routes.myBranchesRoute
 import org.athletica.crm.routes.notificationsRoutes
 import org.athletica.crm.routes.orgBalanceRoutes
 import org.athletica.crm.routes.orgRoutes
+import org.athletica.crm.routes.paymentRoutes
 import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.sessionsRoutes
@@ -141,6 +143,9 @@ fun Application.configureServer() {
     }
     context(di.database, di.audit) {
         routing {
+            // Webhook ЮKassa — ВНЕ JWT-авторизации: вызывается платёжным шлюзом напрямую
+            checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
+
             route("/api") {
                 context(di.jwtConfig, di.passwordHasher, di.branches, di.userDisplaySettings) {
                     authRoutes()
@@ -181,6 +186,7 @@ fun Application.configureServer() {
                         context(di.minio) {
                             taskRoutes(di.tasks)
                         }
+                        paymentRoutes(di.payments, di.paymentGateway)
                     }
                 }
             }

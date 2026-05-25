@@ -3,6 +3,7 @@ package org.athletica.crm.domain.orgbalance
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.AdminRequestContext
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
@@ -26,13 +27,19 @@ class LocMemCachedOrgBalances(private val delegate: OrgBalances) : OrgBalances {
     private val orgs: ConcurrentHashMap<OrgId, OrgBalance> = ConcurrentHashMap()
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun current(): OrgBalance =
-        orgs[ctx.orgId] ?: delegate.current().let { CachedOrgBalance(it) }.also { orgs[ctx.orgId] = it }
+    override suspend fun current(): OrgBalance = orgs[ctx.orgId] ?: delegate.current().let { CachedOrgBalance(it) }.also { orgs[ctx.orgId] = it }
 
     private inner class CachedOrgBalance(private val inner: OrgBalance) : OrgBalance by inner {
         context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<DomainError>)
         override suspend fun adjust(amount: Money, description: String): OrgBalance {
             val updated = inner.adjust(amount, description)
+            orgs.remove(ctx.orgId)
+            return CachedOrgBalance(updated)
+        }
+
+        context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<DomainError>)
+        override suspend fun replenish(amount: Money, description: String): OrgBalance {
+            val updated = inner.replenish(amount, description)
             orgs.remove(ctx.orgId)
             return CachedOrgBalance(updated)
         }

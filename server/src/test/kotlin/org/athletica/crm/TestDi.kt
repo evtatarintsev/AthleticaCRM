@@ -10,8 +10,13 @@ import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.org.DbOrganizations
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
+import org.athletica.crm.domain.payment.DbPayments
+import org.athletica.crm.domain.payment.PaymentCreateRequest
+import org.athletica.crm.domain.payment.PaymentCreateResult
+import org.athletica.crm.domain.payment.PaymentGateway
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.infra.yookassa.YookassaConfig
 
 /** JWT-конфиг для тестовой среды. */
 val testJwtConfig =
@@ -41,5 +46,11 @@ fun testDi(): Di {
         clients = DbClients(),
         branches = DbBranches(),
         customFieldDefinitions = DbCustomFieldDefinitions(),
+        yookassaConfig = YookassaConfig(shopId = "test", secretKey = "test", testMode = true, returnUrl = "https://test.example.com/return"),
+        payments = DbPayments(),
+        paymentGateway =
+            object : PaymentGateway {
+                override suspend fun createPayment(request: PaymentCreateRequest): PaymentCreateResult = throw UnsupportedOperationException("PaymentGateway not available in tests")
+            },
     )
 }

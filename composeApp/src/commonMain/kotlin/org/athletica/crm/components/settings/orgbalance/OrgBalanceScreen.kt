@@ -40,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -54,7 +53,6 @@ import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_replenish_balance
 import org.athletica.crm.generated.resources.label_total_balance
 import org.athletica.crm.generated.resources.org_balance_empty
-import org.athletica.crm.generated.resources.replenish_unavailable_stub
 import org.athletica.crm.generated.resources.screen_org_balance
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
@@ -62,8 +60,9 @@ import kotlin.time.Instant
 /**
  * Экран «Баланс организации».
  * Сверху показывает текущий баланс, ниже — историю операций.
- * FAB «Пополнить баланс» открывает [ReplenishBalanceDialog]; до подключения
- * платежной интеграции при подтверждении показывается snackbar-заглушка.
+ * FAB «Пополнить баланс» открывает [ReplenishBalanceDialog], который вызывает
+ * [OrgBalanceViewModel.initiatePayment]: при успехе браузер открывается автоматически,
+ * при ошибке — отображается snackbar.
  *
  * [api] — клиент API.
  * [onBack] — callback возврата на экран настроек.
@@ -79,10 +78,29 @@ fun OrgBalanceScreen(
     val viewModel = remember { OrgBalanceViewModel(api, scope) }
     val snackbarHostState = remember { SnackbarHostState() }
     var showReplenish by remember { mutableStateOf(false) }
-    val stubMessage = stringResource(Res.string.replenish_unavailable_stub)
+
+    val state = viewModel.state
 
     LaunchedEffect(Unit) {
         viewModel.load()
+    }
+
+    // Браузер открылся — закрываем диалог
+    LaunchedEffect(state.payment) {
+        if (state.payment is OrgBalancePaymentState.Launched) {
+            showReplenish = false
+            viewModel.clearPaymentState()
+        }
+    }
+
+    // Ошибка инициирования — показываем snackbar
+    val paymentError = (state.payment as? OrgBalancePaymentState.Error)?.error
+    if (paymentError != null) {
+        val errorMsg = paymentError.message()
+        LaunchedEffect(paymentError) {
+            snackbarHostState.showSnackbar(errorMsg)
+            viewModel.clearPaymentState()
+        }
     }
 
     Scaffold(
@@ -115,7 +133,7 @@ fun OrgBalanceScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
         ) {
-            when (val s = viewModel.loadState) {
+            when (val s = state.load) {
                 is OrgBalanceLoadState.Loading ->
                     Box(
                         contentAlignment = Alignment.Center,
@@ -165,13 +183,13 @@ fun OrgBalanceScreen(
     }
 
     if (showReplenish) {
-        val loaded = viewModel.loadState as? OrgBalanceLoadState.Loaded
+        val currency =
+            (state.load as? OrgBalanceLoadState.Loaded)?.totalAmount?.currency
+                ?: org.athletica.crm.core.money.Currency.RUB
         ReplenishBalanceDialog(
-            currency = loaded?.totalAmount?.currency ?: org.athletica.crm.core.money.Currency.RUB,
-            onPay = { _ ->
-                showReplenish = false
-                scope.launch { snackbarHostState.showSnackbar(stubMessage) }
-            },
+            currency = currency,
+            isLoading = state.payment is OrgBalancePaymentState.Initiating,
+            onPay = { amount -> viewModel.initiatePayment(amount) },
             onDismiss = { showReplenish = false },
         )
     }

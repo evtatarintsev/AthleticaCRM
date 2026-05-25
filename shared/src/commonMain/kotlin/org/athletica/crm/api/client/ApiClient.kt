@@ -27,4 +27,5 @@ class ApiClient(private val http: HttpClient) {
     val home = HomeApiClient(http)
     val displaySettings = DisplaySettingsApiClient(http)
     val tasks = TasksApiClient(http)
+    val payments = PaymentsApiClient(http)
 }

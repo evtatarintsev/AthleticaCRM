@@ -2,7 +2,7 @@ package org.athletica.crm.domain.orgbalance
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.AdminRequestContext
-import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.storage.Transaction
@@ -19,6 +19,15 @@ interface OrgBalance {
      */
     context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun adjust(amount: Money, description: String): OrgBalance
+
+    /**
+     * Зачисляет [amount] на баланс организации из платёжного шлюза.
+     * Записывает операцию с типом `replenishment`.
+     * Вызывается исключительно системными обработчиками (webhook, event handlers).
+     * [amount] должна быть положительной.
+     */
+    context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun replenish(amount: Money, description: String): OrgBalance
 }
 
 /** Одна запись в журнале операций по балансу организации. */

@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import io.ktor.client.engine.cio.CIO
 import io.ktor.server.application.Application
 import io.minio.MinioClient
 import io.r2dbc.pool.ConnectionPool
@@ -53,6 +54,9 @@ import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.LocMemCachedOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
+import org.athletica.crm.domain.payment.DbPayments
+import org.athletica.crm.domain.payment.PaymentGateway
+import org.athletica.crm.domain.payment.Payments
 import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbSessions
 import org.athletica.crm.domain.sessions.Sessions
@@ -66,6 +70,10 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
+import org.athletica.infra.yookassa.YookassaApi
+import org.athletica.infra.yookassa.YookassaConfig
+import org.athletica.infra.yookassa.YookassaPaymentGateway
+import org.athletica.infra.yookassa.createYookassaHttpClient
 import kotlin.time.Duration.Companion.seconds
 
 data class Di(
@@ -87,6 +95,9 @@ data class Di(
     val customFieldDefinitions: CustomFieldDefinitions,
     val userDisplaySettings: UserDisplaySettings = DbUserDisplaySettings(),
     val tasks: Tasks = DbTasks(),
+    val yookassaConfig: YookassaConfig,
+    val payments: Payments,
+    val paymentGateway: PaymentGateway,
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -121,6 +132,7 @@ fun Application.di(): Di {
     val db = createDatabase(dbConfig)
     val mb = mailbox()
     val passwordHasher = PasswordHasher()
+    val ykConfig = yookassaConfig()
     val orgEmails = DbOrgEmails()
     val audit = PostgresAuditLog()
     return Di(
@@ -141,8 +153,20 @@ fun Application.di(): Di {
         branches = DbBranches(),
         customFieldDefinitions = DbCustomFieldDefinitions(),
         userDisplaySettings = DbUserDisplaySettings(),
+        yookassaConfig = ykConfig,
+        payments = DbPayments(),
+        paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
     )
 }
+
+/** Создаёт [YookassaConfig] из конфигурации приложения. */
+fun Application.yookassaConfig() =
+    YookassaConfig(
+        shopId = environment.config.property("yookassa.shopId").getString(),
+        secretKey = environment.config.property("yookassa.secretKey").getString(),
+        testMode = environment.config.property("yookassa.testMode").getString().toBoolean(),
+        returnUrl = environment.config.property("yookassa.returnUrl").getString(),
+    )
 
 fun Application.databaseConfig() =
     DatabaseConfig(

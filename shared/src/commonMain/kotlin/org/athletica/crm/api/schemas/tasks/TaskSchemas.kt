@@ -115,3 +115,27 @@ data class UpdateTaskRequest(
     /** Полный список вложений после обновления. Диффинг выполняется на сервере. */
     val attachments: List<UploadId>,
 )
+
+/** Запрос на массовое изменение статуса задач. */
+@Serializable
+data class BulkUpdateTasksStatusRequest(
+    /** Идентификаторы задач, которым меняется статус. */
+    val taskIds: List<TaskId>,
+    val status: TaskStatus,
+)
+
+/** Запрос на массовое переназначение исполнителя задач. */
+@Serializable
+data class BulkUpdateTasksAssigneeRequest(
+    /** Идентификаторы задач, которым меняется исполнитель. */
+    val taskIds: List<TaskId>,
+    /** Новый исполнитель или null — снять назначение. */
+    val assigneeId: EmployeeId?,
+)
+
+/** Ответ на массовое обновление задач. */
+@Serializable
+data class BulkUpdateTasksResponse(
+    /** Количество фактически обновлённых задач. */
+    val updated: Int,
+)

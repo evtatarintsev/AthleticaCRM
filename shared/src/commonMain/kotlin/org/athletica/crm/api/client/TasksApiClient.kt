@@ -6,6 +6,9 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksAssigneeRequest
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksResponse
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksStatusRequest
 import org.athletica.crm.api.schemas.tasks.CreateTaskRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailResponse
@@ -46,6 +49,24 @@ class TasksApiClient(private val http: HttpClient) {
     suspend fun update(request: UpdateTaskRequest): Either<ApiClientError, TaskDetailResponse> =
         requestCatching {
             http.post("/api/tasks/update") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Массово меняет статус задач. Отклоняется, если нет прав хотя бы к одной задаче. */
+    suspend fun bulkUpdateStatus(request: BulkUpdateTasksStatusRequest): Either<ApiClientError, BulkUpdateTasksResponse> =
+        requestCatching {
+            http.post("/api/tasks/bulk-status") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Массово меняет исполнителя задач. Отклоняется, если нет прав хотя бы к одной задаче. */
+    suspend fun bulkUpdateAssignee(request: BulkUpdateTasksAssigneeRequest): Either<ApiClientError, BulkUpdateTasksResponse> =
+        requestCatching {
+            http.post("/api/tasks/bulk-assignee") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

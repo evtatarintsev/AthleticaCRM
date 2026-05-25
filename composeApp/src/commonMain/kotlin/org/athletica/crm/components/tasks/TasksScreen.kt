@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,10 +12,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,15 +33,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksAssigneeRequest
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksStatusRequest
 import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.tasks.TaskId
+import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_create_task
+import org.athletica.crm.generated.resources.bulk_action_assign_to
+import org.athletica.crm.generated.resources.bulk_action_change_status
 import org.athletica.crm.generated.resources.empty_search_results
+import org.athletica.crm.generated.resources.label_selected_count
 import org.athletica.crm.generated.resources.list_action_apply
 import org.athletica.crm.generated.resources.tasks_col_assignee
 import org.athletica.crm.generated.resources.tasks_col_due_date
@@ -58,6 +74,7 @@ import org.athletica.crm.ui.list.ListPageViewModel
 import org.athletica.crm.ui.list.ListTable
 import org.athletica.crm.ui.list.SavedView
 import org.athletica.crm.ui.list.SavedViewId
+import org.athletica.crm.ui.list.SelectionState
 import org.athletica.crm.ui.list.SortBottomSheet
 import org.athletica.crm.ui.list.SortDirection
 import org.athletica.crm.ui.list.SortableColumn
@@ -92,8 +109,10 @@ fun TasksScreen(
 
     LaunchedEffect(refreshKey) { viewModel.load() }
 
+    var selectedIds by remember { mutableStateOf<Set<TaskId>>(emptySet()) }
     var filterSheetVisible by remember { mutableStateOf(false) }
     var sortSheetVisible by remember { mutableStateOf(false) }
+    var showAssigneeSheet by remember { mutableStateOf(false) }
     var filterDraft by remember { mutableStateOf(viewModel.state.filter) }
 
     LaunchedEffect(filterSheetVisible) {
@@ -190,6 +209,32 @@ fun TasksScreen(
 
     val applyLabel = stringResource(Res.string.list_action_apply)
 
+    val visible = viewModel.visible
+    val selectAllState =
+        when {
+            selectedIds.isEmpty() -> ToggleableState.Off
+            selectedIds.containsAll(visible.map { it.id }) -> ToggleableState.On
+            else -> ToggleableState.Indeterminate
+        }
+
+    val selection =
+        SelectionState(
+            isSelected = { task: TaskListItemSchema -> task.id in selectedIds },
+            onToggle = { task: TaskListItemSchema ->
+                selectedIds =
+                    if (task.id in selectedIds) {
+                        selectedIds - task.id
+                    } else {
+                        selectedIds + task.id
+                    }
+            },
+            onToggleAll = {
+                selectedIds =
+                    if (selectAllState == ToggleableState.On) emptySet() else visible.map { it.id }.toSet()
+            },
+            selectAllState = selectAllState,
+        )
+
     ListPageScaffold(
         title = title,
         subtitle = subtitle,
@@ -270,23 +315,71 @@ fun TasksScreen(
                 null
             },
         fab = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToCreate,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(Res.string.action_create_task)) },
-            )
+            if (selectedIds.isEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateToCreate,
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(Res.string.action_create_task)) },
+                )
+            }
         },
-        bulkActionBar = null,
+        bulkActionBar =
+            if (selectedIds.isNotEmpty()) {
+                {
+                    TasksBulkActionBar(
+                        selectedCount = selectedIds.size,
+                        onAssignee = { showAssigneeSheet = true },
+                        onStatusSelected = { newStatus ->
+                            scope.launch {
+                                api.tasks.bulkUpdateStatus(
+                                    BulkUpdateTasksStatusRequest(selectedIds.toList(), newStatus),
+                                ).fold(
+                                    ifLeft = {},
+                                    ifRight = {
+                                        selectedIds = emptySet()
+                                        viewModel.load()
+                                    },
+                                )
+                            }
+                        },
+                    )
+                }
+            } else {
+                null
+            },
         content = {
             TasksContent(
                 viewModel = viewModel,
                 columns = columns,
                 windowSize = windowSize,
+                selection = selection,
+                selectedIds = selectedIds,
                 onTaskClick = onTaskClick,
             )
         },
         modifier = modifier,
     )
+
+    if (showAssigneeSheet) {
+        PickAssigneeSheet(
+            api = api,
+            onDismiss = { showAssigneeSheet = false },
+            onPicked = { employeeId: EmployeeId? ->
+                showAssigneeSheet = false
+                scope.launch {
+                    api.tasks.bulkUpdateAssignee(
+                        BulkUpdateTasksAssigneeRequest(selectedIds.toList(), employeeId),
+                    ).fold(
+                        ifLeft = {},
+                        ifRight = {
+                            selectedIds = emptySet()
+                            viewModel.load()
+                        },
+                    )
+                }
+            },
+        )
+    }
 
     if (sortSheetVisible) {
         SortBottomSheet(
@@ -329,6 +422,8 @@ private fun TasksContent(
     viewModel: ListPageViewModel<TaskListItemSchema, TasksFilter>,
     columns: List<ListColumn<TaskListItemSchema>>,
     windowSize: WindowSize,
+    selection: SelectionState<TaskListItemSchema>,
+    selectedIds: Set<TaskId>,
     onTaskClick: (TaskId) -> Unit,
 ) {
     when (viewModel.state.data) {
@@ -367,8 +462,8 @@ private fun TasksContent(
                         items(viewModel.visible, key = { it.id.value }) { task ->
                             TaskMobileItem(
                                 task = task,
-                                isSelected = false,
-                                onToggleSelect = {},
+                                isSelected = task.id in selectedIds,
+                                onToggleSelect = { selection.onToggle(task) },
                                 onClick = { onTaskClick(task.id) },
                             )
                         }
@@ -388,9 +483,65 @@ private fun TasksContent(
                             )
                         },
                         windowSize = windowSize,
-                        selection = null,
+                        selection = selection,
                         sort = viewModel.state.sort,
                         onSortChange = { columnId -> viewModel.cycleSort(columnId) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Нижняя панель массовых действий, появляющаяся при выборе задач.
+ *
+ * [selectedCount] — количество выбранных задач.
+ * [onAssignee] — нажатие на кнопку назначения исполнителя.
+ * [onStatusSelected] — выбор нового статуса из выпадающего меню.
+ */
+@Composable
+private fun TasksBulkActionBar(
+    selectedCount: Int,
+    onAssignee: () -> Unit,
+    onStatusSelected: (TaskStatus) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var statusMenuExpanded by remember { mutableStateOf(false) }
+
+    BottomAppBar(modifier = modifier) {
+        Text(
+            text = stringResource(Res.string.label_selected_count, selectedCount),
+            style = MaterialTheme.typography.titleSmall,
+            modifier =
+                Modifier
+                    .padding(start = 16.dp)
+                    .weight(1f),
+        )
+        IconButton(onClick = onAssignee) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = stringResource(Res.string.bulk_action_assign_to),
+            )
+        }
+        Box {
+            IconButton(onClick = { statusMenuExpanded = true }) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = stringResource(Res.string.bulk_action_change_status),
+                )
+            }
+            DropdownMenu(
+                expanded = statusMenuExpanded,
+                onDismissRequest = { statusMenuExpanded = false },
+            ) {
+                TaskStatus.entries.forEach { status ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(statusLabelRes(status))) },
+                        onClick = {
+                            statusMenuExpanded = false
+                            onStatusSelected(status)
+                        },
                     )
                 }
             }

@@ -2,6 +2,9 @@ package org.athletica.crm.routes.tasks
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksAssigneeRequest
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksResponse
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksStatusRequest
 import org.athletica.crm.api.schemas.tasks.CreateTaskRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailResponse
@@ -19,6 +22,7 @@ import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.tasks.Task
 import org.athletica.crm.domain.tasks.TaskFilter
 import org.athletica.crm.domain.tasks.Tasks
@@ -97,6 +101,20 @@ fun RouteWithContext.taskRoutes(tasks: Tasks) {
             val clientNames = loadClientNames(clientIds)
             val attachmentResponses = loadUploadResponses(task.attachments.map { it.value }, minio)
             task.toDetailResponse(employeeNames, clientNames, attachmentResponses)
+        }
+    }
+
+    post<BulkUpdateTasksStatusRequest, BulkUpdateTasksResponse>("/tasks/bulk-status") { req ->
+        db.transaction {
+            tasks.applyBulk(req.taskIds) { status = req.status }
+            BulkUpdateTasksResponse(updated = req.taskIds.size)
+        }
+    }
+
+    post<BulkUpdateTasksAssigneeRequest, BulkUpdateTasksResponse>("/tasks/bulk-assignee") { req ->
+        db.transaction {
+            tasks.applyBulk(req.taskIds) { assigneeId = req.assigneeId }
+            BulkUpdateTasksResponse(updated = req.taskIds.size)
         }
     }
 }
@@ -189,6 +207,29 @@ private suspend fun Tasks.applyUpdate(req: UpdateTaskRequest): Task {
     task.attachments = req.attachments
     task.save()
     return task
+}
+
+/**
+ * Проверяет права на каждую задачу из [taskIds] и применяет [mutate] ко всем сразу.
+ * Если хотя бы к одной задаче нет прав — вся операция откатывается.
+ */
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+internal suspend fun Tasks.applyBulk(
+    taskIds: List<TaskId>,
+    mutate: Task.() -> Unit,
+) {
+    val loaded = taskIds.map { byId(it) }
+    loaded.forEach { task ->
+        if (!ctx.hasPermission(UserPermission.CAN_MANAGE_TASKS)) {
+            if (task.createdBy != ctx.employeeId && task.assigneeId != ctx.employeeId) {
+                raise(CommonDomainError("PERMISSION_DENIED", "Нет прав для редактирования задачи ${task.id}"))
+            }
+        }
+    }
+    loaded.forEach { task ->
+        task.mutate()
+        task.save()
+    }
 }
 
 private fun TaskListRequest.toFilter() =

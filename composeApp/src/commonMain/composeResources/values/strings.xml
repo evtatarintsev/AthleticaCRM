@@ -515,6 +515,10 @@
     <string name="tasks_filter_section_status">Статус</string>
     <string name="tasks_load_error">Ошибка загрузки задач</string>
     <string name="tasks_empty">Нет задач</string>
+    <string name="bulk_action_change_status">Сменить статус</string>
+    <string name="bulk_action_assign_to">Назначить исполнителя</string>
+    <string name="bulk_action_unassign">Снять назначение</string>
+    <string name="pick_assignee_title">Выбрать исполнителя</string>
     <string name="list_sort_title">Сортировка</string>
     <string name="list_sort_ascending">По возрастанию</string>
     <string name="list_sort_descending">По убыванию</string>

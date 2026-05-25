@@ -4,8 +4,6 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
@@ -29,23 +27,34 @@ import kotlin.time.Instant
 /** Реализация репозитория задач на основе PostgreSQL через R2DBC. */
 class DbTasks : Tasks {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun byId(id: TaskId): Task {
-        val task =
+    override suspend fun byId(id: TaskId): Task = byIds(listOf(id)).first()
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byIds(ids: List<TaskId>): List<Task> {
+        if (ids.isEmpty()) return emptyList()
+
+        val rows =
             tr.sql(
                 """
                 SELECT id, org_id, created_by, assignee_id, client_id, title, description,
                        status, due_date, due_date_end, completed_at, created_at
                 FROM tasks
-                WHERE id = :id AND org_id = :orgId
+                WHERE id = ANY(:ids) AND org_id = :orgId
                 """.trimIndent(),
             )
-                .bind("id", id)
+                .bind("ids", ids)
                 .bind("orgId", ctx.orgId)
-                .firstOrNull { row -> row.toDbTask(emptyList()) }
-                ?: raise(CommonDomainError("TASK_NOT_FOUND", "Задача не найдена"))
+                .list { row -> row.toDbTask(emptyList()) }
 
-        val attachments = loadAttachments(listOf(task.id), tr)[task.id] ?: emptyList()
-        return task.copy(attachments = attachments)
+        val foundIds = rows.map { it.id }.toSet()
+        val missing = ids.filter { it !in foundIds }
+        if (missing.isNotEmpty()) {
+            raise(CommonDomainError("TASK_NOT_FOUND", "Задача не найдена"))
+        }
+
+        val attachmentsByTask = loadAttachments(rows.map { it.id }, tr)
+        val byId = rows.associate { it.id to it.copy(attachments = attachmentsByTask[it.id] ?: emptyList()) }
+        return ids.map { byId.getValue(it) }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -77,25 +86,22 @@ class DbTasks : Tasks {
         id: TaskId,
         title: String,
         description: String,
-        assigneeId: EmployeeId?,
         clientId: ClientId?,
         dueDate: Instant?,
         dueDateEnd: Instant?,
-        attachments: List<UploadId>,
     ): Task {
         val now = Clock.System.now()
         tr.sql(
             """
             INSERT INTO tasks (id, org_id, created_by, assignee_id, client_id, title, description,
                                status, due_date, due_date_end, created_at, updated_at)
-            VALUES (:id, :orgId, :createdBy, :assigneeId, :clientId, :title, :description,
+            VALUES (:id, :orgId, :createdBy, NULL, :clientId, :title, :description,
                    'PENDING', :dueDate, :dueDateEnd, :now, :now)
             """.trimIndent(),
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .bind("createdBy", ctx.employeeId)
-            .bind("assigneeId", assigneeId)
             .bind("clientId", clientId)
             .bind("title", title)
             .bind("description", description)
@@ -104,24 +110,11 @@ class DbTasks : Tasks {
             .bind("now", now)
             .execute()
 
-        attachments.forEach { uploadId ->
-            tr.sql(
-                """
-                INSERT INTO task_attachments (task_id, upload_id)
-                VALUES (:taskId, :uploadId)
-                ON CONFLICT DO NOTHING
-                """.trimIndent(),
-            )
-                .bind("taskId", id)
-                .bind("uploadId", uploadId)
-                .execute()
-        }
-
         return DbTask(
             id = id,
             orgId = ctx.orgId,
             createdBy = ctx.employeeId,
-            assigneeId = assigneeId,
+            assigneeId = null,
             clientId = clientId,
             title = title,
             description = description,
@@ -130,7 +123,7 @@ class DbTasks : Tasks {
             dueDateEnd = dueDateEnd,
             completedAt = null,
             createdAt = now,
-            attachments = attachments,
+            attachments = emptyList(),
             previousStatus = TaskStatus.PENDING,
         )
     }
@@ -185,7 +178,7 @@ class DbTasks : Tasks {
     private suspend fun loadAttachments(
         taskIds: List<TaskId>,
         tr: Transaction,
-    ): Map<TaskId, List<UploadId>> {
+    ): Map<TaskId, List<org.athletica.crm.core.entityids.UploadId>> {
         if (taskIds.isEmpty()) return emptyMap()
         return tr.sql(
             "SELECT task_id, upload_id FROM task_attachments WHERE task_id = ANY(:taskIds)",
@@ -199,7 +192,7 @@ class DbTasks : Tasks {
             .groupBy({ it.first }, { it.second })
     }
 
-    private fun io.r2dbc.spi.Row.toDbTask(attachments: List<UploadId>): DbTask =
+    private fun io.r2dbc.spi.Row.toDbTask(attachments: List<org.athletica.crm.core.entityids.UploadId>): DbTask =
         DbTask(
             id = asUuid("id").toTaskId(),
             orgId = org.athletica.crm.core.entityids.OrgId(asUuid("org_id")),

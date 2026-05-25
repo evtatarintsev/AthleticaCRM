@@ -38,9 +38,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksAssigneeRequest
-import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksStatusRequest
+import org.athletica.crm.api.schemas.tasks.AssignTaskRequest
 import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
+import org.athletica.crm.api.schemas.tasks.UnassignTaskRequest
+import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.tasks.TaskId
@@ -331,8 +332,8 @@ fun TasksScreen(
                         onAssignee = { showAssigneeSheet = true },
                         onStatusSelected = { newStatus ->
                             scope.launch {
-                                api.tasks.bulkUpdateStatus(
-                                    BulkUpdateTasksStatusRequest(selectedIds.toList(), newStatus),
+                                api.tasks.updateStatus(
+                                    UpdateTaskStatusRequest(selectedIds.toList(), newStatus),
                                 ).fold(
                                     ifLeft = {},
                                     ifRight = {
@@ -367,9 +368,13 @@ fun TasksScreen(
             onPicked = { employeeId: EmployeeId? ->
                 showAssigneeSheet = false
                 scope.launch {
-                    api.tasks.bulkUpdateAssignee(
-                        BulkUpdateTasksAssigneeRequest(selectedIds.toList(), employeeId),
-                    ).fold(
+                    val result =
+                        if (employeeId != null) {
+                            api.tasks.assign(AssignTaskRequest(selectedIds.toList(), employeeId))
+                        } else {
+                            api.tasks.unassign(UnassignTaskRequest(selectedIds.toList()))
+                        }
+                    result.fold(
                         ifLeft = {},
                         ifRight = {
                             selectedIds = emptySet()

@@ -1,23 +1,27 @@
 package org.athletica.crm.domain.tasks
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
-import org.athletica.crm.routes.tasks.applyBulk
+import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
@@ -26,8 +30,11 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.fail
+import kotlin.time.Clock
+import kotlin.time.Instant
 
-class BulkUpdateTasksTest {
+/** Тесты операций над агрегатом задачи: status, assignTo, unassign, bulk-сценарии и проверки прав. */
+class TaskOperationsTest {
     private val orgId = OrgId.new()
     private val userId = UserId.new()
     private val employeeId = EmployeeId.new()
@@ -87,18 +94,51 @@ class BulkUpdateTasksTest {
             .firstOrNull { row -> row.asString("ca") }
             ?.takeIf { it.isNotEmpty() }
 
+    private fun employeeStub(id: EmployeeId): Employee =
+        object : Employee {
+            override val id = id
+            override val userId = null
+            override val name = "Stub"
+            override val avatarId: UploadId? = null
+            override val isOwner = false
+            override val isActive = true
+            override val joinedAt: Instant = Clock.System.now()
+            override val permissions = EmployeePermission()
+            override val phoneNo: String? = null
+            override val email: EmailAddress? = null
+            override val allBranchesAccess = true
+            override val branchIds = emptyList<BranchId>()
+
+            context(ctx: EmployeeRequestContext, tr: Transaction)
+            override suspend fun save() = Unit
+
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+            override suspend fun invite(email: EmailAddress, password: String) = Unit
+
+            context(ctx: EmployeeRequestContext)
+            override fun withNew(
+                newName: String,
+                newPermissions: EmployeePermission,
+                newAvatarId: UploadId?,
+                newPhoneNo: String?,
+                newEmail: EmailAddress?,
+                newAllBranchesAccess: Boolean,
+                newBranchIds: List<BranchId>,
+            ): Employee = this
+        }
+
     // ─── массовая смена статуса ───────────────────────────────────────────────
 
     @Test
-    fun `applyBulk меняет статус у нескольких задач`() =
+    fun `status меняет статус у нескольких задач`() =
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(id1, "Задача 1", "", null, null, null, null, emptyList())
-                        tasks.new(id2, "Задача 2", "", null, null, null, null, emptyList())
+                        tasks.new(id1, "Задача 1", "", null, null, null)
+                        tasks.new(id2, "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -106,7 +146,9 @@ class BulkUpdateTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.applyBulk(listOf(id1, id2)) { status = TaskStatus.IN_PROGRESS }
+                        tasks.byIds(listOf(id1, id2))
+                            .map { context(ctx) { it.status(TaskStatus.IN_PROGRESS) } }
+                            .forEach { it.save() }
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -116,15 +158,15 @@ class BulkUpdateTasksTest {
         }
 
     @Test
-    fun `applyBulk переход в COMPLETED проставляет completedAt`() =
+    fun `status COMPLETED проставляет completedAt у нескольких задач`() =
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(id1, "Задача 1", "", null, null, null, null, emptyList())
-                        tasks.new(id2, "Задача 2", "", null, null, null, null, emptyList())
+                        tasks.new(id1, "Задача 1", "", null, null, null)
+                        tasks.new(id2, "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -132,7 +174,9 @@ class BulkUpdateTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.applyBulk(listOf(id1, id2)) { status = TaskStatus.COMPLETED }
+                        tasks.byIds(listOf(id1, id2))
+                            .map { context(ctx) { it.status(TaskStatus.COMPLETED) } }
+                            .forEach { it.save() }
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -144,23 +188,26 @@ class BulkUpdateTasksTest {
     // ─── массовое переназначение исполнителя ──────────────────────────────────
 
     @Test
-    fun `applyBulk переназначает исполнителя у нескольких задач`() =
+    fun `assignTo переназначает исполнителя у нескольких задач`() =
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(id1, "Задача 1", "", null, null, null, null, emptyList())
-                        tasks.new(id2, "Задача 2", "", null, null, null, null, emptyList())
+                        tasks.new(id1, "Задача 1", "", null, null, null)
+                        tasks.new(id2, "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
+            val thirdEmployee = employeeStub(thirdEmployeeId)
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
-                        tasks.applyBulk(listOf(id1, id2)) { assigneeId = thirdEmployeeId }
+                    context(ctxWithManage, this) {
+                        tasks.byIds(listOf(id1, id2))
+                            .map { context(ctxWithManage) { it.assignTo(thirdEmployee) } }
+                            .forEach { it.save() }
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -179,21 +226,32 @@ class BulkUpdateTasksTest {
         }
 
     @Test
-    fun `applyBulk снимает назначение (null)`() =
+    fun `unassign снимает исполнителя`() =
         runTest {
             val id1 = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(id1, "Задача", "", otherEmployeeId, null, null, null, emptyList())
+                        tasks.new(id1, "Задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
+            val otherEmployee = employeeStub(otherEmployeeId)
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctxWithManage, this) {
+                        val assigned = context(ctxWithManage) { tasks.byId(id1).assignTo(otherEmployee) }
+                        assigned.save()
+                    }
+                }
+            }.getOrElse { fail("Setup assign: $it") }
+
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.applyBulk(listOf(id1)) { assigneeId = null }
+                        val unassigned = context(ctx) { tasks.byId(id1).unassign() }
+                        unassigned.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -209,21 +267,21 @@ class BulkUpdateTasksTest {
     // ─── проверка прав ────────────────────────────────────────────────────────
 
     @Test
-    fun `applyBulk без прав отклоняет всю операцию, если хоть одна чужая задача`() =
+    fun `status без прав отклоняет всю операцию если хоть одна задача чужая`() =
         runTest {
             val myTaskId = TaskId.new()
             val foreignTaskId = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(myTaskId, "Моя задача", "", null, null, null, null, emptyList())
+                        tasks.new(myTaskId, "Моя задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(otherCtx, this) {
-                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null, null, emptyList())
+                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -232,7 +290,9 @@ class BulkUpdateTasksTest {
                 either<DomainError, Unit> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            tasks.applyBulk(listOf(myTaskId, foreignTaskId)) { status = TaskStatus.IN_PROGRESS }
+                            tasks.byIds(listOf(myTaskId, foreignTaskId))
+                                .map { context(ctx) { it.status(TaskStatus.IN_PROGRESS) } }
+                                .forEach { it.save() }
                         }
                     }
                 }
@@ -244,13 +304,13 @@ class BulkUpdateTasksTest {
         }
 
     @Test
-    fun `applyBulk с CAN_MANAGE_TASKS разрешает редактировать чужие задачи`() =
+    fun `status с CAN_MANAGE_TASKS разрешает редактировать чужие задачи`() =
         runTest {
             val foreignTaskId = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(otherCtx, this) {
-                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null, null, emptyList())
+                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -258,7 +318,9 @@ class BulkUpdateTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctxWithManage, this) {
-                        tasks.applyBulk(listOf(foreignTaskId)) { status = TaskStatus.COMPLETED }
+                        tasks.byIds(listOf(foreignTaskId))
+                            .map { context(ctxWithManage) { it.status(TaskStatus.COMPLETED) } }
+                            .forEach { it.save() }
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }

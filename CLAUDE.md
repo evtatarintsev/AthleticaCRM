@@ -11,6 +11,14 @@ Before reporting any task as done, always run:
 ```
 Never propose changes that fail to compile or violate the linter.
 
+### Environment Variables
+
+When adding or changing environment variables in `application.conf`:
+1. Add the variable to `docker-compose.prod.yaml` (under the server service's `environment:` block) so it is passed from the host into the container.
+2. Add the variable (with a placeholder or example value) to `.env.prod.example` — this file documents all variables required for a production deployment.
+
+Both files must be updated in the same commit as the `application.conf` change.
+
 ## Quick Start Commands
 
 ### Build and Test

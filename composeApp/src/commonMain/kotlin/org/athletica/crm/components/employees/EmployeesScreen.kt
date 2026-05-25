@@ -22,6 +22,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -194,6 +195,7 @@ fun EmployeesScreen(
             if (viewModel.state.filter.onlyActive) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = {
                         viewModel.setFilter(viewModel.state.filter.copy(onlyActive = false))
                     },

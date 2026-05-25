@@ -21,6 +21,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -271,6 +272,7 @@ fun GroupsScreen(
             if (filter.disciplineIds.isNotEmpty()) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = { viewModel.setFilter(filter.copy(disciplineIds = emptySet())) },
                     label = {
                         Text(stringResource(Res.string.filter_chip_disciplines_count, filter.disciplineIds.size))
@@ -284,6 +286,7 @@ fun GroupsScreen(
             if (filter.employeeIds.isNotEmpty()) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = { viewModel.setFilter(filter.copy(employeeIds = emptySet())) },
                     label = {
                         Text(stringResource(Res.string.filter_chip_coaches_count, filter.employeeIds.size))

@@ -14,6 +14,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,6 +88,7 @@ private fun SavedViewChip(
     if (view.id.isSystem) {
         FilterChip(
             selected = isSelected,
+            elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
             onClick = view.onApply,
             label = { Text(view.name) },
         )

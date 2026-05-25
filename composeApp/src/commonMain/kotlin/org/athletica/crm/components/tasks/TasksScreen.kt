@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -206,6 +207,7 @@ fun TasksScreen(
             if (viewModel.state.filter.onlyMine) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = {
                         viewModel.setFilter(viewModel.state.filter.copy(onlyMine = false))
                     },
@@ -223,6 +225,7 @@ fun TasksScreen(
             viewModel.state.filter.statuses.forEach { status ->
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = {
                         viewModel.setFilter(
                             viewModel.state.filter.copy(

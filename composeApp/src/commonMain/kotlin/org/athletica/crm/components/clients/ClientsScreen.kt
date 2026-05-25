@@ -22,6 +22,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -341,6 +342,7 @@ fun ClientsScreen(
             if (filter.gender != GenderFilter.All) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = { viewModel.setFilter(filter.copy(gender = GenderFilter.All)) },
                     label = {
                         Text(
@@ -360,6 +362,7 @@ fun ClientsScreen(
             if (filter.hasDebtOnly) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = { viewModel.setFilter(filter.copy(hasDebtOnly = false)) },
                     label = { Text(stringResource(Res.string.filter_chip_has_debt)) },
                     trailingIcon = {
@@ -371,6 +374,7 @@ fun ClientsScreen(
             if (filter.noGroupOnly) {
                 FilterChip(
                     selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = { viewModel.setFilter(filter.copy(noGroupOnly = false)) },
                     label = { Text(stringResource(Res.string.filter_no_group)) },
                     trailingIcon = {

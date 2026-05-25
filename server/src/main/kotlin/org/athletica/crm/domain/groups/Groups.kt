@@ -27,9 +27,26 @@ interface Groups {
      * Возвращает список групп организации.
      * Фильтрует по [RequestContext.branchIdOrNull]: если задан — только для этого филиала,
      * если null (системный контекст) — все группы организации.
+     * Опциональные фильтры:
+     * [nameQuery] — поиск по подстроке в названии (case-insensitive); null/пустая строка — без фильтра.
+     * [disciplineIds] — оставить только группы, у которых есть хотя бы одна из указанных дисциплин;
+     * пустой список — без фильтра.
+     * [employeeIds] — оставить только группы, у которых есть хотя бы один из указанных тренеров;
+     * пустой список — без фильтра.
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun list(): List<Group>
+    suspend fun list(
+        nameQuery: String? = null,
+        disciplineIds: List<DisciplineId> = emptyList(),
+        employeeIds: List<EmployeeId> = emptyList(),
+    ): List<Group>
+
+    /**
+     * Возвращает общее количество групп организации (без учёта фильтров [list]),
+     * с учётом ограничения по филиалу из [RequestContext.branchIdOrNull].
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun totalCount(): Int
 
     /** Возвращает группу по идентификатору. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

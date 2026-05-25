@@ -19,7 +19,13 @@ import org.athletica.crm.core.entityids.GroupId
 
 class GroupsApiClient(private val http: HttpClient) {
     /** Возвращает список групп организации по параметрам [request]. */
-    suspend fun list(request: GroupListRequest): Either<ApiClientError, GroupListResponse> = requestCatching { http.get("/api/groups/list") }
+    suspend fun list(request: GroupListRequest): Either<ApiClientError, GroupListResponse> =
+        requestCatching {
+            http.post("/api/groups/list") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Возвращает полные данные группы по ID. */
     suspend fun detail(id: GroupId): Either<ApiClientError, GroupDetailResponse> = requestCatching { http.get("/api/groups/detail?id=$id") }

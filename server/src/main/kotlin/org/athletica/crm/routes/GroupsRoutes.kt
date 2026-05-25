@@ -9,6 +9,7 @@ import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
 import org.athletica.crm.api.schemas.groups.GroupEmployee
 import org.athletica.crm.api.schemas.groups.GroupListItem
+import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
@@ -48,10 +49,16 @@ fun RouteWithContext.groupsRoutes(
     bus: DomainEventBus,
 ) {
     route("/groups") {
-        get<Unit, GroupListResponse>("/list") {
+        post<GroupListRequest, GroupListResponse>("/list") { request ->
             db.transaction {
                 val allEmployees = employees.list()
-                groups.list().toListResponse(allEmployees)
+                val filtered =
+                    groups.list(
+                        nameQuery = request.name,
+                        disciplineIds = request.disciplineIds,
+                        employeeIds = request.employeeIds,
+                    )
+                filtered.toListResponse(allEmployees, total = groups.totalCount())
             }
         }
 
@@ -125,8 +132,11 @@ fun RouteWithContext.groupsRoutes(
 
 private fun RoutingCall.pathGroupId(): GroupId = Uuid.parse(parameters["groupId"]!!).toGroupId()
 
-fun List<Group>.toListResponse(allEmployees: List<Employee> = emptyList()) =
-    GroupListResponse(
+fun List<Group>.toListResponse(
+    allEmployees: List<Employee> = emptyList(),
+    total: Int = size,
+) = GroupListResponse(
+    groups =
         map { group ->
             GroupListItem(
                 id = group.id,
@@ -135,7 +145,8 @@ fun List<Group>.toListResponse(allEmployees: List<Employee> = emptyList()) =
                 employees = allEmployees.mapToGroupEmployees(group.employeeIds),
             )
         },
-    )
+    total = total.toUInt(),
+)
 
 fun List<Group>.toGroupSelectItems() = map { GroupSelectItem(it.id, it.name) }
 

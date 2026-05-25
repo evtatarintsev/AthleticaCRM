@@ -23,6 +23,7 @@ import org.athletica.crm.domain.events.GroupCreated
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalTime
+import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
@@ -110,20 +111,41 @@ class DbGroups(private val events: DomainEvents) : Groups {
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(): List<Group> {
+    override suspend fun list(
+        nameQuery: String?,
+        disciplineIds: List<DisciplineId>,
+        employeeIds: List<EmployeeId>,
+    ): List<Group> {
         val branchId = ctx.branchIdOrNull
-        val branchFilter = if (branchId != null) "AND branch_id = :branchId" else ""
+        val branchFilter = if (branchId != null) "AND g.branch_id = :branchId" else ""
+        val trimmedName = nameQuery?.trim()?.takeIf { it.isNotEmpty() }
+        val nameFilter = if (trimmedName != null) "AND g.name ILIKE :namePattern" else ""
+        val disciplineFilter =
+            if (disciplineIds.isNotEmpty()) {
+                "AND EXISTS (SELECT 1 FROM group_disciplines gd WHERE gd.group_id = g.id AND gd.discipline_id = ANY(:disciplineIds))"
+            } else {
+                ""
+            }
+        val employeeFilter =
+            if (employeeIds.isNotEmpty()) {
+                "AND EXISTS (SELECT 1 FROM group_employees ge WHERE ge.group_id = g.id AND ge.employee_id = ANY(:employeeIds))"
+            } else {
+                ""
+            }
         val groups =
             tr
                 .sql(
                     """
-                    SELECT id, branch_id, name FROM groups
-                    WHERE org_id = :orgId $branchFilter
-                    ORDER BY name
+                    SELECT g.id, g.branch_id, g.name FROM groups g
+                    WHERE g.org_id = :orgId $branchFilter $nameFilter $disciplineFilter $employeeFilter
+                    ORDER BY g.name
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
                 .let { q -> if (branchId != null) q.bind("branchId", branchId) else q }
+                .let { q -> if (trimmedName != null) q.bind("namePattern", "%$trimmedName%") else q }
+                .let { q -> if (disciplineIds.isNotEmpty()) q.bind("disciplineIds", disciplineIds.map { it.value }) else q }
+                .let { q -> if (employeeIds.isNotEmpty()) q.bind("employeeIds", employeeIds.map { it.value }) else q }
                 .list { row ->
                     Triple(
                         row.asUuid("id").toGroupId(),
@@ -199,6 +221,22 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 employeeIds = employeeIdsByGroup[id] ?: emptyList(),
             )
         }
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun totalCount(): Int {
+        val branchId = ctx.branchIdOrNull
+        val branchFilter = if (branchId != null) "AND branch_id = :branchId" else ""
+        return tr
+            .sql(
+                """
+                SELECT COUNT(*) AS cnt FROM groups
+                WHERE org_id = :orgId $branchFilter
+                """.trimIndent(),
+            )
+            .bind("orgId", ctx.orgId)
+            .let { q -> if (branchId != null) q.bind("branchId", branchId) else q }
+            .firstOrNull { row -> row.asLong("cnt").toInt() } ?: 0
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

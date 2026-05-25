@@ -56,6 +56,7 @@ class DbTasksTest {
     )
 
     private val ctx = ctx()
+    private val ctxManage = ctx(permission = EmployeePermission(emptyList(), setOf(UserPermission.CAN_MANAGE_TASKS), emptySet()))
     private val otherCtx = ctx(id = otherEmployeeId)
     private val ctxWithViewAll = ctx(permission = EmployeePermission(emptyList(), setOf(UserPermission.CAN_VIEW_ALL_TASKS), emptySet()))
 
@@ -109,7 +110,7 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(TaskId.new(), "Тест", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Тест", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -122,13 +123,13 @@ class DbTasksTest {
         }
 
     @Test
-    fun `new создаёт задачу со статусом PENDING`() =
+    fun `new создаёт задачу со статусом PENDING без исполнителя и вложений`() =
         runTest {
             val task =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            tasks.new(TaskId.new(), "Задача", "Описание", null, null, null, null, emptyList())
+                            tasks.new(TaskId.new(), "Задача", "Описание", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -137,37 +138,20 @@ class DbTasksTest {
             assertEquals("Задача", task.title)
             assertEquals("Описание", task.description)
             assertEquals(employeeId, task.createdBy)
+            assertNull(task.assigneeId)
+            assertTrue(task.attachments.isEmpty())
         }
 
-    @Test
-    fun `new сохраняет вложения`() =
-        runTest {
-            val upload1 = insertUpload()
-            val upload2 = insertUpload()
-            val task =
-                either<DomainError, _> {
-                    TestPostgres.db.transaction {
-                        context(ctx, this) {
-                            tasks.new(TaskId.new(), "С вложениями", "", null, null, null, null, listOf(upload1, upload2))
-                        }
-                    }
-                }.getOrElse { fail("Unexpected error: $it") }
-
-            assertEquals(2L, countAttachments(task.id))
-            assertEquals(2, task.attachments.size)
-            assertTrue(task.attachments.containsAll(listOf(upload1, upload2)))
-        }
-
-    // ─── save() / status transitions ──────────────────────────────────────────
+    // ─── status() / completedAt ───────────────────────────────────────────────
 
     @Test
-    fun `save переход в COMPLETED проставляет completedAt`() =
+    fun `status COMPLETED проставляет completedAt`() =
         runTest {
             val task =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null, null, emptyList())
+                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -178,8 +162,8 @@ class DbTasksTest {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
                         val loaded = tasks.byId(task.id)
-                        loaded.status = TaskStatus.COMPLETED
-                        loaded.save()
+                        val updated = context(ctx) { loaded.status(TaskStatus.COMPLETED) }
+                        updated.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -188,13 +172,13 @@ class DbTasksTest {
         }
 
     @Test
-    fun `save возврат из COMPLETED сбрасывает completedAt`() =
+    fun `status возврат из COMPLETED сбрасывает completedAt`() =
         runTest {
             val task =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null, null, emptyList())
+                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -202,9 +186,8 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        val loaded = tasks.byId(task.id)
-                        loaded.status = TaskStatus.COMPLETED
-                        loaded.save()
+                        val updated = context(ctx) { tasks.byId(task.id).status(TaskStatus.COMPLETED) }
+                        updated.save()
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -214,9 +197,8 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        val loaded = tasks.byId(task.id)
-                        loaded.status = TaskStatus.IN_PROGRESS
-                        loaded.save()
+                        val updated = context(ctx) { tasks.byId(task.id).status(TaskStatus.IN_PROGRESS) }
+                        updated.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -224,37 +206,97 @@ class DbTasksTest {
             assertNull(taskCompletedAt(task.id))
         }
 
-    // ─── save() / attachment diff ─────────────────────────────────────────────
+    // ─── attach() / detach() ─────────────────────────────────────────────────
 
     @Test
-    fun `save добавляет новые вложения и удаляет ушедшие`() =
+    fun `attach добавляет вложение`() =
         runTest {
-            val upload1 = insertUpload()
-            val upload2 = insertUpload()
-            val upload3 = insertUpload()
-
+            val upload = insertUpload()
             val task =
                 either<DomainError, _> {
                     TestPostgres.db.transaction {
                         context(ctx, this) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null, null, listOf(upload1, upload2))
+                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
+
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        val updated = context(ctx) { tasks.byId(task.id).attach(upload) }
+                        updated.save()
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+
+            assertEquals(1L, countAttachments(task.id))
+        }
+
+    @Test
+    fun `attach идемпотентна повторный вызов не дублирует`() =
+        runTest {
+            val upload = insertUpload()
+            val task =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                        }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        val withOne = context(ctx) { tasks.byId(task.id).attach(upload) }
+                        val withSame = context(ctx) { withOne.attach(upload) }
+                        withSame.save()
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+
+            assertEquals(1L, countAttachments(task.id))
+        }
+
+    @Test
+    fun `detach удаляет вложение`() =
+        runTest {
+            val upload1 = insertUpload()
+            val upload2 = insertUpload()
+            val task =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                        }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        val withAttachments =
+                            context(ctx) {
+                                tasks.byId(task.id).attach(upload1).attach(upload2)
+                            }
+                        withAttachments.save()
+                    }
+                }
+            }.getOrElse { fail("Setup: $it") }
 
             assertEquals(2L, countAttachments(task.id))
 
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        val loaded = tasks.byId(task.id)
-                        loaded.attachments = listOf(upload2, upload3)
-                        loaded.save()
+                        val updated = context(ctx) { tasks.byId(task.id).detach(upload1) }
+                        updated.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(2L, countAttachments(task.id))
+            assertEquals(1L, countAttachments(task.id))
 
             val remaining =
                 TestPostgres.db
@@ -262,39 +304,57 @@ class DbTasksTest {
                     .bind("taskId", task.id)
                     .list { row -> row.asString(0) }
                     .toSet()
-
-            assertEquals(
-                setOf(upload2.value.toString(), upload3.value.toString()),
-                remaining,
-            )
+            assertEquals(setOf(upload2.value.toString()), remaining)
         }
 
+    // ─── byIds() ─────────────────────────────────────────────────────────────
+
     @Test
-    fun `save удаляет все вложения при пустом списке`() =
+    fun `byIds возвращает несколько задач`() =
         runTest {
-            val upload = insertUpload()
-            val task =
-                either<DomainError, _> {
-                    TestPostgres.db.transaction {
-                        context(ctx, this) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null, null, listOf(upload))
-                        }
-                    }
-                }.getOrElse { fail("Unexpected error: $it") }
-
-            assertEquals(1L, countAttachments(task.id))
-
+            val id1 = TaskId.new()
+            val id2 = TaskId.new()
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        val loaded = tasks.byId(task.id)
-                        loaded.attachments = emptyList()
-                        loaded.save()
+                        tasks.new(id1, "Задача 1", "", null, null, null)
+                        tasks.new(id2, "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(0L, countAttachments(task.id))
+            val loaded =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) { tasks.byIds(listOf(id1, id2)) }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            assertEquals(2, loaded.size)
+            assertEquals(setOf(id1, id2), loaded.map { it.id }.toSet())
+        }
+
+    @Test
+    fun `byIds возвращает ошибку если хотя бы один ID не найден`() =
+        runTest {
+            val id1 = TaskId.new()
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        tasks.new(id1, "Задача", "", null, null, null)
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+
+            val result =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) { tasks.byIds(listOf(id1, TaskId.new())) }
+                    }
+                }
+
+            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertEquals("TASK_NOT_FOUND", result.value.code)
         }
 
     // ─── list() / filters ─────────────────────────────────────────────────────
@@ -305,8 +365,8 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(TaskId.new(), "Задача 1", "", null, null, null, null, emptyList())
-                        tasks.new(TaskId.new(), "Задача 2", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Задача 1", "", null, null, null)
+                        tasks.new(TaskId.new(), "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -330,7 +390,7 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(TaskId.new(), "Моя задача", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Моя задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -338,7 +398,7 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(otherCtx, this) {
-                        tasks.new(TaskId.new(), "Чужая задача", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Чужая задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -362,7 +422,7 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(TaskId.new(), "Моя задача", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Моя задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -370,7 +430,7 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(otherCtx, this) {
-                        tasks.new(TaskId.new(), "Чужая задача", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Чужая задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -394,10 +454,10 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        val task1 = tasks.new(TaskId.new(), "Ожидает", "", null, null, null, null, emptyList())
-                        val task2 = tasks.new(TaskId.new(), "В работе", "", null, null, null, null, emptyList())
-                        task2.status = TaskStatus.IN_PROGRESS
-                        task2.save()
+                        tasks.new(TaskId.new(), "Ожидает", "", null, null, null)
+                        val task2 = tasks.new(TaskId.new(), "В работе", "", null, null, null)
+                        val updated = context(ctx) { task2.status(TaskStatus.IN_PROGRESS) }
+                        updated.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -421,8 +481,8 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(TaskId.new(), "Купить молоко", "", null, null, null, null, emptyList())
-                        tasks.new(TaskId.new(), "Позвонить клиенту", "", null, null, null, null, emptyList())
+                        tasks.new(TaskId.new(), "Купить молоко", "", null, null, null)
+                        tasks.new(TaskId.new(), "Позвонить клиенту", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -446,7 +506,7 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctxWithViewAll, this) {
-                        repeat(5) { tasks.new(TaskId.new(), "Задача $it", "", null, null, null, null, emptyList()) }
+                        repeat(5) { tasks.new(TaskId.new(), "Задача $it", "", null, null, null) }
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -475,7 +535,9 @@ class DbTasksTest {
             either<DomainError, Unit> {
                 TestPostgres.db.transaction {
                     context(ctx, this) {
-                        tasks.new(taskId, "Задача", "", null, null, null, null, listOf(upload))
+                        val task = tasks.new(taskId, "Задача", "", null, null, null)
+                        val updated = context(ctx) { task.attach(upload) }
+                        updated.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -504,5 +566,93 @@ class DbTasksTest {
 
             assertIs<arrow.core.Either.Left<DomainError>>(result)
             assertEquals("TASK_NOT_FOUND", result.value.code)
+        }
+
+    // ─── проверка прав ────────────────────────────────────────────────────────
+
+    @Test
+    fun `withNew разрешает редактировать собственную задачу`() =
+        runTest {
+            val task =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            tasks.new(TaskId.new(), "Оригинал", "", null, null, null)
+                        }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctx, this) {
+                        val updated = context(ctx) { tasks.byId(task.id).withNew("Изменено", "", null, null, null) }
+                        updated.save()
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+
+            val loaded =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) { tasks.byId(task.id) }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+            assertEquals("Изменено", loaded.title)
+        }
+
+    @Test
+    fun `withNew отклоняет редактирование чужой задачи без прав`() =
+        runTest {
+            val task =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(otherCtx, this) {
+                            tasks.new(TaskId.new(), "Чужая", "", null, null, null)
+                        }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            val result =
+                either<DomainError, Unit> {
+                    TestPostgres.db.transaction {
+                        context(ctx, this) {
+                            val updated = context(ctx) { tasks.byId(task.id).withNew("Попытка", "", null, null, null) }
+                            updated.save()
+                        }
+                    }
+                }
+
+            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertEquals("PERMISSION_DENIED", result.value.code)
+        }
+
+    @Test
+    fun `withNew разрешает редактировать чужую задачу с CAN_MANAGE_TASKS`() =
+        runTest {
+            val task =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(otherCtx, this) {
+                            tasks.new(TaskId.new(), "Чужая", "", null, null, null)
+                        }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            either<DomainError, Unit> {
+                TestPostgres.db.transaction {
+                    context(ctxManage, this) {
+                        val updated = context(ctxManage) { tasks.byId(task.id).withNew("Менеджер изменил", "", null, null, null) }
+                        updated.save()
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+
+            val loaded =
+                either<DomainError, _> {
+                    TestPostgres.db.transaction {
+                        context(ctxManage, this) { tasks.byId(task.id) }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+            assertEquals("Менеджер изменил", loaded.title)
         }
 }

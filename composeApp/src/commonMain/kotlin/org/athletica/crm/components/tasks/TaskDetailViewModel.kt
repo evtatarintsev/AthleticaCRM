@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.tasks.TaskDetailRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailResponse
-import org.athletica.crm.api.schemas.tasks.UpdateTaskRequest
+import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 
@@ -26,7 +26,7 @@ sealed class TaskDetailState {
 
 /**
  * ViewModel экрана детального просмотра задачи.
- * Позволяет просматривать и изменять статус, а также редактировать задачу.
+ * Позволяет просматривать и изменять статус задачи.
  */
 class TaskDetailViewModel(
     private val taskId: TaskId,
@@ -49,26 +49,17 @@ class TaskDetailViewModel(
         }
     }
 
-    /** Меняет статус задачи без изменения остальных полей. */
+    /** Меняет статус задачи. */
     fun changeStatus(newStatus: TaskStatus) {
-        val loaded = state as? TaskDetailState.Loaded ?: return
-        val task = loaded.task
         scope.launch {
             val result =
-                api.tasks.update(
-                    UpdateTaskRequest(
-                        id = task.id,
-                        title = task.title,
-                        description = task.description,
-                        assigneeId = task.assigneeId,
-                        clientId = task.clientId,
+                api.tasks.updateStatus(
+                    UpdateTaskStatusRequest(
+                        taskIds = listOf(taskId),
                         status = newStatus,
-                        dueDate = task.dueDate,
-                        dueDateEnd = task.dueDateEnd,
-                        attachments = task.attachments.map { it.id },
                     ),
                 )
-            result.onRight { state = TaskDetailState.Loaded(it) }
+            result.onRight { load() }
         }
     }
 }

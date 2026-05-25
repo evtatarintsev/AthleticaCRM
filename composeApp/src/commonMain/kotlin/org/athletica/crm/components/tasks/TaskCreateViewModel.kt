@@ -9,20 +9,16 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.tasks.CreateTaskRequest
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.tasks.TaskId
 import kotlin.time.Instant
 
-/** Форма создания задачи. */
+/** Форма создания задачи. Исполнитель и вложения устанавливаются после создания отдельными запросами. */
 data class TaskForm(
     val title: String = "",
     val description: String = "",
-    val assigneeId: EmployeeId? = null,
     val clientId: ClientId? = null,
     val dueDate: Instant? = null,
     val dueDateEnd: Instant? = null,
-    val attachments: List<UploadId> = emptyList(),
 ) {
     /** true если форма заполнена минимально для отправки. */
     val isValid: Boolean get() = title.isNotBlank()
@@ -73,11 +69,9 @@ class TaskCreateViewModel(
                         id = TaskId.new(),
                         title = form.title,
                         description = form.description,
-                        assigneeId = form.assigneeId,
                         clientId = form.clientId,
                         dueDate = form.dueDate,
                         dueDateEnd = form.dueDateEnd,
-                        attachments = form.attachments,
                     ),
                 )
             state =

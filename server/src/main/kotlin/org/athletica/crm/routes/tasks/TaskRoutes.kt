@@ -1,24 +1,25 @@
 package org.athletica.crm.routes.tasks
 
-import arrow.core.raise.Raise
-import arrow.core.raise.context.raise
+import org.athletica.crm.api.schemas.tasks.AssignTaskRequest
+import org.athletica.crm.api.schemas.tasks.AttachTaskUploadRequest
+import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksResponse
 import org.athletica.crm.api.schemas.tasks.CreateTaskRequest
+import org.athletica.crm.api.schemas.tasks.DetachTaskUploadRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailResponse
 import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
 import org.athletica.crm.api.schemas.tasks.TaskListRequest
 import org.athletica.crm.api.schemas.tasks.TaskListResponse
+import org.athletica.crm.api.schemas.tasks.UnassignTaskRequest
 import org.athletica.crm.api.schemas.tasks.UpdateTaskRequest
+import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.tasks.Task
 import org.athletica.crm.domain.tasks.TaskFilter
 import org.athletica.crm.domain.tasks.Tasks
@@ -33,10 +34,10 @@ import kotlin.time.Duration.Companion.days
 
 /**
  * Регистрирует маршруты для работы с задачами.
- * Требует контекстных параметров [Database] и [MinioService].
+ * Требует контекстных параметров [Database], [MinioService] и [Employees].
  */
 context(db: Database, minio: MinioService)
-fun RouteWithContext.taskRoutes(tasks: Tasks) {
+fun RouteWithContext.taskRoutes(tasks: Tasks, employees: Employees) {
     post<TaskListRequest, TaskListResponse>("/tasks/list") { req ->
         db.transaction {
             val filter = req.toFilter()
@@ -73,30 +74,89 @@ fun RouteWithContext.taskRoutes(tasks: Tasks) {
                     id = req.id,
                     title = req.title,
                     description = req.description,
-                    assigneeId = req.assigneeId,
                     clientId = req.clientId,
                     dueDate = req.dueDate,
                     dueDateEnd = req.dueDateEnd,
-                    attachments = req.attachments,
                 )
-            val employeeIds = listOfNotNull(task.createdBy, task.assigneeId).toSet()
+            val employeeIds = setOf(task.createdBy)
             val clientIds = listOfNotNull(task.clientId).toSet()
             val employeeNames = loadEmployeeNames(employeeIds)
             val clientNames = loadClientNames(clientIds)
-            val attachmentResponses = loadUploadResponses(task.attachments.map { it.value }, minio)
-            task.toDetailResponse(employeeNames, clientNames, attachmentResponses)
+            task.toDetailResponse(employeeNames, clientNames, emptyList())
         }
     }
 
     post<UpdateTaskRequest, TaskDetailResponse>("/tasks/update") { req ->
         db.transaction {
-            val task = tasks.applyUpdate(req)
-            val employeeIds = listOfNotNull(task.createdBy, task.assigneeId).toSet()
-            val clientIds = listOfNotNull(task.clientId).toSet()
+            val updated =
+                tasks.byId(req.id).withNew(
+                    newTitle = req.title,
+                    newDescription = req.description,
+                    newClientId = req.clientId,
+                    newDueDate = req.dueDate,
+                    newDueDateEnd = req.dueDateEnd,
+                )
+            updated.save()
+            val employeeIds = listOfNotNull(updated.createdBy, updated.assigneeId).toSet()
+            val clientIds = listOfNotNull(updated.clientId).toSet()
             val employeeNames = loadEmployeeNames(employeeIds)
             val clientNames = loadClientNames(clientIds)
-            val attachmentResponses = loadUploadResponses(task.attachments.map { it.value }, minio)
-            task.toDetailResponse(employeeNames, clientNames, attachmentResponses)
+            val attachmentResponses = loadUploadResponses(updated.attachments.map { it.value }, minio)
+            updated.toDetailResponse(employeeNames, clientNames, attachmentResponses)
+        }
+    }
+
+    post<UpdateTaskStatusRequest, BulkUpdateTasksResponse>("/tasks/status") { req ->
+        db.transaction {
+            tasks.byIds(req.taskIds)
+                .map { it.status(req.status) }
+                .forEach { it.save() }
+            BulkUpdateTasksResponse(updated = req.taskIds.size)
+        }
+    }
+
+    post<AssignTaskRequest, BulkUpdateTasksResponse>("/tasks/assign") { req ->
+        db.transaction {
+            val employee = employees.byId(req.assigneeId)
+            tasks.byIds(req.taskIds)
+                .map { it.assignTo(employee) }
+                .forEach { it.save() }
+            BulkUpdateTasksResponse(updated = req.taskIds.size)
+        }
+    }
+
+    post<UnassignTaskRequest, BulkUpdateTasksResponse>("/tasks/unassign") { req ->
+        db.transaction {
+            tasks.byIds(req.taskIds)
+                .map { it.unassign() }
+                .forEach { it.save() }
+            BulkUpdateTasksResponse(updated = req.taskIds.size)
+        }
+    }
+
+    post<AttachTaskUploadRequest, TaskDetailResponse>("/tasks/attach") { req ->
+        db.transaction {
+            val updated = tasks.byId(req.taskId).attach(req.uploadId)
+            updated.save()
+            val employeeIds = listOfNotNull(updated.createdBy, updated.assigneeId).toSet()
+            val clientIds = listOfNotNull(updated.clientId).toSet()
+            val employeeNames = loadEmployeeNames(employeeIds)
+            val clientNames = loadClientNames(clientIds)
+            val attachmentResponses = loadUploadResponses(updated.attachments.map { it.value }, minio)
+            updated.toDetailResponse(employeeNames, clientNames, attachmentResponses)
+        }
+    }
+
+    post<DetachTaskUploadRequest, TaskDetailResponse>("/tasks/detach") { req ->
+        db.transaction {
+            val updated = tasks.byId(req.taskId).detach(req.uploadId)
+            updated.save()
+            val employeeIds = listOfNotNull(updated.createdBy, updated.assigneeId).toSet()
+            val clientIds = listOfNotNull(updated.clientId).toSet()
+            val employeeNames = loadEmployeeNames(employeeIds)
+            val clientNames = loadClientNames(clientIds)
+            val attachmentResponses = loadUploadResponses(updated.attachments.map { it.value }, minio)
+            updated.toDetailResponse(employeeNames, clientNames, attachmentResponses)
         }
     }
 }
@@ -165,30 +225,6 @@ private suspend fun Transaction.loadUploadResponses(
             sizeBytes = r.sizeBytes,
         )
     }
-}
-
-/**
- * Проверяет права на редактирование и применяет изменения из [req] к задаче.
- * Без [UserPermission.CAN_MANAGE_TASKS] разрешено редактировать только свои задачи.
- */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-private suspend fun Tasks.applyUpdate(req: UpdateTaskRequest): Task {
-    val task = byId(req.id)
-    if (!ctx.hasPermission(UserPermission.CAN_MANAGE_TASKS)) {
-        if (task.createdBy != ctx.employeeId && task.assigneeId != ctx.employeeId) {
-            raise(CommonDomainError("PERMISSION_DENIED", "Нет прав для редактирования этой задачи"))
-        }
-    }
-    task.title = req.title
-    task.description = req.description
-    task.assigneeId = req.assigneeId
-    task.clientId = req.clientId
-    task.status = req.status
-    task.dueDate = req.dueDate
-    task.dueDateEnd = req.dueDateEnd
-    task.attachments = req.attachments
-    task.save()
-    return task
 }
 
 private fun TaskListRequest.toFilter() =

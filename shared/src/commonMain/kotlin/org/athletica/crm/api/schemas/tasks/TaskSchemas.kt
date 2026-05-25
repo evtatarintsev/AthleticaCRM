@@ -86,32 +86,70 @@ data class TaskDetailResponse(
     val attachments: List<UploadResponse>,
 )
 
-/** Запрос на создание задачи. */
+/** Запрос на создание задачи. Исполнитель и вложения устанавливаются отдельными запросами. */
 @Serializable
 data class CreateTaskRequest(
     /** Клиентский идентификатор (UUID v7), генерируется на клиенте. */
     val id: TaskId,
     val title: String,
     val description: String,
-    val assigneeId: EmployeeId?,
     val clientId: ClientId?,
     val dueDate: Instant?,
     val dueDateEnd: Instant?,
-    /** Идентификаторы загруженных файлов-вложений. */
-    val attachments: List<UploadId> = emptyList(),
 )
 
-/** Запрос на обновление задачи. Содержит полное новое состояние. */
+/** Запрос на обновление полей задачи. Исполнитель, статус и вложения — через отдельные запросы. */
 @Serializable
 data class UpdateTaskRequest(
     val id: TaskId,
     val title: String,
     val description: String,
-    val assigneeId: EmployeeId?,
     val clientId: ClientId?,
-    val status: TaskStatus,
     val dueDate: Instant?,
     val dueDateEnd: Instant?,
-    /** Полный список вложений после обновления. Диффинг выполняется на сервере. */
-    val attachments: List<UploadId>,
+)
+
+/** Запрос на изменение статуса у одной или нескольких задач. */
+@Serializable
+data class UpdateTaskStatusRequest(
+    /** Идентификаторы задач, которым меняется статус. */
+    val taskIds: List<TaskId>,
+    val status: TaskStatus,
+)
+
+/** Запрос на назначение исполнителя одной или нескольким задачам. */
+@Serializable
+data class AssignTaskRequest(
+    /** Идентификаторы задач. */
+    val taskIds: List<TaskId>,
+    /** Новый исполнитель. */
+    val assigneeId: EmployeeId,
+)
+
+/** Запрос на снятие исполнителя с одной или нескольких задач. */
+@Serializable
+data class UnassignTaskRequest(
+    /** Идентификаторы задач. */
+    val taskIds: List<TaskId>,
+)
+
+/** Запрос на прикрепление файла к задаче. */
+@Serializable
+data class AttachTaskUploadRequest(
+    val taskId: TaskId,
+    val uploadId: UploadId,
+)
+
+/** Запрос на открепление файла от задачи. */
+@Serializable
+data class DetachTaskUploadRequest(
+    val taskId: TaskId,
+    val uploadId: UploadId,
+)
+
+/** Ответ на операцию с несколькими задачами. */
+@Serializable
+data class BulkUpdateTasksResponse(
+    /** Количество фактически обновлённых задач. */
+    val updated: Int,
 )

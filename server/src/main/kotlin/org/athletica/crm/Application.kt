@@ -184,7 +184,7 @@ fun Application.configureServer() {
                         notificationsRoutes()
                         displaySettingsRoutes(di.userDisplaySettings)
                         context(di.minio) {
-                            taskRoutes(di.tasks)
+                            taskRoutes(di.tasks, di.employees)
                         }
                         paymentRoutes(di.payments, di.paymentGateway)
                     }

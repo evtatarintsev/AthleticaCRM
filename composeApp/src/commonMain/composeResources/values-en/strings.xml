@@ -463,6 +463,10 @@
     <string name="tasks_filter_section_status">Status</string>
     <string name="tasks_load_error">Failed to load tasks</string>
     <string name="tasks_empty">No tasks</string>
+    <string name="bulk_action_change_status">Change status</string>
+    <string name="bulk_action_assign_to">Assign to</string>
+    <string name="bulk_action_unassign">Unassign</string>
+    <string name="pick_assignee_title">Pick assignee</string>
     <string name="list_sort_title">Sort</string>
     <string name="list_sort_ascending">Ascending</string>
     <string name="list_sort_descending">Descending</string>

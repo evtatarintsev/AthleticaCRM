@@ -473,5 +473,15 @@
     <string name="clients_view_in_debt">In Debt</string>
     <string name="clients_view_without_group">No Group</string>
     <string name="clients_load_error">Failed to load clients</string>
+    <string name="groups_title">Groups</string>
+    <string name="groups_search_placeholder">Search by group name</string>
+    <string name="groups_view_all">All</string>
+    <string name="groups_load_error">Failed to load groups</string>
+    <string name="label_schedule">Schedule</string>
+    <string name="label_coaches">Coaches</string>
+    <string name="filter_disciplines">Disciplines</string>
+    <string name="filter_coaches">Coaches</string>
+    <string name="filter_chip_disciplines_count">Disciplines · %1$d</string>
+    <string name="filter_chip_coaches_count">Coaches · %1$d</string>
 
 </resources>

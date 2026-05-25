@@ -516,5 +516,15 @@
     <string name="clients_view_in_debt">Должники</string>
     <string name="clients_view_without_group">Без группы</string>
     <string name="clients_load_error">Ошибка загрузки клиентов</string>
+    <string name="groups_title">Группы</string>
+    <string name="groups_search_placeholder">Поиск по названию группы</string>
+    <string name="groups_view_all">Все</string>
+    <string name="groups_load_error">Ошибка загрузки групп</string>
+    <string name="label_schedule">Расписание</string>
+    <string name="label_coaches">Тренеры</string>
+    <string name="filter_disciplines">Дисциплины</string>
+    <string name="filter_coaches">Тренеры</string>
+    <string name="filter_chip_disciplines_count">Дисциплины · %1$d</string>
+    <string name="filter_chip_coaches_count">Тренеры · %1$d</string>
 
 </resources>

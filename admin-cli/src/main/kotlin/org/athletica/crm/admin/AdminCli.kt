@@ -81,18 +81,19 @@ class AdminCli : CliktCommand(name = "athletica") {
         val amount = Money(minorUnits, org.currency)
         val ctx = adminContext(OrgId(org.id), org.currency)
 
-        val result = either {
-            try {
-                di.database.transaction {
-                    context(ctx, this) {
-                        val balance = di.orgBalances.current()
-                        balance.adjust(amount, description!!)
+        val result =
+            either {
+                try {
+                    di.database.transaction {
+                        context(ctx, this) {
+                            val balance = di.orgBalances.current()
+                            balance.adjust(amount, description!!)
+                        }
                     }
+                } catch (e: Exception) {
+                    throw e
                 }
-            } catch (e: Exception) {
-                throw e
             }
-        }
 
         result.fold(
             { error -> echo("Ошибка: ${error.message}", err = true) },

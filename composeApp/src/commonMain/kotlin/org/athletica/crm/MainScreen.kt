@@ -490,6 +490,8 @@ private fun AppNavHost(
         composable<AppRoute.Groups> {
             GroupsScreen(
                 api = api,
+                displaySettingsVm = displaySettingsVm,
+                windowSize = windowSize,
                 onNavigateToCreate = { navController.navigate(AppRoute.GroupCreate) },
                 onGroupClick = { id -> navController.navigate(AppRoute.GroupDetail(id.toString())) },
                 modifier = Modifier.fillMaxSize(),

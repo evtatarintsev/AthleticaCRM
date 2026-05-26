@@ -74,6 +74,9 @@ import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreenLoader
+import org.athletica.crm.components.clients.ClientPaymentHistoryScreen
+import org.athletica.crm.components.clients.ClientSubscriptionHistoryScreen
+import org.athletica.crm.components.clients.ClientVisitHistoryScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.clients.ExportScreen
 import org.athletica.crm.components.employees.EmployeeCreateScreen
@@ -472,6 +475,11 @@ private fun AppNavHost(
                 api = api,
                 onBack = { navController.popBackStack() },
                 onEdit = { client -> navController.navigate(AppRoute.ClientEdit(client.id.toString())) },
+                onOpenVisitHistory = { navController.navigate(AppRoute.ClientVisitHistory(route.id)) },
+                onOpenPaymentHistory = { navController.navigate(AppRoute.ClientPaymentHistory(route.id)) },
+                onOpenSubscriptionHistory = {
+                    navController.navigate(AppRoute.ClientSubscriptionHistory(route.id))
+                },
             )
         }
 
@@ -482,6 +490,30 @@ private fun AppNavHost(
                 api = api,
                 onBack = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.ClientVisitHistory> { entry ->
+            val route = entry.toRoute<AppRoute.ClientVisitHistory>()
+            ClientVisitHistoryScreen(
+                clientId = ClientId(parse(route.id)),
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.ClientPaymentHistory> { entry ->
+            val route = entry.toRoute<AppRoute.ClientPaymentHistory>()
+            ClientPaymentHistoryScreen(
+                clientId = ClientId(parse(route.id)),
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.ClientSubscriptionHistory> { entry ->
+            val route = entry.toRoute<AppRoute.ClientSubscriptionHistory>()
+            ClientSubscriptionHistoryScreen(
+                clientId = ClientId(parse(route.id)),
+                onBack = { navController.popBackStack() },
             )
         }
 

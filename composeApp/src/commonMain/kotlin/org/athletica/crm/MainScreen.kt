@@ -470,6 +470,7 @@ private fun AppNavHost(
             ClientDetailScreen(
                 clientId = ClientId(parse(route.id)),
                 api = api,
+                currentEmployeeId = me?.employeeId,
                 onBack = { navController.popBackStack() },
                 onEdit = { client -> navController.navigate(AppRoute.ClientEdit(client.id.toString())) },
             )

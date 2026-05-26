@@ -7,6 +7,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import org.athletica.crm.api.schemas.clients.AddClientNoteRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
@@ -15,8 +16,11 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientExportRequest
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.ClientNotesListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
+import org.athletica.crm.api.schemas.clients.DeleteClientNoteRequest
+import org.athletica.crm.api.schemas.clients.EditClientNoteRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.clients.import.ClientImportCommitRequest
@@ -118,6 +122,41 @@ class ClientsApiClient(private val http: HttpClient) {
     suspend fun attachDoc(request: AttachClientDocRequest): Either<ApiClientError, Unit> =
         requestCatching {
             http.post("/api/clients/docs/attach") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Возвращает список не удалённых заметок клиента [id] в порядке от новых к старым. */
+    suspend fun notesList(id: ClientId): Either<ApiClientError, ClientNotesListResponse> =
+        requestCatching {
+            http.get("/api/clients/notes/list") {
+                url { parameters.append("clientId", id.toString()) }
+            }
+        }
+
+    /** Создаёт новую заметку клиенту. Возвращает обновлённый список заметок. */
+    suspend fun addNote(request: AddClientNoteRequest): Either<ApiClientError, ClientNotesListResponse> =
+        requestCatching {
+            http.post("/api/clients/notes/add") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Изменяет текст заметки. Доступно только её автору; возвращает обновлённый список. */
+    suspend fun editNote(request: EditClientNoteRequest): Either<ApiClientError, ClientNotesListResponse> =
+        requestCatching {
+            http.post("/api/clients/notes/edit") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Удаляет заметку (soft-delete). Доступно только её автору; возвращает обновлённый список. */
+    suspend fun deleteNote(request: DeleteClientNoteRequest): Either<ApiClientError, ClientNotesListResponse> =
+        requestCatching {
+            http.post("/api/clients/notes/delete") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

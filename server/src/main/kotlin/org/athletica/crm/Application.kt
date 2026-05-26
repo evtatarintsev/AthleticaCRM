@@ -41,6 +41,7 @@ import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.branchesRoutes
 import org.athletica.crm.routes.checkoutRoutes
 import org.athletica.crm.routes.clientImportRoutes
+import org.athletica.crm.routes.clientNotesRoutes
 import org.athletica.crm.routes.clientsRoutes
 import org.athletica.crm.routes.customFieldsRoutes
 import org.athletica.crm.routes.disciplinesRoutes
@@ -160,6 +161,7 @@ fun Application.configureServer() {
                             myBranchesRoute()
                         }
                         clientsRoutes(di.clients, di.clientBalances, di.employees, di.enrollments, di.customFieldDefinitions)
+                        clientNotesRoutes(di.clientNotes)
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }

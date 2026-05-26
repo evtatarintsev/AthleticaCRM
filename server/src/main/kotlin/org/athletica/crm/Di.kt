@@ -15,6 +15,8 @@ import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clientnotes.ClientNotes
+import org.athletica.crm.domain.clientnotes.DbClientNotes
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -91,6 +93,7 @@ data class Di(
     val employeePermissions: EmployeePermissions,
     val clientBalances: ClientBalances,
     val clients: Clients,
+    val clientNotes: ClientNotes = DbClientNotes(),
     val branches: Branches,
     val customFieldDefinitions: CustomFieldDefinitions,
     val userDisplaySettings: UserDisplaySettings = DbUserDisplaySettings(),

@@ -74,7 +74,10 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.components.avatar.Avatar
+import org.athletica.crm.components.clients.notes.ClientNotesSection
+import org.athletica.crm.components.clients.notes.ClientNotesViewModel
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
@@ -90,6 +93,7 @@ import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.cd_balance_history
+import org.athletica.crm.generated.resources.client_notes_tab_title
 import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
@@ -172,6 +176,7 @@ private val fakeHistory =
     )
 
 private enum class ClientDetailTab {
+    Notes,
     Payments,
     Parents,
     History,
@@ -180,6 +185,7 @@ private enum class ClientDetailTab {
 @Composable
 private fun ClientDetailTab.title(): String =
     when (this) {
+        ClientDetailTab.Notes -> stringResource(Res.string.client_notes_tab_title)
         ClientDetailTab.Payments -> stringResource(Res.string.tab_payments)
         ClientDetailTab.Parents -> stringResource(Res.string.tab_parents)
         ClientDetailTab.History -> stringResource(Res.string.tab_history)
@@ -197,12 +203,14 @@ private fun ClientDetailTab.title(): String =
 fun ClientDetailScreen(
     clientId: ClientId,
     api: ApiClient,
+    currentEmployeeId: EmployeeId?,
     onBack: () -> Unit,
     onEdit: (ClientDetailResponse) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     val viewModel = remember { ClientDetailViewModel(api, clientId, scope) }
+    val notesViewModel = remember { ClientNotesViewModel(api, clientId, scope) }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var showOverflow by remember { mutableStateOf(false) }
@@ -371,6 +379,19 @@ fun ClientDetailScreen(
                         }
 
                         when (tabs[selectedTab]) {
+                            ClientDetailTab.Notes ->
+                                item {
+                                    ClientNotesSection(
+                                        state = notesViewModel.state,
+                                        currentEmployeeId = currentEmployeeId,
+                                        onDraftChange = notesViewModel::onDraftChange,
+                                        onSubmit = notesViewModel::onSubmit,
+                                        onStartEdit = notesViewModel::onStartEdit,
+                                        onCancelEdit = notesViewModel::onCancelEdit,
+                                        onDelete = { notesViewModel.onDelete(it.id) },
+                                    )
+                                }
+
                             ClientDetailTab.Payments ->
                                 items(fakePayments) { PaymentRow(it) }
 

@@ -47,6 +47,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -57,7 +58,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -69,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -101,7 +103,6 @@ import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.cd_balance_history
-import org.athletica.crm.generated.resources.client_notes_tab_title
 import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
@@ -114,6 +115,7 @@ import org.athletica.crm.generated.resources.label_classes_start
 import org.athletica.crm.generated.resources.label_contract_number
 import org.athletica.crm.generated.resources.label_contract_type
 import org.athletica.crm.generated.resources.label_discount
+import org.athletica.crm.generated.resources.label_groups
 import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.generated.resources.label_sports_rank
 import org.athletica.crm.generated.resources.nav_payment_history
@@ -197,14 +199,35 @@ fun ClientDetailScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val windowSize = WindowSize.fromWidth(maxWidth)
         val isLoaded = viewModel.state is ClientDetailState.Loaded
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
-                TopAppBar(
+                LargeTopAppBar(
+                    scrollBehavior = scrollBehavior,
                     title = {
-                        val name = (viewModel.state as? ClientDetailState.Loaded)?.client?.name ?: ""
-                        Text(name)
+                        val loaded = viewModel.state as? ClientDetailState.Loaded
+                        if (loaded != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier =
+                                        Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                ) {
+                                    Avatar(loaded.client.avatarId, loaded.client.name, api)
+                                }
+                                Text(loaded.client.name)
+                            }
+                        } else {
+                            Text("")
+                        }
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
@@ -286,17 +309,6 @@ fun ClientDetailScreen(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
                         modifier = Modifier.fillMaxSize().padding(innerPadding),
                     ) {
-                        item {
-                            ClientDetailHeader(
-                                client = client,
-                                api = api,
-                                onAddToGroup = { showAddToGroupSheet = true },
-                                onRemoveFromGroup = { groupId ->
-                                    groupToRemove = client.groups.find { it.id == groupId }
-                                },
-                            )
-                        }
-
                         if (windowSize >= WindowSize.MEDIUM) {
                             item {
                                 ClientActionsRow(
@@ -317,6 +329,10 @@ fun ClientDetailScreen(
                                                 client = client,
                                                 onAdjustBalance = { showAdjustBalanceDialog = true },
                                                 onBalanceHistory = { showBalanceHistorySheet = true },
+                                                onAddToGroup = { showAddToGroupSheet = true },
+                                                onRemoveFromGroup = { groupId ->
+                                                    groupToRemove = client.groups.find { it.id == groupId }
+                                                },
                                             )
                                             ClientNotesSection()
                                             DocumentsSection(
@@ -340,6 +356,10 @@ fun ClientDetailScreen(
                                     client = client,
                                     onAdjustBalance = { showAdjustBalanceDialog = true },
                                     onBalanceHistory = { showBalanceHistorySheet = true },
+                                    onAddToGroup = { showAddToGroupSheet = true },
+                                    onRemoveFromGroup = { groupId ->
+                                        groupToRemove = client.groups.find { it.id == groupId }
+                                    },
                                 )
                             }
                             item { SubscriptionsSection() }
@@ -430,67 +450,6 @@ fun ClientDetailScreen(
                 },
                 onDismiss = { showAdjustBalanceDialog = false },
             )
-        }
-    }
-}
-
-// ── header ────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ClientDetailHeader(
-    client: ClientDetailResponse,
-    api: ApiClient,
-    onAddToGroup: () -> Unit,
-    onRemoveFromGroup: (groupId: GroupId) -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-        ) {
-            Avatar(client.avatarId, client.name, api)
-        }
-
-        Spacer(Modifier.width(16.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(client.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                client.groups.forEach { group ->
-                    InputChip(
-                        selected = false,
-                        onClick = {},
-                        label = { Text(group.name, style = MaterialTheme.typography.labelSmall) },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp).clickable { onRemoveFromGroup(group.id) },
-                            )
-                        },
-                    )
-                }
-                AssistChip(
-                    onClick = onAddToGroup,
-                    label = {
-                        Text(
-                            stringResource(Res.string.action_add_client_group),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    },
-                )
-            }
         }
     }
 }
@@ -652,11 +611,14 @@ private fun InfoRow(label: String, value: String?) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BasicInfoSection(
     client: ClientDetailResponse,
     onAdjustBalance: () -> Unit,
     onBalanceHistory: () -> Unit,
+    onAddToGroup: () -> Unit,
+    onRemoveFromGroup: (GroupId) -> Unit,
 ) {
     SectionCard(stringResource(Res.string.section_basic_info)) {
         Row(
@@ -698,6 +660,45 @@ private fun BasicInfoSection(
         InfoRow(stringResource(Res.string.label_birthday), client.birthday?.formatRu())
         InfoRow(stringResource(Res.string.label_address), null)
         InfoRow(stringResource(Res.string.label_classes_start), "15.11.2019")
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.label_groups),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(0.45f).padding(top = 8.dp),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(0.55f),
+            ) {
+                client.groups.forEach { group ->
+                    InputChip(
+                        selected = false,
+                        onClick = {},
+                        label = { Text(group.name, style = MaterialTheme.typography.labelSmall) },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp).clickable { onRemoveFromGroup(group.id) },
+                            )
+                        },
+                    )
+                }
+                AssistChip(
+                    onClick = onAddToGroup,
+                    label = {
+                        Text(
+                            stringResource(Res.string.action_add_client_group),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                )
+            }
+        }
     }
 }
 

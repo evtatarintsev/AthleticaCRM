@@ -122,7 +122,7 @@ private fun ClientNotesLoaded(
 ) {
     var noteToDelete by remember { mutableStateOf<ClientNoteDto?>(null) }
 
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Column(modifier = modifier.fillMaxWidth()) {
         ClientNotesInput(
             draft = state.draft,
             submitting = state.submitting,

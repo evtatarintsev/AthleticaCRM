@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Close
@@ -52,7 +51,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
@@ -61,7 +59,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -107,7 +104,6 @@ import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_from_group_title
-import org.athletica.crm.generated.resources.hint_note_input
 import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_birthday
@@ -121,7 +117,6 @@ import org.athletica.crm.generated.resources.label_sports_rank
 import org.athletica.crm.generated.resources.nav_payment_history
 import org.athletica.crm.generated.resources.nav_subscription_history
 import org.athletica.crm.generated.resources.nav_visit_history
-import org.athletica.crm.generated.resources.placeholder_no_notes
 import org.athletica.crm.generated.resources.placeholder_not_specified
 import org.athletica.crm.generated.resources.section_basic_info
 import org.athletica.crm.generated.resources.section_documents
@@ -334,7 +329,17 @@ fun ClientDetailScreen(
                                                     groupToRemove = client.groups.find { it.id == groupId }
                                                 },
                                             )
-                                            ClientNotesSection()
+                                            SectionCard(stringResource(Res.string.section_notes)) {
+                                                ClientNotesSection(
+                                                    state = notesViewModel.state,
+                                                    currentEmployeeId = currentEmployeeId,
+                                                    onDraftChange = notesViewModel::onDraftChange,
+                                                    onSubmit = notesViewModel::onSubmit,
+                                                    onStartEdit = notesViewModel::onStartEdit,
+                                                    onCancelEdit = notesViewModel::onCancelEdit,
+                                                    onDelete = { note -> notesViewModel.onDelete(note.id) },
+                                                )
+                                            }
                                             DocumentsSection(
                                                 docs = client.docs,
                                                 isUploading = viewModel.isUploadingDoc,
@@ -364,7 +369,19 @@ fun ClientDetailScreen(
                             }
                             item { SubscriptionsSection() }
                             item { UnpaidLessonsSection() }
-                            item { ClientNotesSection() }
+                            item {
+                                SectionCard(stringResource(Res.string.section_notes)) {
+                                    ClientNotesSection(
+                                        state = notesViewModel.state,
+                                        currentEmployeeId = currentEmployeeId,
+                                        onDraftChange = notesViewModel::onDraftChange,
+                                        onSubmit = notesViewModel::onSubmit,
+                                        onStartEdit = notesViewModel::onStartEdit,
+                                        onCancelEdit = notesViewModel::onCancelEdit,
+                                        onDelete = { note -> notesViewModel.onDelete(note.id) },
+                                    )
+                                }
+                            }
                             item {
                                 DocumentsSection(
                                     docs = client.docs,
@@ -781,66 +798,6 @@ private fun UnpaidLessonsSection() {
                     modifier = Modifier.weight(1f),
                 )
                 StatusText(lesson.status)
-            }
-        }
-    }
-}
-
-/**
- * Заметки клиента с инлайн-добавлением.
- * TODO: сейчас хранятся локально через [remember]; перенести в ViewModel +
- * API при появлении бэкенда для заметок.
- */
-@Composable
-private fun ClientNotesSection() {
-    val notes = remember { mutableStateListOf<String>() }
-    var draft by remember { mutableStateOf("") }
-
-    SectionCard(stringResource(Res.string.section_notes)) {
-        if (notes.isEmpty()) {
-            Text(
-                text = stringResource(Res.string.placeholder_no_notes),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                notes.forEachIndexed { index, note ->
-                    if (index > 0) {
-                        HorizontalDivider()
-                    }
-                    Text(
-                        text = note,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                placeholder = { Text(stringResource(Res.string.hint_note_input)) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            IconButton(
-                onClick = {
-                    val trimmed = draft.trim()
-                    if (trimmed.isNotEmpty()) {
-                        notes.add(0, trimmed)
-                        draft = ""
-                    }
-                },
-                enabled = draft.isNotBlank(),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(Res.string.action_add_note),
-                )
             }
         }
     }

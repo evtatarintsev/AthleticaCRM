@@ -507,4 +507,15 @@
     <string name="employees_filter_only_active">Only active</string>
     <string name="employees_filter_section_status">Status</string>
 
+    <!-- Client notes -->
+    <string name="client_notes_tab_title">Notes</string>
+    <string name="client_notes_text_placeholder">For example, return a forgotten bag or training preferences</string>
+    <string name="client_notes_add_action">Add</string>
+    <string name="client_notes_save_action">Save</string>
+    <string name="client_notes_cancel_edit">Cancel</string>
+    <string name="client_notes_edited_badge">edited</string>
+    <string name="client_notes_empty">No notes yet</string>
+    <string name="client_notes_delete_confirm_title">Delete note?</string>
+    <string name="client_notes_delete_confirm_message">The note will be removed from the feed.</string>
+
 </resources>

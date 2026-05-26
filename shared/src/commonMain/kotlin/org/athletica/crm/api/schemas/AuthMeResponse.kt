@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Money
@@ -11,6 +12,8 @@ import org.athletica.crm.core.money.Money
 data class AuthMeResponse(
     /** Уникальный идентификатор пользователя в строковом формате UUID. */
     val id: UserId,
+    /** Идентификатор сотрудника в текущей организации. */
+    val employeeId: EmployeeId,
     /** Логин. */
     val username: String,
     /** Имя . */

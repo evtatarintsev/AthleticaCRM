@@ -38,6 +38,7 @@ fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: Or
 
         AuthMeResponse(
             id = user.id,
+            employeeId = user.employeeId,
             username = user.username,
             name = user.name,
             avatarId = user.avatarId,

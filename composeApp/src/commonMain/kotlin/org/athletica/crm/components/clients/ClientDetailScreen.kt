@@ -79,7 +79,10 @@ import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.components.avatar.Avatar
+import org.athletica.crm.components.clients.notes.ClientNotesSection
+import org.athletica.crm.components.clients.notes.ClientNotesViewModel
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
@@ -98,6 +101,7 @@ import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.cd_balance_history
+import org.athletica.crm.generated.resources.client_notes_tab_title
 import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
@@ -172,6 +176,7 @@ private val fakeUnpaidLessons =
 fun ClientDetailScreen(
     clientId: ClientId,
     api: ApiClient,
+    currentEmployeeId: EmployeeId?,
     onBack: () -> Unit,
     onEdit: (ClientDetailResponse) -> Unit = {},
     onOpenVisitHistory: () -> Unit = {},
@@ -181,6 +186,7 @@ fun ClientDetailScreen(
 ) {
     val scope = rememberCoroutineScope()
     val viewModel = remember { ClientDetailViewModel(api, clientId, scope) }
+    val notesViewModel = remember { ClientNotesViewModel(api, clientId, scope) }
 
     var showOverflow by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }

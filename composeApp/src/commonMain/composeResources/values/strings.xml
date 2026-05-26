@@ -549,4 +549,15 @@
     <string name="filter_chip_disciplines_count">Дисциплины · %1$d</string>
     <string name="filter_chip_coaches_count">Тренеры · %1$d</string>
 
+    <!-- Client notes -->
+    <string name="client_notes_tab_title">Заметки</string>
+    <string name="client_notes_text_placeholder">Например, забрать сумку или предпочтения по тренировкам</string>
+    <string name="client_notes_add_action">Добавить</string>
+    <string name="client_notes_save_action">Сохранить</string>
+    <string name="client_notes_cancel_edit">Отмена</string>
+    <string name="client_notes_edited_badge">изменено</string>
+    <string name="client_notes_empty">Пока нет заметок</string>
+    <string name="client_notes_delete_confirm_title">Удалить заметку?</string>
+    <string name="client_notes_delete_confirm_message">Заметка будет удалена и не появится в ленте.</string>
+
 </resources>

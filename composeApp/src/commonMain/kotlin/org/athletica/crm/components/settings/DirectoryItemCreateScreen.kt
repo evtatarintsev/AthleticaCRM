@@ -1,22 +1,16 @@
 package org.athletica.crm.components.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,15 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.core.entityids.EntityId
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.action_add_photo
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
-import org.athletica.crm.generated.resources.action_select_photo
 import org.athletica.crm.generated.resources.label_name
 import org.jetbrains.compose.resources.stringResource
 
@@ -68,8 +58,6 @@ fun <T : EntityId> DirectoryItemCreateScreen(
     newId: () -> T,
 ) {
     var name by remember { mutableStateOf(initialItem?.name ?: "") }
-    // photoUrl будет заполнен после реализации загрузки файлов
-    var photoSelected by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -112,13 +100,6 @@ fun <T : EntityId> DirectoryItemCreateScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // Фото
-            PhotoPickerPlaceholder(
-                selected = photoSelected,
-                name = name,
-                onClick = { photoSelected = !photoSelected },
-            )
-
             // Название
             OutlinedTextField(
                 value = name,
@@ -130,64 +111,5 @@ fun <T : EntityId> DirectoryItemCreateScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-    }
-}
-
-/**
- * Заглушка выбора фото — круглая область с иконкой камеры.
- * При наличии [name] показывает инициал вместо иконки (имитация загруженного фото).
- * Реальная загрузка файла подключается отдельно через platform-specific file picker.
- */
-@Composable
-private fun PhotoPickerPlaceholder(
-    selected: Boolean,
-    name: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val hasInitial = name.isNotBlank()
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (selected || hasInitial) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                    )
-                    .clickable(onClick = onClick),
-        ) {
-            if (hasInitial) {
-                Text(
-                    text = name.first().uppercaseChar().toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = stringResource(Res.string.action_select_photo),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
-        }
-
-        Text(
-            text = stringResource(Res.string.action_add_photo),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center,
-        )
     }
 }

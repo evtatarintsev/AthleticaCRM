@@ -19,25 +19,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,16 +51,16 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,13 +87,16 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
+import org.athletica.crm.generated.resources.action_add_note
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_delete
 import org.athletica.crm.generated.resources.action_delete_client
 import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.action_issue_subscription
+import org.athletica.crm.generated.resources.action_message
 import org.athletica.crm.generated.resources.action_more
+import org.athletica.crm.generated.resources.action_pay
 import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
@@ -98,6 +106,7 @@ import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_from_group_title
+import org.athletica.crm.generated.resources.hint_note_input
 import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_birthday
@@ -107,16 +116,19 @@ import org.athletica.crm.generated.resources.label_contract_type
 import org.athletica.crm.generated.resources.label_discount
 import org.athletica.crm.generated.resources.label_phone
 import org.athletica.crm.generated.resources.label_sports_rank
+import org.athletica.crm.generated.resources.nav_payment_history
+import org.athletica.crm.generated.resources.nav_subscription_history
+import org.athletica.crm.generated.resources.nav_visit_history
+import org.athletica.crm.generated.resources.placeholder_no_notes
 import org.athletica.crm.generated.resources.placeholder_not_specified
 import org.athletica.crm.generated.resources.section_basic_info
 import org.athletica.crm.generated.resources.section_documents
+import org.athletica.crm.generated.resources.section_history
+import org.athletica.crm.generated.resources.section_notes
 import org.athletica.crm.generated.resources.section_subscriptions
 import org.athletica.crm.generated.resources.section_unpaid_lessons
 import org.athletica.crm.generated.resources.subscription_status_active
 import org.athletica.crm.generated.resources.subscription_status_expired
-import org.athletica.crm.generated.resources.tab_history
-import org.athletica.crm.generated.resources.tab_parents
-import org.athletica.crm.generated.resources.tab_payments
 import org.athletica.crm.generated.resources.visits_remaining
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
@@ -131,12 +143,6 @@ private data class FakeSubscription(
 )
 
 private data class FakeUnpaidLesson(val date: String, val status: String, val group: String)
-
-private data class FakePayment(val date: String, val amount: String, val description: String)
-
-private data class FakeParent(val name: String, val phone: String, val relation: String)
-
-private data class FakeVisit(val date: String, val status: String, val group: String)
 
 private val fakeSubscriptions =
     listOf(
@@ -153,50 +159,17 @@ private val fakeUnpaidLessons =
         FakeUnpaidLesson("16.03.2020", "Был", "Боевое самбо"),
     )
 
-private val fakePayments =
-    listOf(
-        FakePayment("21.03.2020", "+3 000 ₽", "Пополнение баланса"),
-        FakePayment("11.02.2020", "+3 000 ₽", "Абонемент — Боевое самбо"),
-        FakePayment("15.11.2019", "+5 000 ₽", "Первый платёж"),
-    )
-
-private val fakeParents =
-    listOf(
-        FakeParent("Иванова Мария Петровна", "+7 999 111-22-33", "Мать"),
-        FakeParent("Иванов Сергей Николаевич", "+7 999 444-55-66", "Отец"),
-    )
-
-private val fakeHistory =
-    listOf(
-        FakeVisit("09.07.2021", "Был", "Боевое самбо"),
-        FakeVisit("07.07.2021", "Опоздал", "Боевое самбо"),
-        FakeVisit("05.07.2021", "Был", "Боевое самбо"),
-        FakeVisit("02.07.2021", "Пропустил", "Боевое самбо"),
-        FakeVisit("30.06.2021", "Был", "Боевое самбо"),
-    )
-
-private enum class ClientDetailTab {
-    Notes,
-    Payments,
-    Parents,
-    History,
-}
-
-@Composable
-private fun ClientDetailTab.title(): String =
-    when (this) {
-        ClientDetailTab.Notes -> stringResource(Res.string.client_notes_tab_title)
-        ClientDetailTab.Payments -> stringResource(Res.string.tab_payments)
-        ClientDetailTab.Parents -> stringResource(Res.string.tab_parents)
-        ClientDetailTab.History -> stringResource(Res.string.tab_history)
-    }
-
 // ── screen ────────────────────────────────────────────────────────────────
 
 /**
- * Карточка клиента — основная информация, абонементы, неоплаченные занятия
- * и дополнительные вкладки (платежи, родители, документы, история).
- * TODO: заменить заглушки на реальные данные.
+ * Карточка клиента — сводный дашборд (баланс, абонементы, неоплаченные занятия,
+ * заметки, документы) и переходы в полноценные истории посещений / платежей /
+ * абонементов. Действия (платёж, выдать абонемент, чат, заметка) — в M3 Toolbar:
+ * `BottomAppBar` на узких экранах, горизонтальный ряд кнопок под TopAppBar на
+ * широких.
+ *
+ * TODO: заменить заглушки [fakeSubscriptions], [fakeUnpaidLessons] и локальный
+ * стейт заметок на реальные данные из API.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,102 +179,112 @@ fun ClientDetailScreen(
     currentEmployeeId: EmployeeId?,
     onBack: () -> Unit,
     onEdit: (ClientDetailResponse) -> Unit = {},
+    onOpenVisitHistory: () -> Unit = {},
+    onOpenPaymentHistory: () -> Unit = {},
+    onOpenSubscriptionHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     val viewModel = remember { ClientDetailViewModel(api, clientId, scope) }
     val notesViewModel = remember { ClientNotesViewModel(api, clientId, scope) }
 
-    var selectedTab by remember { mutableIntStateOf(0) }
     var showOverflow by remember { mutableStateOf(false) }
     var showAddToGroupSheet by remember { mutableStateOf(false) }
     var showAdjustBalanceDialog by remember { mutableStateOf(false) }
     var showBalanceHistorySheet by remember { mutableStateOf(false) }
     var groupToRemove by remember { mutableStateOf<ClientGroup?>(null) }
-    val tabs = ClientDetailTab.entries
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    val name = (viewModel.state as? ClientDetailState.Loaded)?.client?.name ?: ""
-                    Text(name)
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
-                    }
-                },
-                actions = {
-                    if (viewModel.state is ClientDetailState.Loaded) {
-                        val loadedClient = (viewModel.state as ClientDetailState.Loaded).client
-                        IconButton(onClick = { onEdit(loadedClient) }) {
-                            Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val windowSize = WindowSize.fromWidth(maxWidth)
+        val isLoaded = viewModel.state is ClientDetailState.Loaded
+
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        val name = (viewModel.state as? ClientDetailState.Loaded)?.client?.name ?: ""
+                        Text(name)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(Res.string.action_back),
+                            )
                         }
-                        Box {
-                            IconButton(onClick = { showOverflow = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.action_more))
-                            }
-                            DropdownMenu(
-                                expanded = showOverflow,
-                                onDismissRequest = { showOverflow = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.action_delete_client)) },
-                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                                    onClick = { showOverflow = false },
+                    },
+                    actions = {
+                        if (isLoaded) {
+                            val loadedClient = (viewModel.state as ClientDetailState.Loaded).client
+                            IconButton(onClick = { onEdit(loadedClient) }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = stringResource(Res.string.action_edit),
                                 )
                             }
+                            Box {
+                                IconButton(onClick = { showOverflow = true }) {
+                                    Icon(
+                                        Icons.Default.MoreVert,
+                                        contentDescription = stringResource(Res.string.action_more),
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showOverflow,
+                                    onDismissRequest = { showOverflow = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.action_delete_client)) },
+                                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                        onClick = { showOverflow = false },
+                                    )
+                                }
+                            }
                         }
-                    }
-                },
-            )
-        },
-        floatingActionButton = {
-            if (viewModel.state is ClientDetailState.Loaded) {
-                ExtendedFloatingActionButton(
-                    onClick = {},
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-                    text = { Text(stringResource(Res.string.action_issue_subscription)) },
+                    },
                 )
-            }
-        },
-    ) { innerPadding ->
-        when (val s = viewModel.state) {
-            is ClientDetailState.Loading -> {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            is ClientDetailState.Error -> {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
-                ) {
-                    Text(
-                        text = s.error.message(),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
+            },
+            bottomBar = {
+                if (isLoaded && windowSize == WindowSize.COMPACT) {
+                    ClientActionsBottomBar(
+                        onPay = {},
+                        onIssueSubscription = {},
+                        onMessage = {},
+                        onAddNote = {},
                     )
                 }
-            }
+            },
+        ) { innerPadding ->
+            when (val s = viewModel.state) {
+                is ClientDetailState.Loading -> {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
 
-            is ClientDetailState.Loaded -> {
-                val client = s.client
-                BoxWithConstraints(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                ) {
-                    val windowSize = WindowSize.fromWidth(maxWidth)
+                is ClientDetailState.Error -> {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
+                    ) {
+                        Text(
+                            text = s.error.message(),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
 
+                is ClientDetailState.Loaded -> {
+                    val client = s.client
                     LazyColumn(
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
                     ) {
                         item {
                             ClientDetailHeader(
@@ -316,6 +299,14 @@ fun ClientDetailScreen(
 
                         if (windowSize >= WindowSize.MEDIUM) {
                             item {
+                                ClientActionsRow(
+                                    onPay = {},
+                                    onIssueSubscription = {},
+                                    onMessage = {},
+                                    onAddNote = {},
+                                )
+                            }
+                            item {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(0.dp),
@@ -327,6 +318,7 @@ fun ClientDetailScreen(
                                                 onAdjustBalance = { showAdjustBalanceDialog = true },
                                                 onBalanceHistory = { showBalanceHistorySheet = true },
                                             )
+                                            ClientNotesSection()
                                             DocumentsSection(
                                                 docs = client.docs,
                                                 isUploading = viewModel.isUploadingDoc,
@@ -352,6 +344,7 @@ fun ClientDetailScreen(
                             }
                             item { SubscriptionsSection() }
                             item { UnpaidLessonsSection() }
+                            item { ClientNotesSection() }
                             item {
                                 DocumentsSection(
                                     docs = client.docs,
@@ -363,43 +356,12 @@ fun ClientDetailScreen(
                             }
                         }
 
-                        stickyHeader {
-                            PrimaryScrollableTabRow(
-                                selectedTabIndex = selectedTab,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                tabs.forEachIndexed { index, tab ->
-                                    Tab(
-                                        selected = selectedTab == index,
-                                        onClick = { selectedTab = index },
-                                        text = { Text(tab.title()) },
-                                    )
-                                }
-                            }
-                        }
-
-                        when (tabs[selectedTab]) {
-                            ClientDetailTab.Notes ->
-                                item {
-                                    ClientNotesSection(
-                                        state = notesViewModel.state,
-                                        currentEmployeeId = currentEmployeeId,
-                                        onDraftChange = notesViewModel::onDraftChange,
-                                        onSubmit = notesViewModel::onSubmit,
-                                        onStartEdit = notesViewModel::onStartEdit,
-                                        onCancelEdit = notesViewModel::onCancelEdit,
-                                        onDelete = { notesViewModel.onDelete(it.id) },
-                                    )
-                                }
-
-                            ClientDetailTab.Payments ->
-                                items(fakePayments) { PaymentRow(it) }
-
-                            ClientDetailTab.Parents ->
-                                items(fakeParents) { ParentRow(it) }
-
-                            ClientDetailTab.History ->
-                                items(fakeHistory) { HistoryRow(it) }
+                        item {
+                            HistoryLinksSection(
+                                onOpenVisitHistory = onOpenVisitHistory,
+                                onOpenPaymentHistory = onOpenPaymentHistory,
+                                onOpenSubscriptionHistory = onOpenSubscriptionHistory,
+                            )
                         }
                     }
                 }
@@ -528,6 +490,112 @@ private fun ClientDetailHeader(
                         )
                     },
                 )
+            }
+        }
+    }
+}
+
+// ── action toolbar ────────────────────────────────────────────────────────
+
+/**
+ * Док-панель действий для COMPACT (мобила). Четыре частых действия плюс
+ * редактирование, которое остаётся в [TopAppBar.actions].
+ */
+@Composable
+private fun ClientActionsBottomBar(
+    onPay: () -> Unit,
+    onIssueSubscription: () -> Unit,
+    onMessage: () -> Unit,
+    onAddNote: () -> Unit,
+) {
+    BottomAppBar {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onPay) {
+                Icon(
+                    imageVector = Icons.Default.Payments,
+                    contentDescription = stringResource(Res.string.action_pay),
+                )
+            }
+            IconButton(onClick = onIssueSubscription) {
+                Icon(
+                    imageVector = Icons.Default.CardMembership,
+                    contentDescription = stringResource(Res.string.action_issue_subscription),
+                )
+            }
+            IconButton(onClick = onMessage) {
+                Icon(
+                    imageVector = Icons.Default.Sms,
+                    contentDescription = stringResource(Res.string.action_message),
+                )
+            }
+            IconButton(onClick = onAddNote) {
+                Icon(
+                    imageVector = Icons.Default.EditNote,
+                    contentDescription = stringResource(Res.string.action_add_note),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Горизонтальный ряд кнопок-действий под шапкой для MEDIUM/EXPANDED.
+ * На больших экранах удобнее видеть лейблы рядом с иконками.
+ */
+@Composable
+private fun ClientActionsRow(
+    onPay: () -> Unit,
+    onIssueSubscription: () -> Unit,
+    onMessage: () -> Unit,
+    onAddNote: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FilledTonalButton(onClick = onPay) {
+                Icon(
+                    Icons.Default.Payments,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(Res.string.action_pay))
+            }
+            FilledTonalButton(onClick = onIssueSubscription) {
+                Icon(
+                    Icons.Default.CardMembership,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(Res.string.action_issue_subscription))
+            }
+            FilledTonalButton(onClick = onMessage) {
+                Icon(
+                    Icons.Default.Sms,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(Res.string.action_message))
+            }
+            FilledTonalButton(onClick = onAddNote) {
+                Icon(
+                    Icons.Default.EditNote,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(Res.string.action_add_note))
             }
         }
     }
@@ -717,32 +785,64 @@ private fun UnpaidLessonsSection() {
     }
 }
 
-// ── tab content ───────────────────────────────────────────────────────────
-
+/**
+ * Заметки клиента с инлайн-добавлением.
+ * TODO: сейчас хранятся локально через [remember]; перенести в ViewModel +
+ * API при появлении бэкенда для заметок.
+ */
 @Composable
-private fun PaymentRow(payment: FakePayment) {
-    ListItem(
-        headlineContent = { Text(payment.description) },
-        supportingContent = { Text(payment.date) },
-        trailingContent = {
+private fun ClientNotesSection() {
+    val notes = remember { mutableStateListOf<String>() }
+    var draft by remember { mutableStateOf("") }
+
+    SectionCard(stringResource(Res.string.section_notes)) {
+        if (notes.isEmpty()) {
             Text(
-                text = payment.amount,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium,
+                text = stringResource(Res.string.placeholder_no_notes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        },
-    )
-    HorizontalDivider()
-}
-
-@Composable
-private fun ParentRow(parent: FakeParent) {
-    ListItem(
-        headlineContent = { Text(parent.name) },
-        supportingContent = { Text("${parent.phone} · ${parent.relation}") },
-    )
-    HorizontalDivider()
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                notes.forEachIndexed { index, note ->
+                    if (index > 0) {
+                        HorizontalDivider()
+                    }
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                placeholder = { Text(stringResource(Res.string.hint_note_input)) },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+                onClick = {
+                    val trimmed = draft.trim()
+                    if (trimmed.isNotEmpty()) {
+                        notes.add(0, trimmed)
+                        draft = ""
+                    }
+                },
+                enabled = draft.isNotBlank(),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = stringResource(Res.string.action_add_note),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -835,29 +935,47 @@ private fun DocumentsSection(
     }
 }
 
+/**
+ * Секция со ссылками на отдельные роуты с историями (посещения, платежи,
+ * абонементы). На дашборде эти разделы не отображаются полностью — только
+ * вход в полноценную страницу.
+ */
 @Composable
-private fun HistoryRow(visit: FakeVisit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-    ) {
-        Text(
-            text = visit.date,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(88.dp),
+private fun HistoryLinksSection(
+    onOpenVisitHistory: () -> Unit,
+    onOpenPaymentHistory: () -> Unit,
+    onOpenSubscriptionHistory: () -> Unit,
+) {
+    SectionCard(stringResource(Res.string.section_history)) {
+        HistoryLinkRow(
+            label = stringResource(Res.string.nav_visit_history),
+            onClick = onOpenVisitHistory,
         )
-        Text(
-            text = visit.group,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
+        HorizontalDivider()
+        HistoryLinkRow(
+            label = stringResource(Res.string.nav_payment_history),
+            onClick = onOpenPaymentHistory,
         )
-        StatusText(visit.status)
+        HorizontalDivider()
+        HistoryLinkRow(
+            label = stringResource(Res.string.nav_subscription_history),
+            onClick = onOpenSubscriptionHistory,
+        )
     }
-    HorizontalDivider()
+}
+
+@Composable
+private fun HistoryLinkRow(label: String, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(label) },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+            )
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────

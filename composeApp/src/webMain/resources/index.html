@@ -1,21 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/">
     <title>AthleticaCRM</title>
     <link type="text/css" rel="stylesheet" href="styles.css">
+    <script>
+        // Проверяем, поддерживает ли браузер WasmGC (array types),
+        // на котором собирается Kotlin/Wasm. Тестовый модуль содержит
+        // одну типовую секцию с array i8 immutable (form byte 0x5e).
+        function isWasmGcSupported() {
+            try {
+                if (typeof WebAssembly === 'undefined' || typeof WebAssembly.validate !== 'function') {
+                    return false;
+                }
+                // (module (type (array i8)))
+                // Заголовок (8 байт) + type section: id=1, size=4, vec count=1,
+                // form=0x5e (array), elem=0x78 (i8 packed), mut=0x00 (immutable).
+                var bytes = new Uint8Array([
+                    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+                    0x01, 0x04, 0x01, 0x5e, 0x78, 0x00
+                ]);
+                return WebAssembly.validate(bytes);
+            } catch (e) {
+                return false;
+            }
+        }
+    </script>
 </head>
-<body style="text-align: center; align-content: center">
-<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" role="presentation">
-    <circle cx="25" cy="25" r="20" stroke="#ccc" stroke-width="4" fill="none"/>
-    <circle cx="25" cy="25" r="20" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"
-            stroke-dasharray="90 125">
-        <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-                          repeatCount="indefinite"/>
-    </circle>
-</svg>
-<script type="application/javascript" src="composeApp.js"></script>
+<body>
+<div id="loading-spinner">
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" role="presentation">
+        <circle cx="25" cy="25" r="20" stroke="#ccc" stroke-width="4" fill="none"/>
+        <circle cx="25" cy="25" r="20" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"
+                stroke-dasharray="90 125">
+            <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
+                              repeatCount="indefinite"/>
+        </circle>
+    </svg>
+</div>
+<div id="unsupported-browser" hidden>
+    <div class="unsupported-card">
+        <h1>Ваш браузер не поддерживается</h1>
+        <p>
+            AthleticaCRM требует современный браузер с поддержкой
+            WebAssembly Garbage Collection. Обновите Safari до версии&nbsp;18
+            или новее, либо используйте свежий Chrome, Firefox или Edge.
+        </p>
+        <h2>Или скачайте десктоп-приложение</h2>
+        <!-- TODO: заменить href="#" на ссылки из GitHub Releases.
+             Сборки публикуются workflow .github/workflows/desktop-build.yml
+             в release с тегом `latest`:
+               https://github.com/<owner>/<repo>/releases/latest/download/AthleticaCRM.dmg
+               https://github.com/<owner>/<repo>/releases/latest/download/AthleticaCRM.msi
+               https://github.com/<owner>/<repo>/releases/latest/download/athleticacrm.deb -->
+        <div class="unsupported-downloads">
+            <a class="unsupported-button" href="#" download>macOS (.dmg)</a>
+            <a class="unsupported-button" href="#" download>Windows (.msi)</a>
+            <a class="unsupported-button" href="#" download>Linux (.deb)</a>
+        </div>
+        <p class="unsupported-hint">
+            Если вы уже на современном браузере, проверьте, что включена поддержка
+            WebAssembly Garbage Collection в экспериментальных функциях.
+        </p>
+    </div>
+</div>
+<script type="application/javascript">
+    (function () {
+        if (isWasmGcSupported()) {
+            var s = document.createElement('script');
+            s.src = 'composeApp.js';
+            document.body.appendChild(s);
+        } else {
+            document.body.classList.add('unsupported');
+            var spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+            var fallback = document.getElementById('unsupported-browser');
+            if (fallback) {
+                fallback.removeAttribute('hidden');
+            }
+        }
+    })();
+</script>
 </body>
 </html>

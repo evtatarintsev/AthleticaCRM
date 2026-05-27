@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 
@@ -98,24 +99,6 @@ class DbGroup(
             .execute()
 
         employeeIds.forEach { employeeId ->
-            val allBranchesAccess =
-                tr
-                    .sql("SELECT all_branches_access FROM employees WHERE id = :employeeId AND org_id = :orgId AND is_active = true")
-                    .bind("employeeId", employeeId)
-                    .bind("orgId", ctx.orgId)
-                    .firstOrNull { row -> row.get("all_branches_access", Boolean::class.java) ?: false }
-                    ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            if (allBranchesAccess != true) {
-                val branchAllowed =
-                    tr
-                        .sql("SELECT 1 FROM employee_branches WHERE employee_id = :employeeId AND branch_id = :branchId")
-                        .bind("employeeId", employeeId)
-                        .bind("branchId", branchId)
-                        .firstOrNull { 1 } != null
-                if (!branchAllowed) {
-                    raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-                }
-            }
             try {
                 tr
                     .sql(
@@ -136,7 +119,14 @@ class DbGroup(
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
+    override suspend fun withNewEmployees(employees: List<Employee>): Group {
+        employees.forEach { employee ->
+            if (!employee.availableBranches.contains(branchId)) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+            }
+        }
+        return DbGroup(id, branchId, name, schedule, disciplines, employees.map { it.id })
+    }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)

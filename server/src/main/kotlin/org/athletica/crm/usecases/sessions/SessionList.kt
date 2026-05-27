@@ -7,6 +7,7 @@ import org.athletica.crm.api.schemas.sessions.SessionListResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Session
 import org.athletica.crm.domain.sessions.Sessions
@@ -21,16 +22,17 @@ suspend fun sessionList(
     db: Database,
     groups: Groups,
     sessions: Sessions,
+    employees: Employees,
     groupId: GroupId?,
     from: LocalDate,
     to: LocalDate,
 ): SessionListResponse {
     db.transaction {
         if (groupId != null) {
-            generateSessions(groups, sessions, groupId, from, to)
+            generateSessions(groups, sessions, employees, groupId, from, to)
         } else {
             groups.list().forEach { group ->
-                generateSessions(groups, sessions, group.id, from, to)
+                generateSessions(groups, sessions, employees, group.id, from, to)
             }
         }
     }

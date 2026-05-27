@@ -20,6 +20,7 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
@@ -106,8 +107,7 @@ class TaskOperationsTest {
             override val permissions = EmployeePermission()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
-            override val allBranchesAccess = true
-            override val branchIds = emptyList<BranchId>()
+            override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All
 
             context(ctx: EmployeeRequestContext, tr: Transaction)
             override suspend fun save() = Unit
@@ -122,8 +122,7 @@ class TaskOperationsTest {
                 newAvatarId: UploadId?,
                 newPhoneNo: String?,
                 newEmail: EmailAddress?,
-                newAllBranchesAccess: Boolean,
-                newBranchIds: List<BranchId>,
+                newAvailableBranches: EmployeeBranchAccess,
             ): Employee = this
         }
 

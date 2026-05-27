@@ -11,6 +11,7 @@ import org.athletica.crm.api.schemas.sessions.SessionListResponse
 import org.athletica.crm.api.schemas.sessions.SetSessionEmployeesRequest
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Database
@@ -24,12 +25,13 @@ context(db: Database)
 fun RouteWithContext.sessionsRoutes(
     groups: Groups,
     sessions: Sessions,
+    employees: Employees,
 ) {
     route("/sessions") {
         get<SessionListRequest, SessionListResponse>("/list") { request ->
             val from = request.from ?: LocalDate.fromEpochDays(0)
             val to = request.to ?: LocalDate.fromEpochDays(Int.MAX_VALUE / 2)
-            sessionList(db, groups, sessions, request.groupId, from, to)
+            sessionList(db, groups, sessions, employees, request.groupId, from, to)
         }
 
         get<SessionDetailRequest, SessionDetailResponse>("/detail") { request ->
@@ -43,6 +45,7 @@ fun RouteWithContext.sessionsRoutes(
                 createSession(
                     groups = groups,
                     sessions = sessions,
+                    employees = employees,
                     id = request.id,
                     groupId = request.groupId,
                     date = request.date,
@@ -71,7 +74,7 @@ fun RouteWithContext.sessionsRoutes(
         post<SetSessionEmployeesRequest, SessionDetailResponse>("/set-employees") { request ->
             db.transaction {
                 val session = sessions.byId(request.sessionId)
-                session.setEmployees(request.employeeIds)
+                session.setEmployees(employees.byIds(request.employeeIds))
                 sessionDetail(sessions, groups, request.sessionId)
             }
         }

@@ -3,7 +3,6 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
@@ -23,12 +22,17 @@ data class DbEmployee(
     override val phoneNo: String?,
     override val email: EmailAddress?,
     override val permissions: EmployeePermission,
-    override val allBranchesAccess: Boolean,
-    override val branchIds: List<BranchId>,
+    override val availableBranches: EmployeeBranchAccess,
     private val users: Users,
 ) : Employee {
     context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {
+        val (allBranchesAccess, branchIds) =
+            when (val access = availableBranches) {
+                is EmployeeBranchAccess.All -> true to emptyList()
+                is EmployeeBranchAccess.Selected -> false to access.ids
+            }
+
         tr.sql(
             """
             UPDATE employees
@@ -96,13 +100,11 @@ data class DbEmployee(
             .bind("id", id)
             .execute()
 
-        if (!allBranchesAccess) {
-            branchIds.forEach { branchId ->
-                tr.sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
-                    .bind("employeeId", id)
-                    .bind("branchId", branchId)
-                    .execute()
-            }
+        branchIds.forEach { branchId ->
+            tr.sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
+                .bind("employeeId", id)
+                .bind("branchId", branchId)
+                .execute()
         }
     }
 
@@ -119,8 +121,7 @@ data class DbEmployee(
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
-        newAllBranchesAccess: Boolean,
-        newBranchIds: List<BranchId>,
+        newAvailableBranches: EmployeeBranchAccess,
     ): Employee =
         copy(
             name = newName,
@@ -128,7 +129,6 @@ data class DbEmployee(
             email = newEmail,
             avatarId = newAvatarId,
             phoneNo = newPhoneNo,
-            allBranchesAccess = newAllBranchesAccess,
-            branchIds = newBranchIds,
+            availableBranches = newAvailableBranches,
         )
 }

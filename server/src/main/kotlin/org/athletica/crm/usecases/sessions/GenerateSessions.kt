@@ -8,6 +8,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
@@ -20,11 +21,13 @@ context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun generateSessions(
     groups: Groups,
     sessions: Sessions,
+    employees: Employees,
     groupId: GroupId,
     from: LocalDate,
     to: LocalDate,
 ) {
     val group = groups.byId(groupId)
+    val groupEmployees = employees.byIds(group.employeeIds)
     group.schedule.forEach { slot ->
         var current = from
         while (current <= to) {
@@ -37,7 +40,7 @@ suspend fun generateSessions(
                     endTime = slot.endAt,
                     hallId = slot.hallId,
                     notes = null,
-                    employeeIds = group.employeeIds,
+                    employees = groupEmployees,
                     originDayOfWeek = slot.dayOfWeek.name,
                     originStartTime = slot.startAt,
                     originDate = current,

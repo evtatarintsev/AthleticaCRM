@@ -28,7 +28,6 @@ import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
-import org.athletica.crm.domain.employees.EmployeePermissions
 import org.athletica.crm.domain.enrollments.AuditEnrollments
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollments
@@ -90,7 +89,6 @@ data class Di(
     val emailDispatcher: EmailDispatcher,
     val orgBalances: OrgBalances,
     val organizations: Organizations,
-    val employeePermissions: EmployeePermissions,
     val clientBalances: ClientBalances,
     val clients: Clients,
     val clientNotes: ClientNotes = DbClientNotes(),
@@ -119,8 +117,8 @@ data class Di(
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
 
     init {
-        bus.register(GroupCreatedHandler(database, groups, sessions))
-        bus.register(GroupScheduleChangedHandler(database, groups, sessions))
+        bus.register(GroupCreatedHandler(database, groups, sessions, employees))
+        bus.register(GroupScheduleChangedHandler(database, groups, sessions, employees))
     }
 }
 
@@ -150,7 +148,6 @@ fun Application.di(): Di {
         emailDispatcher = DbEmailDispatcher(db, orgEmails, mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
         organizations = LocMemCachedOrganizations(DbOrganizations()),
-        employeePermissions = EmployeePermissions(),
         clientBalances = AuditClientBalances(DbClientBalances(), audit),
         clients = DbClients(),
         branches = DbBranches(),

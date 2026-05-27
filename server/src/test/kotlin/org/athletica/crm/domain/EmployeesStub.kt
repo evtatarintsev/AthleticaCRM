@@ -3,12 +3,13 @@ package org.athletica.crm.domain
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.storage.Transaction
@@ -26,8 +27,7 @@ data class EmployeeStub(
     override val permissions: EmployeePermission,
     override val phoneNo: String?,
     override val email: EmailAddress?,
-    override val allBranchesAccess: Boolean = true,
-    override val branchIds: List<BranchId> = emptyList(),
+    override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
 ) : Employee {
     context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {
@@ -44,16 +44,14 @@ data class EmployeeStub(
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
-        newAllBranchesAccess: Boolean,
-        newBranchIds: List<BranchId>,
+        newAvailableBranches: EmployeeBranchAccess,
     ) = copy(
         name = newName,
         permissions = newPermissions,
         email = newEmail,
         avatarId = newAvatarId,
         phoneNo = newPhoneNo,
-        allBranchesAccess = newAllBranchesAccess,
-        branchIds = newBranchIds,
+        availableBranches = newAvailableBranches,
     )
 }
 
@@ -68,8 +66,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
         email: EmailAddress?,
         avatarId: UploadId?,
         permissions: EmployeePermission,
-        allBranchesAccess: Boolean,
-        branchIds: List<BranchId>,
+        availableBranches: EmployeeBranchAccess,
     ): Employee =
         EmployeeStub(
             id = id,
@@ -82,12 +79,14 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             email = email,
             avatarId = avatarId,
             permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
-            allBranchesAccess = allBranchesAccess,
-            branchIds = branchIds,
+            availableBranches = availableBranches,
         ).also { employees.add(it) }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: EmployeeId): Employee = employees.first { it.id == id }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byIds(ids: List<EmployeeId>): List<Employee> = employees.filter { it.id in ids }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> = employees

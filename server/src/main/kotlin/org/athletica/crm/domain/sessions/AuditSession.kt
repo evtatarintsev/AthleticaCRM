@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 @Serializable
@@ -64,8 +65,8 @@ class AuditSession(private val delegate: Session, private val audit: AuditLog) :
         }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun setEmployees(employeeIds: List<EmployeeId>) =
-        delegate.setEmployees(employeeIds).also {
+    override suspend fun setEmployees(employees: List<Employee>) =
+        delegate.setEmployees(employees).also {
             audit.logUpdate("session", id, delegate.snapshot())
         }
 }

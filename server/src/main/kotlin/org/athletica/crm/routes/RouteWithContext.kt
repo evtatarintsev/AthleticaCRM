@@ -35,7 +35,7 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.systemContext
-import org.athletica.crm.domain.employees.EmployeePermissions
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
@@ -113,7 +113,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     ): Route =
         router.route(path, method) {
             handle {
-                context(call.contextFromRequest(di.database, di.employeePermissions, di.organizations)) {
+                context(call.contextFromRequest(di.database, di.employees, di.organizations)) {
                     either {
                         body(call)
                     }.onLeft {
@@ -177,7 +177,7 @@ fun RoutingCall.langFromRequest(): Lang {
  */
 suspend fun RoutingCall.contextFromRequest(
     db: Database,
-    permissions: EmployeePermissions,
+    employees: Employees,
     organizations: Organizations,
 ): EmployeeRequestContext =
     either {
@@ -186,14 +186,11 @@ suspend fun RoutingCall.contextFromRequest(
         val orgId = principal.payload.claimAsUuid(JwtConfig.CLAIM_ORG_ID).toOrgId()
         val branchId = principal.payload.claimAsUuid(JwtConfig.CLAIM_BRANCH_ID).toBranchId()
         val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
-        val (currency, permission) =
+        val (currency, employee) =
             db.transaction {
-                val currency =
-                    context(systemContext(orgId)) {
-                        organizations.current().currency
-                    }
-                val permission = permissions.byId(employeeId)
-                currency to permission
+                context(systemContext(orgId)) {
+                    organizations.current().currency to employees.byId(employeeId)
+                }
             }
         EmployeeRequestContext(
             userId = userId,
@@ -204,7 +201,8 @@ suspend fun RoutingCall.contextFromRequest(
             username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
             clientIp = clientIp(),
             currency = currency,
-            permission = permission,
+            permission = employee.permissions,
+            availableBranches = employee.availableBranches,
         )
     }.getOrElse { throw RuntimeException("Error getting context from request: $it") }
 

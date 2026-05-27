@@ -3,7 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
@@ -11,8 +11,11 @@ import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.storage.Transaction
 
 class EmailEmployees(private val delegate: Employees, private val orgEmails: OrgEmails) : Employees by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: EmployeeId) = EmailEmployee(delegate.byId(id), orgEmails)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byIds(ids: List<EmployeeId>) = delegate.byIds(ids).map { EmailEmployee(it, orgEmails) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list() = delegate.list().map { EmailEmployee(it, orgEmails) }
@@ -25,7 +28,6 @@ class EmailEmployees(private val delegate: Employees, private val orgEmails: Org
         email: EmailAddress?,
         avatarId: UploadId?,
         permissions: EmployeePermission,
-        allBranchesAccess: Boolean,
-        branchIds: List<BranchId>,
-    ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId, permissions, allBranchesAccess, branchIds), orgEmails)
+        availableBranches: EmployeeBranchAccess,
+    ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId, permissions, availableBranches), orgEmails)
 }

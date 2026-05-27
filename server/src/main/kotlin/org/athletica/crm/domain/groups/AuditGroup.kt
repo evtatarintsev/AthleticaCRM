@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -44,7 +45,7 @@ class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Gro
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = AuditGroup(delegate.withNewDisciplines(disciplines), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group = AuditGroup(delegate.withNewEmployees(employeeIds), audit)
+    override suspend fun withNewEmployees(employees: List<Employee>): Group = AuditGroup(delegate.withNewEmployees(employees), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewName(name: String): Group = AuditGroup(delegate.withNewName(name), audit)

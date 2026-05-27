@@ -4,13 +4,16 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 
 interface Branches {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    /**
+     * Возвращает филиалы, доступные текущему сотруднику.
+     * Если у сотрудника [org.athletica.crm.domain.employees.EmployeeBranchAccess.All] — все филиалы организации;
+     * иначе — только явно назначенные через `employee_branches`.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     suspend fun list(): List<Branch>
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -21,14 +24,6 @@ interface Branches {
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun delete(ids: List<BranchId>)
-
-    /**
-     * Возвращает список филиалов, доступных конкретному сотруднику [employeeId] в организации [orgId].
-     * Если [allBranchesAccess] = true — возвращает все филиалы организации.
-     * Иначе — только те, что явно назначены через employee_branches.
-     */
-    context(tr: Transaction)
-    suspend fun accessibleBranches(orgId: OrgId, employeeId: EmployeeId, allBranchesAccess: Boolean): List<Branch>
 }
 
 @Serializable

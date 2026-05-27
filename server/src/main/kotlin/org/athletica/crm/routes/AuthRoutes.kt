@@ -24,18 +24,24 @@ import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.auth.SwitchBranchRequest
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logLogin
 import org.athletica.crm.domain.audit.logSignUp
 import org.athletica.crm.domain.audit.logout
 import org.athletica.crm.domain.branch.Branches
+import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -43,8 +49,7 @@ import org.athletica.crm.security.findByCredentials
 import org.athletica.crm.security.userById
 import org.athletica.crm.security.verifyCredentials
 import org.athletica.crm.storage.Database
-import org.athletica.crm.storage.asBoolean
-import org.athletica.crm.usecases.auth.myBranches
+import org.athletica.crm.storage.Transaction
 import org.athletica.crm.usecases.auth.signUp
 import org.athletica.crm.usecases.auth.switchBranch
 import kotlin.uuid.Uuid
@@ -53,22 +58,27 @@ import kotlin.uuid.Uuid
  * Регистрирует маршруты аутентификации:
  * POST /auth/branches, POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
  * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
- * Требует контекстных параметров [Database], [PasswordHasher], [Branches] и [AuditLog].
+ * Требует контекстных параметров [Database], [PasswordHasher], [Branches], [Employees], [Organizations] и [AuditLog].
  */
-context(db: Database, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog, branches: Branches, userSettings: UserDisplaySettings)
+context(db: Database, employees: Employees, organizations: Organizations, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog, branches: Branches, userSettings: UserDisplaySettings)
 fun Route.authRoutes() {
     post("/auth/branches") {
         val request = call.receive<AuthBranchesRequest>()
         either<DomainError, AuthBranchesResponse> {
             val user = verifyCredentials(request.username, request.password).bind()
             db.transaction {
-                val allBranchesAccess =
-                    sql(
-                        "SELECT all_branches_access FROM employees WHERE id = :id",
-                    ).bind("id", user.employeeId)
-                        .firstOrNull { it.asBoolean("all_branches_access") } ?: true
-                val accessible = branches.accessibleBranches(user.orgId, user.employeeId, allBranchesAccess)
-                AuthBranchesResponse(accessible.map { BranchDetailResponse(it.id, it.name) })
+                val ctx =
+                    buildBootstrapContext(
+                        userId = user.id,
+                        orgId = user.orgId,
+                        employeeId = user.employeeId,
+                        username = user.username,
+                        branchId = BranchId.notSelected(),
+                        call = call,
+                    )
+                context(ctx, this) {
+                    AuthBranchesResponse(branches.list().map { BranchDetailResponse(it.id, it.name) })
+                }
             }
         }.fold(
             { call.respond(HttpStatusCode.BadRequest, ErrorResponse(code = it.code, message = it.message)) },
@@ -96,13 +106,19 @@ fun Route.authRoutes() {
             val request = call.receive<LoginRequest>()
             val user = findByCredentials(request.username, request.password, request.branchId).bind()
             db.transaction {
-                val allBranchesAccess =
-                    sql("SELECT all_branches_access FROM employees WHERE id = :id")
-                        .bind("id", user.employeeId)
-                        .firstOrNull { it.asBoolean("all_branches_access") } ?: true
-                val accessible = branches.accessibleBranches(user.orgId, user.employeeId, allBranchesAccess)
-                if (accessible.none { it.id == request.branchId }) {
-                    raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
+                val ctx =
+                    buildBootstrapContext(
+                        userId = user.id,
+                        orgId = user.orgId,
+                        employeeId = user.employeeId,
+                        username = user.username,
+                        branchId = request.branchId,
+                        call = call,
+                    )
+                context(ctx, this) {
+                    if (branches.list().none { it.id == request.branchId }) {
+                        raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
+                    }
                 }
                 audit.logLogin(user.orgId, user.id, user.username, call.clientIp())
             }
@@ -123,6 +139,40 @@ fun Route.authRoutes() {
     }
 }
 
+/**
+ * Собирает [EmployeeRequestContext] для bootstrap-эндпоинтов `/auth/branches` и `/auth/login`,
+ * где полный контекст ещё не доступен из JWT-токена.
+ * Подтягивает permissions и availableBranches из агрегата `Employee`, currency — из организации.
+ * Передаётся [branchId] — для `/auth/login` это выбранный филиал;
+ * для `/auth/branches` следует использовать [BranchId.notSelected], так как филиал ещё не выбран.
+ */
+context(tr: Transaction, employees: Employees, organizations: Organizations, raise: Raise<DomainError>)
+private suspend fun buildBootstrapContext(
+    userId: UserId,
+    orgId: OrgId,
+    employeeId: EmployeeId,
+    username: String,
+    branchId: BranchId,
+    call: RoutingCall,
+): EmployeeRequestContext {
+    val (currency, employee) =
+        context(systemContext(orgId)) {
+            organizations.current().currency to employees.byId(employeeId)
+        }
+    return EmployeeRequestContext(
+        lang = call.langFromRequest(),
+        orgId = orgId,
+        currency = currency,
+        userId = userId,
+        branchId = branchId,
+        employeeId = employee.id,
+        username = username,
+        clientIp = call.clientIp(),
+        permission = employee.permissions,
+        availableBranches = employee.availableBranches,
+    )
+}
+
 context(db: Database)
 fun RouteWithContext.logout(audit: AuditLog) {
     post<Unit, Unit>("/auth/logout") { _, call ->
@@ -141,9 +191,7 @@ context(db: Database, branches: Branches)
 fun RouteWithContext.myBranchesRoute() {
     get<Unit, AuthBranchesResponse>("/auth/my-branches") {
         db.transaction {
-            context(branches) {
-                myBranches()
-            }
+            AuthBranchesResponse(branches.list().map { BranchDetailResponse(it.id, it.name) })
         }
     }
 }

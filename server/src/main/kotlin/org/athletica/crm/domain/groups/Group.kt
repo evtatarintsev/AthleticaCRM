@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 
@@ -43,8 +44,13 @@ interface Group {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group
 
+    /**
+     * Заменяет преподавателей группы.
+     * Каждый [Employee] из [employees] должен иметь доступ к филиалу [branchId];
+     * иначе при последующем [save] поднимется ошибка `EMPLOYEE_NOT_FOUND`.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun withNewEmployees(employeeIds: List<EmployeeId>): Group
+    suspend fun withNewEmployees(employees: List<Employee>): Group
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewName(name: String): Group
@@ -54,11 +60,11 @@ interface Group {
         name: String,
         disciplines: List<DisciplineId>,
         schedule: List<ScheduleSlot>,
-        employeeIds: List<EmployeeId>,
+        employees: List<Employee>,
     ): Group =
         withNewName(name)
             .withNewDisciplines(disciplines)
-            .withNewEmployees(employeeIds)
+            .withNewEmployees(employees)
             .withNewSchedule(schedule)
 }
 

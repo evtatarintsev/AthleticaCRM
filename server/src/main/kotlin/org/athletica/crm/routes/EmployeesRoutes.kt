@@ -13,6 +13,7 @@ import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
@@ -56,8 +57,7 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
                     email = request.email,
                     avatarId = request.avatarId,
                     permissions = permissions,
-                    allBranchesAccess = request.allBranchesAccess,
-                    branchIds = request.branchIds,
+                    availableBranches = request.toAvailableBranches(),
                 )
             }.toListItem()
         }
@@ -80,8 +80,7 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
                         newEmail = request.email,
                         newAvatarId = request.avatarId,
                         newPermissions = permissions,
-                        newAllBranchesAccess = request.allBranchesAccess,
-                        newBranchIds = request.branchIds,
+                        newAvailableBranches = request.toAvailableBranches(),
                     ).save()
             }
         }
@@ -142,6 +141,12 @@ fun Employee.toDetailResponse() =
         email?.value,
         permissions.grantedPermissions,
         permissions.revokedPermissions,
-        allBranchesAccess,
-        branchIds,
+        availableBranches is EmployeeBranchAccess.All,
+        (availableBranches as? EmployeeBranchAccess.Selected)?.ids ?: emptyList(),
     )
+
+/** Конвертирует [CreateEmployeeRequest] в доменный [EmployeeBranchAccess]. */
+private fun CreateEmployeeRequest.toAvailableBranches(): EmployeeBranchAccess = if (allBranchesAccess) EmployeeBranchAccess.All else EmployeeBranchAccess.Selected(branchIds)
+
+/** Конвертирует [UpdateEmployeeRequest] в доменный [EmployeeBranchAccess]. */
+private fun UpdateEmployeeRequest.toAvailableBranches(): EmployeeBranchAccess = if (allBranchesAccess) EmployeeBranchAccess.All else EmployeeBranchAccess.Selected(branchIds)

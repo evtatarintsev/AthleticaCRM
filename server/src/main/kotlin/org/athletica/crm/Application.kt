@@ -148,7 +148,7 @@ fun Application.configureServer() {
             checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
 
             route("/api") {
-                context(di.jwtConfig, di.passwordHasher, di.branches, di.userDisplaySettings) {
+                context(di.employees, di.organizations, di.jwtConfig, di.passwordHasher, di.branches, di.userDisplaySettings) {
                     authRoutes()
                 }
                 authenticate("auth-jwt") {
@@ -166,7 +166,7 @@ fun Application.configureServer() {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }
                         groupsRoutes(di.groups, di.disciplines, di.employees, di.sessions, di.halls, di.enrollments, di.bus)
-                        sessionsRoutes(di.groups, di.sessions)
+                        sessionsRoutes(di.groups, di.sessions, di.employees)
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
@@ -238,7 +238,7 @@ private suspend fun generateSessionsDaily(di: Di) {
                         arrow.core.raise.either {
                             context(ctx, this@transaction, this) {
                                 di.groups.list().forEach { group ->
-                                    generateSessions(di.groups, di.sessions, group.id, today, horizon)
+                                    generateSessions(di.groups, di.sessions, di.employees, group.id, today, horizon)
                                 }
                             }
                         }

@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
@@ -20,6 +21,7 @@ context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun createSession(
     groups: Groups,
     sessions: Sessions,
+    employees: Employees,
     id: SessionId,
     groupId: GroupId,
     date: LocalDate,
@@ -41,7 +43,7 @@ suspend fun createSession(
             endTime = endTime,
             hallId = hallId,
             notes = notes,
-            employeeIds = group.employeeIds,
+            employees = employees.byIds(group.employeeIds),
             originDayOfWeek = null,
             originStartTime = null,
             originDate = null,

@@ -85,7 +85,7 @@ fun RouteWithContext.groupsRoutes(
                         request.name,
                         request.schedule.map { it.toDomain() },
                         request.disciplineIds,
-                        request.employeeIds,
+                        employees.byIds(request.employeeIds),
                     )
                     .toGroupDetailResponse(disciplines.list(), employees.list(), emptyMap(), emptyList())
             }
@@ -99,7 +99,7 @@ fun RouteWithContext.groupsRoutes(
                         request.name,
                         request.disciplineIds,
                         request.schedule.map { it.toDomain() },
-                        request.employeeIds,
+                        employees.byIds(request.employeeIds),
                     )
                     .apply { save() }
                     .toGroupDetailResponse(disciplines.list(), employees.list(), emptyMap(), emptyList())
@@ -117,7 +117,7 @@ fun RouteWithContext.groupsRoutes(
 
         post<SetGroupEmployeesRequest, Unit>("/set-employees") { request ->
             db.transaction {
-                updateGroupEmployees(groups, sessions, request.groupId, request.employeeIds)
+                updateGroupEmployees(groups, sessions, employees, request.groupId, request.employeeIds)
             }
         }
 

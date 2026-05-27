@@ -9,6 +9,8 @@ import kotlin.uuid.Uuid
 value class BranchId(override val value: Uuid) : EntityId {
     companion object {
         fun new() = BranchId(Uuid.generateV7())
+
+        fun notSelected() = BranchId(Uuid.NIL)
     }
 
     override fun toString() = value.toString()

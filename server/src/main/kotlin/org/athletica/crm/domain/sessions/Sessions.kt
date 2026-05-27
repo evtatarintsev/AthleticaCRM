@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 /** Репозиторий занятий организации. */
@@ -17,6 +18,8 @@ interface Sessions {
      * Создаёт новое занятие.
      * Если занятие с такими [originDayOfWeek]+[originStartTime]+[originDate] уже существует — молча игнорирует
      * (идемпотентная генерация через UNIQUE constraint + ON CONFLICT DO NOTHING).
+     * [employees] — преподаватели; каждый должен иметь доступ к филиалу группы,
+     * иначе ошибка `EMPLOYEE_NOT_FOUND`.
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun new(
@@ -27,7 +30,7 @@ interface Sessions {
         endTime: LocalTime,
         hallId: HallId,
         notes: String?,
-        employeeIds: List<EmployeeId>,
+        employees: List<Employee>,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,
         originDate: LocalDate?,

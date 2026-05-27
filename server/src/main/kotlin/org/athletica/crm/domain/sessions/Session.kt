@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 /** Одно занятие группы — конкретный экземпляр расписания. */
@@ -74,6 +75,11 @@ interface Session {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun complete()
 
+    /**
+     * Заменяет состав преподавателей занятия.
+     * Каждый [Employee] из [employees] должен иметь доступ к филиалу группы,
+     * иначе ошибка `EMPLOYEE_NOT_FOUND`.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun setEmployees(employeeIds: List<EmployeeId>)
+    suspend fun setEmployees(employees: List<Employee>)
 }

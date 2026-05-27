@@ -5,11 +5,10 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
@@ -17,13 +16,26 @@ import org.athletica.crm.storage.asUuid
 import kotlin.uuid.toJavaUuid
 
 class DbBranches : Branches {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun list(): List<Branch> =
-        tr.sql("SELECT b.id, b.name FROM branches b WHERE b.org_id = :orgId ORDER BY b.name")
-            .bind("orgId", ctx.orgId)
-            .list {
-                Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name"))
-            }
+        when (val access = ctx.availableBranches) {
+            is EmployeeBranchAccess.All ->
+                tr
+                    .sql("SELECT id, name FROM branches WHERE org_id = :orgId ORDER BY name")
+                    .bind("orgId", ctx.orgId)
+                    .list { Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name")) }
+
+            is EmployeeBranchAccess.Selected ->
+                if (access.ids.isEmpty()) {
+                    emptyList()
+                } else {
+                    tr
+                        .sql("SELECT id, name FROM branches WHERE org_id = :orgId AND id = ANY(:ids) ORDER BY name")
+                        .bind("orgId", ctx.orgId)
+                        .bind("ids", access.ids.map { it.value.toJavaUuid() })
+                        .list { Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name")) }
+                }
+        }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun create(branch: Branch) {
@@ -63,39 +75,16 @@ class DbBranches : Branches {
         }
     }
 
-    context(tr: Transaction)
-    override suspend fun accessibleBranches(orgId: OrgId, employeeId: EmployeeId, allBranchesAccess: Boolean): List<Branch> {
-        val sql =
-            if (allBranchesAccess) {
-                "SELECT id, name FROM branches WHERE org_id = :orgId ORDER BY name"
-            } else {
-                """
-                SELECT b.id, b.name
-                FROM branches b
-                JOIN employee_branches eb ON eb.branch_id = b.id AND eb.employee_id = :employeeId
-                WHERE b.org_id = :orgId
-                ORDER BY b.name
-                """.trimIndent()
-            }
-        return tr.sql(sql)
-            .bind("orgId", orgId)
-            .let { if (!allBranchesAccess) it.bind("employeeId", employeeId) else it }
-            .list { Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name")) }
-    }
-
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun delete(ids: List<BranchId>) {
         if (ids.isEmpty()) {
             return
         }
 
-        val deleted =
-            tr.sql("DELETE FROM branches WHERE id = ANY(:ids) AND org_id = :orgId RETURNING id, name")
-                .bind("ids", ids.map { it.value.toJavaUuid() })
-                .bind("orgId", ctx.orgId)
-                .list { Branch(id = it.asUuid("id").toBranchId(), name = it.asString("name")) }
-
-        deleted.forEach {
-        }
+        tr
+            .sql("DELETE FROM branches WHERE id = ANY(:ids) AND org_id = :orgId")
+            .bind("ids", ids.map { it.value.toJavaUuid() })
+            .bind("orgId", ctx.orgId)
+            .execute()
     }
 }

@@ -6,6 +6,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
@@ -18,10 +19,13 @@ context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun updateGroupEmployees(
     groups: Groups,
     sessions: Sessions,
+    employees: Employees,
     groupId: GroupId,
     employeeIds: List<EmployeeId>,
 ) {
-    groups.byId(groupId).withNewEmployees(employeeIds.distinct()).save()
+    val distinctIds = employeeIds.distinct()
+    val loaded = employees.byIds(distinctIds)
+    groups.byId(groupId).withNewEmployees(loaded).save()
     val today = java.time.LocalDate.now().toKotlinLocalDate()
-    sessions.syncFutureEmployeesFromGroup(groupId, employeeIds.distinct(), today)
+    sessions.syncFutureEmployeesFromGroup(groupId, distinctIds, today)
 }

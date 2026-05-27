@@ -10,10 +10,13 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asUuid
 
 /** Конкретная реализация [Session] на основе данных из PostgreSQL. */
 class DbSession(
@@ -95,7 +98,7 @@ class DbSession(
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun setEmployees(employeeIds: List<EmployeeId>) {
+    override suspend fun setEmployees(employees: List<Employee>) {
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_ASSIGN_EMPLOYEES", "Можно назначить преподавателей только для запланированного занятия"))
         }
@@ -104,35 +107,23 @@ class DbSession(
                 .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
                 .bind("groupId", groupId)
                 .bind("orgId", ctx.orgId)
-                .firstOrNull { row -> row.get("branch_id", java.util.UUID::class.java) }
+                .firstOrNull { row -> row.asUuid("branch_id").toBranchId() }
                 ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
+        val distinctEmployees = employees.distinctBy { it.id }
+        distinctEmployees.forEach { employee ->
+            if (!employee.availableBranches.contains(branchId)) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+            }
+        }
         tr
             .sql("DELETE FROM session_employees WHERE session_id = :sessionId")
             .bind("sessionId", id)
             .execute()
-        employeeIds.distinct().forEach { employeeId ->
-            val allBranchesAccess =
-                tr
-                    .sql("SELECT all_branches_access FROM employees WHERE id = :employeeId AND org_id = :orgId AND is_active = true")
-                    .bind("employeeId", employeeId)
-                    .bind("orgId", ctx.orgId)
-                    .firstOrNull { row -> row.get("all_branches_access", Boolean::class.java) ?: false }
-                    ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            if (allBranchesAccess != true) {
-                val branchAllowed =
-                    tr
-                        .sql("SELECT 1 FROM employee_branches WHERE employee_id = :employeeId AND branch_id = :branchId")
-                        .bind("employeeId", employeeId)
-                        .bind("branchId", branchId)
-                        .firstOrNull { 1 } != null
-                if (!branchAllowed) {
-                    raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-                }
-            }
+        distinctEmployees.forEach { employee ->
             tr
                 .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
                 .bind("sessionId", id)
-                .bind("employeeId", employeeId)
+                .bind("employeeId", employee.id)
                 .execute()
         }
         tr

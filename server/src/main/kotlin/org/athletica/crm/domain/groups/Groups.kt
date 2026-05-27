@@ -7,12 +7,15 @@ import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 interface Groups {
     /**
      * Создаёт группу в текущем филиале сотрудника.
      * Требует контекста сотрудника, т.к. брать филиал из JWT-токена.
+     * [employees] — преподаватели группы; каждый должен иметь доступ к филиалу [EmployeeRequestContext.branchId],
+     * иначе ошибка `EMPLOYEE_NOT_FOUND`.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun new(
@@ -20,7 +23,7 @@ interface Groups {
         name: String,
         schedule: List<ScheduleSlot>,
         disciplineIds: List<DisciplineId>,
-        employeeIds: List<EmployeeId>,
+        employees: List<Employee>,
     ): Group
 
     /**

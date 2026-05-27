@@ -11,12 +11,14 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -38,7 +40,7 @@ class DbSessions : Sessions {
         endTime: LocalTime,
         hallId: HallId,
         notes: String?,
-        employeeIds: List<EmployeeId>,
+        employees: List<Employee>,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,
         originDate: LocalDate?,
@@ -49,10 +51,13 @@ class DbSessions : Sessions {
                     .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
                     .bind("groupId", groupId)
                     .bind("orgId", ctx.orgId)
-                    .firstOrNull { row -> row.get("branch_id", java.util.UUID::class.java) }
+                    .firstOrNull { row -> row.asUuid("branch_id").toBranchId() }
                     ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
-            employeeIds.distinct().forEach { employeeId ->
-                validateEmployeeForBranch(employeeId, branchId)
+            val distinctEmployees = employees.distinctBy { it.id }
+            distinctEmployees.forEach { employee ->
+                if (!employee.availableBranches.contains(branchId)) {
+                    raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
+                }
             }
             tr
                 .sql(
@@ -84,11 +89,11 @@ class DbSessions : Sessions {
                 .execute()
             val session = byIdOrNull(id)
             session?.let {
-                employeeIds.distinct().forEach { employeeId ->
+                distinctEmployees.forEach { employee ->
                     tr
                         .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
                         .bind("sessionId", id)
-                        .bind("employeeId", employeeId)
+                        .bind("employeeId", employee.id)
                         .execute()
                 }
             }
@@ -277,28 +282,6 @@ class DbSessions : Sessions {
             ).bind("sessionIds", sessionIds.map { it.value })
             .list { row -> row.asUuid("session_id").toSessionId() to row.asUuid("employee_id").toEmployeeId() }
             .groupBy({ it.first }, { it.second })
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    private suspend fun validateEmployeeForBranch(employeeId: EmployeeId, branchId: java.util.UUID) {
-        val allBranchesAccess =
-            tr
-                .sql("SELECT all_branches_access FROM employees WHERE id = :employeeId AND org_id = :orgId AND is_active = true")
-                .bind("employeeId", employeeId)
-                .bind("orgId", ctx.orgId)
-                .firstOrNull { row -> row.get("all_branches_access", Boolean::class.java) ?: false }
-                ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-        if (allBranchesAccess != true) {
-            val branchAllowed =
-                tr
-                    .sql("SELECT 1 FROM employee_branches WHERE employee_id = :employeeId AND branch_id = :branchId")
-                    .bind("employeeId", employeeId)
-                    .bind("branchId", branchId)
-                    .firstOrNull { 1 } != null
-            if (!branchAllowed) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
-        }
-    }
 }
 
 private data class SessionRow(

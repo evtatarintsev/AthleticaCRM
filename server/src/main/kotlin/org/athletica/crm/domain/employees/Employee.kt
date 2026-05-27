@@ -25,11 +25,8 @@ interface Employee {
     val phoneNo: String?
     val email: EmailAddress?
 
-    /** Доступ ко всем филиалам организации, включая будущие. */
-    val allBranchesAccess: Boolean
-
-    /** Конкретные филиалы; актуален только когда [allBranchesAccess] = false. */
-    val branchIds: List<BranchId>
+    /** Доступ к филиалам организации: ко всем (включая будущие) либо к явному набору. */
+    val availableBranches: EmployeeBranchAccess
 
     context(ctx: EmployeeRequestContext, tr: Transaction)
     suspend fun save()
@@ -44,8 +41,7 @@ interface Employee {
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
-        newAllBranchesAccess: Boolean,
-        newBranchIds: List<BranchId>,
+        newAvailableBranches: EmployeeBranchAccess,
     ): Employee
 }
 
@@ -60,5 +56,24 @@ data class EmployeePermission(
         if (p in revokedPermissions) return false
         if (p in grantedPermissions) return true
         return roles.any { p in it.permissions }
+    }
+}
+
+/**
+ * Доступ сотрудника к филиалам организации.
+ * Делает невозможным некорректные комбинации `(allBranchesAccess: Boolean, branchIds: List)`:
+ * - [All] — доступ ко всем филиалам организации, включая создаваемые в будущем.
+ * - [Selected] — доступ только к перечисленным филиалам.
+ */
+sealed class EmployeeBranchAccess {
+    /** Возвращает true, если у сотрудника есть доступ к филиалу [branchId]. */
+    abstract fun contains(branchId: BranchId): Boolean
+
+    object All : EmployeeBranchAccess() {
+        override fun contains(branchId: BranchId): Boolean = true
+    }
+
+    data class Selected(val ids: List<BranchId>) : EmployeeBranchAccess() {
+        override fun contains(branchId: BranchId): Boolean = branchId in ids
     }
 }

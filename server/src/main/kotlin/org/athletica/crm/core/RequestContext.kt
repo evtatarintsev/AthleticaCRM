@@ -9,6 +9,7 @@ import org.athletica.crm.core.permissions.SystemActor
 import org.athletica.crm.core.permissions.SystemPermission
 import org.athletica.crm.core.permissions.UserActor
 import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 
 /**
@@ -35,10 +36,13 @@ sealed interface RequestContext {
  * Контекст аутентифицированного HTTP-запроса от сотрудника организации.
  *
  * [userId] — идентификатор пользователя из JWT-токена.
- * [branchId] — идентификатор текущего филиала из JWT-токена.
+ * [branchId] — идентификатор текущего филиала из JWT-токена;
+ *   [BranchId.notSelected] для bootstrap-эндпоинтов (`/auth/branches`), где филиал ещё не выбран.
  * [employeeId] — идентификатор сотрудника из JWT-токена.
  * [username] — имя пользователя из JWT-токена (денормализовано).
  * [clientIp] — IP-адрес клиента; IPv4 или IPv6; null если определить не удалось.
+ * [availableBranches] — филиалы, доступные сотруднику ([EmployeeBranchAccess.All] либо
+ *   [EmployeeBranchAccess.Selected]); загружается из агрегата `Employee` при сборке контекста.
  */
 data class EmployeeRequestContext(
     override val lang: Lang,
@@ -49,6 +53,7 @@ data class EmployeeRequestContext(
     val employeeId: EmployeeId,
     val username: String,
     val clientIp: String?,
+    val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
     private val permission: EmployeePermission,
 ) : RequestContext,
     UserActor by permission

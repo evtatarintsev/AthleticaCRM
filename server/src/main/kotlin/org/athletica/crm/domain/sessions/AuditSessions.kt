@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 @Serializable
@@ -42,18 +43,18 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
         endTime: LocalTime,
         hallId: HallId,
         notes: String?,
-        employeeIds: List<EmployeeId>,
+        employees: List<Employee>,
         originDayOfWeek: String?,
         originStartTime: LocalTime?,
         originDate: LocalDate?,
     ): Session? {
-        val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employeeIds, originDayOfWeek, originStartTime, originDate)
+        val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employees, originDayOfWeek, originStartTime, originDate)
         if (session != null && originDayOfWeek == null && ctx is EmployeeRequestContext) {
             context(ctx) {
                 audit.logCreate(
                     "session",
                     id,
-                    Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, employeeIds, isManual = true)),
+                    Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, employees.map { it.id }, isManual = true)),
                 )
             }
         }

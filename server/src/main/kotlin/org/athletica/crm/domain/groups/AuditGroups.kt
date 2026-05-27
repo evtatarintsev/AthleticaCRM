@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -38,10 +39,10 @@ class AuditGroups(private val delegate: Groups, private val audit: AuditLog) : G
         name: String,
         schedule: List<ScheduleSlot>,
         disciplineIds: List<DisciplineId>,
-        employeeIds: List<EmployeeId>,
+        employees: List<Employee>,
     ): Group =
-        delegate.new(id, name, schedule, disciplineIds, employeeIds).also {
-            audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name, schedule, disciplineIds, employeeIds)))
+        delegate.new(id, name, schedule, disciplineIds, employees).also {
+            audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name, schedule, disciplineIds, employees.map { it.id })))
         }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

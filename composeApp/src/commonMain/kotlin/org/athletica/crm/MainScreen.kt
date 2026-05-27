@@ -2,8 +2,6 @@ package org.athletica.crm
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -12,14 +10,10 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
@@ -31,7 +25,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +49,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,7 +62,8 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
-import org.athletica.crm.components.avatar.Avatar
+import org.athletica.crm.components.account.AccountMenu
+import org.athletica.crm.components.account.AccountMenuLink
 import org.athletica.crm.components.clients.ClientCreateScreen
 import org.athletica.crm.components.clients.ClientDetailScreen
 import org.athletica.crm.components.clients.ClientEditScreenLoader
@@ -112,17 +105,14 @@ import org.athletica.crm.components.tasks.TasksScreen
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_collapse_menu
 import org.athletica.crm.generated.resources.action_download_desktop
-import org.athletica.crm.generated.resources.action_logout
 import org.athletica.crm.generated.resources.action_open_menu
 import org.athletica.crm.generated.resources.action_toggle_nav
 import org.athletica.crm.generated.resources.app_name
 import org.athletica.crm.generated.resources.cd_app_logo
 import org.athletica.crm.generated.resources.download_desktop_subtitle
-import org.athletica.crm.generated.resources.label_balance_value
 import org.athletica.crm.generated.resources.nav_clients
 import org.athletica.crm.generated.resources.nav_employees
 import org.athletica.crm.generated.resources.nav_groups
@@ -253,6 +243,14 @@ fun MainScreen(
         }
     }
 
+    fun onAccountMenuLink(link: AccountMenuLink) {
+        when (link) {
+            AccountMenuLink.EditProfile -> navController.navigate(AppRoute.SettingsEditProfile)
+            AccountMenuLink.SwitchBranch -> navController.navigate(AppRoute.SettingsSwitchBranch)
+            AccountMenuLink.OrgBalance -> navController.navigate(AppRoute.SettingsOrgBalance)
+        }
+    }
+
     fun onMarkNotificationRead(id: Uuid) {
         notifications = notifications.map { if (it.id == id) it.copy(isRead = true) else it }
         scope.launch { api.notifications.markRead(MarkNotificationsReadRequest(listOf(id))) }
@@ -273,8 +271,6 @@ fun MainScreen(
                         drawerContent = {
                             ModalDrawerSheet {
                                 DrawerContent(
-                                    api = api,
-                                    me = me,
                                     selectedItem = selectedItem,
                                     expanded = true,
                                     onItemSelected = { item ->
@@ -290,10 +286,13 @@ fun MainScreen(
                                 MainTopAppBar(
                                     showMenuButton = true,
                                     windowSize = windowSize,
+                                    api = api,
+                                    me = me,
                                     notifications = notifications,
                                     onMarkNotificationRead = ::onMarkNotificationRead,
                                     onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                     onNotificationNavigate = ::onNotificationLink,
+                                    onAccountNavigate = ::onAccountMenuLink,
                                     onMenuClick = { scope.launch { drawerState.open() } },
                                     onLogout = onLogout,
                                     extraActions = {
@@ -339,10 +338,13 @@ fun MainScreen(
                                 MainTopAppBar(
                                     showMenuButton = false,
                                     windowSize = windowSize,
+                                    api = api,
+                                    me = me,
                                     notifications = notifications,
                                     onMarkNotificationRead = ::onMarkNotificationRead,
                                     onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                     onNotificationNavigate = ::onNotificationLink,
+                                    onAccountNavigate = ::onAccountMenuLink,
                                     onMenuClick = {},
                                     onLogout = onLogout,
                                     extraActions = {
@@ -361,8 +363,6 @@ fun MainScreen(
                         drawerContent = {
                             PermanentDrawerSheet {
                                 DrawerContent(
-                                    api = api,
-                                    me = me,
                                     selectedItem = selectedItem,
                                     expanded = true,
                                     onItemSelected = { navController.navigateToSection(it.toRoute()) },
@@ -376,10 +376,13 @@ fun MainScreen(
                                 MainTopAppBar(
                                     showMenuButton = false,
                                     windowSize = windowSize,
+                                    api = api,
+                                    me = me,
                                     notifications = notifications,
                                     onMarkNotificationRead = ::onMarkNotificationRead,
                                     onMarkAllNotificationsRead = ::onMarkAllNotificationsRead,
                                     onNotificationNavigate = ::onNotificationLink,
+                                    onAccountNavigate = ::onAccountMenuLink,
                                     onMenuClick = {},
                                     onLogout = onLogout,
                                     extraActions = {
@@ -719,78 +722,10 @@ private fun AppNavHost(
 }
 
 /**
- * Шапка аккаунта в боковой панели навигации.
- * Отображает аватар, имя пользователя, организацию, текущий филиал и баланс.
- *
- * [me] — данные о пользователе; пока `null`, рендерятся пустые поля.
- */
-@Composable
-private fun DrawerAccountHeader(
-    api: ApiClient,
-    me: AuthMeResponse?,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-        ) {
-            Avatar(me?.avatarId, me?.name.orEmpty(), api)
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = me?.name.orEmpty(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = me?.orgInfo?.name.orEmpty(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            me?.currentBranch?.let { branch ->
-                Text(
-                    text = branch.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            me?.orgInfo?.balance?.let { balance ->
-                Text(
-                    text = stringResource(Res.string.label_balance_value, balance.formatted),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-    }
-}
-
-/**
  * Содержимое боковой панели навигации.
  */
 @Composable
 private fun DrawerContent(
-    api: ApiClient,
-    me: AuthMeResponse?,
     selectedItem: NavItem,
     expanded: Boolean,
     onItemSelected: (NavItem) -> Unit,
@@ -828,12 +763,6 @@ private fun DrawerContent(
                 )
             }
         }
-
-        if (expanded) {
-            DrawerAccountHeader(api, me)
-        }
-
-        HorizontalDivider()
 
         Spacer(Modifier.height(8.dp))
 
@@ -898,10 +827,13 @@ private fun RowScope.TopBarActions(
 private fun MainTopAppBar(
     showMenuButton: Boolean,
     windowSize: WindowSize,
+    api: ApiClient,
+    me: AuthMeResponse?,
     notifications: List<AppNotification>,
     onMarkNotificationRead: (Uuid) -> Unit,
     onMarkAllNotificationsRead: () -> Unit,
     onNotificationNavigate: (NotificationLink) -> Unit,
+    onAccountNavigate: (AccountMenuLink) -> Unit,
     onMenuClick: () -> Unit,
     onLogout: () -> Unit,
     extraActions: @Composable RowScope.() -> Unit = {},
@@ -948,12 +880,13 @@ private fun MainTopAppBar(
                 onMarkAllRead = onMarkAllNotificationsRead,
                 onNavigate = onNotificationNavigate,
             )
-            IconButton(onClick = onLogout) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = stringResource(Res.string.action_logout),
-                )
-            }
+            AccountMenu(
+                api = api,
+                me = me,
+                windowSize = windowSize,
+                onNavigate = onAccountNavigate,
+                onLogout = onLogout,
+            )
         },
     )
 }

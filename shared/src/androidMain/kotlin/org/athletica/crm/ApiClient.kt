@@ -1,0 +1,61 @@
+package org.athletica.crm
+
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.plugins.cache.HttpCache
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.serialization.kotlinx.json.json
+import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.client.appJson
+import org.athletica.crm.api.schemas.auth.LoginResponse
+
+/**
+ * Создаёт [ApiClient] с движком Android (OkHttp) для Android-платформы.
+ * Настраивает JSON сериализацию, базовый URL, таймауты и Bearer аутентификацию с автообновлением токенов.
+ * Принимает [tokenStorage] — хранилище JWT токенов для загрузки и сохранения.
+ */
+fun apiClient(tokenStorage: AndroidAccessTokenStorage): ApiClient {
+    val http =
+        HttpClient(Android) {
+            install(ContentNegotiation) {
+                json(appJson)
+            }
+            defaultRequest {
+                url("https://athletictools.ru/")
+            }
+            install(HttpCache)
+            install(HttpTimeout) {
+                connectTimeoutMillis = 10_000
+                requestTimeoutMillis = 10_000
+            }
+            install(Auth) {
+                bearer {
+                    cacheTokens = false
+                    loadTokens {
+                        tokenStorage.get()
+                    }
+                    refreshTokens {
+                        val refreshToken = oldTokens?.refreshToken ?: return@refreshTokens null
+                        val response =
+                            runCatching {
+                                client.post("/api/auth/refresh-token") {
+                                    markAsRefreshTokenRequest()
+                                    header("X-Refresh-Token", refreshToken)
+                                }.body<LoginResponse>()
+                            }.getOrNull() ?: return@refreshTokens null
+                        tokenStorage.save(response.accessToken, response.refreshToken)
+                        BearerTokens(response.accessToken, response.refreshToken)
+                    }
+                }
+            }
+        }
+    return ApiClient(http)
+}

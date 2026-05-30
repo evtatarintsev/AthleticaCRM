@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
@@ -11,6 +12,12 @@ plugins {
 
 kotlin {
     jvm()
+
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
@@ -51,6 +58,29 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
+        }
+    }
+}
+
+android {
+    namespace = "org.athletica.crm"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    defaultConfig {
+        applicationId = "org.athletica.crm"
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        versionCode = 1
+        versionName = "1.0.0"
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    buildFeatures {
+        compose = true
     }
 }
 

@@ -1,4 +1,8 @@
 [versions]
+agp = "8.10.1"
+android-compileSdk = "36"
+android-minSdk = "26"
+android-targetSdk = "36"
 arrow = "2.2.2.1"
 androidx-activity = "1.12.2"
 androidx-appcompat = "1.7.1"
@@ -61,6 +65,7 @@ kotlinx-serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serializat
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
+ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
@@ -102,3 +107,5 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 shadow = { id = "com.gradleup.shadow", version = "8.3.6" }
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }

@@ -36,6 +36,7 @@ class DbOrgEmails : OrgEmails {
             .execute()
     }
 
+    // TODO: Убрать из интерфейса
     context(tr: Transaction)
     override suspend fun pending(limit: Int): List<DbOrgEmail> =
         tr.sql(

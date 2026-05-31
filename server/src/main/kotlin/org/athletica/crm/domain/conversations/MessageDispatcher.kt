@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class MessageDispatcher(
     private val db: Database,
-    private val messages: Messages,
+    private val messages: DbMessages,
     private val channels: ChannelIntegrations,
     private val registry: ChannelRegistry,
     private val checkEvery: Duration = 5.seconds,
@@ -49,7 +49,7 @@ class MessageDispatcher(
 
     /** Обрабатывает одну порцию сообщений из очереди. Выделено для прямого вызова в тестах. */
     suspend fun pollOnce() {
-        val pending = db.transaction { context(this) { messages.pendingOutbound() } }
+        val pending = db.transaction { context(this) { messages.pendingOutbound(20) } }
         pending.forEach { message -> dispatch(message) }
     }
 

@@ -94,7 +94,7 @@ class DbMessages : Messages {
             .list { row -> row.toMessage() }
 
     context(tr: Transaction)
-    override suspend fun pendingOutbound(limit: Int): List<PendingMessage> =
+    suspend fun pendingOutbound(limit: Int): List<PendingMessage> =
         tr.sql(
             """
             SELECT id, channel_type, channel_integration_id, recipient_address, body, retry_count

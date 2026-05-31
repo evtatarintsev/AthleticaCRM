@@ -42,10 +42,6 @@ interface Messages {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byConversation(conversationId: ConversationId): List<Message>
 
-    /** Возвращает порцию исходящих сообщений в очереди (`QUEUED`) для отправки. */
-    context(tr: Transaction)
-    suspend fun pendingOutbound(limit: Int = 20): List<PendingMessage>
-
     /** Помечает сообщение отправленным (`SENT`) с идентификатором у провайдера. */
     context(tr: Transaction)
     suspend fun markSent(id: MessageId, ref: ProviderMessageRef)

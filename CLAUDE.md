@@ -378,6 +378,51 @@ No reflection-based DI framework; all wiring is explicit and visible.
 - **Query** (returns a value, no state change): name as a **noun** describing the result — e.g., `accessToken`, not `makeAccessToken`
 - **Command** (performs an action, returns `Unit`): name as a **verb** describing the action — e.g., `sendEmail()`, `user.save()`
 
+### Request/Response Naming
+
+Не использовать суффикс `DTO` для запросов и ответов: обозначать как `Request`/`Response` или `Schema`.
+
+- `CreateUserDto` → `CreateUserRequest`
+- `UserDetailDto` → `UserDetailResponse`
+- `PostListItemDto` → `PostListItemSchema`
+
+### REST Route Design
+
+Не использовать path-переменные в REST-роутах. Идентификатор передаётся в `body` запроса.
+
+**Плохо:** `POST /users/<id>/update`  
+**Хорошо:** передавать идентификатор в теле запроса.
+
+Для `GET`-запросов параметры передаются в `query`.
+
+### API Design for Frontend
+
+API проектируется под нужды фронтенда: обработчик запроса собирает готовый ответ из доменных сущностей. Логика отображения не просачивается в доменные модели — они остаются независимыми от фронтенда. Сборка ответов для фронта происходит в обработчике запроса (routes).
+
+### Domain Model Independence from API Schemas
+
+Доменные модели (интерфейсы репозиториев, сервисов, агрегаты) **не должны** импортировать или использовать классы из пакетов `api.schemas`, `request`, `response` и т.п.
+
+```kotlin
+// Bad — доменный интерфейс зависит от API-схемы
+import org.athletica.crm.api.schemas.settings.DisplaySettings
+
+interface UserDisplaySettings {
+    context(ctx: RequestContext, tr: Transaction)
+    suspend fun get(): DisplaySettings
+}
+
+// Good — доменный интерфейс оперирует собственными типами; маппинг в роуте
+interface UserDisplaySettings {
+    context(ctx: RequestContext, tr: Transaction)
+    suspend fun get(): UserSettings
+}
+
+// В роуте:
+val settings = userDisplaySettings.get()
+call.respond(settings.toDisplaySettings())
+```
+
 ### Iteration
 Use `forEach` instead of `for` for side effects over collections (internal vs external iteration).
 `for` is only acceptable when `break`, `continue`, or non-local `return` is needed inside the body.

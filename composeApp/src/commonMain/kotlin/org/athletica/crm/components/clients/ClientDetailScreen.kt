@@ -179,6 +179,7 @@ fun ClientDetailScreen(
     onOpenVisitHistory: () -> Unit = {},
     onOpenPaymentHistory: () -> Unit = {},
     onOpenSubscriptionHistory: () -> Unit = {},
+    onOpenMessages: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -268,7 +269,7 @@ fun ClientDetailScreen(
                     ClientActionsBottomBar(
                         onPay = {},
                         onIssueSubscription = {},
-                        onMessage = {},
+                        onMessage = onOpenMessages,
                         onAddNote = {},
                     )
                 }
@@ -309,7 +310,7 @@ fun ClientDetailScreen(
                                 ClientActionsRow(
                                     onPay = {},
                                     onIssueSubscription = {},
-                                    onMessage = {},
+                                    onMessage = onOpenMessages,
                                     onAddNote = {},
                                 )
                             }

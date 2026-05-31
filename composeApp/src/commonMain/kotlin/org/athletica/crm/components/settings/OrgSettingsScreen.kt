@@ -54,6 +54,8 @@ import org.athletica.crm.generated.resources.settings_item_cashboxes
 import org.athletica.crm.generated.resources.settings_item_cashboxes_subtitle
 import org.athletica.crm.generated.resources.settings_item_change_password
 import org.athletica.crm.generated.resources.settings_item_change_password_subtitle
+import org.athletica.crm.generated.resources.settings_item_channels
+import org.athletica.crm.generated.resources.settings_item_channels_subtitle
 import org.athletica.crm.generated.resources.settings_item_client_additional_attributes
 import org.athletica.crm.generated.resources.settings_item_client_additional_attributes_subtitle
 import org.athletica.crm.generated.resources.settings_item_client_display
@@ -74,8 +76,6 @@ import org.athletica.crm.generated.resources.settings_item_ranks
 import org.athletica.crm.generated.resources.settings_item_ranks_subtitle
 import org.athletica.crm.generated.resources.settings_item_roles
 import org.athletica.crm.generated.resources.settings_item_roles_subtitle
-import org.athletica.crm.generated.resources.settings_item_sms
-import org.athletica.crm.generated.resources.settings_item_sms_subtitle
 import org.athletica.crm.generated.resources.settings_item_subscription_templates
 import org.athletica.crm.generated.resources.settings_item_subscription_templates_subtitle
 import org.athletica.crm.generated.resources.settings_item_switch_branch
@@ -142,6 +142,7 @@ private fun buildSections(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToSwitchBranch: () -> Unit,
     onNavigateToRoles: () -> Unit,
+    onNavigateToChannels: () -> Unit,
 ) = listOf(
     SettingSection(
         label = stringResource(Res.string.settings_section_user),
@@ -323,11 +324,12 @@ private fun buildSections(
         items =
             listOf(
                 SettingItem(
-                    title = stringResource(Res.string.settings_item_sms),
-                    subtitle = stringResource(Res.string.settings_item_sms_subtitle),
+                    title = stringResource(Res.string.settings_item_channels),
+                    subtitle = stringResource(Res.string.settings_item_channels_subtitle),
                     icon = Icons.Default.Sms,
                     containerColor = Ic.CoralContainer,
                     iconColor = Ic.Coral,
+                    onClick = onNavigateToChannels,
                 ),
             ),
     ),
@@ -362,6 +364,7 @@ fun OrgSettingsScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToSwitchBranch: () -> Unit = {},
     onNavigateToRoles: () -> Unit = {},
+    onNavigateToChannels: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val sections =
@@ -379,6 +382,7 @@ fun OrgSettingsScreen(
             onNavigateToEditProfile = onNavigateToEditProfile,
             onNavigateToSwitchBranch = onNavigateToSwitchBranch,
             onNavigateToRoles = onNavigateToRoles,
+            onNavigateToChannels = onNavigateToChannels,
         )
     LazyColumn(
         contentPadding = PaddingValues(bottom = 24.dp),

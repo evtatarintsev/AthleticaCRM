@@ -12,13 +12,24 @@ import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
+import org.athletica.crm.domain.channels.AuditChannelIntegrations
+import org.athletica.crm.domain.channels.ChannelIntegrations
+import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clientcontacts.ClientContacts
+import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.clientnotes.ClientNotes
 import org.athletica.crm.domain.clientnotes.DbClientNotes
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.conversations.ChannelRegistry
+import org.athletica.crm.domain.conversations.Conversations
+import org.athletica.crm.domain.conversations.DbConversations
+import org.athletica.crm.domain.conversations.DbMessages
+import org.athletica.crm.domain.conversations.MessageDispatcher
+import org.athletica.crm.domain.conversations.Messages
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.discipline.AuditDisciplines
@@ -65,6 +76,7 @@ import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.integrations.messaging.StubChannelRegistry
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
@@ -115,6 +127,13 @@ data class Di(
     val sessions: Sessions = AuditSessions(DbSessions(), audit)
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
+    val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(), audit)
+    val clientContacts: ClientContacts = DbClientContacts()
+    val conversations: Conversations = DbConversations()
+    val messages: Messages = DbMessages()
+    val channelRegistry: ChannelRegistry = StubChannelRegistry()
+    val messageDispatcher: MessageDispatcher =
+        MessageDispatcher(database, messages, channelIntegrations, channelRegistry)
 
     init {
         bus.register(GroupCreatedHandler(database, groups, sessions, employees))

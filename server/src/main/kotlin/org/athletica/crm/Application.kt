@@ -39,7 +39,9 @@ import org.athletica.crm.core.systemContext
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.branchesRoutes
+import org.athletica.crm.routes.channelsRoutes
 import org.athletica.crm.routes.checkoutRoutes
+import org.athletica.crm.routes.clientContactsRoutes
 import org.athletica.crm.routes.clientImportRoutes
 import org.athletica.crm.routes.clientNotesRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -52,6 +54,7 @@ import org.athletica.crm.routes.hallsRoutes
 import org.athletica.crm.routes.homeRoutes
 import org.athletica.crm.routes.leadSourcesRoutes
 import org.athletica.crm.routes.logout
+import org.athletica.crm.routes.messagingRoutes
 import org.athletica.crm.routes.myBranchesRoute
 import org.athletica.crm.routes.notificationsRoutes
 import org.athletica.crm.routes.orgBalanceRoutes
@@ -90,6 +93,9 @@ fun Application.module() {
         }
         launch {
             generateSessionsDaily(di)
+        }
+        launch {
+            di.messageDispatcher.dispatchPending()
         }
         monitor.subscribe(ApplicationStopped) {
             cancel()
@@ -162,6 +168,9 @@ fun Application.configureServer() {
                         }
                         clientsRoutes(di.clients, di.clientBalances, di.employees, di.enrollments, di.customFieldDefinitions)
                         clientNotesRoutes(di.clientNotes)
+                        clientContactsRoutes(di.clientContacts)
+                        channelsRoutes(di.channelIntegrations)
+                        messagingRoutes(di.channelIntegrations, di.clientContacts, di.conversations, di.messages)
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }

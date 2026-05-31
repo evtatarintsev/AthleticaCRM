@@ -8,7 +8,7 @@ import kotlin.time.Instant
 
 /** Проекция заметки клиента для отображения в UI. */
 @Serializable
-data class ClientNoteDto(
+data class ClientNoteSchema(
     val id: ClientNoteId,
     /** Текст заметки. */
     val text: ClientNoteText,

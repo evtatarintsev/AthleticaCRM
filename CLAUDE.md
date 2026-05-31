@@ -63,7 +63,7 @@ Both files must be updated in the same commit as the `application.conf` change.
 
 ### Modules
 - **server**: Ktor backend (REST API, database access, business logic)
-- **shared**: Kotlin Multiplatform code (shared DTOs, schemas, IDs)
+- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs)
 - **composeApp**: Compose Multiplatform UI (currently not the focus)
 
 ### Key Directories in `server/src/main/kotlin/org/athletica/crm/`
@@ -240,7 +240,7 @@ private fun ctx(orgId: Uuid) = RequestContext(
 - **Pooling**: `r2dbc-pool` for connection pooling
 
 ### Multimodule Gradle
-- **shared**: Compiled to both JVM and WASM; contains DTOs and IDs used across platforms
+- **shared**: Compiled to both JVM and WASM; contains request/response schemas and IDs used across platforms
 - **server**: JVM-only, depends on shared
 - **composeApp**: Multiplatform UI (lower priority)
 - Use `projects.shared` in dependencies (type-safe project accessors)
@@ -316,8 +316,8 @@ amount + Money(100, Currency.USD)           // IllegalArgumentException
 `EmployeeId?`, а не `PerformedBy(id, name)`.
 
 Сборка человекочитаемого представления (имя сотрудника, аватар и т.п.) — задача
-**слоя routes / projection**: загрузить нужные агрегаты по id и собрать DTO.
-Domain ничего не знает про DTO, сериализацию и UI-нужды.
+**слоя routes / projection**: загрузить нужные агрегаты по id и собрать схему ответа.
+Domain ничего не знает про схемы запросов и ответов, сериализацию и UI-нужды.
 
 Признаки нарушения: импорт из `org.athletica.crm.api.schemas.*` внутри `domain/*`,
 `@Serializable` на доменной сущности, поля-объекты соседних агрегатов в data class-ах.

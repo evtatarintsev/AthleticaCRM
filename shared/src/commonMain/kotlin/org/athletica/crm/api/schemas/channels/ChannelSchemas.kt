@@ -6,7 +6,7 @@ import org.athletica.crm.core.messaging.ChannelType
 
 /** Настроенная интеграция канала связи организации. */
 @Serializable
-data class ChannelIntegrationDto(
+data class ChannelIntegrationSchema(
     val id: ChannelIntegrationId,
     val channelType: ChannelType,
     val name: String,
@@ -17,7 +17,7 @@ data class ChannelIntegrationDto(
 /** Список интеграций каналов организации. */
 @Serializable
 data class ChannelListResponse(
-    val channels: List<ChannelIntegrationDto>,
+    val channels: List<ChannelIntegrationSchema>,
 )
 
 /** Запрос на создание интеграции канала. */

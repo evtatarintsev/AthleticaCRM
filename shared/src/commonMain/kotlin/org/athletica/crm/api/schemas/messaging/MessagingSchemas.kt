@@ -12,7 +12,7 @@ import org.athletica.crm.core.messaging.SenderKind
 
 /** Сообщение в ленте диалога. */
 @Serializable
-data class MessageDto(
+data class MessageSchema(
     val id: MessageId,
     val channelType: ChannelType,
     val direction: MessageDirection,
@@ -29,7 +29,7 @@ data class MessageDto(
 @Serializable
 data class ConversationResponse(
     val clientId: ClientId,
-    val messages: List<MessageDto>,
+    val messages: List<MessageSchema>,
 )
 
 /** Запрос ленты диалога с клиентом. */

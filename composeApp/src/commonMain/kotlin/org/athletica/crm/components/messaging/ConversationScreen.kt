@@ -46,8 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.clients.ClientContactDto
-import org.athletica.crm.api.schemas.messaging.MessageDto
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
+import org.athletica.crm.api.schemas.messaging.MessageSchema
 import org.athletica.crm.components.clients.message
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.messaging.ChannelType
@@ -132,7 +132,7 @@ fun ConversationScreen(
 
 @Composable
 private fun MessageList(
-    messages: List<MessageDto>,
+    messages: List<MessageSchema>,
     modifier: Modifier,
 ) {
     if (messages.isEmpty()) {
@@ -150,7 +150,7 @@ private fun MessageList(
 }
 
 @Composable
-private fun MessageBubble(message: MessageDto) {
+private fun MessageBubble(message: MessageSchema) {
     val outbound = message.direction == MessageDirection.OUTBOUND
     val alignment = if (outbound) Alignment.End else Alignment.Start
     val bubbleColor =
@@ -286,7 +286,7 @@ private fun ContactsPanel(
 
 @Composable
 private fun ContactRow(
-    contact: ClientContactDto,
+    contact: ClientContactSchema,
     viewModel: ConversationViewModel,
 ) {
     ListItem(

@@ -6,11 +6,11 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.channels.ChannelIntegrationDto
+import org.athletica.crm.api.schemas.channels.ChannelIntegrationSchema
 import org.athletica.crm.api.schemas.clients.AddClientContactRequest
-import org.athletica.crm.api.schemas.clients.ClientContactDto
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.clients.DeleteClientContactRequest
-import org.athletica.crm.api.schemas.messaging.MessageDto
+import org.athletica.crm.api.schemas.messaging.MessageSchema
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.components.clients.ClientsApiError
 import org.athletica.crm.components.clients.toClientsApiError
@@ -35,9 +35,9 @@ sealed class ConversationState {
      * [showContacts] — раскрыта ли панель управления контактами.
      */
     data class Loaded(
-        val messages: List<MessageDto>,
-        val channels: List<ChannelIntegrationDto>,
-        val contacts: List<ClientContactDto>,
+        val messages: List<MessageSchema>,
+        val channels: List<ChannelIntegrationSchema>,
+        val contacts: List<ClientContactSchema>,
         val selectedChannelId: ChannelIntegrationId?,
         val draft: String = "",
         val sending: Boolean = false,
@@ -47,9 +47,9 @@ sealed class ConversationState {
         val newContactAddress: String = "",
     ) : ConversationState() {
         /** Канал доступен, если это IN_APP или у клиента есть контакт нужного типа. */
-        fun isAvailable(channel: ChannelIntegrationDto): Boolean = channel.channelType == ChannelType.IN_APP || contacts.any { it.channelType == channel.channelType }
+        fun isAvailable(channel: ChannelIntegrationSchema): Boolean = channel.channelType == ChannelType.IN_APP || contacts.any { it.channelType == channel.channelType }
 
-        val selectedChannel: ChannelIntegrationDto?
+        val selectedChannel: ChannelIntegrationSchema?
             get() = channels.firstOrNull { it.id == selectedChannelId }
 
         val canSend: Boolean
@@ -200,8 +200,8 @@ class ConversationViewModel(
     }
 
     private fun defaultChannelId(
-        channels: List<ChannelIntegrationDto>,
-        contacts: List<ClientContactDto>,
+        channels: List<ChannelIntegrationSchema>,
+        contacts: List<ClientContactSchema>,
     ): ChannelIntegrationId? {
         val reachable =
             channels.firstOrNull { c ->

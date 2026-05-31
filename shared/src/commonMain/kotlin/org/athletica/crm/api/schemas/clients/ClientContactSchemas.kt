@@ -7,7 +7,7 @@ import org.athletica.crm.core.messaging.ChannelType
 
 /** Контакт клиента в рамках типа канала (телефон, telegram chat_id, email и т.п.). */
 @Serializable
-data class ClientContactDto(
+data class ClientContactSchema(
     val id: ClientContactId,
     val channelType: ChannelType,
     val address: String,
@@ -16,7 +16,7 @@ data class ClientContactDto(
 /** Список контактов клиента. */
 @Serializable
 data class ClientContactListResponse(
-    val contacts: List<ClientContactDto>,
+    val contacts: List<ClientContactSchema>,
 )
 
 /** Запрос списка контактов клиента. */

@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
-import org.athletica.crm.api.schemas.messaging.MessageDto
+import org.athletica.crm.api.schemas.messaging.MessageSchema
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
@@ -84,11 +84,11 @@ private suspend fun conversationResponse(
 ): ConversationResponse =
     ConversationResponse(
         clientId = clientId,
-        messages = messages.byConversation(conversation.id).map { it.toDto() },
+        messages = messages.byConversation(conversation.id).map { it.toSchema() },
     )
 
-private fun Message.toDto(): MessageDto =
-    MessageDto(
+private fun Message.toSchema(): MessageSchema =
+    MessageSchema(
         id = id,
         channelType = channelType,
         direction = direction,

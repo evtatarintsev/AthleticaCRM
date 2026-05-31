@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
-import org.athletica.crm.api.schemas.clients.ClientNoteDto
+import org.athletica.crm.api.schemas.clients.ClientNoteSchema
 import org.athletica.crm.components.clients.message
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
@@ -65,9 +65,9 @@ fun ClientNotesSection(
     currentEmployeeId: EmployeeId?,
     onDraftChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onStartEdit: (ClientNoteDto) -> Unit,
+    onStartEdit: (ClientNoteSchema) -> Unit,
     onCancelEdit: () -> Unit,
-    onDelete: (ClientNoteDto) -> Unit,
+    onDelete: (ClientNoteSchema) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
@@ -115,12 +115,12 @@ private fun ClientNotesLoaded(
     currentEmployeeId: EmployeeId?,
     onDraftChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onStartEdit: (ClientNoteDto) -> Unit,
+    onStartEdit: (ClientNoteSchema) -> Unit,
     onCancelEdit: () -> Unit,
-    onDelete: (ClientNoteDto) -> Unit,
+    onDelete: (ClientNoteSchema) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var noteToDelete by remember { mutableStateOf<ClientNoteDto?>(null) }
+    var noteToDelete by remember { mutableStateOf<ClientNoteSchema?>(null) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         ClientNotesInput(
@@ -242,7 +242,7 @@ private fun ClientNotesInput(
 
 @Composable
 private fun ClientNoteRow(
-    note: ClientNoteDto,
+    note: ClientNoteSchema,
     isOwn: Boolean,
     onStartEdit: () -> Unit,
     onAskDelete: () -> Unit,

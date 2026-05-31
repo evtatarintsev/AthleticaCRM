@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.channels.ChannelIntegrationDto
+import org.athletica.crm.api.schemas.channels.ChannelIntegrationSchema
 import org.athletica.crm.api.schemas.channels.CreateChannelIntegrationRequest
 import org.athletica.crm.api.schemas.channels.DeleteChannelIntegrationRequest
 import org.athletica.crm.api.schemas.channels.UpdateChannelIntegrationRequest
@@ -38,7 +38,7 @@ sealed class ChannelsState {
      * [saveError] — ошибка последней операции сохранения.
      */
     data class Loaded(
-        val channels: List<ChannelIntegrationDto>,
+        val channels: List<ChannelIntegrationSchema>,
         val editor: ChannelEditor? = null,
         val saving: Boolean = false,
         val saveError: String? = null,
@@ -78,7 +78,7 @@ class ChannelsViewModel(
     }
 
     /** Открывает редактор существующего канала [dto]. */
-    fun openEdit(dto: ChannelIntegrationDto) {
+    fun openEdit(dto: ChannelIntegrationSchema) {
         val loaded = state as? ChannelsState.Loaded ?: return
         state =
             loaded.copy(

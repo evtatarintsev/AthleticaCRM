@@ -8,7 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.AddClientNoteRequest
-import org.athletica.crm.api.schemas.clients.ClientNoteDto
+import org.athletica.crm.api.schemas.clients.ClientNoteSchema
 import org.athletica.crm.api.schemas.clients.DeleteClientNoteRequest
 import org.athletica.crm.api.schemas.clients.EditClientNoteRequest
 import org.athletica.crm.components.clients.ClientsApiError
@@ -34,7 +34,7 @@ sealed class ClientNotesState {
      * [draftError] — ошибка валидации текущего черновика для отображения под полем.
      */
     data class Loaded(
-        val notes: List<ClientNoteDto>,
+        val notes: List<ClientNoteSchema>,
         val draft: String = "",
         val submitting: Boolean = false,
         val editingId: ClientNoteId? = null,
@@ -80,7 +80,7 @@ class ClientNotesViewModel(
     }
 
     /** Переключает заметку в режим редактирования, подставляя её текст в поле ввода. */
-    fun onStartEdit(note: ClientNoteDto) {
+    fun onStartEdit(note: ClientNoteSchema) {
         val loaded = state as? ClientNotesState.Loaded ?: return
         state =
             loaded.copy(
@@ -150,4 +150,4 @@ class ClientNotesViewModel(
 }
 
 /** Удобная проверка авторства заметки для отображения кнопок редактирования. */
-fun ClientNoteDto.isAuthoredBy(employeeId: EmployeeId): Boolean = author.id == employeeId.value
+fun ClientNoteSchema.isAuthoredBy(employeeId: EmployeeId): Boolean = author.id == employeeId.value

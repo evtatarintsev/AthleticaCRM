@@ -170,7 +170,7 @@ fun Application.configureServer() {
                         clientNotesRoutes(di.clientNotes)
                         clientContactsRoutes(di.clientContacts)
                         channelsRoutes(di.channelIntegrations)
-                        messagingRoutes(di.channelIntegrations, di.clientContacts, di.conversations, di.messages)
+                        messagingRoutes(di.channelIntegrations, di.clientContacts, di.conversations)
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }

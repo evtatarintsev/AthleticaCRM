@@ -16,7 +16,6 @@ import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.conversations.Conversation
 import org.athletica.crm.domain.conversations.Conversations
 import org.athletica.crm.domain.conversations.Message
-import org.athletica.crm.domain.conversations.Messages
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -32,7 +31,6 @@ suspend fun sendMessage(
     channels: ChannelIntegrations,
     contacts: ClientContacts,
     conversations: Conversations,
-    messages: Messages,
 ): ConversationResponse {
     // TODO: ограничить право отправки отдельным UserPermission (например, CAN_SEND_MESSAGES),
     // когда появится дефолтная роль, которой это право выдаётся.
@@ -61,7 +59,7 @@ suspend fun sendMessage(
     )
     conversation.touch()
 
-    return conversationResponse(request.clientId, conversation, messages)
+    return conversationResponse(request.clientId, conversation)
 }
 
 /** Возвращает ленту диалога с клиентом [clientId] (сообщения по всем каналам, от старых к новым). */
@@ -69,21 +67,19 @@ context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun conversationView(
     clientId: ClientId,
     conversations: Conversations,
-    messages: Messages,
 ): ConversationResponse {
     val conversation = conversations.forClient(clientId)
-    return conversationResponse(clientId, conversation, messages)
+    return conversationResponse(clientId, conversation)
 }
 
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 private suspend fun conversationResponse(
     clientId: ClientId,
     conversation: Conversation,
-    messages: Messages,
 ): ConversationResponse =
     ConversationResponse(
         clientId = clientId,
-        messages = messages.byConversation(conversation.id).map { it.toSchema() },
+        messages = conversation.messages().map { it.toSchema() },
     )
 
 private fun Message.toSchema(): MessageSchema =

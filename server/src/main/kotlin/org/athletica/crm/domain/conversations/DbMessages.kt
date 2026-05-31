@@ -1,21 +1,10 @@
 package org.athletica.crm.domain.conversations
 
-import arrow.core.raise.context.Raise
-import io.r2dbc.spi.Row
-import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.entityids.ConversationId
 import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
-import org.athletica.crm.core.entityids.toConversationId
-import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toMessageId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelType
-import org.athletica.crm.core.messaging.MessageDirection
-import org.athletica.crm.core.messaging.MessageStatus
-import org.athletica.crm.core.messaging.SenderKind
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -24,21 +13,6 @@ import org.athletica.crm.storage.asUuidOrNull
 
 /** Реализация репозитория сообщений на PostgreSQL через R2DBC. */
 class DbMessages : Messages {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun byConversation(conversationId: ConversationId): List<Message> =
-        tr.sql(
-            """
-            SELECT id, conversation_id, channel_integration_id, channel_type, direction,
-                   sender_kind, sender_employee_id, recipient_address, body, status, error_message, created_at
-            FROM messages
-            WHERE conversation_id = :conversationId AND org_id = :orgId
-            ORDER BY created_at
-            """.trimIndent(),
-        )
-            .bind("conversationId", conversationId)
-            .bind("orgId", ctx.orgId)
-            .list { row -> row.toMessage() }
-
     context(tr: Transaction)
     suspend fun pendingOutbound(limit: Int): List<PendingMessage> =
         tr.sql(
@@ -104,20 +78,4 @@ class DbMessages : Messages {
             .bind("error", error)
             .execute()
     }
-
-    private fun Row.toMessage(): Message =
-        Message(
-            id = asUuid("id").toMessageId(),
-            conversationId = asUuid("conversation_id").toConversationId(),
-            channelIntegrationId = asUuidOrNull("channel_integration_id")?.toChannelIntegrationId(),
-            channelType = ChannelType.valueOf(asString("channel_type")),
-            direction = MessageDirection.valueOf(asString("direction")),
-            senderKind = SenderKind.valueOf(asString("sender_kind")),
-            senderEmployeeId = asUuidOrNull("sender_employee_id")?.toEmployeeId(),
-            recipientAddress = asStringOrNull("recipient_address"),
-            body = asString("body"),
-            status = MessageStatus.valueOf(asString("status")),
-            errorMessage = asStringOrNull("error_message"),
-            createdAt = asInstant("created_at"),
-        )
 }

@@ -14,7 +14,7 @@ interface Conversations {
      * Гарантирует единственность диалога на клиента (UNIQUE org_id, client_id).
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun conversationFor(clientId: ClientId): Conversation
+    suspend fun forClient(clientId: ClientId): Conversation
 
     /** Обновляет момент последнего сообщения диалога [conversationId] на «сейчас». */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)

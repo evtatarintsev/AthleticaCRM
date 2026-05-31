@@ -13,7 +13,7 @@ import org.athletica.crm.storage.asUuid
 /** Реализация репозитория диалогов на PostgreSQL через R2DBC. */
 class DbConversations : Conversations {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun conversationFor(clientId: ClientId): Conversation {
+    override suspend fun forClient(clientId: ClientId): Conversation {
         val existing =
             tr.sql(
                 "SELECT id, client_id FROM conversations WHERE client_id = :clientId AND org_id = :orgId",

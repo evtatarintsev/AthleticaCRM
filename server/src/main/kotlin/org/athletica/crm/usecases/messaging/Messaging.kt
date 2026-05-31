@@ -52,7 +52,7 @@ suspend fun sendMessage(
                 ?: raise(CommonDomainError("CLIENT_HAS_NO_CONTACT", "У клиента нет контакта для этого канала"))
         }
 
-    val conversation = conversations.conversationFor(request.clientId)
+    val conversation = conversations.forClient(request.clientId)
     messages.enqueue(
         conversationId = conversation.id,
         channelIntegrationId = integration.id,
@@ -72,7 +72,7 @@ suspend fun conversationView(
     conversations: Conversations,
     messages: Messages,
 ): ConversationResponse {
-    val conversation = conversations.conversationFor(clientId)
+    val conversation = conversations.forClient(clientId)
     return conversationResponse(clientId, conversation, messages)
 }
 

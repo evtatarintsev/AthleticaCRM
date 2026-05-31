@@ -89,7 +89,7 @@ class MessageDispatcherTest {
         either<DomainError, Unit> {
             TestPostgres.db.transaction {
                 context(ctx, this) {
-                    val conversation = conversations.conversationFor(clientId)
+                    val conversation = conversations.forClient(clientId)
                     messages.enqueue(conversation.id, integrationId, ChannelType.SMS, "+79990001122", "Привет")
                 }
             }

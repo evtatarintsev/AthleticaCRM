@@ -53,14 +53,13 @@ suspend fun sendMessage(
         }
 
     val conversation = conversations.forClient(request.clientId)
-    messages.enqueue(
-        conversationId = conversation.id,
+    conversation.enqueue(
         channelIntegrationId = integration.id,
         channelType = integration.channelType,
         recipientAddress = recipientAddress,
         body = request.body,
     )
-    conversations.touch(conversation.id)
+    conversation.touch()
 
     return conversationResponse(request.clientId, conversation, messages)
 }

@@ -4,7 +4,6 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.ConversationId
-import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toConversationId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -21,9 +20,8 @@ class DbConversations : Conversations {
                 .bind("clientId", clientId)
                 .bind("orgId", ctx.orgId)
                 .firstOrNull { row ->
-                    Conversation(
+                    DbConversation(
                         id = row.asUuid("id").toConversationId(),
-                        clientId = row.asUuid("client_id").toClientId(),
                     )
                 }
 
@@ -48,18 +46,9 @@ class DbConversations : Conversations {
             .bind("clientId", clientId)
             .bind("orgId", ctx.orgId)
             .firstOrNull { row ->
-                Conversation(
+                DbConversation(
                     id = row.asUuid("id").toConversationId(),
-                    clientId = row.asUuid("client_id").toClientId(),
                 )
             }!!
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun touch(conversationId: ConversationId) {
-        tr.sql("UPDATE conversations SET last_message_at = now() WHERE id = :id AND org_id = :orgId")
-            .bind("id", conversationId)
-            .bind("orgId", ctx.orgId)
-            .execute()
     }
 }

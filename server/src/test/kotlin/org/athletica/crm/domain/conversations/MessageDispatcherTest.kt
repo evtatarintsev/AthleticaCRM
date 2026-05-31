@@ -90,7 +90,7 @@ class MessageDispatcherTest {
             TestPostgres.db.transaction {
                 context(ctx, this) {
                     val conversation = conversations.forClient(clientId)
-                    messages.enqueue(conversation.id, integrationId, ChannelType.SMS, "+79990001122", "Привет")
+                    conversation.enqueue(integrationId, ChannelType.SMS, "+79990001122", "Привет")
                 }
             }
         }.let { if (it is Either.Left) fail("Не удалось поставить сообщение: ${it.value}") }

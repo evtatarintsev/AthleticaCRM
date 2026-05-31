@@ -3,7 +3,6 @@ package org.athletica.crm.domain.conversations
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ConversationId
 import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
@@ -22,62 +21,9 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
-import kotlin.time.Clock
 
 /** Реализация репозитория сообщений на PostgreSQL через R2DBC. */
 class DbMessages : Messages {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun enqueue(
-        conversationId: ConversationId,
-        channelIntegrationId: ChannelIntegrationId?,
-        channelType: ChannelType,
-        recipientAddress: String?,
-        body: String,
-    ): Message {
-        val id = MessageId.new()
-        val now = Clock.System.now()
-        tr.sql(
-            """
-            INSERT INTO messages (
-                id, org_id, conversation_id, channel_integration_id, channel_type,
-                direction, sender_kind, sender_employee_id, recipient_address, body, status, created_at
-            )
-            VALUES (
-                :id, :orgId, :conversationId, :channelIntegrationId, :channelType,
-                :direction, :senderKind, :senderEmployeeId, :recipientAddress, :body, :status, :now
-            )
-            """.trimIndent(),
-        )
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .bind("conversationId", conversationId)
-            .bind("channelIntegrationId", channelIntegrationId)
-            .bind("channelType", channelType.name)
-            .bind("direction", MessageDirection.OUTBOUND.name)
-            .bind("senderKind", SenderKind.ADMIN.name)
-            .bind("senderEmployeeId", ctx.employeeId)
-            .bind("recipientAddress", recipientAddress)
-            .bind("body", body)
-            .bind("status", MessageStatus.QUEUED.name)
-            .bind("now", now)
-            .execute()
-
-        return Message(
-            id = id,
-            conversationId = conversationId,
-            channelIntegrationId = channelIntegrationId,
-            channelType = channelType,
-            direction = MessageDirection.OUTBOUND,
-            senderKind = SenderKind.ADMIN,
-            senderEmployeeId = ctx.employeeId,
-            recipientAddress = recipientAddress,
-            body = body,
-            status = MessageStatus.QUEUED,
-            errorMessage = null,
-            createdAt = now,
-        )
-    }
-
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byConversation(conversationId: ConversationId): List<Message> =
         tr.sql(

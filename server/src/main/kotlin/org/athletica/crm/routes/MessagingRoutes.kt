@@ -1,6 +1,5 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.messaging.ConversationRequest
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest

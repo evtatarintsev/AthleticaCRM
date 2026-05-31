@@ -81,6 +81,7 @@ import org.athletica.crm.components.groups.GroupDetailScreen
 import org.athletica.crm.components.groups.GroupEditScreenLoader
 import org.athletica.crm.components.groups.GroupsScreen
 import org.athletica.crm.components.home.HomeScreen
+import org.athletica.crm.components.messaging.ConversationScreen
 import org.athletica.crm.components.notifications.AppNotification
 import org.athletica.crm.components.notifications.NotificationBell
 import org.athletica.crm.components.notifications.NotificationLink
@@ -97,6 +98,7 @@ import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.components.settings.SwitchBranchScreen
+import org.athletica.crm.components.settings.channels.ChannelsScreen
 import org.athletica.crm.components.settings.clientimport.ClientImportScreen
 import org.athletica.crm.components.settings.orgbalance.OrgBalanceScreen
 import org.athletica.crm.components.tasks.TaskCreateScreen
@@ -484,6 +486,16 @@ private fun AppNavHost(
                 onOpenSubscriptionHistory = {
                     navController.navigate(AppRoute.ClientSubscriptionHistory(route.id))
                 },
+                onOpenMessages = { navController.navigate(AppRoute.Conversation(route.id)) },
+            )
+        }
+
+        composable<AppRoute.Conversation> { entry ->
+            val route = entry.toRoute<AppRoute.Conversation>()
+            ConversationScreen(
+                clientId = ClientId(parse(route.clientId)),
+                api = api,
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -620,8 +632,13 @@ private fun AppNavHost(
                 onNavigateToEditProfile = { navController.navigate(AppRoute.SettingsEditProfile) },
                 onNavigateToSwitchBranch = { navController.navigate(AppRoute.SettingsSwitchBranch) },
                 onNavigateToRoles = { navController.navigate(AppRoute.SettingsRoles) },
+                onNavigateToChannels = { navController.navigate(AppRoute.SettingsChannels) },
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+
+        composable<AppRoute.SettingsChannels> {
+            ChannelsScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsBranches> {

@@ -28,4 +28,6 @@ class ApiClient(private val http: HttpClient) {
     val displaySettings = DisplaySettingsApiClient(http)
     val tasks = TasksApiClient(http)
     val payments = PaymentsApiClient(http)
+    val channels = ChannelsApiClient(http)
+    val messaging = MessagingApiClient(http)
 }

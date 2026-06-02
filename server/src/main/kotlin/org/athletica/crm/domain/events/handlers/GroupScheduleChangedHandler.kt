@@ -1,5 +1,6 @@
 package org.athletica.crm.domain.events.handlers
 
+import arrow.core.raise.context.either
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.systemContext
@@ -28,9 +29,9 @@ class GroupScheduleChangedHandler(
     override suspend fun handle(orgId: OrgId, event: GroupScheduleChanged) {
         val ctx = systemContext(orgId)
         val today = LocalDate.now().toKotlinLocalDate()
-        database.transaction {
-            arrow.core.raise.either {
-                context(ctx, this@transaction, this) {
+        either {
+            database.transaction {
+                context(ctx) {
                     generateSessions(groups, sessions, employees, event.groupId, today, generationHorizon())
                 }
             }

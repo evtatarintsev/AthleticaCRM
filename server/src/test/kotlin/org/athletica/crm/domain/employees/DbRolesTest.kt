@@ -11,7 +11,6 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -50,8 +49,8 @@ class DbRolesTest {
     @Test
     fun `list возвращает пустой список если ролей нет`() =
         runTest {
-            either<DomainError, Unit> {
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+            either {
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertTrue(list.isEmpty())
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -59,14 +58,14 @@ class DbRolesTest {
     @Test
     fun `list возвращает только роли своей организации`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet())) }
+                    context(ctx) { roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet())) }
                 }
                 TestPostgres.db.transaction {
-                    context(otherCtx, this) { roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet())) }
+                    context(otherCtx) { roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet())) }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(1, list.size)
                 assertEquals("Тренер", list.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
@@ -75,15 +74,15 @@ class DbRolesTest {
     @Test
     fun `list возвращает несколько ролей`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet()))
                         roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet()))
                         roles.new(EmployeeRole(Uuid.random(), "Администратор", emptySet()))
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(3, list.size)
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -94,11 +93,11 @@ class DbRolesTest {
     fun `new создаёт роль без прав`() =
         runTest {
             val id = Uuid.random()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { roles.new(EmployeeRole(id, "Тренер", emptySet())) }
+                    context(ctx) { roles.new(EmployeeRole(id, "Тренер", emptySet())) }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(1, list.size)
                 assertEquals(id, list.first().id)
                 assertEquals("Тренер", list.first().name)
@@ -110,13 +109,13 @@ class DbRolesTest {
     fun `new создаёт роль с правами`() =
         runTest {
             val id = Uuid.random()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         roles.new(EmployeeRole(id, "Менеджер", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(1, list.size)
                 assertEquals(setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE), list.first().permissions)
             }.getOrElse { fail("Unexpected error: $it") }
@@ -127,11 +126,11 @@ class DbRolesTest {
         runTest {
             val id = Uuid.random()
             val permissions = UserPermission.entries.toSet()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { roles.new(EmployeeRole(id, "Суперменеджер", permissions)) }
+                    context(ctx) { roles.new(EmployeeRole(id, "Суперменеджер", permissions)) }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(permissions, list.first().permissions)
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -141,14 +140,14 @@ class DbRolesTest {
         runTest {
             val id1 = Uuid.random()
             val id2 = Uuid.random()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         roles.new(EmployeeRole(id1, "Роль с правами", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
                         roles.new(EmployeeRole(id2, "Роль без прав", emptySet()))
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { roles.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 val role1 = list.first { it.id == id1 }
                 val role2 = list.first { it.id == id2 }
                 assertEquals(setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE), role1.permissions)

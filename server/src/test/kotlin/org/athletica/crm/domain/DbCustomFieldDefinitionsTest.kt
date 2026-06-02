@@ -14,7 +14,6 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -79,9 +78,9 @@ class DbCustomFieldDefinitionsTest {
     fun `all возвращает пустой список если нет определений`() =
         runTest {
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -98,16 +97,20 @@ class DbCustomFieldDefinitionsTest {
                     CustomFieldDefinition.Bool(fieldKey = key("third"), label = "third"),
                 )
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { definitions.saveAll("client", fields) }
+                    context(ctx) {
+                        definitions.saveAll("client", fields)
+                    }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) {
+                            definitions.all("client")
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -120,9 +123,9 @@ class DbCustomFieldDefinitionsTest {
     @Test
     fun `all не возвращает поля другой организации`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(CustomFieldDefinition.Text(fieldKey = key("org_field"), label = "org_field")),
@@ -132,9 +135,9 @@ class DbCustomFieldDefinitionsTest {
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this) { definitions.all("client") }
+                        context(otherCtx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -144,9 +147,9 @@ class DbCustomFieldDefinitionsTest {
     @Test
     fun `all не возвращает поля другого entityType`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(CustomFieldDefinition.Text(fieldKey = key("client_field"), label = "client_field")),
@@ -156,9 +159,9 @@ class DbCustomFieldDefinitionsTest {
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("employee") }
+                        context(ctx) { definitions.all("employee") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -182,16 +185,16 @@ class DbCustomFieldDefinitionsTest {
                     CustomFieldDefinition.Select(fieldKey = key("sel_f"), label = "sel_f", options = listOf("A", "B")),
                 )
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { definitions.saveAll("client", fields) }
+                    context(ctx) { definitions.saveAll("client", fields) }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -202,9 +205,9 @@ class DbCustomFieldDefinitionsTest {
     fun `saveAll корректно сохраняет Select с options`() =
         runTest {
             val options = listOf("beginner", "intermediate", "advanced")
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(CustomFieldDefinition.Select(fieldKey = key("level"), label = "level", options = options)),
@@ -214,9 +217,9 @@ class DbCustomFieldDefinitionsTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -233,16 +236,16 @@ class DbCustomFieldDefinitionsTest {
                     CustomFieldDefinition.Text(fieldKey = key("note"), label = "note", minLength = 1, maxLength = 200),
                 )
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { definitions.saveAll("client", fields) }
+                    context(ctx) { definitions.saveAll("client", fields) }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -257,9 +260,9 @@ class DbCustomFieldDefinitionsTest {
     @Test
     fun `saveAll заменяет существующие поля новым набором`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(
@@ -271,9 +274,9 @@ class DbCustomFieldDefinitionsTest {
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(CustomFieldDefinition.Bool(fieldKey = key("new_one"), label = "new_one")),
@@ -283,9 +286,9 @@ class DbCustomFieldDefinitionsTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -296,9 +299,9 @@ class DbCustomFieldDefinitionsTest {
     @Test
     fun `saveAll с пустым списком удаляет все поля`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(CustomFieldDefinition.Text(fieldKey = key("to_delete"), label = "to_delete")),
@@ -307,16 +310,16 @@ class DbCustomFieldDefinitionsTest {
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { definitions.saveAll("client", emptyList()) }
+                    context(ctx) { definitions.saveAll("client", emptyList()) }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -326,9 +329,9 @@ class DbCustomFieldDefinitionsTest {
     @Test
     fun `saveAll не затрагивает поля другого entityType`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "employee",
                             listOf(CustomFieldDefinition.Text(fieldKey = key("emp_field"), label = "emp_field")),
@@ -337,9 +340,9 @@ class DbCustomFieldDefinitionsTest {
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         definitions.saveAll(
                             "client",
                             listOf(CustomFieldDefinition.Number(fieldKey = key("client_field"), label = "client_field")),
@@ -349,9 +352,9 @@ class DbCustomFieldDefinitionsTest {
             }.getOrElse { fail("Setup failed: $it") }
 
             val employeeFields =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("employee") }
+                        context(ctx) { definitions.all("employee") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -370,16 +373,16 @@ class DbCustomFieldDefinitionsTest {
                     isSearchable = true,
                     isSortable = true,
                 )
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { definitions.saveAll("client", listOf(def)) }
+                    context(ctx) { definitions.saveAll("client", listOf(def)) }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { definitions.all("client") }
+                        context(ctx) { definitions.all("client") }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
                     .single()

@@ -30,7 +30,7 @@ class GroupCreatedHandler(
         val today = LocalDate.now().toKotlinLocalDate()
         database.transaction {
             arrow.core.raise.either {
-                context(ctx, this@transaction, this) {
+                context(ctx) {
                     generateSessions(groups, sessions, employees, event.groupId, today, generationHorizon())
                 }
             }

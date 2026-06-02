@@ -99,9 +99,9 @@ class SendMessageTest {
             .firstOrNull { row -> row.asString("status") }
 
     private suspend fun send(integrationId: ChannelIntegrationId) =
-        either<DomainError, _> {
+        either {
             TestPostgres.db.transaction {
-                context(ctx, this) {
+                context(ctx) {
                     sendMessage(
                         SendMessageRequest(clientId, integrationId, "Привет"),
                         channels,

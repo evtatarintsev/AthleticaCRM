@@ -85,7 +85,7 @@ class AdminCli : CliktCommand(name = "athletica") {
             either {
                 try {
                     di.database.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             val balance = di.orgBalances.current()
                             balance.adjust(amount, description!!)
                         }

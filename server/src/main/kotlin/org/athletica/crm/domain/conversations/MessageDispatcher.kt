@@ -49,34 +49,37 @@ class MessageDispatcher(
 
     /** Обрабатывает одну порцию сообщений из очереди. Выделено для прямого вызова в тестах. */
     suspend fun pollOnce() {
-        val pending = db.transaction { context(this) { messages.pendingOutbound(20) } }
+        val pending =
+            db.transaction {
+                messages.pendingOutbound(20)
+            }
         pending.forEach { message -> dispatch(message) }
     }
 
     private suspend fun dispatch(message: PendingMessage) {
         val config =
             message.channelIntegrationId
-                ?.let { id -> db.transaction { context(this) { channels.configById(id) } } }
+                ?.let { id -> db.transaction { channels.configById(id) } }
                 ?: emptyMap()
         val channel = registry.resolve(message.channelType, config)
         val outbound = OutboundMessage(message.recipientAddress, message.body, config)
 
         channel.send(outbound).fold(
             { error -> onError(message, error) },
-            { ref -> db.transaction { context(this) { messages.markSent(message.id, ref) } } },
+            { ref -> db.transaction { messages.markSent(message.id, ref) } },
         )
     }
 
     private suspend fun onError(message: PendingMessage, error: SendError) {
         when (error) {
             is SendError.Permanent ->
-                db.transaction { context(this) { messages.markFailed(message.id, error.code, error.message) } }
+                db.transaction { messages.markFailed(message.id, error.code, error.message) }
 
             is SendError.Transient ->
                 if (message.retryCount + 1 >= maxRetries) {
-                    db.transaction { context(this) { messages.markFailed(message.id, error.code, error.message) } }
+                    db.transaction { messages.markFailed(message.id, error.code, error.message) }
                 } else {
-                    db.transaction { context(this) { messages.retryLater(message.id, error.message) } }
+                    db.transaction { messages.retryLater(message.id, error.message) }
                 }
         }
     }

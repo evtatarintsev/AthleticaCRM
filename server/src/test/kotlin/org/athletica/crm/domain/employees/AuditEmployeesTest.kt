@@ -9,7 +9,6 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.EmployeesStub
@@ -55,7 +54,7 @@ class AuditEmployeesTest {
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
 
     private fun makeSubject(
-        stub: org.athletica.crm.domain.EmployeesStub,
+        stub: EmployeesStub,
         audit: AuditLogStub,
     ) = AuditEmployees(stub, audit)
 
@@ -70,8 +69,8 @@ class AuditEmployeesTest {
             val id = EmployeeId.new()
 
             val employee =
-                either<DomainError, _> {
-                    context(ctx, tr, this) {
+                either {
+                    context(ctx, tr) {
                         subject.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
                     }
                 }.getOrNull()
@@ -90,8 +89,8 @@ class AuditEmployeesTest {
             val subject = makeSubject(stub, audit)
             val id = EmployeeId.new()
 
-            either<DomainError, _> {
-                context(ctx, tr, this) {
+            either {
+                context(ctx, tr) {
                     subject.new(id, "Мария", null, null, null, emptyPermission)
                 }
             }
@@ -113,8 +112,8 @@ class AuditEmployeesTest {
             val subject = makeSubject(stub, audit)
             val id = EmployeeId.new()
 
-            either<DomainError, _> {
-                context(ctx, tr, this) {
+            either {
+                context(ctx, tr) {
                     subject.new(id, "Сергей", "+79001234567", "sergey@example.com".toEmailAddress(), null, emptyPermission)
                 }
             }
@@ -134,8 +133,8 @@ class AuditEmployeesTest {
             val audit = AuditLogStub()
             val subject = makeSubject(stub, audit)
 
-            either<DomainError, _> {
-                context(ctx, tr, this) {
+            either {
+                context(ctx, tr) {
                     subject.new(EmployeeId.new(), "Без контактов", null, null, null, emptyPermission)
                 }
             }
@@ -154,8 +153,8 @@ class AuditEmployeesTest {
             val subject = makeSubject(stub, audit)
 
             repeat(3) {
-                either<DomainError, _> {
-                    context(ctx, tr, this) {
+                either {
+                    context(ctx, tr) {
                         subject.new(EmployeeId.new(), "Сотрудник $it", null, null, null, emptyPermission)
                     }
                 }

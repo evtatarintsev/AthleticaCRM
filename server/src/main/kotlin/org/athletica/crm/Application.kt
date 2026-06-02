@@ -160,7 +160,7 @@ fun Application.configureServer() {
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         logout(di.audit)
-                        context(di.branches, di.jwtConfig) {
+                        context(di.jwtConfig) {
                             switchBranchRoute()
                         }
                         context(di.branches) {
@@ -245,7 +245,7 @@ private suspend fun generateSessionsDaily(di: Di) {
                     val ctx = systemContext(org.athletica.crm.core.entityids.OrgId(orgUuid))
                     di.database.transaction {
                         arrow.core.raise.either {
-                            context(ctx, this@transaction, this) {
+                            context(ctx) {
                                 di.groups.list().forEach { group ->
                                     generateSessions(di.groups, di.sessions, di.employees, group.id, today, horizon)
                                 }

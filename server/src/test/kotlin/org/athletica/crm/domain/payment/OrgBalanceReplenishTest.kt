@@ -32,7 +32,7 @@ class OrgBalanceReplenishTest {
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             val balance = orgBalances.current()
                             balance.replenish(
                                 amount = Money(500_00, Currency.RUB),
@@ -62,7 +62,7 @@ class OrgBalanceReplenishTest {
 
             either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         val balance = orgBalances.current()
                         balance.replenish(Money(100_00, Currency.RUB), "Первое пополнение")
                     }
@@ -70,7 +70,7 @@ class OrgBalanceReplenishTest {
             }
             either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         val balance = orgBalances.current()
                         balance.replenish(Money(200_00, Currency.RUB), "Второе пополнение")
                     }
@@ -95,7 +95,7 @@ class OrgBalanceReplenishTest {
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             val balance = orgBalances.current()
                             balance.replenish(Money(0, Currency.RUB), "Нулевое пополнение")
                         }
@@ -114,7 +114,7 @@ class OrgBalanceReplenishTest {
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             val balance = orgBalances.current()
                             balance.replenish(Money(-100_00, Currency.RUB), "Отрицательное пополнение")
                         }

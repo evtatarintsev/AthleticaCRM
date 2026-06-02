@@ -11,7 +11,6 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.DbClients
@@ -105,9 +104,9 @@ class ClientListTest {
         runTest {
             val orgId = insertOrg()
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
+                        context(ctx(orgId)) {
                             DbClients().list()
                         }
                     }
@@ -124,9 +123,9 @@ class ClientListTest {
             insertClient(orgId, "Борис Петров")
 
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
+                        context(ctx(orgId)) {
                             DbClients().list()
                         }
                     }
@@ -144,9 +143,9 @@ class ClientListTest {
             insertClient(orgId, "Клиент Без Групп")
 
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
+                        context(ctx(orgId)) {
                             DbClients().list()
                         }
                     }
@@ -167,9 +166,9 @@ class ClientListTest {
             addClientToGroup(clientId, groupId2)
 
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
+                        context(ctx(orgId)) {
                             DbClients().list()
                         }
                     }
@@ -191,9 +190,9 @@ class ClientListTest {
             addClientToGroup(client1Id, groupId)
 
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
+                        context(ctx(orgId)) {
                             DbClients().list()
                         }
                     }
@@ -214,9 +213,9 @@ class ClientListTest {
             insertClient(orgId2, "Клиент Орг 2")
 
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId1), this) {
+                        context(ctx(orgId1)) {
                             DbClients().list()
                         }
                     }
@@ -238,9 +237,9 @@ class ClientListTest {
             insertGroup(orgId1, "Своя группа").also { addClientToGroup(clientId, it) }
 
             val result =
-                either<DomainError, List<Client>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId1), this) {
+                        context(ctx(orgId1)) {
                             DbClients().list()
                         }
                     }

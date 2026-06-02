@@ -133,18 +133,18 @@ class TaskOperationsTest {
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.new(id1, "Задача 1", "", null, null, null)
                         tasks.new(id2, "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.byIds(listOf(id1, id2))
                             .map { context(ctx) { it.status(TaskStatus.IN_PROGRESS) } }
                             .forEach { it.save() }
@@ -161,18 +161,18 @@ class TaskOperationsTest {
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.new(id1, "Задача 1", "", null, null, null)
                         tasks.new(id2, "Задача 2", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.byIds(listOf(id1, id2))
                             .map { context(ctx) { it.status(TaskStatus.COMPLETED) } }
                             .forEach { it.save() }
@@ -191,9 +191,9 @@ class TaskOperationsTest {
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.new(id1, "Задача 1", "", null, null, null)
                         tasks.new(id2, "Задача 2", "", null, null, null)
                     }
@@ -201,9 +201,9 @@ class TaskOperationsTest {
             }.getOrElse { fail("Setup: $it") }
 
             val thirdEmployee = employeeStub(thirdEmployeeId)
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctxWithManage, this) {
+                    context(ctxWithManage) {
                         tasks.byIds(listOf(id1, id2))
                             .map { context(ctxWithManage) { it.assignTo(thirdEmployee) } }
                             .forEach { it.save() }
@@ -212,12 +212,12 @@ class TaskOperationsTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val loaded1 =
-                either<DomainError, _> {
-                    TestPostgres.db.transaction { context(ctx, this) { tasks.byId(id1) } }
+                either {
+                    TestPostgres.db.transaction { context(ctx) { tasks.byId(id1) } }
                 }.getOrElse { fail("Load: $it") }
             val loaded2 =
-                either<DomainError, _> {
-                    TestPostgres.db.transaction { context(ctx, this) { tasks.byId(id2) } }
+                either {
+                    TestPostgres.db.transaction { context(ctx) { tasks.byId(id2) } }
                 }.getOrElse { fail("Load: $it") }
 
             assertEquals(thirdEmployeeId, loaded1.assigneeId)
@@ -228,27 +228,27 @@ class TaskOperationsTest {
     fun `unassign снимает исполнителя`() =
         runTest {
             val id1 = TaskId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.new(id1, "Задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
             val otherEmployee = employeeStub(otherEmployeeId)
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctxWithManage, this) {
+                    context(ctxWithManage) {
                         val assigned = context(ctxWithManage) { tasks.byId(id1).assignTo(otherEmployee) }
                         assigned.save()
                     }
                 }
             }.getOrElse { fail("Setup assign: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         val unassigned = context(ctx) { tasks.byId(id1).unassign() }
                         unassigned.save()
                     }
@@ -256,8 +256,8 @@ class TaskOperationsTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val loaded =
-                either<DomainError, _> {
-                    TestPostgres.db.transaction { context(ctx, this) { tasks.byId(id1) } }
+                either {
+                    TestPostgres.db.transaction { context(ctx) { tasks.byId(id1) } }
                 }.getOrElse { fail("Load: $it") }
 
             assertNull(loaded.assigneeId)
@@ -270,25 +270,25 @@ class TaskOperationsTest {
         runTest {
             val myTaskId = TaskId.new()
             val foreignTaskId = TaskId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         tasks.new(myTaskId, "Моя задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(otherCtx, this) {
+                    context(otherCtx) {
                         tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             tasks.byIds(listOf(myTaskId, foreignTaskId))
                                 .map { context(ctx) { it.status(TaskStatus.IN_PROGRESS) } }
                                 .forEach { it.save() }
@@ -306,17 +306,17 @@ class TaskOperationsTest {
     fun `status с CAN_MANAGE_TASKS разрешает редактировать чужие задачи`() =
         runTest {
             val foreignTaskId = TaskId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(otherCtx, this) {
+                    context(otherCtx) {
                         tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctxWithManage, this) {
+                    context(ctxWithManage) {
                         tasks.byIds(listOf(foreignTaskId))
                             .map { context(ctxWithManage) { it.status(TaskStatus.COMPLETED) } }
                             .forEach { it.save() }

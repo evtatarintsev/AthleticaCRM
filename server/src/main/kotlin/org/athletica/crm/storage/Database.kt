@@ -46,7 +46,7 @@ interface Transaction {
  *
  * Принимает [pool] — пул соединений с базой данных.
  */
-class Database(private val pool: ConnectionPool) : ConnectionScope {
+class Database(val pool: ConnectionPool) : ConnectionScope {
     /** Начинает построение запроса с заданным SQL. */
     fun sql(sql: String): QueryBuilder = QueryBuilder(sql, this)
 

@@ -53,8 +53,8 @@ class DbDisciplinesTest {
     @Test
     fun `list возвращает пустой список если дисциплин нет`() =
         runTest {
-            either<DomainError, Unit> {
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+            either {
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertTrue(list.isEmpty())
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -62,11 +62,11 @@ class DbDisciplinesTest {
     @Test
     fun `list возвращает только дисциплины своей организации`() =
         runTest {
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(DisciplineId.new(), "Теннис")) } }
-                TestPostgres.db.transaction { context(otherCtx, this) { disciplines.create(Discipline(DisciplineId.new(), "Волейбол")) } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Теннис")) } }
+                TestPostgres.db.transaction { context(otherCtx) { disciplines.create(Discipline(DisciplineId.new(), "Волейбол")) } }
 
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(1, list.size)
                 assertEquals("Теннис", list.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
@@ -75,15 +75,15 @@ class DbDisciplinesTest {
     @Test
     fun `list возвращает дисциплины отсортированные по имени`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         disciplines.create(Discipline(DisciplineId.new(), "Хоккей"))
                         disciplines.create(Discipline(DisciplineId.new(), "Бокс"))
                         disciplines.create(Discipline(DisciplineId.new(), "Плавание"))
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(listOf("Бокс", "Плавание", "Хоккей"), list.map { it.name })
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -94,9 +94,9 @@ class DbDisciplinesTest {
     fun `create добавляет дисциплину`() =
         runTest {
             val discipline = Discipline(DisciplineId.new(), "Футбол")
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(discipline) } }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(discipline) } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(1, list.size)
                 assertEquals(discipline.id, list.first().id)
                 assertEquals("Футбол", list.first().name)
@@ -106,13 +106,13 @@ class DbDisciplinesTest {
     @Test
     fun `create возвращает ошибку при дублировании имени в той же организации`() =
         runTest {
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(DisciplineId.new(), "Хоккей")) } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Хоккей")) } }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, Unit> {
-                    TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(DisciplineId.new(), "Хоккей")) } }
+                either {
+                    TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Хоккей")) } }
                 }
             assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
         }
@@ -120,9 +120,9 @@ class DbDisciplinesTest {
     @Test
     fun `create допускает одинаковое имя в разных организациях`() =
         runTest {
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")) } }
-                TestPostgres.db.transaction { context(otherCtx, this) { disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")) } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")) } }
+                TestPostgres.db.transaction { context(otherCtx) { disciplines.create(Discipline(DisciplineId.new(), "Баскетбол")) } }
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -132,10 +132,10 @@ class DbDisciplinesTest {
     fun `update изменяет название дисциплины`() =
         runTest {
             val id = DisciplineId.new()
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(id, "Старое название")) } }
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.update(Discipline(id, "Новое название")) } }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(id, "Старое название")) } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.update(Discipline(id, "Новое название")) } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals("Новое название", list.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -144,8 +144,8 @@ class DbDisciplinesTest {
     fun `update возвращает DISCIPLINE_NOT_FOUND для неизвестного id`() =
         runTest {
             val result =
-                either<DomainError, Unit> {
-                    TestPostgres.db.transaction { context(ctx, this) { disciplines.update(Discipline(DisciplineId.new(), "Что угодно")) } }
+                either {
+                    TestPostgres.db.transaction { context(ctx) { disciplines.update(Discipline(DisciplineId.new(), "Что угодно")) } }
                 }
             assertEquals("DISCIPLINE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
         }
@@ -154,9 +154,9 @@ class DbDisciplinesTest {
     fun `update возвращает ошибку при конфликте имени с существующей дисциплиной`() =
         runTest {
             val id = DisciplineId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         disciplines.create(Discipline(id, "Бег"))
                         disciplines.create(Discipline(DisciplineId.new(), "Прыжки"))
                     }
@@ -164,8 +164,8 @@ class DbDisciplinesTest {
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, Unit> {
-                    TestPostgres.db.transaction { context(ctx, this) { disciplines.update(Discipline(id, "Прыжки")) } }
+                either {
+                    TestPostgres.db.transaction { context(ctx) { disciplines.update(Discipline(id, "Прыжки")) } }
                 }
             assertEquals("DISCIPLINE_NAME_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
         }
@@ -174,18 +174,18 @@ class DbDisciplinesTest {
     fun `update не затрагивает дисциплины другой организации`() =
         runTest {
             val id = DisciplineId.new()
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(id, "Гимнастика")) } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(id, "Гимнастика")) } }
             }.getOrElse { fail("Setup failed: $it") }
 
             val updateResult =
-                either<DomainError, Unit> {
-                    TestPostgres.db.transaction { context(otherCtx, this) { disciplines.update(Discipline(id, "Другое")) } }
+                either {
+                    TestPostgres.db.transaction { context(otherCtx) { disciplines.update(Discipline(id, "Другое")) } }
                 }
             assertIs<Either.Left<DomainError>>(updateResult)
 
-            either<DomainError, Unit> {
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+            either {
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals("Гимнастика", list.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -196,14 +196,14 @@ class DbDisciplinesTest {
     fun `delete удаляет дисциплину`() =
         runTest {
             val id = DisciplineId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         disciplines.create(Discipline(id, "Фехтование"))
                         disciplines.delete(listOf(id))
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertTrue(list.isEmpty())
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -211,14 +211,14 @@ class DbDisciplinesTest {
     @Test
     fun `delete с пустым списком не меняет данные`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         disciplines.create(Discipline(DisciplineId.new(), "Самбо"))
                         disciplines.delete(emptyList())
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(1, list.size)
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -229,16 +229,16 @@ class DbDisciplinesTest {
             val id1 = DisciplineId.new()
             val id2 = DisciplineId.new()
             val id3 = DisciplineId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         disciplines.create(Discipline(id1, "Дзюдо"))
                         disciplines.create(Discipline(id2, "Карате"))
                         disciplines.create(Discipline(id3, "Айкидо"))
                         disciplines.delete(listOf(id1, id2))
                     }
                 }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(listOf("Айкидо"), list.map { it.name })
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -247,10 +247,10 @@ class DbDisciplinesTest {
     fun `delete игнорирует id из другой организации`() =
         runTest {
             val id = DisciplineId.new()
-            either<DomainError, Unit> {
-                TestPostgres.db.transaction { context(ctx, this) { disciplines.create(Discipline(id, "Лыжи")) } }
-                TestPostgres.db.transaction { context(otherCtx, this) { disciplines.delete(listOf(id)) } }
-                val list = TestPostgres.db.transaction { context(ctx, this) { disciplines.list() } }
+            either {
+                TestPostgres.db.transaction { context(ctx) { disciplines.create(Discipline(id, "Лыжи")) } }
+                TestPostgres.db.transaction { context(otherCtx) { disciplines.delete(listOf(id)) } }
+                val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(1, list.size)
             }.getOrElse { fail("Unexpected error: $it") }
         }

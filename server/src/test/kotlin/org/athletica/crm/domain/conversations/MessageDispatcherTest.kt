@@ -15,7 +15,6 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelType
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -86,9 +85,9 @@ class MessageDispatcherTest {
     }
 
     private suspend fun enqueueMessage() {
-        either<DomainError, Unit> {
+        either {
             TestPostgres.db.transaction {
-                context(ctx, this) {
+                context(ctx) {
                     val conversation = conversations.forClient(clientId)
                     conversation.enqueue(integrationId, ChannelType.SMS, "+79990001122", "Привет")
                 }

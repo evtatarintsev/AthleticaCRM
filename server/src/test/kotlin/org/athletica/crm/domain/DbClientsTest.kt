@@ -97,9 +97,9 @@ class DbClientsTest {
     fun `new создаёт клиента в базе данных`() =
         runTest {
             val id = ClientId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Иван Петров", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Иван Петров", null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
@@ -112,9 +112,9 @@ class DbClientsTest {
             val id = ClientId.new()
             val birthday = LocalDate(1990, 5, 15)
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             clients.new(id, "Мария Иванова", null, birthday, Gender.FEMALE)
                         }
                     }
@@ -134,9 +134,9 @@ class DbClientsTest {
         runTest {
             val uploadId = insertUpload()
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             clients.new(ClientId.new(), "Клиент", uploadId, null, Gender.MALE)
                         }
                     }
@@ -149,16 +149,16 @@ class DbClientsTest {
     fun `new возвращает ошибку CLIENT_ALREADY_EXISTS при дублировании id`() =
         runTest {
             val id = ClientId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Первый", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Первый", null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.new(id, "Второй", null, null, Gender.MALE) }
+                        context(ctx) { clients.new(id, "Второй", null, null, Gender.MALE) }
                     }
                 }
             assertEquals("CLIENT_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
@@ -170,16 +170,16 @@ class DbClientsTest {
         runTest {
             // один и тот же id нельзя использовать дважды — PK глобальный
             val id = ClientId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Клиент орг 1", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Клиент орг 1", null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this) { clients.new(id, "Клиент орг 2", null, null, Gender.MALE) }
+                        context(otherCtx) { clients.new(id, "Клиент орг 2", null, null, Gender.MALE) }
                     }
                 }
             assertIs<Either.Left<DomainError>>(result)
@@ -192,16 +192,16 @@ class DbClientsTest {
         runTest {
             val id = ClientId.new()
             val birthday = LocalDate(1985, 3, 22)
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Пётр Сидоров", null, birthday, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Пётр Сидоров", null, birthday, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val client =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.byId(id) }
+                        context(ctx) { clients.byId(id) }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -215,9 +215,9 @@ class DbClientsTest {
     fun `byId возвращает CLIENT_NOT_FOUND для несуществующего id`() =
         runTest {
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.byId(ClientId.new()) }
+                        context(ctx) { clients.byId(ClientId.new()) }
                     }
                 }
             assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
@@ -227,16 +227,16 @@ class DbClientsTest {
     fun `byId не возвращает клиента другой организации`() =
         runTest {
             val id = ClientId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Чужой клиент", null, null, Gender.FEMALE) }
+                    context(ctx) { clients.new(id, "Чужой клиент", null, null, Gender.FEMALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this) { clients.byId(id) }
+                        context(otherCtx) { clients.byId(id) }
                     }
                 }
             assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
@@ -247,9 +247,9 @@ class DbClientsTest {
         runTest {
             val id = ClientId.new()
             val uploadId = insertUpload()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         val client = clients.new(id, "Клиент", null, null, Gender.MALE)
                         context(ctx) { client.attachDoc(clientDoc(uploadId, "Договор")) }.save()
                     }
@@ -257,9 +257,9 @@ class DbClientsTest {
             }.getOrElse { fail("Setup failed: $it") }
 
             val client =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.byId(id) }
+                        context(ctx) { clients.byId(id) }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -273,9 +273,9 @@ class DbClientsTest {
         runTest {
             val id = ClientId.new()
             val groupId = Uuid.generateV7()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
             runBlocking {
@@ -286,9 +286,9 @@ class DbClientsTest {
             }
 
             val client =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.byId(id) }
+                        context(ctx) { clients.byId(id) }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -303,15 +303,15 @@ class DbClientsTest {
         runTest {
             val id = ClientId.new()
             val newBirthday = LocalDate(2000, 1, 1)
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Старое имя", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Старое имя", null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         clients.byId(id)
                             .withNew("Новое имя", null, newBirthday, Gender.FEMALE)
                             .save()
@@ -320,9 +320,9 @@ class DbClientsTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val updated =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.byId(id) }
+                        context(ctx) { clients.byId(id) }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -336,15 +336,15 @@ class DbClientsTest {
         runTest {
             val id = ClientId.new()
             val uploadId = insertUpload()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         context(ctx) { clients.byId(id).attachDoc(clientDoc(uploadId, "Паспорт")) }.save()
                     }
                 }
@@ -360,19 +360,19 @@ class DbClientsTest {
             val uploadId = insertUpload()
             val doc = clientDoc(uploadId, "Документ на удаление")
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE).attachDoc(doc) }.save()
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
             assertEquals(1L, countDocsInDb(id))
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
-                        context(ctx, this) { clients.byId(id).deleteDoc(doc.id) }.save()
+                    context(ctx) {
+                        context(ctx) { clients.byId(id).deleteDoc(doc.id) }.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -388,9 +388,9 @@ class DbClientsTest {
             val upload2 = insertUpload()
             val upload3 = insertUpload()
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         context(ctx) {
                             clients.new(id, "Клиент", null, null, Gender.MALE)
                                 .attachDoc(clientDoc(upload1, "Первый"))
@@ -401,9 +401,9 @@ class DbClientsTest {
             }.getOrElse { fail("Setup failed: $it") }
             assertEquals(2L, countDocsInDb(id))
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         val doc3 = clientDoc(upload3, "Третий")
                         context(ctx) {
                             // удаляем все старые, добавляем один новый
@@ -423,27 +423,27 @@ class DbClientsTest {
         runTest {
             val id1 = ClientId.new()
             val id2 = ClientId.new()
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         clients.new(id1, "Клиент 1", null, null, Gender.MALE)
                         clients.new(id2, "Клиент 2", null, null, Gender.FEMALE)
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         clients.byId(id1).withNew("Изменённый", null, null, Gender.MALE).save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             val client2 =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) { clients.byId(id2) }
+                        context(ctx) { clients.byId(id2) }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 

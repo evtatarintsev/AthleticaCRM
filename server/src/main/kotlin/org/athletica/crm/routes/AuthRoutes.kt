@@ -64,7 +64,7 @@ context(db: Database, employees: Employees, organizations: Organizations, passwo
 fun Route.authRoutes() {
     post("/auth/branches") {
         val request = call.receive<AuthBranchesRequest>()
-        either<DomainError, AuthBranchesResponse> {
+        either {
             val user = verifyCredentials(request.username, request.password).bind()
             db.transaction {
                 val ctx =
@@ -76,7 +76,7 @@ fun Route.authRoutes() {
                         branchId = BranchId.notSelected(),
                         call = call,
                     )
-                context(ctx, this) {
+                context(ctx) {
                     AuthBranchesResponse(branches.list().map { BranchDetailResponse(it.id, it.name) })
                 }
             }
@@ -115,7 +115,7 @@ fun Route.authRoutes() {
                         branchId = request.branchId,
                         call = call,
                     )
-                context(ctx, this) {
+                context(ctx) {
                     if (branches.list().none { it.id == request.branchId }) {
                         raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
                     }
@@ -201,14 +201,12 @@ fun RouteWithContext.myBranchesRoute() {
  * Переключает текущего пользователя на другой доступный филиал
  * и выпускает новые JWT-токены с обновлённым [branchId].
  */
-context(db: Database, branches: Branches, jwtConfig: JwtConfig)
+context(db: Database, jwtConfig: JwtConfig)
 fun RouteWithContext.switchBranchRoute() {
     post<SwitchBranchRequest, LoginResponse>("/auth/switch-branch") { request, call ->
         val user =
             db.transaction {
-                context(this) {
-                    switchBranch(request.branchId)
-                }
+                switchBranch(request.branchId)
             }
         val newAccessToken = jwtConfig.makeAccessToken(user)
         val newRefreshToken = jwtConfig.makeRefreshToken(user.id, user.branchId)

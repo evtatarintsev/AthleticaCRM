@@ -1,5 +1,6 @@
 package org.athletica.crm.domain.payment
 
+import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -47,7 +48,7 @@ class DbPaymentsTest {
             val payment =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             payments.create(
                                 gatewayName = "yookassa",
                                 externalPaymentId = "ext_001",
@@ -59,7 +60,7 @@ class DbPaymentsTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Right<Payment>>(payment)
+            assertIs<Either.Right<Payment>>(payment)
             val p = payment.value
             assertEquals(PaymentStatus.PENDING, p.status)
             assertNull(p.confirmedAt)
@@ -79,7 +80,7 @@ class DbPaymentsTest {
 
             either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         payments.create(
                             gatewayName = "yookassa",
                             externalPaymentId = "ext_002",
@@ -94,13 +95,11 @@ class DbPaymentsTest {
             val paid =
                 either {
                     TestPostgres.db.transaction {
-                        context(this) {
-                            payments.markAsPaid("yookassa", "ext_002")
-                        }
+                        payments.markAsPaid("yookassa", "ext_002")
                     }
                 }
 
-            assertIs<arrow.core.Either.Right<Payment>>(paid)
+            assertIs<Either.Right<Payment>>(paid)
             assertEquals(PaymentStatus.PAID, paid.value.status)
             assertNotNull(paid.value.confirmedAt)
         }
@@ -115,7 +114,7 @@ class DbPaymentsTest {
 
             either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         payments.create(
                             gatewayName = "yookassa",
                             externalPaymentId = "ext_003",
@@ -128,17 +127,21 @@ class DbPaymentsTest {
             }
 
             // Первый вызов — успех
-            either { TestPostgres.db.transaction { context(this) { payments.markAsPaid("yookassa", "ext_003") } } }
+            either {
+                TestPostgres.db.transaction {
+                    payments.markAsPaid("yookassa", "ext_003")
+                }
+            }
 
             // Второй вызов — ошибка: уже обработан
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(this) { payments.markAsPaid("yookassa", "ext_003") }
+                        payments.markAsPaid("yookassa", "ext_003")
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<PaymentAlreadyProcessed>>(result)
+            assertIs<Either.Left<PaymentAlreadyProcessed>>(result)
         }
 
     @Test
@@ -147,11 +150,11 @@ class DbPaymentsTest {
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(this) { payments.markAsPaid("yookassa", "nonexistent_id") }
+                        payments.markAsPaid("yookassa", "nonexistent_id")
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<PaymentAlreadyProcessed>>(result)
+            assertIs<Either.Left<PaymentAlreadyProcessed>>(result)
         }
 
     // ── Хелперы ──────────────────────────────────────────────────────────────

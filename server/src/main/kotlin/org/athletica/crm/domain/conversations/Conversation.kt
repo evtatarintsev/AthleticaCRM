@@ -58,7 +58,7 @@ class DbConversation(
             )
             """.trimIndent(),
         )
-            .bind("id", id)
+            .bind("id", messageId)
             .bind("orgId", ctx.orgId)
             .bind("conversationId", id)
             .bind("channelIntegrationId", channelIntegrationId)

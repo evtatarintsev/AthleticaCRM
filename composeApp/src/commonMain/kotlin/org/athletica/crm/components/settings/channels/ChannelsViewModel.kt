@@ -13,15 +13,31 @@ import org.athletica.crm.api.schemas.channels.UpdateChannelIntegrationRequest
 import org.athletica.crm.components.clients.ClientsApiError
 import org.athletica.crm.components.clients.toClientsApiError
 import org.athletica.crm.core.entityids.ChannelIntegrationId
-import org.athletica.crm.core.messaging.ChannelType
+import org.athletica.crm.core.messaging.ChannelConfig
+import org.athletica.crm.core.messaging.ChannelProvider
 
-/** Открытый в редакторе канал: новый ([id] = null) либо существующий. */
+/**
+ * Открытый в редакторе канал: новый ([id] = null) либо существующий.
+ * [config] несёт типизированные настройки провайдера; [provider] и тип канала выводятся из него.
+ */
 data class ChannelEditor(
     val id: ChannelIntegrationId?,
-    val channelType: ChannelType,
+    val config: ChannelConfig,
     val name: String,
     val enabled: Boolean,
-)
+) {
+    /** Провайдер редактируемого канала. */
+    val provider: ChannelProvider get() = config.provider
+}
+
+/** Дефолтный конфиг провайдера с пустыми полями (заполняется в форме редактора). */
+fun defaultConfig(provider: ChannelProvider): ChannelConfig =
+    when (provider) {
+        ChannelProvider.TWILIO_SMS -> ChannelConfig.TwilioSms(accountSid = "", authToken = "", from = "")
+        ChannelProvider.SMSC_SMS -> ChannelConfig.SmscSms(login = "", password = "")
+        ChannelProvider.TELEGRAM_BOT -> ChannelConfig.TelegramBot(botToken = "")
+        ChannelProvider.IN_APP -> ChannelConfig.InApp
+    }
 
 /** Состояние экрана настройки каналов связи. */
 sealed class ChannelsState {
@@ -74,7 +90,10 @@ class ChannelsViewModel(
     /** Открывает редактор для создания нового канала. */
     fun openCreate() {
         val loaded = state as? ChannelsState.Loaded ?: return
-        state = loaded.copy(editor = ChannelEditor(id = null, channelType = ChannelType.SMS, name = "", enabled = true))
+        state =
+            loaded.copy(
+                editor = ChannelEditor(id = null, config = defaultConfig(ChannelProvider.IN_APP), name = "", enabled = true),
+            )
     }
 
     /** Открывает редактор существующего канала [dto]. */
@@ -82,7 +101,7 @@ class ChannelsViewModel(
         val loaded = state as? ChannelsState.Loaded ?: return
         state =
             loaded.copy(
-                editor = ChannelEditor(id = dto.id, channelType = dto.channelType, name = dto.name, enabled = dto.enabled),
+                editor = ChannelEditor(id = dto.id, config = dto.config, name = dto.name, enabled = dto.enabled),
             )
     }
 
@@ -92,11 +111,11 @@ class ChannelsViewModel(
         state = loaded.copy(editor = null, saveError = null)
     }
 
-    /** Меняет тип канала в редакторе (только при создании). */
-    fun setType(type: ChannelType) {
+    /** Меняет провайдера канала в редакторе (только при создании): сбрасывает конфиг на дефолтный. */
+    fun setProvider(provider: ChannelProvider) {
         val loaded = state as? ChannelsState.Loaded ?: return
         val editor = loaded.editor ?: return
-        state = loaded.copy(editor = editor.copy(channelType = type))
+        state = loaded.copy(editor = editor.copy(config = defaultConfig(provider)))
     }
 
     /** Меняет название канала в редакторе. */
@@ -125,8 +144,8 @@ class ChannelsViewModel(
                     api.channels.create(
                         CreateChannelIntegrationRequest(
                             id = ChannelIntegrationId.new(),
-                            channelType = editor.channelType,
                             name = editor.name.trim(),
+                            config = editor.config,
                         ),
                     )
                 } else {
@@ -134,6 +153,7 @@ class ChannelsViewModel(
                         UpdateChannelIntegrationRequest(
                             id = editor.id,
                             name = editor.name.trim(),
+                            config = editor.config,
                             enabled = editor.enabled,
                         ),
                     )

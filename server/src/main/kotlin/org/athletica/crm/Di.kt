@@ -23,10 +23,7 @@ import org.athletica.crm.domain.clientnotes.ClientNotes
 import org.athletica.crm.domain.clientnotes.DbClientNotes
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.DbClients
-import org.athletica.crm.domain.conversations.ChannelRegistry
 import org.athletica.crm.domain.conversations.DbConversations
-import org.athletica.crm.domain.conversations.DbMessages
-import org.athletica.crm.domain.conversations.MessageDispatcher
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.discipline.AuditDisciplines
@@ -57,6 +54,9 @@ import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
+import org.athletica.crm.domain.messagedelivery.ChannelRegistry
+import org.athletica.crm.domain.messagedelivery.DbDeliveries
+import org.athletica.crm.domain.messagedelivery.MessageDispatcher
 import org.athletica.crm.domain.org.DbOrganizations
 import org.athletica.crm.domain.org.LocMemCachedOrganizations
 import org.athletica.crm.domain.org.Organizations
@@ -127,10 +127,10 @@ data class Di(
     val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(), audit)
     val clientContacts = DbClientContacts()
     val conversations = DbConversations()
-    val messages = DbMessages()
+    val deliveries = DbDeliveries()
     val channelRegistry: ChannelRegistry = StubChannelRegistry()
     val messageDispatcher: MessageDispatcher =
-        MessageDispatcher(database, messages, channelIntegrations, channelRegistry)
+        MessageDispatcher(database, deliveries, channelIntegrations, channelRegistry)
 
     init {
         bus.register(GroupCreatedHandler(database, groups, sessions, employees))

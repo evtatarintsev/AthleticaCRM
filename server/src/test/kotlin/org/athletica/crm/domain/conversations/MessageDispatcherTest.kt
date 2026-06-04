@@ -15,9 +15,16 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.messaging.ChannelType
+import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.messagedelivery.ChannelRegistry
+import org.athletica.crm.domain.messagedelivery.ChannelSendRequest
+import org.athletica.crm.domain.messagedelivery.DbDeliveries
+import org.athletica.crm.domain.messagedelivery.MessageChannel
+import org.athletica.crm.domain.messagedelivery.MessageDispatcher
+import org.athletica.crm.domain.messagedelivery.ProviderMessageRef
+import org.athletica.crm.domain.messagedelivery.SendError
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -25,7 +32,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
 
-/** Тесты фонового диспетчера исходящих сообщений ([MessageDispatcher]). */
+/** Тесты фонового диспетчера исходящих доставок ([MessageDispatcher]). */
 class MessageDispatcherTest {
     private val orgId = OrgId.new()
     private val userId = UserId.new()
@@ -35,7 +42,7 @@ class MessageDispatcherTest {
     private val integrationId = ChannelIntegrationId.new()
 
     private val conversations = DbConversations()
-    private val messages = DbMessages()
+    private val deliveries = DbDeliveries()
     private val channels = org.athletica.crm.domain.channels.DbChannelIntegrations()
 
     private val ctx =
@@ -55,11 +62,9 @@ class MessageDispatcherTest {
     private class FakeRegistry(
         private val behavior: () -> Either<SendError, ProviderMessageRef>,
     ) : ChannelRegistry {
-        override fun resolve(channelType: ChannelType, config: Map<String, String>): MessageChannel =
+        override fun resolve(config: ChannelConfig): MessageChannel =
             object : MessageChannel {
-                override val type = channelType
-
-                override suspend fun send(message: OutboundMessage): Either<SendError, ProviderMessageRef> = behavior()
+                override suspend fun send(request: ChannelSendRequest): Either<SendError, ProviderMessageRef> = behavior()
             }
     }
 
@@ -78,65 +83,68 @@ class MessageDispatcherTest {
             TestPostgres.db.sql(
                 """
                 INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
-                VALUES (:id, :orgId, 'SMS', 'Test SMS', '{}'::jsonb, true)
+                VALUES (:id, :orgId, 'SMS', 'Test SMS', :config::jsonb, true)
                 """.trimIndent(),
-            ).bind("id", integrationId).bind("orgId", orgId).execute()
+            ).bind("id", integrationId).bind("orgId", orgId).bind("config", TWILIO_CONFIG).execute()
         }
     }
 
-    private suspend fun enqueueMessage() {
+    private suspend fun enqueueDelivery() {
         either {
             TestPostgres.db.transaction {
                 context(ctx) {
                     val conversation = conversations.forClient(clientId)
-                    conversation.enqueue(integrationId, ChannelType.SMS, "+79990001122", "Привет")
+                    val message = conversation.appendOutbound(Author.Employee(employeeId), "Привет")
+                    deliveries.create(message.id, integrationId, "+79990001122")
                 }
             }
-        }.let { if (it is Either.Left) fail("Не удалось поставить сообщение: ${it.value}") }
+        }.let { if (it is Either.Left) fail("Не удалось поставить доставку: ${it.value}") }
     }
 
-    private suspend fun status(): String =
-        TestPostgres.db.sql("SELECT status FROM messages WHERE org_id = :orgId LIMIT 1")
+    private suspend fun state(): String =
+        TestPostgres.db.sql("SELECT state FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
             .bind("orgId", orgId)
-            .firstOrNull { row -> row.asString("status") }!!
+            .firstOrNull { row -> row.asString("state") }!!
 
-    private suspend fun retryCount(): Int =
-        TestPostgres.db.sql("SELECT retry_count FROM messages WHERE org_id = :orgId LIMIT 1")
+    private suspend fun attempts(): Int =
+        TestPostgres.db.sql("SELECT attempts FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
             .bind("orgId", orgId)
-            .firstOrNull { row -> row.asInt("retry_count") }!!
+            .firstOrNull { row -> row.asInt("attempts") }!!
 
     private suspend fun providerRef(): String? =
-        TestPostgres.db.sql("SELECT COALESCE(provider_message_ref, '') AS ref FROM messages WHERE org_id = :orgId LIMIT 1")
+        TestPostgres.db.sql(
+            "SELECT COALESCE(provider_message_ref, '') AS ref FROM message_deliveries WHERE org_id = :orgId LIMIT 1",
+        )
             .bind("orgId", orgId)
             .firstOrNull { row -> row.asString("ref") }
             ?.takeIf { it.isNotEmpty() }
 
     @Test
-    fun `успешная отправка переводит сообщение в SENT с provider ref`() =
+    fun `успешная отправка переводит доставку в SENT с provider ref`() =
         runTest {
-            enqueueMessage()
+            enqueueDelivery()
             val dispatcher =
                 MessageDispatcher(
                     TestPostgres.db,
-                    messages,
+                    deliveries,
                     channels,
                     FakeRegistry { ProviderMessageRef("provider-123").right() },
                 )
 
             dispatcher.pollOnce()
 
-            assertEquals("SENT", status())
+            assertEquals("SENT", state())
             assertEquals("provider-123", providerRef())
         }
 
     @Test
-    fun `временная ошибка увеличивает счётчик попыток и оставляет в QUEUED`() =
+    fun `временная ошибка увеличивает счётчик попыток и оставляет в PENDING`() =
         runTest {
-            enqueueMessage()
+            enqueueDelivery()
             val dispatcher =
                 MessageDispatcher(
                     TestPostgres.db,
-                    messages,
+                    deliveries,
                     channels,
                     FakeRegistry { SendError.Transient("TIMEOUT", "Таймаут").left() },
                     maxRetries = 5,
@@ -144,24 +152,47 @@ class MessageDispatcherTest {
 
             dispatcher.pollOnce()
 
-            assertEquals("QUEUED", status())
-            assertEquals(1, retryCount())
+            assertEquals("PENDING", state())
+            assertEquals(1, attempts())
         }
 
     @Test
-    fun `постоянная ошибка переводит сообщение в FAILED`() =
+    fun `постоянная ошибка переводит доставку в FAILED`() =
         runTest {
-            enqueueMessage()
+            enqueueDelivery()
             val dispatcher =
                 MessageDispatcher(
                     TestPostgres.db,
-                    messages,
+                    deliveries,
                     channels,
                     FakeRegistry { SendError.Permanent("INVALID_NUMBER", "Неверный номер").left() },
                 )
 
             dispatcher.pollOnce()
 
-            assertEquals("FAILED", status())
+            assertEquals("FAILED", state())
         }
+
+    @Test
+    fun `доставка отключённой интеграции не поллится и остаётся PENDING`() =
+        runTest {
+            enqueueDelivery()
+            TestPostgres.db.sql("UPDATE channel_integrations SET enabled = false WHERE id = :id")
+                .bind("id", integrationId).execute()
+            val dispatcher =
+                MessageDispatcher(
+                    TestPostgres.db,
+                    deliveries,
+                    channels,
+                    FakeRegistry { ProviderMessageRef("provider-123").right() },
+                )
+
+            dispatcher.pollOnce()
+
+            assertEquals("PENDING", state())
+        }
+
+    private companion object {
+        const val TWILIO_CONFIG = """{"type":"twilio_sms","accountSid":"sid","authToken":"tok","from":"+10000000000"}"""
+    }
 }

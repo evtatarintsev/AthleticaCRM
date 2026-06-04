@@ -1,29 +1,68 @@
 package org.athletica.crm.api.schemas.messaging
 
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.MessageId
-import org.athletica.crm.core.messaging.ChannelType
-import org.athletica.crm.core.messaging.MessageDirection
-import org.athletica.crm.core.messaging.MessageStatus
-import org.athletica.crm.core.messaging.SenderKind
 
-/** Сообщение в ленте диалога. */
+/**
+ * Сообщение в ленте диалога. Полиморфно по направлению (дискриминатор `type`):
+ * исходящее несёт автора и состояние доставок, входящее — канал, по которому пришло.
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
-data class MessageSchema(
-    val id: MessageId,
-    val channelType: ChannelType,
-    val direction: MessageDirection,
-    val senderKind: SenderKind,
-    val senderEmployeeId: EmployeeId?,
-    val body: String,
-    val status: MessageStatus,
-    val errorMessage: String?,
+@JsonClassDiscriminator("type")
+sealed interface MessageSchema {
+    val id: MessageId
+    val body: String
+
     /** Момент создания в формате ISO-8601 (UTC). */
-    val createdAt: String,
+    val createdAt: String
+}
+
+/** Исходящее сообщение: автор (сотрудник или система) и состояние доставок по каналам. */
+@Serializable
+@SerialName("outbound")
+data class OutboundMessageSchema(
+    override val id: MessageId,
+    override val body: String,
+    override val createdAt: String,
+    /** Сотрудник-автор; `null` — отправлено системой (автоматикой). */
+    val authorEmployeeId: EmployeeId?,
+    val deliveries: List<DeliverySchema>,
+) : MessageSchema
+
+/** Входящее сообщение от клиента: канал, по которому оно получено. */
+@Serializable
+@SerialName("inbound")
+data class InboundMessageSchema(
+    override val id: MessageId,
+    override val body: String,
+    override val createdAt: String,
+    val receivedVia: ChannelIntegrationId,
+) : MessageSchema
+
+/** Состояние доставки исходящего сообщения в конкретный канал. */
+@Serializable
+data class DeliverySchema(
+    val channelIntegrationId: ChannelIntegrationId,
+    val state: DeliveryStateSchema,
+    /** Текст ошибки; присутствует только при [DeliveryStateSchema.FAILED]. */
+    val errorMessage: String?,
 )
+
+/** Состояние доставки для UI. */
+@Serializable
+enum class DeliveryStateSchema {
+    PENDING,
+    SENT,
+    DELIVERED,
+    FAILED,
+}
 
 /** Лента диалога с клиентом: сообщения по всем каналам, от старых к новым. */
 @Serializable

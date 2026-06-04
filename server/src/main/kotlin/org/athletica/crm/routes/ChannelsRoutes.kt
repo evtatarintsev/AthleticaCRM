@@ -28,7 +28,6 @@ fun RouteWithContext.channelsRoutes(channels: ChannelIntegrations) {
                 channels.create(
                     ChannelIntegration(
                         id = request.id,
-                        channelType = request.channelType,
                         name = request.name,
                         config = request.config,
                         enabled = true,

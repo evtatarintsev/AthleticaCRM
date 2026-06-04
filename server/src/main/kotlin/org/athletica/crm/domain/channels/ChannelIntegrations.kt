@@ -4,22 +4,29 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.messaging.ChannelConfig
+import org.athletica.crm.core.messaging.ChannelProvider
 import org.athletica.crm.core.messaging.ChannelType
 import org.athletica.crm.storage.Transaction
 
 /**
  * Настроенная интеграция канала связи организации.
  *
- * [config] хранит провайдер-специфичные настройки (токены, идентификаторы отправителя и т.п.)
- * как пары ключ-значение; их интерпретация — задача конкретного адаптера канала.
+ * [config] — типизированный провайдер-специфичный конфиг; его интерпретация — задача адаптера канала.
+ * [provider] и [channelType] выводятся из [config], отдельных полей-дискриминаторов нет.
  */
 data class ChannelIntegration(
     val id: ChannelIntegrationId,
-    val channelType: ChannelType,
     val name: String,
-    val config: Map<String, String>,
+    val config: ChannelConfig,
     val enabled: Boolean,
-)
+) {
+    /** Провайдер интеграции. */
+    val provider: ChannelProvider get() = config.provider
+
+    /** Тип канала интеграции. */
+    val channelType: ChannelType get() = config.provider.channelType
+}
 
 /** Репозиторий интеграций каналов связи. Все операции изолированы по организации. */
 interface ChannelIntegrations {
@@ -48,5 +55,5 @@ interface ChannelIntegrations {
      * Используется фоновым диспетчером при отправке. `null`, если интеграция удалена.
      */
     context(tr: Transaction)
-    suspend fun configById(id: ChannelIntegrationId): Map<String, String>?
+    suspend fun configById(id: ChannelIntegrationId): ChannelConfig?
 }

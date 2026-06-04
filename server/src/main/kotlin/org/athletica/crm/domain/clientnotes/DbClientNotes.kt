@@ -47,7 +47,7 @@ class DbClientNotes : ClientNotes {
             SELECT id, org_id, client_id, author_id, text, created_at, updated_at
             FROM client_notes
             WHERE client_id = :clientId AND org_id = :orgId AND deleted_at IS NULL
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, id DESC
             """.trimIndent(),
         )
             .bind("clientId", clientId)

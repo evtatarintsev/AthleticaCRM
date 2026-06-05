@@ -39,7 +39,7 @@ class SortStateTest {
     }
 
     @Test
-    fun `toDto и fromDto roundtrip`() {
+    fun `toSchema и fromSchema roundtrip`() {
         val original = SortState(columnA, SortDirection.Desc)
         val dto = original.toSchema()
         assertEquals(SortStateSchema("a", SortDirectionSchema.Desc), dto)

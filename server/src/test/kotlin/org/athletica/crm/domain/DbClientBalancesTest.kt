@@ -104,9 +104,9 @@ class DbClientBalancesTest {
         runTest {
             val clientId = insertClient()
             val balance =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId))
                         }
                     }
@@ -123,9 +123,9 @@ class DbClientBalancesTest {
             insertBalanceEntry(clientId, -200.0, 300.0)
 
             val balance =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId))
                         }
                     }
@@ -142,9 +142,9 @@ class DbClientBalancesTest {
             insertBalanceEntry(clientId1, 500.0, 500.0)
 
             val byClient =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.list()).associateBy { it.clientId }
                         }
                     }
@@ -165,9 +165,9 @@ class DbClientBalancesTest {
             insertBalanceEntry(clientId, -200.0, 300.0)
 
             val history =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId)).history()
                         }
                     }
@@ -184,9 +184,9 @@ class DbClientBalancesTest {
             val clientId = insertClient()
 
             val history =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId)).history()
                         }
                     }
@@ -202,9 +202,9 @@ class DbClientBalancesTest {
         runTest {
             val clientId = insertClient()
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         balances.currentOf(clients.byId(clientId)).adjust(rub(500.0), "Бонус")
                     }
                 }
@@ -219,9 +219,9 @@ class DbClientBalancesTest {
             val clientId = insertClient()
             insertBalanceEntry(clientId, 1000.0, 1000.0)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         balances.currentOf(clients.byId(clientId)).adjust(rub(-300.0), "Корректировка")
                     }
                 }
@@ -235,9 +235,9 @@ class DbClientBalancesTest {
         runTest {
             val clientId = insertClient()
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx, this) {
+                    context(ctx) {
                         val b = balances.currentOf(clients.byId(clientId))
                         val b2 = b.adjust(rub(200.0), "Первое пополнение")
                         val b3 = b2.adjust(rub(300.0), "Второе пополнение")
@@ -255,9 +255,9 @@ class DbClientBalancesTest {
             val clientId = insertClient()
 
             val updated =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId)).adjust(rub(750.0), "Пополнение")
                         }
                     }
@@ -272,9 +272,9 @@ class DbClientBalancesTest {
             val clientId = insertClient()
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId)).adjust(Money.zero(Currency.RUB), "Комментарий")
                         }
                     }
@@ -290,9 +290,9 @@ class DbClientBalancesTest {
             val clientId = insertClient()
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "")
                         }
                     }
@@ -308,9 +308,9 @@ class DbClientBalancesTest {
             val clientId = insertClient()
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx, this) {
+                        context(ctx) {
                             balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "   ")
                         }
                     }

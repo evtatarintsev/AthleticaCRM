@@ -2,7 +2,7 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.api.schemas.clients.AddClientNoteRequest
-import org.athletica.crm.api.schemas.clients.ClientNoteDto
+import org.athletica.crm.api.schemas.clients.ClientNoteSchema
 import org.athletica.crm.api.schemas.clients.ClientNotesListRequest
 import org.athletica.crm.api.schemas.clients.ClientNotesListResponse
 import org.athletica.crm.api.schemas.clients.DeleteClientNoteRequest
@@ -66,7 +66,7 @@ private suspend fun listResponseFor(
     val notesList = notes.list(clientId)
     val authorNames = tr.loadEmployeeNames(notesList.map { it.authorId }.toSet())
     return ClientNotesListResponse(
-        notes = notesList.map { it.toDto(authorNames) },
+        notes = notesList.map { it.toSchema(authorNames) },
     )
 }
 
@@ -83,8 +83,8 @@ private suspend fun Transaction.loadEmployeeNames(ids: Set<EmployeeId>): Map<Emp
         .toMap()
 }
 
-private fun ClientNote.toDto(authorNames: Map<EmployeeId, String>): ClientNoteDto =
-    ClientNoteDto(
+private fun ClientNote.toSchema(authorNames: Map<EmployeeId, String>): ClientNoteSchema =
+    ClientNoteSchema(
         id = id,
         text = text,
         author = PerformedBy(id = authorId.value, name = authorNames[authorId] ?: ""),

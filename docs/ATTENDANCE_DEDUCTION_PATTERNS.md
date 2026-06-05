@@ -237,7 +237,7 @@ for (attendance in attendances) {
 suspend fun checkInClient(
     sessionId: UUID, 
     clientId: UUID
-): Either<Error, AttendanceDto> = either {
+): Either<Error, AttendanceResponse> = either {
     // Валидации
     val instance = groupInstanceRepo.findById(sessionId)
         ?.takeIf { it.status == SessionStatus.SCHEDULED }
@@ -264,7 +264,7 @@ suspend fun checkInClient(
     
     attendanceRepo.save(attendance)
     
-    return AttendanceDto(
+    return AttendanceResponse(
         id = attendance.id,
         status = "registered",  // ← Уточнить с фронтом: это черновик!
         message = "Внимание: списание произойдет после завершения занятия"
@@ -276,7 +276,7 @@ suspend fun checkInClient(
 // ============================================
 suspend fun markInstanceAsCompleted(
     sessionId: UUID
-): Either<Error, InstanceCompletedDto> = either {
+): Either<Error, InstanceCompletedResponse> = either {
     val instance = groupInstanceRepo.findById(sessionId)
         ?.takeIf { it.status == SessionStatus.SCHEDULED }
         ?: raise(InstanceNotFound())
@@ -327,7 +327,7 @@ suspend fun markInstanceAsCompleted(
         eventPublisher.publishInstanceCompleted(instance, registeredAttendances)
     }
     
-    return InstanceCompletedDto(
+    return InstanceCompletedResponse(
         sessionId = sessionId,
         attendanceCount = registeredAttendances.size,
         updated = true

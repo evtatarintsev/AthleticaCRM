@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.components.clients.message
 import org.athletica.crm.components.messaging.label
-import org.athletica.crm.core.messaging.ChannelType
+import org.athletica.crm.core.messaging.ChannelProvider
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_delete
@@ -192,10 +192,10 @@ private fun ChannelEditorView(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ChannelTypeDropdown(
-                selected = editor.channelType,
+            ChannelProviderDropdown(
+                selected = editor.provider,
                 enabled = editor.id == null,
-                onSelect = { viewModel.setType(it) },
+                onSelect = { viewModel.setProvider(it) },
             )
             OutlinedTextField(
                 value = editor.name,
@@ -224,10 +224,10 @@ private fun ChannelEditorView(
 }
 
 @Composable
-private fun ChannelTypeDropdown(
-    selected: ChannelType,
+private fun ChannelProviderDropdown(
+    selected: ChannelProvider,
     enabled: Boolean,
-    onSelect: (ChannelType) -> Unit,
+    onSelect: (ChannelProvider) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -236,16 +236,16 @@ private fun ChannelTypeDropdown(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(stringResource(Res.string.channel_type_label) + ": " + selected.label())
+            Text(stringResource(Res.string.channel_type_label) + ": " + selected.providerLabel())
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            ChannelType.entries.forEach { type ->
+            ChannelProvider.entries.forEach { provider ->
                 DropdownMenuItem(
-                    text = { Text(type.label()) },
+                    text = { Text(provider.providerLabel()) },
                     onClick = {
-                        onSelect(type)
+                        onSelect(provider)
                         expanded = false
                     },
                 )
@@ -253,6 +253,10 @@ private fun ChannelTypeDropdown(
         }
     }
 }
+
+/** Подпись провайдера: тип канала плюс техническое имя провайдера для различения. */
+@Composable
+private fun ChannelProvider.providerLabel(): String = channelType.label() + " · " + name
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

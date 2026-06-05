@@ -1,4 +1,4 @@
-package org.athletica.crm.domain.conversations
+package org.athletica.crm.domain.messagedelivery
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -11,10 +11,10 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Фоновый диспетчер исходящих сообщений (outbox).
+ * Фоновый диспетчер исходящих доставок (outbox).
  *
- * Поллит сообщения в статусе `QUEUED`, отправляет их через адаптер канала из [registry] и
- * проставляет итоговый статус:
+ * Поллит доставки в статусе `PENDING` (только для включённых интеграций), отправляет их через
+ * адаптер канала из [registry] и проставляет итоговый статус:
  * - успех -> `SENT` с идентификатором у провайдера;
  * - [SendError.Permanent] -> `FAILED`;
  * - [SendError.Transient] -> повтор (увеличивается счётчик попыток), а при достижении
@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class MessageDispatcher(
     private val db: Database,
-    private val messages: Messages,
+    private val deliveries: Deliveries,
     private val channels: ChannelIntegrations,
     private val registry: ChannelRegistry,
     private val checkEvery: Duration = 5.seconds,
@@ -47,36 +47,34 @@ class MessageDispatcher(
         }
     }
 
-    /** Обрабатывает одну порцию сообщений из очереди. Выделено для прямого вызова в тестах. */
+    /** Обрабатывает одну порцию доставок из очереди. Выделено для прямого вызова в тестах. */
     suspend fun pollOnce() {
-        val pending = db.transaction { context(this) { messages.pendingOutbound() } }
-        pending.forEach { message -> dispatch(message) }
+        val pending = db.transaction { deliveries.pending(20) }
+        pending.forEach { delivery -> dispatch(delivery) }
     }
 
-    private suspend fun dispatch(message: PendingMessage) {
-        val config =
-            message.channelIntegrationId
-                ?.let { id -> db.transaction { context(this) { channels.configById(id) } } }
-                ?: emptyMap()
-        val channel = registry.resolve(message.channelType, config)
-        val outbound = OutboundMessage(message.recipientAddress, message.body, config)
+    private suspend fun dispatch(delivery: PendingDelivery) {
+        val config = db.transaction { channels.configById(delivery.channelIntegrationId) } ?: return
+        val channel = registry.resolve(config)
+        val request = ChannelSendRequest(delivery.recipientAddress, delivery.body)
 
-        channel.send(outbound).fold(
-            { error -> onError(message, error) },
-            { ref -> db.transaction { context(this) { messages.markSent(message.id, ref) } } },
+        channel.send(request).fold(
+            { error -> onError(delivery, error) },
+            { ref -> db.transaction { deliveries.markSent(delivery.id, ref) } },
         )
     }
 
-    private suspend fun onError(message: PendingMessage, error: SendError) {
+    private suspend fun onError(delivery: PendingDelivery, error: SendError) {
+        val failure = DeliveryError(error.code, error.message)
         when (error) {
             is SendError.Permanent ->
-                db.transaction { context(this) { messages.markFailed(message.id, error.code, error.message) } }
+                db.transaction { deliveries.markFailed(delivery.id, failure) }
 
             is SendError.Transient ->
-                if (message.retryCount + 1 >= maxRetries) {
-                    db.transaction { context(this) { messages.markFailed(message.id, error.code, error.message) } }
+                if (delivery.attempts + 1 >= maxRetries) {
+                    db.transaction { deliveries.markFailed(delivery.id, failure) }
                 } else {
-                    db.transaction { context(this) { messages.retryLater(message.id, error.message) } }
+                    db.transaction { deliveries.retryLater(delivery.id, failure) }
                 }
         }
     }

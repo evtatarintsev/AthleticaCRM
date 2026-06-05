@@ -48,6 +48,17 @@ value class MessageId(override val value: Uuid) : EntityId {
     override fun toString() = value.toString()
 }
 
+/** Идентификатор доставки сообщения в конкретный канал. */
+@Serializable
+@JvmInline
+value class DeliveryId(override val value: Uuid) : EntityId {
+    companion object {
+        fun new() = DeliveryId(Uuid.generateV7())
+    }
+
+    override fun toString() = value.toString()
+}
+
 fun Uuid.toClientContactId(): ClientContactId = ClientContactId(this)
 
 fun Uuid.toChannelIntegrationId(): ChannelIntegrationId = ChannelIntegrationId(this)
@@ -55,3 +66,5 @@ fun Uuid.toChannelIntegrationId(): ChannelIntegrationId = ChannelIntegrationId(t
 fun Uuid.toConversationId(): ConversationId = ConversationId(this)
 
 fun Uuid.toMessageId(): MessageId = MessageId(this)
+
+fun Uuid.toDeliveryId(): DeliveryId = DeliveryId(this)

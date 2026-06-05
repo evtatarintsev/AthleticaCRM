@@ -6,7 +6,7 @@ import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.conversations.Conversations
-import org.athletica.crm.domain.conversations.Messages
+import org.athletica.crm.domain.messagedelivery.Deliveries
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.messaging.conversationView
 import org.athletica.crm.usecases.messaging.sendMessage
@@ -20,18 +20,18 @@ fun RouteWithContext.messagingRoutes(
     channels: ChannelIntegrations,
     contacts: ClientContacts,
     conversations: Conversations,
-    messages: Messages,
+    deliveries: Deliveries,
 ) {
     route("/messaging") {
         get<ConversationRequest, ConversationResponse>("/conversation") { request ->
             db.transaction {
-                conversationView(request.clientId, conversations, messages)
+                conversationView(request.clientId, conversations, deliveries)
             }
         }
 
         post<SendMessageRequest, ConversationResponse>("/send") { request ->
             db.transaction {
-                sendMessage(request, channels, contacts, conversations, messages)
+                sendMessage(request, channels, contacts, conversations, deliveries)
             }
         }
     }

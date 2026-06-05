@@ -15,11 +15,9 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.enrollments.DbEnrollments
-import org.athletica.crm.domain.enrollments.Enrollment
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asUuid
 import org.junit.Before
@@ -126,7 +124,7 @@ class AddClientsToGroupTest {
 
             either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(groupId, listOf(clientId))
                     }
                 }
@@ -144,9 +142,9 @@ class AddClientsToGroupTest {
             val clientId3 = insertClient(orgId, "Клиент 3")
             val groupId = insertGroup(orgId)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(groupId, listOf(clientId1, clientId2, clientId3))
                     }
                 }
@@ -164,9 +162,9 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(groupId, listOf(clientId))
                         enrollments.add(groupId, listOf(clientId))
                     }
@@ -183,9 +181,9 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(groupId, listOf(clientId))
                         enrollments.remove(groupId, listOf(clientId))
                     }
@@ -202,9 +200,9 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(groupId, listOf(clientId))
                         enrollments.remove(groupId, listOf(clientId))
                         enrollments.add(groupId, listOf(clientId))
@@ -229,9 +227,9 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
 
             var raised = false
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(GroupId.new(), listOf(clientId))
                     }
                 }
@@ -251,9 +249,9 @@ class AddClientsToGroupTest {
             val foreignGroupId = insertGroup(orgId2)
 
             var raised = false
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId1), this) {
+                    context(ctx(orgId1)) {
                         enrollments.add(foreignGroupId, listOf(clientId))
                     }
                 }
@@ -272,18 +270,18 @@ class AddClientsToGroupTest {
             val clientId = insertClient(orgId)
             val groupId = insertGroup(orgId)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(ctx(orgId), this) {
+                    context(ctx(orgId)) {
                         enrollments.add(groupId, listOf(clientId))
                     }
                 }
             }.getOrElse { error(it.message) }
 
             val result =
-                either<DomainError, List<Enrollment>> {
+                either {
                     TestPostgres.db.transaction {
-                        context(ctx(orgId), this) {
+                        context(ctx(orgId)) {
                             enrollments.activeIn(groupId, LocalDate(2000, 1, 1), LocalDate(2099, 12, 31))
                         }
                     }

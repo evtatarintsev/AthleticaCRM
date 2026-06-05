@@ -10,7 +10,6 @@ import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.events.DomainEventBus
 import org.athletica.crm.domain.groups.DbGroups
@@ -132,18 +131,18 @@ class DbGroupsListTest {
         disciplineIds: List<DisciplineId> = emptyList(),
         employeeIds: List<EmployeeId> = emptyList(),
     ): List<Group> =
-        either<DomainError, List<Group>> {
+        either {
             TestPostgres.db.transaction {
-                context(ctx(orgId), this) {
+                context(ctx(orgId)) {
                     groups.list(nameQuery = name, disciplineIds = disciplineIds, employeeIds = employeeIds)
                 }
             }
         }.getOrElse { error(it.message) }
 
     private suspend fun totalCount(orgId: Uuid): Int =
-        either<DomainError, Int> {
+        either {
             TestPostgres.db.transaction {
-                context(ctx(orgId), this) {
+                context(ctx(orgId)) {
                     groups.totalCount()
                 }
             }

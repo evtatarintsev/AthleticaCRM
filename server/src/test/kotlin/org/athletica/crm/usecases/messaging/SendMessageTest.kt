@@ -5,6 +5,9 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.messaging.ConversationResponse
+import org.athletica.crm.api.schemas.messaging.DeliveryStateSchema
+import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
@@ -16,20 +19,19 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.messaging.MessageStatus
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.conversations.DbConversations
-import org.athletica.crm.domain.conversations.DbMessages
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-/** Тесты сценария постановки сообщения в очередь ([sendMessage]). */
+/** Тесты сценария отправки сообщения ([sendMessage]). */
 class SendMessageTest {
     private val orgId = OrgId.new()
     private val userId = UserId.new()
@@ -38,11 +40,12 @@ class SendMessageTest {
     private val clientId = ClientId.new()
     private val smsIntegrationId = ChannelIntegrationId.new()
     private val disabledIntegrationId = ChannelIntegrationId.new()
+    private val inAppIntegrationId = ChannelIntegrationId.new()
 
     private val channels = DbChannelIntegrations()
     private val contacts = DbClientContacts()
     private val conversations = DbConversations()
-    private val messages = DbMessages()
+    private val deliveries = DbDeliveries()
 
     private val ctx =
         EmployeeRequestContext(
@@ -69,19 +72,26 @@ class SendMessageTest {
                 .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
             TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
                 .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
-            TestPostgres.db.sql(
-                """
-                INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
-                VALUES (:id, :orgId, 'SMS', 'Test SMS', '{}'::jsonb, true)
-                """.trimIndent(),
-            ).bind("id", smsIntegrationId).bind("orgId", orgId).execute()
-            TestPostgres.db.sql(
-                """
-                INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
-                VALUES (:id, :orgId, 'SMS', 'Disabled SMS', '{}'::jsonb, false)
-                """.trimIndent(),
-            ).bind("id", disabledIntegrationId).bind("orgId", orgId).execute()
+            insertIntegration(smsIntegrationId, "SMS", SMS_CONFIG, enabled = true)
+            insertIntegration(disabledIntegrationId, "SMS", SMS_CONFIG, enabled = false)
+            insertIntegration(inAppIntegrationId, "IN_APP", IN_APP_CONFIG, enabled = true)
         }
+    }
+
+    private suspend fun insertIntegration(
+        id: ChannelIntegrationId,
+        channelType: String,
+        config: String,
+        enabled: Boolean,
+    ) {
+        TestPostgres.db.sql(
+            """
+            INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
+            VALUES (:id, :orgId, :channelType, :name, :config::jsonb, :enabled)
+            """.trimIndent(),
+        )
+            .bind("id", id).bind("orgId", orgId).bind("channelType", channelType)
+            .bind("name", "Test $channelType").bind("config", config).bind("enabled", enabled).execute()
     }
 
     private suspend fun addSmsContact() {
@@ -93,47 +103,62 @@ class SendMessageTest {
         ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId).execute()
     }
 
-    private suspend fun messageStatus(): String? =
-        TestPostgres.db.sql("SELECT status FROM messages WHERE org_id = :orgId LIMIT 1")
+    private suspend fun deliveryState(): String? =
+        TestPostgres.db.sql("SELECT state FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
             .bind("orgId", orgId)
-            .firstOrNull { row -> row.asString("status") }
+            .firstOrNull { row -> row.asString("state") }
+
+    private suspend fun recipientAddress(): String? =
+        TestPostgres.db.sql("SELECT recipient_address FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
+            .bind("orgId", orgId)
+            .firstOrNull { row -> row.asString("recipient_address") }
 
     private suspend fun send(integrationId: ChannelIntegrationId) =
-        either<DomainError, _> {
+        either {
             TestPostgres.db.transaction {
-                context(ctx, this) {
+                context(ctx) {
                     sendMessage(
                         SendMessageRequest(clientId, integrationId, "Привет"),
                         channels,
                         contacts,
                         conversations,
-                        messages,
+                        deliveries,
                     )
                 }
             }
         }
 
     @Test
-    fun `успех ставит сообщение в очередь QUEUED`() =
+    fun `успех создаёт сообщение и доставку в статусе PENDING`() =
         runTest {
             addSmsContact()
 
             val result = send(smsIntegrationId)
 
-            val response = assertIs<Either.Right<*>>(result).value as org.athletica.crm.api.schemas.messaging.ConversationResponse
+            val response = assertIs<Either.Right<ConversationResponse>>(result).value
             assertEquals(1, response.messages.size)
-            assertEquals(MessageStatus.QUEUED, response.messages.first().status)
-            assertEquals("QUEUED", messageStatus())
+            val message = assertIs<OutboundMessageSchema>(response.messages.first())
+            assertEquals(DeliveryStateSchema.PENDING, message.deliveries.first().state)
+            assertEquals("PENDING", deliveryState())
         }
 
     @Test
-    fun `без контакта нужного типа возвращает CLIENT_HAS_NO_CONTACT и не создаёт сообщение`() =
+    fun `IN_APP использует идентификатор клиента как адрес получателя`() =
+        runTest {
+            val result = send(inAppIntegrationId)
+
+            assertIs<Either.Right<ConversationResponse>>(result)
+            assertEquals(clientId.toString(), recipientAddress())
+        }
+
+    @Test
+    fun `без контакта нужного типа возвращает CLIENT_HAS_NO_CONTACT и не создаёт доставку`() =
         runTest {
             val result = send(smsIntegrationId)
 
             val error = assertIs<Either.Left<DomainError>>(result).value
             assertEquals("CLIENT_HAS_NO_CONTACT", error.code)
-            assertEquals(null, messageStatus())
+            assertEquals(null, deliveryState())
         }
 
     @Test
@@ -145,6 +170,11 @@ class SendMessageTest {
 
             val error = assertIs<Either.Left<DomainError>>(result).value
             assertEquals("CHANNEL_DISABLED", error.code)
-            assertEquals(null, messageStatus())
+            assertEquals(null, deliveryState())
         }
+
+    private companion object {
+        const val SMS_CONFIG = """{"type":"twilio_sms","accountSid":"sid","authToken":"tok","from":"+10000000000"}"""
+        const val IN_APP_CONFIG = """{"type":"in_app"}"""
+    }
 }

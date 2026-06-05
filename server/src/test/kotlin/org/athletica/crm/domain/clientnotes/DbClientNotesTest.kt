@@ -108,9 +108,9 @@ class DbClientNotesTest {
     fun `add создаёт заметку с author=ctx employeeId и createdAt`() =
         runTest {
             val created =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) {
+                        context(authorCtx) {
                             notes.add(clientId, text("Забрать сумку"))
                         }
                     }
@@ -127,9 +127,9 @@ class DbClientNotesTest {
     @Test
     fun `list возвращает заметки в порядке created_at DESC и без удалённых`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(authorCtx, this) {
+                    context(authorCtx) {
                         notes.add(clientId, text("Первая"))
                         notes.add(clientId, text("Вторая"))
                         val toDelete = notes.add(clientId, text("Третья (удалю)"))
@@ -139,9 +139,11 @@ class DbClientNotesTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val list =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.list(clientId) }
+                        context(authorCtx) {
+                            notes.list(clientId)
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -153,18 +155,20 @@ class DbClientNotesTest {
     @Test
     fun `list изолирован по организации`() =
         runTest {
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(authorCtx, this) {
+                    context(authorCtx) {
                         notes.add(clientId, text("Видна автору org"))
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             val foreignList =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherOrgCtx, this) { notes.list(clientId) }
+                        context(otherOrgCtx) {
+                            notes.list(clientId)
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -177,16 +181,20 @@ class DbClientNotesTest {
     fun `byId возвращает ошибку CLIENT_NOTE_NOT_FOUND для чужой организации`() =
         runTest {
             val created =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.add(clientId, text("Только моя")) }
+                        context(authorCtx) {
+                            notes.add(clientId, text("Только моя"))
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherOrgCtx, this) { notes.byId(created.id) }
+                        context(otherOrgCtx) {
+                            notes.byId(created.id)
+                        }
                     }
                 }
 
@@ -200,17 +208,19 @@ class DbClientNotesTest {
     fun `withText автор проставляет updatedAt и сохраняет новый текст`() =
         runTest {
             val created =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.add(clientId, text("Старый")) }
+                        context(authorCtx) {
+                            notes.add(clientId, text("Старый"))
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
             assertNull(created.updatedAt)
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(authorCtx, this) {
+                    context(authorCtx) {
                         val updated = notes.byId(created.id).withText(text("Новый"))
                         updated.save()
                     }
@@ -218,9 +228,11 @@ class DbClientNotesTest {
             }.getOrElse { fail("Unexpected error: $it") }
 
             val reloaded =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.byId(created.id) }
+                        context(authorCtx) {
+                            notes.byId(created.id)
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
@@ -232,16 +244,18 @@ class DbClientNotesTest {
     fun `withText чужого сотрудника возвращает PERMISSION_DENIED`() =
         runTest {
             val created =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.add(clientId, text("Моё")) }
+                        context(authorCtx) {
+                            notes.add(clientId, text("Моё"))
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this) {
+                        context(otherCtx) {
                             val updated = notes.byId(created.id).withText(text("Подмена"))
                             updated.save()
                         }
@@ -252,9 +266,11 @@ class DbClientNotesTest {
             assertEquals("PERMISSION_DENIED", result.value.code)
 
             val reloaded =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.byId(created.id) }
+                        context(authorCtx) {
+                            notes.byId(created.id)
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
             assertEquals("Моё", reloaded.text.value)
@@ -266,26 +282,32 @@ class DbClientNotesTest {
     fun `delete автором проставляет deleted_at и убирает заметку из list`() =
         runTest {
             val created =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.add(clientId, text("Удалю")) }
+                        context(authorCtx) {
+                            notes.add(clientId, text("Удалю"))
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
             assertNull(rawDeletedAt(created.id))
 
-            either<DomainError, Unit> {
+            either {
                 TestPostgres.db.transaction {
-                    context(authorCtx, this) { notes.byId(created.id).delete() }
+                    context(authorCtx) {
+                        notes.byId(created.id).delete()
+                    }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
             assertNotNull(rawDeletedAt(created.id))
 
             val list =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.list(clientId) }
+                        context(authorCtx) {
+                            notes.list(clientId)
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
             assertEquals(0, list.size)
@@ -295,16 +317,20 @@ class DbClientNotesTest {
     fun `delete чужой заметки возвращает PERMISSION_DENIED`() =
         runTest {
             val created =
-                either<DomainError, _> {
+                either {
                     TestPostgres.db.transaction {
-                        context(authorCtx, this) { notes.add(clientId, text("Моё")) }
+                        context(authorCtx) {
+                            notes.add(clientId, text("Моё"))
+                        }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
             val result =
-                either<DomainError, Unit> {
+                either {
                     TestPostgres.db.transaction {
-                        context(otherCtx, this) { notes.byId(created.id).delete() }
+                        context(otherCtx) {
+                            notes.byId(created.id).delete()
+                        }
                     }
                 }
 

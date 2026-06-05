@@ -1,7 +1,7 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.routing.route
-import org.athletica.crm.api.schemas.channels.ChannelIntegrationDto
+import org.athletica.crm.api.schemas.channels.ChannelIntegrationSchema
 import org.athletica.crm.api.schemas.channels.ChannelListResponse
 import org.athletica.crm.api.schemas.channels.CreateChannelIntegrationRequest
 import org.athletica.crm.api.schemas.channels.DeleteChannelIntegrationRequest
@@ -19,7 +19,7 @@ fun RouteWithContext.channelsRoutes(channels: ChannelIntegrations) {
     route("/channels") {
         get<Unit, ChannelListResponse>("/list") {
             db.transaction {
-                ChannelListResponse(channels.list().map { it.toDto() })
+                ChannelListResponse(channels.list().map { it.toSchema() })
             }
         }
 
@@ -28,7 +28,6 @@ fun RouteWithContext.channelsRoutes(channels: ChannelIntegrations) {
                 channels.create(
                     ChannelIntegration(
                         id = request.id,
-                        channelType = request.channelType,
                         name = request.name,
                         config = request.config,
                         enabled = true,
@@ -58,8 +57,8 @@ fun RouteWithContext.channelsRoutes(channels: ChannelIntegrations) {
     }
 }
 
-private fun ChannelIntegration.toDto(): ChannelIntegrationDto =
-    ChannelIntegrationDto(
+private fun ChannelIntegration.toSchema(): ChannelIntegrationSchema =
+    ChannelIntegrationSchema(
         id = id,
         channelType = channelType,
         name = name,

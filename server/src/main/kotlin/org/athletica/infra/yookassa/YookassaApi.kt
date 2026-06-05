@@ -70,7 +70,7 @@ fun createYookassaHttpClient(engineFactory: HttpClientEngineFactory<*>): HttpCli
         }
     }
 
-// ── Request DTOs ──────────────────────────────────────────────────────────────
+// ── Request schemas ───────────────────────────────────────────────────────────
 
 @Serializable
 private data class YookassaCreatePaymentRequest(
@@ -88,7 +88,7 @@ private data class YookassaConfirmationRequest(
     val returnUrl: String,
 )
 
-// ── Response / Webhook DTOs ───────────────────────────────────────────────────
+// ── Response / Webhook schemas ────────────────────────────────────────────────
 
 /** Сумма в API ЮKassa: строка с десятичной точкой + код валюты. */
 @Serializable

@@ -4,8 +4,12 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import org.athletica.crm.api.schemas.messaging.InboundMessageSchema
+import org.athletica.crm.api.schemas.messaging.MessageSchema
+import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValue
+import org.athletica.crm.core.messaging.ChannelConfig
 
 /**
  * Модуль сериализаторов с явной регистрацией полиморфных подтипов.
@@ -30,6 +34,16 @@ val appSerializersModule =
             subclass(CustomFieldDefinition.Email::class, CustomFieldDefinition.Email.serializer())
             subclass(CustomFieldDefinition.Url::class, CustomFieldDefinition.Url.serializer())
             subclass(CustomFieldDefinition.Select::class, CustomFieldDefinition.Select.serializer())
+        }
+        polymorphic(MessageSchema::class) {
+            subclass(OutboundMessageSchema::class, OutboundMessageSchema.serializer())
+            subclass(InboundMessageSchema::class, InboundMessageSchema.serializer())
+        }
+        polymorphic(ChannelConfig::class) {
+            subclass(ChannelConfig.TwilioSms::class, ChannelConfig.TwilioSms.serializer())
+            subclass(ChannelConfig.SmscSms::class, ChannelConfig.SmscSms.serializer())
+            subclass(ChannelConfig.TelegramBot::class, ChannelConfig.TelegramBot.serializer())
+            subclass(ChannelConfig.InApp::class, ChannelConfig.InApp.serializer())
         }
     }
 

@@ -46,12 +46,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.clients.ClientContactDto
-import org.athletica.crm.api.schemas.messaging.MessageDto
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
+import org.athletica.crm.api.schemas.messaging.InboundMessageSchema
+import org.athletica.crm.api.schemas.messaging.MessageSchema
+import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
 import org.athletica.crm.components.clients.message
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.messaging.ChannelType
-import org.athletica.crm.core.messaging.MessageDirection
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_send
@@ -132,7 +133,7 @@ fun ConversationScreen(
 
 @Composable
 private fun MessageList(
-    messages: List<MessageDto>,
+    messages: List<MessageSchema>,
     modifier: Modifier,
 ) {
     if (messages.isEmpty()) {
@@ -150,8 +151,8 @@ private fun MessageList(
 }
 
 @Composable
-private fun MessageBubble(message: MessageDto) {
-    val outbound = message.direction == MessageDirection.OUTBOUND
+private fun MessageBubble(message: MessageSchema) {
+    val outbound = message is OutboundMessageSchema
     val alignment = if (outbound) Alignment.End else Alignment.Start
     val bubbleColor =
         if (outbound) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
@@ -160,19 +161,31 @@ private fun MessageBubble(message: MessageDto) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(message.body, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.width(4.dp))
-                Text(
-                    text = message.channelType.label() + " · " + message.status.label(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (message.errorMessage != null) {
-                    Text(
-                        text = message.errorMessage!!,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                when (message) {
+                    is OutboundMessageSchema -> OutboundStatus(message)
+                    is InboundMessageSchema -> Unit
                 }
             }
+        }
+    }
+}
+
+/** Состояние доставок исходящего сообщения по каналам: статус и текст ошибки при сбое. */
+@Composable
+private fun OutboundStatus(message: OutboundMessageSchema) {
+    message.deliveries.forEach { delivery ->
+        Text(
+            text = delivery.state.label(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val error = delivery.errorMessage
+        if (error != null) {
+            Text(
+                text = error,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
@@ -286,7 +299,7 @@ private fun ContactsPanel(
 
 @Composable
 private fun ContactRow(
-    contact: ClientContactDto,
+    contact: ClientContactSchema,
     viewModel: ConversationViewModel,
 ) {
     ListItem(

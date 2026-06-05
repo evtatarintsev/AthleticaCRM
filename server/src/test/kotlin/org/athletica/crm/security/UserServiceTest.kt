@@ -54,8 +54,8 @@ class UserServiceTest {
         runTest {
             val id = insertUser("user1", "pass")
             val result =
-                either<UserNotFound, User> {
-                    TestPostgres.db.transaction { context(this) { userById(id, BranchId.new()) } }
+                either {
+                    TestPostgres.db.transaction { userById(id, BranchId.new()) }
                 }
             val user = assertIs<Either.Right<User>>(result).value
             assertEquals("user1", user.username)
@@ -65,8 +65,10 @@ class UserServiceTest {
     fun `findById returns UserNotFound when user does not exist`() =
         runTest {
             val result =
-                either<UserNotFound, User> {
-                    TestPostgres.db.transaction { context(this) { userById(UserId.new(), BranchId.new()) } }
+                either {
+                    TestPostgres.db.transaction {
+                        userById(UserId.new(), BranchId.new())
+                    }
                 }
             assertIs<Either.Left<UserNotFound>>(result)
         }

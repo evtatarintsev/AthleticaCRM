@@ -60,7 +60,7 @@ fun Route.checkoutRoutes(
         // 4. Атомарно: markAsPaid + replenish — в одной транзакции
         db.transaction {
             arrow.core.raise.either {
-                context(this@transaction, this) {
+                context(this@transaction) {
                     // markAsPaid не требует RequestContext — поиск по глобально уникальному ключу
                     val payment = payments.markAsPaid("yookassa", externalId)
 
@@ -68,8 +68,6 @@ fun Route.checkoutRoutes(
                     val sysCtx = systemContext(payment.orgId, currency = payment.amount.currency)
 
                     context(sysCtx) {
-                        // В scope: sysCtx (SystemRequestContext ⊆ RequestContext),
-                        // this@transaction (Transaction), this (Raise<DomainError>)
                         orgBalances.current().replenish(
                             amount = payment.amount,
                             description = "Пополнение баланса, платёж #${payment.externalPaymentId}",

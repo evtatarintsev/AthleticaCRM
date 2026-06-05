@@ -3,8 +3,8 @@ package org.athletica.crm.routes
 import arrow.core.raise.context.Raise
 import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.clients.AddClientContactRequest
-import org.athletica.crm.api.schemas.clients.ClientContactDto
 import org.athletica.crm.api.schemas.clients.ClientContactListResponse
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.clients.ClientContactsListRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientContactRequest
 import org.athletica.crm.core.EmployeeRequestContext
@@ -56,11 +56,11 @@ private suspend fun listResponseFor(
     clientId: ClientId,
 ): ClientContactListResponse =
     ClientContactListResponse(
-        contacts = contacts.byClient(clientId).map { it.toDto() },
+        contacts = contacts.byClient(clientId).map { it.toSchema() },
     )
 
-private fun ClientContact.toDto(): ClientContactDto =
-    ClientContactDto(
+private fun ClientContact.toSchema(): ClientContactSchema =
+    ClientContactSchema(
         id = id,
         channelType = channelType,
         address = address,

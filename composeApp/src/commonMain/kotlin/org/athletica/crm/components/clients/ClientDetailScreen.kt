@@ -77,6 +77,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.notes.ClientNotesSection
 import org.athletica.crm.components.clients.notes.ClientNotesViewModel
@@ -84,6 +85,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.formatted
+import org.athletica.crm.core.subscription.MembershipStatus
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_add_note
@@ -124,28 +126,17 @@ import org.athletica.crm.generated.resources.section_history
 import org.athletica.crm.generated.resources.section_notes
 import org.athletica.crm.generated.resources.section_subscriptions
 import org.athletica.crm.generated.resources.section_unpaid_lessons
+import org.athletica.crm.generated.resources.subscription_sessions_unlimited
 import org.athletica.crm.generated.resources.subscription_status_active
 import org.athletica.crm.generated.resources.subscription_status_expired
+import org.athletica.crm.generated.resources.subscriptions_empty
 import org.athletica.crm.generated.resources.visits_remaining
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
 
 // ── TODO: заменить на реальные данные из API ───────────────────────────────
 
-private data class FakeSubscription(
-    val dateFrom: String,
-    val dateTo: String,
-    val remaining: Int,
-    val total: Int,
-)
-
 private data class FakeUnpaidLesson(val date: String, val status: String, val group: String)
-
-private val fakeSubscriptions =
-    listOf(
-        FakeSubscription("11.02.2020", "12.03.2020", 12, 12),
-        FakeSubscription("11.01.2020", "11.02.2020", 0, 12),
-    )
 
 private val fakeUnpaidLessons =
     listOf(
@@ -165,8 +156,7 @@ private val fakeUnpaidLessons =
  * `BottomAppBar` на узких экранах, горизонтальный ряд кнопок под TopAppBar на
  * широких.
  *
- * TODO: заменить заглушки [fakeSubscriptions], [fakeUnpaidLessons] и локальный
- * стейт заметок на реальные данные из API.
+ * TODO: заменить заглушку [fakeUnpaidLessons] на реальные данные из API.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -352,7 +342,7 @@ fun ClientDetailScreen(
                                         }
                                     }
                                     Column(Modifier.weight(1f)) {
-                                        SubscriptionsSection()
+                                        SubscriptionsSection(s.memberships)
                                         UnpaidLessonsSection()
                                     }
                                 }
@@ -369,7 +359,7 @@ fun ClientDetailScreen(
                                     },
                                 )
                             }
-                            item { SubscriptionsSection() }
+                            item { SubscriptionsSection(s.memberships) }
                             item { UnpaidLessonsSection() }
                             item {
                                 SectionCard(stringResource(Res.string.section_notes)) {
@@ -722,20 +712,27 @@ private fun BasicInfoSection(
 }
 
 @Composable
-private fun SubscriptionsSection() {
+private fun SubscriptionsSection(memberships: List<MembershipSchema>) {
     SectionCard(stringResource(Res.string.section_subscriptions)) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            fakeSubscriptions.forEach { sub ->
-                SubscriptionItem(sub)
+        if (memberships.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.subscriptions_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                memberships.forEach { membership ->
+                    SubscriptionItem(membership)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SubscriptionItem(sub: FakeSubscription) {
-    val progress = sub.remaining.toFloat() / sub.total.coerceAtLeast(1)
-    val isActive = sub.remaining > 0
+private fun SubscriptionItem(membership: MembershipSchema) {
+    val isActive = membership.status == MembershipStatus.ACTIVE
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -746,7 +743,7 @@ private fun SubscriptionItem(sub: FakeSubscription) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "${sub.dateFrom} — ${sub.dateTo}",
+                    text = "${membership.startDate.formatRu()} — ${membership.endDate.formatRu()}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -755,21 +752,26 @@ private fun SubscriptionItem(sub: FakeSubscription) {
                     label = { Text(if (isActive) stringResource(Res.string.subscription_status_active) else stringResource(Res.string.subscription_status_expired), style = MaterialTheme.typography.labelSmall) },
                 )
             }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-                color =
-                    if (isActive) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    },
-            )
-            Text(
-                text = stringResource(Res.string.visits_remaining, sub.remaining, sub.total),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            val total = membership.sessionsTotal
+            val remaining = membership.sessionsRemaining
+            if (total != null && remaining != null) {
+                LinearProgressIndicator(
+                    progress = { remaining.toFloat() / total.coerceAtLeast(1) },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                )
+                Text(
+                    text = stringResource(Res.string.visits_remaining, remaining, total),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    text = stringResource(Res.string.subscription_sessions_unlimited),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

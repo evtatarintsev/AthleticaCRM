@@ -10,6 +10,8 @@ import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.memberships.MembershipListRequest
+import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
@@ -26,7 +28,11 @@ sealed class ClientDetailState {
     data class Error(val error: ClientsApiError) : ClientDetailState()
 
     /** Данные клиента загружены. */
-    data class Loaded(val client: ClientDetailResponse) : ClientDetailState()
+    data class Loaded(
+        val client: ClientDetailResponse,
+        /** Абонементы клиента, новые сверху; пусто, пока грузятся или их нет. */
+        val memberships: List<MembershipSchema> = emptyList(),
+    ) : ClientDetailState()
 }
 
 /**
@@ -48,20 +54,34 @@ class ClientDetailViewModel(
         load()
     }
 
-    /** Загружает (или перезагружает) данные клиента. */
+    /** Загружает (или перезагружает) данные клиента и его абонементы. */
     fun load() {
         scope.launch {
             state = ClientDetailState.Loading
             api.clients.detail(clientId).fold(
                 ifLeft = { state = ClientDetailState.Error(it.toClientsApiError()) },
-                ifRight = { state = ClientDetailState.Loaded(it) },
+                ifRight = {
+                    state = ClientDetailState.Loaded(it)
+                    loadMemberships()
+                },
             )
         }
     }
 
-    /** Обновляет клиента данными из [client] (например, после корректировки баланса). */
+    /** Догружает абонементы клиента и кладёт их в текущее загруженное состояние. */
+    private fun loadMemberships() {
+        scope.launch {
+            api.memberships.list(MembershipListRequest(clientId)).onRight { response ->
+                val loaded = state as? ClientDetailState.Loaded ?: return@onRight
+                state = loaded.copy(memberships = response.memberships)
+            }
+        }
+    }
+
+    /** Обновляет клиента данными из [client] (например, после корректировки баланса), сохраняя абонементы. */
     fun onClientUpdated(client: ClientDetailResponse) {
-        state = ClientDetailState.Loaded(client)
+        val memberships = (state as? ClientDetailState.Loaded)?.memberships ?: emptyList()
+        state = ClientDetailState.Loaded(client, memberships)
     }
 
     /** Удаляет клиента из группы [groupId] и перезагружает карточку. */

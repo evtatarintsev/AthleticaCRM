@@ -55,6 +55,9 @@ import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.domain.mail.Mailbox
 import org.athletica.crm.domain.mail.OrgEmails
+import org.athletica.crm.domain.memberships.AuditMemberships
+import org.athletica.crm.domain.memberships.DbMemberships
+import org.athletica.crm.domain.memberships.Memberships
 import org.athletica.crm.domain.messagedelivery.ChannelRegistry
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
@@ -122,6 +125,7 @@ data class Di(
         )
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
+    val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
     val groups: Groups = AuditGroups(DbGroups(bus), audit)

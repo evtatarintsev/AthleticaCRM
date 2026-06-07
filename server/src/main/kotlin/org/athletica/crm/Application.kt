@@ -54,6 +54,7 @@ import org.athletica.crm.routes.hallsRoutes
 import org.athletica.crm.routes.homeRoutes
 import org.athletica.crm.routes.leadSourcesRoutes
 import org.athletica.crm.routes.logout
+import org.athletica.crm.routes.membershipsRoutes
 import org.athletica.crm.routes.messagingRoutes
 import org.athletica.crm.routes.myBranchesRoute
 import org.athletica.crm.routes.notificationsRoutes
@@ -183,6 +184,7 @@ fun Application.configureServer() {
                         homeRoutes(di.groups, di.sessions, di.halls)
                         disciplinesRoutes(di.disciplines)
                         tariffsRoutes(di.tariffPlans)
+                        membershipsRoutes(di.memberships)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles)

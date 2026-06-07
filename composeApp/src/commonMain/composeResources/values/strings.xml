@@ -178,6 +178,8 @@
     <string name="subscription_status_active">Активен</string>
     <string name="subscription_status_expired">Истёк</string>
     <string name="visits_remaining">Осталось %1$d из %2$d посещений</string>
+    <string name="subscription_sessions_unlimited">Безлимит занятий</string>
+    <string name="subscriptions_empty">Абонементов пока нет</string>
     <string name="visit_status_attended">Был</string>
     <string name="visit_status_late">Опоздал</string>
     <string name="visit_status_missed">Пропустил</string>

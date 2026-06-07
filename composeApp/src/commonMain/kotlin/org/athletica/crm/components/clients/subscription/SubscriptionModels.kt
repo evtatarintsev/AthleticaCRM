@@ -4,6 +4,7 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
@@ -14,8 +15,8 @@ import kotlin.math.round
  * Тарифный план — шаблон абонемента, задаваемый в настройках организации.
  */
 data class TariffPlan(
-    /** Идентификатор плана (в заглушке — произвольная строка). */
-    val id: String,
+    /** Идентификатор тарифа-шаблона. */
+    val id: TariffPlanId,
     /** Отображаемое название плана. */
     val name: String,
     /** Количество занятий; `null` — безлимитный план. */

@@ -10,10 +10,12 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
+import org.athletica.crm.api.schemas.memberships.IssueMembershipRequest
 import org.athletica.crm.components.clients.ClientsApiError
 import org.athletica.crm.components.clients.toClientsApiError
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
@@ -123,7 +125,7 @@ class IssueSubscriptionViewModel(
                 val plans =
                     response.tariffs.map { tariff ->
                         TariffPlan(
-                            id = tariff.id.toString(),
+                            id = tariff.id,
                             name = tariff.name,
                             sessions = tariff.sessions,
                             durationValue = tariff.durationValue,
@@ -246,8 +248,32 @@ class IssueSubscriptionViewModel(
     /** Меняет комментарий для выдачи без оплаты. */
     fun onFreeCommentChanged(comment: String) = updateReady { it.copy(freeComment = comment) }
 
-    /** Завершение выдачи (заглушка — бекенда нет). */
-    fun onConfirm() = onIssued()
+    /**
+     * Завершение выдачи: отправляет на бекенд параметры абонемента и при успехе вызывает [onIssued].
+     * Для индивидуального абонемента (без тарифа) используется [individualName] —
+     * локализованное название, переданное из UI. Оплата (наличные/баланс/сдача) на бекенд
+     * пока не передаётся — это отдельная задача.
+     */
+    fun onConfirm(individualName: String) {
+        val ready = state as? IssueScreenState.Ready ?: return
+        val form = ready.form ?: return
+        scope.launch {
+            api.memberships
+                .issue(
+                    IssueMembershipRequest(
+                        id = MembershipId.new(),
+                        clientId = clientId,
+                        tariffPlanId = form.plan?.id,
+                        name = form.plan?.name ?: individualName,
+                        sessions = if (form.unlimited) null else form.sessions,
+                        durationValue = form.durationValue,
+                        durationUnit = form.durationUnit,
+                        startDate = form.startDate,
+                        price = form.total,
+                    ),
+                ).onRight { onIssued() }
+        }
+    }
 
     private inline fun updateReady(block: (IssueScreenState.Ready) -> IssueScreenState.Ready) {
         val ready = state as? IssueScreenState.Ready ?: return

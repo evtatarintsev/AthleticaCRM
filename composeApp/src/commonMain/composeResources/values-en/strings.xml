@@ -178,6 +178,8 @@
     <string name="subscription_status_active">Active</string>
     <string name="subscription_status_expired">Expired</string>
     <string name="visits_remaining">%1$d of %2$d visits remaining</string>
+    <string name="subscription_sessions_unlimited">Unlimited sessions</string>
+    <string name="subscriptions_empty">No subscriptions yet</string>
     <string name="visit_status_attended">Attended</string>
     <string name="visit_status_late">Late</string>
     <string name="visit_status_missed">Missed</string>

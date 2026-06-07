@@ -18,6 +18,7 @@ class ApiClient(private val http: HttpClient) {
     val employees = EmployeesApiClient(http)
     val disciplines = DisciplinesApiClient(http)
     val tariffs = TariffsApiClient(http)
+    val memberships = MembershipsApiClient(http)
     val documents = DocumentsApiClient(http)
     val audit = AuditApiClient(http)
     val notifications = NotificationsApiClient(http)

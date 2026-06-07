@@ -617,7 +617,8 @@ private fun PaymentStep(state: IssueScreenState.Ready, viewModel: IssueSubscript
             )
         }
 
-        Button(onClick = { viewModel.onConfirm() }, modifier = Modifier.fillMaxWidth()) {
+        val individualName = stringResource(Res.string.issue_sub_individual)
+        Button(onClick = { viewModel.onConfirm(individualName) }, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(Res.string.action_issue_subscription))
         }
     }
@@ -639,8 +640,9 @@ private fun FreeOfChargeStep(state: IssueScreenState.Ready, viewModel: IssueSubs
             label = { Text(stringResource(Res.string.label_comment)) },
             modifier = Modifier.fillMaxWidth(),
         )
+        val individualName = stringResource(Res.string.issue_sub_individual)
         Button(
-            onClick = { viewModel.onConfirm() },
+            onClick = { viewModel.onConfirm(individualName) },
             enabled = state.freeComment.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {

@@ -590,4 +590,47 @@
     <string name="contacts_empty">No contacts</string>
     <string name="contact_add">Add contact</string>
     <string name="contact_address_label">Address</string>
+
+    <!-- Issue subscription -->
+    <string name="issue_sub_title_choose_plan">Plan</string>
+    <string name="issue_sub_title_params">Subscription details</string>
+    <string name="issue_sub_title_payment">Payment</string>
+    <string name="issue_sub_title_free">No payment</string>
+    <string name="issue_sub_plan_individual">Individual (no plan)</string>
+    <string name="issue_sub_plan_individual_desc">Fill in all fields manually</string>
+    <string name="issue_sub_individual">Individual</string>
+    <string name="issue_sub_sessions_unlimited">Unlimited</string>
+    <string name="issue_sub_sessions_count">%1$d sessions</string>
+    <string name="issue_sub_duration_days">%1$d d.</string>
+    <string name="issue_sub_duration_months">%1$d mo.</string>
+    <string name="issue_sub_sessions">Sessions</string>
+    <string name="issue_sub_unlimited">Unlimited</string>
+    <string name="issue_sub_duration">Validity</string>
+    <string name="issue_sub_duration_unit_days">Days</string>
+    <string name="issue_sub_duration_unit_months">Months</string>
+    <string name="issue_sub_start_date">Start date</string>
+    <string name="issue_sub_end_date">End date</string>
+    <string name="issue_sub_price">Price</string>
+    <string name="issue_sub_discount_none">None</string>
+    <string name="issue_sub_discount_percent">%</string>
+    <string name="issue_sub_discount_fixed">Amount</string>
+    <string name="issue_sub_discount_value">Discount value</string>
+    <string name="issue_sub_total">Total</string>
+    <string name="issue_sub_to_payment">Proceed to payment</string>
+    <string name="issue_sub_no_payment">No payment required</string>
+    <string name="issue_sub_amount_due">Due: %1$s</string>
+    <string name="issue_sub_current_balance">Client balance: %1$s</string>
+    <string name="issue_sub_cash">Cash in</string>
+    <string name="issue_sub_from_balance">Charge from balance</string>
+    <string name="issue_sub_covered">Covered</string>
+    <string name="issue_sub_change">Change</string>
+    <string name="issue_sub_change_to_hand">To hand</string>
+    <string name="issue_sub_change_to_balance">To account</string>
+    <string name="issue_sub_change_all_hand">All to hand</string>
+    <string name="issue_sub_change_all_balance">All to account</string>
+    <string name="issue_sub_debt">Remainder on credit (from balance)</string>
+    <string name="issue_sub_new_balance">Balance after</string>
+    <string name="issue_sub_status_paid">Paid</string>
+    <string name="issue_sub_status_debt">Partial — on credit</string>
+    <string name="issue_sub_free_explain">The subscription will be issued without payment (e.g. a gift). Provide a reason.</string>
 </resources>

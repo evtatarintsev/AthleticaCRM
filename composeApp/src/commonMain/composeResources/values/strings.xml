@@ -594,4 +594,47 @@
     <string name="contacts_empty">Контактов нет</string>
     <string name="contact_add">Добавить контакт</string>
     <string name="contact_address_label">Адрес</string>
+
+    <!-- Выдача абонемента -->
+    <string name="issue_sub_title_choose_plan">Тариф</string>
+    <string name="issue_sub_title_params">Параметры абонемента</string>
+    <string name="issue_sub_title_payment">Оплата</string>
+    <string name="issue_sub_title_free">Без оплаты</string>
+    <string name="issue_sub_plan_individual">Индивидуальный (без тарифа)</string>
+    <string name="issue_sub_plan_individual_desc">Заполнить все поля вручную</string>
+    <string name="issue_sub_individual">Индивидуальный</string>
+    <string name="issue_sub_sessions_unlimited">Безлимит</string>
+    <string name="issue_sub_sessions_count">%1$d занятий</string>
+    <string name="issue_sub_duration_days">%1$d дн.</string>
+    <string name="issue_sub_duration_months">%1$d мес.</string>
+    <string name="issue_sub_sessions">Количество занятий</string>
+    <string name="issue_sub_unlimited">Безлимитный</string>
+    <string name="issue_sub_duration">Срок действия</string>
+    <string name="issue_sub_duration_unit_days">Дни</string>
+    <string name="issue_sub_duration_unit_months">Месяцы</string>
+    <string name="issue_sub_start_date">Дата начала</string>
+    <string name="issue_sub_end_date">Дата окончания</string>
+    <string name="issue_sub_price">Стоимость</string>
+    <string name="issue_sub_discount_none">Нет</string>
+    <string name="issue_sub_discount_percent">%</string>
+    <string name="issue_sub_discount_fixed">Сумма</string>
+    <string name="issue_sub_discount_value">Размер скидки</string>
+    <string name="issue_sub_total">Итого</string>
+    <string name="issue_sub_to_payment">К оплате</string>
+    <string name="issue_sub_no_payment">Оплата не требуется</string>
+    <string name="issue_sub_amount_due">К оплате: %1$s</string>
+    <string name="issue_sub_current_balance">Баланс клиента: %1$s</string>
+    <string name="issue_sub_cash">Внести деньгами</string>
+    <string name="issue_sub_from_balance">Списать с баланса</string>
+    <string name="issue_sub_covered">Покрыто</string>
+    <string name="issue_sub_change">Сдача</string>
+    <string name="issue_sub_change_to_hand">На руки</string>
+    <string name="issue_sub_change_to_balance">На счёт</string>
+    <string name="issue_sub_change_all_hand">Всё на руки</string>
+    <string name="issue_sub_change_all_balance">Всё на счёт</string>
+    <string name="issue_sub_debt">Остаток в долг (с баланса)</string>
+    <string name="issue_sub_new_balance">Баланс после операции</string>
+    <string name="issue_sub_status_paid">Оплачено</string>
+    <string name="issue_sub_status_debt">Частично — в долг</string>
+    <string name="issue_sub_free_explain">Абонемент будет выдан без оплаты (например, подарок). Укажите причину.</string>
 </resources>

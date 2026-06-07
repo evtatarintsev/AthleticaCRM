@@ -6,7 +6,6 @@ import org.athletica.crm.api.schemas.halls.DeleteHallRequest
 import org.athletica.crm.api.schemas.halls.HallDetailResponse
 import org.athletica.crm.api.schemas.halls.HallListResponse
 import org.athletica.crm.api.schemas.halls.UpdateHallRequest
-import org.athletica.crm.domain.hall.Hall
 import org.athletica.crm.domain.hall.Halls
 import org.athletica.crm.storage.Database
 
@@ -24,19 +23,19 @@ fun RouteWithContext.hallsRoutes(halls: Halls) {
 
         post<CreateHallRequest, Unit>("/create") { request ->
             db.transaction {
-                halls.create(Hall(request.id, request.name))
+                halls.new(request.id, request.name).save()
             }
         }
 
         post<UpdateHallRequest, Unit>("/update") { request ->
             db.transaction {
-                halls.update(Hall(request.id, request.name))
+                halls.byId(request.id).withNew(name = request.name).save()
             }
         }
 
         post<DeleteHallRequest, Unit>("/delete") { request ->
             db.transaction {
-                halls.delete(request.ids)
+                halls.byIds(request.ids).forEach { it.delete() }
             }
         }
     }

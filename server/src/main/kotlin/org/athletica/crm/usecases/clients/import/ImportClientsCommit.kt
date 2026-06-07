@@ -206,8 +206,8 @@ private suspend fun createMissingLeadSources(
             .filter { it.isNotEmpty() && !existingByName.containsKey(it) }
             .distinct()
     return toCreate.map { name ->
-        val created = LeadSource(id = LeadSourceId.new(), name = name)
-        leadSources.create(created)
+        val created = leadSources.new(id = LeadSourceId.new(), name = name)
+        created.save()
         created
     }
 }

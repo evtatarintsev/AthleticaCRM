@@ -1,6 +1,5 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.routing.route
 import org.athletica.crm.api.schemas.tariffs.ArchiveTariffPlanRequest
 import org.athletica.crm.api.schemas.tariffs.CreateTariffPlanRequest
 import org.athletica.crm.api.schemas.tariffs.TariffPlanListRequest
@@ -27,39 +26,38 @@ fun RouteWithContext.tariffsRoutes(tariffs: TariffPlans) {
 
         post<CreateTariffPlanRequest, Unit>("/create") { request ->
             db.transaction {
-                tariffs.create(
-                    TariffPlan(
-                        id = request.id,
-                        name = request.name,
-                        sessions = request.sessions,
-                        durationValue = request.durationValue,
-                        durationUnit = request.durationUnit,
-                        price = request.price,
-                        archived = false,
-                    ),
-                )
+                tariffs.new(
+                    id = request.id,
+                    name = request.name,
+                    sessions = request.sessions,
+                    durationValue = request.durationValue,
+                    durationUnit = request.durationUnit,
+                    price = request.price,
+                ).save()
             }
         }
 
         post<UpdateTariffPlanRequest, Unit>("/update") { request ->
             db.transaction {
-                tariffs.update(
-                    TariffPlan(
-                        id = request.id,
+                tariffs.byId(request.id)
+                    .withNew(
                         name = request.name,
                         sessions = request.sessions,
                         durationValue = request.durationValue,
                         durationUnit = request.durationUnit,
                         price = request.price,
-                        archived = false,
-                    ),
-                )
+                    ).save()
             }
         }
 
         post<ArchiveTariffPlanRequest, Unit>("/archive") { request ->
             db.transaction {
-                tariffs.setArchived(request.id, request.archived)
+                val tariff = tariffs.byId(request.id)
+                if (request.archived) {
+                    tariff.archive()
+                } else {
+                    tariff.unarchive()
+                }
             }
         }
     }

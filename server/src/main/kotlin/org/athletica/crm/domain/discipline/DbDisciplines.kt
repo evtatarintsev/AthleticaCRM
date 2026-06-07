@@ -2,7 +2,6 @@ package org.athletica.crm.domain.discipline
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.toDisciplineId
@@ -13,66 +12,42 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
+/** R2DBC-реализация каталога дисциплин. */
 class DbDisciplines : Disciplines {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Discipline> =
         tr.sql("SELECT s.id, s.name FROM disciplines s WHERE s.org_id = :orgId ORDER BY s.name")
             .bind("orgId", ctx.orgId)
             .list {
-                Discipline(id = it.asUuid("id").toDisciplineId(), name = it.asString("name"))
+                DbDiscipline(id = it.asUuid("id").toDisciplineId(), name = it.asString("name"))
             }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun create(discipline: Discipline) {
-        try {
-            tr
-                .sql("INSERT INTO disciplines (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", discipline.id)
-                .bind("orgId", ctx.orgId)
-                .bind("name", discipline.name)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("DISCIPLINE_ALREADY_EXISTS", Messages.DisciplineAlreadyExists.localize()))
+    override suspend fun new(id: DisciplineId, name: String): Discipline = DbDiscipline(id, name)
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byId(id: DisciplineId): Discipline =
+        byIds(listOf(id)).singleOrNull()
+            ?: raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byIds(ids: List<DisciplineId>): List<Discipline> {
+        val distinctIds = ids.distinct()
+        if (distinctIds.isEmpty()) {
+            return emptyList()
         }
-    }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun update(discipline: Discipline) {
-        val updatedRows =
-            try {
-                tr
-                    .sql("UPDATE disciplines SET name = :name WHERE id = :id AND org_id = :orgId")
-                    .bind("id", discipline.id)
-                    .bind("orgId", ctx.orgId)
-                    .bind("name", discipline.name)
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(
-                    CommonDomainError(
-                        "DISCIPLINE_NAME_ALREADY_EXISTS",
-                        Messages.DisciplineAlreadyExists.localize(),
-                    ),
-                )
-            }
+        val result =
+            tr.sql("SELECT s.id, s.name FROM disciplines s WHERE s.id = ANY(:ids) AND s.org_id = :orgId")
+                .bind("ids", distinctIds)
+                .bind("orgId", ctx.orgId)
+                .list {
+                    DbDiscipline(id = it.asUuid("id").toDisciplineId(), name = it.asString("name"))
+                }
 
-        if (updatedRows == 0L) {
+        if (result.size != distinctIds.size) {
             raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
         }
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun delete(ids: List<DisciplineId>) {
-        if (ids.isEmpty()) {
-            return
-        }
-
-        val deleted =
-            tr.sql("DELETE FROM disciplines WHERE id = ANY(:ids) AND org_id = :orgId RETURNING id, name")
-                .bind("ids", ids)
-                .bind("orgId", ctx.orgId)
-                .list { Discipline(id = it.asUuid("id").toDisciplineId(), name = it.asString("name")) }
-
-        deleted.forEach {
-        }
+        return result
     }
 }

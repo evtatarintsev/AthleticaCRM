@@ -2,6 +2,7 @@ package org.athletica.crm.domain
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -19,7 +20,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tariffs.DbTariffPlans
-import org.athletica.crm.domain.tariffs.TariffPlan
+import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -59,15 +60,19 @@ class DbTariffPlansTest {
 
     private lateinit var tariffs: DbTariffPlans
 
-    private fun plan(
+    /** Создаёт и сохраняет тариф с параметрами по умолчанию, возвращая его идентификатор. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    private suspend fun saveNewPlan(
         id: TariffPlanId = TariffPlanId.new(),
         name: String = "8 занятий",
         sessions: Int? = 8,
         durationValue: Int = 1,
         durationUnit: DurationUnit = DurationUnit.MONTHS,
         price: Money = Money(4_000_00, Currency.RUB),
-        archived: Boolean = false,
-    ) = TariffPlan(id, name, sessions, durationValue, durationUnit, price, archived)
+    ): TariffPlanId {
+        tariffs.new(id, name, sessions, durationValue, durationUnit, price).save()
+        return id
+    }
 
     @Before
     fun setUp() {
@@ -82,15 +87,19 @@ class DbTariffPlansTest {
     }
 
     @Test
-    fun `create сохраняет тариф со всеми полями`() =
+    fun `save сохраняет тариф со всеми полями`() =
         runTest {
-            val expected = plan(name = "Безлимит", sessions = null, durationValue = 12, price = Money(60_000_00, Currency.RUB))
+            val id = TariffPlanId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { tariffs.create(expected) } }
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        saveNewPlan(id = id, name = "Безлимит", sessions = null, durationValue = 12, price = Money(60_000_00, Currency.RUB))
+                    }
+                }
                 val list = TestPostgres.db.transaction { context(ctx) { tariffs.list(includeArchived = false) } }
                 assertEquals(1, list.size)
                 val actual = list.first()
-                assertEquals(expected.id, actual.id)
+                assertEquals(id, actual.id)
                 assertEquals("Безлимит", actual.name)
                 assertNull(actual.sessions)
                 assertEquals(12, actual.durationValue)
@@ -104,22 +113,29 @@ class DbTariffPlansTest {
     fun `list возвращает только тарифы своей организации`() =
         runTest {
             either {
-                TestPostgres.db.transaction { context(ctx) { tariffs.create(plan(name = "Свой")) } }
-                TestPostgres.db.transaction { context(otherCtx) { tariffs.create(plan(name = "Чужой")) } }
+                TestPostgres.db.transaction { context(ctx) { saveNewPlan(name = "Свой") } }
+                TestPostgres.db.transaction { context(otherCtx) { saveNewPlan(name = "Чужой") } }
                 val list = TestPostgres.db.transaction { context(ctx) { tariffs.list(includeArchived = false) } }
                 assertEquals(listOf("Свой"), list.map { it.name })
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
-    fun `update изменяет поля тарифа`() =
+    fun `withNew + save изменяет поля тарифа`() =
         runTest {
             val id = TariffPlanId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { tariffs.create(plan(id = id, name = "Старое", price = Money(1_000_00, Currency.RUB))) } }
+                TestPostgres.db.transaction { context(ctx) { saveNewPlan(id = id, name = "Старое", price = Money(1_000_00, Currency.RUB)) } }
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tariffs.update(plan(id = id, name = "Новое", sessions = 12, durationValue = 2, price = Money(5_500_00, Currency.RUB)))
+                        tariffs.byId(id)
+                            .withNew(
+                                name = "Новое",
+                                sessions = 12,
+                                durationValue = 2,
+                                durationUnit = DurationUnit.MONTHS,
+                                price = Money(5_500_00, Currency.RUB),
+                            ).save()
                     }
                 }
                 val actual = TestPostgres.db.transaction { context(ctx) { tariffs.list(includeArchived = false) } }.first()
@@ -131,22 +147,33 @@ class DbTariffPlansTest {
         }
 
     @Test
-    fun `update возвращает TARIFF_NOT_FOUND для неизвестного id`() =
+    fun `byId возвращает TARIFF_NOT_FOUND для неизвестного id`() =
         runTest {
             val result =
                 either {
-                    TestPostgres.db.transaction { context(ctx) { tariffs.update(plan()) } }
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            tariffs.byId(TariffPlanId.new())
+                                .withNew(
+                                    name = "Новое",
+                                    sessions = 8,
+                                    durationValue = 1,
+                                    durationUnit = DurationUnit.MONTHS,
+                                    price = Money(4_000_00, Currency.RUB),
+                                ).save()
+                        }
+                    }
                 }
             assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
         }
 
     @Test
-    fun `setArchived скрывает тариф из активного списка но оставляет при includeArchived`() =
+    fun `archive скрывает тариф из активного списка но оставляет при includeArchived`() =
         runTest {
             val id = TariffPlanId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { tariffs.create(plan(id = id)) } }
-                TestPostgres.db.transaction { context(ctx) { tariffs.setArchived(id, archived = true) } }
+                TestPostgres.db.transaction { context(ctx) { saveNewPlan(id = id) } }
+                TestPostgres.db.transaction { context(ctx) { tariffs.byId(id).archive() } }
 
                 val active = TestPostgres.db.transaction { context(ctx) { tariffs.list(includeArchived = false) } }
                 assertTrue(active.isEmpty())
@@ -158,25 +185,51 @@ class DbTariffPlansTest {
         }
 
     @Test
-    fun `setArchived восстанавливает тариф`() =
+    fun `unarchive восстанавливает тариф`() =
         runTest {
             val id = TariffPlanId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { tariffs.create(plan(id = id)) } }
-                TestPostgres.db.transaction { context(ctx) { tariffs.setArchived(id, archived = true) } }
-                TestPostgres.db.transaction { context(ctx) { tariffs.setArchived(id, archived = false) } }
+                TestPostgres.db.transaction { context(ctx) { saveNewPlan(id = id) } }
+                TestPostgres.db.transaction { context(ctx) { tariffs.byId(id).archive() } }
+                TestPostgres.db.transaction { context(ctx) { tariffs.byId(id).unarchive() } }
                 val active = TestPostgres.db.transaction { context(ctx) { tariffs.list(includeArchived = false) } }
                 assertEquals(1, active.size)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
-    fun `setArchived возвращает TARIFF_NOT_FOUND для неизвестного id`() =
+    fun `archive возвращает TARIFF_NOT_FOUND для неизвестного id`() =
         runTest {
             val result =
                 either {
-                    TestPostgres.db.transaction { context(ctx) { tariffs.setArchived(TariffPlanId.new(), archived = true) } }
+                    TestPostgres.db.transaction { context(ctx) { tariffs.byId(TariffPlanId.new()).archive() } }
                 }
             assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+        }
+
+    @Test
+    fun `save сохраняет признак архивности при правке полей`() =
+        runTest {
+            val id = TariffPlanId.new()
+            either {
+                TestPostgres.db.transaction { context(ctx) { saveNewPlan(id = id, name = "Старое") } }
+                TestPostgres.db.transaction { context(ctx) { tariffs.byId(id).archive() } }
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        tariffs.byId(id)
+                            .withNew(
+                                name = "Переименовано",
+                                sessions = 8,
+                                durationValue = 1,
+                                durationUnit = DurationUnit.MONTHS,
+                                price = Money(4_000_00, Currency.RUB),
+                            ).save()
+                    }
+                }
+                val all = TestPostgres.db.transaction { context(ctx) { tariffs.list(includeArchived = true) } }
+                assertEquals(1, all.size)
+                assertEquals("Переименовано", all.first().name)
+                assertTrue(all.first().archived)
+            }.getOrElse { fail("Unexpected error: $it") }
         }
 }

@@ -10,6 +10,7 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.channels.AuditChannelIntegrations
@@ -170,7 +171,7 @@ fun Application.di(): Di {
         organizations = LocMemCachedOrganizations(DbOrganizations()),
         clientBalances = AuditClientBalances(DbClientBalances(), audit),
         clients = DbClients(),
-        branches = DbBranches(),
+        branches = AuditBranches(DbBranches(), audit),
         customFieldDefinitions = DbCustomFieldDefinitions(),
         userDisplaySettings = DbUserDisplaySettings(),
         yookassaConfig = ykConfig,

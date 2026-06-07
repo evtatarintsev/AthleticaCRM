@@ -25,33 +25,21 @@ fun RouteWithContext.channelsRoutes(channels: ChannelIntegrations) {
 
         post<CreateChannelIntegrationRequest, Unit>("/create") { request ->
             db.transaction {
-                channels.create(
-                    ChannelIntegration(
-                        id = request.id,
-                        name = request.name,
-                        config = request.config,
-                        enabled = true,
-                    ),
-                )
+                channels.new(id = request.id, name = request.name, config = request.config).save()
             }
         }
 
         post<UpdateChannelIntegrationRequest, Unit>("/update") { request ->
             db.transaction {
-                val existing = channels.byId(request.id)
-                channels.update(
-                    existing.copy(
-                        name = request.name,
-                        config = request.config,
-                        enabled = request.enabled,
-                    ),
-                )
+                channels.byId(request.id)
+                    .withNew(name = request.name, config = request.config, enabled = request.enabled)
+                    .save()
             }
         }
 
         post<DeleteChannelIntegrationRequest, Unit>("/delete") { request ->
             db.transaction {
-                channels.delete(request.id)
+                channels.byId(request.id).delete()
             }
         }
     }

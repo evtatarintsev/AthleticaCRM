@@ -9,32 +9,60 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.audit.AuditLog
-import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.storage.Transaction
 
-/**
- * Декоратор [TariffPlans], логирующий мутирующие операции (create/update/archive).
- * Чтение ([list]) не логируется.
- */
+/** Декоратор [TariffPlans], оборачивающий выдаваемые тарифы в [AuditTariffPlan]. */
 class AuditTariffPlans(private val delegate: TariffPlans, private val audit: AuditLog) : TariffPlans by delegate {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun create(plan: TariffPlan) =
-        delegate.create(plan).also {
-            audit.logCreate("subscription_tariff", plan.id, Json.encodeToString(plan.toAuditData()))
+    override suspend fun list(includeArchived: Boolean) = delegate.list(includeArchived).map { AuditTariffPlan(it, audit) }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun new(
+        id: TariffPlanId,
+        name: String,
+        sessions: Int?,
+        durationValue: Int,
+        durationUnit: DurationUnit,
+        price: Money,
+    ) = AuditTariffPlan(delegate.new(id, name, sessions, durationValue, durationUnit, price), audit)
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byId(id: TariffPlanId) = AuditTariffPlan(delegate.byId(id), audit)
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byIds(ids: List<TariffPlanId>) = delegate.byIds(ids).map { AuditTariffPlan(it, audit) }
+}
+
+/** Декоратор [TariffPlan], логирующий сохранение и архивирование. */
+class AuditTariffPlan(private val delegate: TariffPlan, private val audit: AuditLog) : TariffPlan by delegate {
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun save() =
+        delegate.save().also {
+            audit.logUpdate("subscription_tariff", id, Json.encodeToString(toAuditData()))
         }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun update(plan: TariffPlan) =
-        delegate.update(plan).also {
-            audit.logUpdate("subscription_tariff", plan.id, Json.encodeToString(plan.toAuditData()))
+    override suspend fun archive() =
+        delegate.archive().also {
+            audit.logUpdate("subscription_tariff", id, Json.encodeToString(ArchiveAuditData(archived = true)))
         }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun setArchived(id: TariffPlanId, archived: Boolean) =
-        delegate.setArchived(id, archived).also {
-            audit.logUpdate("subscription_tariff", id, Json.encodeToString(ArchiveAuditData(archived)))
+    override suspend fun unarchive() =
+        delegate.unarchive().also {
+            audit.logUpdate("subscription_tariff", id, Json.encodeToString(ArchiveAuditData(archived = false)))
         }
+
+    override fun withNew(
+        name: String,
+        sessions: Int?,
+        durationValue: Int,
+        durationUnit: DurationUnit,
+        price: Money,
+    ) = AuditTariffPlan(delegate.withNew(name, sessions, durationValue, durationUnit, price), audit)
+
+    private fun toAuditData() = TariffPlanAuditData(name, sessions, durationValue, durationUnit, price, archived)
 }
 
 /** Снимок тарифа для журнала аудита (доменная сущность не сериализуется напрямую). */
@@ -51,5 +79,3 @@ private data class TariffPlanAuditData(
 /** Данные операции архивирования для журнала аудита. */
 @Serializable
 private data class ArchiveAuditData(val archived: Boolean)
-
-private fun TariffPlan.toAuditData() = TariffPlanAuditData(name, sessions, durationValue, durationUnit, price, archived)

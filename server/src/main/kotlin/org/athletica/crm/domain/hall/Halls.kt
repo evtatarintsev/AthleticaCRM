@@ -1,31 +1,29 @@
 package org.athletica.crm.domain.hall
 
 import arrow.core.raise.context.Raise
-import kotlinx.serialization.Serializable
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 
+/** Каталог залов филиала. Все операции ограничены текущим филиалом (`branch_id`). */
 interface Halls {
+    /** Возвращает залы текущего филиала, отсортированные по имени. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun list(): List<Hall>
 
+    /** Создаёт несохранённый зал; запись в БД выполняется через [Hall.save]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun create(hall: Hall)
+    suspend fun new(id: HallId, name: String): Hall
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun update(hall: Hall)
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun delete(ids: List<HallId>)
-
+    /** Возвращает зал по идентификатору; ошибка `HALL_NOT_FOUND`, если не найден. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: HallId): Hall
-}
 
-@Serializable
-data class Hall(
-    val id: HallId,
-    val name: String,
-)
+    /**
+     * Возвращает залы по идентификаторам.
+     * Дубликаты в [ids] игнорируются; ошибка `HALL_NOT_FOUND`, если хотя бы один не найден.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun byIds(ids: List<HallId>): List<Hall>
+}

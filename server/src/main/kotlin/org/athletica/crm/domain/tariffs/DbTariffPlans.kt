@@ -2,11 +2,13 @@ package org.athletica.crm.domain.tariffs
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.toTariffPlanId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -21,90 +23,68 @@ import org.athletica.crm.storage.asUuid
 class DbTariffPlans : TariffPlans {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(includeArchived: Boolean): List<TariffPlan> =
-        tr
-            .sql(
+        tr.sql(
+            """
+            SELECT id, name, sessions_count, duration_value, duration_unit, price, is_archived
+            FROM subscription_tariffs
+            WHERE org_id = :orgId AND (is_archived = false OR :includeArchived)
+            ORDER BY is_archived, name
+            """.trimIndent(),
+        )
+            .bind("orgId", ctx.orgId)
+            .bind("includeArchived", includeArchived)
+            .list { it.toTariffPlan() }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun new(
+        id: TariffPlanId,
+        name: String,
+        sessions: Int?,
+        durationValue: Int,
+        durationUnit: DurationUnit,
+        price: Money,
+    ): TariffPlan = DbTariffPlan(id, name, sessions, durationValue, durationUnit, price, archived = false)
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byId(id: TariffPlanId): TariffPlan =
+        byIds(listOf(id)).singleOrNull()
+            ?: raise(CommonDomainError("TARIFF_NOT_FOUND", "Тарифный план не найден"))
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byIds(ids: List<TariffPlanId>): List<TariffPlan> {
+        val distinctIds = ids.distinct()
+        if (distinctIds.isEmpty()) {
+            return emptyList()
+        }
+
+        val result =
+            tr.sql(
                 """
                 SELECT id, name, sessions_count, duration_value, duration_unit, price, is_archived
                 FROM subscription_tariffs
-                WHERE org_id = :orgId AND (is_archived = false OR :includeArchived)
-                ORDER BY is_archived, name
+                WHERE id = ANY(:ids) AND org_id = :orgId
                 """.trimIndent(),
             )
-            .bind("orgId", ctx.orgId)
-            .bind("includeArchived", includeArchived)
-            .list { row ->
-                TariffPlan(
-                    id = row.asUuid("id").toTariffPlanId(),
-                    name = row.asString("name"),
-                    sessions = row.get("sessions_count", Int::class.javaObjectType),
-                    durationValue = row.get("duration_value", Int::class.javaObjectType)!!,
-                    durationUnit = DurationUnit.valueOf(row.asString("duration_unit")),
-                    price = row.asMoney("price", ctx.currency),
-                    archived = row.asBoolean("is_archived"),
-                )
-            }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun create(plan: TariffPlan) {
-        tr
-            .sql(
-                """
-                INSERT INTO subscription_tariffs
-                    (id, org_id, name, sessions_count, duration_value, duration_unit, price)
-                VALUES (:id, :orgId, :name, :sessions, :durationValue, :durationUnit, :price)
-                """.trimIndent(),
-            )
-            .bind("id", plan.id)
-            .bind("orgId", ctx.orgId)
-            .bind("name", plan.name)
-            .bind("sessions", plan.sessions)
-            .bind("durationValue", plan.durationValue)
-            .bind("durationUnit", plan.durationUnit.name)
-            .bind("price", plan.price)
-            .execute()
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun update(plan: TariffPlan) {
-        val updatedRows =
-            tr
-                .sql(
-                    """
-                    UPDATE subscription_tariffs
-                    SET name = :name,
-                        sessions_count = :sessions,
-                        duration_value = :durationValue,
-                        duration_unit = :durationUnit,
-                        price = :price
-                    WHERE id = :id AND org_id = :orgId
-                    """.trimIndent(),
-                )
-                .bind("id", plan.id)
+                .bind("ids", distinctIds)
                 .bind("orgId", ctx.orgId)
-                .bind("name", plan.name)
-                .bind("sessions", plan.sessions)
-                .bind("durationValue", plan.durationValue)
-                .bind("durationUnit", plan.durationUnit.name)
-                .bind("price", plan.price)
-                .execute()
+                .list { it.toTariffPlan() }
 
-        if (updatedRows == 0L) {
+        if (result.size != distinctIds.size) {
             raise(CommonDomainError("TARIFF_NOT_FOUND", "Тарифный план не найден"))
         }
+        return result
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun setArchived(id: TariffPlanId, archived: Boolean) {
-        val updatedRows =
-            tr
-                .sql("UPDATE subscription_tariffs SET is_archived = :archived WHERE id = :id AND org_id = :orgId")
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("archived", archived)
-                .execute()
-
-        if (updatedRows == 0L) {
-            raise(CommonDomainError("TARIFF_NOT_FOUND", "Тарифный план не найден"))
-        }
-    }
+    /** Собирает доменный тариф из строки результата. */
+    context(ctx: EmployeeRequestContext)
+    private fun Row.toTariffPlan(): TariffPlan =
+        DbTariffPlan(
+            id = asUuid("id").toTariffPlanId(),
+            name = asString("name"),
+            sessions = get("sessions_count", Int::class.javaObjectType),
+            durationValue = get("duration_value", Int::class.javaObjectType)!!,
+            durationUnit = DurationUnit.valueOf(asString("duration_unit")),
+            price = asMoney("price", ctx.currency),
+            archived = asBoolean("is_archived"),
+        )
 }

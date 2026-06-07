@@ -20,35 +20,25 @@ interface TariffPlans {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun list(includeArchived: Boolean): List<TariffPlan>
 
-    /** Создаёт тарифный план [plan]. */
+    /** Создаёт несохранённый тариф (не архивный); запись в БД — через [TariffPlan.save]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun create(plan: TariffPlan)
+    suspend fun new(
+        id: TariffPlanId,
+        name: String,
+        sessions: Int?,
+        durationValue: Int,
+        durationUnit: DurationUnit,
+        price: Money,
+    ): TariffPlan
 
-    /** Изменяет существующий тарифный план [plan]. */
+    /** Возвращает тариф по идентификатору; ошибка `TARIFF_NOT_FOUND`, если не найден. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun update(plan: TariffPlan)
+    suspend fun byId(id: TariffPlanId): TariffPlan
 
-    /** Архивирует ([archived] = true) или восстанавливает тариф [id]. */
+    /**
+     * Возвращает тарифы по идентификаторам.
+     * Дубликаты в [ids] игнорируются; ошибка `TARIFF_NOT_FOUND`, если хотя бы один не найден.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun setArchived(id: TariffPlanId, archived: Boolean)
+    suspend fun byIds(ids: List<TariffPlanId>): List<TariffPlan>
 }
-
-/**
- * Тарифный план абонемента — шаблон параметров для выдачи.
- */
-data class TariffPlan(
-    /** Идентификатор плана. */
-    val id: TariffPlanId,
-    /** Отображаемое название. */
-    val name: String,
-    /** Количество занятий; `null` — безлимит. */
-    val sessions: Int?,
-    /** Числовое значение срока действия. */
-    val durationValue: Int,
-    /** Единица измерения срока действия. */
-    val durationUnit: DurationUnit,
-    /** Стоимость плана. */
-    val price: Money,
-    /** Признак архивного плана. */
-    val archived: Boolean,
-)

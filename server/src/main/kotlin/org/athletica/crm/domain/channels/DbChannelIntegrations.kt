@@ -45,72 +45,26 @@ class DbChannelIntegrations : ChannelIntegrations {
             ?: raise(CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена"))
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun create(integration: ChannelIntegration) {
-        tr.sql(
-            """
-            INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
-            VALUES (:id, :orgId, :channelType, :name, :config::jsonb, :enabled)
-            """.trimIndent(),
-        )
-            .bind("id", integration.id)
-            .bind("orgId", ctx.orgId)
-            .bind("channelType", integration.channelType.name)
-            .bind("name", integration.name)
-            .bind("config", encodeConfig(integration.config))
-            .bind("enabled", integration.enabled)
-            .execute()
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun update(integration: ChannelIntegration) {
-        val updated =
-            tr.sql(
-                """
-                UPDATE channel_integrations
-                SET channel_type = :channelType, name = :name, config = :config::jsonb, enabled = :enabled
-                WHERE id = :id AND org_id = :orgId
-                """.trimIndent(),
-            )
-                .bind("id", integration.id)
-                .bind("orgId", ctx.orgId)
-                .bind("channelType", integration.channelType.name)
-                .bind("name", integration.name)
-                .bind("config", encodeConfig(integration.config))
-                .bind("enabled", integration.enabled)
-                .execute()
-
-        if (updated == 0L) {
-            raise(CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена"))
-        }
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun delete(id: ChannelIntegrationId) {
-        tr.sql("DELETE FROM channel_integrations WHERE id = :id AND org_id = :orgId")
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .execute()
-    }
+    override suspend fun new(id: ChannelIntegrationId, name: String, config: ChannelConfig): ChannelIntegration = DbChannelIntegration(id = id, name = name, config = config, enabled = true)
 
     context(tr: Transaction)
     override suspend fun configById(id: ChannelIntegrationId): ChannelConfig? =
         tr.sql("SELECT config::text AS config FROM channel_integrations WHERE id = :id")
             .bind("id", id)
-            .firstOrNull { row -> decodeConfig(row.asString("config")) }
-
-    private fun Row.toChannelIntegration(): ChannelIntegration =
-        ChannelIntegration(
-            id = asUuid("id").toChannelIntegrationId(),
-            name = asString("name"),
-            config = decodeConfig(asString("config")),
-            enabled = asBoolean("enabled"),
-        )
-
-    private companion object {
-        val json = Json
-
-        fun encodeConfig(config: ChannelConfig): String = json.encodeToString(ChannelConfig.serializer(), config)
-
-        fun decodeConfig(text: String): ChannelConfig = json.decodeFromString(ChannelConfig.serializer(), text)
-    }
+            .firstOrNull { row -> decodeChannelConfig(row.asString("config")) }
 }
+
+/** Собирает доменную интеграцию из строки результата. */
+internal fun Row.toChannelIntegration(): ChannelIntegration =
+    DbChannelIntegration(
+        id = asUuid("id").toChannelIntegrationId(),
+        name = asString("name"),
+        config = decodeChannelConfig(asString("config")),
+        enabled = asBoolean("enabled"),
+    )
+
+/** Сериализует конфиг канала для хранения в jsonb-колонке. */
+internal fun encodeChannelConfig(config: ChannelConfig): String = Json.encodeToString(ChannelConfig.serializer(), config)
+
+/** Десериализует конфиг канала из текстового представления jsonb-колонки. */
+internal fun decodeChannelConfig(text: String): ChannelConfig = Json.decodeFromString(ChannelConfig.serializer(), text)

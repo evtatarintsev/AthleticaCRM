@@ -99,6 +99,7 @@ import org.athletica.crm.components.settings.OrgBasicSettingsScreen
 import org.athletica.crm.components.settings.OrgSettingsScreen
 import org.athletica.crm.components.settings.RolesScreen
 import org.athletica.crm.components.settings.SwitchBranchScreen
+import org.athletica.crm.components.settings.TariffsScreen
 import org.athletica.crm.components.settings.channels.ChannelsScreen
 import org.athletica.crm.components.settings.clientimport.ClientImportScreen
 import org.athletica.crm.components.settings.orgbalance.OrgBalanceScreen
@@ -639,6 +640,7 @@ private fun AppNavHost(
                 onNavigateToClientAdditionalAttributes = { navController.navigate(AppRoute.SettingsClientAdditionalAttributes) },
                 onNavigateToClientImport = { navController.navigate(AppRoute.SettingsClientImport) },
                 onNavigateToDisciplines = { navController.navigate(AppRoute.SettingsDisciplines) },
+                onNavigateToTariffs = { navController.navigate(AppRoute.SettingsTariffs) },
                 onNavigateToActivityLog = { navController.navigate(AppRoute.SettingsActivityLog) },
                 onNavigateToChangePassword = { navController.navigate(AppRoute.SettingsChangePassword) },
                 onNavigateToEditProfile = { navController.navigate(AppRoute.SettingsEditProfile) },
@@ -687,6 +689,10 @@ private fun AppNavHost(
 
         composable<AppRoute.SettingsDisciplines> {
             DisciplinesScreen(api = api, onBack = { navController.popBackStack() })
+        }
+
+        composable<AppRoute.SettingsTariffs> {
+            TariffsScreen(api = api, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsHalls> {

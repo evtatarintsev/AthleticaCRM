@@ -314,7 +314,7 @@
     <string name="settings_section_classes">Classes &amp; subscriptions</string>
     <string name="settings_item_attendance">Attendance</string>
     <string name="settings_item_attendance_subtitle">Marks, payment, status icons and colours</string>
-    <string name="settings_item_subscription_templates">Subscription templates</string>
+    <string name="settings_item_subscription_templates">Subscription tariffs</string>
     <string name="settings_item_subscription_templates_subtitle">Visits, validity, price</string>
     <string name="settings_section_finance">Finance</string>
     <string name="settings_item_cashboxes">Cash registers &amp; revenue items</string>
@@ -340,6 +340,12 @@
     <string name="screen_disciplines">Disciplines</string>
     <string name="screen_discipline_create">New discipline</string>
     <string name="screen_discipline_edit">Edit discipline</string>
+    <string name="screen_tariffs">Subscription tariffs</string>
+    <string name="screen_tariff_create">New tariff</string>
+    <string name="screen_tariff_edit">Edit tariff</string>
+    <string name="tariff_archived_badge">Archived</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_restore">Restore</string>
 
     <!-- Branches -->
     <string name="screen_branches">Branches</string>

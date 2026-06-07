@@ -63,6 +63,8 @@ sealed class AppRoute {
 
     @Serializable data object SettingsDisciplines : AppRoute()
 
+    @Serializable data object SettingsTariffs : AppRoute()
+
     @Serializable data object SettingsChannels : AppRoute()
 
     @Serializable data class Conversation(val clientId: String) : AppRoute()

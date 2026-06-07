@@ -16,6 +16,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.subscription.DurationUnit
 import kotlin.time.Clock
 
 /** Шаг мастера выдачи абонемента. */
@@ -107,11 +108,31 @@ class IssueSubscriptionViewModel(
                                 ),
                             freeComment = "",
                             groups = GroupsData.Loading,
-                            planOptions = demoTariffPlans(client.balance.currency),
+                            planOptions = emptyList(),
                         )
                     loadGroups()
+                    loadTariffs()
                 },
             )
+        }
+    }
+
+    private fun loadTariffs() {
+        scope.launch {
+            api.tariffs.list().onRight { response ->
+                val plans =
+                    response.tariffs.map { tariff ->
+                        TariffPlan(
+                            id = tariff.id.toString(),
+                            name = tariff.name,
+                            sessions = tariff.sessions,
+                            durationValue = tariff.durationValue,
+                            durationUnit = tariff.durationUnit,
+                            price = tariff.price,
+                        )
+                    }
+                updateReady { it.copy(planOptions = plans) }
+            }
         }
     }
 

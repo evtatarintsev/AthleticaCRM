@@ -323,7 +323,7 @@
     <string name="settings_section_classes">Занятия и абонементы</string>
     <string name="settings_item_attendance">Посещаемость</string>
     <string name="settings_item_attendance_subtitle">Отметки, оплата, иконки и цвета статусов</string>
-    <string name="settings_item_subscription_templates">Шаблоны абонементов</string>
+    <string name="settings_item_subscription_templates">Тарифы абонементов</string>
     <string name="settings_item_subscription_templates_subtitle">Посещения, срок действия, стоимость</string>
     <string name="settings_section_finance">Финансы</string>
     <string name="settings_item_cashboxes">Кассы и статьи доходов</string>
@@ -349,6 +349,12 @@
     <string name="screen_disciplines">Дисциплины</string>
     <string name="screen_discipline_create">Новая дисциплина</string>
     <string name="screen_discipline_edit">Изменить дисциплину</string>
+    <string name="screen_tariffs">Тарифы абонементов</string>
+    <string name="screen_tariff_create">Новый тариф</string>
+    <string name="screen_tariff_edit">Изменить тариф</string>
+    <string name="tariff_archived_badge">В архиве</string>
+    <string name="action_archive">В архив</string>
+    <string name="action_restore">Восстановить</string>
 
     <!-- Branches -->
     <string name="screen_branches">Филиалы</string>

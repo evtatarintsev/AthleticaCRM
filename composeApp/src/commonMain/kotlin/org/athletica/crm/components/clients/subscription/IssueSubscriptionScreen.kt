@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -55,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.client.ApiClient
@@ -193,18 +195,37 @@ fun IssueSubscriptionScreen(
     }
 }
 
+/**
+ * Контейнер шага мастера: вертикальная прокрутка, отступы и единый отклик на
+ * ширину экрана — на больших экранах (≥ MEDIUM) содержимое ограничивается
+ * половиной ширины и прижимается к левому краю. [spacing] — расстояние между
+ * элементами шага.
+ */
+@Composable
+private fun StepContainer(spacing: Dp, content: @Composable ColumnScope.() -> Unit) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val wide = WindowSize.fromWidth(maxWidth) >= WindowSize.MEDIUM
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(spacing),
+                modifier = if (wide) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth(),
+                content = content,
+            )
+        }
+    }
+}
+
 // ── Шаг 1: выбор тарифа ─────────────────────────────────────────────────────
 
 @Composable
 private fun ChoosePlanStep(state: IssueScreenState.Ready, viewModel: IssueSubscriptionViewModel) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-    ) {
+    StepContainer(spacing = 8.dp) {
         state.planOptions.forEach { plan ->
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth().clickable { viewModel.onPlanChosen(plan) },
@@ -237,36 +258,18 @@ private fun ParamsStep(state: IssueScreenState.Ready, viewModel: IssueSubscripti
     val currency = state.currency
     var showDatePicker by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // На широких экранах одна колонка не растягивается на всю ширину,
-        // а ограничивается половиной экрана и центрируется.
-        val wide = WindowSize.fromWidth(maxWidth) >= WindowSize.MEDIUM
-        val columnWidth = if (wide) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth()
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = columnWidth,
-            ) {
-                ParamsDetailsColumn(
-                    state = state,
-                    form = form,
-                    viewModel = viewModel,
-                    onPickDate = { showDatePicker = true },
-                )
-                ParamsPricingColumn(
-                    form = form,
-                    currency = currency,
-                    viewModel = viewModel,
-                )
-            }
-        }
+    StepContainer(spacing = 20.dp) {
+        ParamsDetailsColumn(
+            state = state,
+            form = form,
+            viewModel = viewModel,
+            onPickDate = { showDatePicker = true },
+        )
+        ParamsPricingColumn(
+            form = form,
+            currency = currency,
+            viewModel = viewModel,
+        )
     }
 
     if (showDatePicker) {
@@ -521,14 +524,7 @@ private fun PaymentStep(state: IssueScreenState.Ready, viewModel: IssueSubscript
     val currency = state.currency
     val summary = paymentSummary(form.total, state.currentBalance, state.payment)
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-    ) {
+    StepContainer(spacing = 16.dp) {
         OutlinedCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -630,14 +626,7 @@ private fun PaymentStep(state: IssueScreenState.Ready, viewModel: IssueSubscript
 
 @Composable
 private fun FreeOfChargeStep(state: IssueScreenState.Ready, viewModel: IssueSubscriptionViewModel) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-    ) {
+    StepContainer(spacing = 16.dp) {
         Text(
             text = stringResource(Res.string.issue_sub_free_explain),
             style = MaterialTheme.typography.bodyMedium,

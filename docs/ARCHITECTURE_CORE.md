@@ -29,11 +29,11 @@
                    ▼                                            ▼
         ┌──────────────────────┐                  ┌─────────────────────┐
         │    MEMBERSHIP        │                  │   SCHEDULE_SLOT     │
-        │  (абонемент)         │                  │   (слот расписания)  │
+        │  (абонемент)         │                  │   (слот расписания) │
         ├──────────────────────┤                  ├─────────────────────┤
         │ id                   │                  │ group_id            │
         │ client_id            │                  │ day_of_week         │
-        │ plan_id            │                  │ start_time          │
+        │ plan_id              │                  │ start_time          │
         │ status               │                  │ end_time            │
         │ created_at           │                  │ recurrence (if any) │
         │ expires_at           │                  └─────────────────────┘
@@ -51,7 +51,7 @@
         ├──────────────────────┤    ├──────────────────────┤
         │ id                   │    │ id                   │
         │ client_id            │    │ group_id             │
-        │ session_id          │    │ scheduled_at         │
+        │ session_id           │    │ scheduled_at         │
         │ attended_at          │    │ room_id              │
         │ membership_id        │    │ trainer_id           │
         │ status (attended)    │    │ actual_start_time    │
@@ -62,7 +62,7 @@
 
 ┌──────────────────────┐    ┌──────────────────────┐
 │    TARIFF            │    │    DISCIPLINE        │
-│  (план абонемента)     │    │  (спортивная дис.)   │
+│  (план абонемента)   │    │  (спортивная дис.)   │
 ├──────────────────────┤    ├──────────────────────┤
 │ id                   │    │ id                   │
 │ name                 │    │ name                 │
@@ -73,7 +73,7 @@
 │      package)        │
 │ price                │
 │ period_days          │
-│ sessions_count        │
+│ sessions_count       │
 │ discipline_ids       │
 │ status (active)      │
 └──────────────────────┘
@@ -235,8 +235,8 @@ CREATE INDEX idx_attendance_client_date ON attendance(client_id, attended_at);
 ```kotlin
 // Каждый день в 00:00 UTC
 ExpireMembershipsScheduler {
-    UPDATE memberships 
-    SET status = 'expired' 
+    UPDATE memberships
+    SET status = 'expired'
     WHERE org_id = ?
       AND expires_at < now()
       AND status = 'active'

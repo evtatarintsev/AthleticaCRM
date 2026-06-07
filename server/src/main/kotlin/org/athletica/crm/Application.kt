@@ -64,6 +64,7 @@ import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.sessionsRoutes
 import org.athletica.crm.routes.switchBranchRoute
+import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
@@ -181,6 +182,7 @@ fun Application.configureServer() {
                         hallsRoutes(di.halls)
                         homeRoutes(di.groups, di.sessions, di.halls)
                         disciplinesRoutes(di.disciplines)
+                        tariffsRoutes(di.tariffPlans)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles)

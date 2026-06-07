@@ -71,6 +71,9 @@ import org.athletica.crm.domain.sessions.DbSessions
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.domain.settings.UserDisplaySettings
+import org.athletica.crm.domain.tariffs.AuditTariffPlans
+import org.athletica.crm.domain.tariffs.DbTariffPlans
+import org.athletica.crm.domain.tariffs.TariffPlans
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.domain.tasks.Tasks
 import org.athletica.crm.integrations.messaging.StubChannelRegistry
@@ -117,6 +120,7 @@ data class Di(
             audit,
         )
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
+    val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
     val groups: Groups = AuditGroups(DbGroups(bus), audit)

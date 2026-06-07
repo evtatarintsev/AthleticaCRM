@@ -65,6 +65,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
+import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel

@@ -6,18 +6,12 @@ import kotlinx.datetime.plus
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.subscription.DurationUnit
 import kotlin.math.absoluteValue
 import kotlin.math.round
 
 /**
- * Единица измерения срока действия абонемента.
- */
-enum class DurationUnit { DAYS, MONTHS }
-
-/**
  * Тарифный план — шаблон абонемента, задаваемый в настройках организации.
- *
- * Пока бекенда нет, планы берутся из заглушки [demoTariffPlans].
  */
 data class TariffPlan(
     /** Идентификатор плана (в заглушке — произвольная строка). */
@@ -223,17 +217,3 @@ private fun pow10(digits: Int): Long {
     repeat(digits) { result *= 10 }
     return result
 }
-
-/**
- * Заглушка списка тарифных планов до появления бекенда/экрана настроек.
- *
- * TODO: заменить на загрузку планов из API настроек организации.
- */
-fun demoTariffPlans(currency: Currency): List<TariffPlan> =
-    listOf(
-        TariffPlan("plan-8", "8 занятий / месяц", 8, 1, DurationUnit.MONTHS, Money(4_000_00, currency)),
-        TariffPlan("plan-12", "12 занятий / месяц", 12, 1, DurationUnit.MONTHS, Money(5_500_00, currency)),
-        TariffPlan("plan-unlim-month", "Безлимит / месяц", null, 1, DurationUnit.MONTHS, Money(7_000_00, currency)),
-        TariffPlan("plan-unlim-year", "Безлимит / год", null, 12, DurationUnit.MONTHS, Money(60_000_00, currency)),
-        TariffPlan("plan-trial", "Пробное (1 занятие)", 1, 7, DurationUnit.DAYS, Money(500_00, currency)),
-    )

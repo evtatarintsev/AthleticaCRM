@@ -179,6 +179,7 @@ fun ClientDetailScreen(
     onOpenVisitHistory: () -> Unit = {},
     onOpenPaymentHistory: () -> Unit = {},
     onOpenSubscriptionHistory: () -> Unit = {},
+    onIssueSubscription: () -> Unit = {},
     onOpenMessages: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -268,7 +269,7 @@ fun ClientDetailScreen(
                 if (isLoaded && windowSize == WindowSize.COMPACT) {
                     ClientActionsBottomBar(
                         onPay = {},
-                        onIssueSubscription = {},
+                        onIssueSubscription = onIssueSubscription,
                         onMessage = onOpenMessages,
                         onAddNote = {},
                     )
@@ -309,7 +310,7 @@ fun ClientDetailScreen(
                             item {
                                 ClientActionsRow(
                                     onPay = {},
-                                    onIssueSubscription = {},
+                                    onIssueSubscription = onIssueSubscription,
                                     onMessage = onOpenMessages,
                                     onAddNote = {},
                                 )

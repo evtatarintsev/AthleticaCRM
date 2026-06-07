@@ -10,6 +10,7 @@ object AppNavUrlEncoder {
             "AppRoute.ClientDetail" in route -> "clients/${runCatching { entry.toRoute<AppRoute.ClientDetail>().id }.getOrElse { "" }}"
             "AppRoute.ClientCreate" in route -> "clients/new"
             "AppRoute.ClientEdit" in route -> "clients/${runCatching { entry.toRoute<AppRoute.ClientEdit>().id }.getOrElse { "" }}/edit"
+            "AppRoute.IssueSubscription" in route -> "clients/${runCatching { entry.toRoute<AppRoute.IssueSubscription>().clientId }.getOrElse { "" }}/issue-subscription"
             "AppRoute.Clients" in route -> "clients"
             "AppRoute.GroupDetail" in route -> "groups/${runCatching { entry.toRoute<AppRoute.GroupDetail>().id }.getOrElse { "" }}"
             "AppRoute.GroupCreate" in route -> "groups/new"
@@ -42,6 +43,8 @@ object AppNavUrlEncoder {
             segments == listOf("clients", "new") -> AppRoute.ClientCreate
             segments.size == 2 && segments[0] == "clients" -> AppRoute.ClientDetail(segments[1])
             segments.size == 3 && segments[0] == "clients" && segments[2] == "edit" -> AppRoute.ClientEdit(segments[1])
+            segments.size == 3 && segments[0] == "clients" && segments[2] == "issue-subscription" ->
+                AppRoute.IssueSubscription(segments[1])
             segments == listOf("groups") -> AppRoute.Groups
             segments == listOf("groups", "new") -> AppRoute.GroupCreate
             segments.size == 2 && segments[0] == "groups" -> AppRoute.GroupDetail(segments[1])

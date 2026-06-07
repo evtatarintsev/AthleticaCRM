@@ -72,6 +72,7 @@ import org.athletica.crm.components.clients.ClientSubscriptionHistoryScreen
 import org.athletica.crm.components.clients.ClientVisitHistoryScreen
 import org.athletica.crm.components.clients.ClientsScreen
 import org.athletica.crm.components.clients.ExportScreen
+import org.athletica.crm.components.clients.subscription.IssueSubscriptionScreen
 import org.athletica.crm.components.employees.EmployeeCreateScreen
 import org.athletica.crm.components.employees.EmployeeDetailScreen
 import org.athletica.crm.components.employees.EmployeeEditScreenLoader
@@ -486,6 +487,7 @@ private fun AppNavHost(
                 onOpenSubscriptionHistory = {
                     navController.navigate(AppRoute.ClientSubscriptionHistory(route.id))
                 },
+                onIssueSubscription = { navController.navigate(AppRoute.IssueSubscription(route.id)) },
                 onOpenMessages = { navController.navigate(AppRoute.Conversation(route.id)) },
             )
         }
@@ -530,6 +532,16 @@ private fun AppNavHost(
             ClientSubscriptionHistoryScreen(
                 clientId = ClientId(parse(route.id)),
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<AppRoute.IssueSubscription> { entry ->
+            val route = entry.toRoute<AppRoute.IssueSubscription>()
+            IssueSubscriptionScreen(
+                clientId = ClientId(parse(route.clientId)),
+                api = api,
+                onBack = { navController.popBackStack() },
+                onIssued = { navController.popBackStack() },
             )
         }
 

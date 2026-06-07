@@ -27,6 +27,8 @@ sealed class AppRoute {
 
     @Serializable data class ClientSubscriptionHistory(val id: String) : AppRoute()
 
+    @Serializable data class IssueSubscription(val clientId: String) : AppRoute()
+
     @Serializable data object Groups : AppRoute()
 
     @Serializable data class GroupDetail(val id: String) : AppRoute()

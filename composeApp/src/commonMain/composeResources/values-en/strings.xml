@@ -76,12 +76,7 @@
     <string name="gender_female_abbr">F</string>
     <string name="label_birth_year">Birth year</string>
     <string name="label_birthday">Date of birth</string>
-    <string name="label_address">Address</string>
-    <string name="label_contract_number">Contract number</string>
-    <string name="label_contract_type">Contract type</string>
-    <string name="label_sports_rank">Sports rank</string>
     <string name="label_discount">Discount</string>
-    <string name="label_classes_start">Classes started</string>
     <string name="label_groups">Groups</string>
     <string name="label_ip_address">IP: %1$s</string>
     <string name="label_from">From</string>

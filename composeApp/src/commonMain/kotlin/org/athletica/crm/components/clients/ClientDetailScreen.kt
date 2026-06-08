@@ -68,8 +68,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -107,16 +109,10 @@ import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_from_group_title
-import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_birthday
-import org.athletica.crm.generated.resources.label_classes_start
-import org.athletica.crm.generated.resources.label_contract_number
-import org.athletica.crm.generated.resources.label_contract_type
-import org.athletica.crm.generated.resources.label_discount
 import org.athletica.crm.generated.resources.label_groups
 import org.athletica.crm.generated.resources.label_phone
-import org.athletica.crm.generated.resources.label_sports_rank
 import org.athletica.crm.generated.resources.nav_payment_history
 import org.athletica.crm.generated.resources.nav_subscription_history
 import org.athletica.crm.generated.resources.nav_visit_history
@@ -593,7 +589,12 @@ private fun SectionCard(
 }
 
 @Composable
-private fun InfoRow(label: String, value: String?) {
+private fun InfoRow(
+    label: String,
+    value: String?,
+    onValueClick: (() -> Unit)? = null,
+) {
+    val isLink = value != null && onValueClick != null
     Row(
         modifier =
             Modifier
@@ -610,13 +611,17 @@ private fun InfoRow(label: String, value: String?) {
             text = value ?: stringResource(Res.string.placeholder_not_specified),
             style = MaterialTheme.typography.bodyMedium,
             color =
-                if (value != null) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                when {
+                    isLink -> MaterialTheme.colorScheme.primary
+                    value != null -> MaterialTheme.colorScheme.onSurface
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
+            textDecoration = if (isLink) TextDecoration.Underline else null,
             textAlign = TextAlign.Start,
-            modifier = Modifier.weight(0.55f),
+            modifier =
+                Modifier.weight(0.55f).let { base ->
+                    if (isLink) base.clickable(onClick = onValueClick) else base
+                },
         )
     }
 }
@@ -662,24 +667,34 @@ private fun BasicInfoSection(
             }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        val uriHandler = LocalUriHandler.current
         val phones = client.contacts.filter { it.type == ContactType.PHONE }
         if (phones.isEmpty()) {
             InfoRow(stringResource(Res.string.label_phone), null)
         } else {
-            phones.forEach { InfoRow(stringResource(Res.string.label_phone), it.value) }
+            phones.forEach { phone ->
+                InfoRow(
+                    label = stringResource(Res.string.label_phone),
+                    value = phone.value,
+                    onValueClick = { uriHandler.openUri("tel:${phone.value}") },
+                )
+            }
         }
         client.contacts
             .filter { it.type != ContactType.PHONE }
             .forEach { contact ->
-                InfoRow(stringResource(contact.type.labelRes()), contact.value)
+                InfoRow(
+                    label = stringResource(contact.type.labelRes()),
+                    value = contact.value,
+                    onValueClick =
+                        if (contact.type == ContactType.EMAIL) {
+                            { uriHandler.openUri("mailto:${contact.value}") }
+                        } else {
+                            null
+                        },
+                )
             }
-        InfoRow(stringResource(Res.string.label_contract_number), null)
-        InfoRow(stringResource(Res.string.label_contract_type), null)
-        InfoRow(stringResource(Res.string.label_sports_rank), null)
-        InfoRow(stringResource(Res.string.label_discount), "0 ₽")
         InfoRow(stringResource(Res.string.label_birthday), client.birthday?.formatRu())
-        InfoRow(stringResource(Res.string.label_address), null)
-        InfoRow(stringResource(Res.string.label_classes_start), "15.11.2019")
         Row(
             verticalAlignment = Alignment.Top,
             modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),

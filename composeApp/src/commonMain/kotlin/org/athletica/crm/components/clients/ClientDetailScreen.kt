@@ -107,16 +107,10 @@ import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_from_group_title
-import org.athletica.crm.generated.resources.label_address
 import org.athletica.crm.generated.resources.label_balance
 import org.athletica.crm.generated.resources.label_birthday
-import org.athletica.crm.generated.resources.label_classes_start
-import org.athletica.crm.generated.resources.label_contract_number
-import org.athletica.crm.generated.resources.label_contract_type
-import org.athletica.crm.generated.resources.label_discount
 import org.athletica.crm.generated.resources.label_groups
 import org.athletica.crm.generated.resources.label_phone
-import org.athletica.crm.generated.resources.label_sports_rank
 import org.athletica.crm.generated.resources.nav_payment_history
 import org.athletica.crm.generated.resources.nav_subscription_history
 import org.athletica.crm.generated.resources.nav_visit_history
@@ -673,13 +667,7 @@ private fun BasicInfoSection(
             .forEach { contact ->
                 InfoRow(stringResource(contact.type.labelRes()), contact.value)
             }
-        InfoRow(stringResource(Res.string.label_contract_number), null)
-        InfoRow(stringResource(Res.string.label_contract_type), null)
-        InfoRow(stringResource(Res.string.label_sports_rank), null)
-        InfoRow(stringResource(Res.string.label_discount), "0 ₽")
         InfoRow(stringResource(Res.string.label_birthday), client.birthday?.formatRu())
-        InfoRow(stringResource(Res.string.label_address), null)
-        InfoRow(stringResource(Res.string.label_classes_start), "15.11.2019")
         Row(
             verticalAlignment = Alignment.Top,
             modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),

@@ -68,8 +68,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
@@ -587,7 +589,12 @@ private fun SectionCard(
 }
 
 @Composable
-private fun InfoRow(label: String, value: String?) {
+private fun InfoRow(
+    label: String,
+    value: String?,
+    onValueClick: (() -> Unit)? = null,
+) {
+    val isLink = value != null && onValueClick != null
     Row(
         modifier =
             Modifier
@@ -604,13 +611,17 @@ private fun InfoRow(label: String, value: String?) {
             text = value ?: stringResource(Res.string.placeholder_not_specified),
             style = MaterialTheme.typography.bodyMedium,
             color =
-                if (value != null) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                when {
+                    isLink -> MaterialTheme.colorScheme.primary
+                    value != null -> MaterialTheme.colorScheme.onSurface
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
+            textDecoration = if (isLink) TextDecoration.Underline else null,
             textAlign = TextAlign.Start,
-            modifier = Modifier.weight(0.55f),
+            modifier =
+                Modifier.weight(0.55f).let { base ->
+                    if (isLink) base.clickable(onClick = onValueClick) else base
+                },
         )
     }
 }
@@ -656,16 +667,32 @@ private fun BasicInfoSection(
             }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        val uriHandler = LocalUriHandler.current
         val phones = client.contacts.filter { it.type == ContactType.PHONE }
         if (phones.isEmpty()) {
             InfoRow(stringResource(Res.string.label_phone), null)
         } else {
-            phones.forEach { InfoRow(stringResource(Res.string.label_phone), it.value) }
+            phones.forEach { phone ->
+                InfoRow(
+                    label = stringResource(Res.string.label_phone),
+                    value = phone.value,
+                    onValueClick = { uriHandler.openUri("tel:${phone.value}") },
+                )
+            }
         }
         client.contacts
             .filter { it.type != ContactType.PHONE }
             .forEach { contact ->
-                InfoRow(stringResource(contact.type.labelRes()), contact.value)
+                InfoRow(
+                    label = stringResource(contact.type.labelRes()),
+                    value = contact.value,
+                    onValueClick =
+                        if (contact.type == ContactType.EMAIL) {
+                            { uriHandler.openUri("mailto:${contact.value}") }
+                        } else {
+                            null
+                        },
+                )
             }
         InfoRow(stringResource(Res.string.label_birthday), client.birthday?.formatRu())
         Row(

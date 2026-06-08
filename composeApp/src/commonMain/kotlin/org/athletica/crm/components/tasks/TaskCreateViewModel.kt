@@ -7,18 +7,29 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
+import org.athletica.crm.api.schemas.tasks.AttachTaskUploadRequest
 import org.athletica.crm.api.schemas.tasks.CreateTaskRequest
+import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.tasks.TaskId
+import org.athletica.crm.pickAnyFile
 import kotlin.time.Instant
 
-/** Форма создания задачи. Исполнитель и вложения устанавливаются после создания отдельными запросами. */
+/** Форма создания задачи. */
 data class TaskForm(
     val title: String = "",
     val description: String = "",
     val clientId: ClientId? = null,
     val dueDate: Instant? = null,
     val dueDateEnd: Instant? = null,
+    /** Выбранный исполнитель, либо null если не назначен. */
+    val assigneeId: EmployeeId? = null,
+    /** Имя выбранного исполнителя — для отображения в форме. */
+    val assigneeName: String? = null,
+    /** Уже загруженные файлы, которые будут прикреплены к задаче после создания. */
+    val attachments: List<UploadResponse> = emptyList(),
 ) {
     /** true если форма заполнена минимально для отправки. */
     val isValid: Boolean get() = title.isNotBlank()
@@ -58,20 +69,37 @@ class TaskCreateViewModel(
         form = form.update()
     }
 
-    /** Отправляет задачу на сервер. */
+    /** Открывает файл-пикер, загружает файл и добавляет его в список вложений формы. */
+    fun pickAttachment() {
+        scope.launch {
+            val file = pickAnyFile() ?: return@launch
+            api.documents.upload(file.first, file.second, file.third).onRight { upload ->
+                form = form.copy(attachments = form.attachments + upload)
+            }
+        }
+    }
+
+    /** Убирает вложение [uploadId] из формы (файл ещё не привязан к задаче). */
+    fun removeAttachment(uploadId: UploadId) {
+        form = form.copy(attachments = form.attachments.filterNot { it.id == uploadId })
+    }
+
+    /** Отправляет задачу на сервер и прикрепляет выбранные файлы. */
     fun submit() {
         if (!form.isValid) return
         scope.launch {
             state = TaskCreateState.Submitting
+            val taskId = TaskId.new()
             val result =
                 api.tasks.create(
                     CreateTaskRequest(
-                        id = TaskId.new(),
+                        id = taskId,
                         title = form.title,
                         description = form.description,
                         clientId = form.clientId,
                         dueDate = form.dueDate,
                         dueDateEnd = form.dueDateEnd,
+                        assigneeId = form.assigneeId,
                     ),
                 )
             state =
@@ -80,7 +108,12 @@ class TaskCreateViewModel(
                         val msg = if (e is ApiClientError.ValidationError) e.message else "Ошибка создания задачи"
                         TaskCreateState.Error(msg)
                     },
-                    ifRight = { TaskCreateState.Success },
+                    ifRight = {
+                        form.attachments.forEach { upload ->
+                            api.tasks.attach(AttachTaskUploadRequest(taskId, upload.id))
+                        }
+                        TaskCreateState.Success
+                    },
                 )
         }
     }

@@ -6,11 +6,20 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.tasks.AssignTaskRequest
+import org.athletica.crm.api.schemas.tasks.AttachTaskUploadRequest
+import org.athletica.crm.api.schemas.tasks.DetachTaskUploadRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailRequest
 import org.athletica.crm.api.schemas.tasks.TaskDetailResponse
+import org.athletica.crm.api.schemas.tasks.UnassignTaskRequest
+import org.athletica.crm.api.schemas.tasks.UpdateTaskRequest
 import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
+import org.athletica.crm.pickAnyFile
+import kotlin.time.Instant
 
 /** Состояние экрана детального просмотра задачи. */
 sealed class TaskDetailState {
@@ -60,6 +69,53 @@ class TaskDetailViewModel(
                     ),
                 )
             result.onRight { load() }
+        }
+    }
+
+    /** Назначает исполнителя [employeeId], либо снимает назначение если null. */
+    fun setAssignee(employeeId: EmployeeId?) {
+        scope.launch {
+            val result =
+                if (employeeId != null) {
+                    api.tasks.assign(AssignTaskRequest(listOf(taskId), employeeId))
+                } else {
+                    api.tasks.unassign(UnassignTaskRequest(listOf(taskId)))
+                }
+            result.onRight { load() }
+        }
+    }
+
+    /** Обновляет сроки выполнения задачи, сохраняя остальные поля. */
+    fun updateDates(dueDate: Instant?, dueDateEnd: Instant?) {
+        val task = (state as? TaskDetailState.Loaded)?.task ?: return
+        scope.launch {
+            api.tasks.update(
+                UpdateTaskRequest(
+                    id = taskId,
+                    title = task.title,
+                    description = task.description,
+                    clientId = task.clientId,
+                    dueDate = dueDate,
+                    dueDateEnd = dueDateEnd,
+                ),
+            ).onRight { load() }
+        }
+    }
+
+    /** Открывает файл-пикер, загружает файл и прикрепляет его к задаче. */
+    fun attachFile() {
+        scope.launch {
+            val file = pickAnyFile() ?: return@launch
+            api.documents.upload(file.first, file.second, file.third).onRight { upload ->
+                api.tasks.attach(AttachTaskUploadRequest(taskId, upload.id)).onRight { load() }
+            }
+        }
+    }
+
+    /** Открепляет вложение [uploadId] от задачи. */
+    fun detachFile(uploadId: UploadId) {
+        scope.launch {
+            api.tasks.detach(DetachTaskUploadRequest(taskId, uploadId)).onRight { load() }
         }
     }
 }

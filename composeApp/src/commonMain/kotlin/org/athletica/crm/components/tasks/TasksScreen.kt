@@ -44,7 +44,6 @@ import org.athletica.crm.api.schemas.tasks.TaskListItemSchema
 import org.athletica.crm.api.schemas.tasks.UnassignTaskRequest
 import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
-import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.generated.resources.Res
@@ -368,12 +367,12 @@ fun TasksScreen(
         PickAssigneeSheet(
             api = api,
             onDismiss = { showAssigneeSheet = false },
-            onPicked = { employeeId: EmployeeId? ->
+            onPicked = { employee ->
                 showAssigneeSheet = false
                 scope.launch {
                     val result =
-                        if (employeeId != null) {
-                            api.tasks.assign(AssignTaskRequest(selectedIds.toList(), employeeId))
+                        if (employee != null) {
+                            api.tasks.assign(AssignTaskRequest(selectedIds.toList(), employee.id))
                         } else {
                             api.tasks.unassign(UnassignTaskRequest(selectedIds.toList()))
                         }

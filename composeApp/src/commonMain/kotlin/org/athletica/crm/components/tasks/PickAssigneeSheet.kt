@@ -53,14 +53,14 @@ import org.jetbrains.compose.resources.stringResource
  *
  * [api] — клиент API для загрузки списка сотрудников.
  * [onDismiss] — вызывается при закрытии шторки без выбора.
- * [onPicked] — вызывается с выбранным [EmployeeId] или null (снять назначение).
+ * [onPicked] — вызывается с выбранным [EmployeeListItem] или null (снять назначение).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PickAssigneeSheet(
     api: ApiClient,
     onDismiss: () -> Unit,
-    onPicked: (EmployeeId?) -> Unit,
+    onPicked: (EmployeeListItem?) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -103,7 +103,7 @@ fun PickAssigneeSheet(
                     modifier = Modifier.weight(1f),
                 )
                 Button(
-                    onClick = { onPicked(selectedId) },
+                    onClick = { onPicked(employees.find { it.id == selectedId }) },
                     enabled = !isLoading && !hasError,
                 ) {
                     Text(stringResource(Res.string.action_ok))

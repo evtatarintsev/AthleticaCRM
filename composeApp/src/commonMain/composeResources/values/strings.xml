@@ -514,6 +514,7 @@
     <string name="label_task_due_date_end">До</string>
     <string name="label_task_attachments">Вложения</string>
     <string name="action_attach_file">Прикрепить файл</string>
+    <string name="task_assignee_unassigned">Не назначен</string>
     <string name="hint_task_search">Поиск по задачам…</string>
     <string name="tasks_search_placeholder">Поиск по задачам</string>
     <string name="tasks_view_all">Все</string>

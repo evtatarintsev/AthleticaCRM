@@ -500,6 +500,7 @@
     <string name="label_task_due_date_end">Until</string>
     <string name="label_task_attachments">Attachments</string>
     <string name="action_attach_file">Attach file</string>
+    <string name="task_assignee_unassigned">Unassigned</string>
     <string name="hint_task_search">Search tasks…</string>
     <string name="tasks_search_placeholder">Search tasks</string>
     <string name="tasks_view_all">All</string>

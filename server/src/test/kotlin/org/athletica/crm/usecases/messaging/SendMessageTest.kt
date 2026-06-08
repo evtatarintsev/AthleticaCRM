@@ -94,13 +94,15 @@ class SendMessageTest {
             .bind("name", "Test $channelType").bind("config", config).bind("enabled", enabled).execute()
     }
 
-    private suspend fun addSmsContact() {
+    private suspend fun addPhoneContact(value: String = "+79990001122"): ClientContactId {
+        val id = ClientContactId.new()
         TestPostgres.db.sql(
             """
-            INSERT INTO client_contacts (id, org_id, client_id, channel_type, address)
-            VALUES (:id, :orgId, :clientId, 'SMS', '+79990001122')
+            INSERT INTO client_contacts (id, org_id, client_id, type, value)
+            VALUES (:id, :orgId, :clientId, 'PHONE', :value)
             """.trimIndent(),
-        ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId).execute()
+        ).bind("id", id).bind("orgId", orgId).bind("clientId", clientId).bind("value", value).execute()
+        return id
     }
 
     private suspend fun deliveryState(): String? =
@@ -113,25 +115,27 @@ class SendMessageTest {
             .bind("orgId", orgId)
             .firstOrNull { row -> row.asString("recipient_address") }
 
-    private suspend fun send(integrationId: ChannelIntegrationId) =
-        either {
-            TestPostgres.db.transaction {
-                context(ctx) {
-                    sendMessage(
-                        SendMessageRequest(clientId, integrationId, "Привет"),
-                        channels,
-                        contacts,
-                        conversations,
-                        deliveries,
-                    )
-                }
+    private suspend fun send(
+        integrationId: ChannelIntegrationId,
+        contactId: ClientContactId? = null,
+    ) = either {
+        TestPostgres.db.transaction {
+            context(ctx) {
+                sendMessage(
+                    SendMessageRequest(clientId, integrationId, "Привет", contactId),
+                    channels,
+                    contacts,
+                    conversations,
+                    deliveries,
+                )
             }
         }
+    }
 
     @Test
     fun `успех создаёт сообщение и доставку в статусе PENDING`() =
         runTest {
-            addSmsContact()
+            addPhoneContact()
 
             val result = send(smsIntegrationId)
 
@@ -140,6 +144,42 @@ class SendMessageTest {
             val message = assertIs<OutboundMessageSchema>(response.messages.first())
             assertEquals(DeliveryStateSchema.PENDING, message.deliveries.first().state)
             assertEquals("PENDING", deliveryState())
+        }
+
+    @Test
+    fun `без выбранного контакта берёт первый подходящий по типу`() =
+        runTest {
+            addPhoneContact("+79990001122")
+            addPhoneContact("+79993334455")
+
+            val result = send(smsIntegrationId)
+
+            assertIs<Either.Right<ConversationResponse>>(result)
+            assertEquals("+79990001122", recipientAddress())
+        }
+
+    @Test
+    fun `выбранный контакт определяет адрес получателя`() =
+        runTest {
+            addPhoneContact("+79990001122")
+            val second = addPhoneContact("+79993334455")
+
+            val result = send(smsIntegrationId, second)
+
+            assertIs<Either.Right<ConversationResponse>>(result)
+            assertEquals("+79993334455", recipientAddress())
+        }
+
+    @Test
+    fun `несуществующий контакт возвращает CONTACT_NOT_FOUND`() =
+        runTest {
+            addPhoneContact()
+
+            val result = send(smsIntegrationId, ClientContactId.new())
+
+            val error = assertIs<Either.Left<DomainError>>(result).value
+            assertEquals("CONTACT_NOT_FOUND", error.code)
+            assertEquals(null, deliveryState())
         }
 
     @Test
@@ -164,7 +204,7 @@ class SendMessageTest {
     @Test
     fun `выключенный канал возвращает CHANNEL_DISABLED`() =
         runTest {
-            addSmsContact()
+            addPhoneContact()
 
             val result = send(disabledIntegrationId)
 

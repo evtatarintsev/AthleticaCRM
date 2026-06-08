@@ -81,6 +81,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.notes.ClientNotesSection
 import org.athletica.crm.components.clients.notes.ClientNotesViewModel
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
@@ -661,7 +662,17 @@ private fun BasicInfoSection(
             }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        InfoRow(stringResource(Res.string.label_phone), null)
+        val phones = client.contacts.filter { it.type == ContactType.PHONE }
+        if (phones.isEmpty()) {
+            InfoRow(stringResource(Res.string.label_phone), null)
+        } else {
+            phones.forEach { InfoRow(stringResource(Res.string.label_phone), it.value) }
+        }
+        client.contacts
+            .filter { it.type != ContactType.PHONE }
+            .forEach { contact ->
+                InfoRow(stringResource(contact.type.labelRes()), contact.value)
+            }
         InfoRow(stringResource(Res.string.label_contract_number), null)
         InfoRow(stringResource(Res.string.label_contract_type), null)
         InfoRow(stringResource(Res.string.label_sports_rank), null)

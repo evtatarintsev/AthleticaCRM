@@ -3,6 +3,7 @@ package org.athletica.crm.usecases.messaging
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.DeliverySchema
 import org.athletica.crm.api.schemas.messaging.DeliveryStateSchema
@@ -16,6 +17,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelType
 import org.athletica.crm.domain.channels.ChannelIntegrations
+import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.conversations.Author
 import org.athletica.crm.domain.conversations.Conversation
@@ -58,8 +60,19 @@ suspend fun sendMessage(
         if (integration.channelType == ChannelType.IN_APP) {
             request.clientId.toString()
         } else {
-            contacts.addressFor(request.clientId, integration.channelType)
-                ?: raise(CommonDomainError("CLIENT_HAS_NO_CONTACT", "У клиента нет контакта для этого канала"))
+            val candidates =
+                contacts
+                    .byClient(request.clientId)
+                    .filter { integration.channelType in it.type.compatibleChannels }
+            val chosen =
+                request.contactId
+                    ?.let { id ->
+                        candidates.firstOrNull { it.id == id }
+                            ?: raise(CommonDomainError("CONTACT_NOT_FOUND", "Контакт не найден или не подходит для канала"))
+                    }
+                    ?: candidates.firstOrNull()
+                    ?: raise(CommonDomainError("CLIENT_HAS_NO_CONTACT", "У клиента нет контакта для этого канала"))
+            chosen.value
         }
 
     val conversation = conversations.forClient(request.clientId)
@@ -67,7 +80,7 @@ suspend fun sendMessage(
     deliveries.create(message.id, integration.id, recipientAddress)
     conversation.touch()
 
-    return conversationResponse(request.clientId, conversation, deliveries)
+    return conversationResponse(request.clientId, conversation, deliveries, contacts)
 }
 
 /** Возвращает ленту диалога с клиентом [clientId] (сообщения по всем каналам, от старых к новым). */
@@ -76,9 +89,10 @@ suspend fun conversationView(
     clientId: ClientId,
     conversations: Conversations,
     deliveries: Deliveries,
+    contacts: ClientContacts,
 ): ConversationResponse {
     val conversation = conversations.forClient(clientId)
-    return conversationResponse(clientId, conversation, deliveries)
+    return conversationResponse(clientId, conversation, deliveries, contacts)
 }
 
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -86,10 +100,12 @@ private suspend fun conversationResponse(
     clientId: ClientId,
     conversation: Conversation,
     deliveries: Deliveries,
+    contacts: ClientContacts,
 ): ConversationResponse =
     ConversationResponse(
         clientId = clientId,
         messages = conversation.messages().map { it.toSchema(deliveries) },
+        contacts = contacts.byClient(clientId).map { it.toSchema() },
     )
 
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -112,6 +128,13 @@ private suspend fun Message.toSchema(deliveries: Deliveries): MessageSchema =
                 receivedVia = receivedVia,
             )
     }
+
+private fun ClientContact.toSchema(): ClientContactSchema =
+    ClientContactSchema(
+        id = id,
+        type = type,
+        value = value,
+    )
 
 private fun Delivery.toSchema(): DeliverySchema =
     DeliverySchema(

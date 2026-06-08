@@ -25,7 +25,7 @@ fun RouteWithContext.messagingRoutes(
     route("/messaging") {
         get<ConversationRequest, ConversationResponse>("/conversation") { request ->
             db.transaction {
-                conversationView(request.clientId, conversations, deliveries)
+                conversationView(request.clientId, conversations, deliveries, contacts)
             }
         }
 

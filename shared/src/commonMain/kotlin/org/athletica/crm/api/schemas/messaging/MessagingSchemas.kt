@@ -4,7 +4,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.core.entityids.ChannelIntegrationId
+import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.MessageId
@@ -69,6 +71,8 @@ enum class DeliveryStateSchema {
 data class ConversationResponse(
     val clientId: ClientId,
     val messages: List<MessageSchema>,
+    /** Контакты клиента: определяют доступность каналов и выбор адреса при отправке. */
+    val contacts: List<ClientContactSchema> = emptyList(),
 )
 
 /** Запрос ленты диалога с клиентом. */
@@ -83,4 +87,9 @@ data class SendMessageRequest(
     val clientId: ClientId,
     val channelIntegrationId: ChannelIntegrationId,
     val body: String,
+    /**
+     * Контакт-адресат: какой из подходящих под канал контактов использовать.
+     * `null` — взять первый подходящий (поведение по умолчанию).
+     */
+    val contactId: ClientContactId? = null,
 )

@@ -1,6 +1,5 @@
 package org.athletica.crm.components.messaging
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,23 +16,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Contacts
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,24 +46,21 @@ import org.athletica.crm.api.schemas.messaging.MessageSchema
 import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
 import org.athletica.crm.components.clients.message
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.messaging.ChannelType
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_send
-import org.athletica.crm.generated.resources.contact_add
-import org.athletica.crm.generated.resources.contact_address_label
-import org.athletica.crm.generated.resources.contacts_empty
-import org.athletica.crm.generated.resources.contacts_title
 import org.athletica.crm.generated.resources.conversation_channel_label
 import org.athletica.crm.generated.resources.conversation_empty
 import org.athletica.crm.generated.resources.conversation_message_hint
 import org.athletica.crm.generated.resources.conversation_no_channels
 import org.athletica.crm.generated.resources.conversation_no_contact
+import org.athletica.crm.generated.resources.label_recipient_address
 import org.athletica.crm.generated.resources.screen_conversation
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Экран диалога с клиентом: лента сообщений, выбор канала, поле ввода и панель контактов.
+ * Экран диалога с клиентом: лента сообщений, выбор канала и адреса, поле ввода.
+ * Контакты редактируются на экране клиента; здесь они только определяют доступность каналов.
  * Загружает данные через [api]; [clientId] — клиент диалога; [onBack] — возврат назад.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,14 +84,6 @@ fun ConversationScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
-                actions = {
-                    val loaded = viewModel.state as? ConversationState.Loaded
-                    if (loaded != null) {
-                        IconButton(onClick = { viewModel.toggleContacts() }) {
-                            Icon(Icons.Default.Contacts, contentDescription = stringResource(Res.string.contacts_title))
-                        }
-                    }
-                },
             )
         },
     ) { padding ->
@@ -119,10 +102,6 @@ fun ConversationScreen(
 
             is ConversationState.Loaded -> {
                 Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    if (s.showContacts) {
-                        ContactsPanel(s, viewModel)
-                        HorizontalDivider()
-                    }
                     MessageList(s.messages, modifier = Modifier.weight(1f))
                     Composer(s, viewModel)
                 }
@@ -213,6 +192,12 @@ private fun Composer(
                 style = MaterialTheme.typography.labelSmall,
             )
         }
+        if (selected != null && state.isAvailable(selected)) {
+            val options = state.addressOptions(selected)
+            if (options.size > 1) {
+                AddressPicker(state, options, viewModel)
+            }
+        }
         if (state.sendError != null) {
             Text(state.sendError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
         }
@@ -263,74 +248,27 @@ private fun ChannelPicker(
     }
 }
 
+/** Выбор адреса-получателя, когда под канал подходит несколько контактов. */
 @Composable
-private fun ContactsPanel(
+private fun AddressPicker(
     state: ConversationState.Loaded,
+    options: List<ClientContactSchema>,
     viewModel: ConversationViewModel,
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-        Text(stringResource(Res.string.contacts_title), style = MaterialTheme.typography.titleSmall)
-        if (state.contacts.isEmpty()) {
-            Text(
-                stringResource(Res.string.contacts_empty),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        } else {
-            state.contacts.forEach { contact -> ContactRow(contact, viewModel) }
-        }
-        Spacer(Modifier.width(8.dp))
-        ContactTypePicker(state.newContactType) { viewModel.setNewContactType(it) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = state.newContactAddress,
-                onValueChange = { viewModel.setNewContactAddress(it) },
-                label = { Text(stringResource(Res.string.contact_address_label)) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            TextButton(onClick = { viewModel.addContact() }, enabled = state.newContactAddress.isNotBlank()) {
-                Text(stringResource(Res.string.contact_add))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContactRow(
-    contact: ClientContactSchema,
-    viewModel: ConversationViewModel,
-) {
-    ListItem(
-        headlineContent = { Text(contact.address) },
-        supportingContent = { Text(contact.channelType.label()) },
-        trailingContent = {
-            IconButton(onClick = { viewModel.deleteContact(contact.id) }) {
-                Icon(Icons.Default.Delete, contentDescription = null)
-            }
-        },
-    )
-}
-
-@Composable
-private fun ContactTypePicker(
-    selected: ChannelType,
-    onSelect: (ChannelType) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+    val selected = options.firstOrNull { it.id == state.selectedContactId } ?: options.first()
+    Box {
         OutlinedButton(onClick = { expanded = true }) {
-            Text(selected.label())
+            Text(stringResource(Res.string.label_recipient_address) + ": " + selected.value)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            ChannelType.entries.filter { it != ChannelType.IN_APP }.forEach { type ->
+            options.forEach { contact ->
                 DropdownMenuItem(
-                    text = { Text(type.label()) },
+                    text = { Text(contact.value) },
                     onClick = {
-                        onSelect(type)
+                        viewModel.selectContact(contact.id)
                         expanded = false
                     },
                 )

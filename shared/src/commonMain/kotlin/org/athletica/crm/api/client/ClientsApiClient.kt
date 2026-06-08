@@ -7,20 +7,17 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import org.athletica.crm.api.schemas.clients.AddClientContactRequest
 import org.athletica.crm.api.schemas.clients.AddClientNoteRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
-import org.athletica.crm.api.schemas.clients.ClientContactListResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientExportRequest
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.ClientNotesListResponse
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
-import org.athletica.crm.api.schemas.clients.DeleteClientContactRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientNoteRequest
 import org.athletica.crm.api.schemas.clients.EditClientNoteRequest
@@ -178,32 +175,6 @@ class ClientsApiClient(private val http: HttpClient) {
     suspend fun importCommit(request: ClientImportCommitRequest): Either<ApiClientError, ClientImportCommitResponse> =
         requestCatching {
             http.post("/api/clients/import/commit") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
-        }
-
-    /** Возвращает список контактов клиента [id] по каналам связи. */
-    suspend fun contactsList(id: ClientId): Either<ApiClientError, ClientContactListResponse> =
-        requestCatching {
-            http.get("/api/clients/contacts/list") {
-                url { parameters.append("clientId", id.toString()) }
-            }
-        }
-
-    /** Добавляет клиенту контакт в рамках канала. Возвращает обновлённый список контактов. */
-    suspend fun addContact(request: AddClientContactRequest): Either<ApiClientError, ClientContactListResponse> =
-        requestCatching {
-            http.post("/api/clients/contacts/add") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
-        }
-
-    /** Удаляет контакт клиента. Возвращает обновлённый список контактов. */
-    suspend fun deleteContact(request: DeleteClientContactRequest): Either<ApiClientError, ClientContactListResponse> =
-        requestCatching {
-            http.post("/api/clients/contacts/delete") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

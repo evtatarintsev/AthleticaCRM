@@ -157,6 +157,13 @@ fun ClientCreateScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            ClientContactsSection(
+                contacts = form.contacts,
+                onContactsChange = { form = form.copy(contacts = it) },
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(),

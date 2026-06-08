@@ -7,9 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.channels.ChannelIntegrationSchema
-import org.athletica.crm.api.schemas.clients.AddClientContactRequest
 import org.athletica.crm.api.schemas.clients.ClientContactSchema
-import org.athletica.crm.api.schemas.clients.DeleteClientContactRequest
 import org.athletica.crm.api.schemas.messaging.MessageSchema
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.components.clients.ClientsApiError
@@ -30,24 +28,25 @@ sealed class ConversationState {
     /**
      * Диалог загружен.
      * [channels] — только включённые интеграции.
-     * [contacts] — контакты клиента по каналам.
+     * [contacts] — контакты клиента; определяют доступность каналов и выбор адреса.
      * [selectedChannelId] — выбранный для отправки канал.
-     * [showContacts] — раскрыта ли панель управления контактами.
+     * [selectedContactId] — выбранный адрес-получатель (когда подходящих контактов несколько).
      */
     data class Loaded(
         val messages: List<MessageSchema>,
         val channels: List<ChannelIntegrationSchema>,
         val contacts: List<ClientContactSchema>,
         val selectedChannelId: ChannelIntegrationId?,
+        val selectedContactId: ClientContactId? = null,
         val draft: String = "",
         val sending: Boolean = false,
         val sendError: String? = null,
-        val showContacts: Boolean = false,
-        val newContactType: ChannelType = ChannelType.SMS,
-        val newContactAddress: String = "",
     ) : ConversationState() {
-        /** Канал доступен, если это IN_APP или у клиента есть контакт нужного типа. */
-        fun isAvailable(channel: ChannelIntegrationSchema): Boolean = channel.channelType == ChannelType.IN_APP || contacts.any { it.channelType == channel.channelType }
+        /** Контакты, подходящие для канала [channel] (по совместимости типа с каналом). */
+        fun addressOptions(channel: ChannelIntegrationSchema): List<ClientContactSchema> = contacts.filter { channel.channelType in it.type.compatibleChannels }
+
+        /** Канал доступен, если это IN_APP или у клиента есть подходящий контакт. */
+        fun isAvailable(channel: ChannelIntegrationSchema): Boolean = channel.channelType == ChannelType.IN_APP || addressOptions(channel).isNotEmpty()
 
         val selectedChannel: ChannelIntegrationSchema?
             get() = channels.firstOrNull { it.id == selectedChannelId }
@@ -59,8 +58,8 @@ sealed class ConversationState {
 
 /**
  * ViewModel экрана диалога с клиентом.
- * Загружает ленту сообщений, включённые каналы и контакты клиента; отправляет сообщения
- * и управляет контактами. Композаблы экрана stateless.
+ * Загружает ленту сообщений (с контактами клиента) и включённые каналы; отправляет сообщения
+ * через выбранный канал и адрес. Композаблы экрана stateless.
  */
 class ConversationViewModel(
     private val api: ApiClient,
@@ -74,7 +73,7 @@ class ConversationViewModel(
         load()
     }
 
-    /** Загружает ленту, каналы и контакты. */
+    /** Загружает ленту с контактами и включённые каналы. */
     fun load() {
         scope.launch {
             state = ConversationState.Loading
@@ -94,20 +93,14 @@ class ConversationViewModel(
                     },
                     ifRight = { it.channels.filter { c -> c.enabled } },
                 )
-            val contacts =
-                api.clients.contactsList(clientId).fold(
-                    ifLeft = {
-                        state = ConversationState.Error(it.toClientsApiError())
-                        return@launch
-                    },
-                    ifRight = { it.contacts },
-                )
+            val selectedChannel = defaultChannel(channels, conversation.contacts)
             state =
                 ConversationState.Loaded(
                     messages = conversation.messages,
                     channels = channels,
-                    contacts = contacts,
-                    selectedChannelId = defaultChannelId(channels, contacts),
+                    contacts = conversation.contacts,
+                    selectedChannelId = selectedChannel?.id,
+                    selectedContactId = selectedChannel?.let { defaultContactId(it, conversation.contacts) },
                 )
         }
     }
@@ -118,97 +111,62 @@ class ConversationViewModel(
         state = loaded.copy(draft = value, sendError = null)
     }
 
-    /** Выбирает канал для отправки. */
+    /** Выбирает канал для отправки; сбрасывает адрес-получатель на первый подходящий. */
     fun selectChannel(id: ChannelIntegrationId) {
         val loaded = state as? ConversationState.Loaded ?: return
-        state = loaded.copy(selectedChannelId = id, sendError = null)
+        val channel = loaded.channels.firstOrNull { it.id == id }
+        state =
+            loaded.copy(
+                selectedChannelId = id,
+                selectedContactId = channel?.let { defaultContactId(it, loaded.contacts) },
+                sendError = null,
+            )
     }
 
-    /** Отправляет текущий черновик через выбранный канал. */
+    /** Выбирает контакт-получатель для отправки. */
+    fun selectContact(id: ClientContactId) {
+        val loaded = state as? ConversationState.Loaded ?: return
+        state = loaded.copy(selectedContactId = id, sendError = null)
+    }
+
+    /** Отправляет текущий черновик через выбранный канал и адрес. */
     fun send() {
         val loaded = state as? ConversationState.Loaded ?: return
         val channel = loaded.selectedChannel ?: return
         if (!loaded.canSend) return
         state = loaded.copy(sending = true, sendError = null)
         scope.launch {
-            api.messaging.send(SendMessageRequest(clientId, channel.id, loaded.draft.trim())).fold(
-                ifLeft = { error ->
-                    val current = state as? ConversationState.Loaded ?: return@fold
-                    state = current.copy(sending = false, sendError = error.toClientsApiError().asMessage())
-                },
-                ifRight = { response ->
-                    val current = state as? ConversationState.Loaded ?: return@fold
-                    state = current.copy(messages = response.messages, draft = "", sending = false)
-                },
-            )
-        }
-    }
-
-    /** Показывает/скрывает панель контактов. */
-    fun toggleContacts() {
-        val loaded = state as? ConversationState.Loaded ?: return
-        state = loaded.copy(showContacts = !loaded.showContacts)
-    }
-
-    /** Меняет тип нового контакта. */
-    fun setNewContactType(type: ChannelType) {
-        val loaded = state as? ConversationState.Loaded ?: return
-        state = loaded.copy(newContactType = type)
-    }
-
-    /** Меняет адрес нового контакта. */
-    fun setNewContactAddress(value: String) {
-        val loaded = state as? ConversationState.Loaded ?: return
-        state = loaded.copy(newContactAddress = value)
-    }
-
-    /** Добавляет новый контакт клиенту. */
-    fun addContact() {
-        val loaded = state as? ConversationState.Loaded ?: return
-        if (loaded.newContactAddress.isBlank()) return
-        scope.launch {
-            api.clients
-                .addContact(AddClientContactRequest(clientId, loaded.newContactType, loaded.newContactAddress.trim()))
+            api.messaging
+                .send(SendMessageRequest(clientId, channel.id, loaded.draft.trim(), loaded.selectedContactId))
                 .fold(
                     ifLeft = { error ->
                         val current = state as? ConversationState.Loaded ?: return@fold
-                        state = current.copy(sendError = error.toClientsApiError().asMessage())
+                        state = current.copy(sending = false, sendError = error.toClientsApiError().asMessage())
                     },
                     ifRight = { response ->
                         val current = state as? ConversationState.Loaded ?: return@fold
-                        state = current.copy(contacts = response.contacts, newContactAddress = "")
+                        state = current.copy(messages = response.messages, draft = "", sending = false)
                     },
                 )
         }
     }
 
-    /** Удаляет контакт клиента. */
-    fun deleteContact(contactId: ClientContactId) {
-        val loaded = state as? ConversationState.Loaded ?: return
-        scope.launch {
-            api.clients.deleteContact(DeleteClientContactRequest(clientId, contactId)).fold(
-                ifLeft = { error ->
-                    val current = state as? ConversationState.Loaded ?: return@fold
-                    state = current.copy(sendError = error.toClientsApiError().asMessage())
-                },
-                ifRight = { response ->
-                    val current = state as? ConversationState.Loaded ?: return@fold
-                    state = current.copy(contacts = response.contacts)
-                },
-            )
-        }
-    }
-
-    private fun defaultChannelId(
+    private fun defaultChannel(
         channels: List<ChannelIntegrationSchema>,
         contacts: List<ClientContactSchema>,
-    ): ChannelIntegrationId? {
+    ): ChannelIntegrationSchema? {
         val reachable =
             channels.firstOrNull { c ->
-                c.channelType == ChannelType.IN_APP || contacts.any { it.channelType == c.channelType }
+                c.channelType == ChannelType.IN_APP ||
+                    contacts.any { c.channelType in it.type.compatibleChannels }
             }
-        return (reachable ?: channels.firstOrNull())?.id
+        return reachable ?: channels.firstOrNull()
     }
+
+    private fun defaultContactId(
+        channel: ChannelIntegrationSchema,
+        contacts: List<ClientContactSchema>,
+    ): ClientContactId? = contacts.firstOrNull { channel.channelType in it.type.compatibleChannels }?.id
 }
 
 /** Грубое текстовое представление ошибки для немедленного показа без @Composable-контекста. */

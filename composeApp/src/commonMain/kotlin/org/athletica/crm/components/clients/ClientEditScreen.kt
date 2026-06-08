@@ -95,6 +95,10 @@ fun ClientEditScreen(
                 avatarId = client.avatarId,
                 leadSourceId = client.leadSourceId,
                 customFields = initialCustomFields,
+                contacts =
+                    client.contacts
+                        .map { ContactFormEntry(it.type, it.value) }
+                        .ifEmpty { listOf(ContactFormEntry()) },
             ),
         )
     }
@@ -163,6 +167,13 @@ fun ClientEditScreen(
                 label = { Text(stringResource(Res.string.label_person_name)) },
                 singleLine = true,
                 isError = saveError != null,
+                enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            ClientContactsSection(
+                contacts = form.contacts,
+                onContactsChange = { form = form.copy(contacts = it) },
                 enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth(),
             )

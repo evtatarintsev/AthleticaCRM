@@ -1,41 +1,25 @@
 package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ClientContactId
-import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.messaging.ChannelType
 
-/** Контакт клиента в рамках типа канала (телефон, telegram chat_id, email и т.п.). */
+/** Контакт клиента: значение [value] определённого типа [type] (телефон, email, Telegram и т.п.). */
 @Serializable
 data class ClientContactSchema(
+    /** Идентификатор контакта. */
     val id: ClientContactId,
-    val channelType: ChannelType,
-    val address: String,
+    /** Тип контакта. */
+    val type: ContactType,
+    /** Значение контакта (номер, адрес, имя пользователя). */
+    val value: String,
 )
 
-/** Список контактов клиента. */
+/** Контакт клиента в составе запроса на создание/редактирование клиента (ещё без идентификатора). */
 @Serializable
-data class ClientContactListResponse(
-    val contacts: List<ClientContactSchema>,
-)
-
-/** Запрос списка контактов клиента. */
-@Serializable
-data class ClientContactsListRequest(
-    val clientId: ClientId,
-)
-
-/** Запрос на добавление контакта клиенту. */
-@Serializable
-data class AddClientContactRequest(
-    val clientId: ClientId,
-    val channelType: ChannelType,
-    val address: String,
-)
-
-/** Запрос на удаление контакта клиента. */
-@Serializable
-data class DeleteClientContactRequest(
-    val clientId: ClientId,
-    val contactId: ClientContactId,
+data class ClientContactInput(
+    /** Тип контакта. */
+    val type: ContactType,
+    /** Значение контакта (номер, адрес, имя пользователя). */
+    val value: String,
 )

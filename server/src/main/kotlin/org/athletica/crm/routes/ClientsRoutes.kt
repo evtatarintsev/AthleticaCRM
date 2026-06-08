@@ -8,6 +8,8 @@ import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
+import org.athletica.crm.api.schemas.clients.ClientContactInput
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.clients.ClientDetailRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
@@ -26,11 +28,15 @@ import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
+import org.athletica.crm.core.entityids.ClientContactId
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
+import org.athletica.crm.domain.clientcontacts.ClientContact
+import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
@@ -50,6 +56,7 @@ fun RouteWithContext.clientsRoutes(
     employees: Employees,
     enrollments: Enrollments,
     definitions: CustomFieldDefinitions,
+    contacts: ClientContacts,
 ) {
     get<Unit, ClientListResponse>("/clients/list") {
         db.transaction {
@@ -87,7 +94,7 @@ fun RouteWithContext.clientsRoutes(
     get<ClientDetailRequest, ClientDetailResponse>("/clients/detail") { request ->
         db.transaction {
             val client = clients.byId(request.id)
-            client.detailResponse(balances.currentOf(client))
+            client.detailResponse(balances.currentOf(client), contacts.byClient(client.id))
         }
     }
 
@@ -106,8 +113,9 @@ fun RouteWithContext.clientsRoutes(
                         request.leadSourceId,
                         customFields.toList(),
                     )
+            contacts.replace(client.id, request.contacts.toDomain(client.id))
             val balance = balances.currentOf(client)
-            client.detailResponse(balance)
+            client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
 
@@ -127,8 +135,9 @@ fun RouteWithContext.clientsRoutes(
                         customFields.toList(),
                     )
                     .apply { save() }
+            contacts.replace(client.id, request.contacts.toDomain(client.id))
             val balance = balances.currentOf(client)
-            client.detailResponse(balance)
+            client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
 
@@ -151,7 +160,7 @@ fun RouteWithContext.clientsRoutes(
                 balances
                     .currentOf(client)
                     .adjust(request.amount, request.note)
-            client.detailResponse(balance)
+            client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
 
@@ -187,7 +196,7 @@ fun RouteWithContext.clientsRoutes(
     }
 }
 
-fun Client.detailResponse(balance: ClientBalance) =
+fun Client.detailResponse(balance: ClientBalance, contacts: List<ClientContact>) =
     ClientDetailResponse(
         id = id,
         name = name,
@@ -199,7 +208,19 @@ fun Client.detailResponse(balance: ClientBalance) =
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
         leadSourceId = leadSourceId,
         customFields = customFields,
+        contacts = contacts.map { it.toSchema() },
     )
+
+/** Маппинг доменного контакта клиента в схему ответа. */
+private fun ClientContact.toSchema(): ClientContactSchema =
+    ClientContactSchema(
+        id = id,
+        type = type,
+        value = value,
+    )
+
+/** Маппинг контактов из запроса в доменные сущности клиента [clientId] с новыми идентификаторами. */
+private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientContact> = map { ClientContact(ClientContactId.new(), clientId, it.type, it.value) }
 
 fun Client.toListItem(balance: ClientBalance) =
     ClientListItem(

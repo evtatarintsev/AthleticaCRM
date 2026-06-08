@@ -62,6 +62,7 @@ class ClientCreateViewModel(
                         gender = form.gender,
                         leadSourceId = form.leadSourceId,
                         customFields = form.customFields.toList(),
+                        contacts = form.contactInputs(),
                     ),
                 ).fold(
                     ifLeft = { state = ClientSaveState.Error(it.toClientsApiError()) },

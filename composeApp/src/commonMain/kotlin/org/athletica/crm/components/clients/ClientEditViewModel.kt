@@ -93,6 +93,7 @@ class ClientEditViewModel(
                         gender = form.gender,
                         leadSourceId = form.leadSourceId,
                         customFields = form.customFields.toList(),
+                        contacts = form.contactInputs(),
                     ),
                 ).fold(
                     ifLeft = { saveState = ClientSaveState.Error(it.toClientsApiError()) },

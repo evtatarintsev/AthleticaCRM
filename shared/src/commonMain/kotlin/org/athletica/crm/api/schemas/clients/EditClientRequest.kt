@@ -27,4 +27,6 @@ data class EditClientRequest(
     val leadSourceId: LeadSourceId? = null,
     /** Значения кастомных полей клиента. */
     val customFields: List<CustomFieldValue> = emptyList(),
+    /** Контакты клиента (телефон, email и т.п.). Полностью заменяют текущий набор. */
+    val contacts: List<ClientContactInput> = emptyList(),
 )

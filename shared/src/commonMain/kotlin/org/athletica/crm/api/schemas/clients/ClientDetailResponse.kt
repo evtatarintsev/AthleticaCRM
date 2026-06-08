@@ -32,4 +32,6 @@ data class ClientDetailResponse(
     val leadSourceId: LeadSourceId? = null,
     /** Значения кастомных полей клиента. */
     val customFields: List<CustomFieldValue> = emptyList(),
+    /** Контакты клиента (телефон, email и т.п.). */
+    val contacts: List<ClientContactSchema> = emptyList(),
 )

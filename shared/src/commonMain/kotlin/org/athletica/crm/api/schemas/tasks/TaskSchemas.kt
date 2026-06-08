@@ -86,7 +86,7 @@ data class TaskDetailResponse(
     val attachments: List<UploadResponse>,
 )
 
-/** Запрос на создание задачи. Исполнитель и вложения устанавливаются отдельными запросами. */
+/** Запрос на создание задачи. Вложения устанавливаются отдельными запросами после создания. */
 @Serializable
 data class CreateTaskRequest(
     /** Клиентский идентификатор (UUID v7), генерируется на клиенте. */
@@ -96,6 +96,8 @@ data class CreateTaskRequest(
     val clientId: ClientId?,
     val dueDate: Instant?,
     val dueDateEnd: Instant?,
+    /** Исполнитель задачи. null — задача создаётся без назначения. */
+    val assigneeId: EmployeeId? = null,
 )
 
 /** Запрос на обновление полей задачи. Исполнитель, статус и вложения — через отдельные запросы. */

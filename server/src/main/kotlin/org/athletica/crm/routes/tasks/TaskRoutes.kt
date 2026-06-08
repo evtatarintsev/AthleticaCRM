@@ -69,7 +69,7 @@ fun RouteWithContext.taskRoutes(tasks: Tasks, employees: Employees) {
 
     post<CreateTaskRequest, TaskDetailResponse>("/tasks/create") { req ->
         db.transaction {
-            val task =
+            val created =
                 tasks.new(
                     id = req.id,
                     title = req.title,
@@ -78,7 +78,12 @@ fun RouteWithContext.taskRoutes(tasks: Tasks, employees: Employees) {
                     dueDate = req.dueDate,
                     dueDateEnd = req.dueDateEnd,
                 )
-            val employeeIds = setOf(task.createdBy)
+            val task =
+                req.assigneeId?.let { assigneeId ->
+                    val employee = employees.byId(assigneeId)
+                    created.assignTo(employee).also { it.save() }
+                } ?: created
+            val employeeIds = listOfNotNull(task.createdBy, task.assigneeId).toSet()
             val clientIds = listOfNotNull(task.clientId).toSet()
             val employeeNames = loadEmployeeNames(employeeIds)
             val clientNames = loadClientNames(clientIds)

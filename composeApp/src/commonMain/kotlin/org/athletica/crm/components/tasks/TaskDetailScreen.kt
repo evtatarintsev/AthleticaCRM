@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -19,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,11 +39,14 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_attach_file
 import org.athletica.crm.generated.resources.label_task_assignee
 import org.athletica.crm.generated.resources.label_task_attachments
 import org.athletica.crm.generated.resources.label_task_client
 import org.athletica.crm.generated.resources.label_task_description
 import org.athletica.crm.generated.resources.label_task_due_date
+import org.athletica.crm.generated.resources.label_task_due_date_end
+import org.athletica.crm.generated.resources.task_assignee_unassigned
 import org.athletica.crm.generated.resources.task_status_completed
 import org.athletica.crm.generated.resources.task_status_in_progress
 import org.athletica.crm.generated.resources.task_status_paused
@@ -62,6 +67,7 @@ fun TaskDetailScreen(
     val scope = rememberCoroutineScope()
     val viewModel = remember { TaskDetailViewModel(taskId, api, scope) }
     var showStatusMenu by remember { mutableStateOf(false) }
+    var showAssigneeSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(taskId) { viewModel.load() }
 
@@ -155,14 +161,11 @@ fun TaskDetailScreen(
                         Text(text = task.description, style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    task.assigneeName?.let { name ->
-                        Text(
-                            text = stringResource(Res.string.label_task_assignee),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(text = name, style = MaterialTheme.typography.bodyMedium)
-                    }
+                    ClickableField(
+                        label = stringResource(Res.string.label_task_assignee),
+                        value = task.assigneeName ?: stringResource(Res.string.task_assignee_unassigned),
+                        onClick = { showAssigneeSheet = true },
+                    )
 
                     task.clientName?.let { name ->
                         Text(
@@ -173,34 +176,58 @@ fun TaskDetailScreen(
                         Text(text = name, style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    if (task.dueDate != null) {
-                        Text(
-                            text = stringResource(Res.string.label_task_due_date),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = task.dueDate.toString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
+                    TaskDateField(
+                        label = stringResource(Res.string.label_task_due_date),
+                        value = task.dueDate,
+                        onChange = { viewModel.updateDates(it, task.dueDateEnd) },
+                    )
 
-                    if (task.attachments.isNotEmpty()) {
-                        Text(
-                            text = stringResource(Res.string.label_task_attachments),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        task.attachments.forEach { attachment ->
+                    TaskDateField(
+                        label = stringResource(Res.string.label_task_due_date_end),
+                        value = task.dueDateEnd,
+                        onChange = { viewModel.updateDates(task.dueDate, it) },
+                    )
+
+                    Text(
+                        text = stringResource(Res.string.label_task_attachments),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    task.attachments.forEach { attachment ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Text(
                                 text = attachment.originalName,
                                 style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
                             )
+                            IconButton(onClick = { viewModel.detachFile(attachment.id) }) {
+                                Icon(Icons.Default.Close, contentDescription = null)
+                            }
                         }
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.attachFile() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(Res.string.action_attach_file))
                     }
                 }
             }
         }
+    }
+
+    if (showAssigneeSheet) {
+        PickAssigneeSheet(
+            api = api,
+            onDismiss = { showAssigneeSheet = false },
+            onPicked = { employee ->
+                showAssigneeSheet = false
+                viewModel.setAssignee(employee?.id)
+            },
+        )
     }
 }
 

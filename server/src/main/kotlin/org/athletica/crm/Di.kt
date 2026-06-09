@@ -22,6 +22,7 @@ import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.clientnotes.ClientNotes
 import org.athletica.crm.domain.clientnotes.DbClientNotes
+import org.athletica.crm.domain.clients.AuditClients
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.conversations.DbConversations
@@ -174,7 +175,7 @@ fun Application.di(): Di {
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
         organizations = LocMemCachedOrganizations(DbOrganizations()),
         clientBalances = AuditClientBalances(DbClientBalances(), audit),
-        clients = DbClients(),
+        clients = AuditClients(DbClients(), audit),
         branches = AuditBranches(DbBranches(), audit),
         customFieldDefinitions = DbCustomFieldDefinitions(),
         userDisplaySettings = DbUserDisplaySettings(),

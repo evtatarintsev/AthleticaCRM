@@ -3,6 +3,7 @@ package org.athletica.crm.domain.clients
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
@@ -77,12 +78,12 @@ data class AuditClient(
         newCustomFields: List<CustomFieldValue>,
     ): Client {
         val newValues =
-            mapOf(
-                "name" to newName,
-                "avatarId" to newAvatarId,
-                "birthday" to newBirthday,
-                "gender" to newGender,
-                "leadSourceId" to newLeadSourceId,
+            ClientAuditData(
+                name = newName,
+                avatarId = newAvatarId,
+                birthday = newBirthday,
+                gender = newGender,
+                leadSourceId = newLeadSourceId,
             )
         val auditEvent =
             AuditEvent(
@@ -95,3 +96,13 @@ data class AuditClient(
         return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender, newLeadSourceId, newCustomFields), audit, auditEvents + auditEvent)
     }
 }
+
+/** Снимок изменяемых полей клиента для журнала аудита (доменная сущность не сериализуется напрямую). */
+@Serializable
+private data class ClientAuditData(
+    val name: String,
+    val avatarId: UploadId?,
+    val birthday: LocalDate?,
+    val gender: Gender,
+    val leadSourceId: LeadSourceId?,
+)

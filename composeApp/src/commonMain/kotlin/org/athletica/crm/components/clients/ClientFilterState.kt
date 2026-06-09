@@ -10,6 +10,8 @@ data class ClientFilterState(
     val gender: GenderFilter = GenderFilter.All,
     val hasDebtOnly: Boolean = false,
     val noGroupOnly: Boolean = false,
+    /** Показывать архивных клиентов вместо активных. Это режим вида, а не фильтр-бейдж. */
+    val showArchived: Boolean = false,
 ) {
     /** Количество активных фильтров для бейджа кнопки «Фильтры». */
     val activeCount: Int

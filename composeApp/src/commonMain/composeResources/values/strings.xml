@@ -541,6 +541,12 @@
     <string name="clients_view_all">Все</string>
     <string name="clients_view_in_debt">Должники</string>
     <string name="clients_view_without_group">Без группы</string>
+    <string name="clients_view_archived">Архив</string>
+    <string name="client_archived_banner">Клиент в архиве</string>
+    <string name="action_archive_client">Архивировать</string>
+    <string name="action_restore_client">Восстановить</string>
+    <string name="action_archive_selected">Архивировать выбранных</string>
+    <string name="action_restore_selected">Восстановить выбранных</string>
     <string name="clients_load_error">Ошибка загрузки клиентов</string>
     <string name="groups_title">Группы</string>
     <string name="groups_search_placeholder">Поиск по названию группы</string>

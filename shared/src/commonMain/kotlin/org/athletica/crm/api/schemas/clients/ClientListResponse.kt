@@ -30,6 +30,8 @@ data class ClientListItem(
     val customFields: List<CustomFieldValue> = emptyList(),
     /** Контакты клиента (телефоны, email и т.п.). */
     val contacts: List<ClientContactSchema> = emptyList(),
+    /** Состояние клиента: активный или архивный. */
+    val state: ClientState = ClientState.ACTIVE,
 )
 
 /** Возвращает значение кастомного поля по его ключу, либо null если поле не найдено. */

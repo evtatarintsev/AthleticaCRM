@@ -29,31 +29,18 @@ import org.athletica.crm.storage.asUuidOrNull
 class DbClients : Clients {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: ClientId): Client {
-        val client =
+        val scalar =
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields, state
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
                 )
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
-                .firstOrNull { row ->
-                    DbClient(
-                        id = row.asUuid("id").toClientId(),
-                        name = row.asString("name"),
-                        avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
-                        birthday = row.asLocalDateOrNull("birthday"),
-                        gender = Gender.valueOf(row.asString("gender")),
-                        groups = emptyList(),
-                        docs = emptyList(),
-                        leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
-                        customFields = Json.decodeFromString(row.asString("custom_fields")),
-                        orgId = ctx.orgId,
-                    )
-                }
+                .firstOrNull { row -> row.toScalarClient() }
                 ?: raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
 
         val groups =
@@ -85,16 +72,9 @@ class DbClients : Clients {
                     """.trimIndent(),
                 )
                 .bind("clientId", id)
-                .list { row ->
-                    ClientDoc(
-                        id = row.asUuid("id").toClientDocId(),
-                        uploadId = row.asUuid("upload_id").toUploadId(),
-                        name = row.asString("name"),
-                        createdAt = row.asInstant("created_at"),
-                    )
-                }
+                .list { row -> row.toClientDoc() }
 
-        return client.copy(groups = groups, docs = docs)
+        return scalar.toClient(groups, docs)
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -106,7 +86,7 @@ class DbClients : Clients {
         gender: Gender,
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
-    ): Client {
+    ): ActiveClient {
         val inserted =
             try {
                 tr
@@ -131,7 +111,7 @@ class DbClients : Clients {
 
         if (inserted == 0L) raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
 
-        return DbClient(
+        return DbActiveClient(
             id = id,
             name = name,
             avatarId = avatarId,
@@ -146,32 +126,20 @@ class DbClients : Clients {
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(): List<Client> {
-        val clients =
+    override suspend fun list(archived: Boolean): List<Client> {
+        val scalars =
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields
+                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields, state
                     FROM clients
-                    WHERE org_id = :orgId
+                    WHERE org_id = :orgId AND state = :state::client_state
                     ORDER BY name
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
-                .list { row ->
-                    DbClient(
-                        id = row.asUuid("id").toClientId(),
-                        name = row.asString("name"),
-                        avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
-                        birthday = row.asLocalDateOrNull("birthday"),
-                        gender = Gender.valueOf(row.asString("gender")),
-                        groups = emptyList(),
-                        docs = emptyList(),
-                        leadSourceId = row.asUuidOrNull("lead_source_id")?.toLeadSourceId(),
-                        customFields = Json.decodeFromString(row.asString("custom_fields")),
-                        orgId = ctx.orgId,
-                    )
-                }
+                .bind("state", if (archived) "ARCHIVED" else "ACTIVE")
+                .list { row -> row.toScalarClient() }
 
         val groupsByClientId =
             tr
@@ -208,22 +176,56 @@ class DbClients : Clients {
                 .bind("orgId", ctx.orgId)
                 .list { row ->
                     val clientId = row.asUuid("client_id").toClientId()
-                    val doc =
-                        ClientDoc(
-                            id = row.asUuid("id").toClientDocId(),
-                            uploadId = row.asUuid("upload_id").toUploadId(),
-                            name = row.asString("name"),
-                            createdAt = row.asInstant("created_at"),
-                        )
-                    clientId to doc
+                    clientId to row.toClientDoc()
                 }
                 .groupBy({ it.first }, { it.second })
 
-        return clients.map { client ->
-            client.copy(
-                groups = groupsByClientId[client.id] ?: emptyList(),
-                docs = docsByClientId[client.id] ?: emptyList(),
+        return scalars.map { scalar ->
+            scalar.toClient(
+                groups = groupsByClientId[scalar.id] ?: emptyList(),
+                docs = docsByClientId[scalar.id] ?: emptyList(),
             )
         }
     }
+
+    /** Скалярные поля строки клиента без связанных коллекций (группы, документы). */
+    private data class ScalarClient(
+        val id: ClientId,
+        val name: String,
+        val avatarId: UploadId?,
+        val birthday: LocalDate?,
+        val gender: Gender,
+        val leadSourceId: LeadSourceId?,
+        val customFields: List<CustomFieldValue>,
+        val archived: Boolean,
+    )
+
+    /** Собирает доменного клиента нужного состояния из скаляров и связанных коллекций. */
+    context(ctx: EmployeeRequestContext)
+    private fun ScalarClient.toClient(groups: List<ClientGroup>, docs: List<ClientDoc>): Client =
+        if (archived) {
+            DbArchivedClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId)
+        } else {
+            DbActiveClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId)
+        }
+
+    private fun io.r2dbc.spi.Row.toScalarClient(): ScalarClient =
+        ScalarClient(
+            id = asUuid("id").toClientId(),
+            name = asString("name"),
+            avatarId = asUuidOrNull("avatar_id")?.toUploadId(),
+            birthday = asLocalDateOrNull("birthday"),
+            gender = Gender.valueOf(asString("gender")),
+            leadSourceId = asUuidOrNull("lead_source_id")?.toLeadSourceId(),
+            customFields = Json.decodeFromString(asString("custom_fields")),
+            archived = asString("state") == "ARCHIVED",
+        )
+
+    private fun io.r2dbc.spi.Row.toClientDoc(): ClientDoc =
+        ClientDoc(
+            id = asUuid("id").toClientDocId(),
+            uploadId = asUuid("upload_id").toUploadId(),
+            name = asString("name"),
+            createdAt = asInstant("created_at"),
+        )
 }

@@ -6,10 +6,12 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.memberships.MembershipListRequest
 import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.core.entityids.ClientDocId
@@ -82,6 +84,20 @@ class ClientDetailViewModel(
     fun onClientUpdated(client: ClientDetailResponse) {
         val memberships = (state as? ClientDetailState.Loaded)?.memberships ?: emptyList()
         state = ClientDetailState.Loaded(client, memberships)
+    }
+
+    /** Отправляет клиента в архив и перезагружает карточку. */
+    fun onArchive() {
+        scope.launch {
+            api.clients.archive(ArchiveClientRequest(listOf(clientId))).onRight { load() }
+        }
+    }
+
+    /** Восстанавливает клиента из архива и перезагружает карточку. */
+    fun onRestore() {
+        scope.launch {
+            api.clients.restore(RestoreClientRequest(listOf(clientId))).onRight { load() }
+        }
     }
 
     /** Удаляет клиента из группы [groupId] и перезагружает карточку. */

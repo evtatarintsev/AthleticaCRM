@@ -10,6 +10,7 @@ import io.ktor.http.contentType
 import org.athletica.crm.api.schemas.clients.AddClientNoteRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
+import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
@@ -23,6 +24,7 @@ import org.athletica.crm.api.schemas.clients.DeleteClientNoteRequest
 import org.athletica.crm.api.schemas.clients.EditClientNoteRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.import.ClientImportCommitRequest
 import org.athletica.crm.api.schemas.clients.import.ClientImportCommitResponse
 import org.athletica.crm.api.schemas.clients.import.ClientImportParseRequest
@@ -31,7 +33,31 @@ import org.athletica.crm.core.entityids.ClientId
 
 class ClientsApiClient(private val http: HttpClient) {
     /** Возвращает страницу клиентов организации по параметрам [request]. */
-    suspend fun list(request: ClientListRequest): Either<ApiClientError, ClientListResponse> = requestCatching { http.get("/api/clients/list") }
+    suspend fun list(request: ClientListRequest): Either<ApiClientError, ClientListResponse> =
+        requestCatching {
+            http.post("/api/clients/list") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Отправляет клиентов из [request] в архив. */
+    suspend fun archive(request: ArchiveClientRequest): Either<ApiClientError, Unit> =
+        requestCatching {
+            http.post("/api/clients/archive") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /** Восстанавливает клиентов из [request] из архива. */
+    suspend fun restore(request: RestoreClientRequest): Either<ApiClientError, Unit> =
+        requestCatching {
+            http.post("/api/clients/restore") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
 
     /** Экспортирует список клиентов в файл указанного [format] с полями из [request]. */
     suspend fun export(

@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientField
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_close
@@ -117,11 +118,15 @@ fun ClientsSettingsDialog(
 private fun ClientDisplaySettings.disabledColumns(availableCustomFields: List<CustomFieldDefinition>): List<ClientColumn> {
     val selectedKeys = columns.map { it.apiKey }.toSet()
     val standard = ClientField.entries.filter { it.apiKey !in selectedKeys }.map { ClientColumn.Standard(it) }
+    val contact =
+        ContactType.entries
+            .map { ClientColumn.Contact(it) }
+            .filter { it.apiKey !in selectedKeys }
     val custom =
         availableCustomFields
             .filter { it.fieldKey.value !in selectedKeys }
             .map { ClientColumn.Custom(it.fieldKey.value, it.label) }
-    return standard + custom
+    return standard + contact + custom
 }
 
 /** Строка «Имя» — всегда включена, не редактируется, не перетаскивается. */
@@ -204,4 +209,5 @@ private fun ClientColumn.label(): String =
     when (this) {
         is ClientColumn.Standard -> stringResource(clientField.labelRes())
         is ClientColumn.Custom -> label
+        is ClientColumn.Contact -> stringResource(type.labelRes())
     }

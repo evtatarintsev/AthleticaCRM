@@ -25,6 +25,10 @@ interface ClientContacts {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byClient(clientId: ClientId): List<ClientContact>
 
+    /** Возвращает контакты для набора клиентов [clientIds], сгруппированные по идентификатору клиента. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun byClients(clientIds: List<ClientId>): Map<ClientId, List<ClientContact>>
+
     /** Полностью заменяет набор контактов клиента [clientId] на [contacts]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun replace(clientId: ClientId, contacts: List<ClientContact>)

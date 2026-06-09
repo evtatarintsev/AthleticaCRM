@@ -1,7 +1,9 @@
 package org.athletica.crm.components.clients
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,16 +39,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.contactsOfType
 import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.displayValue
@@ -270,6 +276,20 @@ fun ClientsScreen(
                                 sortable = false,
                                 cell = { client: ClientListItem ->
                                     CustomFieldCell(client.field(column.apiKey))
+                                },
+                            ),
+                        )
+                    is ClientColumn.Contact ->
+                        add(
+                            ListColumn(
+                                id = ColumnId(column.apiKey),
+                                header = {
+                                    Text(stringResource(column.type.labelRes()), textAlign = TextAlign.Center)
+                                },
+                                width = ColumnWidth.Fixed(column.width),
+                                sortable = false,
+                                cell = { client: ClientListItem ->
+                                    ContactColumnCell(column.type, client)
                                 },
                             ),
                         )
@@ -603,6 +623,53 @@ private fun CustomFieldCell(value: CustomFieldValue?) {
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+/**
+ * Ячейка колонки контактов заданного [type]: все значения клиента через запятую.
+ * Телефоны кликабельны (`tel:`), email — (`mailto:`); прочие типы показываются обычным текстом.
+ */
+@Composable
+private fun ContactColumnCell(
+    type: ContactType,
+    client: ClientListItem,
+) {
+    val values = client.contactsOfType(type)
+    if (values.isEmpty()) {
+        Text(
+            text = "—",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+        )
+        return
+    }
+
+    val uriHandler = LocalUriHandler.current
+    val uriPrefix =
+        when (type) {
+            ContactType.PHONE -> "tel:"
+            ContactType.EMAIL -> "mailto:"
+            else -> null
+        }
+
+    FlowRow {
+        values.forEachIndexed { index, value ->
+            if (index > 0) {
+                Text(text = ", ", style = MaterialTheme.typography.bodyMedium)
+            }
+            if (uriPrefix != null) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable { uriHandler.openUri(uriPrefix + value) },
+                )
+            } else {
+                Text(text = value, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 

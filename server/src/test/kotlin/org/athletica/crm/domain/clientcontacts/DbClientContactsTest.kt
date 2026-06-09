@@ -18,6 +18,8 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /** Тесты репозитория контактов клиента ([DbClientContacts]). */
 class DbClientContactsTest {
@@ -76,5 +78,68 @@ class DbClientContactsTest {
             assertEquals(1, stored.size)
             assertEquals(ContactType.PHONE, stored.first().type)
             assertEquals("+70001112233", stored.first().value)
+        }
+
+    @Test
+    fun `byClients группирует контакты по клиенту, сохраняет порядок и изолирует организацию`() =
+        runTest {
+            val clientId2 = ClientId.new()
+            val otherOrgId = OrgId.new()
+            val otherClientId = ClientId.new()
+
+            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId2).bind("orgId", orgId).bind("name", "Клиент 2").execute()
+            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", otherOrgId).bind("name", "Другая Org").execute()
+            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", otherClientId).bind("orgId", otherOrgId).bind("name", "Чужой клиент").execute()
+
+            val result =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            contacts.replace(
+                                clientId,
+                                listOf(
+                                    ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79990001122"),
+                                    ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79993334455"),
+                                ),
+                            )
+                            contacts.replace(
+                                clientId2,
+                                listOf(ClientContact(ClientContactId.new(), clientId2, ContactType.EMAIL, "a@b.c")),
+                            )
+                        }
+                        context(ctx.copy(orgId = otherOrgId)) {
+                            contacts.replace(
+                                otherClientId,
+                                listOf(ClientContact(ClientContactId.new(), otherClientId, ContactType.PHONE, "+70000000000")),
+                            )
+                        }
+                        context(ctx) {
+                            contacts.byClients(listOf(clientId, clientId2, otherClientId))
+                        }
+                    }
+                }
+
+            val byClient = result.getOrNull().orEmpty()
+            assertEquals(setOf("+79990001122", "+79993334455"), byClient.getValue(clientId).map { it.value }.toSet())
+            assertEquals(listOf("a@b.c"), byClient.getValue(clientId2).map { it.value })
+            assertFalse(byClient.containsKey(otherClientId))
+        }
+
+    @Test
+    fun `byClients возвращает пустую карту для пустого списка идентификаторов`() =
+        runTest {
+            val result =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            contacts.byClients(emptyList())
+                        }
+                    }
+                }
+
+            assertTrue(result.getOrNull().orEmpty().isEmpty())
         }
 }

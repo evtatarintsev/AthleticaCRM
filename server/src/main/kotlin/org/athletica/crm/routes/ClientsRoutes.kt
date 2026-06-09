@@ -62,7 +62,11 @@ fun RouteWithContext.clientsRoutes(
         db.transaction {
             val clientList = clients.list()
             val balancesByClient = balances.currentOf(clientList).associateBy { it.clientId }
-            val items = clientList.map { it.toListItem(balancesByClient.getValue(it.id)) }
+            val contactsByClient = contacts.byClients(clientList.map { it.id })
+            val items =
+                clientList.map {
+                    it.toListItem(balancesByClient.getValue(it.id), contactsByClient[it.id].orEmpty())
+                }
             ClientListResponse(items, items.size.toUInt())
         }
     }
@@ -222,17 +226,20 @@ private fun ClientContact.toSchema(): ClientContactSchema =
 /** Маппинг контактов из запроса в доменные сущности клиента [clientId] с новыми идентификаторами. */
 private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientContact> = map { ClientContact(ClientContactId.new(), clientId, it.type, it.value) }
 
-fun Client.toListItem(balance: ClientBalance) =
-    ClientListItem(
-        id = id,
-        name = name,
-        avatarId = avatarId,
-        birthday = birthday,
-        gender = gender,
-        groups = groups.map { ClientGroup(it.id, it.name) },
-        balance = balance.totalAmount,
-        customFields = customFields,
-    )
+fun Client.toListItem(
+    balance: ClientBalance,
+    contacts: List<ClientContact> = emptyList(),
+) = ClientListItem(
+    id = id,
+    name = name,
+    avatarId = avatarId,
+    birthday = birthday,
+    gender = gender,
+    groups = groups.map { ClientGroup(it.id, it.name) },
+    balance = balance.totalAmount,
+    customFields = customFields,
+    contacts = contacts.map { it.toSchema() },
+)
 
 private const val CLIENT_ENTITY_TYPE = "CLIENT"
 

@@ -61,9 +61,13 @@ private data class ClientStub(
     override val docs: List<ClientDoc> = emptyList(),
     override val leadSourceId: LeadSourceId? = null,
     override val customFields: List<CustomFieldValue> = emptyList(),
-) : Client {
+) : ActiveClient {
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
+    }
+
+    context(tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun archive() {
     }
 
     context(ctx: EmployeeRequestContext)
@@ -94,7 +98,7 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
     val clients: MutableList<ClientStub> = clients.toMutableList()
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun byId(id: ClientId): Client = clients.first { it.id == id }
+    override suspend fun byId(id: ClientId): ActiveClient = clients.first { it.id == id }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
@@ -112,7 +116,7 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(): List<Client> = clients.toList()
+    override suspend fun list(archived: Boolean): List<Client> = clients.toList()
 }
 
 class AuditClientsTest {
@@ -144,7 +148,7 @@ class AuditClientsTest {
                     }
                 }.getOrNull()
 
-            assertIs<AuditClient>(client)
+            assertIs<AuditActiveClient>(client)
         }
 
     @Test
@@ -159,7 +163,7 @@ class AuditClientsTest {
                     }
                 }.getOrNull()
 
-            assertIs<AuditClient>(client)
+            assertIs<AuditActiveClient>(client)
         }
 
     @Test
@@ -179,7 +183,7 @@ class AuditClientsTest {
                 }.getOrNull()
 
             assertEquals(2, clients?.size)
-            assertTrue(clients!!.all { it is AuditClient })
+            assertTrue(clients!!.all { it is AuditActiveClient })
         }
 
     @Test
@@ -191,7 +195,7 @@ class AuditClientsTest {
 
             either {
                 context(ctx, tr) {
-                    val updated = subject.byId(id).withNew("Иван Петров", null, null, Gender.MALE, null, emptyList())
+                    val updated = (subject.byId(id) as ActiveClient).withNew("Иван Петров", null, null, Gender.MALE, null, emptyList())
                     updated.save()
                 }
             }
@@ -213,7 +217,7 @@ class AuditClientsTest {
 
             either {
                 context(ctx, tr) {
-                    subject.byId(id).save()
+                    (subject.byId(id) as ActiveClient).save()
                 }
             }
 

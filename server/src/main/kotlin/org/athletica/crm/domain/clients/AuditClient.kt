@@ -20,21 +20,11 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.collections.plus
 
-data class AuditClient(
+data class AuditActiveClient(
     private val client: ActiveClient,
     private val audit: AuditLog,
     private val auditEvents: List<AuditEvent> = emptyList(),
-) : ActiveClient {
-    override val id = client.id
-    override val name = client.name
-    override val avatarId = client.avatarId
-    override val birthday = client.birthday
-    override val gender = client.gender
-    override val groups = client.groups
-    override val docs = client.docs
-    override val leadSourceId = client.leadSourceId
-    override val customFields = client.customFields
-
+) : ActiveClient by client {
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
         client.save()
@@ -47,12 +37,17 @@ data class AuditClient(
     override suspend fun archive() = client.archive()
 
     context(ctx: EmployeeRequestContext)
-    override fun attachDoc(doc: ClientDoc) =
-        AuditClient(
-            client.attachDoc(doc),
-            audit,
-            auditEvents + AuditEvent(ctx, AuditActionType.CREATE, "client_doc", doc.id.value, doc.id.toString()),
-        )
+    override fun attachDoc(doc: ClientDoc): ActiveClient {
+        val auditEvent =
+            AuditEvent(
+                ctx,
+                AuditActionType.CREATE,
+                "client_doc",
+                doc.id.value,
+                doc.id.toString(),
+            )
+        return AuditActiveClient(client.attachDoc(doc), audit, auditEvents + auditEvent)
+    }
 
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     override fun deleteDoc(docId: ClientDocId): ActiveClient {
@@ -68,7 +63,7 @@ data class AuditClient(
                 docToDelete.id.value,
                 docToDelete.id.toString(),
             )
-        return AuditClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
+        return AuditActiveClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
     }
 
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
@@ -96,7 +91,17 @@ data class AuditClient(
                 id.value,
                 Json.encodeToString(newValues),
             )
-        return AuditClient(client.withNew(newName, newAvatarId, newBirthday, newGender, newLeadSourceId, newCustomFields), audit, auditEvents + auditEvent)
+        return AuditActiveClient(
+            client.withNew(
+                newName,
+                newAvatarId,
+                newBirthday,
+                newGender,
+                newLeadSourceId,
+                newCustomFields,
+            ),
+            audit, auditEvents + auditEvent,
+        )
     }
 }
 
@@ -109,3 +114,14 @@ private data class ClientAuditData(
     val gender: Gender,
     val leadSourceId: LeadSourceId?,
 )
+
+data class AuditArchivedClient(
+    private val client: ArchivedClient,
+    private val audit: AuditLog,
+    private val auditEvents: List<AuditEvent> = emptyList(),
+) : ArchivedClient by client {
+    context(tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun restore() {
+        client.restore()
+    }
+}

@@ -20,10 +20,10 @@ import org.athletica.crm.storage.Transaction
 import kotlin.collections.plus
 
 data class AuditClient(
-    private val client: Client,
+    private val client: ActiveClient,
     private val audit: AuditLog,
     private val auditEvents: List<AuditEvent> = emptyList(),
-) : Client {
+) : ActiveClient {
     override val id = client.id
     override val name = client.name
     override val avatarId = client.avatarId
@@ -42,6 +42,9 @@ data class AuditClient(
         }
     }
 
+    context(tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun archive() = client.archive()
+
     context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc) =
         AuditClient(
@@ -51,7 +54,7 @@ data class AuditClient(
         )
 
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
-    override fun deleteDoc(docId: ClientDocId): Client {
+    override fun deleteDoc(docId: ClientDocId): ActiveClient {
         val docToDelete = client.docs.firstOrNull { it.id == docId }
         if (docToDelete == null) {
             raise(CommonDomainError("DOC_NOT_FOUND", Messages.UploadNotFound.localize()))
@@ -75,7 +78,7 @@ data class AuditClient(
         newGender: Gender,
         newLeadSourceId: LeadSourceId?,
         newCustomFields: List<CustomFieldValue>,
-    ): Client {
+    ): ActiveClient {
         val newValues =
             mapOf(
                 "name" to newName,

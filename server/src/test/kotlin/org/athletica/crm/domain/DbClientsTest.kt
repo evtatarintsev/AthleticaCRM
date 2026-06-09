@@ -20,6 +20,8 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.clients.ActiveClient
+import org.athletica.crm.domain.clients.ArchivedClient
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -312,7 +314,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        clients.byId(id)
+                        (clients.byId(id) as ActiveClient)
                             .withNew("Новое имя", null, newBirthday, Gender.FEMALE)
                             .save()
                     }
@@ -345,7 +347,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        context(ctx) { clients.byId(id).attachDoc(clientDoc(uploadId, "Паспорт")) }.save()
+                        context(ctx) { (clients.byId(id) as ActiveClient).attachDoc(clientDoc(uploadId, "Паспорт")) }.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -372,7 +374,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        context(ctx) { clients.byId(id).deleteDoc(doc.id) }.save()
+                        context(ctx) { (clients.byId(id) as ActiveClient).deleteDoc(doc.id) }.save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -407,7 +409,7 @@ class DbClientsTest {
                         val doc3 = clientDoc(upload3, "Третий")
                         context(ctx) {
                             // удаляем все старые, добавляем один новый
-                            clients.byId(id)
+                            (clients.byId(id) as ActiveClient)
                                 .let { c -> c.docs.fold(c) { acc, d -> acc.deleteDoc(d.id) } }
                                 .attachDoc(doc3)
                         }.save()
@@ -435,7 +437,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        clients.byId(id1).withNew("Изменённый", null, null, Gender.MALE).save()
+                        (clients.byId(id1) as ActiveClient).withNew("Изменённый", null, null, Gender.MALE).save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -449,5 +451,88 @@ class DbClientsTest {
 
             assertEquals("Клиент 2", client2.name)
             assertEquals(Gender.FEMALE, client2.gender)
+        }
+
+    // ─── archive() / restore() ─────────────────────────────────────────────────
+
+    @Test
+    fun `byId возвращает ActiveClient для нового клиента`() =
+        runTest {
+            val id = ClientId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+
+            val client =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { clients.byId(id) } }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            assertIs<ActiveClient>(client)
+        }
+
+    @Test
+    fun `archive переводит клиента в ArchivedClient, restore возвращает обратно`() =
+        runTest {
+            val id = ClientId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { (clients.byId(id) as ActiveClient).archive() }
+                }
+            }.getOrElse { fail("Archive failed: $it") }
+
+            val archived =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { clients.byId(id) } }
+                }.getOrElse { fail("Unexpected error: $it") }
+            assertIs<ArchivedClient>(archived)
+
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { (clients.byId(id) as ArchivedClient).restore() }
+                }
+            }.getOrElse { fail("Restore failed: $it") }
+
+            val restored =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { clients.byId(id) } }
+                }.getOrElse { fail("Unexpected error: $it") }
+            assertIs<ActiveClient>(restored)
+        }
+
+    @Test
+    fun `list по умолчанию возвращает активных, с archived=true — архивных`() =
+        runTest {
+            val activeId = ClientId.new()
+            val archivedId = ClientId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        clients.new(activeId, "Активный", null, null, Gender.MALE)
+                        clients.new(archivedId, "Архивный", null, null, Gender.FEMALE)
+                        (clients.byId(archivedId) as ActiveClient).archive()
+                    }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+
+            val active =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { clients.list() } }
+                }.getOrElse { fail("Unexpected error: $it") }
+            assertEquals(listOf(activeId), active.map { it.id })
+
+            val archived =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { clients.list(archived = true) } }
+                }.getOrElse { fail("Unexpected error: $it") }
+            assertEquals(listOf(archivedId), archived.map { it.id })
         }
 }

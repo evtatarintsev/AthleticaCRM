@@ -27,6 +27,8 @@ data class ClientListItem(
     val balance: Money,
     /** Значения кастомных полей клиента. */
     val customFields: List<CustomFieldValue> = emptyList(),
+    /** Состояние клиента: активный или архивный. */
+    val state: ClientState = ClientState.ACTIVE,
 )
 
 /** Возвращает значение кастомного поля по его ключу, либо null если поле не найдено. */

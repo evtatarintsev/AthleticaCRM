@@ -527,6 +527,12 @@
     <string name="clients_view_all">All</string>
     <string name="clients_view_in_debt">In Debt</string>
     <string name="clients_view_without_group">No Group</string>
+    <string name="clients_view_archived">Archived</string>
+    <string name="client_archived_banner">Client is archived</string>
+    <string name="action_archive_client">Archive</string>
+    <string name="action_restore_client">Restore</string>
+    <string name="action_archive_selected">Archive selected</string>
+    <string name="action_restore_selected">Restore selected</string>
     <string name="clients_load_error">Failed to load clients</string>
     <string name="groups_title">Groups</string>
     <string name="groups_search_placeholder">Search by group name</string>

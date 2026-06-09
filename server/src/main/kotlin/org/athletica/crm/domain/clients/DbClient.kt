@@ -15,7 +15,10 @@ import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 
-internal data class DbClient(
+/**
+ * R2DBC-реализация активного клиента. Все запросы фильтруются по `org_id`.
+ */
+internal data class DbActiveClient(
     override val id: ClientId,
     override val name: String,
     override val avatarId: UploadId?,
@@ -26,7 +29,7 @@ internal data class DbClient(
     override val leadSourceId: LeadSourceId?,
     override val customFields: List<CustomFieldValue>,
     private val orgId: OrgId,
-) : Client {
+) : ActiveClient {
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
         tr.sql(
@@ -68,6 +71,14 @@ internal data class DbClient(
         }
     }
 
+    context(tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun archive() {
+        tr.sql("UPDATE clients SET state = 'ARCHIVED' WHERE id = :id AND org_id = :orgId")
+            .bind("id", id)
+            .bind("orgId", orgId)
+            .execute()
+    }
+
     context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc) = copy(docs = docs + doc)
 
@@ -90,4 +101,28 @@ internal data class DbClient(
         leadSourceId = newLeadSourceId,
         customFields = newCustomFields,
     )
+}
+
+/**
+ * R2DBC-реализация архивного клиента. Поддерживает только восстановление.
+ */
+internal data class DbArchivedClient(
+    override val id: ClientId,
+    override val name: String,
+    override val avatarId: UploadId?,
+    override val birthday: LocalDate?,
+    override val gender: Gender,
+    override val groups: List<ClientGroup>,
+    override val docs: List<ClientDoc>,
+    override val leadSourceId: LeadSourceId?,
+    override val customFields: List<CustomFieldValue>,
+    private val orgId: OrgId,
+) : ArchivedClient {
+    context(tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun restore() {
+        tr.sql("UPDATE clients SET state = 'ACTIVE' WHERE id = :id AND org_id = :orgId")
+            .bind("id", id)
+            .bind("orgId", orgId)
+            .execute()
+    }
 }

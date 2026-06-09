@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
@@ -79,6 +81,7 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.api.schemas.clients.ClientDoc
 import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.clients.notes.ClientNotesSection
@@ -92,19 +95,21 @@ import org.athletica.crm.core.subscription.MembershipStatus
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client_group
 import org.athletica.crm.generated.resources.action_add_note
+import org.athletica.crm.generated.resources.action_archive_client
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_delete
-import org.athletica.crm.generated.resources.action_delete_client
 import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.action_issue_subscription
 import org.athletica.crm.generated.resources.action_message
 import org.athletica.crm.generated.resources.action_more
 import org.athletica.crm.generated.resources.action_pay
 import org.athletica.crm.generated.resources.action_remove
+import org.athletica.crm.generated.resources.action_restore_client
 import org.athletica.crm.generated.resources.action_upload_document
 import org.athletica.crm.generated.resources.cd_adjust_balance
 import org.athletica.crm.generated.resources.cd_balance_history
+import org.athletica.crm.generated.resources.client_archived_banner
 import org.athletica.crm.generated.resources.dialog_delete_doc_message
 import org.athletica.crm.generated.resources.dialog_delete_doc_title
 import org.athletica.crm.generated.resources.dialog_remove_from_group_message
@@ -224,11 +229,14 @@ fun ClientDetailScreen(
                     actions = {
                         if (isLoaded) {
                             val loadedClient = (viewModel.state as ClientDetailState.Loaded).client
-                            IconButton(onClick = { onEdit(loadedClient) }) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = stringResource(Res.string.action_edit),
-                                )
+                            val isArchived = loadedClient.state == ClientState.ARCHIVED
+                            if (!isArchived) {
+                                IconButton(onClick = { onEdit(loadedClient) }) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = stringResource(Res.string.action_edit),
+                                    )
+                                }
                             }
                             Box {
                                 IconButton(onClick = { showOverflow = true }) {
@@ -241,11 +249,25 @@ fun ClientDetailScreen(
                                     expanded = showOverflow,
                                     onDismissRequest = { showOverflow = false },
                                 ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.action_delete_client)) },
-                                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                                        onClick = { showOverflow = false },
-                                    )
+                                    if (isArchived) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(Res.string.action_restore_client)) },
+                                            leadingIcon = { Icon(Icons.Default.Unarchive, contentDescription = null) },
+                                            onClick = {
+                                                showOverflow = false
+                                                viewModel.onRestore()
+                                            },
+                                        )
+                                    } else {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(Res.string.action_archive_client)) },
+                                            leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
+                                            onClick = {
+                                                showOverflow = false
+                                                viewModel.onArchive()
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -293,6 +315,9 @@ fun ClientDetailScreen(
                         contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
                         modifier = Modifier.fillMaxSize().padding(innerPadding),
                     ) {
+                        if (client.state == ClientState.ARCHIVED) {
+                            item { ArchivedClientBanner(onRestore = { viewModel.onRestore() }) }
+                        }
                         if (windowSize >= WindowSize.MEDIUM) {
                             item {
                                 ClientActionsRow(
@@ -461,6 +486,39 @@ fun ClientDetailScreen(
 }
 
 // ── action toolbar ────────────────────────────────────────────────────────
+
+/** Баннер о том, что клиент находится в архиве, с кнопкой восстановления. */
+@Composable
+private fun ArchivedClientBanner(onRestore: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Archive,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(Res.string.client_archived_banner),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            FilledTonalButton(onClick = onRestore) {
+                Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(Res.string.action_restore_client))
+            }
+        }
+    }
+}
 
 /**
  * Док-панель действий для COMPACT (мобила). Четыре частых действия плюс

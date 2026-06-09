@@ -14,10 +14,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -41,9 +42,12 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
+import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.components.avatar.Avatar
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
@@ -55,15 +59,17 @@ import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_client
 import org.athletica.crm.generated.resources.action_add_client_group
-import org.athletica.crm.generated.resources.action_delete_selected
+import org.athletica.crm.generated.resources.action_archive_selected
 import org.athletica.crm.generated.resources.action_export_selected
 import org.athletica.crm.generated.resources.action_notify_selected
+import org.athletica.crm.generated.resources.action_restore_selected
 import org.athletica.crm.generated.resources.clients_count
 import org.athletica.crm.generated.resources.clients_empty
 import org.athletica.crm.generated.resources.clients_load_error
 import org.athletica.crm.generated.resources.clients_search_placeholder
 import org.athletica.crm.generated.resources.clients_title
 import org.athletica.crm.generated.resources.clients_view_all
+import org.athletica.crm.generated.resources.clients_view_archived
 import org.athletica.crm.generated.resources.clients_view_in_debt
 import org.athletica.crm.generated.resources.clients_view_without_group
 import org.athletica.crm.generated.resources.empty_search_results
@@ -167,12 +173,13 @@ fun ClientsScreen(
     val allLabel = stringResource(Res.string.clients_view_all)
     val inDebtLabel = stringResource(Res.string.clients_view_in_debt)
     val withoutGroupLabel = stringResource(Res.string.clients_view_without_group)
+    val archivedLabel = stringResource(Res.string.clients_view_archived)
 
     val total = (viewModel.state.data as? ListData.Loaded)?.total ?: 0
     val subtitle = pluralStringResource(Res.plurals.clients_count, total, total)
 
     val savedViews =
-        remember(allLabel, inDebtLabel, withoutGroupLabel) {
+        remember(allLabel, inDebtLabel, withoutGroupLabel, archivedLabel) {
             listOf(
                 SavedView(
                     id = ClientsSavedViews.ALL.id,
@@ -188,6 +195,11 @@ fun ClientsScreen(
                     id = ClientsSavedViews.WITHOUT_GROUP.id,
                     name = withoutGroupLabel,
                     onApply = { viewModel.applySystemView(ClientsSavedViews.WITHOUT_GROUP) },
+                ),
+                SavedView(
+                    id = ClientsSavedViews.ARCHIVED.id,
+                    name = archivedLabel,
+                    onApply = { viewModel.applySystemView(ClientsSavedViews.ARCHIVED) },
                 ),
             )
         }
@@ -425,8 +437,24 @@ fun ClientsScreen(
                 {
                     ClientsBulkActionBar(
                         selectedCount = selectedIds.size,
+                        showArchived = viewModel.state.filter.showArchived,
                         onAddToGroup = { showAddToGroupSheet = true },
-                        onDelete = { selectedIds = emptySet() },
+                        onArchive = {
+                            val ids = selectedIds.toList()
+                            scope.launch {
+                                api.clients.archive(ArchiveClientRequest(ids))
+                                selectedIds = emptySet()
+                                viewModel.load()
+                            }
+                        },
+                        onRestore = {
+                            val ids = selectedIds.toList()
+                            scope.launch {
+                                api.clients.restore(RestoreClientRequest(ids))
+                                selectedIds = emptySet()
+                                viewModel.load()
+                            }
+                        },
                         onNotify = {},
                         onExport = { onNavigateToExport(selectedIds.toList()) },
                     )
@@ -609,12 +637,15 @@ private fun CustomFieldCell(value: CustomFieldValue?) {
 /**
  * Нижняя панель групповых действий, появляющаяся при выборе клиентов.
  * [selectedCount] — количество выбранных записей.
+ * [showArchived] — режим архива: показывается «Восстановить» вместо действий над активными.
  */
 @Composable
 private fun ClientsBulkActionBar(
     selectedCount: Int,
+    showArchived: Boolean,
     onAddToGroup: () -> Unit,
-    onDelete: () -> Unit,
+    onArchive: () -> Unit,
+    onRestore: () -> Unit,
     onNotify: () -> Unit,
     onExport: () -> Unit,
     modifier: Modifier = Modifier,
@@ -628,14 +659,20 @@ private fun ClientsBulkActionBar(
                     .padding(start = 16.dp)
                     .weight(1f),
         )
-        IconButton(onClick = onAddToGroup) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(Res.string.action_add_client_group))
-        }
-        IconButton(onClick = onDelete) {
-            Icon(imageVector = Icons.Default.Delete, contentDescription = stringResource(Res.string.action_delete_selected))
-        }
-        IconButton(onClick = onNotify) {
-            Icon(imageVector = Icons.Default.Notifications, contentDescription = stringResource(Res.string.action_notify_selected))
+        if (showArchived) {
+            IconButton(onClick = onRestore) {
+                Icon(imageVector = Icons.Default.Unarchive, contentDescription = stringResource(Res.string.action_restore_selected))
+            }
+        } else {
+            IconButton(onClick = onAddToGroup) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(Res.string.action_add_client_group))
+            }
+            IconButton(onClick = onArchive) {
+                Icon(imageVector = Icons.Default.Archive, contentDescription = stringResource(Res.string.action_archive_selected))
+            }
+            IconButton(onClick = onNotify) {
+                Icon(imageVector = Icons.Default.Notifications, contentDescription = stringResource(Res.string.action_notify_selected))
+            }
         }
         IconButton(onClick = onExport) {
             Icon(imageVector = Icons.Default.Share, contentDescription = stringResource(Res.string.action_export_selected))

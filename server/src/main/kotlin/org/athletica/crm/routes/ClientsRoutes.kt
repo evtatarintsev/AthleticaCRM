@@ -1,9 +1,12 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import arrow.fx.coroutines.parZip
 import io.ktor.http.HttpHeaders
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
+import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
 import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryRequest
@@ -17,11 +20,14 @@ import org.athletica.crm.api.schemas.clients.ClientExportRequest
 import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
+import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.api.schemas.common.PerformedBy
 import org.athletica.crm.core.Gender
@@ -31,12 +37,16 @@ import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
+import org.athletica.crm.domain.clients.ActiveClient
+import org.athletica.crm.domain.clients.ArchivedClient
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
@@ -58,9 +68,9 @@ fun RouteWithContext.clientsRoutes(
     definitions: CustomFieldDefinitions,
     contacts: ClientContacts,
 ) {
-    get<Unit, ClientListResponse>("/clients/list") {
+    post<ClientListRequest, ClientListResponse>("/clients/list") { request ->
         db.transaction {
-            val clientList = clients.list()
+            val clientList = clients.list(request.archived)
             val balancesByClient = balances.currentOf(clientList).associateBy { it.clientId }
             val items = clientList.map { it.toListItem(balancesByClient.getValue(it.id)) }
             ClientListResponse(items, items.size.toUInt())
@@ -126,6 +136,7 @@ fun RouteWithContext.clientsRoutes(
             val client =
                 clients
                     .byId(request.id)
+                    .requireActive()
                     .withNew(
                         request.name,
                         request.avatarId,
@@ -155,7 +166,7 @@ fun RouteWithContext.clientsRoutes(
 
     post<AdjustBalanceRequest, ClientDetailResponse>("/clients/balance/adjust") { request ->
         db.transaction {
-            val client = clients.byId(request.clientId)
+            val client = clients.byId(request.clientId).requireActive()
             val balance =
                 balances
                     .currentOf(client)
@@ -168,6 +179,7 @@ fun RouteWithContext.clientsRoutes(
         db.transaction {
             clients
                 .byId(request.clientId)
+                .requireActive()
                 .attachDoc(clientDoc(request.uploadId, request.name))
                 .save()
         }
@@ -177,8 +189,31 @@ fun RouteWithContext.clientsRoutes(
         db.transaction {
             clients
                 .byId(request.clientId)
+                .requireActive()
                 .deleteDoc(request.docId)
                 .save()
+        }
+    }
+
+    post<ArchiveClientRequest, Unit>("/clients/archive") { request ->
+        db.transaction {
+            request.clientIds.forEach { id ->
+                when (val client = clients.byId(id)) {
+                    is ActiveClient -> client.archive()
+                    is ArchivedClient -> raise(CommonDomainError("CLIENT_ALREADY_ARCHIVED", "Клиент уже в архиве"))
+                }
+            }
+        }
+    }
+
+    post<RestoreClientRequest, Unit>("/clients/restore") { request ->
+        db.transaction {
+            request.clientIds.forEach { id ->
+                when (val client = clients.byId(id)) {
+                    is ArchivedClient -> client.restore()
+                    is ActiveClient -> raise(CommonDomainError("CLIENT_NOT_ARCHIVED", "Клиент не в архиве"))
+                }
+            }
         }
     }
 
@@ -209,7 +244,26 @@ fun Client.detailResponse(balance: ClientBalance, contacts: List<ClientContact>)
         leadSourceId = leadSourceId,
         customFields = customFields,
         contacts = contacts.map { it.toSchema() },
+        state = state,
     )
+
+/** Состояние клиента в терминах API-схемы (выводится из типа доменной сущности). */
+val Client.state: ClientState
+    get() =
+        when (this) {
+            is ActiveClient -> ClientState.ACTIVE
+            is ArchivedClient -> ClientState.ARCHIVED
+        }
+
+/**
+ * Сужает клиента до [ActiveClient]; архивный клиент недоступен для изменения.
+ */
+context(raise: Raise<DomainError>)
+fun Client.requireActive(): ActiveClient =
+    when (this) {
+        is ActiveClient -> this
+        is ArchivedClient -> raise(CommonDomainError("CLIENT_ARCHIVED", "Клиент в архиве и недоступен для изменения"))
+    }
 
 /** Маппинг доменного контакта клиента в схему ответа. */
 private fun ClientContact.toSchema(): ClientContactSchema =
@@ -232,6 +286,7 @@ fun Client.toListItem(balance: ClientBalance) =
         groups = groups.map { ClientGroup(it.id, it.name) },
         balance = balance.totalAmount,
         customFields = customFields,
+        state = state,
     )
 
 private const val CLIENT_ENTITY_TYPE = "CLIENT"

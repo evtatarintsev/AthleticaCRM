@@ -29,6 +29,26 @@ class DbClientContacts : ClientContacts {
             .list { row -> row.toClientContact() }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byClients(clientIds: List<ClientId>): Map<ClientId, List<ClientContact>> {
+        if (clientIds.isEmpty()) {
+            return emptyMap()
+        }
+
+        return tr.sql(
+            """
+            SELECT id, client_id, type, value
+            FROM client_contacts
+            WHERE org_id = :orgId AND client_id = ANY(:clientIds)
+            ORDER BY created_at
+            """.trimIndent(),
+        )
+            .bind("orgId", ctx.orgId)
+            .bind("clientIds", clientIds.map { it.value })
+            .list { row -> row.toClientContact() }
+            .groupBy { it.clientId }
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun replace(clientId: ClientId, contacts: List<ClientContact>) {
         tr.sql("DELETE FROM client_contacts WHERE client_id = :clientId AND org_id = :orgId")
             .bind("clientId", clientId)

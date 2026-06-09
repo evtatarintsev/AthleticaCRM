@@ -4,6 +4,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientField
 import org.athletica.crm.api.schemas.settings.ClientsDisplaySettings
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.label_balance
@@ -46,6 +47,17 @@ sealed interface ClientColumn {
         val label: String,
         override val width: Dp = 96.dp,
     ) : ClientColumn
+
+    /** Колонка значений контакта заданного [type] (например, телефоны клиента). */
+    data class Contact(val type: ContactType) : ClientColumn {
+        override val apiKey: String = CONTACT_COLUMN_PREFIX + type.name
+        override val width: Dp = 140.dp
+    }
+
+    companion object {
+        /** Префикс apiKey контакт-колонки: `"contact:" + ContactType.name`. */
+        const val CONTACT_COLUMN_PREFIX = "contact:"
+    }
 }
 
 /** Ширины колонок для стандартных полей клиента. */
@@ -92,6 +104,17 @@ fun ClientsDisplaySettings.toDisplaySettings(availableCustomFields: List<CustomF
             columns.mapNotNull { key ->
                 ClientField.byKey(key)?.let { ClientColumn.Standard(it) }
                     ?: customByKey[key]?.let { ClientColumn.Custom(it.fieldKey.value, it.label) }
+                    ?: key.contactColumnOrNull()
             },
     )
 }
+
+/**
+ * Разбирает apiKey контакт-колонки вида `"contact:PHONE"` в [ClientColumn.Contact].
+ * Возвращает null, если ключ не имеет контакт-префикса либо тип контакта неизвестен.
+ */
+private fun String.contactColumnOrNull(): ClientColumn.Contact? =
+    removePrefix(ClientColumn.CONTACT_COLUMN_PREFIX)
+        .takeIf { it != this }
+        ?.let { name -> runCatching { ContactType.valueOf(name) }.getOrNull() }
+        ?.let { ClientColumn.Contact(it) }

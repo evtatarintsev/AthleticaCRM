@@ -16,7 +16,13 @@ import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-interface Client {
+/**
+ * Клиент организации. Состояние клиента выражено в типах: [ActiveClient] —
+ * активный (доступны редактирование и архивирование), [ArchivedClient] —
+ * архивный (доступно только восстановление). Недопустимые операции (например,
+ * редактирование архивного) невыразимы в типах, а не отлавливаются в рантайме.
+ */
+sealed interface Client {
     /** Уникальный идентификатор клиента. */
     val id: ClientId
 
@@ -43,16 +49,30 @@ interface Client {
 
     /** Значения кастомных полей клиента. */
     val customFields: List<CustomFieldValue>
+}
 
+/**
+ * Активный клиент. Поддерживает редактирование, прикрепление документов и
+ * перевод в архив.
+ */
+interface ActiveClient : Client {
+    /** Сохраняет изменённые поля и документы клиента в БД. */
     context(tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
 
+    /** Переводит клиента в архив. После этого клиент становится [ArchivedClient]. */
+    context(tr: Transaction, raise: Raise<DomainError>)
+    suspend fun archive()
+
+    /** Возвращает копию с прикреплённым документом [doc] (без записи в БД). */
     context(ctx: EmployeeRequestContext)
-    fun attachDoc(doc: ClientDoc): Client
+    fun attachDoc(doc: ClientDoc): ActiveClient
 
+    /** Возвращает копию без документа [docId] (без записи в БД). */
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
-    fun deleteDoc(docId: ClientDocId): Client
+    fun deleteDoc(docId: ClientDocId): ActiveClient
 
+    /** Возвращает копию с новыми значениями полей (без записи в БД). */
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     fun withNew(
         newName: String,
@@ -61,7 +81,17 @@ interface Client {
         newGender: Gender,
         newLeadSourceId: LeadSourceId? = null,
         newCustomFields: List<CustomFieldValue> = emptyList(),
-    ): Client
+    ): ActiveClient
+}
+
+/**
+ * Архивный клиент. Доступно только восстановление; редактирование и прочие
+ * мутации недоступны по типу.
+ */
+interface ArchivedClient : Client {
+    /** Восстанавливает клиента из архива. После этого клиент становится [ActiveClient]. */
+    context(tr: Transaction, raise: Raise<DomainError>)
+    suspend fun restore()
 }
 
 @Serializable

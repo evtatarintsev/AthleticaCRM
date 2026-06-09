@@ -6,4 +6,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ClientListRequest(
     val name: String? = null,
+    /** Возвращать архивных клиентов вместо активных. По умолчанию — только активные. */
+    val archived: Boolean = false,
 )

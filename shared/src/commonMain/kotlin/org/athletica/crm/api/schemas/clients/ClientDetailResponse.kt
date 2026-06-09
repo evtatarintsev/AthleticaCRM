@@ -34,4 +34,6 @@ data class ClientDetailResponse(
     val customFields: List<CustomFieldValue> = emptyList(),
     /** Контакты клиента (телефон, email и т.п.). */
     val contacts: List<ClientContactSchema> = emptyList(),
+    /** Состояние клиента: активный или архивный. */
+    val state: ClientState = ClientState.ACTIVE,
 )

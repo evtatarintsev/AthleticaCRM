@@ -33,7 +33,12 @@ class ClientsPageDelegate(
         searchQuery: String,
     ): Either<ApiClientError, FetchResult<ClientListItem>> =
         api.clients
-            .list(ClientListRequest(name = searchQuery.takeIf { it.isNotBlank() }))
+            .list(
+                ClientListRequest(
+                    name = searchQuery.takeIf { it.isNotBlank() },
+                    archived = filter.showArchived,
+                ),
+            )
             .map { response ->
                 FetchResult(items = response.clients, total = response.total.toInt())
             }
@@ -113,6 +118,13 @@ object ClientsSavedViews {
             filter = ClientFilterState(noGroupOnly = true),
         )
 
+    /** Архивные клиенты. */
+    val ARCHIVED: SystemSavedView<ClientFilterState> =
+        SystemSavedView(
+            id = SavedViewId.system("clients:archived"),
+            filter = ClientFilterState(showArchived = true),
+        )
+
     /** Полный список системных видов в порядке отображения. */
-    val ALL_VIEWS: List<SystemSavedView<ClientFilterState>> = listOf(ALL, IN_DEBT, WITHOUT_GROUP)
+    val ALL_VIEWS: List<SystemSavedView<ClientFilterState>> = listOf(ALL, IN_DEBT, WITHOUT_GROUP, ARCHIVED)
 }

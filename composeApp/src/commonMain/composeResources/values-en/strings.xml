@@ -481,6 +481,7 @@
     <string name="import_done_total">Total rows: %1$d</string>
     <string name="import_done_imported">Imported: %1$d</string>
     <string name="import_done_skipped">Skipped: %1$d</string>
+    <string name="import_done_close">Great</string>
 
     <string name="nav_tasks">Tasks</string>
     <string name="tasks_title">Tasks</string>

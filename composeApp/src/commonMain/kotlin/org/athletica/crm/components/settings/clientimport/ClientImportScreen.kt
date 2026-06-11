@@ -67,6 +67,7 @@ import org.athletica.crm.generated.resources.import_action_validate
 import org.athletica.crm.generated.resources.import_date_format_hint
 import org.athletica.crm.generated.resources.import_date_format_label
 import org.athletica.crm.generated.resources.import_default_gender_label
+import org.athletica.crm.generated.resources.import_done_close
 import org.athletica.crm.generated.resources.import_done_imported
 import org.athletica.crm.generated.resources.import_done_skipped
 import org.athletica.crm.generated.resources.import_done_title
@@ -697,7 +698,7 @@ private fun DoneStep(viewModel: ClientImportViewModel, onClose: () -> Unit) {
         SummaryRow(result.totalRows, result.imported, result.skipped)
         Spacer(Modifier.height(8.dp))
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(Res.string.action_cancel))
+            Text(stringResource(Res.string.import_done_close))
         }
     }
 }

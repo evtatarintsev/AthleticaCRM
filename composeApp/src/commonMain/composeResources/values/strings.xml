@@ -495,6 +495,7 @@
     <string name="import_done_total">Всего строк: %1$d</string>
     <string name="import_done_imported">Импортировано: %1$d</string>
     <string name="import_done_skipped">Пропущено: %1$d</string>
+    <string name="import_done_close">Отлично</string>
 
     <string name="nav_tasks">Задачи</string>
     <string name="tasks_title">Задачи</string>

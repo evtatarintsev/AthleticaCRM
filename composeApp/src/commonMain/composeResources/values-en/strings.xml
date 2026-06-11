@@ -303,6 +303,7 @@
     <string name="label_email_for_employee">Employee email</string>
     <string name="label_password_for_employee">Password</string>
     <string name="error_roles_load_failed">Failed to load roles</string>
+    <string name="roles_not_configured">No roles configured</string>
     <string name="settings_section_clients">Clients</string>
     <string name="settings_item_client_display">Client display</string>
     <string name="settings_item_client_display_subtitle">Columns and data in the client list</string>

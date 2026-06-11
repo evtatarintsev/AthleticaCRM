@@ -625,6 +625,7 @@ private fun AppNavHost(
                 api = api,
                 onBack = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
+                onNavigateToRoles = { navController.navigate(AppRoute.SettingsRoles) },
             )
         }
 

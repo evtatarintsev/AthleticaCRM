@@ -22,6 +22,7 @@ import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.ClientSortField
 import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
@@ -30,6 +31,7 @@ import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.api.schemas.common.PerformedBy
+import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldValues
@@ -48,6 +50,10 @@ import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
 import org.athletica.crm.domain.clients.Client
+import org.athletica.crm.domain.clients.ClientListQuery
+import org.athletica.crm.domain.clients.ClientListRow
+import org.athletica.crm.domain.clients.ClientListView
+import org.athletica.crm.domain.clients.ClientSortColumn
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -62,6 +68,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.clientsRoutes(
     clients: Clients,
+    listView: ClientListView,
     balances: ClientBalances,
     employees: Employees,
     enrollments: Enrollments,
@@ -70,14 +77,11 @@ fun RouteWithContext.clientsRoutes(
 ) {
     post<ClientListRequest, ClientListResponse>("/clients/list") { request ->
         db.transaction {
-            val clientList = clients.list(request.archived)
-            val balancesByClient = balances.currentOf(clientList).associateBy { it.clientId }
-            val contactsByClient = contacts.byClients(clientList.map { it.id })
-            val items =
-                clientList.map {
-                    it.toListItem(balancesByClient.getValue(it.id), contactsByClient[it.id].orEmpty())
-                }
-            ClientListResponse(items, items.size.toUInt())
+            val page = listView.page(request.toQuery())
+            ClientListResponse(
+                clients = page.rows.map { it.toListItem() },
+                total = page.total.toUInt(),
+            )
         }
     }
 
@@ -297,6 +301,44 @@ fun Client.toListItem(
 )
 
 private const val CLIENT_ENTITY_TYPE = "CLIENT"
+
+/** Максимальный размер страницы списка клиентов: защищает от чрезмерных запросов. */
+private const val MAX_CLIENT_PAGE_SIZE = 100
+
+/** Преобразует запрос списка из API в доменные параметры выборки с нормализацией пагинации. */
+private fun ClientListRequest.toQuery(): ClientListQuery =
+    ClientListQuery(
+        archived = archived,
+        search = name?.takeIf { it.isNotBlank() },
+        gender = gender,
+        hasDebt = hasDebt,
+        noGroup = noGroup,
+        groupId = groupId,
+        sortColumn =
+            when (sortField) {
+                ClientSortField.NAME -> ClientSortColumn.NAME
+                ClientSortField.BALANCE -> ClientSortColumn.BALANCE
+                ClientSortField.BIRTHDAY -> ClientSortColumn.BIRTHDAY
+            },
+        ascending = sortDirection == SortDirectionSchema.Asc,
+        limit = limit.coerceIn(1, MAX_CLIENT_PAGE_SIZE),
+        offset = offset.coerceAtLeast(0),
+    )
+
+/** Собирает элемент ответа списка из строки проекции [ClientListRow]. */
+private fun ClientListRow.toListItem(): ClientListItem =
+    ClientListItem(
+        id = id,
+        name = name,
+        avatarId = avatarId,
+        birthday = birthday,
+        gender = gender,
+        groups = groups.map { ClientGroup(it.id, it.name) },
+        balance = balance,
+        customFields = customFields,
+        contacts = contacts.map { it.toSchema() },
+        state = if (archived) ClientState.ARCHIVED else ClientState.ACTIVE,
+    )
 
 private fun ClientBalanceEntry.toJournalEntry(performedById: Map<EmployeeId, PerformedBy>) =
     BalanceJournalEntry(

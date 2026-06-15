@@ -109,7 +109,7 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
         gender: Gender,
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
-    ): Client {
+    ): ActiveClient {
         val client = ClientStub(id, name, avatarId, birthday, gender, leadSourceId = leadSourceId, customFields = customFields)
         clients.add(client)
         return client

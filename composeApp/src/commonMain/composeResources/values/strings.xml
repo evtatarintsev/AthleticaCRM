@@ -297,6 +297,7 @@
     <string name="section_revoked_permissions">Явно отозванные права</string>
     <string name="label_no_contact_info">Контактная информация не указана</string>
     <string name="error_roles_load_failed">Не удалось загрузить роли</string>
+    <string name="roles_not_configured">Нет настроенных ролей</string>
     <string name="hint_phone">+7 (999) 999-99-99</string>
     <string name="hint_email">ivan@example.com</string>
     <string name="employee_status_active">Активен</string>
@@ -494,6 +495,7 @@
     <string name="import_done_total">Всего строк: %1$d</string>
     <string name="import_done_imported">Импортировано: %1$d</string>
     <string name="import_done_skipped">Пропущено: %1$d</string>
+    <string name="import_done_close">Отлично</string>
 
     <string name="nav_tasks">Задачи</string>
     <string name="tasks_title">Задачи</string>

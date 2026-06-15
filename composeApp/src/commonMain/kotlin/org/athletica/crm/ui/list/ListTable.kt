@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -41,6 +42,7 @@ import org.athletica.crm.ui.WindowSize
  * [selection] — состояние выбора строк. `null` — без выбора.
  * [sort] — текущая сортировка для подсветки иконки в заголовке.
  * [onSortChange] — обработчик клика по заголовку сортируемой колонки.
+ * [onLoadMore] — догрузка следующей страницы при прокрутке к концу; по умолчанию no-op.
  * [modifier] — модификатор для внешнего контейнера.
  */
 @Composable
@@ -54,10 +56,12 @@ fun <T : Any> ListTable(
     selection: SelectionState<T>? = null,
     sort: SortState? = null,
     onSortChange: (ColumnId) -> Unit = {},
+    onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (windowSize == WindowSize.COMPACT) {
-        LazyColumn(modifier = modifier) {
+        val listState = rememberLazyListState()
+        LazyColumn(state = listState, modifier = modifier) {
             items(items, key = rowKey) { item ->
                 mobileItem(
                     item,
@@ -66,6 +70,7 @@ fun <T : Any> ListTable(
                 )
             }
         }
+        LoadMoreOnScrollEnd(listState, onLoadMore = onLoadMore)
     } else {
         TableLayout(
             items = items,
@@ -75,6 +80,7 @@ fun <T : Any> ListTable(
             selection = selection,
             sort = sort,
             onSortChange = onSortChange,
+            onLoadMore = onLoadMore,
             modifier = modifier,
         )
     }
@@ -93,12 +99,14 @@ private fun <T : Any> TableLayout(
     selection: SelectionState<T>?,
     sort: SortState?,
     onSortChange: (ColumnId) -> Unit,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     androidx.compose.foundation.layout.Column(modifier = modifier) {
         TableHeader(columns = columns, selection = selection, sort = sort, onSortChange = onSortChange)
         HorizontalDivider()
-        LazyColumn {
+        val listState = rememberLazyListState()
+        LazyColumn(state = listState) {
             items(items, key = rowKey) { item ->
                 TableRow(
                     item = item,
@@ -109,6 +117,7 @@ private fun <T : Any> TableLayout(
                 HorizontalDivider()
             }
         }
+        LoadMoreOnScrollEnd(listState, onLoadMore = onLoadMore)
     }
 }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -99,6 +100,7 @@ import org.athletica.crm.ui.list.ListPageFilterPanel
 import org.athletica.crm.ui.list.ListPageScaffold
 import org.athletica.crm.ui.list.ListPageViewModel
 import org.athletica.crm.ui.list.ListTable
+import org.athletica.crm.ui.list.LoadMoreOnScrollEnd
 import org.athletica.crm.ui.list.SavedView
 import org.athletica.crm.ui.list.SelectionState
 import org.athletica.crm.ui.list.SortBottomSheet
@@ -557,7 +559,8 @@ private fun ClientsContent(
                 }
             } else {
                 if (windowSize == WindowSize.COMPACT) {
-                    LazyColumn(contentPadding = PaddingValues(bottom = 80.dp)) {
+                    val listState = rememberLazyListState()
+                    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 80.dp)) {
                         items(viewModel.visible, key = { it.id.value }) { client ->
                             ClientMobileItem(
                                 client = client,
@@ -568,6 +571,7 @@ private fun ClientsContent(
                             )
                         }
                     }
+                    LoadMoreOnScrollEnd(listState, onLoadMore = viewModel::loadMore)
                 } else {
                     ListTable(
                         items = viewModel.visible,
@@ -587,6 +591,7 @@ private fun ClientsContent(
                         selection = selection,
                         sort = viewModel.state.sort,
                         onSortChange = { columnId -> viewModel.cycleSort(columnId) },
+                        onLoadMore = viewModel::loadMore,
                     )
                 }
             }

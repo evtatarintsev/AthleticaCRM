@@ -71,9 +71,17 @@ class ListPageViewModel<T : Any, F : Any>(
         scope.launch {
             snapshotFlow { state.sort }
                 .drop(1)
-                .collectLatest { newSort -> delegate.onSortChanged(newSort) }
+                .collectLatest { newSort ->
+                    delegate.onSortChanged(newSort)
+                    if (delegate.sortTriggersReload) {
+                        load()
+                    }
+                }
         }
     }
+
+    /** Внутренний латч против повторного запуска [loadMore] при быстрой прокрутке. */
+    private var loadingMore = false
 
     /** Обновляет поисковый запрос. */
     fun setSearch(query: String) {
@@ -108,17 +116,51 @@ class ListPageViewModel<T : Any, F : Any>(
         state = state.withSavedView(view)
     }
 
-    /** Перезагружает список из источника данных. */
+    /** Перезагружает список с первой страницы (сбрасывает пагинацию). */
     fun load() {
         scope.launch {
             state = state.withData(ListData.Loading)
             state =
                 state.withData(
-                    delegate.fetch(state.filter, state.searchQuery).fold(
+                    delegate.fetchPage(state.filter, state.searchQuery, state.sort, offset = 0).fold(
                         ifLeft = { ListData.Error(it) },
                         ifRight = { ListData.Loaded(it.items, it.total) },
                     ),
                 )
+        }
+    }
+
+    /** Есть ли на сервере ещё не загруженные записи сверх уже показанных. */
+    val hasMore: Boolean
+        get() = (state.data as? ListData.Loaded)?.let { it.items.size < it.total } ?: false
+
+    /**
+     * Догружает следующую страницу и добавляет её к уже загруженным.
+     * Безопасна к повторным вызовам: пропускает запрос, пока идёт предыдущая
+     * догрузка или когда все записи уже загружены.
+     */
+    fun loadMore() {
+        val loaded = state.data as? ListData.Loaded ?: return
+        if (loadingMore || loaded.items.size >= loaded.total) {
+            return
+        }
+        loadingMore = true
+        scope.launch {
+            try {
+                delegate
+                    .fetchPage(state.filter, state.searchQuery, state.sort, offset = loaded.items.size)
+                    .fold(
+                        ifLeft = { },
+                        ifRight = { result ->
+                            val current = state.data as? ListData.Loaded
+                            if (current != null) {
+                                state = state.withData(ListData.Loaded(current.items + result.items, result.total))
+                            }
+                        },
+                    )
+            } finally {
+                loadingMore = false
+            }
         }
     }
 

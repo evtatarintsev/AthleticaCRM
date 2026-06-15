@@ -3,6 +3,7 @@ package org.athletica.crm.components.employees
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,14 +36,15 @@ import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.action_add_role
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_save
-import org.athletica.crm.generated.resources.error_roles_load_failed
 import org.athletica.crm.generated.resources.hint_email
 import org.athletica.crm.generated.resources.hint_phone
 import org.athletica.crm.generated.resources.label_email
 import org.athletica.crm.generated.resources.label_person_name
 import org.athletica.crm.generated.resources.label_phone
+import org.athletica.crm.generated.resources.roles_not_configured
 import org.athletica.crm.generated.resources.screen_employee_edit
 import org.jetbrains.compose.resources.stringResource
 
@@ -54,6 +56,7 @@ internal fun EmployeeEditScreenLoader(
     api: ApiClient,
     onBack: () -> Unit,
     onSaved: () -> Unit = {},
+    onNavigateToRoles: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -176,20 +179,29 @@ internal fun EmployeeEditScreenLoader(
                     )
 
                     if (loadState.roles.isEmpty()) {
-                        Text(
-                            text = stringResource(Res.string.error_roles_load_failed),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    } else {
-                        EmployeeRolesAndPermissionsForm(
-                            roles = loadState.roles,
-                            form = form,
-                            onFormChange = { form = it },
-                            enabled = !busy,
-                            branches = loadState.branches,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.roles_not_configured),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            TextButton(onClick = onNavigateToRoles) {
+                                Text(stringResource(Res.string.action_add_role))
+                            }
+                        }
                     }
+
+                    EmployeeRolesAndPermissionsForm(
+                        roles = loadState.roles,
+                        form = form,
+                        onFormChange = { form = it },
+                        enabled = !busy,
+                        branches = loadState.branches,
+                    )
 
                     if (saveError != null) {
                         Text(

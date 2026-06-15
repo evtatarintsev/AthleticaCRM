@@ -45,6 +45,6 @@ fun ClientListItem.contactsOfType(type: ContactType): List<String> = contacts.fi
 data class ClientListResponse(
     /** Клиенты текущей страницы. */
     val clients: List<ClientListItem>,
-    /** Общее количество клиентов в организации (без учёта пагинации). */
+    /** Общее количество клиентов, удовлетворяющих текущему фильтру (без учёта пагинации). */
     val total: UInt,
 )

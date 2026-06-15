@@ -169,6 +169,7 @@ fun Application.configureServer() {
                         }
                         clientsRoutes(
                             di.clients,
+                            di.clientListView,
                             di.clientBalances,
                             di.employees,
                             di.enrollments,

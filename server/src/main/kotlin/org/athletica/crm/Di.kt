@@ -23,7 +23,9 @@ import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.clientnotes.ClientNotes
 import org.athletica.crm.domain.clientnotes.DbClientNotes
 import org.athletica.crm.domain.clients.AuditClients
+import org.athletica.crm.domain.clients.ClientListView
 import org.athletica.crm.domain.clients.Clients
+import org.athletica.crm.domain.clients.DbClientListView
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.conversations.DbConversations
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -136,6 +138,7 @@ data class Di(
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(), audit)
     val clientContacts = DbClientContacts()
+    val clientListView: ClientListView = DbClientListView()
     val conversations = DbConversations()
     val deliveries = DbDeliveries()
     val channelRegistry: ChannelRegistry = StubChannelRegistry()

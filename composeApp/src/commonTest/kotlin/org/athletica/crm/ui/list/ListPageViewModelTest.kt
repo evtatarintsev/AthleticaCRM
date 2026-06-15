@@ -58,9 +58,80 @@ private class TestListPageDelegate(
         }
 }
 
+/**
+ * Делегат с серверной пагинацией и сортировкой: отдаёт срез [all] по [offset]/[pageSize],
+ * сортируя по весу при сортировке по убыванию. Локальные [matches]/[compare] — дефолтные.
+ */
+private class PaginatedDelegate(
+    private val all: List<TestItem>,
+    private val pageSize: Int = 2,
+) : ListPageDelegate<TestItem, TestFilter> {
+    var lastOffset: Int = -1
+
+    override fun defaultFilter(): TestFilter = TestFilter()
+
+    override fun defaultSort(): SortState? = null
+
+    override val sortTriggersReload: Boolean get() = true
+
+    override suspend fun fetch(
+        filter: TestFilter,
+        searchQuery: String,
+    ): Either<ApiClientError, FetchResult<TestItem>> = fetchPage(filter, searchQuery, null, 0)
+
+    override suspend fun fetchPage(
+        filter: TestFilter,
+        searchQuery: String,
+        sort: SortState?,
+        offset: Int,
+    ): Either<ApiClientError, FetchResult<TestItem>> {
+        lastOffset = offset
+        val ordered = if (sort?.direction == SortDirection.Desc) all.sortedByDescending { it.weight } else all
+        return Either.Right(FetchResult(items = ordered.drop(offset).take(pageSize), total = all.size))
+    }
+}
+
 /** Тесты для [ListPageViewModel]. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListPageViewModelTest {
+    @Test
+    fun `loadMore догружает следующие страницы и обновляет hasMore`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val all = (1..5).map { TestItem("Item $it", it * 10) }
+            val vm = ListPageViewModel(PaginatedDelegate(all, pageSize = 2), backgroundScope)
+            vm.load()
+            assertEquals(2, vm.visible.size)
+            assertEquals(true, vm.hasMore)
+
+            vm.loadMore()
+            assertEquals(4, vm.visible.size)
+            assertEquals(true, vm.hasMore)
+
+            vm.loadMore()
+            assertEquals(5, vm.visible.size)
+            assertEquals(false, vm.hasMore)
+
+            // повторный вызов после исчерпания не меняет состояние
+            vm.loadMore()
+            assertEquals(5, vm.visible.size)
+        }
+
+    @Test
+    fun `load с серверной сортировкой берёт первую страницу в нужном порядке`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val all = listOf(TestItem("A", 10), TestItem("B", 30), TestItem("C", 20))
+            val delegate = PaginatedDelegate(all, pageSize = 2)
+            val vm = ListPageViewModel(delegate, backgroundScope)
+            vm.load()
+
+            vm.applySort(SortState(ColumnId("weight"), SortDirection.Desc))
+            vm.load()
+
+            // сервер вернул первую страницу по убыванию веса: 30, 20
+            assertEquals(listOf(30, 20), vm.visible.map { it.weight })
+            assertEquals(0, delegate.lastOffset)
+        }
+
     @Test
     fun `load устанавливает состояние Loaded с данными`() =
         runTest(UnconfinedTestDispatcher()) {

@@ -5,6 +5,8 @@ import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
+import org.athletica.crm.api.schemas.clients.ClientSortField
+import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
 import org.athletica.crm.ui.list.ColumnId
 import org.athletica.crm.ui.list.FetchResult
@@ -14,11 +16,16 @@ import org.athletica.crm.ui.list.SortDirection
 import org.athletica.crm.ui.list.SortState
 import org.athletica.crm.ui.list.SystemSavedView
 
+/** Размер страницы списка клиентов при серверной пагинации. */
+private const val CLIENTS_PAGE_SIZE = 50
+
 /**
  * Делегат страницы списка клиентов для [org.athletica.crm.ui.list.ListPageViewModel].
  *
- * Полностью без собственного состояния и корутин: предоставляет загрузку через API,
- * клиентскую фильтрацию/сортировку и хук сохранения сортировки в [displaySettingsVm].
+ * Без собственного состояния и корутин: фильтрация, сортировка, поиск и пагинация
+ * выполняются на сервере (см. [fetchPage]); локальные [matches]/[compare] не нужны.
+ * Смена сортировки требует рефетча ([sortTriggersReload] = true). Сохранение порядка —
+ * хук [onSortChanged] в [displaySettingsVm].
  */
 class ClientsPageDelegate(
     private val api: ApiClient,
@@ -28,50 +35,47 @@ class ClientsPageDelegate(
 
     override fun defaultSort(): SortState? = displaySettingsVm.displaySettings.clients.sort?.let(SortState::fromSchema)
 
+    override val sortTriggersReload: Boolean get() = true
+
     override suspend fun fetch(
         filter: ClientFilterState,
         searchQuery: String,
+    ): Either<ApiClientError, FetchResult<ClientListItem>> = fetchPage(filter, searchQuery, defaultSort(), offset = 0)
+
+    override suspend fun fetchPage(
+        filter: ClientFilterState,
+        searchQuery: String,
+        sort: SortState?,
+        offset: Int,
     ): Either<ApiClientError, FetchResult<ClientListItem>> =
         api.clients
             .list(
                 ClientListRequest(
                     name = searchQuery.takeIf { it.isNotBlank() },
                     archived = filter.showArchived,
+                    limit = CLIENTS_PAGE_SIZE,
+                    offset = offset,
+                    sortField = sort.toClientSortField(),
+                    sortDirection = sort.toSortDirection(),
+                    gender = filter.gender.value,
+                    hasDebt = filter.hasDebtOnly,
+                    noGroup = filter.noGroupOnly,
                 ),
             )
             .map { response ->
                 FetchResult(items = response.clients, total = response.total.toInt())
             }
 
-    /**
-     * Клиентская фильтрация по полу, задолженности и отсутствию группы.
-     * Поиск по имени выполняется на сервере, поэтому [query] здесь не проверяется.
-     */
-    override fun matches(
-        item: ClientListItem,
-        query: String,
-        filter: ClientFilterState,
-    ): Boolean {
-        val matchesGender = filter.gender == GenderFilter.All || item.gender == filter.gender.value
-        val matchesDebt = !filter.hasDebtOnly || item.balance.isNegative
-        val matchesGroup = !filter.noGroupOnly || item.groups.isEmpty()
-        return matchesGender && matchesDebt && matchesGroup
-    }
+    /** Колонка сортировки UI → серверное поле сортировки (по умолчанию — имя). */
+    private fun SortState?.toClientSortField(): ClientSortField =
+        when (this?.columnId) {
+            ClientsColumns.Balance -> ClientSortField.BALANCE
+            ClientsColumns.Birthday -> ClientSortField.BIRTHDAY
+            else -> ClientSortField.NAME
+        }
 
-    override fun compare(
-        a: ClientListItem,
-        b: ClientListItem,
-        sort: SortState,
-    ): Int {
-        val cmp =
-            when (sort.columnId) {
-                ClientsColumns.Name -> a.name.compareTo(b.name, ignoreCase = true)
-                ClientsColumns.Balance -> a.balance.minorUnits.compareTo(b.balance.minorUnits)
-                ClientsColumns.Birthday -> compareValues(a.birthday, b.birthday)
-                else -> 0
-            }
-        return if (sort.direction == SortDirection.Asc) cmp else -cmp
-    }
+    /** Направление сортировки UI → схема (по умолчанию — по возрастанию). */
+    private fun SortState?.toSortDirection(): SortDirectionSchema = if (this?.direction == SortDirection.Desc) SortDirectionSchema.Desc else SortDirectionSchema.Asc
 
     override fun onSortChanged(sort: SortState?) {
         val current = displaySettingsVm.displaySettings

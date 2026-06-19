@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
@@ -20,42 +21,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.clients.ClientListItem
-import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.money.Currency
-import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.home_debtors_empty
+import org.athletica.crm.generated.resources.home_debtors_error
 import org.athletica.crm.generated.resources.home_debtors_title
 import org.jetbrains.compose.resources.stringResource
 
-private const val WIDGET_LIMIT = 10
-
-private fun rub(major: Long) = Money(major * 100, Currency.RUB)
-
-private val stubDebtors: List<ClientListItem> =
-    listOf(
-        ClientListItem(id = ClientId.new(), name = "Иванов Сергей", gender = Gender.MALE, groups = emptyList(), balance = rub(-1500)),
-        ClientListItem(id = ClientId.new(), name = "Петрова Анна", gender = Gender.FEMALE, groups = emptyList(), balance = rub(-800)),
-        ClientListItem(id = ClientId.new(), name = "Козлов Дмитрий", gender = Gender.MALE, groups = emptyList(), balance = rub(-3200)),
-        ClientListItem(id = ClientId.new(), name = "Смирнова Ольга", gender = Gender.FEMALE, groups = emptyList(), balance = rub(-450)),
-    )
-
 /**
  * Виджет «Должники» — клиенты с отрицательным балансом.
- * Показывает не более [WIDGET_LIMIT] записей; при превышении — футер «Показать всех».
- * Данные — заглушка для оценки интерфейса.
+ * Показывает первую страницу результатов; при наличии дополнительных записей
+ * отображает футер «Показать всех (N)».
  */
 @Composable
 fun DebtorsWidget(
+    state: HomeDebtorsState,
     onClientClick: (ClientId) -> Unit,
     onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visible = stubDebtors.take(WIDGET_LIMIT)
-    val overflow = stubDebtors.size - visible.size
-
     OutlinedCard(modifier = modifier) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -66,32 +51,52 @@ fun DebtorsWidget(
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            if (stubDebtors.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(Res.string.home_debtors_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(visible) { client ->
-                        DebtorRow(
-                            client = client,
-                            onClick = { onClientClick(client.id) },
-                        )
-                        HorizontalDivider()
+            when (state) {
+                is HomeDebtorsState.Loading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                    if (overflow > 0) {
-                        item {
-                            TextButton(
-                                onClick = onShowAll,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text("Показать всех (${stubDebtors.size})")
+                }
+
+                is HomeDebtorsState.Error -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(Res.string.home_debtors_error),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+
+                is HomeDebtorsState.Loaded -> {
+                    if (state.items.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = stringResource(Res.string.home_debtors_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(state.items) { client ->
+                                DebtorRow(
+                                    client = client,
+                                    onClick = { onClientClick(client.id) },
+                                )
+                                HorizontalDivider()
+                            }
+                            if (state.total > state.items.size) {
+                                item {
+                                    TextButton(
+                                        onClick = onShowAll,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text("Показать всех (${state.total})")
+                                    }
+                                }
                             }
                         }
                     }

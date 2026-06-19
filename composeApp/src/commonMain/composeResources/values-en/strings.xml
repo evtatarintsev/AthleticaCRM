@@ -441,6 +441,7 @@
 
     <string name="home_debtors_title">Debtors</string>
     <string name="home_debtors_empty">No debtors</string>
+    <string name="home_debtors_error">Failed to load debtors</string>
     <string name="home_birthdays_title">Birthdays today</string>
     <string name="home_birthdays_empty">No birthdays today</string>
 

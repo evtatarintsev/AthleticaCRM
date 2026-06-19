@@ -58,7 +58,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 SessionsWidget(viewModel = viewModel, modifier = Modifier.weight(1f))
-                DebtorsWidget(onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
+                DebtorsWidget(state = viewModel.state.debtors, onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
                 BirthdaysWidget(onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
             }
         } else {
@@ -88,7 +88,7 @@ private fun SessionsWidget(
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            when (val state = viewModel.loadState) {
+            when (val state = viewModel.state.sessions) {
                 is HomeLoadState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()

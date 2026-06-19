@@ -455,6 +455,7 @@
     <string name="home_today_sessions_error">Не удалось загрузить занятия</string>
     <string name="home_debtors_title">Должники</string>
     <string name="home_debtors_empty">Должников нет</string>
+    <string name="home_debtors_error">Не удалось загрузить должников</string>
     <string name="home_birthdays_title">Дни рождения сегодня</string>
     <string name="home_birthdays_empty">Именинников сегодня нет</string>
 

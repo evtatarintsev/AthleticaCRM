@@ -85,6 +85,11 @@ class DbClientListView : ClientListView {
     /** Привязывает общие для обоих запросов параметры фильтрации. */
     context(ctx: EmployeeRequestContext)
     private fun QueryBuilder.bindFilters(query: ClientListQuery): QueryBuilder {
+        // День рождения кодируется как MMDD-целое: месяц × 100 + день.
+        // Например: 19 июня → 619, 31 декабря → 1231, 5 января → 105.
+        // Множитель 100 достаточен, чтобы дни (макс. 31) не переполняли разряд месяца.
+        // Числовое сравнение сохраняет порядок дат внутри года и позволяет
+        // обойтись простым BETWEEN в SQL без манипуляций с годом.
         val birthdayFromMd: Int? = query.birthday?.from?.run { (month.ordinal + 1) * 100 + day }
         val birthdayToMd: Int? = query.birthday?.to?.run { (month.ordinal + 1) * 100 + day }
         return bind("orgId", ctx.orgId)

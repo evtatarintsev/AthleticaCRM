@@ -15,6 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.filter_birthday
+import org.athletica.crm.generated.resources.filter_birthday_all
+import org.athletica.crm.generated.resources.filter_birthday_this_week
+import org.athletica.crm.generated.resources.filter_birthday_today
+import org.athletica.crm.generated.resources.filter_birthday_tomorrow
 import org.athletica.crm.generated.resources.filter_gender_all
 import org.athletica.crm.generated.resources.filter_gender_female
 import org.athletica.crm.generated.resources.filter_gender_male
@@ -93,6 +98,32 @@ fun ClientsFilterContent(
                 checked = draft.hasDebtOnly,
                 onCheckedChange = { onDraftChange(draft.copy(hasDebtOnly = it)) },
             )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(Res.string.filter_birthday), style = MaterialTheme.typography.titleSmall)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                BirthdayFilter.entries.forEachIndexed { index, bf ->
+                    SegmentedButton(
+                        selected = draft.birthdayFilter == bf,
+                        onClick = { onDraftChange(draft.copy(birthdayFilter = bf)) },
+                        shape =
+                            SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = BirthdayFilter.entries.size,
+                            ),
+                    ) {
+                        Text(
+                            when (bf) {
+                                BirthdayFilter.None -> stringResource(Res.string.filter_birthday_all)
+                                BirthdayFilter.Today -> stringResource(Res.string.filter_birthday_today)
+                                BirthdayFilter.Tomorrow -> stringResource(Res.string.filter_birthday_tomorrow)
+                                BirthdayFilter.ThisWeek -> stringResource(Res.string.filter_birthday_this_week)
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }

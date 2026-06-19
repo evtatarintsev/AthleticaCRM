@@ -5,6 +5,7 @@ import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.DateRange
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
@@ -426,5 +427,56 @@ class DbClientListViewTest {
             assertTrue(rowA.contacts.any { it.type == ContactType.PHONE && it.value == "+79991112233" })
             assertTrue(rowB.groups.isEmpty())
             assertTrue(rowB.contacts.isEmpty())
+        }
+
+    @Test
+    fun `фильтр birthday — находит клиента с ДР сегодня по MMDD`() =
+        runTest {
+            val orgId = insertOrg()
+            insertClient(orgId, "Именинник", birthday = LocalDate(1990, 6, 19))
+            insertClient(orgId, "Завтра", birthday = LocalDate(1990, 6, 20))
+            insertClient(orgId, "Без ДР", birthday = null)
+            val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 6, 19), LocalDate(2026, 6, 19))))
+            assertEquals(1, result.rows.size)
+            assertEquals("Именинник", result.rows.single().name)
+            assertEquals(1, result.total)
+        }
+
+    @Test
+    fun `фильтр birthday this week — возвращает клиентов в диапазоне`() =
+        runTest {
+            val orgId = insertOrg()
+            insertClient(orgId, "Начало недели", birthday = LocalDate(1990, 6, 19))
+            insertClient(orgId, "Конец недели", birthday = LocalDate(1990, 6, 25))
+            insertClient(orgId, "За пределами", birthday = LocalDate(1990, 6, 26))
+            insertClient(orgId, "Без ДР", birthday = null)
+            val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 6, 19), LocalDate(2026, 6, 25))))
+            assertEquals(2, result.rows.size)
+            assertEquals(2, result.total)
+            assertTrue(result.rows.any { it.name == "Начало недели" })
+            assertTrue(result.rows.any { it.name == "Конец недели" })
+        }
+
+    @Test
+    fun `фильтр birthday — клиент без ДР не попадает в выборку`() =
+        runTest {
+            val orgId = insertOrg()
+            insertClient(orgId, "Без ДР", birthday = null)
+            val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 6, 19), LocalDate(2026, 6, 19))))
+            assertEquals(0, result.rows.size)
+            assertEquals(0, result.total)
+        }
+
+    @Test
+    fun `фильтр birthday — переход через год (31 дек — 5 янв)`() =
+        runTest {
+            val orgId = insertOrg()
+            insertClient(orgId, "31 декабря", birthday = LocalDate(1990, 12, 31))
+            insertClient(orgId, "3 января", birthday = LocalDate(1990, 1, 3))
+            insertClient(orgId, "15 июня", birthday = LocalDate(1990, 6, 15))
+            val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 12, 29), LocalDate(2026, 1, 5))))
+            assertEquals(2, result.rows.size)
+            assertTrue(result.rows.any { it.name == "31 декабря" })
+            assertTrue(result.rows.any { it.name == "3 января" })
         }
 }

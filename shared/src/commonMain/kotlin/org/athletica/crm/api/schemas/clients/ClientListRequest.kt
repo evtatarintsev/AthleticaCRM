@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.clients
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
+import org.athletica.crm.core.DateRange
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.GroupId
 
@@ -32,4 +33,6 @@ data class ClientListRequest(
     val noGroup: Boolean = false,
     /** Только участники указанной группы. `null` — без фильтра по группе. */
     val groupId: GroupId? = null,
+    /** Фильтр по дню рождения (диапазон дат, сравнение по месяцу и дню без учёта года). `null` — без фильтра. */
+    val birthday: DateRange? = null,
 )

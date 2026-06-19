@@ -12,6 +12,8 @@ data class ClientFilterState(
     val noGroupOnly: Boolean = false,
     /** Показывать архивных клиентов вместо активных. Это режим вида, а не фильтр-бейдж. */
     val showArchived: Boolean = false,
+    /** Фильтр по дню рождения. */
+    val birthdayFilter: BirthdayFilter = BirthdayFilter.None,
 ) {
     /** Количество активных фильтров для бейджа кнопки «Фильтры». */
     val activeCount: Int
@@ -20,6 +22,7 @@ data class ClientFilterState(
                 gender != GenderFilter.All,
                 hasDebtOnly,
                 noGroupOnly,
+                birthdayFilter != BirthdayFilter.None,
             ).count { it }
 }
 
@@ -33,4 +36,19 @@ enum class GenderFilter(
     All("Все", null),
     Male("Мужской", Gender.MALE),
     Female("Женский", Gender.FEMALE),
+}
+
+/** Быстрый фильтр по дню рождения клиента. */
+enum class BirthdayFilter {
+    /** Без фильтра. */
+    None,
+
+    /** Только клиенты с ДР сегодня. */
+    Today,
+
+    /** Только клиенты с ДР завтра. */
+    Tomorrow,
+
+    /** Только клиенты с ДР в ближайшие 7 дней. */
+    ThisWeek,
 }

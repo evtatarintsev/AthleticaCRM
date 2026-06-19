@@ -80,6 +80,9 @@ import org.athletica.crm.generated.resources.clients_view_archived
 import org.athletica.crm.generated.resources.clients_view_in_debt
 import org.athletica.crm.generated.resources.clients_view_without_group
 import org.athletica.crm.generated.resources.empty_search_results
+import org.athletica.crm.generated.resources.filter_chip_birthday_this_week
+import org.athletica.crm.generated.resources.filter_chip_birthday_today
+import org.athletica.crm.generated.resources.filter_chip_birthday_tomorrow
 import org.athletica.crm.generated.resources.filter_chip_has_debt
 import org.athletica.crm.generated.resources.filter_gender_female
 import org.athletica.crm.generated.resources.filter_gender_male
@@ -411,6 +414,27 @@ fun ClientsScreen(
                     elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     onClick = { viewModel.setFilter(filter.copy(noGroupOnly = false)) },
                     label = { Text(stringResource(Res.string.filter_no_group)) },
+                    trailingIcon = {
+                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                    },
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            if (filter.birthdayFilter != BirthdayFilter.None) {
+                FilterChip(
+                    selected = true,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
+                    onClick = { viewModel.setFilter(filter.copy(birthdayFilter = BirthdayFilter.None)) },
+                    label = {
+                        Text(
+                            when (filter.birthdayFilter) {
+                                BirthdayFilter.Today -> stringResource(Res.string.filter_chip_birthday_today)
+                                BirthdayFilter.Tomorrow -> stringResource(Res.string.filter_chip_birthday_tomorrow)
+                                BirthdayFilter.ThisWeek -> stringResource(Res.string.filter_chip_birthday_this_week)
+                                BirthdayFilter.None -> ""
+                            },
+                        )
+                    },
                     trailingIcon = {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
                     },

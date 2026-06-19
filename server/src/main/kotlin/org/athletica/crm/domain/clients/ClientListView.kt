@@ -2,6 +2,7 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
+import org.athletica.crm.core.DateRange
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldValue
@@ -45,6 +46,8 @@ data class ClientListQuery(
     val noGroup: Boolean = false,
     /** Только участники указанной группы. `null` — без фильтра. */
     val groupId: GroupId? = null,
+    /** Фильтр по дню рождения (диапазон дат по месяцу/дню). `null` — без фильтра. */
+    val birthday: DateRange? = null,
     /** Колонка сортировки. */
     val sortColumn: ClientSortColumn = ClientSortColumn.NAME,
     /** Сортировать по возрастанию (`true`) или убыванию (`false`). */

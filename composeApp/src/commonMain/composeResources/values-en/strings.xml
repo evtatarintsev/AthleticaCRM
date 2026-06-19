@@ -191,6 +191,14 @@
     <string name="filter_no_group">No group</string>
     <string name="filter_has_debt">Has debt</string>
     <string name="filter_chip_has_debt">Has debt</string>
+    <string name="filter_birthday">Birthday</string>
+    <string name="filter_birthday_all">All</string>
+    <string name="filter_birthday_today">Today</string>
+    <string name="filter_birthday_tomorrow">Tomorrow</string>
+    <string name="filter_birthday_this_week">This week</string>
+    <string name="filter_chip_birthday_today">BD · Today</string>
+    <string name="filter_chip_birthday_tomorrow">BD · Tomorrow</string>
+    <string name="filter_chip_birthday_this_week">BD · This week</string>
     <string name="filters_label">Filters</string>
     <string name="filters_with_count">Filters · %1$d</string>
     <string name="section_columns">Columns</string>

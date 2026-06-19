@@ -1,6 +1,10 @@
 package org.athletica.crm.components.clients
 
 import arrow.core.Either
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.client.ApiClientError
 import org.athletica.crm.api.schemas.clients.ClientListItem
@@ -8,6 +12,7 @@ import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientSortField
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.components.settings.DisplaySettingsViewModel
+import org.athletica.crm.core.DateRange
 import org.athletica.crm.ui.list.ColumnId
 import org.athletica.crm.ui.list.FetchResult
 import org.athletica.crm.ui.list.ListPageDelegate
@@ -15,6 +20,7 @@ import org.athletica.crm.ui.list.SavedViewId
 import org.athletica.crm.ui.list.SortDirection
 import org.athletica.crm.ui.list.SortState
 import org.athletica.crm.ui.list.SystemSavedView
+import kotlin.time.Clock
 
 /** Размер страницы списка клиентов при серверной пагинации. */
 private const val CLIENTS_PAGE_SIZE = 50
@@ -47,8 +53,16 @@ class ClientsPageDelegate(
         searchQuery: String,
         sort: SortState?,
         offset: Int,
-    ): Either<ApiClientError, FetchResult<ClientListItem>> =
-        api.clients
+    ): Either<ApiClientError, FetchResult<ClientListItem>> {
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val birthdayRange: DateRange? =
+            when (filter.birthdayFilter) {
+                BirthdayFilter.None -> null
+                BirthdayFilter.Today -> DateRange(today, today)
+                BirthdayFilter.Tomorrow -> today.plus(1, DateTimeUnit.DAY).let { DateRange(it, it) }
+                BirthdayFilter.ThisWeek -> DateRange(today, today.plus(6, DateTimeUnit.DAY))
+            }
+        return api.clients
             .list(
                 ClientListRequest(
                     name = searchQuery.takeIf { it.isNotBlank() },
@@ -60,11 +74,13 @@ class ClientsPageDelegate(
                     gender = filter.gender.value,
                     hasDebt = filter.hasDebtOnly,
                     noGroup = filter.noGroupOnly,
+                    birthday = birthdayRange,
                 ),
             )
             .map { response ->
                 FetchResult(items = response.clients, total = response.total.toInt())
             }
+    }
 
     /** Колонка сортировки UI → серверное поле сортировки (по умолчанию — имя). */
     private fun SortState?.toClientSortField(): ClientSortField =

@@ -191,6 +191,14 @@
     <string name="filter_no_group">Без группы</string>
     <string name="filter_has_debt">Есть задолженность</string>
     <string name="filter_chip_has_debt">Есть долг</string>
+    <string name="filter_birthday">День рождения</string>
+    <string name="filter_birthday_all">Все</string>
+    <string name="filter_birthday_today">Сегодня</string>
+    <string name="filter_birthday_tomorrow">Завтра</string>
+    <string name="filter_birthday_this_week">На этой неделе</string>
+    <string name="filter_chip_birthday_today">ДР · Сегодня</string>
+    <string name="filter_chip_birthday_tomorrow">ДР · Завтра</string>
+    <string name="filter_chip_birthday_this_week">ДР · На этой неделе</string>
     <string name="filters_label">Фильтры</string>
     <string name="filters_with_count">Фильтры · %1$d</string>
     <string name="section_columns">Колонки</string>

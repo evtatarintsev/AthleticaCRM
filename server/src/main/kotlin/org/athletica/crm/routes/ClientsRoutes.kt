@@ -314,6 +314,7 @@ private fun ClientListRequest.toQuery(): ClientListQuery =
         hasDebt = hasDebt,
         noGroup = noGroup,
         groupId = groupId,
+        birthday = birthday,
         sortColumn =
             when (sortField) {
                 ClientSortField.NAME -> ClientSortColumn.NAME

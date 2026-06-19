@@ -450,9 +450,22 @@
     <string name="home_debtors_title">Debtors</string>
     <string name="home_debtors_empty">No debtors</string>
     <string name="home_debtors_error">Failed to load debtors</string>
-    <string name="home_birthdays_title">Birthdays today</string>
-    <string name="home_birthdays_empty">No birthdays today</string>
+    <string name="home_birthdays_title">Birthdays</string>
+    <string name="home_birthdays_empty">No birthdays</string>
     <string name="home_birthdays_error">Failed to load birthdays</string>
+    <string name="home_birthdays_age">%1$d y.o.</string>
+    <string name="home_widget_show_all">Show all (%1$d)</string>
+
+    <!-- Dashboard settings -->
+    <string name="cd_dashboard_settings">Configure widgets</string>
+    <string name="dashboard_settings_title">Widget settings</string>
+    <string name="dashboard_label_title">Title</string>
+    <string name="dashboard_label_limit">Rows: %1$d</string>
+    <string name="cd_limit_decrease">Decrease</string>
+    <string name="cd_limit_increase">Increase</string>
+    <string name="birthday_window_today">Today</string>
+    <string name="birthday_window_tomorrow">Tomorrow</string>
+    <string name="birthday_window_week">Week</string>
 
     <!-- Server error screen -->
     <string name="error_server_unavailable_title">Could not connect</string>

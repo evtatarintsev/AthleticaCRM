@@ -26,17 +26,19 @@ import org.athletica.crm.core.money.formatted
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.home_debtors_empty
 import org.athletica.crm.generated.resources.home_debtors_error
-import org.athletica.crm.generated.resources.home_debtors_title
+import org.athletica.crm.generated.resources.home_widget_show_all
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * Виджет «Должники» — клиенты с отрицательным балансом.
  * Показывает первую страницу результатов; при наличии дополнительных записей
  * отображает футер «Показать всех (N)».
+ * [title] — отображаемый заголовок виджета.
  */
 @Composable
 fun DebtorsWidget(
-    state: HomeDebtorsState,
+    title: String,
+    state: HomeListState,
     onClientClick: (ClientId) -> Unit,
     onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
@@ -47,18 +49,18 @@ fun DebtorsWidget(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = stringResource(Res.string.home_debtors_title),
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
             )
 
             when (state) {
-                is HomeDebtorsState.Loading -> {
+                is HomeListState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
 
-                is HomeDebtorsState.Error -> {
+                is HomeListState.Error -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = stringResource(Res.string.home_debtors_error),
@@ -68,7 +70,7 @@ fun DebtorsWidget(
                     }
                 }
 
-                is HomeDebtorsState.Loaded -> {
+                is HomeListState.Loaded -> {
                     if (state.items.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
@@ -94,7 +96,7 @@ fun DebtorsWidget(
                                         onClick = onShowAll,
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
-                                        Text("Показать всех (${state.total})")
+                                        Text(stringResource(Res.string.home_widget_show_all, state.total))
                                     }
                                 }
                             }

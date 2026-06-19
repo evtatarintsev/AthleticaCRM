@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
@@ -19,45 +20,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.schemas.clients.ClientListItem
-import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.money.Currency
-import org.athletica.crm.core.money.Money
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.home_birthdays_empty
+import org.athletica.crm.generated.resources.home_birthdays_error
 import org.athletica.crm.generated.resources.home_birthdays_title
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
 
-private const val WIDGET_LIMIT = 10
-
-private val today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-
-private val stubBirthdays: List<ClientListItem> =
-    listOf(
-        ClientListItem(id = ClientId.new(), name = "Новикова Елена", gender = Gender.FEMALE, groups = emptyList(), balance = Money.zero(Currency.RUB), birthday = today.run { LocalDate(year - 28, month, day) }),
-        ClientListItem(id = ClientId.new(), name = "Фёдоров Михаил", gender = Gender.MALE, groups = emptyList(), balance = Money.zero(Currency.RUB), birthday = today.run { LocalDate(year - 15, month, day) }),
-        ClientListItem(id = ClientId.new(), name = "Морозова Татьяна", gender = Gender.FEMALE, groups = emptyList(), balance = Money.zero(Currency.RUB), birthday = today.run { LocalDate(year - 42, month, day) }),
-    )
-
 /**
  * Виджет «Дни рождения сегодня» — клиенты, у которых сегодня день рождения.
- * Показывает не более [WIDGET_LIMIT] записей; при превышении — футер «Показать всех».
- * Данные — заглушка для оценки интерфейса.
+ * Показывает первую страницу результатов; при наличии дополнительных записей
+ * отображает футер «Показать всех (N)».
  */
 @Composable
 fun BirthdaysWidget(
+    state: HomeBirthdaysState,
     onClientClick: (ClientId) -> Unit,
     onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visible = stubBirthdays.take(WIDGET_LIMIT)
-    val overflow = stubBirthdays.size - visible.size
-
     OutlinedCard(modifier = modifier) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -68,32 +53,52 @@ fun BirthdaysWidget(
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            if (stubBirthdays.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(Res.string.home_birthdays_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(visible) { client ->
-                        BirthdayRow(
-                            client = client,
-                            onClick = { onClientClick(client.id) },
-                        )
-                        HorizontalDivider()
+            when (state) {
+                is HomeBirthdaysState.Loading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                    if (overflow > 0) {
-                        item {
-                            TextButton(
-                                onClick = onShowAll,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text("Показать всех (${stubBirthdays.size})")
+                }
+
+                is HomeBirthdaysState.Error -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(Res.string.home_birthdays_error),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+
+                is HomeBirthdaysState.Loaded -> {
+                    if (state.items.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = stringResource(Res.string.home_birthdays_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(state.items) { client ->
+                                BirthdayRow(
+                                    client = client,
+                                    onClick = { onClientClick(client.id) },
+                                )
+                                HorizontalDivider()
+                            }
+                            if (state.total > state.items.size) {
+                                item {
+                                    TextButton(
+                                        onClick = onShowAll,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text("Показать всех (${state.total})")
+                                    }
+                                }
                             }
                         }
                     }
@@ -112,6 +117,7 @@ private fun BirthdayRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     val age = client.birthday?.let { today.year - it.year }
 
     Row(

@@ -452,6 +452,7 @@
     <string name="home_debtors_error">Failed to load debtors</string>
     <string name="home_birthdays_title">Birthdays today</string>
     <string name="home_birthdays_empty">No birthdays today</string>
+    <string name="home_birthdays_error">Failed to load birthdays</string>
 
     <!-- Server error screen -->
     <string name="error_server_unavailable_title">Could not connect</string>

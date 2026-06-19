@@ -59,7 +59,7 @@ fun HomeScreen(
             ) {
                 SessionsWidget(viewModel = viewModel, modifier = Modifier.weight(1f))
                 DebtorsWidget(state = viewModel.state.debtors, onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
-                BirthdaysWidget(onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
+                BirthdaysWidget(state = viewModel.state.birthdays, onClientClick = onClientClick, onShowAll = onShowAllClients, modifier = Modifier.weight(1f))
             }
         } else {
             SessionsWidget(

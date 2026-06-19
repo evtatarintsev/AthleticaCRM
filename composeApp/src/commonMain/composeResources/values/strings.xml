@@ -466,6 +466,7 @@
     <string name="home_debtors_error">Не удалось загрузить должников</string>
     <string name="home_birthdays_title">Дни рождения сегодня</string>
     <string name="home_birthdays_empty">Именинников сегодня нет</string>
+    <string name="home_birthdays_error">Не удалось загрузить именинников</string>
 
     <!-- Server error screen -->
     <string name="error_server_unavailable_title">Не удалось подключиться</string>

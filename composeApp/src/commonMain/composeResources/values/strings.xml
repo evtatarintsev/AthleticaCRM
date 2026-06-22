@@ -464,9 +464,22 @@
     <string name="home_debtors_title">Должники</string>
     <string name="home_debtors_empty">Должников нет</string>
     <string name="home_debtors_error">Не удалось загрузить должников</string>
-    <string name="home_birthdays_title">Дни рождения сегодня</string>
-    <string name="home_birthdays_empty">Именинников сегодня нет</string>
+    <string name="home_birthdays_title">Дни рождения</string>
+    <string name="home_birthdays_empty">Именинников нет</string>
     <string name="home_birthdays_error">Не удалось загрузить именинников</string>
+    <string name="home_birthdays_age">%1$d лет</string>
+    <string name="home_widget_show_all">Показать всех (%1$d)</string>
+
+    <!-- Dashboard settings -->
+    <string name="cd_dashboard_settings">Настроить виджеты</string>
+    <string name="dashboard_settings_title">Настройки виджетов</string>
+    <string name="dashboard_label_title">Заголовок</string>
+    <string name="dashboard_label_limit">Строк: %1$d</string>
+    <string name="cd_limit_decrease">Уменьшить</string>
+    <string name="cd_limit_increase">Увеличить</string>
+    <string name="birthday_window_today">Сегодня</string>
+    <string name="birthday_window_tomorrow">Завтра</string>
+    <string name="birthday_window_week">Неделя</string>
 
     <!-- Server error screen -->
     <string name="error_server_unavailable_title">Не удалось подключиться</string>

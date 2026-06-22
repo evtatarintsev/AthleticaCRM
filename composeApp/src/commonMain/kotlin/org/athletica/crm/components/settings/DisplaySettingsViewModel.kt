@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.settings.DisplaySettings
+import org.athletica.crm.api.schemas.settings.withDefaults
 
 /**
  * Глобальный ViewModel для управления настройками отображения приложения.
@@ -24,8 +25,8 @@ class DisplaySettingsViewModel(private val api: ApiClient, private val scope: Co
     init {
         scope.launch {
             api.displaySettings.get().fold(
-                ifLeft = { /* ошибка загрузки — оставляем дефолт */ },
-                ifRight = { displaySettings = it },
+                ifLeft = { displaySettings = displaySettings.withDashboardDefaults() },
+                ifRight = { displaySettings = it.withDashboardDefaults() },
             )
         }
     }
@@ -43,3 +44,9 @@ class DisplaySettingsViewModel(private val api: ApiClient, private val scope: Co
         }
     }
 }
+
+/**
+ * Нормализует настройки дашборда: дополняет пул недостающими дефолтными виджетами.
+ * Применяется один раз при загрузке, чтобы идентификаторы виджетов были стабильны в сессии.
+ */
+private fun DisplaySettings.withDashboardDefaults(): DisplaySettings = copy(dashboard = dashboard.withDefaults())

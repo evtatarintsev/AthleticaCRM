@@ -14,6 +14,8 @@ data class DisplaySettings(
     val employees: EmployeesDisplaySettings = EmployeesDisplaySettings(),
     /** Настройки таблицы задач. */
     val tasks: TasksDisplaySettings = TasksDisplaySettings(),
+    /** Настройки виджетов главной страницы. */
+    val dashboard: DashboardSettings = DashboardSettings(),
 )
 
 /**

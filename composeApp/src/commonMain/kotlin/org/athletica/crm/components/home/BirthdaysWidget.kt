@@ -25,20 +25,23 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.home_birthdays_age
 import org.athletica.crm.generated.resources.home_birthdays_empty
 import org.athletica.crm.generated.resources.home_birthdays_error
-import org.athletica.crm.generated.resources.home_birthdays_title
+import org.athletica.crm.generated.resources.home_widget_show_all
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
 
 /**
- * Виджет «Дни рождения сегодня» — клиенты, у которых сегодня день рождения.
+ * Виджет «Дни рождения» — клиенты, у которых день рождения попадает в выбранное окно.
  * Показывает первую страницу результатов; при наличии дополнительных записей
  * отображает футер «Показать всех (N)».
+ * [title] — отображаемый заголовок виджета.
  */
 @Composable
 fun BirthdaysWidget(
-    state: HomeBirthdaysState,
+    title: String,
+    state: HomeListState,
     onClientClick: (ClientId) -> Unit,
     onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
@@ -49,18 +52,18 @@ fun BirthdaysWidget(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = stringResource(Res.string.home_birthdays_title),
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
             )
 
             when (state) {
-                is HomeBirthdaysState.Loading -> {
+                is HomeListState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
 
-                is HomeBirthdaysState.Error -> {
+                is HomeListState.Error -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = stringResource(Res.string.home_birthdays_error),
@@ -70,7 +73,7 @@ fun BirthdaysWidget(
                     }
                 }
 
-                is HomeBirthdaysState.Loaded -> {
+                is HomeListState.Loaded -> {
                     if (state.items.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
@@ -96,7 +99,7 @@ fun BirthdaysWidget(
                                         onClick = onShowAll,
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
-                                        Text("Показать всех (${state.total})")
+                                        Text(stringResource(Res.string.home_widget_show_all, state.total))
                                     }
                                 }
                             }
@@ -136,7 +139,7 @@ private fun BirthdayRow(
         )
         if (age != null) {
             Text(
-                text = "$age лет",
+                text = stringResource(Res.string.home_birthdays_age, age),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

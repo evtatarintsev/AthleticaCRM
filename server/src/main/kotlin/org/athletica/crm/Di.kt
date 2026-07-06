@@ -64,6 +64,8 @@ import org.athletica.crm.domain.memberships.Memberships
 import org.athletica.crm.domain.messagedelivery.ChannelRegistry
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
+import org.athletica.crm.domain.notifications.DbNotifications
+import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.org.DbOrganizations
 import org.athletica.crm.domain.org.LocMemCachedOrganizations
 import org.athletica.crm.domain.org.Organizations
@@ -115,6 +117,7 @@ data class Di(
     val customFieldDefinitions: CustomFieldDefinitions,
     val userDisplaySettings: UserDisplaySettings = DbUserDisplaySettings(),
     val tasks: Tasks = DbTasks(),
+    val notifications: Notifications = DbNotifications(),
     val yookassaConfig: YookassaConfig,
     val payments: Payments,
     val paymentGateway: PaymentGateway,

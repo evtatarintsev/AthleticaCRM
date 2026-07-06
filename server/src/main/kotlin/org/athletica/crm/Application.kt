@@ -202,7 +202,7 @@ fun Application.configureServer() {
                             uploadRoutes()
                         }
                         auditRoutes(di.audit)
-                        notificationsRoutes()
+                        notificationsRoutes(di.notifications)
                         displaySettingsRoutes(di.userDisplaySettings)
                         context(di.minio) {
                             taskRoutes(di.tasks, di.employees)

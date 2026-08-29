@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import com.github.ajalt.clikt.command.main
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.auth.HttpAuthHeader
@@ -12,7 +13,6 @@ import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
-import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -28,12 +28,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
+import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.systemContext
 import org.athletica.crm.routes.auditRoutes
@@ -76,8 +78,8 @@ import kotlin.uuid.toKotlinUuid
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
-/** Точка входа: делегирует запуск Ktor [EngineMain], который читает application.conf. */
-fun main(args: Array<String>): Unit = EngineMain.main(args)
+/** Точка входа: разбирает аргументы и передаёт управление выбранной подкоманде. */
+fun main(args: Array<String>): Unit = runBlocking { athleticaCommand().main(args) }
 
 /** Модуль приложения: инициализирует конфигурацию, запускает миграции и настраивает плагины. */
 fun Application.module() {

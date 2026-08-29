@@ -68,29 +68,35 @@ class OrgSearch(private val database: Database) {
         }
 
     /**
-     * Разрешает строковый аргумент `--org` в [OrgInfo].
-     * Если аргумент — корректный UUID, ищет по ID.
-     * Иначе ищет по названию/логину. Завершает процесс, если результат неоднозначен.
+     * Разрешает указание организации в командной строке: [orgArg] — либо UUID, либо название.
+     * Для UUID выполняется поиск по точному совпадению идентификатора, иначе — по названию и
+     * логину владельца. Решение о выводе принимает вызывающая команда.
      */
-    suspend fun resolve(orgArg: String): OrgInfo? {
+    suspend fun resolve(orgArg: String): OrgResolution {
         val uuid = runCatching { Uuid.parse(orgArg) }.getOrNull()
         if (uuid != null) {
-            return findById(uuid)
+            return findById(uuid)?.let { OrgResolution.Found(it) } ?: OrgResolution.NotFound
         }
         val results = find(orgArg)
         return when (results.size) {
-            0 -> null
-            1 -> results.first()
-            else -> {
-                println("Найдено несколько организаций. Укажите UUID из списка:")
-                results.forEach { printOrgInfo(it) }
-                null
-            }
+            0 -> OrgResolution.NotFound
+            1 -> OrgResolution.Found(results.first())
+            else -> OrgResolution.Ambiguous(results)
         }
     }
 }
 
-/** Выводит информацию об организации в одну строку. */
-fun printOrgInfo(org: OrgInfo) {
-    println("  ${org.id}  ${org.name}  (владелец: ${org.ownerLogin}, валюта: ${org.currency})")
+/** Результат разрешения указания организации в командной строке. */
+sealed interface OrgResolution {
+    /** Организация определена однозначно: [org] — найденная организация. */
+    data class Found(val org: OrgInfo) : OrgResolution
+
+    /** Указанию соответствует несколько организаций: [candidates] — подходящие организации. */
+    data class Ambiguous(val candidates: List<OrgInfo>) : OrgResolution
+
+    /** Указанию не соответствует ни одна организация. */
+    data object NotFound : OrgResolution
 }
+
+/** Описание организации в одну строку для вывода в командной строке. */
+fun OrgInfo.describe(): String = "  $id  $name  (владелец: $ownerLogin, валюта: $currency)"

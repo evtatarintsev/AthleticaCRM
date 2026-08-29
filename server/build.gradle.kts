@@ -17,6 +17,7 @@ application {
 dependencies {
     implementation(projects.shared)
     implementation(libs.arrow.core)
+    implementation(libs.clikt)
     implementation(libs.arrow.fx.coroutines)
     implementation(libs.logback)
     implementation(libs.ktor.server.core)
@@ -47,4 +48,8 @@ dependencies {
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.minio)
     testImplementation(libs.kotlinx.coroutines.test)
+}
+
+tasks.named<Jar>("shadowJar") {
+    archiveFileName.set("athletica.jar")
 }

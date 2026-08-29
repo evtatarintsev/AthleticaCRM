@@ -366,6 +366,7 @@ No reflection-based DI framework; all wiring is explicit and visible.
 - **Use Cases**: See `docs/USECASES_CORE.md` for all 28+ business flows
 - **Client Balance**: See `docs/client-balance.md` for accounting rules
 - **Quick Reference**: See `docs/QUICK_REFERENCE.md` for developer cheat sheet
+- **CLI**: See `docs/cli.md` for run modes (`serve`) and admin commands (`admin org ...`)
 
 ## Code Style & Conventions
 

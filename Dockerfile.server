@@ -5,6 +5,7 @@ RUN chmod +x gradlew && ./gradlew :server:shadowJar --no-daemon
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=builder /build/server/build/libs/server-all.jar app.jar
+COPY --from=builder /build/server/build/libs/athletica.jar athletica.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "athletica.jar"]
+CMD ["serve"]

@@ -62,22 +62,22 @@ services:
   web:
     image: ghcr.io/${GITHUB_REPOSITORY}/web:latest
     restart: unless-stopped
-
-  metabase:
-    image: metabase/metabase:v0.61.x
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_DBNAME: metabase_app
-      MB_DB_PORT: 5432
-      MB_DB_USER: metabase_app
-      MB_DB_PASS: ${METABASE_DB_PASSWORD}
-      MB_DB_HOST: postgres
-      MB_SITE_URL: https://metabase.${DOMAIN}
-      JAVA_TIMEZONE: Europe/Moscow
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+#
+#  metabase:
+#    image: metabase/metabase:v0.61.x
+#    environment:
+#      MB_DB_TYPE: postgres
+#      MB_DB_DBNAME: metabase_app
+#      MB_DB_PORT: 5432
+#      MB_DB_USER: metabase_app
+#      MB_DB_PASS: ${METABASE_DB_PASSWORD}
+#      MB_DB_HOST: postgres
+#      MB_SITE_URL: https://metabase.${DOMAIN}
+#      JAVA_TIMEZONE: Europe/Moscow
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    restart: unless-stopped
 
   nginx:
     image: nginx:alpine
@@ -93,11 +93,13 @@ services:
     depends_on:
       - server
       - web
-      - metabase
     restart: unless-stopped
 
   certbot:
     image: certbot/certbot:latest
+    # Сервис вызывается только вручную через `docker compose run certbot ...`
+    # (выпуск и продление сертификата); профиль не даёт ему стартовать на `up`.
+    profiles: ["tools"]
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_www:/var/www/certbot

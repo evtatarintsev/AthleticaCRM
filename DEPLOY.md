@@ -1,21 +1,26 @@
-# Руководство по деплою AthleticaCRM на production
+# Развёртывание AthleticaCRM
+
+Разворачивание сервера автоматизировано скриптом [`scripts/setup-server.sh`](scripts/setup-server.sh).
+Он запускается **на локальной машине**, спрашивает недостающие данные и доводит сервер
+до рабочего состояния: Docker, пользователь деплоя, TLS-сертификат, запущенный стек
+и секреты GitHub Actions для последующего автодеплоя.
 
 ## Содержание
 
-1. [Требования](#1-требования)
-2. [Подготовка сервера](#2-подготовка-сервера)
-3. [Настройка DNS](#3-настройка-dns)
-4. [Деплой файлов проекта](#4-деплой-файлов-проекта)
-5. [Настройка переменных окружения](#5-настройка-переменных-окружения)
-6. [Первый запуск и TLS-сертификат](#6-первый-запуск-и-tls-сертификат)
-7. [Настройка GitHub Actions](#7-настройка-github-actions)
-8. [Автоматическое обновление сертификатов](#8-автоматическое-обновление-сертификатов)
-9. [Проверка деплоя](#9-проверка-деплоя)
-10. [Полезные команды](#10-полезные-команды)
+1. [Что нужно подготовить](#1-что-нужно-подготовить)
+2. [Запуск скрипта](#2-запуск-скрипта)
+3. [Что получилось на сервере](#3-что-получилось-на-сервере)
+4. [Автодеплой](#4-автодеплой)
+5. [Переезд на другой сервер](#5-переезд-на-другой-сервер)
+6. [Обслуживание](#6-обслуживание)
+7. [Диагностика](#7-диагностика)
+8. [Ручная установка без скрипта](#8-ручная-установка-без-скрипта)
 
 ---
 
-## 1. Требования
+## 1. Что нужно подготовить
+
+### Сервер
 
 | Компонент | Минимум |
 |-----------|---------|
@@ -23,359 +28,290 @@
 | RAM | 2 GB |
 | CPU | 2 vCPU |
 | Диск | 20 GB |
-| Открытые порты | 22 (SSH), 80 (HTTP), 443 (HTTPS) |
+| Порты | 22 (SSH), 80 (HTTP), 443 (HTTPS) |
+
+### SSH-ключ на сервере
+
+Единственное действие, которое выполняется руками. Публичный ключ вашей машины должен
+лежать в `authorized_keys` пользователя `root`:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub root@<IP сервера>
+```
+
+Скрипт начинается с проверки этого доступа и, если ключа нет, печатает команду и ждёт.
+
+### DNS
+
+A-записи на IP сервера. Все имена нужны для одного общего TLS-сертификата:
+
+| Запись | Тип |
+|--------|-----|
+| `yourdomain.com` | A |
+| `www.yourdomain.com` | A |
+| `minio.yourdomain.com` | A |
+| `console.minio.yourdomain.com` | A |
+| `metabase.yourdomain.com` | A — только если сервис `metabase` раскомментирован в `docker-compose.prod.yaml` |
+
+Распространение занимает 5–30 минут. Скрипт проверит записи через `dig` и предупредит о расхождениях.
+
+### Токен GitHub для скачивания образов
+
+Docker-образы приватные, серверу нужен PAT с правом `read:packages`:
+
+1. Открыть <https://github.com/settings/tokens/new?scopes=read:packages&description=athletica-server-pull>
+2. Тип — **classic** (fine-grained токены с ghcr.io работают ненадёжно), срок — `No expiration`
+3. Единственный скоуп — `read:packages`
+4. Скопировать значение: скрипт спросит его, и оно же уйдёт в секрет `GHCR_READ_TOKEN`
+
+### Данные SMTP и ЮKassa
+
+Скрипт спросит хост, логин, пароль и адрес отправителя SMTP (панель почтового провайдера)
+и, опционально, `shopId` с секретным ключом ЮKassa (панель ЮKassa → Настройки → Магазин).
+Приём платежей можно отложить: оставить поля пустыми и включить тестовый режим.
+
+Пароли PostgreSQL, MinIO, Metabase и JWT-секрет скрипт генерирует сам — вводить их не нужно.
 
 ---
 
-## 2. Подготовка сервера
+## 2. Запуск скрипта
 
-Все команды выполняются от `root` или через `sudo`.
-
-### 2.1 Установка Docker
+Из корня репозитория:
 
 ```bash
-# Удалить старые версии (если есть)
-apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
-
-# Установить зависимости
-apt-get update
-apt-get install -y ca-certificates curl gnupg lsb-release
-
-# Добавить официальный GPG-ключ Docker
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg \
-  | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
-
-# Добавить репозиторий Docker
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/$(. /etc/os-release && echo "$ID") \
-  $(lsb_release -cs) stable" \
-  | tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# Установить Docker Engine и Compose plugin
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Включить автозапуск Docker
-systemctl enable --now docker
-
-# Проверить версии
-docker --version
-docker compose version
+./scripts/setup-server.sh
 ```
 
-### 2.2 Создание пользователя для деплоя
+Скрипт идемпотентен — повторный запуск безопасен: существующие пользователь, ключ,
+сертификат, `.env` и cron-задача не перезаписываются.
 
-```bash
-# Создать пользователя deploy (без пароля, только SSH-ключ)
-useradd -m -s /bin/bash deploy
+Порядок шагов:
 
-# Добавить в группу docker (чтобы мог запускать docker без sudo)
-usermod -aG docker deploy
+| Шаг | Что происходит |
+|-----|----------------|
+| 1 | Проверка SSH-доступа к серверу под root |
+| 2 | Домен, e-mail для Let's Encrypt, репозиторий, пользователь и каталог деплоя |
+| 3 | Проверка A-записей через `dig` |
+| 4 | Генерация паролей, вопросы про SMTP/ЮKassa/Sentry, GitHub PAT |
+| 5 | Создание `~/.ssh/athletica_deploy` и алиаса в `~/.ssh/config` |
+| 6 | Установка Docker, пользователь `deploy`, каталоги, порты в ufw |
+| 7 | Копирование `docker-compose.prod.yaml`, `nginx/prod.conf.template`, `postgres/init/`, `.env` |
+| 8 | Логин в ghcr.io, выпуск сертификата, файлы TLS, `pull` + `up -d`, cron автопродления |
+| 9 | Запись секретов в GitHub (через `gh`, либо инструкция для ручного ввода) |
+| 10 | Проверка `https://домен/` и `https://домен/api/` |
 
-# Создать директорию SSH
-mkdir -p /home/deploy/.ssh
-chmod 700 /home/deploy/.ssh
-touch /home/deploy/.ssh/authorized_keys
-chmod 600 /home/deploy/.ssh/authorized_keys
-chown -R deploy:deploy /home/deploy/.ssh
+Копия `.env` с сгенерированными паролями сохраняется локально в `~/.athletica-crm/<домен>.env`
+с правами 600. **Не теряйте этот файл** — восстановить пароль к базе иначе неоткуда.
+
+---
+
+## 3. Что получилось на сервере
+
+```
+/opt/athletica-crm/
+├── .env                        секреты и параметры (600, владелец deploy)
+├── docker-compose.prod.yaml    обновляется автодеплоем
+├── nginx/prod.conf.template    обновляется автодеплоем
+├── postgres/init/              init-скрипты БД, копируются только скриптом
+└── ssl/options-ssl-nginx.conf  исходник для тома letsencrypt
 ```
 
-### 2.3 Добавить SSH-ключ деплоя
+Тома Docker (имена начинаются с имени каталога проекта):
 
-На **локальной машине** сгенерировать ключевую пару специально для деплоя:
+| Том | Содержимое |
+|-----|------------|
+| `athletica-crm_postgres_data` | база данных |
+| `athletica-crm_minio_data` | загруженные файлы |
+| `athletica-crm_letsencrypt` | сертификаты, `options-ssl-nginx.conf`, `ssl-dhparams.pem` |
+| `athletica-crm_certbot_www` | ACME-challenge для продления |
+
+Сервисы: `postgres`, `minio`, `server`, `web`, `nginx` (и `metabase`, если раскомментирован).
+Сервис `certbot` в профиле `tools` — на `up` не стартует, вызывается только через
+`docker compose run --rm certbot …`.
+
+> `docker-compose.prod.yaml` и `nginx/prod.conf.template` на сервере править нельзя —
+> следующий push в `master` их перезапишет. Единственный источник правды — репозиторий.
+
+---
+
+## 4. Автодеплой
+
+Workflow [`.github/workflows/docker.yml`](.github/workflows/docker.yml) на каждый push в `master`:
+
+1. `server` — собирает `Dockerfile.server`, пушит в `ghcr.io/<repo>/server:latest`
+2. `web` — собирает `Dockerfile.web`, пушит в `ghcr.io/<repo>/web:latest`
+3. `deploy` — после обоих: копирует compose и nginx-шаблон на сервер, делает `pull`, `up -d`, перезапускает nginx
+
+Push образов идёт под встроенным `secrets.GITHUB_TOKEN`, отдельный токен для этого не нужен.
+
+Секреты репозитория (Settings → Secrets and variables → Actions):
+
+| Секрет | Значение |
+|--------|----------|
+| `DEPLOY_HOST` | IP или hostname сервера |
+| `DEPLOY_USER` | `deploy` |
+| `DEPLOY_PATH` | `/opt/athletica-crm` |
+| `DEPLOY_SSH_KEY` | приватный ключ `~/.ssh/athletica_deploy` целиком, вместе со строками `-----BEGIN/END-----` |
+| `GHCR_READ_TOKEN` | PAT с `read:packages` |
+
+Скрипт заполняет их сам, если установлен и авторизован `gh` (`gh auth login`).
+Иначе он печатает таблицу значений и ссылку на страницу секретов.
+
+---
+
+## 5. Переезд на другой сервер
+
+Прогнать `./scripts/setup-server.sh` для нового сервера и обновить `DEPLOY_HOST`
+(при необходимости `DEPLOY_PATH`) — сам workflow менять не нужно. Деплой всегда идёт
+ровно на один хост, поэтому старый сервер просто перестанет получать обновления;
+остановить его нужно вручную:
 
 ```bash
-# Генерировать ключ (без passphrase)
-ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/athletica_deploy -N ""
-
-# Вывести публичный ключ — его нужно скопировать на сервер
-cat ~/.ssh/athletica_deploy.pub
+docker compose -f docker-compose.prod.yaml down
 ```
 
-На **сервере** добавить публичный ключ:
+Данные переносятся отдельно — дамп PostgreSQL и содержимое MinIO:
 
 ```bash
-# Вставить содержимое athletica_deploy.pub
-echo "ssh-ed25519 AAAA... github-actions-deploy" >> /home/deploy/.ssh/authorized_keys
-```
+# на старом сервере
+docker compose -f docker-compose.prod.yaml exec -T postgres pg_dump -U athletica athletica | gzip > dump.sql.gz
 
-Приватный ключ (`~/.ssh/athletica_deploy`) будет использоваться как GitHub Secret `DEPLOY_SSH_KEY`.
-
-### 2.4 Создать директорию проекта
-
-```bash
-mkdir -p /opt/athletica-crm/nginx
-chown -R deploy:deploy /opt/athletica-crm
+# на новом
+gunzip -c dump.sql.gz | docker compose -f docker-compose.prod.yaml exec -T postgres psql -U athletica athletica
 ```
 
 ---
 
-## 3. Настройка DNS
-
-Создать A-записи для вашего домена, указывающие на IP сервера:
-
-| Запись | Тип | Значение |
-|--------|-----|----------|
-| `yourdomain.com` | A | `<IP сервера>` |
-| `www.yourdomain.com` | A | `<IP сервера>` |
-| `minio.yourdomain.com` | A | `<IP сервера>` |
-| `console.minio.yourdomain.com` | A | `<IP сервера>` |
-
-Дождаться распространения DNS (обычно 5–30 минут). Проверить:
+## 6. Обслуживание
 
 ```bash
-dig +short yourdomain.com
-dig +short minio.yourdomain.com
-```
-
----
-
-## 4. Деплой файлов проекта
-
-Этот шаг — **bootstrap**, нужен только перед первым запуском (пока GitHub Actions ещё не настроен).
-После настройки секретов (раздел 7) файлы `docker-compose.prod.yaml` и `nginx/prod.conf.template`
-обновляются автоматически на каждый push в `master`.
-
-Выполняется **с локальной машины** из корня репозитория:
-
-```bash
-SERVER=deploy@<IP сервера>
-DEPLOY_PATH=/opt/athletica-crm
-
-# Скопировать docker-compose и nginx-конфиг
-scp docker-compose.prod.yaml    $SERVER:$DEPLOY_PATH/docker-compose.prod.yaml
-scp nginx/prod.conf.template    $SERVER:$DEPLOY_PATH/nginx/prod.conf.template
-scp .env.prod.example           $SERVER:$DEPLOY_PATH/.env.prod.example
-```
-
-> **Не редактируйте `docker-compose.prod.yaml` и `nginx/prod.conf.template` напрямую на сервере** —
-> следующий push в `master` затрёт изменения. Single source of truth — git-репозиторий.
-
----
-
-## 5. Настройка переменных окружения
-
-На **сервере** от пользователя `deploy`:
-
-```bash
-su - deploy
+ssh athletica-crm                    # алиас, который добавил скрипт
 cd /opt/athletica-crm
 
-# Создать .env на основе шаблона
-cp .env.prod.example .env
-nano .env
-```
+docker compose -f docker-compose.prod.yaml ps                    # состояние
+docker compose -f docker-compose.prod.yaml logs -f server        # логи сервера
+docker compose -f docker-compose.prod.yaml logs --tail=50 nginx  # логи nginx
+docker compose -f docker-compose.prod.yaml restart server        # перезапуск сервиса
 
-Заполнить все поля в `.env`:
-
-```env
-# Репозиторий GitHub (owner/repo, строчные буквы)
-GITHUB_REPOSITORY=myorg/athletikacrm
-
-# Домен (без https://, без слеша)
-DOMAIN=yourdomain.com
-
-# PostgreSQL — задать надёжный пароль
-POSTGRES_USER=athletica
-POSTGRES_PASSWORD=<надёжный пароль>
-
-# JWT — случайная строка минимум 64 символа
-# Сгенерировать: openssl rand -hex 32
-JWT_SECRET=<случайная строка>
-
-# MinIO
-MINIO_ACCESS_KEY=<имя пользователя MinIO>
-MINIO_SECRET_KEY=<пароль MinIO, минимум 8 символов>
-MINIO_BUCKET=athletica-crm
-
-# SMTP
-SMTP_HOST=smtp.yourprovider.com
-SMTP_USERNAME=noreply@yourdomain.com
-SMTP_PASSWORD=<пароль SMTP>
-SMTP_FROM_ADDRESS=noreply@yourdomain.com
-```
-
----
-
-## 6. Первый запуск и TLS-сертификат
-
-Выполняется **на сервере** от пользователя `deploy`, в директории `/opt/athletica-crm`.
-
-### Шаг 1 — Авторизоваться в GitHub Container Registry
-
-Для скачивания образов сервера и веб-приложения нужен GitHub PAT с правом `read:packages`
-(создаётся по инструкции из раздела 7.1).
-
-```bash
-# Заменить <token> и <github-username> на реальные значения
-echo "<token>" | docker login ghcr.io -u <github-username> --password-stdin
-```
-
-При успехе команда выведет `Login Succeeded`.
-
-### Шаг 2 — Получить TLS-сертификат
-
-Nginx не запускается без сертификатов, а сертификат нельзя получить без nginx — классический deadlock.
-Решение: запустить certbot в режиме `--standalone` (он сам открывает порт 80, nginx не нужен).
-
-```bash
-# Заменить yourdomain.com и admin@yourdomain.com на реальные значения
-docker run --rm \
-  -v athletica-crm_letsencrypt:/etc/letsencrypt \
-  -p 80:80 \
-  certbot/certbot certonly \
-  --standalone \
-  -d yourdomain.com \
-  -d www.yourdomain.com \
-  -d minio.yourdomain.com \
-  -d console.minio.yourdomain.com \
-  --email admin@yourdomain.com \
-  --agree-tos \
-  --no-eff-email
-```
-
-При успехе сертификаты появятся в volume `athletica-crm_letsencrypt`.
-
-### Шаг 3 — Добавить вспомогательные файлы SSL в volume
-
-Nginx требует два файла Certbot, которые не создаются автоматически.
-Записать их прямо в Docker volume (может занять 1–2 минуты из-за генерации DH-параметров):
-
-```bash
-docker run --rm \
-  -v athletica-crm_letsencrypt:/etc/letsencrypt \
-  alpine sh -c "
-    apk add --no-cache curl openssl && \
-    curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
-      > /etc/letsencrypt/options-ssl-nginx.conf && \
-    openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
-  "
-```
-
-### Шаг 4 — Запустить весь стек
-
-```bash
+docker compose -f docker-compose.prod.yaml pull                  # обновить образы вручную
 docker compose -f docker-compose.prod.yaml up -d
+
+docker compose -f docker-compose.prod.yaml exec postgres psql -U athletica athletica
+
+docker compose -f docker-compose.prod.yaml down                  # остановить (тома сохраняются)
+docker compose -f docker-compose.prod.yaml down -v               # ВНИМАНИЕ: удалит данные
 ```
 
-Проверить статус:
-
-```bash
-docker compose -f docker-compose.prod.yaml ps
-```
-
-Все сервисы должны быть в статусе `Up`.
-
----
-
-## 7. Настройка GitHub Actions
-
-### 7.1 Создать GitHub PAT для pull образов
-
-1. Открыть GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Нажать **Generate new token (classic)**
-3. Выбрать scope: `read:packages`
-4. Скопировать токен — он будет использован как `GHCR_READ_TOKEN`
-
-### 7.2 Добавить секреты в репозиторий
-
-Открыть репозиторий на GitHub → Settings → Secrets and variables → Actions → **New repository secret**
-
-Добавить следующие секреты:
-
-| Имя секрета | Значение |
-|-------------|----------|
-| `DEPLOY_HOST` | IP-адрес или hostname сервера |
-| `DEPLOY_USER` | `deploy` |
-| `DEPLOY_SSH_KEY` | Содержимое файла `~/.ssh/athletica_deploy` (приватный ключ) |
-| `DEPLOY_PATH` | `/opt/athletica-crm` |
-| `GHCR_READ_TOKEN` | PAT с правом `read:packages` (шаг 7.1) |
-
-### 7.3 Как добавить секрет
-
-1. Нажать **New repository secret**
-2. В поле **Name** — имя из таблицы выше
-3. В поле **Secret** — соответствующее значение
-4. Нажать **Add secret**
-
-### 7.4 Проверить workflow
-
-После добавления всех секретов сделать любой коммит в `master`.
-В разделе **Actions** репозитория должен появиться запуск с тремя jobs:
-- `server` — сборка и push образа Ktor-сервера
-- `web` — сборка и push образа SPA
-- `deploy` — SSH-деплой на сервер (запускается только после успешного завершения обоих)
-
----
-
-## 8. Автоматическое обновление сертификатов
-
-Let's Encrypt выдаёт сертификаты на 90 дней. Настроить автообновление через cron **на сервере**:
-
-```bash
-# Открыть crontab для пользователя deploy
-crontab -e
-```
-
-Добавить строку:
+Сертификат продлевается cron-задачей пользователя `deploy` каждую ночь в 03:00
+(обновление происходит, когда до истечения остаётся меньше 30 дней):
 
 ```cron
-0 3 * * * cd /opt/athletica-crm && docker compose -f docker-compose.prod.yaml run --rm certbot renew --quiet && docker compose -f docker-compose.prod.yaml exec nginx nginx -s reload
+0 3 * * * cd /opt/athletica-crm && docker compose -f docker-compose.prod.yaml run --rm certbot renew --quiet && docker compose -f docker-compose.prod.yaml exec -T nginx nginx -s reload
 ```
 
-Сертификат будет проверяться каждую ночь в 03:00; обновление происходит только когда до истечения остаётся менее 30 дней.
-
----
-
-## 9. Проверка деплоя
+Проверить продление вхолостую:
 
 ```bash
-# Все контейнеры запущены
-docker compose -f docker-compose.prod.yaml ps
-
-# API отвечает (без /api/health можно заменить любым существующим эндпоинтом)
-curl -I https://yourdomain.com/api/
-
-# SPA отдаётся
-curl -I https://yourdomain.com/
-
-# Лог сервера (последние 50 строк)
-docker compose -f docker-compose.prod.yaml logs server --tail=50
-
-# Лог nginx
-docker compose -f docker-compose.prod.yaml logs nginx --tail=50
+docker compose -f docker-compose.prod.yaml run --rm certbot renew --dry-run
 ```
 
 ---
 
-## 10. Полезные команды
+## 7. Диагностика
+
+### `not found` при pull образа
+
+```
+failed to resolve reference "ghcr.io/owner/athletica-crm/server:latest": not found
+```
+
+В `.env` остался плейсхолдер `GITHUB_REPOSITORY=owner/athletica-crm`. Значение — реальный
+репозиторий в нижнем регистре (`ghcr.io` регистрозависим). Проверить итоговые имена образов:
 
 ```bash
-# Перезапустить все сервисы
-docker compose -f docker-compose.prod.yaml restart
+docker compose -f docker-compose.prod.yaml config | grep 'image:'
+```
 
-# Перезапустить один сервис
-docker compose -f docker-compose.prod.yaml restart server
+### `unauthorized` / `denied` при pull
 
-# Принудительно обновить образы вручную
+Не выполнен `docker login ghcr.io` **под тем пользователем**, от которого запускается compose:
+креды лежат в `~/.docker/config.json` конкретного пользователя, у root и `deploy` они разные.
+Весь стек должен работать под `deploy` — под ним же на сервер заходит CI.
+
+### nginx перезапускается: `open() "/etc/letsencrypt/options-ssl-nginx.conf" failed`
+
+Файл не попал в том `letsencrypt`. Положить его туда:
+
+```bash
+docker run --rm -v athletica-crm_letsencrypt:/le -v /opt/athletica-crm/ssl:/src:ro alpine sh -c '
+  cp /src/options-ssl-nginx.conf /le/options-ssl-nginx.conf
+  [ -s /le/ssl-dhparams.pem ] || { apk add --no-cache openssl >/dev/null; openssl dhparam -out /le/ssl-dhparams.pem 2048; }'
+docker compose -f docker-compose.prod.yaml restart nginx
+```
+
+### nginx падает: `unexpected end of file` в `options-ssl-nginx.conf:1`
+
+В файле лежит текст `404: Not Found` — так бывает, если тянуть его `curl`'ом из репозитория
+certbot по устаревшему пути (`curl -s` на 404 возвращает нулевой код и молча пишет страницу
+ошибки в файл). Лечится тем же способом, что и предыдущий пункт: файл хранится в репозитории,
+в `scripts/setup-server.sh`, и копируется из `ssl/options-ssl-nginx.conf`.
+
+### Сертификат не выпускается
+
+Let's Encrypt проверяет домен по HTTP, поэтому нужны корректные A-записи и свободный порт 80.
+Перед выпуском стек останавливается (`down`), certbot поднимается в режиме `--standalone`.
+Посмотреть, что уже выпущено:
+
+```bash
+docker run --rm -v athletica-crm_letsencrypt:/le alpine ls /le/live/
+```
+
+### `service "nginx" depends on undefined service "metabase"`
+
+Сервис `metabase` закомментирован в `docker-compose.prod.yaml`, но остался в `depends_on`
+у nginx. Убрать ссылку либо вернуть сервис.
+
+---
+
+## 8. Ручная установка без скрипта
+
+Если нужно повторить шаги руками (аварийное восстановление, нестандартная конфигурация),
+порядок такой:
+
+```bash
+# 1. Docker (на сервере, от root)
+apt-get update && apt-get install -y ca-certificates curl gnupg
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$(. /etc/os-release && echo "$ID") $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+
+# 2. Пользователь и каталоги
+useradd -m -s /bin/bash deploy && usermod -aG docker deploy
+install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+install -d -o deploy -g deploy /opt/athletica-crm /opt/athletica-crm/nginx /opt/athletica-crm/postgres/init /opt/athletica-crm/ssl
+# публичный ключ деплоя → /home/deploy/.ssh/authorized_keys (600, владелец deploy)
+
+# 3. Файлы (с локальной машины)
+scp docker-compose.prod.yaml        deploy@SERVER:/opt/athletica-crm/
+scp nginx/prod.conf.template        deploy@SERVER:/opt/athletica-crm/nginx/
+scp postgres/init/*                 deploy@SERVER:/opt/athletica-crm/postgres/init/
+scp .env.prod.example               deploy@SERVER:/opt/athletica-crm/.env   # затем заполнить
+
+# 4. Образы, сертификат, запуск (на сервере, от deploy)
+cd /opt/athletica-crm
+echo "<PAT>" | docker login ghcr.io -u <github-user> --password-stdin
+docker compose -f docker-compose.prod.yaml run --rm -p 80:80 certbot certonly --standalone \
+  -d yourdomain.com -d www.yourdomain.com -d minio.yourdomain.com -d console.minio.yourdomain.com \
+  --email admin@yourdomain.com --agree-tos --no-eff-email --non-interactive
+docker run --rm -v athletica-crm_letsencrypt:/le -v /opt/athletica-crm/ssl:/src:ro alpine sh -c '
+  cp /src/options-ssl-nginx.conf /le/options-ssl-nginx.conf
+  apk add --no-cache openssl >/dev/null && openssl dhparam -out /le/ssl-dhparams.pem 2048'
 docker compose -f docker-compose.prod.yaml pull
 docker compose -f docker-compose.prod.yaml up -d
-
-# Посмотреть логи в реальном времени
-docker compose -f docker-compose.prod.yaml logs -f server
-
-# Остановить всё (данные в volumes сохраняются)
-docker compose -f docker-compose.prod.yaml down
-
-# Полная очистка (ВНИМАНИЕ: удаляет данные PostgreSQL и MinIO)
-docker compose -f docker-compose.prod.yaml down -v
-
-# Войти в контейнер сервера
-docker compose -f docker-compose.prod.yaml exec server sh
-
-# Войти в PostgreSQL
-docker compose -f docker-compose.prod.yaml exec postgres psql -U athletica athletica
 ```
+
+Содержимое `ssl/options-ssl-nginx.conf` берётся из `scripts/setup-server.sh`
+(секция `SSL_OPTIONS`), полный список переменных `.env` — из [`.env.prod.example`](.env.prod.example).

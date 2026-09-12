@@ -20,4 +20,4 @@ node_modules/
 .envrc
 .env
 .claude/
-
+.sdkmanrc

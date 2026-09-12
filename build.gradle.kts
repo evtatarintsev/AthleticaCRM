@@ -25,7 +25,17 @@ subprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
         compilerOptions {
             freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
-            freeCompilerArgs.add("-Xcontext-parameters")
         }
     }
+}
+
+// Webpack 5.108.x (поставляется с Kotlin 2.4.20) не подставляет значение вместо
+// «голого» `import.meta` в сгенерированном `*.import-object.mjs`. В dev-режиме
+// модуль выполняется через eval(), где `import.meta` — синтаксическая ошибка:
+// «Cannot use 'import.meta' outside a module». Починено в webpack 5.110.x.
+plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootExtension>()
+        .versions
+        .webpack
+        .version = "5.110.3"
 }

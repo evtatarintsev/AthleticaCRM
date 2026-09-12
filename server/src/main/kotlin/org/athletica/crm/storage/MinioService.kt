@@ -3,11 +3,11 @@ package org.athletica.crm.storage
 import io.minio.BucketExistsArgs
 import io.minio.GetObjectArgs
 import io.minio.GetPresignedObjectUrlArgs
+import io.minio.Http
 import io.minio.MakeBucketArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
 import io.minio.RemoveObjectArgs
-import io.minio.http.Method
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -89,7 +89,7 @@ class MinioService(
             publicClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs
                     .builder()
-                    .method(Method.GET)
+                    .method(Http.Method.GET)
                     .bucket(bucket)
                     .`object`(key)
                     .expiry(ttlSeconds, TimeUnit.SECONDS)

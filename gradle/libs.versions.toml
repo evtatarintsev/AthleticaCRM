@@ -109,7 +109,6 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-# 9.5.0+ требует Gradle 9 (AdhocComponentWithVariants.addVariantsFromConfiguration(Provider, Action))
-shadow = { id = "com.gradleup.shadow", version = "9.4.3" }
+shadow = { id = "com.gradleup.shadow", version = "9.6.1" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }

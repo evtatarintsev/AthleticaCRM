@@ -33,10 +33,8 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.ktor.client.cio)
         }
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.js)
-            }
+        wasmJsMain.dependencies {
+            implementation(libs.ktor.client.js)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.android)

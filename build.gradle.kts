@@ -9,8 +9,6 @@ plugins {
     alias(libs.plugins.ktor) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.shadow) apply false
-    alias(libs.plugins.androidApplication) apply false
-    alias(libs.plugins.androidLibrary) apply false
 }
 
 subprojects {

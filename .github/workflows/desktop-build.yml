@@ -1,10 +1,10 @@
 name: Build Desktop App
 
+# Автоматическая сборка десктопных приложений отключена: сборки никто не скачивает
+# и не тестирует, а матрица macOS/Windows/Linux расходует ресурсы CI на каждый push и PR.
+# Включить обратно (вернуть блоки push/pull_request), когда будет готово больше функционала.
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -52,7 +52,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
     permissions:
       contents: write
     steps:

@@ -1,26 +1,27 @@
 [versions]
-agp = "8.10.1"
-android-compileSdk = "36"
+agp = "9.4.0"
+android-compileSdk = "37"
 android-minSdk = "26"
 android-targetSdk = "36"
+# 2.3.0 пока только alpha.4 — ждём стабильный релиз.
 arrow = "2.2.3"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.8.0"
-# 1.19.0+ требует AGP 9.1 и compileSdk 37 — поднять вместе с AGP
-androidx-core = "1.18.0"
+androidx-core = "1.19.0"
 androidx-espresso = "3.7.0"
-# 2.11.0 требует AGP 9.1 и compileSdk 37 — поднять вместе с AGP
-androidx-lifecycle = "2.10.0"
+androidx-lifecycle = "2.11.0"
+# 2.10.0 пока только beta01 — ждём стабильный релиз.
 androidx-navigation = "2.9.2"
 androidx-testExt = "1.3.0"
-composeHotReload = "1.0.0"
+composeHotReload = "1.2.0"
 kermit = "2.2.0"
 ktlint = "14.2.0"
-composeMultiplatform = "1.10.0"
+composeMultiplatform = "1.12.0"
 junit = "4.13.2"
 kotlin = "2.4.20"
 kotlinx-coroutines = "1.11.0"
-kotlinx-datetime = "0.7.1"
+kotlinx-datetime = "0.8.0"
+# 1.12.0 пока только RC — ждём стабильный релиз.
 kotlinx-serialization = "1.11.0"
 ktor = "3.5.2"
 liquibase = "5.0.4"
@@ -30,11 +31,15 @@ r2dbc-postgresql = "1.1.2.RELEASE"
 r2dbc-pool = "1.0.2.RELEASE"
 testcontainers = "1.21.4"
 bouncycastle = "1.86"
-material3 = "1.10.0-alpha05"
+# org.jetbrains.compose.material3 публикуется отдельным alpha-каналом:
+# последний стабильный — 1.9.0, то есть старше текущего. Держим alpha,
+# синхронную с composeMultiplatform.
+material3 = "1.12.0-alpha03"
+# material-icons-extended заморожен на 1.7.3 и не следует за composeMultiplatform.
+composeMaterialIcons = "1.7.3"
 minio = "9.0.3"
 angus-mail = "2.0.5"
-# 3.5.0 ломает karma (конфликт npm-пакета ws), 3.6.x требует AGP 9.1 и compileSdk 37
-coil3 = "3.4.0"
+coil3 = "3.6.2"
 reorderable = "3.1.0"
 sentry = "8.56.0"
 commons-csv = "1.14.1"
@@ -62,6 +67,8 @@ compose-material3 = { module = "org.jetbrains.compose.material3:material3", vers
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+compose-material = { module = "org.jetbrains.compose.material:material", version.ref = "composeMultiplatform" }
+compose-materialIconsExtended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMaterialIcons" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -109,7 +116,6 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-# 9.5.0+ требует Gradle 9 (AdhocComponentWithVariants.addVariantsFromConfiguration(Provider, Action))
-shadow = { id = "com.gradleup.shadow", version = "9.4.3" }
+shadow = { id = "com.gradleup.shadow", version = "9.6.1" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }

@@ -166,17 +166,9 @@ done
 # Docker Compose называет тома по имени каталога проекта.
 VOLUME_LETSENCRYPT="${PROJECT_NAME}_letsencrypt"
 
-if grep -qE '^[[:space:]]+metabase:' docker-compose.prod.yaml; then
-    WITH_METABASE=yes
-else
-    WITH_METABASE=no
-fi
-
 CERT_DOMAINS="$DOMAIN www.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN"
-[ "$WITH_METABASE" = "yes" ] && CERT_DOMAINS="$CERT_DOMAINS metabase.$DOMAIN"
 
 printf '\n'
-ok "Metabase в docker-compose.prod.yaml: $WITH_METABASE"
 ok "Том с сертификатами будет называться: $VOLUME_LETSENCRYPT"
 
 # ================================================================= 3. DNS
@@ -242,7 +234,7 @@ if [ "$REMOTE_ENV_EXISTS" = "yes" ]; then
 fi
 
 if [ "$REUSE_ENV" = "no" ]; then
-    info "Пароли к PostgreSQL, MinIO, Metabase и JWT-секрет генерируются автоматически."
+    info "Пароли к PostgreSQL, MinIO и JWT-секрет генерируются автоматически."
     printf '\n'
 
     POSTGRES_USER=athletica
@@ -250,8 +242,6 @@ if [ "$REUSE_ENV" = "no" ]; then
     JWT_SECRET=$(openssl rand -hex 32)
     MINIO_ACCESS_KEY=athletica
     MINIO_SECRET_KEY=$(openssl rand -hex 20)
-    METABASE_DB_PASSWORD=$(openssl rand -hex 24)
-    METABASE_READER_PASSWORD=$(openssl rand -hex 24)
 
     hint "SMTP — почта, с которой уходят письма пользователям (приглашения, сброс пароля)."
     hint "Данные берутся в панели вашего почтового провайдера (Unisender, Mailgun, Яндекс 360 и т.п.)."
@@ -284,9 +274,6 @@ DOMAIN=$DOMAIN
 
 POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-
-METABASE_DB_PASSWORD=$METABASE_DB_PASSWORD
-METABASE_READER_PASSWORD=$METABASE_READER_PASSWORD
 
 JWT_SECRET=$JWT_SECRET
 
@@ -406,7 +393,7 @@ fi
 chmod 600 "$HOME_DIR/.ssh/authorized_keys"
 chown "$DEPLOY_USER:$DEPLOY_USER" "$HOME_DIR/.ssh/authorized_keys"
 
-install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$DEPLOY_PATH" "$DEPLOY_PATH/nginx" "$DEPLOY_PATH/postgres" "$DEPLOY_PATH/postgres/init" "$DEPLOY_PATH/ssl"
+install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$DEPLOY_PATH" "$DEPLOY_PATH/nginx" "$DEPLOY_PATH/ssl"
 
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     ufw allow 22/tcp >/dev/null 2>&1 || true
@@ -441,9 +428,7 @@ SCP_OPTS="-o StrictHostKeyChecking=accept-new -i $DEPLOY_KEY -o IdentitiesOnly=y
 scp $SCP_OPTS -q docker-compose.prod.yaml "$DEPLOY_USER@$SERVER_HOST:$DEPLOY_PATH/docker-compose.prod.yaml"
 # shellcheck disable=SC2086
 scp $SCP_OPTS -q nginx/prod.conf.template "$DEPLOY_USER@$SERVER_HOST:$DEPLOY_PATH/nginx/prod.conf.template"
-# shellcheck disable=SC2086
-scp $SCP_OPTS -q postgres/init/* "$DEPLOY_USER@$SERVER_HOST:$DEPLOY_PATH/postgres/init/"
-ok "docker-compose.prod.yaml, nginx/prod.conf.template, postgres/init/"
+ok "docker-compose.prod.yaml, nginx/prod.conf.template"
 
 if [ "$REUSE_ENV" = "no" ]; then
     # shellcheck disable=SC2086
@@ -611,7 +596,6 @@ done
 printf '\n%s━━━ Готово%s\n\n' "$B$GRN" "$N"
 info "Сайт:      https://$DOMAIN"
 info "MinIO:     https://console.minio.$DOMAIN"
-[ "$WITH_METABASE" = "yes" ] && info "Metabase:  https://metabase.$DOMAIN"
 printf '\n'
 info "Дальше автодеплой работает сам: push в master собирает образы и обновляет сервер."
 printf '\n'

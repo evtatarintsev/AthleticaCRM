@@ -51,7 +51,6 @@ A-записи на IP сервера. Все имена нужны для од�
 | `www.yourdomain.com` | A |
 | `minio.yourdomain.com` | A |
 | `console.minio.yourdomain.com` | A |
-| `metabase.yourdomain.com` | A — только если сервис `metabase` раскомментирован в `docker-compose.prod.yaml` |
 
 Распространение занимает 5–30 минут. Скрипт проверит записи через `dig` и предупредит о расхождениях.
 
@@ -70,7 +69,7 @@ Docker-образы приватные, серверу нужен PAT с пра�
 и, опционально, `shopId` с секретным ключом ЮKassa (панель ЮKassa → Настройки → Магазин).
 Приём платежей можно отложить: оставить поля пустыми и включить тестовый режим.
 
-Пароли PostgreSQL, MinIO, Metabase и JWT-секрет скрипт генерирует сам — вводить их не нужно.
+Пароли PostgreSQL, MinIO и JWT-секрет скрипт генерирует сам — вводить их не нужно.
 
 ---
 
@@ -125,7 +124,7 @@ Docker-образы приватные, серверу нужен PAT с пра�
 | `athletica-crm_letsencrypt` | сертификаты, `options-ssl-nginx.conf`, `ssl-dhparams.pem` |
 | `athletica-crm_certbot_www` | ACME-challenge для продления |
 
-Сервисы: `postgres`, `minio`, `server`, `web`, `nginx` (и `metabase`, если раскомментирован).
+Сервисы: `postgres`, `minio`, `server`, `web`, `nginx`.
 Сервис `certbot` в профиле `tools` — на `up` не стартует, вызывается только через
 `docker compose run --rm certbot …`.
 
@@ -266,11 +265,6 @@ Let's Encrypt проверяет домен по HTTP, поэтому нужны
 docker run --rm -v athletica-crm_letsencrypt:/le alpine ls /le/live/
 ```
 
-### `service "nginx" depends on undefined service "metabase"`
-
-Сервис `metabase` закомментирован в `docker-compose.prod.yaml`, но остался в `depends_on`
-у nginx. Убрать ссылку либо вернуть сервис.
-
 ---
 
 ## 8. Ручная установка без скрипта
@@ -291,13 +285,12 @@ systemctl enable --now docker
 # 2. Пользователь и каталоги
 useradd -m -s /bin/bash deploy && usermod -aG docker deploy
 install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
-install -d -o deploy -g deploy /opt/athletica-crm /opt/athletica-crm/nginx /opt/athletica-crm/postgres/init /opt/athletica-crm/ssl
+install -d -o deploy -g deploy /opt/athletica-crm /opt/athletica-crm/nginx /opt/athletica-crm/ssl
 # публичный ключ деплоя → /home/deploy/.ssh/authorized_keys (600, владелец deploy)
 
 # 3. Файлы (с локальной машины)
 scp docker-compose.prod.yaml        deploy@SERVER:/opt/athletica-crm/
 scp nginx/prod.conf.template        deploy@SERVER:/opt/athletica-crm/nginx/
-scp postgres/init/*                 deploy@SERVER:/opt/athletica-crm/postgres/init/
 scp .env.prod.example               deploy@SERVER:/opt/athletica-crm/.env   # затем заполнить
 
 # 4. Образы, сертификат, запуск (на сервере, от deploy)

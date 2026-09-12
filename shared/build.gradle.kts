@@ -3,17 +3,10 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.androidLibrary)
 }
 
 kotlin {
     jvm()
-
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
@@ -36,9 +29,6 @@ kotlin {
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
         }
-        androidMain.dependencies {
-            implementation(libs.ktor.client.android)
-        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -46,13 +36,5 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
         freeCompilerArgs.add("-Xcontext-parameters")
-    }
-}
-
-android {
-    namespace = "org.athletica.crm.shared"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
     }
 }

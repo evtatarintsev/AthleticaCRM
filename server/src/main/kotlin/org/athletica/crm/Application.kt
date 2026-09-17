@@ -171,7 +171,7 @@ fun Application.configureServer() {
                         }
                         clientsRoutes(
                             di.clients,
-                            di.clientListView,
+                            di.views,
                             di.clientBalances,
                             di.employees,
                             di.enrollments,
@@ -189,7 +189,7 @@ fun Application.configureServer() {
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
-                        homeRoutes(di.groups, di.sessions, di.halls)
+                        homeRoutes(di.views)
                         disciplinesRoutes(di.disciplines)
                         tariffsRoutes(di.tariffPlans)
                         membershipsRoutes(di.memberships)
@@ -207,7 +207,7 @@ fun Application.configureServer() {
                         notificationsRoutes(di.notifications)
                         displaySettingsRoutes(di.userDisplaySettings)
                         context(di.minio) {
-                            taskRoutes(di.tasks, di.employees)
+                            taskRoutes(di.tasks, di.employees, di.views)
                         }
                         paymentRoutes(di.payments, di.paymentGateway)
                     }

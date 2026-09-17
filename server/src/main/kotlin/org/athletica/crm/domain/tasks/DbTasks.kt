@@ -9,15 +9,12 @@ import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.core.tasks.toTaskId
-import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInstantOrNull
-import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
@@ -55,30 +52,6 @@ class DbTasks : Tasks {
         val attachmentsByTask = loadAttachments(rows.map { it.id }, tr)
         val byId = rows.associate { it.id to it.copy(attachments = attachmentsByTask[it.id] ?: emptyList()) }
         return ids.map { byId.getValue(it) }
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(filter: TaskFilter): TaskList {
-        val total =
-            buildQuery(filter, "COUNT(*) AS cnt", paginate = false)
-                .firstOrNull { row -> row.asLong("cnt") }?.toUInt() ?: 0u
-
-        val tasks =
-            buildQuery(
-                filter,
-                """
-                t.id, t.org_id, t.created_by, t.assignee_id, t.client_id, t.title, t.description,
-                t.status, t.due_date, t.due_date_end, t.completed_at, t.created_at
-                """.trimIndent(),
-                paginate = true,
-            )
-                .bind("limit", filter.limit.toLong())
-                .bind("offset", filter.offset.toLong())
-                .list { row -> row.toDbTask(emptyList()) }
-
-        val attachmentsByTask = loadAttachments(tasks.map { it.id }, tr)
-        val items = tasks.map { it.copy(attachments = attachmentsByTask[it.id] ?: emptyList()) }
-        return TaskList(items, total)
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -126,52 +99,6 @@ class DbTasks : Tasks {
             attachments = emptyList(),
             previousStatus = TaskStatus.PENDING,
         )
-    }
-
-    /** Строит запрос к таблице [tasks] с динамическим WHERE на основе [filter]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
-    private fun buildQuery(filter: TaskFilter, select: String, paginate: Boolean): QueryBuilder {
-        val conditions = mutableListOf("t.org_id = :orgId")
-
-        if (!ctx.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS) || filter.onlyMine) {
-            conditions += "(t.assignee_id = :me OR t.created_by = :me)"
-        }
-        if (filter.statuses.isNotEmpty()) {
-            conditions += "t.status = ANY(:statuses)"
-        }
-        if (filter.dueDateFrom != null) {
-            conditions += "t.due_date >= :dueDateFrom"
-        }
-        if (filter.dueDateTo != null) {
-            conditions += "t.due_date <= :dueDateTo"
-        }
-        if (filter.clientId != null) {
-            conditions += "t.client_id = :clientId"
-        }
-        if (filter.searchText != null) {
-            conditions += "(t.title ILIKE :search OR t.description ILIKE :search)"
-        }
-
-        val where = conditions.joinToString(" AND ")
-        val pagination = if (paginate) " ORDER BY t.created_at DESC LIMIT :limit OFFSET :offset" else ""
-        val sql = "SELECT $select FROM tasks t WHERE $where$pagination"
-
-        return tr.sql(sql)
-            .bind("orgId", ctx.orgId)
-            .bind("me", ctx.employeeId)
-            .let { q ->
-                if (filter.statuses.isNotEmpty()) {
-                    q.bind("statuses", filter.statuses.map { it.name }.toTypedArray())
-                } else {
-                    q
-                }
-            }
-            .let { q -> if (filter.dueDateFrom != null) q.bind("dueDateFrom", filter.dueDateFrom) else q }
-            .let { q -> if (filter.dueDateTo != null) q.bind("dueDateTo", filter.dueDateTo) else q }
-            .let { q -> if (filter.clientId != null) q.bind("clientId", filter.clientId) else q }
-            .let { q ->
-                if (filter.searchText != null) q.bind("search", "%${filter.searchText}%") else q
-            }
     }
 
     /** Загружает вложения для списка задач одним запросом. */

@@ -88,12 +88,18 @@ Both files must be updated in the same commit as the `application.conf` change.
 │   ├── mail/             # Email services
 │   └── org/              # Organization domain
 │
-├── usecases/              # Business logic orchestration (thin layer)
+├── read/                  # Read-проекции (query-модель) под нужды экранов
+│   ├── ReadViews.kt      # Реестр проекций; маршруты принимают его целиком
+│   ├── clients/          # ClientListView
+│   ├── tasks/            # TaskListView, TaskDetailView
+│   ├── home/             # TodayScheduleView
+│   └── uploads/          # UploadRow — метаданные файлов для проекций
+│
+├── usecases/              # Оркестрация команд (только запись)
 │   ├── auth/             # Login, signup, password change
-│   ├── clients/          # Client operations (list, add to group, etc.)
-│   ├── groups/           # Group operations
-│   ├── discipline/       # Discipline CRUD
-│   └── notifications/    # Notification operations
+│   ├── clients/          # Client operations (import, add to group, etc.)
+│   ├── sessions/         # Session commands
+│   └── messaging/        # Messaging commands
 │
 ├── routes/                # HTTP route definitions
 │   ├── RouteWithContext.kt  # post/get helpers
@@ -115,6 +121,39 @@ Both files must be updated in the same commit as the `application.conf` change.
 - **Entity IDs**: Strongly-typed IDs prevent mixing up IDs (UserId ≠ ClientId)
 - **Repositories**: `DbClients`, `DbEmployees`, etc. abstract database access
 - **Audit**: Business changes logged through `AuditLog` interfaces (decoupled from persistence)
+
+### 1.1 Чтение: слой `read/` (CQS на уровне архитектуры)
+
+Запись идёт через агрегаты в `domain/`, чтение — через проекции в `read/`.
+Кросс-агрегатный запрос не принадлежит ни одному агрегату, поэтому проекции
+группируются **по экрану/разделу фронта**, а не по агрегату.
+
+Шаблон — `read/clients/ClientListView.kt` + `DbClientListView.kt`:
+
+| Элемент | Правило |
+|---|---|
+| Интерфейс `XxxView` | один метод, `context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)` |
+| Реализация `DbXxxView` | один SQL на запрос (+ отдельный `COUNT` для пагинации) |
+| Вход `XxxQuery` | собственный тип; нормализация (`limit.coerceIn`, `blank → null`, маппинг полей сортировки) — работа routes |
+| Выход | **тип из `api.schemas` напрямую** |
+| Тест | прямой DB-тест в `server/src/test/kotlin/org/athletica/crm/read/` |
+
+Ограничения слоя:
+- `read/` **не импортирует** `domain/**` — ни агрегаты, ни репозитории. Только SQL по таблицам.
+- Фильтрация, сортировка, пагинация и подстановка имён — **в SQL**.
+  Загрузка полного списка (`employees.list()`) ради `associateBy { it.id }` — ошибка.
+- Скоуп по `ctx.orgId` (и `branch_id`, где колонка есть) — обязательная часть каждого запроса.
+- Правила видимости на чтение (например `CAN_VIEW_ALL_TASKS`) живут в проекции, а не в репозитории агрегата.
+
+Собственный row-тип вместо схемы заводится только при одном из трёх условий:
+1. проекция кормит больше одного представления (список + CSV-экспорт);
+2. ответ нельзя собрать одним SQL — например, ссылки на вложения подписывает
+   объектное хранилище (`TaskDetailRow` → `TaskDetailResponse` в routes);
+3. часть полей зависит от прав или локали.
+
+Материализованных (событийных) проекций нет и не планируется: чтение идёт
+синхронным SQL по таблицам записи. Интерфейс `XxxView` — точка, в которой такой
+переход был бы возможен без изменения routes.
 
 ### 2. Arrow Either for Error Handling
 ```kotlin
@@ -338,11 +377,21 @@ No reflection-based DI framework; all wiring is explicit and visible.
 
 ## Common Development Tasks
 
-### Adding a New Usecase
+### Adding a New Usecase (команда)
 1. Create business logic in `usecases/[domain]/` (context-based)
 2. Create test in `server/src/test/kotlin/org/athletica/crm/usecases/`
 3. Register route in `routes/[Domain]Routes.kt` using `post` or `get`
 4. Return `Either<DomainError, SuccessType>`
+
+Если функция ничего не меняет и только собирает данные — это не usecase,
+а проекция: см. ниже.
+
+### Adding a New Query (чтение)
+1. Создать `read/[раздел]/XxxView.kt`: интерфейс + `XxxQuery`; возвращать тип из `api.schemas`
+2. Создать `read/[раздел]/DbXxxView.kt` — один SQL, скоуп по `ctx.orgId`
+3. Зарегистрировать в `ReadViews`
+4. В маршруте вызвать `views.xxx` и отдать результат; нормализацию запроса делать в routes
+5. Написать DB-тест в `server/src/test/kotlin/org/athletica/crm/read/[раздел]/`
 
 ### Adding a New Domain Aggregate
 1. Create entity and repository in `domain/[newdomain]/`
@@ -403,6 +452,10 @@ API проектируется под нужды фронтенда: обраб�
 ### Domain Model Independence from API Schemas
 
 Доменные модели (интерфейсы репозиториев, сервисов, агрегаты) **не должны** импортировать или использовать классы из пакетов `api.schemas`, `request`, `response` и т.п.
+
+Правило защищает инварианты агрегата и **не распространяется** на `read/`:
+у проекции инвариантов нет, её единственная задача — отдать то, что нужно экрану,
+поэтому она возвращает схемы напрямую (см. «Чтение: слой `read/`»).
 
 ```kotlin
 // Bad — доменный интерфейс зависит от API-схемы

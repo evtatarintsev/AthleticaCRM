@@ -1,22 +1,18 @@
 package org.athletica.crm.routes
 
-import arrow.fx.coroutines.parZip
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.athletica.crm.api.schemas.home.TodaySessionItem
 import org.athletica.crm.api.schemas.home.TodaySessionsResponse
-import org.athletica.crm.domain.groups.Groups
-import org.athletica.crm.domain.hall.Halls
-import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import kotlin.time.Clock
 
+/**
+ * Регистрирует маршруты главной страницы.
+ * Требует контекстного параметра [Database].
+ */
 context(db: Database)
-fun RouteWithContext.homeRoutes(
-    groups: Groups,
-    sessions: Sessions,
-    halls: Halls,
-) {
+fun RouteWithContext.homeRoutes(views: ReadViews) {
     route("/home") {
         get<Unit, TodaySessionsResponse>("/today-sessions") {
             val today =
@@ -26,29 +22,7 @@ fun RouteWithContext.homeRoutes(
                     .date
 
             db.transaction {
-                val items =
-                    parZip(
-                        { sessions.listAll(today, today) },
-                        { halls.list().associateBy { it.id } },
-                        { groups.list().associate { it.id to it.name } },
-                    ) { sessions, hallMap, groupNames ->
-                        sessions
-                            .filter { it.status == "scheduled" }
-                            .map { session ->
-                                val hallName = hallMap[session.hallId]?.name ?: "Не указан"
-                                val groupName = groupNames[session.groupId] ?: ""
-                                TodaySessionItem(
-                                    sessionId = session.id,
-                                    groupName = groupName,
-                                    startTime = session.startTime,
-                                    endTime = session.endTime,
-                                    hallName = hallName,
-                                )
-                            }
-                            .sortedBy { it.startTime }
-                    }
-
-                TodaySessionsResponse(date = today, sessions = items)
+                views.todaySchedule.sessionsOn(today)
             }
         }
     }

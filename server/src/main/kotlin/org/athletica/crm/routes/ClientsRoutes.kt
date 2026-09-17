@@ -50,15 +50,14 @@ import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
 import org.athletica.crm.domain.clients.Client
-import org.athletica.crm.domain.clients.ClientListQuery
-import org.athletica.crm.domain.clients.ClientListRow
-import org.athletica.crm.domain.clients.ClientListView
-import org.athletica.crm.domain.clients.ClientSortColumn
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
+import org.athletica.crm.read.ReadViews
+import org.athletica.crm.read.clients.ClientListQuery
+import org.athletica.crm.read.clients.ClientSortColumn
 import org.athletica.crm.storage.Database
 
 /**
@@ -68,7 +67,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.clientsRoutes(
     clients: Clients,
-    listView: ClientListView,
+    views: ReadViews,
     balances: ClientBalances,
     employees: Employees,
     enrollments: Enrollments,
@@ -77,11 +76,7 @@ fun RouteWithContext.clientsRoutes(
 ) {
     post<ClientListRequest, ClientListResponse>("/clients/list") { request ->
         db.transaction {
-            val page = listView.page(request.toQuery())
-            ClientListResponse(
-                clients = page.rows.map { it.toListItem() },
-                total = page.total.toUInt(),
-            )
+            views.clientList.page(request.toQuery())
         }
     }
 
@@ -324,21 +319,6 @@ private fun ClientListRequest.toQuery(): ClientListQuery =
         ascending = sortDirection == SortDirectionSchema.Asc,
         limit = limit.coerceIn(1, MAX_CLIENT_PAGE_SIZE),
         offset = offset.coerceAtLeast(0),
-    )
-
-/** Собирает элемент ответа списка из строки проекции [ClientListRow]. */
-private fun ClientListRow.toListItem(): ClientListItem =
-    ClientListItem(
-        id = id,
-        name = name,
-        avatarId = avatarId,
-        birthday = birthday,
-        gender = gender,
-        groups = groups.map { ClientGroup(it.id, it.name) },
-        balance = balance,
-        customFields = customFields,
-        contacts = contacts.map { it.toSchema() },
-        state = if (archived) ClientState.ARCHIVED else ClientState.ACTIVE,
     )
 
 private fun ClientBalanceEntry.toJournalEntry(performedById: Map<EmployeeId, PerformedBy>) =

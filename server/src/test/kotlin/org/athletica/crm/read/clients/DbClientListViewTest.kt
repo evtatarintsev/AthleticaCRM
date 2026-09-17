@@ -1,10 +1,12 @@
-package org.athletica.crm.domain.clients
+package org.athletica.crm.read.clients
 
 import arrow.core.Either
 import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.core.DateRange
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
@@ -188,7 +190,7 @@ class DbClientListViewTest {
             permission = EmployeePermission(),
         )
 
-    private suspend fun page(orgId: Uuid, query: ClientListQuery): ClientListPage {
+    private suspend fun page(orgId: Uuid, query: ClientListQuery): ClientListResponse {
         val result =
             either {
                 TestPostgres.db.transaction {
@@ -197,7 +199,7 @@ class DbClientListViewTest {
                     }
                 }
             }
-        return assertIs<Either.Right<ClientListPage>>(result).value
+        return assertIs<Either.Right<ClientListResponse>>(result).value
     }
 
     @Test
@@ -205,8 +207,8 @@ class DbClientListViewTest {
         runTest {
             val orgId = insertOrg()
             val result = page(orgId, ClientListQuery())
-            assertTrue(result.rows.isEmpty())
-            assertEquals(0, result.total)
+            assertTrue(result.clients.isEmpty())
+            assertEquals(0u, result.total)
         }
 
     @Test
@@ -216,8 +218,8 @@ class DbClientListViewTest {
             insertClient(orgId, "Анна")
             insertClient(orgId, "Борис")
             val result = page(orgId, ClientListQuery())
-            assertEquals(2, result.rows.size)
-            assertEquals(2, result.total)
+            assertEquals(2, result.clients.size)
+            assertEquals(2u, result.total)
         }
 
     @Test
@@ -228,8 +230,8 @@ class DbClientListViewTest {
             insertClient(org1, "Клиент 1")
             insertClient(org2, "Клиент 2")
             val result = page(org1, ClientListQuery())
-            assertEquals(1, result.rows.size)
-            assertEquals("Клиент 1", result.rows.single().name)
+            assertEquals(1, result.clients.size)
+            assertEquals("Клиент 1", result.clients.single().name)
         }
 
     @Test
@@ -239,8 +241,8 @@ class DbClientListViewTest {
             insertClient(orgId, "Муж", gender = "MALE")
             insertClient(orgId, "Жен", gender = "FEMALE")
             val result = page(orgId, ClientListQuery(gender = Gender.FEMALE))
-            assertEquals(1, result.rows.size)
-            assertEquals("Жен", result.rows.single().name)
+            assertEquals(1, result.clients.size)
+            assertEquals("Жен", result.clients.single().name)
         }
 
     @Test
@@ -257,12 +259,12 @@ class DbClientListViewTest {
             insertJournalEntry(orgId, solvent, performer, balanceAfter = 10_000, createdAt = baseInstant)
 
             val result = page(orgId, ClientListQuery(hasDebt = true))
-            assertEquals(1, result.rows.size)
-            assertEquals("Должник", result.rows.single().name)
-            assertTrue(result.rows.single().balance.isNegative)
+            assertEquals(1, result.clients.size)
+            assertEquals("Должник", result.clients.single().name)
+            assertTrue(result.clients.single().balance.isNegative)
             // noJournal без записей трактуется как 0 и не попадает
-            assertTrue(result.rows.none { it.id == noJournal })
-            assertTrue(result.rows.none { it.id == solvent })
+            assertTrue(result.clients.none { it.id == noJournal })
+            assertTrue(result.clients.none { it.id == solvent })
         }
 
     @Test
@@ -275,8 +277,8 @@ class DbClientListViewTest {
             addClientToGroup(withGroup, groupId)
 
             val result = page(orgId, ClientListQuery(noGroup = true))
-            assertEquals(1, result.rows.size)
-            assertEquals("Без группы", result.rows.single().name)
+            assertEquals(1, result.clients.size)
+            assertEquals("Без группы", result.clients.single().name)
         }
 
     @Test
@@ -289,8 +291,8 @@ class DbClientListViewTest {
             addClientToGroup(member, groupId)
 
             val result = page(orgId, ClientListQuery(groupId = groupId.toGroupId()))
-            assertEquals(1, result.rows.size)
-            assertEquals("Участник", result.rows.single().name)
+            assertEquals(1, result.clients.size)
+            assertEquals("Участник", result.clients.single().name)
         }
 
     @Test
@@ -301,13 +303,13 @@ class DbClientListViewTest {
             insertClient(orgId, "Архивный", archived = true)
 
             val active = page(orgId, ClientListQuery(archived = false))
-            assertEquals(1, active.rows.size)
-            assertEquals("Активный", active.rows.single().name)
+            assertEquals(1, active.clients.size)
+            assertEquals("Активный", active.clients.single().name)
 
             val archived = page(orgId, ClientListQuery(archived = true))
-            assertEquals(1, archived.rows.size)
-            assertEquals("Архивный", archived.rows.single().name)
-            assertTrue(archived.rows.single().archived)
+            assertEquals(1, archived.clients.size)
+            assertEquals("Архивный", archived.clients.single().name)
+            assertEquals(ClientState.ARCHIVED, archived.clients.single().state)
         }
 
     @Test
@@ -323,10 +325,10 @@ class DbClientListViewTest {
             insertJournalEntry(orgId, b, performer, balanceAfter = 5_000, createdAt = baseInstant)
 
             val asc = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.BALANCE, ascending = true))
-            assertEquals(listOf("A", "B"), asc.rows.map { it.name })
+            assertEquals(listOf("A", "B"), asc.clients.map { it.name })
 
             val desc = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.BALANCE, ascending = false))
-            assertEquals(listOf("B", "A"), desc.rows.map { it.name })
+            assertEquals(listOf("B", "A"), desc.clients.map { it.name })
         }
 
     @Test
@@ -337,7 +339,7 @@ class DbClientListViewTest {
             insertClient(orgId, "Борис")
             insertClient(orgId, "Виктор")
             val result = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME, ascending = false))
-            assertEquals(listOf("Виктор", "Борис", "Анна"), result.rows.map { it.name })
+            assertEquals(listOf("Виктор", "Борис", "Анна"), result.clients.map { it.name })
         }
 
     @Test
@@ -348,7 +350,7 @@ class DbClientListViewTest {
             insertClient(orgId, "Младший", birthday = LocalDate(2000, 1, 1))
             insertClient(orgId, "Без даты", birthday = null)
             val result = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.BIRTHDAY, ascending = true))
-            assertEquals(listOf("Старший", "Младший", "Без даты"), result.rows.map { it.name })
+            assertEquals(listOf("Старший", "Младший", "Без даты"), result.clients.map { it.name })
         }
 
     @Test
@@ -358,12 +360,12 @@ class DbClientListViewTest {
             listOf("A", "B", "C", "D", "E").forEach { insertClient(orgId, it) }
 
             val firstPage = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME, limit = 2, offset = 0))
-            assertEquals(listOf("A", "B"), firstPage.rows.map { it.name })
-            assertEquals(5, firstPage.total)
+            assertEquals(listOf("A", "B"), firstPage.clients.map { it.name })
+            assertEquals(5u, firstPage.total)
 
             val secondPage = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME, limit = 2, offset = 2))
-            assertEquals(listOf("C", "D"), secondPage.rows.map { it.name })
-            assertEquals(5, secondPage.total)
+            assertEquals(listOf("C", "D"), secondPage.clients.map { it.name })
+            assertEquals(5u, secondPage.total)
         }
 
     @Test
@@ -372,8 +374,8 @@ class DbClientListViewTest {
             val orgId = insertOrg()
             listOf("A", "B", "C").forEach { insertClient(orgId, it) }
             val result = page(orgId, ClientListQuery(limit = 10, offset = 100))
-            assertTrue(result.rows.isEmpty())
-            assertEquals(3, result.total)
+            assertTrue(result.clients.isEmpty())
+            assertEquals(3u, result.total)
         }
 
     @Test
@@ -383,8 +385,8 @@ class DbClientListViewTest {
             insertClient(orgId, "Александр Иванов")
             insertClient(orgId, "Борис Петров")
             val result = page(orgId, ClientListQuery(search = "иван"))
-            assertEquals(1, result.rows.size)
-            assertEquals("Александр Иванов", result.rows.single().name)
+            assertEquals(1, result.clients.size)
+            assertEquals("Александр Иванов", result.clients.single().name)
         }
 
     @Test
@@ -394,8 +396,8 @@ class DbClientListViewTest {
             insertClient(orgId, "Иван Мужчина", gender = "MALE")
             insertClient(orgId, "Иванна Женщина", gender = "FEMALE")
             val result = page(orgId, ClientListQuery(search = "иван", gender = Gender.FEMALE))
-            assertEquals(1, result.rows.size)
-            assertEquals("Иванна Женщина", result.rows.single().name)
+            assertEquals(1, result.clients.size)
+            assertEquals("Иванна Женщина", result.clients.single().name)
         }
 
     @Test
@@ -404,7 +406,7 @@ class DbClientListViewTest {
             val orgId = insertOrg()
             insertClient(orgId, "Новичок")
             val result = page(orgId, ClientListQuery())
-            assertEquals(Money.zero(Currency.RUB), result.rows.single().balance)
+            assertEquals(Money.zero(Currency.RUB), result.clients.single().balance)
         }
 
     @Test
@@ -419,14 +421,14 @@ class DbClientListViewTest {
             insertContact(orgId, a, ContactType.EMAIL.name, "a@example.com")
 
             val result = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME))
-            val rowA = result.rows.first { it.name == "A" }
-            val rowB = result.rows.first { it.name == "B" }
-            assertEquals(1, rowA.groups.size)
-            assertEquals("Самбо", rowA.groups.single().name)
-            assertEquals(2, rowA.contacts.size)
-            assertTrue(rowA.contacts.any { it.type == ContactType.PHONE && it.value == "+79991112233" })
-            assertTrue(rowB.groups.isEmpty())
-            assertTrue(rowB.contacts.isEmpty())
+            val itemA = result.clients.first { it.name == "A" }
+            val itemB = result.clients.first { it.name == "B" }
+            assertEquals(1, itemA.groups.size)
+            assertEquals("Самбо", itemA.groups.single().name)
+            assertEquals(2, itemA.contacts.size)
+            assertTrue(itemA.contacts.any { it.type == ContactType.PHONE && it.value == "+79991112233" })
+            assertTrue(itemB.groups.isEmpty())
+            assertTrue(itemB.contacts.isEmpty())
         }
 
     @Test
@@ -437,9 +439,9 @@ class DbClientListViewTest {
             insertClient(orgId, "Завтра", birthday = LocalDate(1990, 6, 20))
             insertClient(orgId, "Без ДР", birthday = null)
             val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 6, 19), LocalDate(2026, 6, 19))))
-            assertEquals(1, result.rows.size)
-            assertEquals("Именинник", result.rows.single().name)
-            assertEquals(1, result.total)
+            assertEquals(1, result.clients.size)
+            assertEquals("Именинник", result.clients.single().name)
+            assertEquals(1u, result.total)
         }
 
     @Test
@@ -451,10 +453,10 @@ class DbClientListViewTest {
             insertClient(orgId, "За пределами", birthday = LocalDate(1990, 6, 26))
             insertClient(orgId, "Без ДР", birthday = null)
             val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 6, 19), LocalDate(2026, 6, 25))))
-            assertEquals(2, result.rows.size)
-            assertEquals(2, result.total)
-            assertTrue(result.rows.any { it.name == "Начало недели" })
-            assertTrue(result.rows.any { it.name == "Конец недели" })
+            assertEquals(2, result.clients.size)
+            assertEquals(2u, result.total)
+            assertTrue(result.clients.any { it.name == "Начало недели" })
+            assertTrue(result.clients.any { it.name == "Конец недели" })
         }
 
     @Test
@@ -463,8 +465,8 @@ class DbClientListViewTest {
             val orgId = insertOrg()
             insertClient(orgId, "Без ДР", birthday = null)
             val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 6, 19), LocalDate(2026, 6, 19))))
-            assertEquals(0, result.rows.size)
-            assertEquals(0, result.total)
+            assertEquals(0, result.clients.size)
+            assertEquals(0u, result.total)
         }
 
     @Test
@@ -475,8 +477,8 @@ class DbClientListViewTest {
             insertClient(orgId, "3 января", birthday = LocalDate(1990, 1, 3))
             insertClient(orgId, "15 июня", birthday = LocalDate(1990, 6, 15))
             val result = page(orgId, ClientListQuery(birthday = DateRange(LocalDate(2026, 12, 29), LocalDate(2026, 1, 5))))
-            assertEquals(2, result.rows.size)
-            assertTrue(result.rows.any { it.name == "31 декабря" })
-            assertTrue(result.rows.any { it.name == "3 января" })
+            assertEquals(2, result.clients.size)
+            assertTrue(result.clients.any { it.name == "31 декабря" })
+            assertTrue(result.clients.any { it.name == "3 января" })
         }
 }

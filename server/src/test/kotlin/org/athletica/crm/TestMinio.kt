@@ -3,6 +3,7 @@ package org.athletica.crm
 import io.minio.MinioClient
 import org.athletica.crm.storage.MinioService
 import org.testcontainers.containers.MinIOContainer
+import org.testcontainers.utility.DockerImageName
 
 /**
  * Singleton-контейнер MinIO, общий для всех интеграционных тестов.
@@ -12,7 +13,9 @@ object TestMinio {
     private const val BUCKET = "test-bucket"
 
     val container: MinIOContainer =
-        MinIOContainer("minio/minio:latest").also { it.start() }
+        MinIOContainer(
+            DockerImageName.parse("quay.io/minio/minio:latest").asCompatibleSubstituteFor("minio/minio"),
+        ).also { it.start() }
 
     val minioService: MinioService by lazy {
         val client =

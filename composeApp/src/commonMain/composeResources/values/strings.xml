@@ -679,4 +679,34 @@
     <string name="issue_sub_status_paid">Оплачено</string>
     <string name="issue_sub_status_debt">Частично — в долг</string>
     <string name="issue_sub_free_explain">Абонемент будет выдан без оплаты (например, подарок). Укажите причину.</string>
+    <!-- Schedule -->
+    <string name="cd_schedule_prev_week">Предыдущая неделя</string>
+    <string name="cd_schedule_next_week">Следующая неделя</string>
+    <string name="schedule_week_range">%1$s - %2$s</string>
+    <string name="schedule_filter_directions">Направления</string>
+    <string name="schedule_filter_session_types">Виды занятий</string>
+    <string name="schedule_filter_sports">Виды спорта</string>
+    <string name="schedule_filter_coaches">Тренеры</string>
+    <string name="schedule_filter_halls">Залы</string>
+    <string name="schedule_filter_levels">Уровни</string>
+    <string name="schedule_duration_hours">(%1$d ч)</string>
+    <string name="schedule_duration_minutes">(%1$d мин)</string>
+    <string name="schedule_duration_hours_minutes">(%1$d ч %2$d мин)</string>
+    <string name="schedule_tag_recruiting">идет набор</string>
+    <string name="schedule_tag_online">онлайн</string>
+    <string name="schedule_tag_open_air">open air</string>
+    <string name="weekday_monday">Понедельник</string>
+    <string name="weekday_tuesday">Вторник</string>
+    <string name="weekday_wednesday">Среда</string>
+    <string name="weekday_thursday">Четверг</string>
+    <string name="weekday_friday">Пятница</string>
+    <string name="weekday_saturday">Суббота</string>
+    <string name="weekday_sunday">Воскресенье</string>
+
+    <plurals name="schedule_free_seats">
+        <item quantity="one">Есть %1$d место</item>
+        <item quantity="few">Есть %1$d места</item>
+        <item quantity="many">Есть %1$d мест</item>
+        <item quantity="other">Есть %1$d мест</item>
+    </plurals>
 </resources>

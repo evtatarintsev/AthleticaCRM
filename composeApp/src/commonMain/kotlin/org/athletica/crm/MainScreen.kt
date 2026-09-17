@@ -2,7 +2,6 @@ package org.athletica.crm
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -86,6 +85,8 @@ import org.athletica.crm.components.messaging.ConversationScreen
 import org.athletica.crm.components.notifications.AppNotification
 import org.athletica.crm.components.notifications.NotificationBell
 import org.athletica.crm.components.notifications.NotificationLink
+import org.athletica.crm.components.schedule.ScheduleScreen
+import org.athletica.crm.components.schedule.ScheduleViewModel
 import org.athletica.crm.components.settings.ActivityLogScreen
 import org.athletica.crm.components.settings.BranchesScreen
 import org.athletica.crm.components.settings.ChangePasswordScreen
@@ -434,9 +435,13 @@ private fun AppNavHost(
         }
 
         composable<AppRoute.Schedule> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(NavItem.SCHEDULE.label(), style = MaterialTheme.typography.headlineMedium)
-            }
+            val viewModel = remember { ScheduleViewModel() }
+            ScheduleScreen(
+                state = viewModel.state,
+                onPreviousWeek = viewModel::onPreviousWeek,
+                onNextWeek = viewModel::onNextWeek,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         // ── Clients ────────────────────────────────────────────────────────────

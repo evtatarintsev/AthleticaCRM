@@ -675,4 +675,32 @@
     <string name="issue_sub_status_paid">Paid</string>
     <string name="issue_sub_status_debt">Partial — on credit</string>
     <string name="issue_sub_free_explain">The subscription will be issued without payment (e.g. a gift). Provide a reason.</string>
+    <!-- Schedule -->
+    <string name="cd_schedule_prev_week">Previous week</string>
+    <string name="cd_schedule_next_week">Next week</string>
+    <string name="schedule_week_range">%1$s - %2$s</string>
+    <string name="schedule_filter_directions">Directions</string>
+    <string name="schedule_filter_session_types">Session types</string>
+    <string name="schedule_filter_sports">Sports</string>
+    <string name="schedule_filter_coaches">Coaches</string>
+    <string name="schedule_filter_halls">Halls</string>
+    <string name="schedule_filter_levels">Levels</string>
+    <string name="schedule_duration_hours">(%1$d h)</string>
+    <string name="schedule_duration_minutes">(%1$d min)</string>
+    <string name="schedule_duration_hours_minutes">(%1$d h %2$d min)</string>
+    <string name="schedule_tag_recruiting">enrolling</string>
+    <string name="schedule_tag_online">online</string>
+    <string name="schedule_tag_open_air">open air</string>
+    <string name="weekday_monday">Monday</string>
+    <string name="weekday_tuesday">Tuesday</string>
+    <string name="weekday_wednesday">Wednesday</string>
+    <string name="weekday_thursday">Thursday</string>
+    <string name="weekday_friday">Friday</string>
+    <string name="weekday_saturday">Saturday</string>
+    <string name="weekday_sunday">Sunday</string>
+
+    <plurals name="schedule_free_seats">
+        <item quantity="one">%1$d seat available</item>
+        <item quantity="other">%1$d seats available</item>
+    </plurals>
 </resources>

@@ -5,7 +5,6 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
@@ -23,10 +22,6 @@ interface Tasks {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byIds(ids: List<TaskId>): List<Task>
 
-    /** Возвращает постраничный список задач с применением [filter]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun list(filter: TaskFilter): TaskList
-
     /**
      * Создаёт новую задачу со статусом PENDING и сохраняет её в БД.
      * Исполнитель и вложения устанавливаются отдельными операциями на агрегате.
@@ -41,25 +36,3 @@ interface Tasks {
         dueDateEnd: Instant?,
     ): Task
 }
-
-/** Результат постраничного запроса задач. */
-data class TaskList(
-    val items: List<Task>,
-    /** Общее количество задач, удовлетворяющих фильтру (без учёта пагинации). */
-    val total: UInt,
-)
-
-/** Параметры фильтрации списка задач. */
-data class TaskFilter(
-    /** Если true — возвращать только задачи, где текущий сотрудник исполнитель или создатель. */
-    val onlyMine: Boolean,
-    /** Фильтр по статусам. Пустое множество — все статусы. */
-    val statuses: Set<TaskStatus>,
-    val dueDateFrom: Instant?,
-    val dueDateTo: Instant?,
-    val clientId: ClientId?,
-    /** Подстрока для поиска по заголовку и описанию (ILIKE). */
-    val searchText: String?,
-    val limit: Int,
-    val offset: Int,
-)

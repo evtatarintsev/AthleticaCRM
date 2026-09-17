@@ -1,18 +1,18 @@
-package org.athletica.crm.domain.clients
+package org.athletica.crm.read.clients
 
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.athletica.crm.api.schemas.clients.ClientContactSchema
+import org.athletica.crm.api.schemas.clients.ClientGroup
+import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
-import org.athletica.crm.core.contacts.ContactType
-import org.athletica.crm.core.entityids.ClientContactId
-import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDateOrNull
@@ -29,12 +29,12 @@ import org.athletica.crm.storage.asUuidOrNull
  */
 class DbClientListView : ClientListView {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun page(query: ClientListQuery): ClientListPage {
+    override suspend fun page(query: ClientListQuery): ClientListResponse {
         val total = countMatching(query)
         if (total == 0) {
-            return ClientListPage(emptyList(), 0)
+            return ClientListResponse(emptyList(), 0u)
         }
-        return ClientListPage(fetchRows(query), total)
+        return ClientListResponse(fetchItems(query), total.toUInt())
     }
 
     /** Считает общее число клиентов, удовлетворяющих фильтрам [query] (без пагинации). */
@@ -46,9 +46,9 @@ class DbClientListView : ClientListView {
             .firstOrNull { row -> row.asLong("total").toInt() }
             ?: 0
 
-    /** Загружает строки текущей страницы согласно [query]. */
+    /** Загружает элементы текущей страницы согласно [query]. */
     context(ctx: EmployeeRequestContext, tr: Transaction)
-    private suspend fun fetchRows(query: ClientListQuery): List<ClientListRow> {
+    private suspend fun fetchItems(query: ClientListQuery): List<ClientListItem> {
         val orderColumn =
             when (query.sortColumn) {
                 ClientSortColumn.NAME -> "c.name"
@@ -79,7 +79,7 @@ class DbClientListView : ClientListView {
             .bindFilters(query)
             .bind("limit", query.limit)
             .bind("offset", query.offset)
-            .list { row -> row.toClientListRow() }
+            .list { row -> row.toListItem() }
     }
 
     /** Привязывает общие для обоих запросов параметры фильтрации. */
@@ -103,36 +103,25 @@ class DbClientListView : ClientListView {
             .bind("birthdayToMd", birthdayToMd)
     }
 
+    /**
+     * Собирает элемент ответа из строки выборки. Группы и контакты приходят
+     * JSONB-массивами, форма которых совпадает со схемами ответа, поэтому
+     * декодируются в них напрямую.
+     */
     context(ctx: EmployeeRequestContext)
-    private fun Row.toClientListRow(): ClientListRow {
-        val clientId = asUuid("id").toClientId()
-        return ClientListRow(
-            id = clientId,
+    private fun Row.toListItem(): ClientListItem =
+        ClientListItem(
+            id = asUuid("id").toClientId(),
             name = asString("name"),
             avatarId = asUuidOrNull("avatar_id")?.toUploadId(),
             birthday = asLocalDateOrNull("birthday"),
             gender = Gender.valueOf(asString("gender")),
+            groups = Json.decodeFromString<List<ClientGroup>>(asString("groups")),
             balance = asMoney("balance", ctx.currency),
             customFields = Json.decodeFromString(asString("custom_fields")),
-            groups = Json.decodeFromString(asString("groups")),
-            contacts = decodeContacts(clientId, asString("contacts")),
-            archived = asString("state") == "ARCHIVED",
+            contacts = Json.decodeFromString<List<ClientContactSchema>>(asString("contacts")),
+            state = if (asString("state") == "ARCHIVED") ClientState.ARCHIVED else ClientState.ACTIVE,
         )
-    }
-
-    /** Контакт клиента в JSONB-агрегате запроса (без идентификатора клиента). */
-    @Serializable
-    private data class ContactRow(
-        val id: ClientContactId,
-        val type: ContactType,
-        val value: String,
-    )
-
-    /** Декодирует JSONB-массив контактов в доменные [ClientContact] клиента [clientId]. */
-    private fun decodeContacts(clientId: ClientId, json: String): List<ClientContact> =
-        Json
-            .decodeFromString<List<ContactRow>>(json)
-            .map { ClientContact(it.id, clientId, it.type, it.value) }
 
     private companion object {
         /** Подзапрос последнего баланса по каждому клиенту организации. */

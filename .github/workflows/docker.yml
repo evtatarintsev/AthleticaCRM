@@ -95,7 +95,9 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            # Образы публичные: сбрасываем старые креды ghcr.io, иначе docker
+            # предъявит протухший токен и получит denied вместо анонимного pull.
+            docker logout ghcr.io || true
             docker compose -f docker-compose.prod.yaml pull
             docker compose -f docker-compose.prod.yaml up -d
             docker compose -f docker-compose.prod.yaml restart nginx

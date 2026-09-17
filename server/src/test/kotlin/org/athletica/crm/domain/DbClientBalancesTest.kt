@@ -145,7 +145,9 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.list()).associateBy { it.clientId }
+                            balances
+                                .currentOf(listOf(clients.byId(clientId1), clients.byId(clientId2)))
+                                .associateBy { it.clientId }
                         }
                     }
                 }.getOrElse { fail("Expected success: $it") }

@@ -49,8 +49,8 @@ data class ClientListQuery(
     val sortColumn: ClientSortColumn = ClientSortColumn.NAME,
     /** Сортировать по возрастанию (`true`) или убыванию (`false`). */
     val ascending: Boolean = true,
-    /** Размер страницы. */
-    val limit: Int = 50,
+    /** Размер страницы; `null` — без ограничения (используется для выгрузки целиком). */
+    val limit: Int? = 50,
     /** Смещение от начала выборки. */
     val offset: Int = 0,
 )

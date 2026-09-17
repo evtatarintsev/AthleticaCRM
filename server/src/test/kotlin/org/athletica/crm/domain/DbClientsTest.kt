@@ -507,32 +507,4 @@ class DbClientsTest {
                 }.getOrElse { fail("Unexpected error: $it") }
             assertIs<ActiveClient>(restored)
         }
-
-    @Test
-    fun `list по умолчанию возвращает активных, с archived=true — архивных`() =
-        runTest {
-            val activeId = ClientId.new()
-            val archivedId = ClientId.new()
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        clients.new(activeId, "Активный", null, null, Gender.MALE)
-                        clients.new(archivedId, "Архивный", null, null, Gender.FEMALE)
-                        (clients.byId(archivedId) as ActiveClient).archive()
-                    }
-                }
-            }.getOrElse { fail("Setup failed: $it") }
-
-            val active =
-                either {
-                    TestPostgres.db.transaction { context(ctx) { clients.list() } }
-                }.getOrElse { fail("Unexpected error: $it") }
-            assertEquals(listOf(activeId), active.map { it.id })
-
-            val archived =
-                either {
-                    TestPostgres.db.transaction { context(ctx) { clients.list(archived = true) } }
-                }.getOrElse { fail("Unexpected error: $it") }
-            assertEquals(listOf(archivedId), archived.map { it.id })
-        }
 }

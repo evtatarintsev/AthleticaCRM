@@ -379,6 +379,18 @@ class DbClientListViewTest {
         }
 
     @Test
+    fun `limit null отдаёт всех клиентов без пагинации`() =
+        runTest {
+            val orgId = insertOrg()
+            listOf("A", "B", "C", "D", "E").forEach { insertClient(orgId, it) }
+
+            val result = page(orgId, ClientListQuery(limit = null))
+
+            assertEquals(listOf("A", "B", "C", "D", "E"), result.clients.map { it.name })
+            assertEquals(5u, result.total)
+        }
+
+    @Test
     fun `поиск по имени регистронезависимый по подстроке`() =
         runTest {
             val orgId = insertOrg()
@@ -429,6 +441,21 @@ class DbClientListViewTest {
             assertTrue(itemA.contacts.any { it.type == ContactType.PHONE && it.value == "+79991112233" })
             assertTrue(itemB.groups.isEmpty())
             assertTrue(itemB.contacts.isEmpty())
+        }
+
+    @Test
+    fun `группы чужой организации не попадают к клиенту`() =
+        runTest {
+            val org1 = insertOrg("Org 1")
+            val org2 = insertOrg("Org 2")
+            val clientId = insertClient(org1, "Клиент")
+            insertGroup(org2, "Чужая группа")
+            addClientToGroup(clientId, insertGroup(org1, "Своя группа"))
+
+            val item = page(org1, ClientListQuery()).clients.single()
+
+            assertEquals(1, item.groups.size)
+            assertEquals("Своя группа", item.groups.single().name)
         }
 
     @Test

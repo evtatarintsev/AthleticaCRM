@@ -184,7 +184,7 @@ fun Application.configureServer() {
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }
-                        groupsRoutes(di.groups, di.disciplines, di.employees, di.sessions, di.halls, di.enrollments, di.bus)
+                        groupsRoutes(di.groups, di.employees, di.sessions, di.views, di.bus)
                         sessionsRoutes(di.groups, di.sessions, di.employees)
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)

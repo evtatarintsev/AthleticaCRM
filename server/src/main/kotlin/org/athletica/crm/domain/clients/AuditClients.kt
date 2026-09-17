@@ -31,13 +31,4 @@ class AuditClients(private val delegate: Clients, private val audit: AuditLog) :
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
     ) = AuditActiveClient(delegate.new(id, name, avatarId, birthday, gender, leadSourceId, customFields), audit)
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(archived: Boolean) =
-        delegate.list(archived).map {
-            when (it) {
-                is ActiveClient -> AuditActiveClient(it, audit)
-                is ArchivedClient -> AuditArchivedClient(it, audit)
-            }
-        }
 }

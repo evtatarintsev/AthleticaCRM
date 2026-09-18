@@ -1,18 +1,13 @@
 package org.athletica.crm.components.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -23,14 +18,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Unarchive
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -45,12 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.tariffs.CreateTariffPlanRequest
@@ -83,6 +71,9 @@ import org.athletica.crm.generated.resources.screen_tariff_create
 import org.athletica.crm.generated.resources.screen_tariff_edit
 import org.athletica.crm.generated.resources.screen_tariffs
 import org.athletica.crm.generated.resources.tariff_archived_badge
+import org.athletica.crm.ui.tariff.DashedTile
+import org.athletica.crm.ui.tariff.TariffTile
+import org.athletica.crm.ui.tariff.TariffTileMinWidth
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -231,7 +222,7 @@ private fun TariffsGrid(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 220.dp),
+        columns = GridCells.Adaptive(minSize = TariffTileMinWidth),
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -245,14 +236,18 @@ private fun TariffsGrid(
             )
         }
         item(key = "add") {
-            AddTariffCard(onClick = onAdd)
+            DashedTile(
+                icon = Icons.Default.Add,
+                label = stringResource(Res.string.screen_tariff_create),
+                onClick = onAdd,
+            )
         }
     }
 }
 
 /**
- * Плитка тарифа: действия в шапке, название, состав абонемента и цена.
- * Нажатие на плитку открывает редактирование.
+ * Плитка тарифа в настройках: добавляет к общей плитке кнопки архивирования
+ * и редактирования и приглушает архивные тарифы.
  */
 @Composable
 private fun TariffCard(
@@ -261,6 +256,11 @@ private fun TariffCard(
     onArchiveToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val durationText =
+        when (tariff.durationUnit) {
+            DurationUnit.DAYS -> stringResource(Res.string.issue_sub_duration_days, tariff.durationValue)
+            DurationUnit.MONTHS -> stringResource(Res.string.issue_sub_duration_months, tariff.durationValue)
+        }
     val sessionsCount = tariff.sessions
     val sessionsText =
         if (sessionsCount == null) {
@@ -268,133 +268,28 @@ private fun TariffCard(
         } else {
             stringResource(Res.string.issue_sub_sessions_count, sessionsCount)
         }
-    val durationText =
-        when (tariff.durationUnit) {
-            DurationUnit.DAYS -> stringResource(Res.string.issue_sub_duration_days, tariff.durationValue)
-            DurationUnit.MONTHS -> stringResource(Res.string.issue_sub_duration_months, tariff.durationValue)
-        }
 
-    OutlinedCard(
+    TariffTile(
+        name = tariff.name,
+        details = listOf(sessionsText, durationText),
+        price = tariff.price.formatted,
         onClick = onClick,
-        colors =
-            if (tariff.archived) {
-                CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            } else {
-                CardDefaults.outlinedCardColors()
-            },
-        modifier = modifier.heightIn(min = 200.dp),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-            ) {
-                IconButton(onClick = onArchiveToggle) {
-                    if (tariff.archived) {
-                        Icon(Icons.Default.Unarchive, contentDescription = stringResource(Res.string.action_restore))
-                    } else {
-                        Icon(Icons.Default.Archive, contentDescription = stringResource(Res.string.action_archive))
-                    }
-                }
-                IconButton(onClick = onClick) {
-                    Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
+        muted = tariff.archived,
+        caption = if (tariff.archived) stringResource(Res.string.tariff_archived_badge) else null,
+        actions = {
+            IconButton(onClick = onArchiveToggle) {
+                if (tariff.archived) {
+                    Icon(Icons.Default.Unarchive, contentDescription = stringResource(Res.string.action_restore))
+                } else {
+                    Icon(Icons.Default.Archive, contentDescription = stringResource(Res.string.action_archive))
                 }
             }
-
-            Text(
-                text = tariff.name,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text = sessionsText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = durationText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = tariff.price.formatted,
-                style = MaterialTheme.typography.headlineSmall,
-                color =
-                    if (tariff.archived) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            )
-
-            if (tariff.archived) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(Res.string.tariff_archived_badge),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            IconButton(onClick = onClick) {
+                Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
             }
-        }
-    }
-}
-
-/** Плитка создания тарифа: пунктирная рамка с плюсом. */
-@Composable
-private fun AddTariffCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .heightIn(min = 200.dp)
-                .drawBehind {
-                    drawRoundRect(
-                        color = borderColor,
-                        cornerRadius = CornerRadius(12.dp.toPx()),
-                        style =
-                            Stroke(
-                                width = 1.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 8.dp.toPx())),
-                            ),
-                    )
-                }
-                .clickable(onClick = onClick),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp),
-            )
-            Text(
-                text = stringResource(Res.string.screen_tariff_create),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        },
+        modifier = modifier,
+    )
 }
 
 /** Заполненная и провалидированная форма тарифа. */

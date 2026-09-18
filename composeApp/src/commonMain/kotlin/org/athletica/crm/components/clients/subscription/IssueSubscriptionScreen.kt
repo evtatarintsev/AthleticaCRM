@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,11 +16,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -30,7 +35,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -116,6 +120,9 @@ import org.athletica.crm.generated.resources.label_comment
 import org.athletica.crm.generated.resources.label_discount
 import org.athletica.crm.generated.resources.label_groups
 import org.athletica.crm.ui.WindowSize
+import org.athletica.crm.ui.tariff.DashedTile
+import org.athletica.crm.ui.tariff.TariffTile
+import org.athletica.crm.ui.tariff.TariffTileMinWidth
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -224,29 +231,35 @@ private fun StepContainer(spacing: Dp, content: @Composable ColumnScope.() -> Un
 
 // ── Шаг 1: выбор тарифа ─────────────────────────────────────────────────────
 
+/**
+ * Шаг выбора тарифа: плитки тарифов и пунктирная плитка «индивидуальный
+ * абонемент» для заполнения параметров вручную.
+ */
 @Composable
 private fun ChoosePlanStep(state: IssueScreenState.Ready, viewModel: IssueSubscriptionViewModel) {
-    StepContainer(spacing = 8.dp) {
-        state.planOptions.forEach { plan ->
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth().clickable { viewModel.onPlanChosen(plan) },
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(plan.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = "${sessionsLabel(plan.sessions)} · ${durationLabel(plan.durationValue, plan.durationUnit)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(plan.price.formatted, style = MaterialTheme.typography.titleSmall)
-                }
-            }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = TariffTileMinWidth),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        items(state.planOptions, key = { it.id.toString() }) { plan ->
+            TariffTile(
+                name = plan.name,
+                details = listOf(sessionsLabel(plan.sessions), durationLabel(plan.durationValue, plan.durationUnit)),
+                price = plan.price.formatted,
+                onClick = { viewModel.onPlanChosen(plan) },
+            )
         }
-        ListItem(
-            headlineContent = { Text(stringResource(Res.string.issue_sub_plan_individual)) },
-            supportingContent = { Text(stringResource(Res.string.issue_sub_plan_individual_desc)) },
-            modifier = Modifier.clickable { viewModel.onPlanChosen(null) },
-        )
+        item(key = "individual") {
+            DashedTile(
+                icon = Icons.Default.Tune,
+                label = stringResource(Res.string.issue_sub_plan_individual),
+                description = stringResource(Res.string.issue_sub_plan_individual_desc),
+                onClick = { viewModel.onPlanChosen(null) },
+            )
+        }
     }
 }
 

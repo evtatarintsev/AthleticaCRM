@@ -4,26 +4,33 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -38,7 +45,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.tariffs.CreateTariffPlanRequest
@@ -51,12 +63,11 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.action_add
 import org.athletica.crm.generated.resources.action_archive
 import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.action_restore
 import org.athletica.crm.generated.resources.action_save
-import org.athletica.crm.generated.resources.empty_list
 import org.athletica.crm.generated.resources.issue_sub_duration
 import org.athletica.crm.generated.resources.issue_sub_duration_days
 import org.athletica.crm.generated.resources.issue_sub_duration_months
@@ -183,44 +194,72 @@ private fun TariffsListContent(
                 },
             )
         },
-        floatingActionButton = {
-            if (state.data is TariffsData.Loaded) {
-                ExtendedFloatingActionButton(
-                    onClick = onAdd,
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text(stringResource(Res.string.action_add)) },
-                )
-            }
-        },
     ) { padding ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentAlignment = Alignment.Center,
-        ) {
-            when (val data = state.data) {
-                TariffsData.Loading -> CircularProgressIndicator()
-                is TariffsData.Error -> Text(data.error.message(), color = MaterialTheme.colorScheme.error)
-                is TariffsData.Loaded ->
-                    if (data.items.isEmpty()) {
-                        Text(stringResource(Res.string.empty_list), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(data.items, key = { it.id.toString() }) { tariff ->
-                                TariffRow(tariff, { onItemClick(tariff) }, { onArchiveToggle(tariff) })
-                                HorizontalDivider()
-                            }
-                        }
-                    }
-            }
+        when (val data = state.data) {
+            TariffsData.Loading ->
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+
+            is TariffsData.Error ->
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(data.error.message(), color = MaterialTheme.colorScheme.error)
+                }
+
+            is TariffsData.Loaded ->
+                TariffsGrid(
+                    tariffs = data.items,
+                    onAdd = onAdd,
+                    onItemClick = onItemClick,
+                    onArchiveToggle = onArchiveToggle,
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
         }
     }
 }
 
+/**
+ * Сетка плиток тарифов.
+ * Число колонок подбирается по ширине экрана; последняя плитка — создание тарифа.
+ */
 @Composable
-private fun TariffRow(
+private fun TariffsGrid(
+    tariffs: List<TariffPlanSchema>,
+    onAdd: () -> Unit,
+    onItemClick: (TariffPlanSchema) -> Unit,
+    onArchiveToggle: (TariffPlanSchema) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 220.dp),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier,
+    ) {
+        items(tariffs, key = { it.id.toString() }) { tariff ->
+            TariffCard(
+                tariff = tariff,
+                onClick = { onItemClick(tariff) },
+                onArchiveToggle = { onArchiveToggle(tariff) },
+            )
+        }
+        item(key = "add") {
+            AddTariffCard(onClick = onAdd)
+        }
+    }
+}
+
+/**
+ * Плитка тарифа: действия в шапке, название, состав абонемента и цена.
+ * Нажатие на плитку открывает редактирование.
+ */
+@Composable
+private fun TariffCard(
     tariff: TariffPlanSchema,
     onClick: () -> Unit,
     onArchiveToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val sessionsCount = tariff.sessions
     val sessionsText =
@@ -235,27 +274,127 @@ private fun TariffRow(
             DurationUnit.MONTHS -> stringResource(Res.string.issue_sub_duration_months, tariff.durationValue)
         }
 
-    ListItem(
-        headlineContent = { Text(tariff.name) },
-        supportingContent = { Text("$sessionsText · $durationText · ${tariff.price.formatted}") },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (tariff.archived) {
-                    AssistChip(onClick = onClick, label = { Text(stringResource(Res.string.tariff_archived_badge)) })
+    OutlinedCard(
+        onClick = onClick,
+        colors =
+            if (tariff.archived) {
+                CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            } else {
+                CardDefaults.outlinedCardColors()
+            },
+        modifier = modifier.heightIn(min = 200.dp),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            ) {
+                IconButton(onClick = onArchiveToggle) {
+                    if (tariff.archived) {
+                        Icon(Icons.Default.Unarchive, contentDescription = stringResource(Res.string.action_restore))
+                    } else {
+                        Icon(Icons.Default.Archive, contentDescription = stringResource(Res.string.action_archive))
+                    }
                 }
-                TextButton(onClick = onArchiveToggle) {
-                    Text(
-                        if (tariff.archived) {
-                            stringResource(Res.string.action_restore)
-                        } else {
-                            stringResource(Res.string.action_archive)
-                        },
-                    )
+                IconButton(onClick = onClick) {
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
                 }
             }
-        },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
+
+            Text(
+                text = tariff.name,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = sessionsText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = durationText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = tariff.price.formatted,
+                style = MaterialTheme.typography.headlineSmall,
+                color =
+                    if (tariff.archived) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            )
+
+            if (tariff.archived) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(Res.string.tariff_archived_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Плитка создания тарифа: пунктирная рамка с плюсом. */
+@Composable
+private fun AddTariffCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = 200.dp)
+                .drawBehind {
+                    drawRoundRect(
+                        color = borderColor,
+                        cornerRadius = CornerRadius(12.dp.toPx()),
+                        style =
+                            Stroke(
+                                width = 1.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 8.dp.toPx())),
+                            ),
+                    )
+                }
+                .clickable(onClick = onClick),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp),
+            )
+            Text(
+                text = stringResource(Res.string.screen_tariff_create),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /** Заполненная и провалидированная форма тарифа. */

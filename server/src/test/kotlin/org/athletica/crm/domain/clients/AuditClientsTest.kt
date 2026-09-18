@@ -114,9 +114,6 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
         clients.add(client)
         return client
     }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(archived: Boolean): List<Client> = clients.toList()
 }
 
 class AuditClientsTest {
@@ -164,26 +161,6 @@ class AuditClientsTest {
                 }.getOrNull()
 
             assertIs<AuditActiveClient>(client)
-        }
-
-    @Test
-    fun `list оборачивает каждого клиента в AuditClient`() =
-        runTest {
-            val subject =
-                AuditClients(
-                    ClientsStub(listOf(ClientStub(ClientId.new(), "Иван"), ClientStub(ClientId.new(), "Пётр"))),
-                    AuditLogStub(),
-                )
-
-            val clients =
-                either {
-                    context(ctx, tr) {
-                        subject.list()
-                    }
-                }.getOrNull()
-
-            assertEquals(2, clients?.size)
-            assertTrue(clients!!.all { it is AuditActiveClient })
         }
 
     @Test

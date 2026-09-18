@@ -4,7 +4,6 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.DisciplineId
-import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
@@ -27,29 +26,14 @@ interface Groups {
     ): Group
 
     /**
-     * Возвращает список групп организации.
+     * Возвращает группы организации для операций записи (генерация занятий, обработчики событий).
      * Фильтрует по [RequestContext.branchIdOrNull]: если задан — только для этого филиала,
      * если null (системный контекст) — все группы организации.
-     * Опциональные фильтры:
-     * [nameQuery] — поиск по подстроке в названии (case-insensitive); null/пустая строка — без фильтра.
-     * [disciplineIds] — оставить только группы, у которых есть хотя бы одна из указанных дисциплин;
-     * пустой список — без фильтра.
-     * [employeeIds] — оставить только группы, у которых есть хотя бы один из указанных тренеров;
-     * пустой список — без фильтра.
+     *
+     * Выборка под нужды экранов — в [org.athletica.crm.read.groups.GroupListView].
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun list(
-        nameQuery: String? = null,
-        disciplineIds: List<DisciplineId> = emptyList(),
-        employeeIds: List<EmployeeId> = emptyList(),
-    ): List<Group>
-
-    /**
-     * Возвращает общее количество групп организации (без учёта фильтров [list]),
-     * с учётом ограничения по филиалу из [RequestContext.branchIdOrNull].
-     */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun totalCount(): Int
+    suspend fun list(): List<Group>
 
     /** Возвращает группу по идентификатору. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

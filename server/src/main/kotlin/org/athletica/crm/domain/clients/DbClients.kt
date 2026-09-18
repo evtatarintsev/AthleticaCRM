@@ -125,69 +125,6 @@ class DbClients : Clients {
         )
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(archived: Boolean): List<Client> {
-        val scalars =
-            tr
-                .sql(
-                    """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields, state
-                    FROM clients
-                    WHERE org_id = :orgId AND state = :state::client_state
-                    ORDER BY name
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .bind("state", if (archived) "ARCHIVED" else "ACTIVE")
-                .list { row -> row.toScalarClient() }
-
-        val groupsByClientId =
-            tr
-                .sql(
-                    """
-                    SELECT e.client_id, g.id, g.name
-                    FROM enrollments e
-                    JOIN groups g ON g.id = e.group_id
-                    WHERE g.org_id = :orgId AND e.left_at IS NULL
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .list { row ->
-                    val clientId = row.asUuid("client_id").toClientId()
-                    val group =
-                        ClientGroup(
-                            id = row.asUuid("id").toGroupId(),
-                            name = row.asString("name"),
-                        )
-                    clientId to group
-                }
-                .groupBy({ it.first }, { it.second })
-
-        val docsByClientId =
-            tr
-                .sql(
-                    """
-                    SELECT client_id, id, upload_id, name, created_at
-                    FROM client_docs
-                    WHERE client_id IN (SELECT id FROM clients WHERE org_id = :orgId)
-                    ORDER BY created_at DESC
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .list { row ->
-                    val clientId = row.asUuid("client_id").toClientId()
-                    clientId to row.toClientDoc()
-                }
-                .groupBy({ it.first }, { it.second })
-
-        return scalars.map { scalar ->
-            scalar.toClient(
-                groups = groupsByClientId[scalar.id] ?: emptyList(),
-                docs = docsByClientId[scalar.id] ?: emptyList(),
-            )
-        }
-    }
-
     /** Скалярные поля строки клиента без связанных коллекций (группы, документы). */
     private data class ScalarClient(
         val id: ClientId,

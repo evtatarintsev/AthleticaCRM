@@ -71,14 +71,13 @@ class DbClientListView : ClientListView {
                   WHERE cc.client_id = c.id AND cc.org_id = c.org_id) AS contacts
             $FROM_WHERE
             ORDER BY $orderColumn $direction NULLS LAST, c.id ASC
-            LIMIT :limit OFFSET :offset
+            ${if (query.limit != null) "LIMIT :limit OFFSET :offset" else ""}
             """.trimIndent()
 
         return tr
             .sql(sql)
             .bindFilters(query)
-            .bind("limit", query.limit)
-            .bind("offset", query.offset)
+            .let { q -> query.limit?.let { q.bind("limit", it).bind("offset", query.offset) } ?: q }
             .list { row -> row.toListItem() }
     }
 

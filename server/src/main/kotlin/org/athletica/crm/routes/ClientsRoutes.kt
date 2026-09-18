@@ -2,13 +2,11 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
-import arrow.fx.coroutines.parZip
 import io.ktor.http.HttpHeaders
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
-import org.athletica.crm.api.schemas.clients.BalanceJournalEntry
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryRequest
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientContactInput
@@ -30,7 +28,6 @@ import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.field
-import org.athletica.crm.api.schemas.common.PerformedBy
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldDefinition
@@ -38,12 +35,10 @@ import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientbalance.ClientBalance
-import org.athletica.crm.domain.clientbalance.ClientBalanceEntry
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
@@ -85,12 +80,8 @@ fun RouteWithContext.clientsRoutes(
 
         val (items, customDefs) =
             db.transaction {
-                val clientList = clients.list()
-                val customDefs = definitions.all(CLIENT_ENTITY_TYPE)
-                val balancesByClient = balances.currentOf(clientList).associateBy { it.clientId }
-
-                val items = clientList.map { it.toListItem(balancesByClient.getValue(it.id)) }
-                Pair(items, customDefs)
+                val items = views.clientList.page(ClientListQuery(limit = null)).clients
+                Pair(items, definitions.all(CLIENT_ENTITY_TYPE))
             }
 
         val csvContent = generateCsvContent(items, request.fields, customDefs)
@@ -222,14 +213,7 @@ fun RouteWithContext.clientsRoutes(
 
     get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
         db.transaction {
-            parZip(
-                { balances.currentOf(clients.byId(request.id)) },
-                { employees.list().associate { it.id to PerformedBy(it.id.value, it.name) } },
-            ) { balance, performedById ->
-                ClientBalanceHistoryResponse(
-                    entries = balance.history().map { it.toJournalEntry(performedById) },
-                )
-            }
+            views.clientBalanceHistory.byClient(request.id)
         }
     }
 }
@@ -279,22 +263,6 @@ private fun ClientContact.toSchema(): ClientContactSchema =
 /** Маппинг контактов из запроса в доменные сущности клиента [clientId] с новыми идентификаторами. */
 private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientContact> = map { ClientContact(ClientContactId.new(), clientId, it.type, it.value) }
 
-fun Client.toListItem(
-    balance: ClientBalance,
-    contacts: List<ClientContact> = emptyList(),
-) = ClientListItem(
-    id = id,
-    name = name,
-    avatarId = avatarId,
-    birthday = birthday,
-    gender = gender,
-    groups = groups.map { ClientGroup(it.id, it.name) },
-    balance = balance.totalAmount,
-    customFields = customFields,
-    contacts = contacts.map { it.toSchema() },
-    state = state,
-)
-
 private const val CLIENT_ENTITY_TYPE = "CLIENT"
 
 /** Максимальный размер страницы списка клиентов: защищает от чрезмерных запросов. */
@@ -319,17 +287,6 @@ private fun ClientListRequest.toQuery(): ClientListQuery =
         ascending = sortDirection == SortDirectionSchema.Asc,
         limit = limit.coerceIn(1, MAX_CLIENT_PAGE_SIZE),
         offset = offset.coerceAtLeast(0),
-    )
-
-private fun ClientBalanceEntry.toJournalEntry(performedById: Map<EmployeeId, PerformedBy>) =
-    BalanceJournalEntry(
-        id = id,
-        amount = amount,
-        balanceAfter = balanceAfter,
-        operationType = operationType,
-        note = note,
-        performedBy = performedById[performedBy],
-        createdAt = createdAt,
     )
 
 /**

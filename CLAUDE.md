@@ -90,7 +90,8 @@ Both files must be updated in the same commit as the `application.conf` change.
 │
 ├── read/                  # Read-проекции (query-модель) под нужды экранов
 │   ├── ReadViews.kt      # Реестр проекций; маршруты принимают его целиком
-│   ├── clients/          # ClientListView
+│   ├── clients/          # ClientListView, ClientBalanceHistoryView
+│   ├── groups/           # GroupListView, GroupDetailView
 │   ├── tasks/            # TaskListView, TaskDetailView
 │   ├── home/             # TodayScheduleView
 │   └── uploads/          # UploadRow — метаданные файлов для проекций

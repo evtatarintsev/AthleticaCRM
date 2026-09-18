@@ -27,11 +27,4 @@ interface Clients {
         leadSourceId: LeadSourceId? = null,
         customFields: List<CustomFieldValue> = emptyList(),
     ): ActiveClient
-
-    /**
-     * Возвращает клиентов организации. По умолчанию — только активные;
-     * при [archived] = `true` — только архивные.
-     */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun list(archived: Boolean = false): List<Client>
 }

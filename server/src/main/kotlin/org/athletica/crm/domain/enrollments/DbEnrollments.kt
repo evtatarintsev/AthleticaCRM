@@ -94,22 +94,6 @@ class DbEnrollments : Enrollments {
                 )
             }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun activeClients(groupId: GroupId): List<Pair<ClientId, String>> =
-        tr
-            .sql(
-                """
-                SELECT e.client_id, c.name
-                FROM enrollments e
-                JOIN clients c ON c.id = e.client_id
-                WHERE e.group_id = :groupId
-                  AND e.left_at IS NULL
-                ORDER BY c.name
-                """.trimIndent(),
-            )
-            .bind("groupId", groupId)
-            .list { row -> row.asUuid("client_id").toClientId() to row.get("name", String::class.java)!! }
-
     /** Проверяет, что группа [groupId] принадлежит организации из контекста. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     private suspend fun verifyGroupOwnership(groupId: GroupId) {

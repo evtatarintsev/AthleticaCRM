@@ -1,28 +1,28 @@
 package org.athletica.crm.components.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -51,12 +51,11 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.generated.resources.Res
-import org.athletica.crm.generated.resources.action_add
 import org.athletica.crm.generated.resources.action_archive
 import org.athletica.crm.generated.resources.action_back
+import org.athletica.crm.generated.resources.action_edit
 import org.athletica.crm.generated.resources.action_restore
 import org.athletica.crm.generated.resources.action_save
-import org.athletica.crm.generated.resources.empty_list
 import org.athletica.crm.generated.resources.issue_sub_duration
 import org.athletica.crm.generated.resources.issue_sub_duration_days
 import org.athletica.crm.generated.resources.issue_sub_duration_months
@@ -72,6 +71,9 @@ import org.athletica.crm.generated.resources.screen_tariff_create
 import org.athletica.crm.generated.resources.screen_tariff_edit
 import org.athletica.crm.generated.resources.screen_tariffs
 import org.athletica.crm.generated.resources.tariff_archived_badge
+import org.athletica.crm.ui.tariff.DashedTile
+import org.athletica.crm.ui.tariff.TariffTile
+import org.athletica.crm.ui.tariff.TariffTileMinWidth
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -183,45 +185,82 @@ private fun TariffsListContent(
                 },
             )
         },
-        floatingActionButton = {
-            if (state.data is TariffsData.Loaded) {
-                ExtendedFloatingActionButton(
-                    onClick = onAdd,
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text(stringResource(Res.string.action_add)) },
-                )
-            }
-        },
     ) { padding ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentAlignment = Alignment.Center,
-        ) {
-            when (val data = state.data) {
-                TariffsData.Loading -> CircularProgressIndicator()
-                is TariffsData.Error -> Text(data.error.message(), color = MaterialTheme.colorScheme.error)
-                is TariffsData.Loaded ->
-                    if (data.items.isEmpty()) {
-                        Text(stringResource(Res.string.empty_list), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(data.items, key = { it.id.toString() }) { tariff ->
-                                TariffRow(tariff, { onItemClick(tariff) }, { onArchiveToggle(tariff) })
-                                HorizontalDivider()
-                            }
-                        }
-                    }
-            }
+        when (val data = state.data) {
+            TariffsData.Loading ->
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+
+            is TariffsData.Error ->
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(data.error.message(), color = MaterialTheme.colorScheme.error)
+                }
+
+            is TariffsData.Loaded ->
+                TariffsGrid(
+                    tariffs = data.items,
+                    onAdd = onAdd,
+                    onItemClick = onItemClick,
+                    onArchiveToggle = onArchiveToggle,
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
         }
     }
 }
 
+/**
+ * Сетка плиток тарифов.
+ * Число колонок подбирается по ширине экрана; последняя плитка — создание тарифа.
+ */
 @Composable
-private fun TariffRow(
+private fun TariffsGrid(
+    tariffs: List<TariffPlanSchema>,
+    onAdd: () -> Unit,
+    onItemClick: (TariffPlanSchema) -> Unit,
+    onArchiveToggle: (TariffPlanSchema) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = TariffTileMinWidth),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier,
+    ) {
+        items(tariffs, key = { it.id.toString() }) { tariff ->
+            TariffCard(
+                tariff = tariff,
+                onClick = { onItemClick(tariff) },
+                onArchiveToggle = { onArchiveToggle(tariff) },
+            )
+        }
+        item(key = "add") {
+            DashedTile(
+                icon = Icons.Default.Add,
+                label = stringResource(Res.string.screen_tariff_create),
+                onClick = onAdd,
+            )
+        }
+    }
+}
+
+/**
+ * Плитка тарифа в настройках: добавляет к общей плитке кнопки архивирования
+ * и редактирования и приглушает архивные тарифы.
+ */
+@Composable
+private fun TariffCard(
     tariff: TariffPlanSchema,
     onClick: () -> Unit,
     onArchiveToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val durationText =
+        when (tariff.durationUnit) {
+            DurationUnit.DAYS -> stringResource(Res.string.issue_sub_duration_days, tariff.durationValue)
+            DurationUnit.MONTHS -> stringResource(Res.string.issue_sub_duration_months, tariff.durationValue)
+        }
     val sessionsCount = tariff.sessions
     val sessionsText =
         if (sessionsCount == null) {
@@ -229,32 +268,27 @@ private fun TariffRow(
         } else {
             stringResource(Res.string.issue_sub_sessions_count, sessionsCount)
         }
-    val durationText =
-        when (tariff.durationUnit) {
-            DurationUnit.DAYS -> stringResource(Res.string.issue_sub_duration_days, tariff.durationValue)
-            DurationUnit.MONTHS -> stringResource(Res.string.issue_sub_duration_months, tariff.durationValue)
-        }
 
-    ListItem(
-        headlineContent = { Text(tariff.name) },
-        supportingContent = { Text("$sessionsText · $durationText · ${tariff.price.formatted}") },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    TariffTile(
+        name = tariff.name,
+        details = listOf(sessionsText, durationText),
+        price = tariff.price.formatted,
+        onClick = onClick,
+        muted = tariff.archived,
+        caption = if (tariff.archived) stringResource(Res.string.tariff_archived_badge) else null,
+        actions = {
+            IconButton(onClick = onArchiveToggle) {
                 if (tariff.archived) {
-                    AssistChip(onClick = onClick, label = { Text(stringResource(Res.string.tariff_archived_badge)) })
-                }
-                TextButton(onClick = onArchiveToggle) {
-                    Text(
-                        if (tariff.archived) {
-                            stringResource(Res.string.action_restore)
-                        } else {
-                            stringResource(Res.string.action_archive)
-                        },
-                    )
+                    Icon(Icons.Default.Unarchive, contentDescription = stringResource(Res.string.action_restore))
+                } else {
+                    Icon(Icons.Default.Archive, contentDescription = stringResource(Res.string.action_archive))
                 }
             }
+            IconButton(onClick = onClick) {
+                Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.action_edit))
+            }
         },
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = modifier,
     )
 }
 

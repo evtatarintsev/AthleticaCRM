@@ -19,7 +19,6 @@ class DbGroup(
     override val id: GroupId,
     override val branchId: BranchId,
     override val name: String,
-    override val schedule: List<ScheduleSlot>,
     override val disciplines: List<DisciplineId>,
     override val employeeIds: List<EmployeeId>,
 ) : Group {
@@ -39,39 +38,6 @@ class DbGroup(
 
         if (updatedRows == 0L) {
             raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
-        }
-
-        tr
-            .sql("DELETE FROM schedule_slots WHERE group_id = :groupId AND org_id = :orgId")
-            .bind("groupId", id)
-            .bind("orgId", ctx.orgId)
-            .execute()
-
-        schedule.forEach { slot ->
-            val hallExists =
-                tr
-                    .sql("SELECT 1 FROM halls WHERE id = :hallId AND org_id = :orgId AND branch_id = :branchId")
-                    .bind("hallId", slot.hallId)
-                    .bind("orgId", ctx.orgId)
-                    .bind("branchId", branchId)
-                    .firstOrNull { 1 } != null
-            if (!hallExists) {
-                raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
-            }
-            tr
-                .sql(
-                    """
-                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id)
-                    VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time, :hallId)
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .bind("groupId", id)
-                .bind("dayOfWeek", slot.dayOfWeek.name)
-                .bind("startAt", slot.startAt.toString())
-                .bind("endAt", slot.endAt.toString())
-                .bind("hallId", slot.hallId)
-                .execute()
         }
 
         tr
@@ -113,10 +79,7 @@ class DbGroup(
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
+    override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, disciplines, employeeIds)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewEmployees(employees: List<Employee>): Group {
@@ -125,9 +88,9 @@ class DbGroup(
                 raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
             }
         }
-        return DbGroup(id, branchId, name, schedule, disciplines, employees.map { it.id })
+        return DbGroup(id, branchId, name, disciplines, employees.map { it.id })
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
+    override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, disciplines, employeeIds)
 }

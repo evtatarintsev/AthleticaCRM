@@ -5,6 +5,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.core.DayOfWeek
@@ -26,6 +27,7 @@ import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
@@ -140,8 +142,9 @@ class DbGroupDetailViewTest {
         TestPostgres.db
             .sql(
                 """
-                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id)
-                VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId)
+                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
+                VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId,
+                        daterange(CURRENT_DATE, NULL))
                 """.trimIndent(),
             )
             .bind("orgId", orgId).bind("groupId", groupId).bind("hallId", hallId)
@@ -232,4 +235,56 @@ class DbGroupDetailViewTest {
 
             assertIs<Either.Left<DomainError>>(detail(orgA, foreign))
         }
+
+    @Test
+    fun `карточка показывает действующую версию слота и дату запланированного изменения`() =
+        runTest {
+            val orgId = insertOrg()
+            val groupId = insertGroup(orgId, "Йога")
+            val oldHall = insertHall(orgId, "Старый зал")
+            val newHall = insertHall(orgId, "Новый зал")
+            val today = java.time.LocalDate.now().toKotlinLocalDate()
+            val changeAt = today.plusDays(30)
+            insertSlotWithValidity(orgId, groupId, oldHall, today, changeAt)
+            insertSlotWithValidity(orgId, groupId, newHall, changeAt, null)
+
+            val result = succeeding(orgId, groupId)
+
+            assertEquals(oldHall, result.schedule.single().hallId)
+            assertEquals(changeAt, result.scheduleChangeAt)
+        }
+
+    @Test
+    fun `группа без запланированных изменений отдаёт пустую дату изменения`() =
+        runTest {
+            val orgId = insertOrg()
+            val groupId = insertGroup(orgId, "Йога")
+            insertSlot(orgId, groupId, insertHall(orgId, "Зал"))
+
+            assertNull(succeeding(orgId, groupId).scheduleChangeAt)
+        }
+
+    /** Вставляет версию слота «среда 18:00–19:00» с заданным периодом действия. */
+    private suspend fun insertSlotWithValidity(
+        orgId: Uuid,
+        groupId: GroupId,
+        hallId: HallId,
+        from: kotlinx.datetime.LocalDate,
+        to: kotlinx.datetime.LocalDate?,
+    ) {
+        TestPostgres.db
+            .sql(
+                """
+                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
+                VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId,
+                        daterange(:from::date, :to::date))
+                """.trimIndent(),
+            )
+            .bind("orgId", orgId).bind("groupId", groupId).bind("hallId", hallId)
+            .bind("from", from).bind("to", to)
+            .execute()
+    }
 }
+
+/** Прибавляет [days] дней к дате. */
+private fun kotlinx.datetime.LocalDate.plusDays(days: Int): kotlinx.datetime.LocalDate = kotlinx.datetime.LocalDate.fromEpochDays(toEpochDays() + days)

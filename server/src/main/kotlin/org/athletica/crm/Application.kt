@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import arrow.core.raise.either
 import com.github.ajalt.clikt.command.main
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -29,7 +30,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.serialization.json.Json
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
@@ -37,6 +37,7 @@ import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.systemContext
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
@@ -70,8 +71,6 @@ import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
-import org.athletica.crm.usecases.sessions.generateSessions
-import org.athletica.crm.usecases.sessions.generationHorizon
 import java.sql.DriverManager
 import kotlin.context
 import kotlin.uuid.toKotlinUuid
@@ -95,7 +94,7 @@ fun Application.module() {
             di.eventWorker.run()
         }
         launch {
-            generateSessionsDaily(di)
+            syncSchedulesDaily(di)
         }
         launch {
             di.messageDispatcher.dispatchPending()
@@ -184,8 +183,8 @@ fun Application.configureServer() {
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }
-                        groupsRoutes(di.groups, di.employees, di.sessions, di.views, di.bus)
-                        sessionsRoutes(di.groups, di.sessions, di.employees)
+                        groupsRoutes(di.groups, di.employees, di.groupSchedule, di.scheduleSync, di.views)
+                        sessionsRoutes(di.groups, di.sessions, di.employees, di.views)
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
@@ -239,14 +238,13 @@ fun runMigrations(
 fun runMigrations(dbConfig: DatabaseConfig) = runMigrations(dbConfig.url, dbConfig.user, dbConfig.password)
 
 /**
- * Ежедневно генерирует занятия для всех групп на горизонт 8 недель вперёд.
+ * Ежедневно сверяет занятия всех организаций с расписанием.
  * Запускается в фоне при старте приложения и повторяется каждые 24 часа.
+ * Сверка приводит занятия в соответствие независимо от того, выполнялась ли она при изменении.
  */
-private suspend fun generateSessionsDaily(di: Di) {
+private suspend fun syncSchedulesDaily(di: Di) {
     while (true) {
         try {
-            val today = java.time.LocalDate.now().toKotlinLocalDate()
-            val horizon = generationHorizon()
             val orgIds =
                 di.database.transaction {
                     sql("SELECT DISTINCT org_id FROM groups")
@@ -254,22 +252,20 @@ private suspend fun generateSessionsDaily(di: Di) {
                 }
             orgIds.forEach { orgUuid ->
                 try {
-                    val ctx = systemContext(org.athletica.crm.core.entityids.OrgId(orgUuid))
+                    val ctx = systemContext(OrgId(orgUuid))
                     di.database.transaction {
-                        arrow.core.raise.either {
+                        either {
                             context(ctx) {
-                                di.groups.list().forEach { group ->
-                                    generateSessions(di.groups, di.sessions, di.employees, group.id, today, horizon)
-                                }
+                                di.scheduleSync.sync()
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    logger.error("Failed to generate sessions for org $orgUuid", e)
+                    logger.error("Failed to sync schedule for org $orgUuid", e)
                 }
             }
         } catch (e: Exception) {
-            logger.error("generateSessionsDaily error", e)
+            logger.error("syncSchedulesDaily error", e)
         }
         delay(24 * 60 * 60 * 1_000L)
     }

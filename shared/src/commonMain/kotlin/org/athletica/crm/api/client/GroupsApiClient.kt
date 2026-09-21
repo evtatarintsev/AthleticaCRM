@@ -15,6 +15,7 @@ import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
+import org.athletica.crm.api.schemas.groups.SetGroupScheduleRequest
 import org.athletica.crm.core.entityids.GroupId
 
 class GroupsApiClient(private val http: HttpClient) {
@@ -55,6 +56,18 @@ class GroupsApiClient(private val http: HttpClient) {
     suspend fun setDisciplines(request: SetGroupDisciplinesRequest): Either<ApiClientError, Unit> =
         requestCatching {
             http.post("/api/groups/set-disciplines") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+        }
+
+    /**
+     * Устанавливает расписание группы начиная с даты вступления в силу из [request].
+     * Заменяет всё, что действует начиная с неё, включая ранее запланированные изменения.
+     */
+    suspend fun setSchedule(request: SetGroupScheduleRequest): Either<ApiClientError, GroupDetailResponse> =
+        requestCatching {
+            http.post("/api/groups/set-schedule") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

@@ -11,7 +11,8 @@ import org.athletica.crm.storage.Transaction
 
 interface Groups {
     /**
-     * Создаёт группу в текущем филиале сотрудника.
+     * Создаёт группу в текущем филиале сотрудника. Расписание задаётся отдельно —
+     * через [GroupSchedule.setFrom] в той же транзакции.
      * Требует контекста сотрудника, т.к. брать филиал из JWT-токена.
      * [employees] — преподаватели группы; каждый должен иметь доступ к филиалу [EmployeeRequestContext.branchId],
      * иначе ошибка `EMPLOYEE_NOT_FOUND`.
@@ -20,7 +21,6 @@ interface Groups {
     suspend fun new(
         id: GroupId,
         name: String,
-        schedule: List<ScheduleSlot>,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
     ): Group

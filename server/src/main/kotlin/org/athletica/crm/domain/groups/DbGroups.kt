@@ -3,7 +3,6 @@ package org.athletica.crm.domain.groups
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
-import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.branchIdOrNull
@@ -13,25 +12,20 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toGroupId
-import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
-import org.athletica.crm.domain.events.DomainEvents
-import org.athletica.crm.domain.events.GroupCreated
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asLocalTime
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /** Реализация [Groups] с доступом к PostgreSQL через R2DBC. */
-class DbGroups(private val events: DomainEvents) : Groups {
+class DbGroups : Groups {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: GroupId,
         name: String,
-        schedule: List<ScheduleSlot>,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
     ): Group {
@@ -49,33 +43,6 @@ class DbGroups(private val events: DomainEvents) : Groups {
             } else {
                 raise(CommonDomainError("GROUP_ALREADY_EXISTS", Messages.GroupAlreadyExists.localize()))
             }
-        }
-
-        schedule.forEach { slot ->
-            val hallExists =
-                tr
-                    .sql("SELECT 1 FROM halls WHERE id = :hallId AND org_id = :orgId AND branch_id = :branchId")
-                    .bind("hallId", slot.hallId)
-                    .bind("orgId", ctx.orgId)
-                    .bind("branchId", ctx.branchId)
-                    .firstOrNull { 1 } != null
-            if (!hallExists) {
-                raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
-            }
-            tr
-                .sql(
-                    """
-                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id)
-                    VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time, :hallId)
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .bind("groupId", id)
-                .bind("dayOfWeek", slot.dayOfWeek.name)
-                .bind("startAt", slot.startAt.toString())
-                .bind("endAt", slot.endAt.toString())
-                .bind("hallId", slot.hallId)
-                .execute()
         }
 
         disciplineIds.forEach { disciplineId ->
@@ -106,8 +73,7 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
             }
         }
-        events.publish(GroupCreated(id))
-        return DbGroup(id, ctx.branchId, name, schedule, disciplineIds, employees.map { it.id })
+        return DbGroup(id, ctx.branchId, name, disciplineIds, employees.map { it.id })
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -138,28 +104,6 @@ class DbGroups(private val events: DomainEvents) : Groups {
         }
 
         val groupIds = groups.map { it.first.value }
-
-        val slotsByGroup =
-            tr
-                .sql(
-                    """
-                    SELECT group_id, day_of_week, start_time, end_time, hall_id
-                    FROM schedule_slots
-                    WHERE group_id = ANY(:ids)
-                    ORDER BY day_of_week, start_time
-                    """.trimIndent(),
-                )
-                .bind("ids", groupIds)
-                .list { row ->
-                    row.asUuid("group_id").toGroupId() to
-                        ScheduleSlot(
-                            dayOfWeek = DayOfWeek.valueOf(row.asString("day_of_week")),
-                            startAt = row.asLocalTime("start_time"),
-                            endAt = row.asLocalTime("end_time"),
-                            hallId = row.asUuid("hall_id").toHallId(),
-                        )
-                }
-                .groupBy({ it.first }, { it.second })
 
         val disciplinesByGroup =
             tr
@@ -195,7 +139,6 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 id = id,
                 branchId = branchId,
                 name = name,
-                schedule = slotsByGroup[id] ?: emptyList(),
                 disciplines = disciplinesByGroup[id] ?: emptyList(),
                 employeeIds = employeeIdsByGroup[id] ?: emptyList(),
             )
@@ -212,26 +155,6 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 .firstOrNull { row -> row.asUuid("branch_id").toBranchId() to row.asString("name") }
                 ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
 
-        val schedule =
-            tr
-                .sql(
-                    """
-                    SELECT day_of_week, start_time, end_time, hall_id
-                    FROM schedule_slots
-                    WHERE group_id = :groupId
-                    ORDER BY day_of_week, start_time
-                    """.trimIndent(),
-                )
-                .bind("groupId", id)
-                .list { row ->
-                    ScheduleSlot(
-                        dayOfWeek = DayOfWeek.valueOf(row.asString("day_of_week")),
-                        startAt = row.asLocalTime("start_time"),
-                        endAt = row.asLocalTime("end_time"),
-                        hallId = row.asUuid("hall_id").toHallId(),
-                    )
-                }
-
         val disciplines =
             tr
                 .sql("SELECT discipline_id FROM group_disciplines WHERE group_id = :groupId")
@@ -244,6 +167,6 @@ class DbGroups(private val events: DomainEvents) : Groups {
                 .bind("groupId", id)
                 .list { row -> row.asUuid("employee_id").toEmployeeId() }
 
-        return DbGroup(id, branchId, name, schedule, disciplines, employeeIds)
+        return DbGroup(id, branchId, name, disciplines, employeeIds)
     }
 }

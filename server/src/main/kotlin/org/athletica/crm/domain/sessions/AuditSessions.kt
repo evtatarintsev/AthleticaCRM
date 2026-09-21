@@ -31,7 +31,8 @@ private data class NewSessionSnapshot(
 
 /**
  * Декоратор [Sessions], добавляющий запись в журнал аудита при создании занятий.
- * Генерированные занятия не логируются (слишком много событий), только ручные.
+ * Логируются только разовые занятия: материализованные из расписания создаёт
+ * [ScheduleSync] множественным запросом, минуя репозиторий.
  */
 class AuditSessions(private val delegate: Sessions, private val audit: AuditLog) : Sessions by delegate {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -44,12 +45,9 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-        originDayOfWeek: String?,
-        originStartTime: LocalTime?,
-        originDate: LocalDate?,
     ): Session? {
-        val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employees, originDayOfWeek, originStartTime, originDate)
-        if (session != null && originDayOfWeek == null && ctx is EmployeeRequestContext) {
+        val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employees)
+        if (session != null && ctx is EmployeeRequestContext) {
             context(ctx) {
                 audit.logCreate(
                     "session",

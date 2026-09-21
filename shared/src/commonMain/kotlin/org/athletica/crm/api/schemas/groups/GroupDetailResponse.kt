@@ -1,5 +1,6 @@
 package org.athletica.crm.api.schemas.groups
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.GroupId
 
@@ -10,8 +11,10 @@ data class GroupDetailResponse(
     val id: GroupId,
     /** Название группы. */
     val name: String,
-    /** Слоты расписания группы. */
+    /** Слоты расписания группы, действующие сегодня. */
     val schedule: List<ScheduleSlot>,
+    /** Дата ближайшего запланированного изменения расписания; `null` — изменений не запланировано. */
+    val scheduleChangeAt: LocalDate? = null,
     /** Дисциплины, привязанные к группе. */
     val disciplines: List<GroupDiscipline> = emptyList(),
     /** Преподаватели группы, наследуемые новыми занятиями. */

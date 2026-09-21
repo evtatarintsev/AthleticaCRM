@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.groups.GroupClient
@@ -63,12 +64,14 @@ import org.athletica.crm.generated.resources.action_add_group_employee
 import org.athletica.crm.generated.resources.action_back
 import org.athletica.crm.generated.resources.action_cancel
 import org.athletica.crm.generated.resources.action_edit
+import org.athletica.crm.generated.resources.action_edit_schedule
 import org.athletica.crm.generated.resources.action_remove
 import org.athletica.crm.generated.resources.clients_empty_for_group
 import org.athletica.crm.generated.resources.dialog_remove_employee_from_group_message
 import org.athletica.crm.generated.resources.dialog_remove_employee_from_group_title
 import org.athletica.crm.generated.resources.employees_empty_for_group
 import org.athletica.crm.generated.resources.label_name
+import org.athletica.crm.generated.resources.schedule_planned_change
 import org.athletica.crm.generated.resources.section_basic_info
 import org.athletica.crm.generated.resources.section_disciplines
 import org.athletica.crm.generated.resources.section_group_clients
@@ -98,6 +101,7 @@ fun GroupDetailScreen(
 
     var showAddEmployeeSheet by remember { mutableStateOf(false) }
     var employeeToRemove by remember { mutableStateOf<GroupEmployee?>(null) }
+    var showScheduleDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -170,7 +174,7 @@ fun GroupDetailScreen(
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     GroupBasicInfoSection(group)
-                                    GroupScheduleSection(group.schedule)
+                                    GroupScheduleSection(group.schedule, group.scheduleChangeAt) { showScheduleDialog = true }
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     GroupEmployeesSection(
@@ -186,7 +190,7 @@ fun GroupDetailScreen(
                             }
                         } else {
                             GroupBasicInfoSection(group)
-                            GroupScheduleSection(group.schedule)
+                            GroupScheduleSection(group.schedule, group.scheduleChangeAt) { showScheduleDialog = true }
                             GroupEmployeesSection(
                                 employees = group.employees,
                                 onAddEmployee = { showAddEmployeeSheet = true },
@@ -201,6 +205,25 @@ fun GroupDetailScreen(
                 }
             }
         }
+    }
+
+    if (showScheduleDialog && viewModel.state is GroupDetailState.Loaded) {
+        val group = (viewModel.state as GroupDetailState.Loaded).group
+        val scheduleViewModel =
+            remember(group.id, group.schedule, group.scheduleChangeAt) {
+                SetScheduleViewModel(
+                    api = api,
+                    groupId = groupId,
+                    scope = scope,
+                    initialSlots = group.schedule,
+                    plannedChangeAt = group.scheduleChangeAt,
+                    onSaved = {
+                        showScheduleDialog = false
+                        viewModel.load()
+                    },
+                )
+            }
+        SetScheduleDialog(viewModel = scheduleViewModel, onDismiss = { showScheduleDialog = false })
     }
 
     if (showAddEmployeeSheet && viewModel.state is GroupDetailState.Loaded) {
@@ -291,7 +314,11 @@ private fun GroupBasicInfoSection(group: GroupDetailResponse) {
 }
 
 @Composable
-private fun GroupScheduleSection(schedule: List<ScheduleSlot>) {
+private fun GroupScheduleSection(
+    schedule: List<ScheduleSlot>,
+    plannedChangeAt: LocalDate?,
+    onEditSchedule: () -> Unit,
+) {
     SectionCard(stringResource(Res.string.section_schedule)) {
         if (schedule.isEmpty()) {
             Text(
@@ -324,6 +351,19 @@ private fun GroupScheduleSection(schedule: List<ScheduleSlot>) {
                     )
                 }
             }
+        }
+
+        plannedChangeAt?.let { date ->
+            Text(
+                text = stringResource(Res.string.schedule_planned_change, date.toString()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+
+        TextButton(onClick = onEditSchedule, modifier = Modifier.padding(top = 4.dp)) {
+            Text(stringResource(Res.string.action_edit_schedule))
         }
     }
 }

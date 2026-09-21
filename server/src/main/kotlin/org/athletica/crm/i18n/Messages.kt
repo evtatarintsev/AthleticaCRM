@@ -172,6 +172,26 @@ object Messages {
         override val en = { time: String -> "Invalid slot end time: \"$time\"" }
     }
 
+    object ScheduleEffectiveFromInPast : LocalizationKey {
+        override val ru = "Расписание нельзя изменить задним числом"
+        override val en = "Schedule cannot be changed retroactively"
+    }
+
+    object DuplicateScheduleSlot : LocalizationTemplate2<String, LocalTime> {
+        override val ru = { day: String, time: LocalTime -> "Слот повторяется в расписании: $day $time" }
+        override val en = { day: String, time: LocalTime -> "Duplicate schedule slot: $day $time" }
+    }
+
+    object InvalidSessionPeriod : LocalizationKey {
+        override val ru = "Дата окончания периода не может быть раньше даты начала"
+        override val en = "Period end date cannot precede its start date"
+    }
+
+    object SessionPeriodTooLong : LocalizationTemplate1<Int> {
+        override val ru = { days: Int -> "Период запроса не может превышать $days дней" }
+        override val en = { days: Int -> "Requested period cannot exceed $days days" }
+    }
+
     object ScheduleEndBeforeStart : LocalizationTemplate2<LocalTime, LocalTime> {
         override val ru = { start: LocalTime, end: LocalTime -> "Время окончания должно быть позже времени начала: $start – $end" }
         override val en = { start: LocalTime, end: LocalTime -> "End time must be after start time: $start – $end" }

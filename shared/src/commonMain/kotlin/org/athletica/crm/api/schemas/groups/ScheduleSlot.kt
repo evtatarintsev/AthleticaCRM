@@ -4,12 +4,14 @@ import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.entityids.HallId
+import org.athletica.crm.core.time.Validity
 
 /**
  * Один слот в расписании группы.
  * [dayOfWeek] — день недели (Пн..Вс).
  * [startAt] и [endAt] — время в формате "HH:MM".
  * [hallName] — название зала; заполняется только в ответах сервера, в запросах `null`.
+ * [validity] — период действия версии слота; заполняется только в ответах сервера, в запросах `null`.
  */
 @Serializable
 data class ScheduleSlot(
@@ -18,4 +20,5 @@ data class ScheduleSlot(
     val endAt: LocalTime,
     val hallId: HallId,
     val hallName: String? = null,
+    val validity: Validity? = null,
 )

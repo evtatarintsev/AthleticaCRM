@@ -11,11 +11,13 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.core.entityids.toSlotId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
@@ -28,6 +30,7 @@ import org.athletica.crm.storage.asLocalTime
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 
 /** Реализация [Sessions] с доступом к PostgreSQL через R2DBC. */
 class DbSessions : Sessions {
@@ -41,9 +44,6 @@ class DbSessions : Sessions {
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-        originDayOfWeek: String?,
-        originStartTime: LocalTime?,
-        originDate: LocalDate?,
     ): Session? =
         try {
             val branchId =
@@ -63,15 +63,10 @@ class DbSessions : Sessions {
                 .sql(
                     """
                     INSERT INTO sessions (
-                        id, org_id, group_id, date, start_time, end_time, hall_id, notes,
-                        is_manual, origin_day_of_week, origin_start_time, origin_date
+                        id, org_id, group_id, date, start_time, end_time, hall_id, notes
                     ) VALUES (
-                        :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes,
-                        :isManual, :originDayOfWeek, :originStartTime::time, :originDate
+                        :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes
                     )
-                    ON CONFLICT (group_id, origin_day_of_week, origin_start_time, origin_date)
-                    WHERE origin_day_of_week IS NOT NULL
-                    DO NOTHING
                     """.trimIndent(),
                 )
                 .bind("id", id)
@@ -82,10 +77,6 @@ class DbSessions : Sessions {
                 .bind("endTime", endTime.toString())
                 .bind("hallId", hallId)
                 .bind("notes", notes)
-                .bind("isManual", originDayOfWeek == null)
-                .bind("originDayOfWeek", originDayOfWeek)
-                .bind("originStartTime", originStartTime?.toString())
-                .bind("originDate", originDate?.toJavaLocalDate())
                 .execute()
             val session = byIdOrNull(id)
             session?.let {
@@ -113,8 +104,8 @@ class DbSessions : Sessions {
                 .sql(
                     """
                     SELECT s.id, s.group_id, s.date, s.start_time, s.end_time, s.hall_id,
-                           s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
-                           s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
+                           s.status, s.is_rescheduled, s.origin_slot_id, s.origin_date,
+                           s.notes, s.is_employee_assignment_overridden
                     FROM sessions s
                     WHERE s.org_id = :orgId AND s.group_id = :groupId
                       AND s.date >= :from AND s.date <= :to
@@ -145,8 +136,8 @@ class DbSessions : Sessions {
                 .sql(
                     """
                     SELECT s.id, s.group_id, s.date, s.start_time, s.end_time, s.hall_id,
-                           s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
-                           s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
+                           s.status, s.is_rescheduled, s.origin_slot_id, s.origin_date,
+                           s.notes, s.is_employee_assignment_overridden
                     FROM sessions s
                     WHERE s.org_id = :orgId
                       AND s.date >= :from AND s.date <= :to
@@ -172,93 +163,13 @@ class DbSessions : Sessions {
             ?: raise(CommonDomainError("SESSION_NOT_FOUND", "Занятие не найдено"))
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun futureScheduledBySlot(
-        groupId: GroupId,
-        dayOfWeek: String,
-        startTime: LocalTime,
-        from: LocalDate,
-    ): List<Session> {
-        val rows =
-            tr
-                .sql(
-                    """
-                    SELECT s.id, s.group_id, g.name as group_name, s.date, s.start_time, s.end_time, s.hall_id,
-                           s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
-                           s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
-                    FROM sessions s
-                    JOIN groups g ON g.id = s.group_id
-                    WHERE s.org_id = :orgId AND s.group_id = :groupId
-                      AND s.origin_day_of_week = :dayOfWeek
-                      AND s.origin_start_time = :startTime::time
-                      AND s.status = 'scheduled'
-                      AND s.date >= :from
-                      AND s.is_rescheduled = false
-                    ORDER BY s.date
-                    """.trimIndent(),
-                ).bind("orgId", ctx.orgId)
-                .bind("groupId", groupId)
-                .bind("dayOfWeek", dayOfWeek)
-                .bind("startTime", startTime.toString())
-                .bind("from", from.toJavaLocalDate())
-                .list { row -> row.toSessionRow() }
-        if (rows.isEmpty()) {
-            return emptyList()
-        }
-        val sessionIds = rows.map { it.id }
-        val employeeIdsBySession = loadEmployeeIds(sessionIds)
-        return rows.map { row ->
-            row.toSession(employeeIdsBySession[row.id] ?: emptyList())
-        }
-    }
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun syncFutureEmployeesFromGroup(
-        groupId: GroupId,
-        employeeIds: List<EmployeeId>,
-        from: LocalDate,
-    ) {
-        val sessionIds =
-            tr
-                .sql(
-                    """
-                    SELECT id
-                    FROM sessions
-                    WHERE org_id = :orgId
-                      AND group_id = :groupId
-                      AND status = 'scheduled'
-                      AND date >= :from
-                      AND is_employee_assignment_overridden = false
-                    """.trimIndent(),
-                ).bind("orgId", ctx.orgId)
-                .bind("groupId", groupId)
-                .bind("from", from.toJavaLocalDate())
-                .list { row -> row.asUuid("id").toSessionId() }
-        if (sessionIds.isEmpty()) {
-            return
-        }
-        tr
-            .sql("DELETE FROM session_employees WHERE session_id = ANY(:sessionIds)")
-            .bind("sessionIds", sessionIds.map { it.value })
-            .execute()
-        sessionIds.forEach { sessionId ->
-            employeeIds.distinct().forEach { employeeId ->
-                tr
-                    .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
-                    .bind("sessionId", sessionId)
-                    .bind("employeeId", employeeId)
-                    .execute()
-            }
-        }
-    }
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     private suspend fun byIdOrNull(id: SessionId): Session? =
         tr
             .sql(
                 """
                 SELECT s.id, s.group_id, s.date, s.start_time, s.end_time, s.hall_id,
-                       s.status, s.is_manual, s.is_rescheduled, s.origin_day_of_week,
-                       s.origin_start_time, s.origin_date, s.notes, s.is_employee_assignment_overridden
+                       s.status, s.is_rescheduled, s.origin_slot_id, s.origin_date,
+                       s.notes, s.is_employee_assignment_overridden
                 FROM sessions s
                 WHERE s.id = :id AND s.org_id = :orgId
                 """.trimIndent(),
@@ -292,10 +203,8 @@ private data class SessionRow(
     val endTime: LocalTime,
     val hallId: HallId,
     val status: String,
-    val isManual: Boolean,
     val isRescheduled: Boolean,
-    val originDayOfWeek: String?,
-    val originStartTime: LocalTime?,
+    val originSlotId: SlotId?,
     val originDate: LocalDate?,
     val notes: String?,
     val isEmployeeAssignmentOverridden: Boolean,
@@ -310,13 +219,8 @@ private fun io.r2dbc.spi.Row.toSessionRow(): SessionRow =
         endTime = asLocalTime("end_time"),
         hallId = asUuid("hall_id").toHallId(),
         status = asString("status"),
-        isManual = asBoolean("is_manual"),
         isRescheduled = asBoolean("is_rescheduled"),
-        originDayOfWeek = asStringOrNull("origin_day_of_week"),
-        originStartTime =
-            get("origin_start_time", java.time.LocalTime::class.java)?.let {
-                kotlinx.datetime.LocalTime(it.hour, it.minute, it.second)
-            },
+        originSlotId = asUuidOrNull("origin_slot_id")?.toSlotId(),
         originDate = asLocalDateOrNull("origin_date"),
         notes = asStringOrNull("notes"),
         isEmployeeAssignmentOverridden = asBoolean("is_employee_assignment_overridden"),
@@ -331,10 +235,8 @@ private fun SessionRow.toSession(employeeIds: List<EmployeeId>): DbSession =
         endTime = endTime,
         hallId = hallId,
         status = status,
-        isManual = isManual,
         isRescheduled = isRescheduled,
-        originDayOfWeek = originDayOfWeek,
-        originStartTime = originStartTime,
+        originSlotId = originSlotId,
         originDate = originDate,
         notes = notes,
         employeeIds = employeeIds,

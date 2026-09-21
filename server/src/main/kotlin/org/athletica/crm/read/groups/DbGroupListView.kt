@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -28,7 +29,8 @@ class DbGroupListView : GroupListView {
             tr
                 .sql(
                     """
-                    SELECT g.id, g.name, $SCHEDULE_JSON AS schedule, $EMPLOYEES_JSON AS employees
+                    SELECT g.id, g.name, $SCHEDULE_JSON AS schedule, $EMPLOYEES_JSON AS employees,
+                           $SCHEDULE_CHANGE_AT AS schedule_change_at
                     FROM groups g
                     WHERE g.org_id = :orgId AND g.branch_id = :branchId${query.filters()}
                     ORDER BY g.name
@@ -105,11 +107,16 @@ class DbGroupListView : GroupListView {
             id = asUuid("id").toGroupId(),
             name = asString("name"),
             schedule = Json.decodeFromString<List<ScheduleSlot>>(asString("schedule")),
+            scheduleChangeAt = asLocalDateOrNull("schedule_change_at"),
             employees = Json.decodeFromString<List<GroupEmployee>>(asString("employees")),
         )
 
     internal companion object {
-        /** Расписание группы с названиями залов, отсортированное по дню и времени начала. */
+        /**
+         * Расписание группы, действующее сегодня, с названиями залов и периодами действия,
+         * отсортированное по дню и времени начала. Фильтр по дате обязателен: без него
+         * проекция показала бы все версии слота разом.
+         */
         val SCHEDULE_JSON =
             """
             (SELECT COALESCE(jsonb_agg(jsonb_build_object(
@@ -117,11 +124,26 @@ class DbGroupListView : GroupListView {
                         'startAt', ss.start_time,
                         'endAt', ss.end_time,
                         'hallId', ss.hall_id,
-                        'hallName', h.name
+                        'hallName', h.name,
+                        'validity', jsonb_build_object('from', lower(ss.validity), 'to', upper(ss.validity))
                     ) ORDER BY ss.day_of_week, ss.start_time), '[]'::jsonb)
                FROM schedule_slots ss
                LEFT JOIN halls h ON h.id = ss.hall_id
-              WHERE ss.group_id = g.id)
+              WHERE ss.group_id = g.id AND ss.validity @> CURRENT_DATE)
+            """.trimIndent()
+
+        /**
+         * Дата ближайшего запланированного изменения расписания: начало ещё не вступившей
+         * в силу версии либо окончание действующей, что наступит раньше.
+         */
+        val SCHEDULE_CHANGE_AT =
+            """
+            (SELECT MIN(d) FROM (
+                        SELECT lower(ss.validity) AS d FROM schedule_slots ss WHERE ss.group_id = g.id
+                        UNION ALL
+                        SELECT upper(ss.validity) FROM schedule_slots ss WHERE ss.group_id = g.id
+                    ) changes
+              WHERE d > CURRENT_DATE)
             """.trimIndent()
 
         /** Тренеры группы, отсортированные по имени. */

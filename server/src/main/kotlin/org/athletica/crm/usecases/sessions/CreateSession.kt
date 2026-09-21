@@ -44,9 +44,6 @@ suspend fun createSession(
             hallId = hallId,
             notes = notes,
             employees = employees.byIds(group.employeeIds),
-            originDayOfWeek = null,
-            originStartTime = null,
-            originDate = null,
         ) ?: raise(CommonDomainError("SESSION_ALREADY_EXISTS", "Занятие уже существует"))
     return session.toDetailResponse(groups)
 }

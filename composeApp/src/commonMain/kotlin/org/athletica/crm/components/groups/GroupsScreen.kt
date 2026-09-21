@@ -2,6 +2,7 @@ package org.athletica.crm.components.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -64,6 +65,7 @@ import org.athletica.crm.generated.resources.label_name
 import org.athletica.crm.generated.resources.label_schedule
 import org.athletica.crm.generated.resources.label_selected_count
 import org.athletica.crm.generated.resources.list_action_apply
+import org.athletica.crm.generated.resources.schedule_planned_change
 import org.athletica.crm.ui.WindowSize
 import org.athletica.crm.ui.list.ColumnWidth
 import org.athletica.crm.ui.list.ListColumn
@@ -185,12 +187,23 @@ fun GroupsScreen(
                 width = ColumnWidth.Weight(1f),
                 sortable = false,
                 cell = { group: GroupListItem ->
-                    Text(
-                        text = formatScheduleSummary(group),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Column {
+                        Text(
+                            text = formatScheduleSummary(group),
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        group.scheduleChangeAt?.let { date ->
+                            Text(
+                                text = stringResource(Res.string.schedule_planned_change, date.toString()),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 },
             ),
             ListColumn(

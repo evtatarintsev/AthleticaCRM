@@ -4,7 +4,9 @@ import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
@@ -126,18 +128,22 @@ class DbGroupListViewTest {
         dayOfWeek: DayOfWeek,
         startAt: LocalTime,
         endAt: LocalTime,
+        from: LocalDate = java.time.LocalDate.now().toKotlinLocalDate(),
+        to: LocalDate? = null,
     ) {
         TestPostgres.db
             .sql(
                 """
-                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id)
-                VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time, :hallId)
+                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
+                VALUES (:orgId, :groupId, :dayOfWeek::day_of_week, :startAt::time, :endAt::time, :hallId,
+                        daterange(:from::date, :to::date))
                 """.trimIndent(),
             )
             .bind("orgId", orgId).bind("groupId", groupId)
             .bind("dayOfWeek", dayOfWeek.name)
             .bind("startAt", startAt.toString()).bind("endAt", endAt.toString())
             .bind("hallId", hallId)
+            .bind("from", from).bind("to", to)
             .execute()
     }
 
@@ -339,4 +345,47 @@ class DbGroupListViewTest {
 
             assertEquals(listOf("Бокс", "Йога"), forSelect(orgId).map { it.name })
         }
+
+    @Test
+    fun `закрытая версия слота не попадает в расписание, а действующая попадает`() =
+        runTest {
+            val orgId = insertOrg()
+            val groupId = insertGroup(orgId, "Йога")
+            val oldHall = insertHall(orgId, "Старый зал")
+            val newHall = insertHall(orgId, "Новый зал")
+            val today = java.time.LocalDate.now().toKotlinLocalDate()
+            insertSlot(orgId, groupId, oldHall, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), from = today.minusDays(30), to = today)
+            insertSlot(orgId, groupId, newHall, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), from = today)
+
+            val slot = list(orgId).groups.single().schedule.single()
+
+            assertEquals(newHall, slot.hallId)
+            assertEquals(today, slot.validity?.from)
+            assertNull(slot.validity?.to)
+        }
+
+    @Test
+    fun `отложенное изменение расписания отдаётся датой вступления в силу`() =
+        runTest {
+            val orgId = insertOrg()
+            val planned = insertGroup(orgId, "Бокс")
+            val stable = insertGroup(orgId, "Йога")
+            val hall = insertHall(orgId, "Зал")
+            val today = java.time.LocalDate.now().toKotlinLocalDate()
+            val changeAt = today.plusDays(30)
+            insertSlot(orgId, planned, hall, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), from = today, to = changeAt)
+            insertSlot(orgId, planned, hall, DayOfWeek.MONDAY, LocalTime(12, 0), LocalTime(13, 0), from = changeAt)
+            insertSlot(orgId, stable, hall, DayOfWeek.TUESDAY, LocalTime(10, 0), LocalTime(11, 0), from = today)
+
+            val groups = list(orgId).groups.associateBy { it.name }
+
+            assertEquals(changeAt, groups.getValue("Бокс").scheduleChangeAt)
+            assertNull(groups.getValue("Йога").scheduleChangeAt)
+        }
 }
+
+/** Вычитает [days] дней из даты. */
+private fun LocalDate.minusDays(days: Int): LocalDate = LocalDate.fromEpochDays(toEpochDays() - days)
+
+/** Прибавляет [days] дней к дате. */
+private fun LocalDate.plusDays(days: Int): LocalDate = LocalDate.fromEpochDays(toEpochDays() + days)

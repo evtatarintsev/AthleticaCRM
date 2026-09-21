@@ -1,22 +1,21 @@
 package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
-import arrow.core.raise.context.raise
-import kotlinx.datetime.LocalTime
-import kotlinx.serialization.Serializable
-import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.entityids.HallId
-import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
-import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 
+/**
+ * Группа — постоянный состав занимающихся в одном филиале.
+ *
+ * Расписание группой не владеет: у слота есть период действия, поэтому «расписание группы»
+ * без указания даты не существует. Читается и меняется расписание через [GroupSchedule].
+ */
 interface Group {
     val id: GroupId
 
@@ -26,9 +25,6 @@ interface Group {
     /** Название группы. */
     val name: String
 
-    /** Слоты расписания группы. */
-    val schedule: List<ScheduleSlot>
-
     /** Дисциплины, привязанные к группе. */
     val disciplines: List<DisciplineId>
 
@@ -37,9 +33,6 @@ interface Group {
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group
@@ -59,31 +52,9 @@ interface Group {
     suspend fun withNew(
         name: String,
         disciplines: List<DisciplineId>,
-        schedule: List<ScheduleSlot>,
         employees: List<Employee>,
     ): Group =
         withNewName(name)
             .withNewDisciplines(disciplines)
             .withNewEmployees(employees)
-            .withNewSchedule(schedule)
-}
-
-@Serializable
-data class ScheduleSlot(
-    val dayOfWeek: DayOfWeek,
-    val startAt: LocalTime,
-    val endAt: LocalTime,
-    val hallId: HallId,
-) {
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
-    fun validate() {
-        if (endAt <= startAt) {
-            raise(
-                CommonDomainError(
-                    "INVALID_SCHEDULE_TIME",
-                    Messages.ScheduleEndBeforeStart.localize(ctx.lang, startAt, endAt),
-                ),
-            )
-        }
-    }
 }

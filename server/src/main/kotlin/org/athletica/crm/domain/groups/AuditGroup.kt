@@ -19,12 +19,11 @@ import org.athletica.crm.storage.Transaction
 @Serializable
 private data class GroupSnapshot(
     val name: String,
-    val schedule: List<ScheduleSlot>,
     val disciplines: List<DisciplineId>,
     val employeeIds: List<EmployeeId>,
 )
 
-private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, schedule, disciplines, employeeIds))
+private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, disciplines, employeeIds))
 
 /**
  * Декоратор [Group], добавляющий запись в журнал аудита при мутирующих операциях.
@@ -37,9 +36,6 @@ class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Gro
         delegate.save().also {
             audit.logUpdate("group", id, delegate.snapshot())
         }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewSchedule(schedule: List<ScheduleSlot>): Group = AuditGroup(delegate.withNewSchedule(schedule), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = AuditGroup(delegate.withNewDisciplines(disciplines), audit)

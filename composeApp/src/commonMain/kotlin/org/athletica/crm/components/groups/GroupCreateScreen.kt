@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.client.ApiClient
-import org.athletica.crm.api.schemas.halls.HallDetailResponse
 import org.athletica.crm.generated.resources.Res
 import org.athletica.crm.generated.resources.action_add_discipline
 import org.athletica.crm.generated.resources.action_add_group_employee
@@ -47,7 +45,6 @@ import org.athletica.crm.generated.resources.label_name
 import org.athletica.crm.generated.resources.screen_group_create
 import org.athletica.crm.generated.resources.section_disciplines
 import org.athletica.crm.generated.resources.section_group_employees
-import org.athletica.crm.generated.resources.section_schedule
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -68,11 +65,6 @@ fun GroupCreateScreen(
     var form by remember { mutableStateOf(GroupForm()) }
     var showDisciplineSheet by remember { mutableStateOf(false) }
     var showEmployeeSheet by remember { mutableStateOf(false) }
-    var halls by remember { mutableStateOf<List<HallDetailResponse>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        api.halls.list().fold(ifLeft = {}, ifRight = { halls = it.halls })
-    }
 
     val isSaving = viewModel.saveState is GroupSaveState.Saving
     val saveError = (viewModel.saveState as? GroupSaveState.Error)?.error
@@ -197,16 +189,6 @@ fun GroupCreateScreen(
                     enabled = !isSaving,
                 )
             }
-
-            HorizontalDivider()
-
-            Text(stringResource(Res.string.section_schedule), style = MaterialTheme.typography.titleMedium)
-
-            ScheduleEditor(
-                slots = form.schedule,
-                halls = halls,
-                onSlotsChange = { form = form.copy(schedule = it) },
-            )
         }
     }
 

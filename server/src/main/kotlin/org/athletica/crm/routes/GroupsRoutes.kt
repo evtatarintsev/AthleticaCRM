@@ -1,6 +1,5 @@
 package org.athletica.crm.routes
 
-import io.ktor.server.routing.RoutingCall
 import org.athletica.crm.api.schemas.groups.EditGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailRequest
@@ -10,20 +9,15 @@ import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
-import org.athletica.crm.api.schemas.sessions.UpdateGroupScheduleRequest
-import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.api.schemas.groups.SetGroupScheduleRequest
 import org.athletica.crm.domain.employees.Employees
-import org.athletica.crm.domain.events.DomainEventBus
+import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
-import org.athletica.crm.domain.groups.ScheduleSlot
-import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.domain.groups.NewSlot
+import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.groups.GroupListQuery
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.sessions.updateGroupEmployees
-import org.athletica.crm.usecases.sessions.updateGroupSchedule
-import kotlin.uuid.Uuid
 import org.athletica.crm.api.schemas.groups.ScheduleSlot as ScheduleSlotSchema
 
 /**
@@ -34,9 +28,9 @@ context(db: Database)
 fun RouteWithContext.groupsRoutes(
     groups: Groups,
     employees: Employees,
-    sessions: Sessions,
+    schedule: GroupSchedule,
+    sync: ScheduleSync,
     views: ReadViews,
-    bus: DomainEventBus,
 ) {
     route("/groups") {
         post<GroupListRequest, GroupListResponse>("/list") { request ->
@@ -63,10 +57,10 @@ fun RouteWithContext.groupsRoutes(
                     groups.new(
                         request.id,
                         request.name,
-                        request.schedule.map { it.toDomain() },
                         request.disciplineIds,
                         employees.byIds(request.employeeIds),
                     )
+                sync.sync()
                 views.groupDetail.byId(group.id)
             }
         }
@@ -78,11 +72,19 @@ fun RouteWithContext.groupsRoutes(
                     .withNew(
                         request.name,
                         request.disciplineIds,
-                        request.schedule.map { it.toDomain() },
                         employees.byIds(request.employeeIds),
                     )
                     .save()
+                sync.sync()
                 views.groupDetail.byId(request.id)
+            }
+        }
+
+        post<SetGroupScheduleRequest, GroupDetailResponse>("/set-schedule") { request ->
+            db.transaction {
+                schedule.setFrom(request.groupId, request.effectiveFrom, request.slots.map { it.toNewSlot() })
+                sync.sync()
+                views.groupDetail.byId(request.groupId)
             }
         }
 
@@ -97,20 +99,15 @@ fun RouteWithContext.groupsRoutes(
 
         post<SetGroupEmployeesRequest, Unit>("/set-employees") { request ->
             db.transaction {
-                updateGroupEmployees(groups, sessions, employees, request.groupId, request.employeeIds)
-            }
-        }
-
-        post<UpdateGroupScheduleRequest, Unit>("/{groupId}/schedule") { request, call ->
-            val groupId = call.pathGroupId()
-            db.transaction {
-                updateGroupSchedule(groups, sessions, bus, groupId, request.schedule.map { it.toDomain() })
+                groups
+                    .byId(request.groupId)
+                    .withNewEmployees(employees.byIds(request.employeeIds))
+                    .save()
+                sync.sync()
             }
         }
     }
 }
-
-private fun RoutingCall.pathGroupId(): GroupId = Uuid.parse(parameters["groupId"]!!).toGroupId()
 
 /** Преобразует запрос списка групп в параметры выборки. */
 private fun GroupListRequest.toQuery() =
@@ -120,4 +117,5 @@ private fun GroupListRequest.toQuery() =
         employeeIds = employeeIds,
     )
 
-fun ScheduleSlotSchema.toDomain() = ScheduleSlot(dayOfWeek, startAt, endAt, hallId)
+/** Преобразует слот из запроса в доменное правило расписания; период действия задаёт домен. */
+fun ScheduleSlotSchema.toNewSlot() = NewSlot(dayOfWeek, startAt, endAt, hallId)

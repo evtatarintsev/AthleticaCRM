@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -27,10 +28,8 @@ class DbSession(
     override val endTime: LocalTime,
     override val hallId: HallId,
     override val status: String,
-    override val isManual: Boolean,
     override val isRescheduled: Boolean,
-    override val originDayOfWeek: String?,
-    override val originStartTime: LocalTime?,
+    override val originSlotId: SlotId?,
     override val originDate: LocalDate?,
     override val notes: String?,
     override val employeeIds: List<EmployeeId>,

@@ -225,6 +225,13 @@
     <string name="screen_group_create">Новая группа</string>
     <string name="screen_group_edit">Редактировать группу</string>
     <string name="section_schedule">Расписание</string>
+    <string name="schedule_set_title">Расписание с даты</string>
+    <string name="schedule_effective_from_label">Действует с</string>
+    <string name="schedule_effective_from_hint">ГГГГ-ММ-ДД, пусто — сегодня</string>
+    <string name="schedule_effective_from_invalid">Некорректная дата, нужен формат ГГГГ-ММ-ДД</string>
+    <string name="schedule_planned_change_cancelled">Запланированное изменение с %1$s будет отменено</string>
+    <string name="schedule_planned_change">Изменится %1$s</string>
+    <string name="action_edit_schedule">Изменить расписание</string>
     <string name="schedule_empty">Расписание не задано</string>
     <string name="schedule_halls_empty">Добавьте хотя бы один зал в текущем филиале</string>
     <string name="action_add_slot">Добавить слот</string>

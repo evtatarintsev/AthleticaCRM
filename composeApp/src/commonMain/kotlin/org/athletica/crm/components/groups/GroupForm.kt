@@ -2,15 +2,14 @@ package org.athletica.crm.components.groups
 
 import org.athletica.crm.api.schemas.disciplines.DisciplineDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
-import org.athletica.crm.api.schemas.groups.ScheduleSlot
 
 /**
- * Форма создания группы.
+ * Форма создания группы. Расписание в неё не входит: у слота есть период действия,
+ * поэтому расписание задаётся отдельной операцией с датой вступления в силу.
  * [isValid] — true когда название заполнено.
  */
 data class GroupForm(
     val name: String = "",
-    val schedule: List<ScheduleSlot> = emptyList(),
     val selectedDisciplines: List<DisciplineDetailResponse> = emptyList(),
     val selectedEmployees: List<EmployeeListItem> = emptyList(),
 ) {

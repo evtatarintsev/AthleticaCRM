@@ -30,7 +30,6 @@ class GroupCreateViewModel(
                     GroupCreateRequest(
                         id = GroupId.new(),
                         name = form.name,
-                        schedule = form.schedule,
                         disciplineIds = form.selectedDisciplines.map { it.id },
                         employeeIds = form.selectedEmployees.map { it.id },
                     ),

@@ -14,8 +14,6 @@ data class EditGroupRequest(
     val id: GroupId,
     /** Название группы. */
     val name: String,
-    /** Слоты расписания группы. */
-    val schedule: List<ScheduleSlot> = emptyList(),
     /** Идентификаторы дисциплин, привязываемых к группе. */
     val disciplineIds: List<DisciplineId> = emptyList(),
     /** Идентификаторы преподавателей группы, наследуемые новыми занятиями. */

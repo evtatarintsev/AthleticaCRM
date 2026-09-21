@@ -40,10 +40,10 @@ import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.domain.events.DomainEventBus
 import org.athletica.crm.domain.events.DomainEventWorker
-import org.athletica.crm.domain.events.handlers.GroupCreatedHandler
-import org.athletica.crm.domain.events.handlers.GroupScheduleChangedHandler
 import org.athletica.crm.domain.groups.AuditGroups
+import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.DbGroups
+import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.hall.AuditHalls
 import org.athletica.crm.domain.hall.DbHalls
@@ -74,7 +74,9 @@ import org.athletica.crm.domain.payment.DbPayments
 import org.athletica.crm.domain.payment.PaymentGateway
 import org.athletica.crm.domain.payment.Payments
 import org.athletica.crm.domain.sessions.AuditSessions
+import org.athletica.crm.domain.sessions.DbScheduleSync
 import org.athletica.crm.domain.sessions.DbSessions
+import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.domain.settings.UserDisplaySettings
@@ -133,9 +135,11 @@ data class Di(
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
-    val groups: Groups = AuditGroups(DbGroups(bus), audit)
+    val groups: Groups = AuditGroups(DbGroups(), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
     val sessions: Sessions = AuditSessions(DbSessions(), audit)
+    val groupSchedule: GroupSchedule = DbGroupSchedule()
+    val scheduleSync: ScheduleSync = DbScheduleSync()
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(), audit)
@@ -146,11 +150,6 @@ data class Di(
     val channelRegistry: ChannelRegistry = StubChannelRegistry()
     val messageDispatcher: MessageDispatcher =
         MessageDispatcher(database, deliveries, channelIntegrations, channelRegistry)
-
-    init {
-        bus.register(GroupCreatedHandler(database, groups, sessions, employees))
-        bus.register(GroupScheduleChangedHandler(database, groups, sessions, employees))
-    }
 }
 
 data class DatabaseConfig(

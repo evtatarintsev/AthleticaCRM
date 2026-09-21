@@ -23,6 +23,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.athletica.crm.api.schemas.groups.GroupListItem
 import org.athletica.crm.components.avatar.TextAvatar
+import org.athletica.crm.generated.resources.Res
+import org.athletica.crm.generated.resources.schedule_planned_change
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Мобильное представление группы (карточка) для COMPACT-режима.
@@ -84,6 +87,15 @@ fun GroupMobileItem(
                         text = scheduleText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                group.scheduleChangeAt?.let { date ->
+                    Text(
+                        text = stringResource(Res.string.schedule_planned_change, date.toString()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -4,7 +4,6 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
@@ -15,9 +14,8 @@ import org.athletica.crm.storage.Transaction
 /** Репозиторий занятий организации. */
 interface Sessions {
     /**
-     * Создаёт новое занятие.
-     * Если занятие с такими [originDayOfWeek]+[originStartTime]+[originDate] уже существует — молча игнорирует
-     * (идемпотентная генерация через UNIQUE constraint + ON CONFLICT DO NOTHING).
+     * Создаёт разовое занятие вне расписания; возвращает `null`, если занятие с таким [id] уже есть.
+     * Занятия из расписания материализует [ScheduleSync], а не этот метод.
      * [employees] — преподаватели; каждый должен иметь доступ к филиалу группы,
      * иначе ошибка `EMPLOYEE_NOT_FOUND`.
      */
@@ -31,9 +29,6 @@ interface Sessions {
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-        originDayOfWeek: String?,
-        originStartTime: LocalTime?,
-        originDate: LocalDate?,
     ): Session?
 
     /** Возвращает список занятий группы за период [from]..[to]. */
@@ -54,24 +49,4 @@ interface Sessions {
     /** Возвращает занятие по идентификатору. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: SessionId): Session
-
-    /**
-     * Возвращает будущие запланированные занятия группы, сгенерированные из указанного слота расписания.
-     * Используется при изменении расписания для автоматической отмены занятий из удалённых слотов.
-     */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun futureScheduledBySlot(
-        groupId: GroupId,
-        dayOfWeek: String,
-        startTime: LocalTime,
-        from: LocalDate,
-    ): List<Session>
-
-    /** Синхронизирует преподавателей группы в будущих занятиях без ручного override. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun syncFutureEmployeesFromGroup(
-        groupId: GroupId,
-        employeeIds: List<EmployeeId>,
-        from: LocalDate,
-    )
 }

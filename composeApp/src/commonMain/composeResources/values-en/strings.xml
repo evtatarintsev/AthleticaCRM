@@ -225,6 +225,13 @@
     <string name="screen_group_create">New group</string>
     <string name="screen_group_edit">Edit group</string>
     <string name="section_schedule">Schedule</string>
+    <string name="schedule_set_title">Schedule from date</string>
+    <string name="schedule_effective_from_label">Effective from</string>
+    <string name="schedule_effective_from_hint">YYYY-MM-DD, empty means today</string>
+    <string name="schedule_effective_from_invalid">Invalid date, expected format YYYY-MM-DD</string>
+    <string name="schedule_planned_change_cancelled">The change planned for %1$s will be cancelled</string>
+    <string name="schedule_planned_change">Changes on %1$s</string>
+    <string name="action_edit_schedule">Edit schedule</string>
     <string name="schedule_empty">No schedule set</string>
     <string name="schedule_halls_empty">Add at least one hall in the current branch</string>
     <string name="action_add_slot">Add slot</string>

@@ -22,7 +22,6 @@ import org.athletica.crm.storage.Transaction
 private data class NewGroupSnapshot(
     val id: GroupId,
     val name: String,
-    val schedule: List<ScheduleSlot>,
     val disciplineIds: List<DisciplineId>,
     val employeeIds: List<EmployeeId>,
 )
@@ -37,12 +36,11 @@ class AuditGroups(private val delegate: Groups, private val audit: AuditLog) : G
     override suspend fun new(
         id: GroupId,
         name: String,
-        schedule: List<ScheduleSlot>,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
     ): Group =
-        delegate.new(id, name, schedule, disciplineIds, employees).also {
-            audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name, schedule, disciplineIds, employees.map { it.id })))
+        delegate.new(id, name, disciplineIds, employees).also {
+            audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name, disciplineIds, employees.map { it.id })))
         }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

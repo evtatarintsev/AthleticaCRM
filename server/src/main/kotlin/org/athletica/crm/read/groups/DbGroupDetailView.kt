@@ -16,6 +16,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
@@ -38,6 +39,7 @@ class DbGroupDetailView : GroupDetailView {
             id = asUuid("id").toGroupId(),
             name = asString("name"),
             schedule = Json.decodeFromString<List<ScheduleSlot>>(asString("schedule")),
+            scheduleChangeAt = asLocalDateOrNull("schedule_change_at"),
             disciplines = Json.decodeFromString<List<GroupDiscipline>>(asString("disciplines")),
             employees = Json.decodeFromString<List<GroupEmployee>>(asString("employees")),
             clients = Json.decodeFromString<List<GroupClient>>(asString("clients")),
@@ -50,6 +52,7 @@ class DbGroupDetailView : GroupDetailView {
                 g.id,
                 g.name,
                 ${DbGroupListView.SCHEDULE_JSON} AS schedule,
+                ${DbGroupListView.SCHEDULE_CHANGE_AT} AS schedule_change_at,
                 ${DbGroupListView.EMPLOYEES_JSON} AS employees,
                 (SELECT COALESCE(jsonb_agg(jsonb_build_object(
                             'id', d.id, 'name', d.name

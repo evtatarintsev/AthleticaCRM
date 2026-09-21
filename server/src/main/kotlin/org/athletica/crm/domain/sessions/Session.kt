@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
@@ -37,20 +38,20 @@ interface Session {
      */
     val status: String
 
-    /** Занятие создано вручную (не из расписания). */
-    val isManual: Boolean
-
     /** Занятие было перенесено с оригинальной даты/времени. */
     val isRescheduled: Boolean
 
-    /** День недели оригинального слота расписания (например, `MONDAY`). Null для ручных занятий. */
-    val originDayOfWeek: String?
+    /** Версия слота расписания, породившая занятие; `null` — занятие создано вручную. */
+    val originSlotId: SlotId?
 
-    /** Время начала оригинального слота. Null для ручных занятий. */
-    val originStartTime: LocalTime?
-
-    /** Дата оригинального слота (неизменна при переносе). Null для ручных занятий. */
+    /** Дата, на которую версия слота предписала занятие (неизменна при переносе). Null для ручных занятий. */
     val originDate: LocalDate?
+
+    /**
+     * Занятие создано вручную и не управляется расписанием.
+     * Выводится из отсутствия происхождения, поэтому рассинхрон с [originSlotId] невозможен.
+     */
+    val isManual: Boolean get() = originSlotId == null
 
     /** Произвольные заметки к занятию. */
     val notes: String?

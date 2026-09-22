@@ -719,7 +719,7 @@ private fun AppNavHost(
         }
 
         composable<AppRoute.SettingsEditProfile> {
-            EditProfileScreen(api = api, onBack = { navController.popBackStack() })
+            EditProfileScreen(api = api, onSaved = reloadMe, onBack = { navController.popBackStack() })
         }
 
         composable<AppRoute.SettingsSwitchBranch> {

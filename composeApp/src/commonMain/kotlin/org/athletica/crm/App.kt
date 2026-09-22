@@ -27,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import co.touchlab.kermit.Logger
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.AccessTokenStorage
 import org.athletica.crm.api.client.ApiClient
@@ -101,6 +104,10 @@ private fun ServerErrorScreen(onRetry: () -> Unit) {
  * Корневой composable приложения.
  * Проверяет авторизацию через [ApiClient.me] и отображает соответствующий экран.
  * Принимает [api] — клиент API для проверки сессии и выполнения запросов.
+ *
+ * Здесь же собирается singleton-[ImageLoader] с сетевым fetcher-ом на Ktor: вне JVM
+ * Coil не находит его автоматически через ServiceLoader, и без явной регистрации
+ * [coil3.compose.AsyncImage] молча не загружает изображения по http-ссылкам.
  */
 private enum class UnauthScreen { Login, Register }
 
@@ -109,6 +116,13 @@ fun App(
     tokenStorage: AccessTokenStorage,
     api: ApiClient,
 ) {
+    setSingletonImageLoaderFactory { platformContext ->
+        ImageLoader
+            .Builder(platformContext)
+            .components { add(KtorNetworkFetcherFactory()) }
+            .build()
+    }
+
     var authState by remember { mutableStateOf(AuthState.Checking) }
     var retryCount by remember { mutableIntStateOf(0) }
     var unauthScreen by remember { mutableStateOf(UnauthScreen.Login) }

@@ -3,11 +3,13 @@ package org.athletica.crm.usecases
 import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
@@ -15,6 +17,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.auth.UserProfile
 import org.athletica.crm.usecases.auth.profile
+import org.athletica.crm.usecases.auth.updateMe
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -97,6 +100,33 @@ class ProfileTest {
             val ctx = requestContext(UserId.new(), OrgId.new(), EmployeeId.new())
             context(TestPostgres.db, ctx) {
                 assertIs<Either.Left<DomainError>>(profile())
+            }
+        }
+
+    @Test
+    fun `updateMe сохраняет аватар`() =
+        runTest {
+            val (userId, orgId, employeeId) = insertUser("avatar@example.com")
+            val uploadId = UploadId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                    VALUES (:id, :orgId, :userId, 'k', 'n', 'image/png', 1)
+                    """.trimIndent(),
+                )
+                .bind("id", uploadId)
+                .bind("orgId", orgId)
+                .bind("userId", userId)
+                .execute()
+
+            context(TestPostgres.db, requestContext(userId, orgId, employeeId)) {
+                val updated = assertIs<Either.Right<UserProfile>>(updateMe(UpdateMeRequest("New Name", uploadId))).value
+                assertEquals(uploadId, updated.avatarId)
+
+                val reloaded = assertIs<Either.Right<UserProfile>>(profile()).value
+                assertEquals(uploadId, reloaded.avatarId)
+                assertEquals("New Name", reloaded.name)
             }
         }
 }

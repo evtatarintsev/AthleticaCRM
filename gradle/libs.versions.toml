@@ -7,7 +7,7 @@ androidx-navigation = "2.9.2"
 composeHotReload = "1.2.0"
 kermit = "2.2.0"
 ktlint = "14.2.0"
-composeMultiplatform = "1.12.0"
+composeMultiplatform = "1.13.0-alpha01"
 junit = "4.13.2"
 kotlin = "2.4.20"
 kotlinx-coroutines = "1.11.0"
@@ -25,7 +25,7 @@ bouncycastle = "1.86"
 # org.jetbrains.compose.material3 публикуется отдельным alpha-каналом:
 # последний стабильный — 1.9.0, то есть старше текущего. Держим alpha,
 # синхронную с composeMultiplatform.
-material3 = "1.12.0-alpha03"
+material3 = "1.13.0-alpha01"
 # material-icons-extended заморожен на 1.7.3 и не следует за composeMultiplatform.
 composeMaterialIcons = "1.7.3"
 minio = "9.0.3"

@@ -47,17 +47,26 @@ import org.jetbrains.compose.resources.stringResource
  * Экран «Редактировать профиль».
  * Загружает текущее имя и аватар через [api], позволяет их изменить и сохранить.
  *
+ * [onSaved] — профиль сохранён; вызывается перед [onBack], чтобы экраны,
+ * показывающие данные текущего пользователя, перечитали их.
  * [onBack] — переход назад (вызывается и после успешного сохранения).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     api: ApiClient,
+    onSaved: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
-    val viewModel = remember { EditProfileViewModel(api, scope) { onBack() } }
+    val viewModel =
+        remember {
+            EditProfileViewModel(api, scope) {
+                onSaved()
+                onBack()
+            }
+        }
 
     var name by remember { mutableStateOf("") }
     var avatarId by remember { mutableStateOf<UploadId?>(null) }

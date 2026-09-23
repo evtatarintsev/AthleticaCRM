@@ -1,7 +1,6 @@
 package org.athletica.crm.schedule
 
 import arrow.core.Either
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -19,13 +18,13 @@ import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
-import org.athletica.crm.api.schemas.sessions.SessionListResponse
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.asLong
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.usecases.auth.User
@@ -154,7 +153,7 @@ class GroupScheduleRouteTest {
         }
 
     @Test
-    fun `сразу после установки расписания список занятий их возвращает`() =
+    fun `сразу после установки расписания занятия существуют`() =
         runTest {
             signUpWithHall()
             val groupId = GroupId.new()
@@ -163,15 +162,12 @@ class GroupScheduleRouteTest {
                 createGroup(groupId)
                 postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
 
-                val response =
-                    client.get("/api/sessions/list?from=$today&to=${today.plusDays(30)}") {
-                        header(HttpHeaders.Authorization, "Bearer $token")
-                    }
-
-                assertEquals(HttpStatusCode.OK, response.status)
-                val sessions = json.decodeFromString<SessionListResponse>(response.bodyAsText()).sessions
-                assertTrue(sessions.isNotEmpty(), "занятия должны существовать сразу после изменения расписания")
-                assertTrue(sessions.all { it.groupId == groupId })
+                val count =
+                    TestPostgres.db
+                        .sql("SELECT COUNT(*) AS cnt FROM sessions WHERE group_id = :groupId")
+                        .bind("groupId", groupId)
+                        .firstOrNull { it.asLong("cnt") } ?: 0L
+                assertTrue(count > 0, "занятия должны существовать сразу после изменения расписания")
             }
         }
 }

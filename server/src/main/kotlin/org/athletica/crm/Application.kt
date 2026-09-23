@@ -184,7 +184,7 @@ fun Application.configureServer() {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }
                         groupsRoutes(di.groups, di.employees, di.groupSchedule, di.scheduleSync, di.views)
-                        sessionsRoutes(di.groups, di.sessions, di.employees, di.views)
+                        sessionsRoutes(di.groups, di.sessions, di.employees)
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)

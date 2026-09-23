@@ -10,6 +10,8 @@ import org.athletica.crm.read.groups.GroupDetailView
 import org.athletica.crm.read.groups.GroupListView
 import org.athletica.crm.read.home.DbTodayScheduleView
 import org.athletica.crm.read.home.TodayScheduleView
+import org.athletica.crm.read.schedule.DbScheduleView
+import org.athletica.crm.read.schedule.ScheduleView
 import org.athletica.crm.read.tasks.DbTaskDetailView
 import org.athletica.crm.read.tasks.DbTaskListView
 import org.athletica.crm.read.tasks.TaskDetailView
@@ -39,4 +41,6 @@ data class ReadViews(
     val taskDetail: TaskDetailView = DbTaskDetailView(),
     /** Расписание занятий на день для главной страницы. */
     val todaySchedule: TodayScheduleView = DbTodayScheduleView(),
+    /** Занятия текущего филиала за период для страницы «Расписание». */
+    val schedule: ScheduleView = DbScheduleView(),
 )

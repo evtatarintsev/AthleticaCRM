@@ -26,6 +26,7 @@ class ApiClient(private val http: HttpClient) {
     val customFields = CustomFieldsApiClient(http)
     val halls = HallsApiClient(http)
     val sessions = SessionsApiClient(http)
+    val schedule = ScheduleApiClient(http)
     val home = HomeApiClient(http)
     val displaySettings = DisplaySettingsApiClient(http)
     val tasks = TasksApiClient(http)

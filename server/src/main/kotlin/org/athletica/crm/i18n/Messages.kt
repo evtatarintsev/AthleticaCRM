@@ -182,6 +182,16 @@ object Messages {
         override val en = { day: String, time: LocalTime -> "Duplicate schedule slot: $day $time" }
     }
 
+    object InvalidSchedulePeriod : LocalizationKey {
+        override val ru = "Дата окончания периода не может быть раньше даты начала"
+        override val en = "Period end date cannot precede its start date"
+    }
+
+    object SchedulePeriodTooLong : LocalizationTemplate1<Int> {
+        override val ru = { days: Int -> "Период расписания не может превышать $days дней" }
+        override val en = { days: Int -> "Schedule period cannot exceed $days days" }
+    }
+
     object ScheduleEndBeforeStart : LocalizationTemplate2<LocalTime, LocalTime> {
         override val ru = { start: LocalTime, end: LocalTime -> "Время окончания должно быть позже времени начала: $start – $end" }
         override val en = { start: LocalTime, end: LocalTime -> "End time must be after start time: $start – $end" }

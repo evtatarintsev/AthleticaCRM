@@ -58,6 +58,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
@@ -85,6 +87,7 @@ import org.athletica.crm.components.messaging.ConversationScreen
 import org.athletica.crm.components.notifications.AppNotification
 import org.athletica.crm.components.notifications.NotificationBell
 import org.athletica.crm.components.notifications.NotificationLink
+import org.athletica.crm.components.schedule.ApiScheduleSource
 import org.athletica.crm.components.schedule.ScheduleScreen
 import org.athletica.crm.components.schedule.ScheduleViewModel
 import org.athletica.crm.components.settings.ActivityLogScreen
@@ -130,6 +133,7 @@ import org.athletica.crm.navigation.navigateToSection
 import org.athletica.crm.navigation.toRoute
 import org.athletica.crm.ui.WindowSize
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 import kotlin.uuid.Uuid.Companion.parse
@@ -435,11 +439,21 @@ private fun AppNavHost(
         }
 
         composable<AppRoute.Schedule> {
-            val viewModel = remember { ScheduleViewModel() }
+            val scope = rememberCoroutineScope()
+            val viewModel =
+                remember(me?.currentBranch?.id) {
+                    ScheduleViewModel(
+                        source = ApiScheduleSource(api),
+                        scope = scope,
+                        today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                    )
+                }
             ScheduleScreen(
                 state = viewModel.state,
                 onPreviousWeek = viewModel::onPreviousWeek,
                 onNextWeek = viewModel::onNextWeek,
+                onFiltersChange = viewModel::onFiltersChange,
+                onRetry = viewModel::onRetry,
                 modifier = Modifier.fillMaxSize(),
             )
         }

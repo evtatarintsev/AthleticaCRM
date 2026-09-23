@@ -686,18 +686,20 @@
     <string name="cd_schedule_prev_week">Previous week</string>
     <string name="cd_schedule_next_week">Next week</string>
     <string name="schedule_week_range">%1$s - %2$s</string>
-    <string name="schedule_filter_directions">Directions</string>
-    <string name="schedule_filter_session_types">Session types</string>
-    <string name="schedule_filter_sports">Sports</string>
     <string name="schedule_filter_coaches">Coaches</string>
     <string name="schedule_filter_halls">Halls</string>
-    <string name="schedule_filter_levels">Levels</string>
+    <string name="schedule_filter_disciplines">Disciplines</string>
+    <string name="schedule_filter_selected">%1$s: %2$d</string>
+    <string name="schedule_filter_reset">Reset</string>
+    <string name="schedule_filters_reset_all">Reset filters</string>
+    <string name="schedule_free_seats_stub">7 seats available</string>
+    <string name="schedule_status_cancelled">Cancelled</string>
+    <string name="schedule_empty_week">No sessions this week</string>
+    <string name="schedule_empty_filtered">No sessions match the selected filters</string>
+    <string name="schedule_load_error">Failed to load the schedule</string>
     <string name="schedule_duration_hours">(%1$d h)</string>
     <string name="schedule_duration_minutes">(%1$d min)</string>
     <string name="schedule_duration_hours_minutes">(%1$d h %2$d min)</string>
-    <string name="schedule_tag_recruiting">enrolling</string>
-    <string name="schedule_tag_online">online</string>
-    <string name="schedule_tag_open_air">open air</string>
     <string name="weekday_monday">Monday</string>
     <string name="weekday_tuesday">Tuesday</string>
     <string name="weekday_wednesday">Wednesday</string>
@@ -705,9 +707,4 @@
     <string name="weekday_friday">Friday</string>
     <string name="weekday_saturday">Saturday</string>
     <string name="weekday_sunday">Sunday</string>
-
-    <plurals name="schedule_free_seats">
-        <item quantity="one">%1$d seat available</item>
-        <item quantity="other">%1$d seats available</item>
-    </plurals>
 </resources>

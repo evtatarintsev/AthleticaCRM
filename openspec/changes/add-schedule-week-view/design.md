@@ -96,8 +96,7 @@ ScheduleListResponse(sessions: List<ScheduleSessionSchema>)
 
 ScheduleSessionSchema(
     id: SessionId,
-    groupId: GroupId,
-    title: String,                               // имя группы
+    group: ScheduleGroupSchema,                  // id + name
     date: LocalDate,
     startTime: LocalTime, endTime: LocalTime,    // продолжительность считает клиент
     hall: ScheduleHallSchema,                    // id + name
@@ -114,7 +113,7 @@ ScheduleSessionSchema(
 - Каталог может не содержать сущность, которая осталась на прошлых занятиях (уволенный тренер, удалённая дисциплина) — склейка на клиенте дала бы пустую подпись.
 - Код на фронте проще: нет `associateBy` и обработки промахов.
 
-Отдельные маленькие схемы на каждое измерение (`ScheduleHallSchema`, `ScheduleCoachSchema`, `ScheduleDisciplineSchema`) вместо одной обобщённой пары id+name — чтобы идентификаторы остались типизированными (`HallId` ≠ `EmployeeId`). Приём уже применён в группах: `GroupEmployee`, `GroupDiscipline`, `GroupClient`.
+Отдельные маленькие схемы на каждое измерение (`ScheduleGroupSchema`, `ScheduleHallSchema`, `ScheduleCoachSchema`, `ScheduleDisciplineSchema`) вместо одной обобщённой пары id+name — чтобы идентификаторы остались типизированными (`HallId` ≠ `EmployeeId`). Приём уже применён в группах: `GroupEmployee`, `GroupDiscipline`, `GroupClient`.
 
 Период (`from`/`to`) в ответе не повторяется: клиент знает, что запрашивал. Продолжительность не передаётся: это функция от `startTime`/`endTime`, а её формат — вопрос локали клиента. `isManual` и `isRescheduled` не передаются: спека их на карточке не требует, семантика переноса открыта в [#73](https://github.com/evtatarintsev/AthleticaCRM/issues/73).
 

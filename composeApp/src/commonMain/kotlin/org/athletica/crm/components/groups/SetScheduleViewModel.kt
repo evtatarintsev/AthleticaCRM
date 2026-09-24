@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
@@ -25,8 +26,10 @@ data class SetScheduleState(
     val today: LocalDate,
     /** Дата вступления в силу. */
     val effectiveFrom: LocalDate = today,
-    /** Слоты, которые будут действовать с даты вступления в силу. */
-    val slots: List<ScheduleSlot> = emptyList(),
+    /** Карточки редактора; развёрнутые в слоты, они будут действовать с даты вступления в силу. */
+    val cards: List<SlotCard> = emptyList(),
+    /** Идентификатор, который получит следующая добавленная карточка. */
+    val nextCardId: Int = cards.size,
     /** Залы филиала для выбора в редакторе слотов. */
     val halls: List<HallDetailResponse> = emptyList(),
     /** Ранее запланированное изменение расписания, если оно есть. */
@@ -40,8 +43,38 @@ data class SetScheduleState(
     val cancelsPlannedChange: Boolean
         get() = plannedChangeAt != null && effectiveFrom <= plannedChangeAt
 
+    /** Ошибки карточек по их идентификаторам; карточки без ошибок в словаре отсутствуют. */
+    val cardErrors: Map<SlotCardId, List<SlotCardError>>
+        get() {
+            val duplicates =
+                cards
+                    .flatMap { card -> card.days.map { day -> Triple(day, card.startAt, card.id) } }
+                    .groupBy({ (day, startAt, _) -> day to startAt }, { (_, _, id) -> id })
+                    .filterValues { it.size > 1 }
+            return cards
+                .associate { card ->
+                    card.id to
+                        buildList {
+                            if (card.days.isEmpty()) {
+                                add(SlotCardError.NoDays)
+                            }
+                            if (card.hallId == null) {
+                                add(SlotCardError.NoHall)
+                            }
+                            if (card.endAt <= card.startAt) {
+                                add(SlotCardError.EndNotAfterStart)
+                            }
+                            duplicates
+                                .filterValues { card.id in it }
+                                .keys
+                                .sortedWith(compareBy({ it.first.ordinal }, { it.second }))
+                                .forEach { (day, startAt) -> add(SlotCardError.Duplicate(day, startAt)) }
+                        }
+                }.filterValues { it.isNotEmpty() }
+        }
+
     /** Можно ли отправлять форму. */
-    val isValid: Boolean get() = !isSaving
+    val isValid: Boolean get() = !isSaving && cardErrors.isEmpty()
 
     /**
      * Дата для запроса: `null`, если выбрано сегодня, — тогда сервер подставит своё «сегодня»
@@ -49,8 +82,28 @@ data class SetScheduleState(
      */
     val requestedEffectiveFrom: LocalDate? get() = effectiveFrom.takeIf { it != today }
 
-    /** Заменяет набор слотов и сбрасывает ошибку. */
-    fun withSlots(slots: List<ScheduleSlot>) = copy(slots = slots, error = null)
+    /**
+     * Добавляет карточку без выбранных дней. Зал подставляется, только если в [halls] ровно один зал;
+     * время берётся из последней карточки, а без карточек — 00:00–01:00.
+     */
+    fun withCardAdded(halls: List<HallDetailResponse>): SetScheduleState {
+        val last = cards.lastOrNull()
+        val card =
+            SlotCard(
+                id = SlotCardId(nextCardId),
+                days = emptySet(),
+                startAt = last?.startAt ?: LocalTime(0, 0),
+                endAt = last?.endAt ?: LocalTime(1, 0),
+                hallId = halls.singleOrNull()?.id,
+            )
+        return copy(cards = cards + card, nextCardId = nextCardId + 1, error = null)
+    }
+
+    /** Заменяет карточку с идентификатором [card] её новой версией и сбрасывает ошибку. */
+    fun withCardChanged(card: SlotCard) = copy(cards = cards.map { if (it.id == card.id) card else it }, error = null)
+
+    /** Удаляет карточку с идентификатором [id] и сбрасывает ошибку. */
+    fun withCardRemoved(id: SlotCardId) = copy(cards = cards.filterNot { it.id == id }, error = null)
 
     /** Устанавливает дату вступления в силу [date], не допуская даты раньше [today]. */
     fun withEffectiveFrom(date: LocalDate) = copy(effectiveFrom = maxOf(date, today), error = null)
@@ -73,7 +126,7 @@ class SetScheduleViewModel(
     today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
 ) {
     var state: SetScheduleState by mutableStateOf(
-        SetScheduleState(today = today, slots = initialSlots, plannedChangeAt = plannedChangeAt),
+        SetScheduleState(today = today, cards = initialSlots.toCards(), plannedChangeAt = plannedChangeAt),
     )
         private set
 
@@ -88,9 +141,19 @@ class SetScheduleViewModel(
         }
     }
 
-    /** Заменяет набор слотов. */
-    fun onSlotsChange(slots: List<ScheduleSlot>) {
-        state = state.withSlots(slots)
+    /** Добавляет новую карточку. */
+    fun onCardAdd() {
+        state = state.withCardAdded(state.halls)
+    }
+
+    /** Заменяет карточку её изменённой версией [card]. */
+    fun onCardChange(card: SlotCard) {
+        state = state.withCardChanged(card)
+    }
+
+    /** Удаляет карточку с идентификатором [id]. */
+    fun onCardRemove(id: SlotCardId) {
+        state = state.withCardRemoved(id)
     }
 
     /** Меняет дату вступления в силу на выбранную в календаре [date]. */
@@ -111,7 +174,7 @@ class SetScheduleViewModel(
                     SetGroupScheduleRequest(
                         groupId = groupId,
                         effectiveFrom = state.requestedEffectiveFrom,
-                        slots = state.slots.map { it.copy(hallName = null, validity = null) },
+                        slots = state.cards.toSlots(),
                     ),
                 ).fold(
                     ifLeft = { state = state.copy(isSaving = false, error = it.toGroupsApiError()) },

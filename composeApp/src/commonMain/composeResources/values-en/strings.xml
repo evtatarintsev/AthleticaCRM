@@ -235,6 +235,10 @@
     <string name="action_add_slot">Add slot</string>
     <string name="action_delete_slot">Delete slot</string>
     <string name="label_hall">Hall</string>
+    <string name="schedule_card_no_days">Select days of the week</string>
+    <string name="schedule_card_no_hall">Select a hall</string>
+    <string name="schedule_card_end_not_after_start">End time must be after start time</string>
+    <string name="schedule_card_duplicate">%1$s %2$s is already in another card</string>
 
     <!-- Settings screen -->
     <string name="settings_section_user">User</string>
@@ -705,4 +709,11 @@
     <string name="weekday_friday">Friday</string>
     <string name="weekday_saturday">Saturday</string>
     <string name="weekday_sunday">Sunday</string>
+    <string name="weekday_short_monday">Mon</string>
+    <string name="weekday_short_tuesday">Tue</string>
+    <string name="weekday_short_wednesday">Wed</string>
+    <string name="weekday_short_thursday">Thu</string>
+    <string name="weekday_short_friday">Fri</string>
+    <string name="weekday_short_saturday">Sat</string>
+    <string name="weekday_short_sunday">Sun</string>
 </resources>

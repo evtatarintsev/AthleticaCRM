@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -49,7 +51,10 @@ fun SetScheduleDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.schedule_set_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
                 EffectiveFromField(
                     value = state.effectiveFrom,
                     minDate = state.today,
@@ -70,9 +75,12 @@ fun SetScheduleDialog(
                 }
 
                 ScheduleEditor(
-                    slots = state.slots,
+                    cards = state.cards,
                     halls = state.halls,
-                    onSlotsChange = viewModel::onSlotsChange,
+                    cardErrors = state.cardErrors,
+                    onCardAdd = viewModel::onCardAdd,
+                    onCardChange = viewModel::onCardChange,
+                    onCardRemove = viewModel::onCardRemove,
                 )
 
                 state.error?.let { error ->

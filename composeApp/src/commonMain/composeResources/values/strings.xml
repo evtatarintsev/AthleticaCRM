@@ -235,6 +235,10 @@
     <string name="action_add_slot">Добавить слот</string>
     <string name="action_delete_slot">Удалить слот</string>
     <string name="label_hall">Зал</string>
+    <string name="schedule_card_no_days">Выберите дни недели</string>
+    <string name="schedule_card_no_hall">Выберите зал</string>
+    <string name="schedule_card_end_not_after_start">Время окончания должно быть позже начала</string>
+    <string name="schedule_card_duplicate">%1$s %2$s уже есть в другой карточке</string>
 
     <!-- Settings screen -->
     <string name="settings_section_user">Пользователь</string>
@@ -709,4 +713,11 @@
     <string name="weekday_friday">Пятница</string>
     <string name="weekday_saturday">Суббота</string>
     <string name="weekday_sunday">Воскресенье</string>
+    <string name="weekday_short_monday">Пн</string>
+    <string name="weekday_short_tuesday">Вт</string>
+    <string name="weekday_short_wednesday">Ср</string>
+    <string name="weekday_short_thursday">Чт</string>
+    <string name="weekday_short_friday">Пт</string>
+    <string name="weekday_short_saturday">Сб</string>
+    <string name="weekday_short_sunday">Вс</string>
 </resources>

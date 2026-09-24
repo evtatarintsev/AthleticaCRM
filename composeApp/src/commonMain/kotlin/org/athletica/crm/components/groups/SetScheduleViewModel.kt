@@ -6,23 +6,27 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.api.client.ApiClient
 import org.athletica.crm.api.schemas.groups.ScheduleSlot
 import org.athletica.crm.api.schemas.groups.SetGroupScheduleRequest
 import org.athletica.crm.api.schemas.halls.HallDetailResponse
 import org.athletica.crm.core.entityids.GroupId
+import kotlin.time.Clock
 
 /**
  * Состояние диалога установки расписания группы.
  *
- * [effectiveFromText] хранится строкой, потому что дата вводится вручную и может быть
- * незавершённой; разобранное значение отдаёт [effectiveFrom].
+ * Дата вступления в силу [effectiveFrom] выбирается в календаре и не может быть раньше [today].
  */
 data class SetScheduleState(
+    /** Сегодняшняя дата на устройстве — нижняя граница выбора и значение по умолчанию. */
+    val today: LocalDate,
+    /** Дата вступления в силу. */
+    val effectiveFrom: LocalDate = today,
     /** Слоты, которые будут действовать с даты вступления в силу. */
     val slots: List<ScheduleSlot> = emptyList(),
-    /** Дата вступления в силу в формате `ГГГГ-ММ-ДД`. */
-    val effectiveFromText: String = "",
     /** Залы филиала для выбора в редакторе слотов. */
     val halls: List<HallDetailResponse> = emptyList(),
     /** Ранее запланированное изменение расписания, если оно есть. */
@@ -32,23 +36,26 @@ data class SetScheduleState(
     /** Ошибка сохранения. */
     val error: GroupsApiError? = null,
 ) {
-    /** Разобранная дата вступления в силу; `null` — сегодня либо ввод ещё не завершён. */
-    val effectiveFrom: LocalDate? get() = runCatching { LocalDate.parse(effectiveFromText) }.getOrNull()
-
-    /** Введена ли дата в недопустимом формате. */
-    val isDateInvalid: Boolean get() = effectiveFromText.isNotBlank() && effectiveFrom == null
-
     /** Отменит ли сохранение ранее запланированное изменение. */
     val cancelsPlannedChange: Boolean
-        get() = plannedChangeAt != null && (effectiveFrom == null || effectiveFrom!! <= plannedChangeAt)
+        get() = plannedChangeAt != null && effectiveFrom <= plannedChangeAt
 
     /** Можно ли отправлять форму. */
-    val isValid: Boolean get() = !isDateInvalid && !isSaving
+    val isValid: Boolean get() = !isSaving
 
+    /**
+     * Дата для запроса: `null`, если выбрано сегодня, — тогда сервер подставит своё «сегодня»
+     * и не отклонит запрос из-за разницы часовых поясов устройства и сервера.
+     */
+    val requestedEffectiveFrom: LocalDate? get() = effectiveFrom.takeIf { it != today }
+
+    /** Заменяет набор слотов и сбрасывает ошибку. */
     fun withSlots(slots: List<ScheduleSlot>) = copy(slots = slots, error = null)
 
-    fun withEffectiveFrom(text: String) = copy(effectiveFromText = text, error = null)
+    /** Устанавливает дату вступления в силу [date], не допуская даты раньше [today]. */
+    fun withEffectiveFrom(date: LocalDate) = copy(effectiveFrom = maxOf(date, today), error = null)
 
+    /** Устанавливает список залов [halls] для редактора слотов. */
     fun withHalls(halls: List<HallDetailResponse>) = copy(halls = halls)
 }
 
@@ -63,9 +70,10 @@ class SetScheduleViewModel(
     initialSlots: List<ScheduleSlot>,
     plannedChangeAt: LocalDate?,
     private val onSaved: () -> Unit,
+    today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
 ) {
     var state: SetScheduleState by mutableStateOf(
-        SetScheduleState(slots = initialSlots, plannedChangeAt = plannedChangeAt),
+        SetScheduleState(today = today, slots = initialSlots, plannedChangeAt = plannedChangeAt),
     )
         private set
 
@@ -85,9 +93,9 @@ class SetScheduleViewModel(
         state = state.withSlots(slots)
     }
 
-    /** Меняет введённую дату вступления в силу. */
-    fun onEffectiveFromChange(text: String) {
-        state = state.withEffectiveFrom(text)
+    /** Меняет дату вступления в силу на выбранную в календаре [date]. */
+    fun onEffectiveFromChange(date: LocalDate) {
+        state = state.withEffectiveFrom(date)
     }
 
     /** Отправляет расписание на сервер. */
@@ -102,7 +110,7 @@ class SetScheduleViewModel(
                 .setSchedule(
                     SetGroupScheduleRequest(
                         groupId = groupId,
-                        effectiveFrom = state.effectiveFrom,
+                        effectiveFrom = state.requestedEffectiveFrom,
                         slots = state.slots.map { it.copy(hallName = null, validity = null) },
                     ),
                 ).fold(

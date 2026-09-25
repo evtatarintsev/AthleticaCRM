@@ -82,7 +82,7 @@ fun Route.checkoutRoutes(
 
         // Всегда отвечаем 200 — иначе ЮKassa будет повторять доставку webhook
         call.respond(HttpStatusCode.OK)
-    }
+    }.contract(postContract<YookassaWebhook, Unit>())
 }
 
 /** Верифицирует HMAC-SHA256 подпись webhook ЮKassa. */

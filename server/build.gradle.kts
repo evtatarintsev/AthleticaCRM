@@ -50,6 +50,32 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 }
 
+/**
+ * Генератор контрактов веб-клиента. Отдельный source set: в jar сервера не попадает,
+ * видит код сервера и его зависимости.
+ */
+val contracts: SourceSet by sourceSets.creating {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+
+configurations[contracts.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+configurations[contracts.runtimeOnlyConfigurationName].extendsFrom(configurations.runtimeOnly.get())
+
+dependencies {
+    "contractsImplementation"(libs.ktor.server.testHost)
+    testImplementation(contracts.output)
+}
+
+/** Генерирует `web/src/api/generated/contracts.ts` из маршрутов сервера и схем `shared`. */
+tasks.register<JavaExec>("generateWebContracts") {
+    group = "build"
+    description = "Генерирует контракты API веб-клиента (web/src/api/generated/contracts.ts)"
+    classpath = contracts.runtimeClasspath
+    mainClass.set("org.athletica.crm.contracts.GenerateWebContractsKt")
+    args(rootProject.file("web/src/api/generated/contracts.ts").absolutePath)
+}
+
 tasks.named<Jar>("shadowJar") {
     archiveFileName.set("athletica.jar")
 }

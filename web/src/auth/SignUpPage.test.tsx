@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import type { ApiResult, AuthApi } from "../api/client";
-import type { LoginResponse } from "../api/schemas";
+import type { ApiResult } from "../api/client";
+import type { LoginResponse } from "../api/generated/contracts";
 import { t } from "../i18n";
+import type { AuthApi } from "./authApi";
 import { SignUpPage } from "./SignUpPage";
 import { browserTimezone } from "./timezones";
 
@@ -54,7 +55,8 @@ describe("SignUpPage", () => {
     const api = fakeApi({
       ok: false,
       error: {
-        kind: "validation",
+        kind: "business",
+        status: 400,
         code: "USER_ALREADY_REGISTERED",
         message: "Уже зарегистрирован",
       },

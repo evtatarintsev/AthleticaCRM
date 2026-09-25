@@ -5,6 +5,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "contracts": "cd .. && ./gradlew :server:generateWebContracts",
     "typecheck": "tsc -b",
     "lint": "eslint . --max-warnings 0",
     "type-coverage": "type-coverage --strict --at-least 100 --detail -p tsconfig.app.json && type-coverage --strict --at-least 100 --detail -p tsconfig.test.json",

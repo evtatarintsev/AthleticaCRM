@@ -84,7 +84,7 @@ fun Route.authRoutes() {
             { call.respond(HttpStatusCode.BadRequest, ErrorResponse(code = it.code, message = it.message)) },
             { call.respond(it) },
         )
-    }
+    }.contract(postContract<AuthBranchesRequest, AuthBranchesResponse>())
 
     post("/auth/sign-up") {
         call.eitherToAuthResponse {
@@ -99,7 +99,7 @@ fun Route.authRoutes() {
                     }
             }
         }
-    }
+    }.contract(postContract<SignUpRequest, LoginResponse>())
 
     post("/auth/login") {
         call.eitherToAuthResponse {
@@ -124,7 +124,7 @@ fun Route.authRoutes() {
             }
             user
         }
-    }
+    }.contract(postContract<LoginRequest, LoginResponse>())
 
     post("/auth/refresh-token") {
         call.eitherToAuthResponse {
@@ -136,7 +136,7 @@ fun Route.authRoutes() {
                     .let { (userId, branchId) -> userById(userId, branchId) }
             }
         }
-    }
+    }.contract(postContract<Unit, LoginResponse>())
 }
 
 /**

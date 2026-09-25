@@ -1,12 +1,13 @@
 import { useMemo, useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
-import { authApi, type ApiError, type AuthApi } from "../api/client";
-import { CURRENCIES } from "../api/schemas";
+import type { ApiError } from "../api/client";
 import { t } from "../i18n";
+import { CURRENCIES, parseCurrency } from "../lib/currency";
 import { formText } from "../lib/forms";
 import { AuthLayout } from "../ui/AuthLayout";
 import { ErrorAlert, PrimaryButton } from "../ui/controls";
 import { PasswordField, SelectField, TextField } from "../ui/fields";
+import { authApi, type AuthApi } from "./authApi";
 import { redirectToApp } from "./session";
 import { availableTimezones, browserTimezone } from "./timezones";
 
@@ -38,7 +39,7 @@ export function SignUpPage({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const field = (name: string) => formText(form, name).trim();
-    const currency = CURRENCIES.find((c) => c.code === field("currency"));
+    const currency = parseCurrency(field("currency"));
     if (currency === undefined) {
       setState({ loading: false, error: t.errorRegistrationFailed });
       return;
@@ -50,7 +51,7 @@ export function SignUpPage({
       login: field("username"),
       password: formText(form, "password"),
       timezone: field("timezone"),
-      currency: currency.code,
+      currency,
     });
     if (result.ok) {
       onAuthenticated();
@@ -126,11 +127,12 @@ export function SignUpPage({
 /** Текст ошибки регистрации: сообщение сервера, если оно есть. */
 function signUpErrorMessage(error: ApiError): string {
   switch (error.kind) {
-    case "validation":
+    case "business":
       return error.message === "" ? t.errorRegistrationFailed : error.message;
     case "unauthenticated":
       return t.errorRegistrationFailed;
     case "unavailable":
+    case "contract":
       return t.errorServiceUnavailable;
   }
 }

@@ -1,12 +1,12 @@
 import { useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
-import { authApi, type AuthApi } from "../api/client";
-import type { BranchDetailResponse } from "../api/schemas";
+import type { BranchDetailResponse, BranchId } from "../api/generated/contracts";
 import { t } from "../i18n";
 import { formText } from "../lib/forms";
 import { AuthLayout } from "../ui/AuthLayout";
 import { ErrorAlert, PrimaryButton } from "../ui/controls";
 import { PasswordField, TextField } from "../ui/fields";
+import { authApi, type AuthApi } from "./authApi";
 import { submitBranch, submitCredentials, type Credentials, type LoginOutcome } from "./loginFlow";
 import { redirectToApp } from "./session";
 
@@ -16,7 +16,7 @@ type LoginState =
   | {
       step: "branch";
       credentials: Credentials;
-      branches: BranchDetailResponse[];
+      branches: readonly BranchDetailResponse[];
       loading: boolean;
       error: string | null;
     };
@@ -70,7 +70,7 @@ export function LoginPage({
   };
 
   if (state.step === "branch") {
-    const onBranch = async (branchId: string) => {
+    const onBranch = async (branchId: BranchId) => {
       setState({ ...state, loading: true, error: null });
       apply(await submitBranch(api, state.credentials, branchId), state.credentials);
     };

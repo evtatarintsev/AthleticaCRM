@@ -28,10 +28,10 @@ describe("выбор языка", () => {
 
 describe("перевод", () => {
   it("подставляет параметры", () => {
-    expect(createTranslator<typeof ru>("ru", ru)("account.branch", { name: "Центр" })).toBe(
+    expect(createTranslator<typeof ru>("ru", ru)("branch.switched", { name: "Центр" })).toBe(
       "Филиал «Центр»",
     );
-    expect(createTranslator<typeof ru>("en", en)("account.branch", { name: "North" })).toBe(
+    expect(createTranslator<typeof ru>("en", en)("branch.switched", { name: "North" })).toBe(
       "Branch “North”",
     );
   });
@@ -65,7 +65,7 @@ describe("перевод", () => {
 
   it("параметры сообщения выводятся из русского словаря", () => {
     expectTypeOf<ArgsOf<(typeof ru)["auth.email"]>>().toEqualTypeOf<[]>();
-    expectTypeOf<ArgsOf<(typeof ru)["account.branch"]>>().toEqualTypeOf<
+    expectTypeOf<ArgsOf<(typeof ru)["branch.switched"]>>().toEqualTypeOf<
       [params: Readonly<Record<"name", string | number>>]
     >();
   });
@@ -97,5 +97,15 @@ describe("форматирование", () => {
   it("время суток и момент времени", () => {
     expect(spaces(enFormat.time(LocalTimeSchema.parse("18:30:00")))).toBe("6:30 PM");
     expect(ruFormat.dateTime(InstantSchema.parse("2025-01-31T09:05:00Z"))).toContain("2025");
+  });
+
+  it("относительное время: секунды, минуты, часы, дни, старше недели — дата", () => {
+    const now = new Date("2025-02-10T12:00:00Z");
+    const at = (iso: string) => InstantSchema.parse(iso);
+    expect(enFormat.ago(at("2025-02-10T11:59:30Z"), now)).toBe("now");
+    expect(ruFormat.ago(at("2025-02-10T11:55:00Z"), now)).toBe("5 минут назад");
+    expect(enFormat.ago(at("2025-02-10T09:00:00Z"), now)).toBe("3 hours ago");
+    expect(enFormat.ago(at("2025-02-08T12:00:00Z"), now)).toBe("2 days ago");
+    expect(enFormat.ago(at("2025-01-31T12:00:00Z"), now)).toBe("Jan 31, 2025");
   });
 });

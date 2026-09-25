@@ -17,6 +17,12 @@ npm run format
 npm run check   # typecheck + eslint + prettier --check + vitest
 ```
 
+When changing request/response schemas in `shared` or routes in `server`, regenerate
+the web client contracts and commit `web/src/api/generated/` (CI job `contracts` fails otherwise):
+```bash
+cd web && npm run contracts
+```
+
 ### Environment Variables
 
 When adding or changing environment variables in `application.conf`:
@@ -582,6 +588,12 @@ class XViewModel {
 }
 ```
 
+#### Новые экраны — только в `web/`
+
+Веб-интерфейс переезжает с KMP (wasm) на `web/` (спека `openspec/changes/rewrite-web-frontend-typescript`).
+Новые экраны в KMP-вебе не создаются. Новая функциональность делается в `web/`, если её раздел
+уже перенесён (`web/src/app/sections.ts`), иначе — в обоих клиентах.
+
 #### Direction of composition: generic ⊃ specific
 
 A reusable coordinator (`ListPageViewModel`, `FormViewModel`, any generic «движок») accepts the domain-specific delegate **via its constructor**. The **specific** does not own the **generic** and pass `this` into it — that's inversion. Sign of inversion: the screen reads `viewModel.subVm.X` almost everywhere and only a couple of places hit the root VM. If you catch yourself writing `vm.x.y.z` across most callsites, you've broken encapsulation — either lift the field into the coordinator or pass the delegate directly where it's needed.
@@ -610,6 +622,29 @@ suspend fun fetch(...) = api.list(...).map { total = it.total; it.items }
 data class Loaded<T>(val items: List<T>, val total: Int = items.size)
 suspend fun fetch(...) = api.list(...).map { FetchResult(it.items, it.total) }
 ```
+
+## Web Client (`web/`, TypeScript)
+
+Строгость держат инструменты (`tsc`, ESLint `strictTypeChecked`, `type-coverage --strict` 100%);
+`npm run check` падает на любом нарушении, так же падают Docker-сборка и CI.
+
+- Запрещены `any`, `as` (кроме `as const`), non-null `!`, `@ts-ignore` / `@ts-expect-error` / `@ts-nocheck`.
+  `eslint-disable` в коде не действует (`noInlineConfig`) и сам считается ошибкой.
+- Исключения — только в конфигурации (`eslint.config.js`, `package.json`) с комментарием о причине,
+  и с записью в `web/README.md` («Исключения из строгих правил»).
+- Данные извне (ответы API, `JSON.parse`, `localStorage`, search-параметры) декодируются zod-схемой,
+  а не приводятся к типу. Ответы API декодирует `api/client.ts` сгенерированными схемами.
+- Схемы API не пишутся руками: они генерируются из Kotlin (`npm run contracts`) в
+  `web/src/api/generated/contracts.ts`. Файл не редактируется, после изменения схем в `shared`
+  или маршрутов на сервере — перегенерировать и закоммитить.
+- Варианты объединений разбираются исчерпывающим `switch` без `default`
+  (`switch-exhaustiveness-check`); `ApiError` — только так.
+- Ошибки API — значения `ApiResult`, не исключения; в исключение `ApiResult` превращается только
+  в `query/apiFailure.ts` для TanStack Query.
+- Все видимые строки — из словарей `src/i18n/ru.ts` / `en.ts`; KDoc и комментарии — на русском,
+  как в Kotlin-коде.
+
+Типовые приёмы с примерами — в `web/README.md`.
 
 ## Known Constraints & Gotchas
 

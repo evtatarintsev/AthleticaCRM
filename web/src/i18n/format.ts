@@ -13,6 +13,11 @@ export interface Formatters {
   time: (time: LocalTime) => string;
   /** Момент [instant] в часовом поясе браузера. */
   dateTime: (instant: Instant) => string;
+  /**
+   * Сколько прошло от [instant] до [now]: «сейчас», «5 минут назад», «3 дня назад»;
+   * старше недели — дата.
+   */
+  ago: (instant: Instant, now: Date) => string;
 }
 
 /** Форматтеры для языка [locale]. */
@@ -21,6 +26,8 @@ export function createFormatters(locale: string): Formatters {
   const dates = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
   const times = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" });
   const dateTimes = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+  const localDates = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   return {
     number: (value) => numbers.format(value),
     money: (money) => {
@@ -35,8 +42,28 @@ export function createFormatters(locale: string): Formatters {
     date: (date) => dates.format(Date.UTC(...dateParts(date))),
     time: (time) => times.format(Date.UTC(1970, 0, 1, ...timeParts(time))),
     dateTime: (instant) => dateTimes.format(new Date(instant)),
+    ago: (instant, now) => {
+      const at = new Date(instant);
+      const seconds = Math.max(0, Math.floor((now.getTime() - at.getTime()) / 1000));
+      const step = AGO_STEPS.find((s) => seconds < s.below);
+      return step === undefined
+        ? localDates.format(at)
+        : relative.format(-Math.floor(seconds / step.size), step.unit);
+    },
   };
 }
+
+/** Шаги относительного времени: до [below] секунд считаем в [unit] по [size] секунд. */
+const AGO_STEPS: readonly {
+  readonly below: number;
+  readonly size: number;
+  readonly unit: Intl.RelativeTimeFormatUnit;
+}[] = [
+  { below: 60, size: Number.POSITIVE_INFINITY, unit: "second" },
+  { below: 3_600, size: 60, unit: "minute" },
+  { below: 86_400, size: 3_600, unit: "hour" },
+  { below: 604_800, size: 86_400, unit: "day" },
+];
 
 /**
  * Десятичная запись суммы [minorUnits] с [digits] знаками после точки: `120050, 2` → `"1200.50"`.

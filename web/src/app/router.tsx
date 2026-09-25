@@ -12,7 +12,16 @@ import {
 import { useMemo, type ReactElement } from "react";
 import type { ApiClient } from "@/api/client";
 import { ClientIdSchema, type ClientId } from "@/api/generated/contracts";
+import { ChangePasswordPage } from "@/account/ChangePasswordPage";
+import { ProfilePage } from "@/account/ProfilePage";
+import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
+import { branches, disciplines, halls, leadSources } from "@/settings/directories";
+import { DirectoryPage } from "@/settings/directory/DirectoryPage";
+import { TariffsPage } from "@/settings/tariffs/TariffsPage";
+import { CustomFieldsPage } from "@/settings/customFields/CustomFieldsPage";
+import { RolesPage } from "@/settings/roles/RolesPage";
+import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
 import { SignUpPage } from "@/auth/SignUpPage";
@@ -132,6 +141,113 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
+/** Страница настроек со всеми пунктами. */
+const settingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
+/** Профиль текущего пользователя. */
+const editProfileRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/edit-profile",
+  component: function EditProfileRoute() {
+    const { api } = editProfileRoute.useRouteContext();
+    return <ProfilePage api={api} />;
+  },
+});
+
+/** Смена пароля текущего пользователя. */
+const changePasswordRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/change-password",
+  component: function ChangePasswordRoute() {
+    const { api } = changePasswordRoute.useRouteContext();
+    return <ChangePasswordPage api={api} />;
+  },
+});
+
+/** Смена филиала. */
+const switchBranchRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/switch-branch",
+  component: function SwitchBranchRoute() {
+    const { api } = switchBranchRoute.useRouteContext();
+    return <SwitchBranchPage api={api} />;
+  },
+});
+
+/** Справочник залов. */
+const hallsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/halls",
+  component: function HallsRoute() {
+    const { api } = hallsRoute.useRouteContext();
+    return <DirectoryPage api={api} definition={halls} />;
+  },
+});
+
+/** Справочник дисциплин. */
+const disciplinesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/disciplines",
+  component: function DisciplinesRoute() {
+    const { api } = disciplinesRoute.useRouteContext();
+    return <DirectoryPage api={api} definition={disciplines} />;
+  },
+});
+
+/** Справочник источников клиентов. */
+const clientSourcesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/client-sources",
+  component: function ClientSourcesRoute() {
+    const { api } = clientSourcesRoute.useRouteContext();
+    return <DirectoryPage api={api} definition={leadSources} />;
+  },
+});
+
+/** Филиалы организации. */
+const branchesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/branches",
+  component: function BranchesRoute() {
+    const { api } = branchesRoute.useRouteContext();
+    return <DirectoryPage api={api} definition={branches} />;
+  },
+});
+
+/** Дополнительные атрибуты клиентов. */
+const customFieldsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/client-additional-attributes",
+  component: function CustomFieldsRoute() {
+    const { api } = customFieldsRoute.useRouteContext();
+    return <CustomFieldsPage api={api} />;
+  },
+});
+
+/** Роли и права сотрудников. */
+const rolesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/roles",
+  component: function RolesRoute() {
+    const { api } = rolesRoute.useRouteContext();
+    return <RolesPage api={api} />;
+  },
+});
+
+/** Тарифы абонементов. */
+const tariffsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/tariffs",
+  component: function TariffsRoute() {
+    const { api } = tariffsRoute.useRouteContext();
+    return <TariffsPage api={api} />;
+  },
+});
+
 /**
  * Карточка клиента. Раздел ещё в KMP-клиенте, поэтому страница переводит туда же;
  * некорректный идентификатор не совпадает с маршрутом и даёт «не найдено» без запроса к API.
@@ -155,7 +271,21 @@ const clientRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
-  appRoute.addChildren([homeRoute, clientRoute]),
+  appRoute.addChildren([
+    homeRoute,
+    settingsRoute,
+    editProfileRoute,
+    changePasswordRoute,
+    switchBranchRoute,
+    hallsRoute,
+    disciplinesRoute,
+    clientSourcesRoute,
+    tariffsRoute,
+    branchesRoute,
+    customFieldsRoute,
+    rolesRoute,
+    clientRoute,
+  ]),
 ]);
 
 /** Роутер приложения с зависимостями [context] и историей [history]. */
@@ -190,6 +320,17 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/": true,
   "/login": true,
   "/sign-up": true,
+  "/settings": true,
+  "/settings/edit-profile": true,
+  "/settings/change-password": true,
+  "/settings/switch-branch": true,
+  "/settings/halls": true,
+  "/settings/disciplines": true,
+  "/settings/client-sources": true,
+  "/settings/tariffs": true,
+  "/settings/branches": true,
+  "/settings/client-additional-attributes": true,
+  "/settings/roles": true,
 };
 
 /** Истина, если [path] — маршрут веб-клиента без параметров. */

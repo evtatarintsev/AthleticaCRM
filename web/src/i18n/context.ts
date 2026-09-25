@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import type { Formatters } from "./format";
 import type { Locale } from "./locale";
-import type { Translate } from "./messages";
+import type { ArgsOf, Translate } from "./messages";
 import type { ru } from "./ru";
 
 /** Текущий язык интерфейса, перевод и форматирование. */
@@ -27,3 +27,8 @@ export function useI18n(): I18n {
   }
   return i18n;
 }
+
+/** Ключ словаря, сообщение которого не требует параметров. */
+export type PlainMessageKey = {
+  [K in keyof typeof ru]: ArgsOf<(typeof ru)[K]> extends [] ? K : never;
+}[keyof typeof ru];

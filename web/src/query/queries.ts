@@ -1,6 +1,6 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import type { ApiClient, CallArgs, EndpointPath } from "@/api/client";
-import type { BranchId } from "@/api/generated/contracts";
+import type { BranchId, UploadId } from "@/api/generated/contracts";
 import { apiErrorOf, unwrap } from "./apiFailure";
 
 /** Сколько раз повторять запрос, если сервис недоступен. */
@@ -45,5 +45,31 @@ export function sessionQuery(api: ApiClient) {
     queryKey: ["session", "auth/me"] as const,
     queryFn: async () => unwrap(await api.call("auth/me")),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Филиалы, доступные текущему пользователю; как и сессия, от текущего филиала не зависит. */
+export function myBranchesQuery(api: ApiClient) {
+  return queryOptions({
+    queryKey: myBranchesQuery.key,
+    queryFn: async () => unwrap(await api.call("auth/my-branches")),
+  });
+}
+
+/** Ключ кэша доступных филиалов. */
+myBranchesQuery.key = ["session", "auth/my-branches"] as const;
+
+/** Сколько живёт в кэше подписанная ссылка на файл; сервер подписывает её на неделю. */
+const UPLOAD_URL_STALE_MS = 60 * 60 * 1000;
+
+/**
+ * Сведения о загруженном файле [id] с подписанной ссылкой. Файл не зависит от филиала,
+ * ссылка обновляется раньше, чем истекает подпись.
+ */
+export function uploadInfoQuery(api: ApiClient, id: UploadId) {
+  return queryOptions({
+    queryKey: ["upload", id] as const,
+    queryFn: async () => unwrap(await api.call("upload/info", { id })),
+    staleTime: UPLOAD_URL_STALE_MS,
   });
 }

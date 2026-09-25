@@ -192,3 +192,102 @@ export function SelectField<T extends string>({
     />
   );
 }
+
+/** Флажок с подписью [label]; значение поля — `boolean`. */
+export function CheckboxField({ field, label, hint }: FieldProps<boolean>) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="flex items-center gap-2 text-sm font-medium">
+        <input
+          id={id}
+          type="checkbox"
+          name={field.name}
+          checked={field.state.value}
+          aria-describedby={hint === undefined ? undefined : hintId}
+          onChange={(event) => {
+            field.handleChange(event.target.checked);
+          }}
+          onBlur={() => {
+            field.handleBlur();
+          }}
+          className="size-4 accent-primary"
+        />
+        {label}
+      </label>
+      {hint !== undefined && (
+        <p id={hintId} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Группа переключателей: значение поля — одно из [options]. */
+export function RadioGroupField<T extends string>({
+  field,
+  label,
+  options,
+}: FieldProps<T> & { options: readonly SelectOption<T>[] }) {
+  return (
+    <fieldset className="space-y-1.5">
+      <legend className="text-sm font-medium">{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm has-checked:border-primary has-checked:bg-primary/10 has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50"
+          >
+            <input
+              type="radio"
+              name={field.name}
+              value={option.value}
+              checked={field.state.value === option.value}
+              onChange={() => {
+                field.handleChange(option.value);
+              }}
+              onBlur={() => {
+                field.handleBlur();
+              }}
+              className="size-4 accent-primary"
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** Многострочное текстовое поле. */
+export function TextAreaField({
+  field,
+  label,
+  hint,
+  rows = 4,
+}: FieldProps<string> & { rows?: number }) {
+  return (
+    <FieldFrame
+      label={label}
+      hint={hint}
+      error={fieldError(field)}
+      control={(aria) => (
+        <textarea
+          {...aria}
+          name={field.name}
+          rows={rows}
+          value={field.state.value}
+          onChange={(event) => {
+            field.handleChange(event.target.value);
+          }}
+          onBlur={() => {
+            field.handleBlur();
+          }}
+          className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-sm dark:bg-input/30"
+        />
+      )}
+    />
+  );
+}

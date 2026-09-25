@@ -29,6 +29,9 @@ http://athletica.crm/web/.
 | `src/forms/`         | обёртки полей TanStack Form с `autocomplete`, подписью и доступной ошибкой                                          |
 | `src/i18n/`          | словари `ru` (источник ключей) и `en: Messages<typeof ru>`, перевод, форматирование дат, чисел и денег              |
 | `src/components/ui/` | компоненты shadcn/ui, приведённые к строгим правилам                                                                |
+| `src/account/`       | профиль, смена пароля, смена филиала                                                                                |
+| `src/settings/`      | страница настроек и справочники: `directory/` — общая страница справочника, остальное — тарифы, роли, доп. поля     |
+| `src/ui/`            | общие элементы страниц: заголовок, аватар, диалог подтверждения, панель выбранных записей                           |
 
 Базовый путь (`/web`) — константа сборки `__BASE_PATH__` из `vite.config.ts`, в коде — `BASE_PATH` из `src/config.ts`.
 
@@ -37,6 +40,85 @@ http://athletica.crm/web/.
 Навигация берёт разделы из `src/app/sections.ts`. Пока раздел не перенесён целиком, пункт — обычная
 `<a href="/<раздел>">` в KMP-клиент. Перенесли раздел — `migratedSections.<раздел> = true`; тест
 проверяет, что у перенесённого раздела есть маршрут.
+
+### Типовые приёмы
+
+`any`, `as` (кроме `as const`), `!` и `@ts-*`-комментарии запрещены линтером, `eslint-disable` в коде
+не действует. Вместо них — приёмы ниже.
+
+**Контракты API.** После изменения схем в `shared` или маршрутов на сервере:
+
+```bash
+npm run contracts   # :server:generateWebContracts, результат — src/api/generated/contracts.ts
+```
+
+Файл коммитится; CI-job `contracts` падает, если он устарел. Руками схемы API не пишутся.
+
+**Декодирование вместо приведения.** Данные извне — `unknown`, тип получается разбором схемой:
+
+```ts
+// Плохо: const settings = JSON.parse(raw) as Settings;
+const SettingsSchema = z.object({ locale: LocaleSchema });
+const parsed = SettingsSchema.safeParse(JSON.parse(raw));
+const settings = parsed.success ? parsed.data : defaultSettings;
+```
+
+Ответы API декодирует `api.call` сгенерированной схемой эндпоинта: результат уже типизирован,
+несовпадение — ошибка `contract`.
+
+**Сужение вместо `!`.** Значение, которого может не быть, проверяется явно:
+
+```ts
+// Плохо: createRoot(document.getElementById("root")!)
+const root = document.getElementById("root");
+if (root === null) {
+  throw new Error("Нет элемента #root");
+}
+createRoot(root);
+
+// Плохо: items[0]!.name   (noUncheckedIndexedAccess)
+const first = items[0];
+const name = first?.name ?? "";
+
+// type guard для unknown
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null;
+}
+```
+
+**Исчерпывающий `switch`.** Объединения разбираются без `default`: новый вариант (например, в
+сгенерированном контракте) ломает компиляцию во всех местах разбора.
+
+```ts
+function errorText(error: ApiError, t: Translate): string {
+  switch (error.kind) {
+    case "business":
+      return error.message;
+    case "unauthenticated":
+      return t("error.sessionExpired");
+    case "unavailable":
+      return t("error.serviceUnavailable");
+    case "contract":
+      return t("error.contract");
+  }
+}
+```
+
+Для таблиц соответствия вместо `switch` — `Record<Union, T>`: пропущенный ключ — ошибка компиляции
+(см. `lib/currency.ts`).
+
+**Необязательные пропсы.** С `exactOptionalPropertyTypes` в `prop?: T` нельзя передать `undefined`.
+Либо объявить `prop?: T | undefined`, либо не передавать проп:
+
+```tsx
+<SectionLink {...(onNavigate === undefined ? {} : { onNavigate })} />
+```
+
+**Моки в тестах** — типизированные фабрики, а не `as`:
+
+```ts
+const api = { call: vi.fn<ApiClient["call"]>() } satisfies ApiClient;
+```
 
 ### Исключения из строгих правил
 
@@ -49,6 +131,9 @@ http://athletica.crm/web/.
   проверяет эти файлы как обычно.
 - ESLint `only-throw-error` разрешает выбрасывать `Redirect` из `@tanstack/router-core`: так роутер
   прерывает `beforeLoad`.
+- Фильтрация TanStack Table не используется: у `FilterFn` значение фильтра объявлено как `any`,
+  и `type-coverage --strict` засчитывает его каждому месту, где функция фильтрации упомянута.
+  Списки фильтруются до передачи в таблицу (`useMemo` над данными), таблица отвечает за выбор строк.
 - Radix подключается пакетами `@radix-ui/react-*`, а не общим `radix-ui`: объявления
   `@radix-ui/react-select` не проходят `skipLibCheck: false` с `exactOptionalPropertyTypes`.
   Выпадающий список — нативный `<select>` (`components/ui/native-select.tsx`).

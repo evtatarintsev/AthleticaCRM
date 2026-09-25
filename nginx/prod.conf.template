@@ -32,6 +32,18 @@ server {
         proxy_set_header   X-Forwarded-Proto $scheme;
     }
 
+    # Новый веб-фронтенд (React): путь /web/ передаётся как есть
+    location = /web {
+        return 301 /web/;
+    }
+
+    location /web/ {
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://frontend:80;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+    }
+
     location / {
         resolver           127.0.0.11 valid=10s;
         set $upstream      http://web:80;

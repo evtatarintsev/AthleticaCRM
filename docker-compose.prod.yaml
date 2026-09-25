@@ -60,6 +60,11 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY}/web:latest
     restart: unless-stopped
 
+  # Новый веб-фронтенд (React), доступен по /web/
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
+    restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     ports:
@@ -74,6 +79,7 @@ services:
     depends_on:
       - server
       - web
+      - frontend
     restart: unless-stopped
 
   certbot:

@@ -11,6 +11,12 @@ Before reporting any task as done, always run:
 ```
 Never propose changes that fail to compile or violate the linter.
 
+When touching `web/` (React-фронтенд), additionally run inside `web/`:
+```bash
+npm run format
+npm run check   # typecheck + eslint + prettier --check + vitest
+```
+
 ### Environment Variables
 
 When adding or changing environment variables in `application.conf`:
@@ -64,7 +70,8 @@ Both files must be updated in the same commit as the `application.conf` change.
 ### Modules
 - **server**: Ktor backend (REST API, database access, business logic)
 - **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs)
-- **composeApp**: Compose Multiplatform UI (currently not the focus)
+- **composeApp**: Compose Multiplatform UI (веб-клиент на `/`; переезжает на `web/`)
+- **web**: новый веб-фронтенд — TypeScript + React + Vite, отдаётся по `/web/`. Не Gradle-модуль, см. `web/README.md`
 
 ### Key Directories in `server/src/main/kotlin/org/athletica/crm/`
 

@@ -69,7 +69,7 @@ Docker-образы приватные, серверу нужен PAT с пра�
 и, опционально, `shopId` с секретным ключом ЮKassa (панель ЮKassa → Настройки → Магазин).
 Приём платежей можно отложить: оставить поля пустыми и включить тестовый режим.
 
-Пароли PostgreSQL, MinIO и JWT-секрет скрипт генерирует сам — вводить их не нужно.
+Пароли PostgreSQL, S3-хранилища и JWT-секрет скрипт генерирует сам — вводить их не нужно.
 
 ---
 
@@ -120,11 +120,11 @@ Docker-образы приватные, серверу нужен PAT с пра�
 | Том | Содержимое |
 |-----|------------|
 | `athletica-crm_postgres_data` | база данных |
-| `athletica-crm_minio_data` | загруженные файлы |
+| `athletica-crm_rustfs_data` | загруженные файлы (RustFS) |
 | `athletica-crm_letsencrypt` | сертификаты, `options-ssl-nginx.conf`, `ssl-dhparams.pem` |
 | `athletica-crm_certbot_www` | ACME-challenge для продления |
 
-Сервисы: `postgres`, `minio`, `server`, `web` (KMP-клиент, `/`), `frontend` (новый React-клиент, `/web/`), `nginx`.
+Сервисы: `postgres`, `rustfs` (S3-хранилище файлов), `server`, `web` (KMP-клиент, `/`), `frontend` (новый React-клиент, `/web/`), `nginx`.
 Сервис `certbot` в профиле `tools` — на `up` не стартует, вызывается только через
 `docker compose run --rm certbot …`.
 
@@ -170,7 +170,7 @@ Push образов идёт под встроенным `secrets.GITHUB_TOKEN`,
 docker compose -f docker-compose.prod.yaml down
 ```
 
-Данные переносятся отдельно — дамп PostgreSQL и содержимое MinIO:
+Данные переносятся отдельно — дамп PostgreSQL и содержимое RustFS:
 
 ```bash
 # на старом сервере

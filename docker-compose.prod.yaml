@@ -14,19 +14,17 @@ services:
       retries: 5
     restart: unless-stopped
 
-  minio:
-    image: quay.io/minio/minio:latest
-    # MinIO закрыл публичные образы (quay.io и Docker Hub отвечают 401):
-    # используем уже скачанный на сервер образ и не пытаемся его обновить.
-    pull_policy: missing
-    command: server /data --console-address ":9001"
+  # S3-совместимое хранилище файлов. MinIO закрыл публичные образы, поэтому RustFS.
+  rustfs:
+    image: rustfs/rustfs:1.0.0
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      RUSTFS_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${MINIO_SECRET_KEY}
+      RUSTFS_CONSOLE_ENABLE: "true"
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,7 +37,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ENDPOINT: http://rustfs:9000
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
@@ -55,7 +53,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     restart: unless-stopped
 
@@ -97,6 +95,6 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
+  rustfs_data:
   letsencrypt:
   certbot_www:

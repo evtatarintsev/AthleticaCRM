@@ -71,6 +71,12 @@ export default tseslint.config(
         },
       ],
       "@typescript-eslint/prefer-readonly": "error",
+      // TanStack Router прерывает beforeLoad/loader только выброшенным `redirect(...)`,
+      // а он — `Response`, не `Error`. Разрешён ровно этот тип из пакета роутера.
+      "@typescript-eslint/only-throw-error": [
+        "error",
+        { allow: [{ from: "package", package: "@tanstack/router-core", name: "Redirect" }] },
+      ],
     },
   },
   {

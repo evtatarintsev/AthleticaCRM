@@ -1,16 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import type { DeepKeys } from "@tanstack/react-form";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import type { ApiResult } from "../api/client";
 import {
   BranchIdSchema,
   type AuthBranchesResponse,
   type LoginResponse,
 } from "../api/generated/contracts";
-import { t } from "../i18n";
+import { ru } from "../i18n/ru";
+import { renderPage } from "../test/render";
 import type { AuthApi } from "./authApi";
-import { LoginPage } from "./LoginPage";
+import { LoginPage, type LoginFormValues } from "./LoginPage";
 
 const centerId = BranchIdSchema.parse("0199a0b2-7c3e-7d2a-9f10-000000000001");
 const northId = BranchIdSchema.parse("0199a0b2-7c3e-7d2a-9f10-000000000002");
@@ -34,15 +35,11 @@ function fakeApi(
 
 /** Рендерит экран входа и заполняет учётные данные. */
 async function renderAndSubmit(api: AuthApi, onAuthenticated = vi.fn<() => void>()) {
-  render(
-    <MemoryRouter>
-      <LoginPage api={api} onAuthenticated={onAuthenticated} />
-    </MemoryRouter>,
-  );
+  renderPage(<LoginPage api={api} onAuthenticated={onAuthenticated} />);
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText(t.email), "  coach@example.com ");
-  await user.type(screen.getByLabelText(t.password), "secret");
-  await user.click(screen.getByRole("button", { name: t.actionLogin }));
+  await user.type(await screen.findByLabelText(ru["auth.email"]), "  coach@example.com ");
+  await user.type(screen.getByLabelText(ru["auth.password"]), "secret");
+  await user.click(screen.getByRole("button", { name: ru["auth.actionLogin"] }));
   return { user, onAuthenticated };
 }
 
@@ -71,7 +68,9 @@ describe("LoginPage", () => {
     });
     const { user, onAuthenticated } = await renderAndSubmit(api);
 
-    expect(screen.getByRole("heading", { name: t.branchTitle })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: ru["auth.branchTitle"] }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Север" }));
 
     expect(api.login).toHaveBeenCalledWith(expect.objectContaining({ branchId: northId }));
@@ -85,7 +84,7 @@ describe("LoginPage", () => {
     });
     const { onAuthenticated } = await renderAndSubmit(api);
 
-    expect(screen.getByRole("alert")).toHaveTextContent(t.errorInvalidCredentials);
+    expect(screen.getByRole("alert")).toHaveTextContent(ru["error.invalidCredentials"]);
     expect(api.login).not.toHaveBeenCalled();
     expect(onAuthenticated).not.toHaveBeenCalled();
   });
@@ -94,16 +93,45 @@ describe("LoginPage", () => {
     const api = fakeApi({ ok: false, error: { kind: "unavailable" } });
     await renderAndSubmit(api);
 
-    expect(screen.getByRole("alert")).toHaveTextContent(t.errorServiceUnavailable);
+    expect(screen.getByRole("alert")).toHaveTextContent(ru["error.serviceUnavailable"]);
   });
 
-  it("размечает поля для автозаполнения", () => {
-    render(
-      <MemoryRouter>
-        <LoginPage api={fakeApi({ ok: true, value: { branches: [] } })} />
-      </MemoryRouter>,
+  it("размечает поля для автозаполнения", async () => {
+    renderPage(
+      <LoginPage api={fakeApi({ ok: true, value: { branches: [] } })} onAuthenticated={vi.fn()} />,
     );
-    expect(screen.getByLabelText(t.email)).toHaveAttribute("autocomplete", "username");
-    expect(screen.getByLabelText(t.password)).toHaveAttribute("autocomplete", "current-password");
+    expect(await screen.findByLabelText(ru["auth.email"])).toHaveAttribute(
+      "autocomplete",
+      "username",
+    );
+    expect(screen.getByLabelText(ru["auth.password"])).toHaveAttribute(
+      "autocomplete",
+      "current-password",
+    );
+  });
+
+  it("не отправляет пустую форму и связывает ошибку с полем", async () => {
+    const api = fakeApi({ ok: true, value: { branches: [] } });
+    renderPage(<LoginPage api={api} onAuthenticated={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: ru["auth.actionLogin"] }));
+
+    const email = screen.getByLabelText(ru["auth.email"]);
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).toHaveAccessibleDescription(ru["error.required"]);
+    expect(api.branches).not.toHaveBeenCalled();
+  });
+
+  it("показывает интерфейс на английском", async () => {
+    renderPage(
+      <LoginPage api={fakeApi({ ok: true, value: { branches: [] } })} onAuthenticated={vi.fn()} />,
+      "en",
+    );
+    expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+  });
+
+  it("путь поля формы проверяется компилятором", () => {
+    expectTypeOf<"username">().toExtend<DeepKeys<LoginFormValues>>();
+    expectTypeOf<"usernme">().not.toExtend<DeepKeys<LoginFormValues>>();
   });
 });

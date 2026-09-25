@@ -1,20 +1,42 @@
-import { useMemo, useState, type SubmitEvent } from "react";
-import { Link } from "react-router";
-import type { ApiError } from "../api/client";
-import { t } from "../i18n";
-import { CURRENCIES, parseCurrency } from "../lib/currency";
-import { formText } from "../lib/forms";
-import { AuthLayout } from "../ui/AuthLayout";
-import { ErrorAlert, PrimaryButton } from "../ui/controls";
-import { PasswordField, SelectField, TextField } from "../ui/fields";
-import { authApi, type AuthApi } from "./authApi";
-import { redirectToApp } from "./session";
+import { useForm } from "@tanstack/react-form";
+import { Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { z } from "zod";
+import type { ApiError } from "@/api/client";
+import { CurrencySchema, type Currency } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
+import { FormAlert } from "@/forms/FormAlert";
+import { PasswordField, SelectField, TextField } from "@/forms/fields";
+import { useI18n, type I18n } from "@/i18n/context";
+import { CURRENCIES } from "@/lib/currency";
+import { AuthLayout } from "@/ui/AuthLayout";
+import type { AuthApi } from "./authApi";
 import { availableTimezones, browserTimezone } from "./timezones";
 
-/** Состояние отправки формы регистрации. */
-interface SubmitState {
-  loading: boolean;
-  error: string | null;
+/** Значения формы регистрации. */
+export interface SignUpFormValues {
+  readonly companyName: string;
+  readonly userName: string;
+  readonly login: string;
+  readonly password: string;
+  readonly timezone: string;
+  readonly currency: Currency;
+}
+
+/** Схема формы регистрации с сообщениями на языке интерфейса [t]; текст обрезается по краям. */
+function signUpSchema(t: I18n["t"]) {
+  const required = z.string().trim().min(1, t("error.required"));
+  return z.object({
+    companyName: required,
+    userName: required,
+    login: z
+      .string()
+      .trim()
+      .pipe(z.email(t("error.invalidEmail"))),
+    password: z.string().min(1, t("error.required")),
+    timezone: required,
+    currency: CurrencySchema,
+  });
 }
 
 /**
@@ -22,117 +44,150 @@ interface SubmitState {
  * [onAuthenticated] — переход после успешной регистрации (сервер сразу выдаёт сессию).
  */
 export function SignUpPage({
-  api = authApi,
-  onAuthenticated = redirectToApp,
+  api,
+  onAuthenticated,
 }: {
-  api?: AuthApi;
-  onAuthenticated?: () => void;
+  api: AuthApi;
+  onAuthenticated: () => void;
 }) {
+  const { t } = useI18n();
+  const schema = useMemo(() => signUpSchema(t), [t]);
   const defaultTimezone = useMemo(() => browserTimezone(), []);
   const timezones = useMemo(
-    () => availableTimezones(defaultTimezone).map((z) => ({ value: z, label: z })),
+    () => availableTimezones(defaultTimezone).map((zone) => ({ value: zone, label: zone })),
     [defaultTimezone],
   );
-  const [state, setState] = useState<SubmitState>({ loading: false, error: null });
+  const [failure, setFailure] = useState<ApiError | null>(null);
 
-  const onSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const field = (name: string) => formText(form, name).trim();
-    const currency = parseCurrency(field("currency"));
-    if (currency === undefined) {
-      setState({ loading: false, error: t.errorRegistrationFailed });
-      return;
-    }
-    setState({ loading: true, error: null });
-    const result = await api.signUp({
-      companyName: field("organization"),
-      userName: field("name"),
-      login: field("username"),
-      password: formText(form, "password"),
-      timezone: field("timezone"),
-      currency,
-    });
-    if (result.ok) {
-      onAuthenticated();
-    } else {
-      setState({ loading: false, error: signUpErrorMessage(result.error) });
-    }
+  const defaultValues: SignUpFormValues = {
+    companyName: "",
+    userName: "",
+    login: "",
+    password: "",
+    timezone: defaultTimezone,
+    currency: "RUB",
   };
+  const form = useForm({
+    defaultValues,
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      const parsed = schema.safeParse(value);
+      if (!parsed.success) {
+        return;
+      }
+      setFailure(null);
+      const result = await api.signUp(parsed.data);
+      if (result.ok) {
+        onAuthenticated();
+      } else {
+        setFailure(result.error);
+      }
+    },
+  });
 
   return (
     <AuthLayout
-      title={t.registerTitle}
-      subtitle={t.registerSubtitle}
+      title={t("auth.registerTitle")}
+      subtitle={t("auth.registerSubtitle")}
       footer={
         <>
-          {t.haveAccount}{" "}
-          <Link to="/login" className="font-medium text-brand-600 hover:underline">
-            {t.actionLogin}
+          {t("auth.haveAccount")}{" "}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            {t("auth.actionLogin")}
           </Link>
         </>
       }
     >
       <form
         method="post"
+        noValidate
         onSubmit={(event) => {
-          void onSubmit(event);
+          event.preventDefault();
+          void form.handleSubmit();
         }}
         className="space-y-4"
       >
-        {state.error !== null && <ErrorAlert message={state.error} />}
-        <TextField
-          label={t.orgName}
-          name="organization"
-          autoComplete="organization"
-          required
-          autoFocus
-        />
-        <TextField label={t.yourName} name="name" autoComplete="name" required />
-        <TextField
-          label={t.email}
-          name="username"
-          type="email"
-          inputMode="email"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-        />
-        <PasswordField label={t.password} name="password" autoComplete="new-password" required />
-        <SelectField
-          label={t.timezone}
-          name="timezone"
-          defaultValue={defaultTimezone}
-          options={timezones}
-        />
-        <SelectField
-          label={t.currency}
-          name="currency"
-          defaultValue="RUB"
-          hint={t.currencyHint}
-          options={CURRENCIES.map((c) => ({
-            value: c.code,
-            label: `${c.code} (${c.symbol})`,
-          }))}
-        />
-        <PrimaryButton type="submit" loading={state.loading}>
-          {t.actionRegister}
-        </PrimaryButton>
+        {failure !== null && <FormAlert message={signUpErrorMessage(t, failure)} />}
+        <form.Field name="companyName">
+          {(field) => (
+            <TextField
+              field={field}
+              label={t("auth.orgName")}
+              autoComplete="organization"
+              required
+              autoFocus
+            />
+          )}
+        </form.Field>
+        <form.Field name="userName">
+          {(field) => (
+            <TextField field={field} label={t("auth.yourName")} autoComplete="name" required />
+          )}
+        </form.Field>
+        <form.Field name="login">
+          {(field) => (
+            <TextField
+              field={field}
+              label={t("auth.email")}
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+            />
+          )}
+        </form.Field>
+        <form.Field name="password">
+          {(field) => (
+            <PasswordField
+              field={field}
+              label={t("auth.password")}
+              autoComplete="new-password"
+              required
+            />
+          )}
+        </form.Field>
+        <form.Field name="timezone">
+          {(field) => <SelectField field={field} label={t("auth.timezone")} options={timezones} />}
+        </form.Field>
+        <form.Field name="currency">
+          {(field) => (
+            <SelectField
+              field={field}
+              label={t("auth.currency")}
+              hint={t("auth.currencyHint")}
+              options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} (${c.symbol})` }))}
+            />
+          )}
+        </form.Field>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(submitting) => (
+            <Button
+              type="submit"
+              size="lg"
+              disabled={submitting}
+              aria-busy={submitting}
+              className="w-full"
+            >
+              {t("auth.actionRegister")}
+            </Button>
+          )}
+        </form.Subscribe>
       </form>
     </AuthLayout>
   );
 }
 
-/** Текст ошибки регистрации: сообщение сервера, если оно есть. */
-function signUpErrorMessage(error: ApiError): string {
+/** Текст ошибки регистрации [error]: сообщение сервера, если оно есть. */
+function signUpErrorMessage(t: I18n["t"], error: ApiError): string {
   switch (error.kind) {
     case "business":
-      return error.message === "" ? t.errorRegistrationFailed : error.message;
+      return error.message === "" ? t("error.registrationFailed") : error.message;
     case "unauthenticated":
-      return t.errorRegistrationFailed;
+      return t("error.registrationFailed");
     case "unavailable":
     case "contract":
-      return t.errorServiceUnavailable;
+      return t("error.serviceUnavailable");
   }
 }

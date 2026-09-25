@@ -1,42 +1,55 @@
-import { useState, type SubmitEvent } from "react";
-import { Link } from "react-router";
-import type { BranchDetailResponse, BranchId } from "../api/generated/contracts";
-import { t } from "../i18n";
-import { formText } from "../lib/forms";
-import { AuthLayout } from "../ui/AuthLayout";
-import { ErrorAlert, PrimaryButton } from "../ui/controls";
-import { PasswordField, TextField } from "../ui/fields";
-import { authApi, type AuthApi } from "./authApi";
-import { submitBranch, submitCredentials, type Credentials, type LoginOutcome } from "./loginFlow";
-import { redirectToApp } from "./session";
+import { useForm } from "@tanstack/react-form";
+import { Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { z } from "zod";
+import type { BranchDetailResponse, BranchId } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
+import { FormAlert } from "@/forms/FormAlert";
+import { PasswordField, TextField } from "@/forms/fields";
+import { useI18n, type I18n } from "@/i18n/context";
+import { AuthLayout } from "@/ui/AuthLayout";
+import type { AuthApi } from "./authApi";
+import {
+  submitBranch,
+  submitCredentials,
+  type Credentials,
+  type LoginFailure,
+  type LoginOutcome,
+} from "./loginFlow";
 
-/** Состояние экрана входа: ввод учётных данных или выбор филиала. */
-type LoginState =
-  | { step: "credentials"; loading: boolean; error: string | null }
+/** Значения формы входа. */
+export interface LoginFormValues {
+  readonly username: string;
+  readonly password: string;
+}
+
+/** Схема формы входа с сообщениями на языке интерфейса [t]; логин обрезается по краям. */
+function loginSchema(t: I18n["t"]) {
+  return z.object({
+    username: z.string().trim().min(1, t("error.required")),
+    password: z.string().min(1, t("error.required")),
+  });
+}
+
+/** Шаг экрана входа: ввод учётных данных или выбор филиала. */
+type LoginStep =
+  | { readonly kind: "credentials"; readonly failure: LoginFailure | null }
   | {
-      step: "branch";
-      credentials: Credentials;
-      branches: readonly BranchDetailResponse[];
-      loading: boolean;
-      error: string | null;
+      readonly kind: "branch";
+      readonly credentials: Credentials;
+      readonly branches: readonly BranchDetailResponse[];
+      readonly loading: boolean;
+      readonly failure: LoginFailure | null;
     };
 
 /**
  * Экран входа. [api] — клиент авторизации, [onAuthenticated] — переход после успешного входа.
- * Поля неуправляемые и размечены `autocomplete`, чтобы работало автозаполнение браузера.
+ * Поля размечены `autocomplete`, чтобы работали автозаполнение и менеджеры паролей.
  */
-export function LoginPage({
-  api = authApi,
-  onAuthenticated = redirectToApp,
-}: {
-  api?: AuthApi;
-  onAuthenticated?: () => void;
-}) {
-  const [state, setState] = useState<LoginState>({
-    step: "credentials",
-    loading: false,
-    error: null,
-  });
+export function LoginPage({ api, onAuthenticated }: { api: AuthApi; onAuthenticated: () => void }) {
+  const { t } = useI18n();
+  const [step, setStep] = useState<LoginStep>({ kind: "credentials", failure: null });
+  const schema = useMemo(() => loginSchema(t), [t]);
 
   const apply = (outcome: LoginOutcome, credentials: Credentials) => {
     switch (outcome.kind) {
@@ -44,65 +57,71 @@ export function LoginPage({
         onAuthenticated();
         return;
       case "chooseBranch":
-        setState({
-          step: "branch",
+        setStep({
+          kind: "branch",
           credentials,
           branches: outcome.branches,
           loading: false,
-          error: null,
+          failure: null,
         });
         return;
-      case "error":
-        setState((s) => ({ ...s, loading: false, error: outcome.message }));
+      case "failed":
+        setStep((s) => ({ ...s, loading: false, failure: outcome.failure }));
         return;
     }
   };
 
-  const onCredentials = async (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const credentials = {
-      username: formText(form, "username").trim(),
-      password: formText(form, "password"),
-    };
-    setState({ step: "credentials", loading: true, error: null });
-    apply(await submitCredentials(api, credentials), credentials);
-  };
+  const defaultValues: LoginFormValues = { username: "", password: "" };
+  const form = useForm({
+    defaultValues,
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      const parsed = schema.safeParse(value);
+      if (!parsed.success) {
+        return;
+      }
+      setStep({ kind: "credentials", failure: null });
+      apply(await submitCredentials(api, parsed.data), parsed.data);
+    },
+  });
 
-  if (state.step === "branch") {
+  if (step.kind === "branch") {
     const onBranch = async (branchId: BranchId) => {
-      setState({ ...state, loading: true, error: null });
-      apply(await submitBranch(api, state.credentials, branchId), state.credentials);
+      setStep({ ...step, loading: true, failure: null });
+      apply(await submitBranch(api, step.credentials, branchId), step.credentials);
     };
     return (
-      <AuthLayout title={t.branchTitle} subtitle={t.branchSubtitle}>
+      <AuthLayout title={t("auth.branchTitle")} subtitle={t("auth.branchSubtitle")}>
         <div className="space-y-3">
-          {state.error !== null && <ErrorAlert message={state.error} />}
+          {step.failure !== null && <FormAlert message={failureMessage(t, step.failure)} />}
           <ul className="space-y-2">
-            {state.branches.map((branch) => (
+            {step.branches.map((branch) => (
               <li key={branch.id}>
-                <button
+                <Button
                   type="button"
-                  disabled={state.loading}
+                  variant="outline"
+                  size="lg"
+                  disabled={step.loading}
                   onClick={() => {
                     void onBranch(branch.id);
                   }}
-                  className="w-full rounded-lg border border-slate-200 px-4 py-3 text-left font-medium transition hover:border-brand-500 hover:bg-brand-50 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
+                  className="w-full justify-start"
                 >
                   {branch.name}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => {
-              setState({ step: "credentials", loading: false, error: null });
+              setStep({ kind: "credentials", failure: null });
             }}
-            className="w-full py-2 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            className="w-full"
           >
-            {t.actionBack}
-          </button>
+            {t("action.back")}
+          </Button>
         </div>
       </AuthLayout>
     );
@@ -110,46 +129,80 @@ export function LoginPage({
 
   return (
     <AuthLayout
-      title={t.loginTitle}
-      subtitle={t.loginSubtitle}
+      title={t("auth.loginTitle")}
+      subtitle={t("auth.loginSubtitle")}
       footer={
         <>
-          {t.noAccount}{" "}
-          <Link to="/sign-up" className="font-medium text-brand-600 hover:underline">
-            {t.actionRegister}
+          {t("auth.noAccount")}{" "}
+          <Link to="/sign-up" className="font-medium text-primary hover:underline">
+            {t("auth.actionRegister")}
           </Link>
         </>
       }
     >
       <form
         method="post"
+        noValidate
         onSubmit={(event) => {
-          void onCredentials(event);
+          event.preventDefault();
+          void form.handleSubmit();
         }}
         className="space-y-4"
       >
-        {state.error !== null && <ErrorAlert message={state.error} />}
-        <TextField
-          label={t.email}
-          name="username"
-          type="email"
-          inputMode="email"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          autoFocus
-        />
-        <PasswordField
-          label={t.password}
-          name="password"
-          autoComplete="current-password"
-          required
-        />
-        <PrimaryButton type="submit" loading={state.loading}>
-          {t.actionLogin}
-        </PrimaryButton>
+        {step.failure !== null && <FormAlert message={failureMessage(t, step.failure)} />}
+        <form.Field name="username">
+          {(field) => (
+            <TextField
+              field={field}
+              label={t("auth.email")}
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              autoFocus
+            />
+          )}
+        </form.Field>
+        <form.Field name="password">
+          {(field) => (
+            <PasswordField
+              field={field}
+              label={t("auth.password")}
+              autoComplete="current-password"
+              required
+            />
+          )}
+        </form.Field>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(submitting) => (
+            <Button
+              type="submit"
+              size="lg"
+              disabled={submitting}
+              aria-busy={submitting}
+              className="w-full"
+            >
+              {t("auth.actionLogin")}
+            </Button>
+          )}
+        </form.Subscribe>
       </form>
     </AuthLayout>
   );
+}
+
+/** Текст причины неудачного входа [failure] на языке интерфейса [t]. */
+function failureMessage(t: I18n["t"], failure: LoginFailure): string {
+  switch (failure.kind) {
+    case "invalidCredentials":
+      return t("error.invalidCredentials");
+    case "noBranches":
+      return t("error.noBranches");
+    case "unavailable":
+      return t("error.serviceUnavailable");
+    case "server":
+      return failure.message;
+  }
 }

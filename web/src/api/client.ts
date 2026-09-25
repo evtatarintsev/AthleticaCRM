@@ -235,13 +235,3 @@ function queryString(request: unknown): string {
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null;
 }
-
-/** Клиент API приложения. */
-export const api: ApiClient = createApiClient({
-  fetch: (input, init) => fetch(input, init),
-  language: () => (document.documentElement.lang === "" ? "ru" : document.documentElement.lang),
-  onSessionExpired: () => undefined,
-  reportContractViolation: (endpoint, issues) => {
-    console.error(`Ответ /api/${endpoint} не совпадает с контрактом`, issues);
-  },
-});

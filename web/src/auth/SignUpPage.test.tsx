@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import type { ApiResult } from "../api/client";
 import type { LoginResponse } from "../api/generated/contracts";
-import { t } from "../i18n";
+import { ru } from "../i18n/ru";
+import { renderPage } from "../test/render";
 import type { AuthApi } from "./authApi";
 import { SignUpPage } from "./SignUpPage";
 import { browserTimezone } from "./timezones";
@@ -20,18 +20,14 @@ function fakeApi(signUp: ApiResult<LoginResponse>) {
 
 /** Рендерит экран регистрации, заполняет и отправляет форму. */
 async function renderAndSubmit(api: AuthApi, onAuthenticated = vi.fn<() => void>()) {
-  render(
-    <MemoryRouter>
-      <SignUpPage api={api} onAuthenticated={onAuthenticated} />
-    </MemoryRouter>,
-  );
+  renderPage(<SignUpPage api={api} onAuthenticated={onAuthenticated} />);
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText(t.orgName), "Лига");
-  await user.type(screen.getByLabelText(t.yourName), "Иван");
-  await user.type(screen.getByLabelText(t.email), "ivan@example.com");
-  await user.type(screen.getByLabelText(t.password), "secret");
-  await user.selectOptions(screen.getByLabelText(t.currency), "KZT");
-  await user.click(screen.getByRole("button", { name: t.actionRegister }));
+  await user.type(await screen.findByLabelText(ru["auth.orgName"]), " Лига ");
+  await user.type(screen.getByLabelText(ru["auth.yourName"]), "Иван");
+  await user.type(screen.getByLabelText(ru["auth.email"]), "ivan@example.com");
+  await user.type(screen.getByLabelText(ru["auth.password"]), "secret");
+  await user.selectOptions(screen.getByLabelText(ru["auth.currency"]), "KZT");
+  await user.click(screen.getByRole("button", { name: ru["auth.actionRegister"] }));
   return onAuthenticated;
 }
 

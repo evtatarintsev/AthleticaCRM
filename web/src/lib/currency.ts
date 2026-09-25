@@ -15,8 +15,17 @@ const SYMBOLS: Readonly<Record<Currency, string>> = {
 export const CURRENCIES: readonly { readonly code: Currency; readonly symbol: string }[] =
   CurrencySchema.options.map((code) => ({ code, symbol: SYMBOLS[code] }));
 
-/** Валюта по коду [code] или `undefined`, если код неизвестен. */
-export function parseCurrency(code: string): Currency | undefined {
-  const parsed = CurrencySchema.safeParse(code);
-  return parsed.success ? parsed.data : undefined;
+/** Число дробных разрядов валюты — как `Currency.fractionDigits` в `shared`. */
+const FRACTION_DIGITS: Readonly<Record<Currency, number>> = {
+  RUB: 2,
+  USD: 2,
+  EUR: 2,
+  KZT: 2,
+  BYN: 2,
+  UAH: 2,
+};
+
+/** Сколько минорных единиц в основной единице валюты [currency], в десятичных разрядах. */
+export function fractionDigits(currency: Currency): number {
+  return FRACTION_DIGITS[currency];
 }

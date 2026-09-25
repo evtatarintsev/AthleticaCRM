@@ -1,19 +1,26 @@
-import type { ApiError } from "../api/client";
-import type { BranchDetailResponse, BranchId } from "../api/generated/contracts";
+import type { ApiError } from "@/api/client";
+import type { BranchDetailResponse, BranchId } from "@/api/generated/contracts";
 import type { AuthApi } from "./authApi";
-import { t } from "../i18n";
 
 /** Учётные данные, введённые на экране входа. */
 export interface Credentials {
-  username: string;
-  password: string;
+  readonly username: string;
+  readonly password: string;
 }
+
+/** Причина неудачного входа; текст подбирает экран на языке интерфейса. */
+export type LoginFailure =
+  | { readonly kind: "invalidCredentials" }
+  | { readonly kind: "noBranches" }
+  | { readonly kind: "unavailable" }
+  /** Сервер отказал с сообщением [message] на языке запроса. */
+  | { readonly kind: "server"; readonly message: string };
 
 /** Итог шага входа. */
 export type LoginOutcome =
-  | { kind: "authenticated" }
-  | { kind: "chooseBranch"; branches: readonly BranchDetailResponse[] }
-  | { kind: "error"; message: string };
+  | { readonly kind: "authenticated" }
+  | { readonly kind: "chooseBranch"; readonly branches: readonly BranchDetailResponse[] }
+  | { readonly kind: "failed"; readonly failure: LoginFailure };
 
 /**
  * Первый шаг входа: проверяет [credentials] и запрашивает доступные филиалы.
@@ -25,7 +32,7 @@ export async function submitCredentials(
 ): Promise<LoginOutcome> {
   const result = await api.branches(credentials);
   if (!result.ok) {
-    return { kind: "error", message: credentialsErrorMessage(result.error) };
+    return { kind: "failed", failure: credentialsFailure(result.error) };
   }
   const { branches } = result.value;
   const [single] = branches;
@@ -33,7 +40,7 @@ export async function submitCredentials(
     return submitBranch(api, credentials, single.id);
   }
   if (branches.length === 0) {
-    return { kind: "error", message: t.errorNoBranches };
+    return { kind: "failed", failure: { kind: "noBranches" } };
   }
   return { kind: "chooseBranch", branches };
 }
@@ -46,32 +53,34 @@ export async function submitBranch(
 ): Promise<LoginOutcome> {
   const result = await api.login({ ...credentials, branchId });
   if (!result.ok) {
-    return { kind: "error", message: loginErrorMessage(result.error) };
+    return { kind: "failed", failure: loginFailure(result.error) };
   }
   return { kind: "authenticated" };
 }
 
-/** Текст ошибки проверки логина и пароля: любой отказ сервера — неверные данные. */
-function credentialsErrorMessage(error: ApiError): string {
+/** Причина отказа при проверке логина и пароля: любой отказ сервера — неверные данные. */
+function credentialsFailure(error: ApiError): LoginFailure {
   switch (error.kind) {
     case "business":
     case "unauthenticated":
-      return t.errorInvalidCredentials;
+      return { kind: "invalidCredentials" };
     case "unavailable":
     case "contract":
-      return t.errorServiceUnavailable;
+      return { kind: "unavailable" };
   }
 }
 
-/** Текст ошибки входа в филиал: сообщение сервера, если оно есть. */
-function loginErrorMessage(error: ApiError): string {
+/** Причина отказа при входе в филиал: сообщение сервера, если оно есть. */
+function loginFailure(error: ApiError): LoginFailure {
   switch (error.kind) {
     case "business":
-      return error.message === "" ? t.errorInvalidCredentials : error.message;
+      return error.message === ""
+        ? { kind: "invalidCredentials" }
+        : { kind: "server", message: error.message };
     case "unauthenticated":
-      return t.errorInvalidCredentials;
+      return { kind: "invalidCredentials" };
     case "unavailable":
     case "contract":
-      return t.errorServiceUnavailable;
+      return { kind: "unavailable" };
   }
 }

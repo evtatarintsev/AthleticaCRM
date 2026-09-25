@@ -10,6 +10,7 @@ import { sessionQuery } from "@/query/queries";
 import { Logo } from "@/ui/AuthLayout";
 import { AccountMenu } from "./AccountMenu";
 import { Navigation } from "./Navigation";
+import { NotificationBell } from "./NotificationBell";
 
 /**
  * Раскладка страниц за логином. На экранах от 1024 px навигация — боковая панель,
@@ -53,8 +54,10 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
           <div className="min-w-0 lg:hidden">
             <Brand name={me.orgInfo.name} />
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <NotificationBell api={api} branchId={me.currentBranch.id} />
             <AccountMenu
+              api={api}
               me={me}
               onLogout={() => {
                 void onLogout();

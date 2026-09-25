@@ -101,7 +101,9 @@ function DialogFooter({
       {children}
       {closeLabel !== undefined && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">{closeLabel}</Button>
+          <Button type="button" variant="outline">
+            {closeLabel}
+          </Button>
         </DialogPrimitive.Close>
       )}
     </div>

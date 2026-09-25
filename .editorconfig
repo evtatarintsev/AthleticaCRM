@@ -19,3 +19,6 @@ ktlint_standard_parameter-list-wrapping = disabled
 ktlint_standard_argument-list-wrapping = disabled
 ktlint_class_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 4
 ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 4
+
+[web/**]
+indent_size = 2

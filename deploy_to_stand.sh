@@ -38,7 +38,8 @@ usage() {
   -p, --path PATH     каталог проекта на сервере (по умолчанию /opt/athletica-crm)
   -i, --key FILE      приватный ssh-ключ (по умолчанию ~/.ssh/athletica_deploy)
       --only server   выкатить только сервер
-      --only web      выкатить только фронтенд
+      --only web      выкатить только KMP-фронтенд
+      --only frontend выкатить только новый веб-фронтенд (web/, путь /web/)
       --skip-gradle   не пересобирать артефакты, взять готовые из build/
   -h, --help          эта справка
 
@@ -61,11 +62,14 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$SERVER_HOST" ] || { usage; exit 1; }
-case "$ONLY" in ""|server|web) ;; *) die "--only принимает server или web" ;; esac
+case "$ONLY" in ""|server|web|frontend) ;; *) die "--only принимает server, web или frontend" ;; esac
 
-DEPLOY_SERVER=1; DEPLOY_WEB=1
-[ "$ONLY" = "web" ] && DEPLOY_SERVER=0
-[ "$ONLY" = "server" ] && DEPLOY_WEB=0
+DEPLOY_SERVER=1; DEPLOY_WEB=1; DEPLOY_FRONTEND=1
+if [ -n "$ONLY" ]; then
+    [ "$ONLY" = "server" ] || DEPLOY_SERVER=0
+    [ "$ONLY" = "web" ] || DEPLOY_WEB=0
+    [ "$ONLY" = "frontend" ] || DEPLOY_FRONTEND=0
+fi
 
 command -v docker >/dev/null || die "не найден docker"
 docker info >/dev/null 2>&1 || die "демон docker не запущен"
@@ -90,6 +94,7 @@ REPO=$(ssh_do "grep -E '^GITHUB_REPOSITORY=' '$DEPLOY_PATH/.env' | tail -1 | cut
 [ -n "$REPO" ] || die "в $DEPLOY_PATH/.env не задан GITHUB_REPOSITORY"
 IMAGE_SERVER="ghcr.io/$REPO/server:latest"
 IMAGE_WEB="ghcr.io/$REPO/web:latest"
+IMAGE_FRONTEND="ghcr.io/$REPO/frontend:latest"
 
 REMOTE_ARCH=$(ssh_do "uname -m" | tr -d '\r')
 case "$REMOTE_ARCH" in
@@ -97,13 +102,15 @@ case "$REMOTE_ARCH" in
     aarch64|arm64)  PLATFORM="linux/arm64" ;;
     *) die "неизвестная архитектура сервера: $REMOTE_ARCH" ;;
 esac
-hint "образы: $IMAGE_SERVER, $IMAGE_WEB ($PLATFORM)"
+hint "образы: $IMAGE_SERVER, $IMAGE_WEB, $IMAGE_FRONTEND ($PLATFORM)"
 
 # ── 2. Локальная сборка артефактов ────────────────────────────────────────────
 JAR="server/build/libs/athletica.jar"
 WEB_DIST="composeApp/build/dist/wasmJs/productionExecutable"
 
-if [ "$SKIP_GRADLE" = "1" ]; then
+if [ "$DEPLOY_SERVER" = "0" ] && [ "$DEPLOY_WEB" = "0" ]; then
+    : # Gradle не нужен: новый фронтенд собирается в своём Dockerfile
+elif [ "$SKIP_GRADLE" = "1" ]; then
     warn "Gradle пропущен, использую то, что уже лежит в build/"
 else
     TASKS=()
@@ -192,10 +199,18 @@ DOCKERFILE
     build_image "$IMAGE_WEB" "$CONTEXT/web.Dockerfile"
 fi
 
+if [ "$DEPLOY_FRONTEND" = "1" ]; then
+    info "Собираю образ нового веб-фронтенда (web/)"
+    # Сборка идёт внутри web/Dockerfile (npm ci + проверки + vite build).
+    docker build --platform "$PLATFORM" -t "$IMAGE_FRONTEND" web >"$BUILD_LOG" 2>&1 \
+        || { cat "$BUILD_LOG" >&2; die "не собрался образ $IMAGE_FRONTEND"; }
+fi
+
 # ── 4. Перенос образов на стенд ───────────────────────────────────────────────
 IMAGES=()
 [ "$DEPLOY_SERVER" = "1" ] && IMAGES+=("$IMAGE_SERVER")
 [ "$DEPLOY_WEB" = "1" ] && IMAGES+=("$IMAGE_WEB")
+[ "$DEPLOY_FRONTEND" = "1" ] && IMAGES+=("$IMAGE_FRONTEND")
 
 info "Заливаю образы на $SERVER_HOST"
 hint "$(docker image inspect "${IMAGES[@]}" --format '{{.RepoTags}} {{.Size}} байт' | tr '\n' ' ')"

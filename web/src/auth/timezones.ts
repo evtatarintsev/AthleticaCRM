@@ -1,6 +1,7 @@
 /** Часовой пояс браузера, например `Europe/Moscow`. */
 export function browserTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return zone === "" ? "UTC" : zone;
 }
 
 /** Список IANA-поясов для выбора; всегда содержит [current]. */

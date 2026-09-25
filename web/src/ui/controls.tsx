@@ -9,11 +9,11 @@ export function PrimaryButton({
   return (
     <button
       {...button}
-      disabled={loading || button.disabled}
+      disabled={loading === true || button.disabled === true}
       aria-busy={loading}
       className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-base font-medium text-white shadow-sm transition hover:bg-brand-700 focus-visible:ring-4 focus-visible:ring-brand-100 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-brand-500/30"
     >
-      {loading && (
+      {loading === true && (
         <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
       )}
       {children}

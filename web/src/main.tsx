@@ -14,7 +14,12 @@ const router = createBrowserRouter(
   { basename: "/web" },
 );
 
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root");
+if (root === null) {
+  throw new Error("В index.html нет элемента #root");
+}
+
+createRoot(root).render(
   <StrictMode>
     <RouterProvider router={router} />
   </StrictMode>,

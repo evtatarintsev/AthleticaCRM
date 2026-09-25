@@ -59,7 +59,7 @@ class RouteWithContext(val di: Di, val router: Route) {
         route(path, HttpMethod.Get) { call ->
             val response = body(call)
             call.respond(response, typeInfo<Res>())
-        }
+        }.contract(getContract<Unit, Res>())
 
     @JvmName("getWithRequest")
     inline fun <reified Req, reified Res> get(
@@ -70,7 +70,7 @@ class RouteWithContext(val di: Di, val router: Route) {
             val request = call.request.queryParameters.decode<Req>()
             val response = body(request)
             call.respond(response, typeInfo<Res>())
-        }
+        }.contract(getContract<Req, Res>())
 
     @JvmName("getWithRequestAndCall")
     inline fun <reified Req, reified Res> get(
@@ -81,7 +81,7 @@ class RouteWithContext(val di: Di, val router: Route) {
             val request = call.request.queryParameters.decode<Req>()
             val response = body(request, call)
             call.respond(response, typeInfo<Res>())
-        }
+        }.contract(getContract<Req, Res>())
 
     inline fun <reified Req, reified Res> post(
         path: String,
@@ -92,7 +92,7 @@ class RouteWithContext(val di: Di, val router: Route) {
             val req: Req = if (Req::class == Unit::class) Unit as Req else call.body<Req>()
             val response = body(req)
             if (Res::class == Unit::class) call.respond(Unit) else call.respond(response, typeInfo<Res>())
-        }
+        }.contract(postContract<Req, Res>())
 
     @JvmName("postWithCall")
     inline fun <reified Req, reified Res> post(
@@ -104,7 +104,7 @@ class RouteWithContext(val di: Di, val router: Route) {
             val req: Req = if (Req::class == Unit::class) Unit as Req else call.body<Req>()
             val response = body(req, call)
             if (Res::class == Unit::class) call.respond(Unit) else call.respond(response, typeInfo<Res>())
-        }
+        }.contract(postContract<Req, Res>())
 
     inline fun route(
         path: String,

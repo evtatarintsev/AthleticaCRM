@@ -1,6 +1,7 @@
 package org.athletica.crm.routes
 
 import io.ktor.http.CacheControl
+import io.ktor.http.HttpMethod
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
@@ -47,5 +48,5 @@ fun RouteWithContext.uploadRoutes() {
 
         val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", Messages.FileNotInRequest.localize()))
         uploadFile(bytes, originalName, contentType).bind()
-    }
+    }.contract(ApiContract(HttpMethod.Post, ApiRequest.Multipart, jsonResponse<UploadResponse>()))
 }

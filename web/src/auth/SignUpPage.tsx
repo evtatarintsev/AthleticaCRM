@@ -1,16 +1,21 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type SubmitEvent } from "react";
 import { Link } from "react-router";
-import { authApi, type ApiError, type AuthApi } from "../api/client";
-import { CURRENCIES, type Currency } from "../api/schemas";
+import type { ApiError } from "../api/client";
 import { t } from "../i18n";
+import { CURRENCIES, parseCurrency } from "../lib/currency";
+import { formText } from "../lib/forms";
 import { AuthLayout } from "../ui/AuthLayout";
 import { ErrorAlert, PrimaryButton } from "../ui/controls";
 import { PasswordField, SelectField, TextField } from "../ui/fields";
+import { authApi, type AuthApi } from "./authApi";
 import { redirectToApp } from "./session";
 import { availableTimezones, browserTimezone } from "./timezones";
 
 /** Состояние отправки формы регистрации. */
-type SubmitState = { loading: boolean; error: string | null };
+interface SubmitState {
+  loading: boolean;
+  error: string | null;
+}
 
 /**
  * Экран регистрации организации. [api] — клиент авторизации,
@@ -30,18 +35,23 @@ export function SignUpPage({
   );
   const [state, setState] = useState<SubmitState>({ loading: false, error: null });
 
-  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const field = (name: string) => String(form.get(name) ?? "").trim();
+    const field = (name: string) => formText(form, name).trim();
+    const currency = parseCurrency(field("currency"));
+    if (currency === undefined) {
+      setState({ loading: false, error: t.errorRegistrationFailed });
+      return;
+    }
     setState({ loading: true, error: null });
     const result = await api.signUp({
       companyName: field("organization"),
       userName: field("name"),
       login: field("username"),
-      password: String(form.get("password") ?? ""),
+      password: formText(form, "password"),
       timezone: field("timezone"),
-      currency: field("currency") as Currency,
+      currency,
     });
     if (result.ok) {
       onAuthenticated();
@@ -63,8 +73,14 @@ export function SignUpPage({
         </>
       }
     >
-      <form method="post" onSubmit={onSubmit} className="space-y-4">
-        {state.error && <ErrorAlert message={state.error} />}
+      <form
+        method="post"
+        onSubmit={(event) => {
+          void onSubmit(event);
+        }}
+        className="space-y-4"
+      >
+        {state.error !== null && <ErrorAlert message={state.error} />}
         <TextField
           label={t.orgName}
           name="organization"
@@ -111,11 +127,12 @@ export function SignUpPage({
 /** Текст ошибки регистрации: сообщение сервера, если оно есть. */
 function signUpErrorMessage(error: ApiError): string {
   switch (error.kind) {
-    case "validation":
-      return error.message || t.errorRegistrationFailed;
+    case "business":
+      return error.message === "" ? t.errorRegistrationFailed : error.message;
     case "unauthenticated":
       return t.errorRegistrationFailed;
     case "unavailable":
+    case "contract":
       return t.errorServiceUnavailable;
   }
 }

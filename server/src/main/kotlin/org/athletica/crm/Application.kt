@@ -78,6 +78,17 @@ import kotlin.uuid.toKotlinUuid
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
+/**
+ * JSON сервера для тел запросов и ответов.
+ * `encodeDefaults = true`: поля со значением по умолчанию всегда попадают в ответ,
+ * поэтому в контрактах веб-клиента они обязательны.
+ */
+val serverJson =
+    Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
 /** Точка входа: разбирает аргументы и передаёт управление выбранной подкоманде. */
 fun main(args: Array<String>): Unit = runBlocking { athleticaCommand().main(args) }
 
@@ -135,7 +146,7 @@ fun Application.configureServer() {
     }
 
     install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true })
+        json(serverJson)
     }
 
     install(Authentication) {

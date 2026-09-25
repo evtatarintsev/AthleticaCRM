@@ -1,18 +1,25 @@
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import type { ApiResult, AuthApi } from "../api/client";
-import type { LoginResponse } from "../api/schemas";
+import type { ApiResult } from "../api/client";
+import type { LoginResponse } from "../api/generated/contracts";
 import { t } from "../i18n";
+import type { AuthApi } from "./authApi";
 import { SignUpPage } from "./SignUpPage";
+import { browserTimezone } from "./timezones";
 
 /** Фейковый API, отвечающий на регистрацию [signUp]. */
-function fakeApi(signUp: ApiResult<LoginResponse>): AuthApi {
-  return { branches: vi.fn(), login: vi.fn(), signUp: vi.fn().mockResolvedValue(signUp) };
+function fakeApi(signUp: ApiResult<LoginResponse>) {
+  return {
+    branches: vi.fn<AuthApi["branches"]>(),
+    login: vi.fn<AuthApi["login"]>(),
+    signUp: vi.fn<AuthApi["signUp"]>().mockResolvedValue(signUp),
+  } satisfies AuthApi;
 }
 
 /** Рендерит экран регистрации, заполняет и отправляет форму. */
-async function renderAndSubmit(api: AuthApi, onAuthenticated = vi.fn()) {
+async function renderAndSubmit(api: AuthApi, onAuthenticated = vi.fn<() => void>()) {
   render(
     <MemoryRouter>
       <SignUpPage api={api} onAuthenticated={onAuthenticated} />
@@ -38,7 +45,7 @@ describe("SignUpPage", () => {
       userName: "Иван",
       login: "ivan@example.com",
       password: "secret",
-      timezone: expect.any(String),
+      timezone: browserTimezone(),
       currency: "KZT",
     });
     expect(onAuthenticated).toHaveBeenCalledOnce();
@@ -48,7 +55,8 @@ describe("SignUpPage", () => {
     const api = fakeApi({
       ok: false,
       error: {
-        kind: "validation",
+        kind: "business",
+        status: 400,
         code: "USER_ALREADY_REGISTERED",
         message: "Уже зарегистрирован",
       },

@@ -16,12 +16,11 @@ export default defineConfig({
     host: true,
     allowedHosts: ["athletica.crm"],
     proxy: {
-      "/api": process.env.API_PROXY ?? "http://localhost:8080",
+      "/api": process.env["API_PROXY"] ?? "http://localhost:8080",
     },
   },
   test: {
     environment: "jsdom",
-    globals: true,
     setupFiles: ["./src/test-setup.ts"],
   },
 });

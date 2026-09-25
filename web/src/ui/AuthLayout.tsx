@@ -27,7 +27,7 @@ export function AuthLayout({
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
           <div className="mt-6">{children}</div>
         </div>
-        {footer && (
+        {footer !== undefined && (
           <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">{footer}</p>
         )}
       </div>

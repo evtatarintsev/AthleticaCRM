@@ -4,6 +4,7 @@
  * Зеркало Kotlin-схем из `shared/src/commonMain/kotlin/org/athletica/crm/api/schemas/`.
  * Пока поддерживается вручную; следующий шаг — генерировать этот файл из `shared`.
  */
+import { z } from "zod";
 
 /** Идентификатор филиала (UUID). */
 export type BranchId = string;
@@ -12,7 +13,7 @@ export type BranchId = string;
 export type Currency = "RUB" | "USD" | "EUR" | "KZT" | "BYN" | "UAH";
 
 /** Валюты в порядке показа и их символы. */
-export const CURRENCIES: ReadonlyArray<{ code: Currency; symbol: string }> = [
+export const CURRENCIES: readonly { code: Currency; symbol: string }[] = [
   { code: "RUB", symbol: "₽" },
   { code: "USD", symbol: "$" },
   { code: "EUR", symbol: "€" },
@@ -28,15 +29,18 @@ export interface AuthBranchesRequest {
 }
 
 /** `api.schemas.branches.BranchDetailResponse`. */
-export interface BranchDetailResponse {
-  id: BranchId;
-  name: string;
-}
+export const BranchDetailResponseSchema = z.object({ id: z.string(), name: z.string() });
+
+/** `api.schemas.branches.BranchDetailResponse`. */
+export type BranchDetailResponse = z.output<typeof BranchDetailResponseSchema>;
 
 /** `api.schemas.auth.AuthBranchesResponse`. */
-export interface AuthBranchesResponse {
-  branches: BranchDetailResponse[];
-}
+export const AuthBranchesResponseSchema = z.object({
+  branches: z.array(BranchDetailResponseSchema),
+});
+
+/** `api.schemas.auth.AuthBranchesResponse`. */
+export type AuthBranchesResponse = z.output<typeof AuthBranchesResponseSchema>;
 
 /** `api.schemas.auth.LoginRequest`. */
 export interface LoginRequest {
@@ -46,10 +50,10 @@ export interface LoginRequest {
 }
 
 /** `api.schemas.auth.LoginResponse`. Токены дублируются в HttpOnly-cookie. */
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-}
+export const LoginResponseSchema = z.object({ accessToken: z.string(), refreshToken: z.string() });
+
+/** `api.schemas.auth.LoginResponse`. */
+export type LoginResponse = z.output<typeof LoginResponseSchema>;
 
 /** `api.schemas.auth.SignUpRequest`. */
 export interface SignUpRequest {
@@ -62,8 +66,4 @@ export interface SignUpRequest {
 }
 
 /** `api.schemas.ErrorResponse`. */
-export interface ErrorResponse {
-  code: string;
-  message: string;
-  fields?: { name: string; error: string }[] | null;
-}
+export const ErrorResponseSchema = z.object({ code: z.string(), message: z.string() });

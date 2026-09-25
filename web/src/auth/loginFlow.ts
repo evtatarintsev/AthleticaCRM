@@ -28,7 +28,7 @@ export async function submitCredentials(
   }
   const { branches } = result.value;
   const [single] = branches;
-  if (branches.length === 1 && single) {
+  if (branches.length === 1 && single !== undefined) {
     return submitBranch(api, credentials, single.id);
   }
   if (branches.length === 0) {
@@ -59,7 +59,7 @@ function credentialsErrorMessage(error: ApiError): string {
 function loginErrorMessage(error: ApiError): string {
   switch (error.kind) {
     case "validation":
-      return error.message || t.errorInvalidCredentials;
+      return error.message === "" ? t.errorInvalidCredentials : error.message;
     case "unauthenticated":
       return t.errorInvalidCredentials;
     case "unavailable":

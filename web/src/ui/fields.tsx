@@ -16,7 +16,7 @@ function Field({
 }: {
   id: string;
   label: string;
-  hint?: string;
+  hint?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -25,7 +25,9 @@ function Field({
         {label}
       </label>
       {children}
-      {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+      {hint !== undefined && hint !== "" && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+      )}
     </div>
   );
 }
@@ -62,7 +64,9 @@ export function PasswordField({
         />
         <button
           type="button"
-          onClick={() => setVisible((v) => !v)}
+          onClick={() => {
+            setVisible((v) => !v);
+          }}
           aria-label={visible ? t.passwordHide : t.passwordShow}
           aria-pressed={visible}
           className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -83,7 +87,7 @@ export function SelectField({
 }: {
   label: string;
   hint?: string;
-  options: ReadonlyArray<{ value: string; label: string }>;
+  options: readonly { value: string; label: string }[];
 } & SelectHTMLAttributes<HTMLSelectElement>) {
   const id = useId();
   return (

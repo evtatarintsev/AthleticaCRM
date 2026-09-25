@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -15,16 +16,16 @@ const tokens: ApiResult<LoginResponse> = {
 function fakeApi(
   branches: ApiResult<AuthBranchesResponse>,
   login: ApiResult<LoginResponse> = tokens,
-): AuthApi {
+) {
   return {
-    branches: vi.fn().mockResolvedValue(branches),
-    login: vi.fn().mockResolvedValue(login),
-    signUp: vi.fn(),
-  };
+    branches: vi.fn<AuthApi["branches"]>().mockResolvedValue(branches),
+    login: vi.fn<AuthApi["login"]>().mockResolvedValue(login),
+    signUp: vi.fn<AuthApi["signUp"]>(),
+  } satisfies AuthApi;
 }
 
 /** Рендерит экран входа и заполняет учётные данные. */
-async function renderAndSubmit(api: AuthApi, onAuthenticated = vi.fn()) {
+async function renderAndSubmit(api: AuthApi, onAuthenticated = vi.fn<() => void>()) {
   render(
     <MemoryRouter>
       <LoginPage api={api} onAuthenticated={onAuthenticated} />

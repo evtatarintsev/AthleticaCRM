@@ -14,8 +14,10 @@ import type { ApiClient } from "@/api/client";
 import {
   ClientIdSchema,
   EmployeeIdSchema,
+  GroupIdSchema,
   type ClientId,
   type EmployeeId,
+  type GroupId,
 } from "@/api/generated/contracts";
 import { ChangePasswordPage } from "@/account/ChangePasswordPage";
 import { ProfilePage } from "@/account/ProfilePage";
@@ -29,6 +31,13 @@ import { EmployeeCreatePage } from "@/employees/EmployeeCreatePage";
 import { EmployeeDetailPage } from "@/employees/EmployeeDetailPage";
 import { EmployeeEditPage } from "@/employees/EmployeeEditPage";
 import { EmployeesPage } from "@/employees/EmployeesPage";
+import { GroupsPage } from "@/groups/GroupsPage";
+import { GroupCreatePage } from "@/groups/GroupCreatePage";
+import { GroupEditPage } from "@/groups/GroupEditPage";
+import { GroupDetailPage } from "@/groups/GroupDetailPage";
+import { GroupListSearchSchema, type GroupListSearch } from "@/groups/groupListSearch";
+import { SchedulePage } from "@/schedule/SchedulePage";
+import { ScheduleSearchSchema, type ScheduleSearch } from "@/schedule/scheduleWeek";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
@@ -314,6 +323,94 @@ const employeeEditRoute = createRoute({
   },
 });
 
+/** Расписание: неделя и фильтры в search-параметрах адреса. */
+const scheduleRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/schedule",
+  validateSearch: ScheduleSearchSchema,
+  component: function ScheduleRoute() {
+    const { api } = scheduleRoute.useRouteContext();
+    const search = scheduleRoute.useSearch();
+    const navigate = scheduleRoute.useNavigate();
+    return (
+      <SchedulePage
+        api={api}
+        search={search}
+        onSearchChange={(next: ScheduleSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
+/** Список групп: фильтры в search-параметрах адреса. */
+const groupsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/groups",
+  validateSearch: GroupListSearchSchema,
+  component: function GroupsRoute() {
+    const { api } = groupsRoute.useRouteContext();
+    const search = groupsRoute.useSearch();
+    const navigate = groupsRoute.useNavigate();
+    return (
+      <GroupsPage
+        api={api}
+        search={search}
+        onSearchChange={(next: GroupListSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
+/** Создание новой группы. */
+const groupNewRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/groups/new",
+  component: function GroupNewRoute() {
+    const { api } = groupNewRoute.useRouteContext();
+    return <GroupCreatePage api={api} />;
+  },
+});
+
+/** Карточка группы [groupId]. */
+const groupRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/groups/$groupId",
+  params: {
+    parse: ({ groupId }): { groupId: GroupId } | false => {
+      const parsed = GroupIdSchema.safeParse(groupId);
+      return parsed.success ? { groupId: parsed.data } : false;
+    },
+    stringify: ({ groupId }) => ({ groupId }),
+  },
+  component: function GroupRoute() {
+    const { api } = groupRoute.useRouteContext();
+    const { groupId } = groupRoute.useParams();
+    return <GroupDetailPage api={api} groupId={groupId} />;
+  },
+});
+
+/** Редактирование группы [groupId]. */
+const groupEditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/groups/$groupId/edit",
+  params: {
+    parse: ({ groupId }): { groupId: GroupId } | false => {
+      const parsed = GroupIdSchema.safeParse(groupId);
+      return parsed.success ? { groupId: parsed.data } : false;
+    },
+    stringify: ({ groupId }) => ({ groupId }),
+  },
+  component: function GroupEditRoute() {
+    const { api } = groupEditRoute.useRouteContext();
+    const { groupId } = groupEditRoute.useParams();
+    return <GroupEditPage api={api} groupId={groupId} />;
+  },
+});
+
 /** Список клиентов: фильтры и сортировка в search-параметрах адреса. */
 const clientsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -399,6 +496,11 @@ const routeTree = rootRoute.addChildren([
     branchesRoute,
     customFieldsRoute,
     rolesRoute,
+    scheduleRoute,
+    groupsRoute,
+    groupNewRoute,
+    groupRoute,
+    groupEditRoute,
     employeesRoute,
     employeeCreateRoute,
     employeeDetailRoute,
@@ -453,6 +555,9 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
   "/settings/roles": true,
+  "/schedule": true,
+  "/groups": true,
+  "/groups/new": true,
   "/employees": true,
   "/employees/new": true,
   "/clients": true,

@@ -1,6 +1,6 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ArchiveClientRequestSchema,
   ClientListItemSchema,
@@ -184,5 +184,29 @@ describe("список клиентов", () => {
     ]);
     await table().findByText("Алиса Иванова");
     expect(screen.queryByText(/Выбрано/)).not.toBeInTheDocument();
+  });
+
+  it("экспортирует клиентов с выбранными полями", async () => {
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
+    vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+    const api = clientsServer([alice, bob]);
+    const fetchWithExport = async (input: string, init: RequestInit) =>
+      input.includes("clients/export")
+        ? new Response(new Blob(["name,birthday\n"], { type: "text/csv" }))
+        : api.fetch(input, init);
+    openApp("/clients", fetchWithExport);
+    const user = userEvent.setup();
+
+    await screen.findByRole("table");
+    await user.click(table().getByRole("checkbox", { name: "Выбрать «Алиса Иванова»" }));
+    await user.click(screen.getByRole("button", { name: ru["clients.export.action"] }));
+
+    const dialog = await screen.findByRole("dialog", { name: ru["clients.export.title"] });
+    await user.click(within(dialog).getByLabelText(ru["clients.column.gender"]));
+    await user.click(within(dialog).getByRole("button", { name: ru["clients.export.download"] }));
+
+    await waitFor(() => {
+      expect(dialog).not.toBeInTheDocument();
+    });
   });
 });

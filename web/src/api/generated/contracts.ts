@@ -176,6 +176,9 @@ export const OrgInfoSchema = z
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS"]);
+export type UserPermission = z.output<typeof UserPermissionSchema>;
+
 export const AuthMeResponseSchema = z
   .object({
     id: UserIdSchema,
@@ -185,6 +188,7 @@ export const AuthMeResponseSchema = z
     avatarId: UploadIdSchema.nullable(),
     orgInfo: OrgInfoSchema,
     currentBranch: BranchDetailResponseSchema,
+    permissions: z.array(UserPermissionSchema).readonly(),
   })
   .readonly();
 export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;
@@ -836,9 +840,6 @@ export const CreateDisciplineRequestSchema = z
   })
   .readonly();
 export type CreateDisciplineRequest = z.output<typeof CreateDisciplineRequestSchema>;
-
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS"]);
-export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const CreateEmployeeRequestSchema = z
   .object({

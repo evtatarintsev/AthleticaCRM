@@ -15,9 +15,11 @@ import {
   ClientIdSchema,
   EmployeeIdSchema,
   GroupIdSchema,
+  TaskIdSchema,
   type ClientId,
   type EmployeeId,
   type GroupId,
+  type TaskId,
 } from "@/api/generated/contracts";
 import { ChangePasswordPage } from "@/account/ChangePasswordPage";
 import { ProfilePage } from "@/account/ProfilePage";
@@ -39,6 +41,10 @@ import { GroupDetailPage } from "@/groups/GroupDetailPage";
 import { GroupListSearchSchema, type GroupListSearch } from "@/groups/groupListSearch";
 import { SchedulePage } from "@/schedule/SchedulePage";
 import { ScheduleSearchSchema, type ScheduleSearch } from "@/schedule/scheduleWeek";
+import { TaskCreatePage } from "@/tasks/TaskCreatePage";
+import { TaskDetailPage } from "@/tasks/TaskDetailPage";
+import { TasksPage } from "@/tasks/TasksPage";
+import { TaskListSearchSchema, type TaskListSearch } from "@/tasks/taskListSearch";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
@@ -481,6 +487,58 @@ const clientEditRoute = createRoute({
   },
 });
 
+/** Список задач: фильтры и сортировка в search-параметрах адреса. */
+const tasksRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/tasks",
+  validateSearch: TaskListSearchSchema,
+  component: function TasksRoute() {
+    const { api } = tasksRoute.useRouteContext();
+    const search = tasksRoute.useSearch();
+    const navigate = tasksRoute.useNavigate();
+    return (
+      <TasksPage
+        api={api}
+        search={search}
+        onSearchChange={(next: TaskListSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
+/** Создание новой задачи. */
+const taskNewRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/tasks/new",
+  component: function TaskNewRoute() {
+    const { api } = taskNewRoute.useRouteContext();
+    return <TaskCreatePage api={api} />;
+  },
+});
+
+/**
+ * Карточка задачи. Некорректный идентификатор не совпадает с маршрутом
+ * и даёт «не найдено» без запроса к API.
+ */
+const taskRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/tasks/$taskId",
+  params: {
+    parse: ({ taskId }): { taskId: TaskId } | false => {
+      const parsed = TaskIdSchema.safeParse(taskId);
+      return parsed.success ? { taskId: parsed.data } : false;
+    },
+    stringify: ({ taskId }) => ({ taskId }),
+  },
+  component: function TaskRoute() {
+    const { api } = taskRoute.useRouteContext();
+    const { taskId } = taskRoute.useParams();
+    return <TaskDetailPage api={api} taskId={taskId} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
@@ -510,6 +568,9 @@ const routeTree = rootRoute.addChildren([
     clientNewRoute,
     clientRoute,
     clientEditRoute,
+    tasksRoute,
+    taskNewRoute,
+    taskRoute,
   ]),
 ]);
 
@@ -563,6 +624,8 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/employees/new": true,
   "/clients": true,
   "/clients/new": true,
+  "/tasks": true,
+  "/tasks/new": true,
 };
 
 /** Истина, если [path] — маршрут веб-клиента без параметров. */

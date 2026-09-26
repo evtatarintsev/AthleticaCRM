@@ -1,9 +1,11 @@
-import { Trash2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
 import { useI18n } from "@/i18n/context";
 
-/** Нижняя панель выбранных записей: их число [count] и удаление ([onDelete]). */
-export function SelectionBar({ count, onDelete }: { count: number; onDelete: () => void }) {
+/**
+ * Нижняя панель выбранных записей: их число [count] и действия [actions].
+ * Скрывается, когда ничего не выбрано.
+ */
+export function SelectionBar({ count, actions }: { count: number; actions: ReactNode }) {
   const { t } = useI18n();
   if (count === 0) {
     return null;
@@ -14,10 +16,7 @@ export function SelectionBar({ count, onDelete }: { count: number; onDelete: () 
         <span className="text-sm font-medium" aria-live="polite">
           {t("directory.selected", { count })}
         </span>
-        <Button variant="destructive" onClick={onDelete}>
-          <Trash2Icon aria-hidden />
-          {t("directory.deleteSelected")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
       </div>
     </div>
   );

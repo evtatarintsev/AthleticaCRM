@@ -172,9 +172,16 @@ export function CustomFieldsPage({ api }: { api: ApiClient }) {
       )}
       <SelectionBar
         count={selected.size}
-        onDelete={() => {
-          setConfirmDelete(true);
-        }}
+        actions={
+          <Button
+            variant="destructive"
+            onClick={() => {
+              setConfirmDelete(true);
+            }}
+          >
+            {t("directory.deleteSelected")}
+          </Button>
+        }
       />
       <ConfirmDialog
         open={confirmDelete}

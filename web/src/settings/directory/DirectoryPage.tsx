@@ -238,9 +238,16 @@ export function DirectoryPage<Id extends string>({
       )}
       <SelectionBar
         count={selected.length}
-        onDelete={() => {
-          setConfirmDelete(true);
-        }}
+        actions={
+          <Button
+            variant="destructive"
+            onClick={() => {
+              setConfirmDelete(true);
+            }}
+          >
+            {t("directory.deleteSelected")}
+          </Button>
+        }
       />
       <ConfirmDialog
         open={confirmDelete}

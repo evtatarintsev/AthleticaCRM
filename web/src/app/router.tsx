@@ -16,6 +16,8 @@ import { ChangePasswordPage } from "@/account/ChangePasswordPage";
 import { ProfilePage } from "@/account/ProfilePage";
 import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
+import { ClientsPage } from "@/clients/ClientsPage";
+import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
@@ -248,6 +250,27 @@ const tariffsRoute = createRoute({
   },
 });
 
+/** Список клиентов: фильтры и сортировка в search-параметрах адреса. */
+const clientsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients",
+  validateSearch: ClientListSearchSchema,
+  component: function ClientsRoute() {
+    const { api } = clientsRoute.useRouteContext();
+    const search = clientsRoute.useSearch();
+    const navigate = clientsRoute.useNavigate();
+    return (
+      <ClientsPage
+        api={api}
+        search={search}
+        onSearchChange={(next: ClientListSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
 /**
  * Карточка клиента. Раздел ещё в KMP-клиенте, поэтому страница переводит туда же;
  * некорректный идентификатор не совпадает с маршрутом и даёт «не найдено» без запроса к API.
@@ -284,6 +307,7 @@ const routeTree = rootRoute.addChildren([
     branchesRoute,
     customFieldsRoute,
     rolesRoute,
+    clientsRoute,
     clientRoute,
   ]),
 ]);
@@ -331,6 +355,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
   "/settings/roles": true,
+  "/clients": true,
 };
 
 /** Истина, если [path] — маршрут веб-клиента без параметров. */

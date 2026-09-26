@@ -92,8 +92,13 @@ export function openApp(
 /** Филиал «Центр» тестовой сессии. */
 export const center = { id: "0199a0b2-7c3e-7d2a-9f10-000000000003", name: "Центр" };
 
-/** Сессия пользователя с именем [name], аватаром [avatarId] и филиалом [branch]. */
-export function session(name = "Иван Петров", avatarId: string | null = null, branch = center) {
+/** Сессия пользователя с именем [name], аватаром [avatarId], филиалом [branch] и правами [permissions]. */
+export function session(
+  name = "Иван Петров",
+  avatarId: string | null = null,
+  branch = center,
+  permissions: readonly string[] = [],
+) {
   return {
     id: "0199a0b2-7c3e-7d2a-9f10-000000000001",
     employeeId: "0199a0b2-7c3e-7d2a-9f10-000000000002",
@@ -102,6 +107,7 @@ export function session(name = "Иван Петров", avatarId: string | null 
     avatarId,
     orgInfo: { name: "Лига", balance: { minorUnits: 150000, currency: "RUB" } },
     currentBranch: branch,
+    permissions,
   };
 }
 

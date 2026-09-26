@@ -16,6 +16,7 @@ import { PageHeader } from "@/ui/PageHeader";
 import { SelectionBar } from "@/ui/SelectionBar";
 import { resolveClientColumns } from "./clientColumns";
 import { ClientColumnsDialog } from "./ClientColumnsDialog";
+import { ClientExportDialog } from "./ClientExportDialog";
 import {
   activeFilterCount,
   CLIENT_VIEW_IDS,
@@ -73,6 +74,7 @@ export function ClientsPage({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [query, setQuery] = useState(filters.q);
   const [syncedQ, setSyncedQ] = useState(filters.q);
   if (filters.q !== syncedQ) {
@@ -327,25 +329,35 @@ export function ClientsPage({
       <SelectionBar
         count={selectedIds.length}
         actions={
-          filters.archived ? (
+          <>
             <Button
               variant="outline"
               onClick={() => {
-                void bulk("restore");
+                setExportOpen(true);
               }}
             >
-              {t("clients.restoreSelected")}
+              {t("clients.export.action")}
             </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => {
-                void bulk("archive");
-              }}
-            >
-              {t("clients.archiveSelected")}
-            </Button>
-          )
+            {filters.archived ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void bulk("restore");
+                }}
+              >
+                {t("clients.restoreSelected")}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void bulk("archive");
+                }}
+              >
+                {t("clients.archiveSelected")}
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -361,6 +373,12 @@ export function ClientsPage({
         columns={columns}
         customFields={customFields.data ?? []}
         onOpenChange={setColumnsOpen}
+      />
+      <ClientExportDialog
+        api={api}
+        customFields={customFields.data ?? []}
+        open={exportOpen}
+        onOpenChange={setExportOpen}
       />
     </section>
   );

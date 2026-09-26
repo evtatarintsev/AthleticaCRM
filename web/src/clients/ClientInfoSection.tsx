@@ -65,23 +65,6 @@ export function ClientInfoSection({ client }: { readonly client: ClientDetailRes
         label={t("clients.birthday")}
         value={client.birthday === null ? null : format.date(client.birthday)}
       />
-      <div className="flex justify-between gap-4 py-1 text-sm">
-        <span className="text-muted-foreground">{t("clients.column.groups")}</span>
-        {client.groups.length === 0 ? (
-          <span className="text-right text-muted-foreground">{t("clients.detail.noGroups")}</span>
-        ) : (
-          <div className="flex flex-wrap justify-end gap-1">
-            {client.groups.map((group) => (
-              <span
-                key={group.id}
-                className="rounded-full border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
-              >
-                {group.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -24,9 +24,11 @@ import { ProfilePage } from "@/account/ProfilePage";
 import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
+import { ClientComingSoonPage } from "@/clients/ClientComingSoonPage";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
 import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
+import { ClientIssueSubscriptionPage } from "@/clients/ClientIssueSubscriptionPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
 import { EmployeeCreatePage } from "@/employees/EmployeeCreatePage";
 import { EmployeeDetailPage } from "@/employees/EmployeeDetailPage";
@@ -49,6 +51,7 @@ import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
 import { SignUpPage } from "@/auth/SignUpPage";
 import { BASE_PATH } from "@/config";
+import { useI18n } from "@/i18n/context";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
 import { AppLayout } from "./AppLayout";
@@ -481,6 +484,60 @@ const clientEditRoute = createRoute({
   },
 });
 
+/** Выдача абонемента клиенту [clientId]. */
+const clientIssueSubscriptionRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients/$clientId/issue-subscription",
+  params: {
+    parse: ({ clientId }): { clientId: ClientId } | false => {
+      const parsed = ClientIdSchema.safeParse(clientId);
+      return parsed.success ? { clientId: parsed.data } : false;
+    },
+    stringify: ({ clientId }) => ({ clientId }),
+  },
+  component: function ClientIssueSubscriptionRoute() {
+    const { api } = clientIssueSubscriptionRoute.useRouteContext();
+    const { clientId } = clientIssueSubscriptionRoute.useParams();
+    return <ClientIssueSubscriptionPage api={api} clientId={clientId} />;
+  },
+});
+
+/** История посещений клиента [clientId] (заглушка, как и в KMP-клиенте). */
+const clientVisitHistoryRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients/$clientId/visits",
+  params: {
+    parse: ({ clientId }): { clientId: ClientId } | false => {
+      const parsed = ClientIdSchema.safeParse(clientId);
+      return parsed.success ? { clientId: parsed.data } : false;
+    },
+    stringify: ({ clientId }) => ({ clientId }),
+  },
+  component: function ClientVisitHistoryRoute() {
+    const { clientId } = clientVisitHistoryRoute.useParams();
+    const { t } = useI18n();
+    return <ClientComingSoonPage clientId={clientId} title={t("clients.detail.visitHistory")} />;
+  },
+});
+
+/** История платежей клиента [clientId] (заглушка, как и в KMP-клиенте). */
+const clientPaymentHistoryRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients/$clientId/payments",
+  params: {
+    parse: ({ clientId }): { clientId: ClientId } | false => {
+      const parsed = ClientIdSchema.safeParse(clientId);
+      return parsed.success ? { clientId: parsed.data } : false;
+    },
+    stringify: ({ clientId }) => ({ clientId }),
+  },
+  component: function ClientPaymentHistoryRoute() {
+    const { clientId } = clientPaymentHistoryRoute.useParams();
+    const { t } = useI18n();
+    return <ClientComingSoonPage clientId={clientId} title={t("clients.detail.paymentHistory")} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
@@ -510,6 +567,9 @@ const routeTree = rootRoute.addChildren([
     clientNewRoute,
     clientRoute,
     clientEditRoute,
+    clientIssueSubscriptionRoute,
+    clientVisitHistoryRoute,
+    clientPaymentHistoryRoute,
   ]),
 ]);
 

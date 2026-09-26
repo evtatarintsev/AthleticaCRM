@@ -10,13 +10,16 @@ import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
-import { useSession } from "@/query/session";
+import { hasPermission, useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
 import { PageHeader } from "@/ui/PageHeader";
+import { ClientBalanceSection } from "./ClientBalanceSection";
 import { ClientCustomFieldsSection } from "./ClientCustomFieldsSection";
 import { ClientDocumentsSection } from "./ClientDocumentsSection";
+import { ClientGroupsSection } from "./ClientGroupsSection";
 import { ClientInfoSection } from "./ClientInfoSection";
 import { ClientNotesSection } from "./ClientNotesSection";
+import { ClientSubscriptionsSection } from "./ClientSubscriptionsSection";
 import { clientCustomFieldsQuery } from "./clientsQueries";
 
 /** Карточка клиента: сведения, заметки, документы и дополнительные поля. */
@@ -118,6 +121,39 @@ export function ClientDetailPage({
       )}
 
       <ClientInfoSection client={data} />
+      <ClientGroupsSection
+        api={api}
+        branchId={branchId}
+        clientId={clientId}
+        groups={data.groups}
+        onChanged={() => {
+          void refreshDetail();
+        }}
+      />
+      {hasPermission(session, "CAN_VIEW_CLIENT_BALANCE") && (
+        <ClientBalanceSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          balance={data.balance}
+          onChanged={(updated) => {
+            queryClient.setQueryData(detailQuery.queryKey, updated);
+          }}
+        />
+      )}
+      <ClientSubscriptionsSection api={api} branchId={branchId} clientId={clientId} />
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/clients/$clientId/visits" params={{ clientId }}>
+            {t("clients.detail.visitHistory")}
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/clients/$clientId/payments" params={{ clientId }}>
+            {t("clients.detail.paymentHistory")}
+          </Link>
+        </Button>
+      </div>
       {customFieldDefs.data !== undefined && customFieldDefs.data.length > 0 && (
         <ClientCustomFieldsSection definitions={customFieldDefs.data} values={data.customFields} />
       )}

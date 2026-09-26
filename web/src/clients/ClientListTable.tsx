@@ -6,9 +6,11 @@ import {
   useTable,
   type RowSelectionState,
 } from "@tanstack/react-table";
+import { PencilIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ApiClient } from "@/api/client";
 import type { ClientListItem, ContactType } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -110,6 +112,7 @@ export function ClientListTable(props: ClientListTableProps) {
                   onSort={props.onSort}
                 />
               ))}
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -145,6 +148,19 @@ export function ClientListTable(props: ClientListTableProps) {
                     <ColumnCell column={column} client={row.original} />
                   </TableCell>
                 ))}
+                <TableCell className="w-10">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    asChild
+                    className="relative z-10"
+                    aria-label={t("clients.editClient", { name: row.original.name })}
+                  >
+                    <Link to="/clients/$clientId/edit" params={{ clientId: row.original.id }}>
+                      <PencilIcon aria-hidden />
+                    </Link>
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -193,6 +209,17 @@ export function ClientListTable(props: ClientListTableProps) {
             >
               {format.money(row.original.balance)}
             </span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              asChild
+              className="relative z-10 shrink-0"
+              aria-label={t("clients.editClient", { name: row.original.name })}
+            >
+              <Link to="/clients/$clientId/edit" params={{ clientId: row.original.id }}>
+                <PencilIcon aria-hidden />
+              </Link>
+            </Button>
           </li>
         ))}
       </ul>

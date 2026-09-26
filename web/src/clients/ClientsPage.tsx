@@ -1,6 +1,7 @@
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { Columns3Icon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
+import { Columns3Icon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
@@ -157,15 +158,23 @@ export function ClientsPage({
       <PageHeader
         title={t("clients.title")}
         actions={
-          <Button
-            variant="outline"
-            onClick={() => {
-              setColumnsOpen(true);
-            }}
-          >
-            <Columns3Icon aria-hidden />
-            {t("clients.columns")}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setColumnsOpen(true);
+              }}
+            >
+              <Columns3Icon aria-hidden />
+              {t("clients.columns")}
+            </Button>
+            <Button asChild>
+              <Link to="/clients/new">
+                <PlusIcon aria-hidden />
+                {t("clients.create")}
+              </Link>
+            </Button>
+          </>
         }
       />
 

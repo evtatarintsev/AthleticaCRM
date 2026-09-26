@@ -17,6 +17,24 @@ export interface BoundField<T> {
 }
 
 /**
+ * [BoundField] вне TanStack Form: значение и обработчик изменения без формы целиком.
+ * Нужен для полей внутри динамического списка (контакты, значения кастомных полей),
+ * где элементы хранятся в обычном состоянии, а не в отдельных полях формы.
+ */
+export function manualField<T>(
+  name: string,
+  value: T,
+  onChange: (value: T) => void,
+): BoundField<T> {
+  return {
+    name,
+    state: { value, meta: { errors: [] } },
+    handleChange: onChange,
+    handleBlur: () => undefined,
+  };
+}
+
+/**
  * Первое сообщение об ошибке поля [field]. Ошибки zod-схемы приходят объектами
  * с `message`, ошибки функций-валидаторов — строками.
  */

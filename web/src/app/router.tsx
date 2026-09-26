@@ -17,6 +17,8 @@ import { ProfilePage } from "@/account/ProfilePage";
 import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
+import { ClientCreatePage } from "@/clients/ClientCreatePage";
+import { ClientEditPage } from "@/clients/ClientEditPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
@@ -271,6 +273,16 @@ const clientsRoute = createRoute({
   },
 });
 
+/** Создание нового клиента. */
+const clientNewRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients/new",
+  component: function ClientNewRoute() {
+    const { api } = clientNewRoute.useRouteContext();
+    return <ClientCreatePage api={api} />;
+  },
+});
+
 /**
  * Карточка клиента. Раздел ещё в KMP-клиенте, поэтому страница переводит туда же;
  * некорректный идентификатор не совпадает с маршрутом и даёт «не найдено» без запроса к API.
@@ -291,6 +303,24 @@ const clientRoute = createRoute({
   },
 });
 
+/** Редактирование клиента [clientId]. */
+const clientEditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients/$clientId/edit",
+  params: {
+    parse: ({ clientId }): { clientId: ClientId } | false => {
+      const parsed = ClientIdSchema.safeParse(clientId);
+      return parsed.success ? { clientId: parsed.data } : false;
+    },
+    stringify: ({ clientId }) => ({ clientId }),
+  },
+  component: function ClientEditRoute() {
+    const { api } = clientEditRoute.useRouteContext();
+    const { clientId } = clientEditRoute.useParams();
+    return <ClientEditPage api={api} clientId={clientId} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
@@ -308,7 +338,9 @@ const routeTree = rootRoute.addChildren([
     customFieldsRoute,
     rolesRoute,
     clientsRoute,
+    clientNewRoute,
     clientRoute,
+    clientEditRoute,
   ]),
 ]);
 
@@ -356,6 +388,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/client-additional-attributes": true,
   "/settings/roles": true,
   "/clients": true,
+  "/clients/new": true,
 };
 
 /** Истина, если [path] — маршрут веб-клиента без параметров. */

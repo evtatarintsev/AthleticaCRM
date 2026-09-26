@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import {
-  ArrowUpRightIcon,
   BookOpenIcon,
   Building2Icon,
   ChevronRightIcon,
@@ -31,9 +30,7 @@ import { useI18n, type PlainMessageKey } from "@/i18n/context";
 type SettingTarget =
   /** Страница веб-клиента. */
   | { readonly kind: "app"; readonly to: StaticAppPath }
-  /** Страница KMP-клиента: раздел ещё не перенесён. */
-  | { readonly kind: "kmp"; readonly href: string }
-  /** Пункт-заготовка: в KMP-клиенте у него тоже нет экрана. */
+  /** Пункт-заготовка: экрана нет ни в веб-, ни в KMP-клиенте. */
   | { readonly kind: "none" };
 
 /** Пункт настроек. */
@@ -52,12 +49,6 @@ interface SettingSection {
 
 /** Страница веб-клиента [to]. */
 const app = (to: StaticAppPath): SettingTarget => ({ kind: "app", to });
-
-/**
- * Страница KMP-клиента [href]. Экраны без адреса в KMP-клиенте (баланс организации,
- * импорт, каналы) открываются со страницы его настроек.
- */
-const kmp = (href: string): SettingTarget => ({ kind: "kmp", href });
 
 /** Пункт без экрана. */
 const none: SettingTarget = { kind: "none" };
@@ -94,13 +85,13 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemBasicSettings",
         subtitle: "settings.itemBasicSettingsSubtitle",
         icon: SettingsIcon,
-        target: kmp("/settings/basic"),
+        target: app("/settings/basic"),
       },
       {
         title: "settings.itemOrgBalance",
         subtitle: "settings.itemOrgBalanceSubtitle",
         icon: WalletIcon,
-        target: kmp("/settings"),
+        target: app("/settings/org-balance"),
       },
       {
         title: "settings.itemBranches",
@@ -135,7 +126,7 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemActivityLog",
         subtitle: "settings.itemActivityLogSubtitle",
         icon: HistoryIcon,
-        target: kmp("/settings/activity-log"),
+        target: app("/settings/activity-log"),
       },
       {
         title: "settings.itemRoles",
@@ -170,7 +161,7 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemClientImport",
         subtitle: "settings.itemClientImportSubtitle",
         icon: FileUpIcon,
-        target: kmp("/settings"),
+        target: app("/settings/client-import"),
       },
     ],
   },
@@ -209,7 +200,7 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemChannels",
         subtitle: "settings.itemChannelsSubtitle",
         icon: MessagesSquareIcon,
-        target: kmp("/settings"),
+        target: app("/settings/channels"),
       },
     ],
   },
@@ -240,7 +231,7 @@ export function SettingsPage() {
   );
 }
 
-/** Строка пункта [item]: ссылка роутера, ссылка в KMP-клиент или неактивная строка. */
+/** Строка пункта [item]: ссылка роутера или неактивная строка-заготовка. */
 function SettingRow({ item }: { item: SettingItem }) {
   const { t } = useI18n();
   const Icon = item.icon;
@@ -264,21 +255,6 @@ function SettingRow({ item }: { item: SettingItem }) {
         <Link to={item.target.to} className={`${className} hover:bg-accent/50`}>
           {content(<ChevronRightIcon aria-hidden className="size-4 text-muted-foreground" />)}
         </Link>
-      );
-    case "kmp":
-      return (
-        <a
-          href={item.target.href}
-          className={`${className} hover:bg-accent/50`}
-          title={t("settings.notMigrated")}
-        >
-          {content(
-            <ArrowUpRightIcon
-              aria-label={t("settings.notMigrated")}
-              className="size-4 text-muted-foreground"
-            />,
-          )}
-        </a>
       );
     case "none":
       return (

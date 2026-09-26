@@ -17,6 +17,7 @@ const me = {
   avatarId: null,
   orgInfo: { name: "Лига", balance: null },
   currentBranch: { id: "0199a0b2-7c3e-7d2a-9f10-000000000003", name: "Центр" },
+  permissions: [],
 };
 
 /** JSON-ответ с кодом [status]. */

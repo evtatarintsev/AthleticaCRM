@@ -6,6 +6,8 @@ import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
+import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.OrgBalances
@@ -44,6 +46,7 @@ fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: Or
             avatarId = user.avatarId,
             orgInfo = info,
             currentBranch = BranchDetailResponse(user.currentBranchId, user.currentBranchName),
+            permissions = grantedPermissions(),
         )
     }
 
@@ -57,3 +60,7 @@ fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: Or
         }
     }
 }
+
+/** Права, эффективно выданные сотруднику из [ctx] (роли и точечные правки). */
+context(ctx: EmployeeRequestContext)
+private fun grantedPermissions(): Set<UserPermission> = UserPermission.entries.filterTo(mutableSetOf()) { ctx.hasPermission(it) }

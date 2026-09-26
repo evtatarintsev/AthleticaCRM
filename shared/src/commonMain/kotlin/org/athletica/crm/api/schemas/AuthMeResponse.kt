@@ -6,6 +6,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.permissions.UserPermission
 
 /** Ответ с данными авторизованного пользователя. */
 @Serializable
@@ -24,6 +25,8 @@ data class AuthMeResponse(
     val orgInfo: OrgInfo,
     /** Текущий активный филиал. */
     val currentBranch: BranchDetailResponse,
+    /** Права, выданные сотруднику (эффективно, с учётом ролей и точечных правок). */
+    val permissions: Set<UserPermission> = emptySet(),
 )
 
 @Serializable

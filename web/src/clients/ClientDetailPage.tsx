@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArchiveIcon, ArchiveRestoreIcon, PencilIcon } from "lucide-react";
+import { ArchiveIcon, ArchiveRestoreIcon, MessageSquareIcon, PencilIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type { ClientId } from "@/api/generated/contracts";
@@ -92,6 +92,12 @@ export function ClientDetailPage({
         }
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/clients/$clientId/messages" params={{ clientId }}>
+                <MessageSquareIcon aria-hidden />
+                {t("messaging.open")}
+              </Link>
+            </Button>
             {!archived && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="/clients/$clientId/edit" params={{ clientId }}>

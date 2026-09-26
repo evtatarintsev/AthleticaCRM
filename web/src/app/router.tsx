@@ -43,6 +43,12 @@ import { SchedulePage } from "@/schedule/SchedulePage";
 import { ScheduleSearchSchema, type ScheduleSearch } from "@/schedule/scheduleWeek";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
+import { ChannelsPage } from "@/settings/channels/ChannelsPage";
+import { OrgSettingsPage } from "@/settings/org/OrgSettingsPage";
+import { OrgBalancePage } from "@/settings/org/OrgBalancePage";
+import { ClientImportPage } from "@/settings/import/ClientImportPage";
+import { AuditLogPage } from "@/settings/audit/AuditLogPage";
+import { PaymentCompletePage } from "@/settings/org/PaymentCompletePage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
 import { CustomFieldsPage } from "@/settings/customFields/CustomFieldsPage";
 import { RolesPage } from "@/settings/roles/RolesPage";
@@ -54,8 +60,9 @@ import { BASE_PATH } from "@/config";
 import { useI18n } from "@/i18n/context";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
+import { HomePage } from "@/home/HomePage";
+import { ConversationPage } from "@/messaging/ConversationPage";
 import { AppLayout } from "./AppLayout";
-import { HomePage } from "./HomePage";
 import { NotFoundPage } from "./NotFoundPage";
 import { SessionErrorPage } from "./SessionErrorPage";
 
@@ -163,7 +170,10 @@ const appRoute = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/",
-  component: HomePage,
+  component: function HomeRoute() {
+    const { api } = homeRoute.useRouteContext();
+    return <HomePage api={api} />;
+  },
 });
 
 /** Страница настроек со всеми пунктами. */
@@ -270,6 +280,63 @@ const tariffsRoute = createRoute({
   component: function TariffsRoute() {
     const { api } = tariffsRoute.useRouteContext();
     return <TariffsPage api={api} />;
+  },
+});
+
+/** Каналы связи. */
+const channelsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/channels",
+  component: function ChannelsRoute() {
+    const { api } = channelsRoute.useRouteContext();
+    return <ChannelsPage api={api} />;
+  },
+});
+
+/** Основные настройки организации. */
+const orgSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/basic",
+  component: function OrgSettingsRoute() {
+    const { api } = orgSettingsRoute.useRouteContext();
+    return <OrgSettingsPage api={api} />;
+  },
+});
+
+/** Баланс организации и пополнение. */
+const orgBalanceRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/org-balance",
+  component: function OrgBalanceRoute() {
+    const { api } = orgBalanceRoute.useRouteContext();
+    return <OrgBalancePage api={api} />;
+  },
+});
+
+/** Страница возврата с оплаты ЮKassa. */
+const paymentCompleteRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/org-balance/complete",
+  component: PaymentCompletePage,
+});
+
+/** Импорт клиентов из файла. */
+const clientImportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/client-import",
+  component: function ClientImportRoute() {
+    const { api } = clientImportRoute.useRouteContext();
+    return <ClientImportPage api={api} />;
+  },
+});
+
+/** Журнал действий. */
+const auditLogRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/activity-log",
+  component: function AuditLogRoute() {
+    const { api } = auditLogRoute.useRouteContext();
+    return <AuditLogPage api={api} />;
   },
 });
 
@@ -466,6 +533,24 @@ const clientRoute = createRoute({
   },
 });
 
+/** Переписка с клиентом [clientId]. */
+const clientMessagesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/clients/$clientId/messages",
+  params: {
+    parse: ({ clientId }): { clientId: ClientId } | false => {
+      const parsed = ClientIdSchema.safeParse(clientId);
+      return parsed.success ? { clientId: parsed.data } : false;
+    },
+    stringify: ({ clientId }) => ({ clientId }),
+  },
+  component: function ClientMessagesRoute() {
+    const { api } = clientMessagesRoute.useRouteContext();
+    const { clientId } = clientMessagesRoute.useParams();
+    return <ConversationPage api={api} clientId={clientId} />;
+  },
+});
+
 /** Редактирование клиента [clientId]. */
 const clientEditRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -554,6 +639,12 @@ const routeTree = rootRoute.addChildren([
     branchesRoute,
     customFieldsRoute,
     rolesRoute,
+    channelsRoute,
+    orgSettingsRoute,
+    orgBalanceRoute,
+    paymentCompleteRoute,
+    clientImportRoute,
+    auditLogRoute,
     scheduleRoute,
     groupsRoute,
     groupNewRoute,
@@ -567,6 +658,7 @@ const routeTree = rootRoute.addChildren([
     clientNewRoute,
     clientRoute,
     clientEditRoute,
+    clientMessagesRoute,
     clientIssueSubscriptionRoute,
     clientVisitHistoryRoute,
     clientPaymentHistoryRoute,
@@ -616,6 +708,12 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
   "/settings/roles": true,
+  "/settings/channels": true,
+  "/settings/basic": true,
+  "/settings/org-balance": true,
+  "/settings/org-balance/complete": true,
+  "/settings/client-import": true,
+  "/settings/activity-log": true,
   "/schedule": true,
   "/groups": true,
   "/groups/new": true,

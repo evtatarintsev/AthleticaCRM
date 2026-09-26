@@ -24,14 +24,14 @@ describe("страница настроек", () => {
         "/web/settings/roles",
         "/web/settings/client-sources",
         "/web/settings/client-additional-attributes",
+        "/web/settings/client-import",
         "/web/settings/tariffs",
-        "/settings/basic",
-        "/settings/activity-log",
+        "/web/settings/basic",
+        "/web/settings/org-balance",
+        "/web/settings/activity-log",
+        "/web/settings/channels",
       ]),
     );
-    expect(
-      screen.getByRole("link", { name: new RegExp(ru["settings.itemChannels"]) }),
-    ).toHaveAttribute("href", "/settings");
     expect(screen.queryByRole("link", { name: new RegExp(ru["settings.itemRanks"]) })).toBeNull();
   });
 
@@ -49,6 +49,11 @@ describe("страница настроек", () => {
       ru["settings.itemEditProfile"],
       ru["settings.itemChangePassword"],
       ru["settings.itemSwitchBranch"],
+      ru["settings.itemBasicSettings"],
+      ru["settings.itemOrgBalance"],
+      ru["settings.itemActivityLog"],
+      ru["settings.itemClientImport"],
+      ru["settings.itemChannels"],
     ];
     for (const title of titles) {
       await screen.findByRole("heading", { level: 1, name: ru["settings.title"] });

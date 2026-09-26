@@ -11,7 +11,12 @@ import {
 } from "@tanstack/react-router";
 import { useMemo, type ReactElement } from "react";
 import type { ApiClient } from "@/api/client";
-import { ClientIdSchema, type ClientId } from "@/api/generated/contracts";
+import {
+  ClientIdSchema,
+  EmployeeIdSchema,
+  type ClientId,
+  type EmployeeId,
+} from "@/api/generated/contracts";
 import { ChangePasswordPage } from "@/account/ChangePasswordPage";
 import { ProfilePage } from "@/account/ProfilePage";
 import { SwitchBranchPage } from "@/account/SwitchBranchPage";
@@ -20,6 +25,10 @@ import { ClientsPage } from "@/clients/ClientsPage";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
+import { EmployeeCreatePage } from "@/employees/EmployeeCreatePage";
+import { EmployeeDetailPage } from "@/employees/EmployeeDetailPage";
+import { EmployeeEditPage } from "@/employees/EmployeeEditPage";
+import { EmployeesPage } from "@/employees/EmployeesPage";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
@@ -252,6 +261,59 @@ const tariffsRoute = createRoute({
   },
 });
 
+/** Список сотрудников организации. */
+const employeesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/employees",
+  component: function EmployeesRoute() {
+    const { api } = employeesRoute.useRouteContext();
+    return <EmployeesPage api={api} />;
+  },
+});
+
+/** Создание нового сотрудника. */
+const employeeCreateRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/employees/new",
+  component: function EmployeeCreateRoute() {
+    const { api } = employeeCreateRoute.useRouteContext();
+    return <EmployeeCreatePage api={api} />;
+  },
+});
+
+/** Параметр `employeeId` маршрутов карточки и редактирования сотрудника. */
+const employeeIdParams = {
+  parse: ({ employeeId }: { employeeId: string }): { employeeId: EmployeeId } | false => {
+    const parsed = EmployeeIdSchema.safeParse(employeeId);
+    return parsed.success ? { employeeId: parsed.data } : false;
+  },
+  stringify: ({ employeeId }: { employeeId: EmployeeId }) => ({ employeeId }),
+};
+
+/** Карточка сотрудника. */
+const employeeDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/employees/$employeeId",
+  params: employeeIdParams,
+  component: function EmployeeDetailRoute() {
+    const { api } = employeeDetailRoute.useRouteContext();
+    const { employeeId } = employeeDetailRoute.useParams();
+    return <EmployeeDetailPage api={api} employeeId={employeeId} />;
+  },
+});
+
+/** Редактирование сотрудника. */
+const employeeEditRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/employees/$employeeId/edit",
+  params: employeeIdParams,
+  component: function EmployeeEditRoute() {
+    const { api } = employeeEditRoute.useRouteContext();
+    const { employeeId } = employeeEditRoute.useParams();
+    return <EmployeeEditPage api={api} employeeId={employeeId} />;
+  },
+});
+
 /** Список клиентов: фильтры и сортировка в search-параметрах адреса. */
 const clientsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -337,6 +399,10 @@ const routeTree = rootRoute.addChildren([
     branchesRoute,
     customFieldsRoute,
     rolesRoute,
+    employeesRoute,
+    employeeCreateRoute,
+    employeeDetailRoute,
+    employeeEditRoute,
     clientsRoute,
     clientNewRoute,
     clientRoute,
@@ -387,6 +453,8 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
   "/settings/roles": true,
+  "/employees": true,
+  "/employees/new": true,
   "/clients": true,
   "/clients/new": true,
 };

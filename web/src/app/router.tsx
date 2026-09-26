@@ -18,6 +18,7 @@ import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
+import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
@@ -34,7 +35,6 @@ import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
 import { AppLayout } from "./AppLayout";
 import { HomePage } from "./HomePage";
-import { KmpRedirect } from "./KmpRedirect";
 import { NotFoundPage } from "./NotFoundPage";
 import { SessionErrorPage } from "./SessionErrorPage";
 
@@ -284,8 +284,8 @@ const clientNewRoute = createRoute({
 });
 
 /**
- * Карточка клиента. Раздел ещё в KMP-клиенте, поэтому страница переводит туда же;
- * некорректный идентификатор не совпадает с маршрутом и даёт «не найдено» без запроса к API.
+ * Карточка клиента. Некорректный идентификатор не совпадает с маршрутом
+ * и даёт «не найдено» без запроса к API.
  */
 const clientRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -298,8 +298,9 @@ const clientRoute = createRoute({
     stringify: ({ clientId }) => ({ clientId }),
   },
   component: function ClientRoute() {
+    const { api } = clientRoute.useRouteContext();
     const { clientId } = clientRoute.useParams();
-    return <KmpRedirect href={`/clients/${clientId}`} />;
+    return <ClientDetailPage api={api} clientId={clientId} />;
   },
 });
 

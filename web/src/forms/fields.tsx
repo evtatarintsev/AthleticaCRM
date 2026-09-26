@@ -71,7 +71,7 @@ export function TextField({
   type = "text",
   ...input
 }: FieldProps<string> & {
-  type?: "text" | "email" | "tel";
+  type?: "text" | "email" | "tel" | "date";
 } & Omit<InputHTMLAttributes<HTMLInputElement>, ManagedInputProps>) {
   return (
     <FieldFrame

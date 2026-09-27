@@ -67,7 +67,7 @@ export function fakeServer(handlers: Readonly<Record<string, FakeHandler>>) {
   };
 }
 
-/** Открывает приложение на пути [path] (от базового `/web`) поверх `fetch` поддельного сервера. */
+/** Открывает приложение на пути [path] поверх `fetch` поддельного сервера. */
 export function openApp(
   path: string,
   fetch: ApiClientOptions["fetch"],
@@ -79,7 +79,7 @@ export function openApp(
     onSessionExpired: () => undefined,
     reportContractViolation: () => undefined,
   });
-  const history = createMemoryHistory({ initialEntries: [`/web${path}`] });
+  const history = createMemoryHistory({ initialEntries: [path] });
   const routing = createAppRouting({ api, queryClient }, history);
   render(
     <I18nProvider initialLocale="ru">

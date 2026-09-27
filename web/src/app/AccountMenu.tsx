@@ -25,7 +25,7 @@ import { Avatar } from "@/ui/Avatar";
 
 /**
  * Меню аккаунта пользователя [me]: профиль, баланс организации, смена филиала, язык и выход
- * ([onLogout]). Баланс организации пока открывается в KMP-клиенте.
+ * ([onLogout]).
  */
 export function AccountMenu({
   api,
@@ -59,7 +59,7 @@ export function AccountMenu({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <a href="/settings" className="flex-col items-start gap-0.5">
+          <Link to="/settings/org-balance" className="flex-col items-start gap-0.5">
             <span className="flex w-full items-center gap-2 truncate">
               <WalletIcon aria-hidden />
               {me.orgInfo.name}
@@ -69,7 +69,7 @@ export function AccountMenu({
                 {t("account.orgBalance", { amount: format.money(me.orgInfo.balance) })}
               </span>
             )}
-          </a>
+          </Link>
         </DropdownMenuItem>
         <BranchSwitcher api={api} me={me} />
         <DropdownMenuSeparator />

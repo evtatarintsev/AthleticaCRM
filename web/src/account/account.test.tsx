@@ -233,7 +233,7 @@ describe("выход", () => {
     history.back();
 
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/web/login");
+      expect(history.location.pathname).toBe("/login");
     });
     expect(screen.getByRole("heading", { name: ru["auth.loginTitle"] })).toBeInTheDocument();
     expect(screen.queryByText("Иван Петров")).not.toBeInTheDocument();

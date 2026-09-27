@@ -5,7 +5,7 @@ import { ru } from "@/i18n/ru";
 import { appServer, openApp } from "@/test/app";
 
 describe("страница настроек", () => {
-  it("перенесённые пункты открываются в веб-клиенте, остальные ведут в KMP-клиент", async () => {
+  it("пункты с экраном — ссылки веб-клиента, заготовки без экрана — без ссылки", async () => {
     openApp("/settings", appServer({}).fetch);
 
     const links = await screen.findAllByRole("link", { name: /./ });
@@ -15,21 +15,21 @@ describe("страница настроек", () => {
     const hrefs = settingsLinks.map((link) => link.getAttribute("href"));
     expect(hrefs).toEqual(
       expect.arrayContaining([
-        "/web/settings/edit-profile",
-        "/web/settings/switch-branch",
-        "/web/settings/change-password",
-        "/web/settings/branches",
-        "/web/settings/disciplines",
-        "/web/settings/halls",
-        "/web/settings/roles",
-        "/web/settings/client-sources",
-        "/web/settings/client-additional-attributes",
-        "/web/settings/client-import",
-        "/web/settings/tariffs",
-        "/web/settings/basic",
-        "/web/settings/org-balance",
-        "/web/settings/activity-log",
-        "/web/settings/channels",
+        "/settings/edit-profile",
+        "/settings/switch-branch",
+        "/settings/change-password",
+        "/settings/branches",
+        "/settings/disciplines",
+        "/settings/halls",
+        "/settings/roles",
+        "/settings/client-sources",
+        "/settings/client-additional-attributes",
+        "/settings/client-import",
+        "/settings/tariffs",
+        "/settings/basic",
+        "/settings/org-balance",
+        "/settings/activity-log",
+        "/settings/channels",
       ]),
     );
     expect(screen.queryByRole("link", { name: new RegExp(ru["settings.itemRanks"]) })).toBeNull();
@@ -59,11 +59,11 @@ describe("страница настроек", () => {
       await screen.findByRole("heading", { level: 1, name: ru["settings.title"] });
       await user.click(await screen.findByRole("link", { name: new RegExp(title) }));
       await waitFor(() => {
-        expect(history.location.pathname).not.toBe("/web/settings");
+        expect(history.location.pathname).not.toBe("/settings");
       });
       expect(screen.queryByRole("heading", { name: ru["notFound.title"] })).toBeNull();
       expect(await screen.findByRole("heading", { level: 1 })).toBeVisible();
-      history.push("/web/settings");
+      history.push("/settings");
     }
   });
 });

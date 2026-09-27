@@ -61,6 +61,6 @@ describe("создание задачи", () => {
       throw new Error("запрос создания задачи не найден");
     }
     expect(first.title).toBe("Новая задача");
-    expect(history.location.pathname).toBe(`/web/tasks/${first.id}`);
+    expect(history.location.pathname).toBe(`/tasks/${first.id}`);
   });
 });

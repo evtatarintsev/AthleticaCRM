@@ -61,7 +61,7 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY}/web:latest
     restart: unless-stopped
 
-  # Новый веб-фронтенд (React), доступен по /web/
+  # Веб-фронтенд (React), доступен с корня; старый префикс /web/ временно перенаправляется
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
     restart: unless-stopped

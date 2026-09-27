@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { migratedSections } from "@/app/sections";
 import { BASE_PATH } from "@/config";
 
 /**
@@ -17,14 +16,11 @@ export const LoginSearchSchema = z.object({
 
 /**
  * Куда перейти после входа: на адрес возврата [redirect] (путь веб-клиента без `BASE_PATH`),
- * иначе на главную веб-клиента, если она перенесена ([homeMigrated]), иначе на главную KMP-клиента.
+ * иначе на главную веб-клиента.
  */
-export function postLoginTarget(
-  redirect: string | undefined,
-  homeMigrated: boolean = migratedSections.home,
-): string {
+export function postLoginTarget(redirect: string | undefined): string {
   if (redirect !== undefined) {
     return `${BASE_PATH}${redirect}`;
   }
-  return homeMigrated ? `${BASE_PATH}/` : "/";
+  return `${BASE_PATH}/`;
 }

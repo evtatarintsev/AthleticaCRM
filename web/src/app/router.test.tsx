@@ -7,7 +7,7 @@ import { I18nProvider } from "@/i18n/I18nProvider";
 import { ru } from "@/i18n/ru";
 import { createQueryClient } from "@/query/queries";
 import { createAppRouting, isStaticAppPath } from "./router";
-import { migratedSections, sections } from "./sections";
+import { sections } from "./sections";
 
 const me = {
   id: "0199a0b2-7c3e-7d2a-9f10-000000000001",
@@ -29,7 +29,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 /**
- * Открывает приложение на пути [path] (с базовым путём `/web`). [authenticated] — есть ли сессия:
+ * Открывает приложение на пути [path]. [authenticated] — есть ли сессия:
  * без неё `/auth/me` и обновление токена отвечают 401.
  */
 function openApp(path: string, authenticated: boolean) {
@@ -46,7 +46,7 @@ function openApp(path: string, authenticated: boolean) {
     onSessionExpired: () => undefined,
     reportContractViolation: () => undefined,
   });
-  const history = createMemoryHistory({ initialEntries: [`/web${path}`] });
+  const history = createMemoryHistory({ initialEntries: [path] });
   const routing = createAppRouting({ api, queryClient }, history);
   render(
     <I18nProvider initialLocale="ru">
@@ -75,14 +75,14 @@ describe("маршрутизация", () => {
 
     expect(await screen.findByRole("heading", { name: ru["auth.loginTitle"] })).toBeInTheDocument();
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/web/login");
+      expect(history.location.pathname).toBe("/login");
     });
     expect(new URLSearchParams(history.location.search).get("redirect")).toBe("/?from=bookmark");
   });
 });
 
 describe("раскладка", () => {
-  it("неперенесённый раздел открывается в KMP-клиенте обычной ссылкой", async () => {
+  it("каждый раздел открывается ссылкой веб-клиента", async () => {
     openApp("/", true);
 
     const tasks = await screen.findAllByRole("link", { name: ru["nav.tasks"] });
@@ -110,11 +110,9 @@ describe("раскладка", () => {
     );
   });
 
-  it("у каждого перенесённого раздела есть маршрут веб-клиента", () => {
-    sections
-      .filter((section) => migratedSections[section.id])
-      .forEach((section) => {
-        expect(isStaticAppPath(section.path)).toBe(true);
-      });
+  it("у каждого раздела есть маршрут веб-клиента", () => {
+    sections.forEach((section) => {
+      expect(isStaticAppPath(section.path)).toBe(true);
+    });
   });
 });

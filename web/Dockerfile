@@ -6,6 +6,6 @@ COPY . .
 RUN npm run check && npm run build
 
 FROM nginx:stable-alpine
-COPY --from=builder /build/dist/ /usr/share/nginx/html/web/
+COPY --from=builder /build/dist/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

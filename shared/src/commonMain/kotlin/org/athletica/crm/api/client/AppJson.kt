@@ -12,9 +12,10 @@ import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.messaging.ChannelConfig
 
 /**
- * Модуль сериализаторов с явной регистрацией полиморфных подтипов.
- * Необходим для WasmJS, где [kotlinx.serialization] не находит сабтайпы автоматически
- * через [SealedClassSerializer] и требует явной регистрации в [SerializersModule].
+ * Модуль сериализаторов с явной регистрацией полиморфных подтипов,
+ * которые сервер отдаёт как открытый полиморфизм ([kotlinx.serialization]
+ * не находит такие сабтайпы автоматически и требует явной регистрации
+ * в [SerializersModule]).
  */
 val appSerializersModule =
     SerializersModule {

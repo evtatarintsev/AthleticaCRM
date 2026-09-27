@@ -100,11 +100,11 @@
 
 ## 12. Фаза 9: удаление wasm-клиента
 
-- [ ] 12.1 Удалить wasm-таргет из `composeApp/build.gradle.kts` и `webMain`, `Dockerfile.web`, `nginx.conf` в корне, сервис `web` из `docker-compose.prod.yaml`, job `web` из `.github/workflows/docker.yml`, ветку `--only web` из `deploy_to_stand.sh`. Проверка: `./gradlew build` проходит и собирает jvm-клиент; `bash -n deploy_to_stand.sh`; `rg -i "wasmJs|Dockerfile.web" --glob '!openspec/**'` пусто
+- [x] 12.1 Удалить wasm-таргет из `composeApp/build.gradle.kts` и `webMain`, `Dockerfile.web`, `nginx.conf` в корне, сервис `web` из `docker-compose.prod.yaml`, job `web` из `.github/workflows/docker.yml`, ветку `--only web` из `deploy_to_stand.sh`. Проверка: `./gradlew build` проходит и собирает jvm-клиент; `bash -n deploy_to_stand.sh`; `rg -i "wasmJs|Dockerfile.web" --glob '!openspec/**'` пусто
 - [ ] 12.2 Выкатить не раньше чем через неделю после 11.3. Проверка: на проде нет контейнера `web`, `/` работает
 
 ## 13. Документация и завершение
 
 - [x] 13.1 В фазе 0 обновить `CLAUDE.md`: правила TS-кода (без `as`, `!`, `any`; исключения только в конфиге), `npm run contracts` после изменения схем, запрет новых экранов в KMP-вебе. Обновить `web/README.md` примерами типовых приёмов (декодирование, сужение, исчерпывающий `switch`). Проверка: разделы присутствуют
-- [ ] 13.2 На фазах 8–9 обновить `DEPLOY.md` и `CLAUDE.md` (структура модулей, сервисы). Проверка: упоминаний wasm-клиента и `/web/` как временного пути не осталось
-- [ ] 13.3 В каждом PR фазы: `./gradlew build`, `./gradlew ktlintFormat`, `npm run check` в `web/`. Проверка: команды зелёные, `git diff` после `ktlintFormat` пуст
+- [x] 13.2 На фазах 8–9 обновить `DEPLOY.md` и `CLAUDE.md` (структура модулей, сервисы). Проверка: упоминаний wasm-клиента и `/web/` как временного пути не осталось
+- [x] 13.3 В каждом PR фазы: `./gradlew build`, `./gradlew ktlintFormat`, `npm run check` в `web/`. Проверка: команды зелёные, `git diff` после `ktlintFormat` пуст

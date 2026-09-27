@@ -57,11 +57,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  web:
-    image: ghcr.io/${GITHUB_REPOSITORY}/web:latest
-    restart: unless-stopped
-
-  # Веб-фронтенд (React), доступен с корня; старый префикс /web/ временно перенаправляется
+  # Веб-фронтенд (React), доступен с корня; старый префикс /web/ перенаправляется
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
     restart: unless-stopped
@@ -79,7 +75,6 @@ services:
       - certbot_www:/var/www/certbot:ro
     depends_on:
       - server
-      - web
       - frontend
     restart: unless-stopped
 

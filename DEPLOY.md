@@ -124,7 +124,7 @@ Docker-образы приватные, серверу нужен PAT с пра�
 | `athletica-crm_letsencrypt` | сертификаты, `options-ssl-nginx.conf`, `ssl-dhparams.pem` |
 | `athletica-crm_certbot_www` | ACME-challenge для продления |
 
-Сервисы: `postgres`, `rustfs` (S3-хранилище файлов), `server`, `web` (KMP-клиент, `/`), `frontend` (новый React-клиент, `/web/`), `nginx`.
+Сервисы: `postgres`, `rustfs` (S3-хранилище файлов), `server`, `frontend` (React-клиент, `/`), `nginx`.
 Сервис `certbot` в профиле `tools` — на `up` не стартует, вызывается только через
 `docker compose run --rm certbot …`.
 
@@ -138,9 +138,8 @@ Docker-образы приватные, серверу нужен PAT с пра�
 Workflow [`.github/workflows/docker.yml`](.github/workflows/docker.yml) на каждый push в `master`:
 
 1. `server` — собирает `Dockerfile.server`, пушит в `ghcr.io/<repo>/server:latest`
-2. `web` — собирает `Dockerfile.web`, пушит в `ghcr.io/<repo>/web:latest`
-3. `frontend` — собирает `web/Dockerfile` (проверки + сборка Vite), пушит в `ghcr.io/<repo>/frontend:latest`
-4. `deploy` — после всех трёх: копирует compose и nginx-шаблон на сервер, делает `pull`, `up -d`, перезапускает nginx
+2. `frontend` — собирает `web/Dockerfile` (проверки + сборка Vite), пушит в `ghcr.io/<repo>/frontend:latest`
+3. `deploy` — после обоих: копирует compose и nginx-шаблон на сервер, делает `pull`, `up -d`, перезапускает nginx
 
 Push образов идёт под встроенным `secrets.GITHUB_TOKEN`, отдельный токен для этого не нужен.
 

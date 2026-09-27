@@ -75,9 +75,9 @@ Both files must be updated in the same commit as the `application.conf` change.
 
 ### Modules
 - **server**: Ktor backend (REST API, database access, business logic)
-- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs)
-- **composeApp**: Compose Multiplatform UI (веб-клиент на `/`; переезжает на `web/`)
-- **web**: новый веб-фронтенд — TypeScript + React + Vite, отдаётся по `/web/`. Не Gradle-модуль, см. `web/README.md`
+- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs), JVM-only
+- **composeApp**: Compose Multiplatform desktop-клиент (JVM), веб-версии больше нет
+- **web**: веб-фронтенд — TypeScript + React + Vite, отдаётся с `/`. Не Gradle-модуль, см. `web/README.md`
 
 ### Key Directories in `server/src/main/kotlin/org/athletica/crm/`
 
@@ -293,9 +293,9 @@ private fun ctx(orgId: Uuid) = RequestContext(
 - **Pooling**: `r2dbc-pool` for connection pooling
 
 ### Multimodule Gradle
-- **shared**: Compiled to both JVM and WASM; contains request/response schemas and IDs used across platforms
+- **shared**: JVM-only; contains request/response schemas and IDs used across the JVM modules
 - **server**: JVM-only, depends on shared
-- **composeApp**: Multiplatform UI (lower priority)
+- **composeApp**: JVM-only desktop client, depends on shared
 - Use `projects.shared` in dependencies (type-safe project accessors)
 
 ### Error Handling Strategy
@@ -588,11 +588,11 @@ class XViewModel {
 }
 ```
 
-#### Новые экраны — только в `web/`
+#### Веб-интерфейс — только в `web/`
 
-Веб-интерфейс переезжает с KMP (wasm) на `web/` (спека `openspec/changes/rewrite-web-frontend-typescript`).
-Новые экраны в KMP-вебе не создаются. Новая функциональность делается в `web/`, если её раздел
-уже перенесён (`web/src/app/sections.ts`), иначе — в обоих клиентах.
+Веб-интерфейс переехал с KMP (wasm) на `web/` (спека `openspec/changes/rewrite-web-frontend-typescript`).
+У `composeApp` веб-таргета больше нет — он собирает только desktop-клиент. Новые экраны
+и новая функциональность веба делаются в `web/`.
 
 #### Direction of composition: generic ⊃ specific
 

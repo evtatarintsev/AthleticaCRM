@@ -38,8 +38,7 @@ usage() {
   -p, --path PATH     каталог проекта на сервере (по умолчанию /opt/athletica-crm)
   -i, --key FILE      приватный ssh-ключ (по умолчанию ~/.ssh/athletica_deploy)
       --only server   выкатить только сервер
-      --only web      выкатить только KMP-фронтенд
-      --only frontend выкатить только новый веб-фронтенд (web/, путь /web/)
+      --only frontend выкатить только веб-фронтенд (web/)
       --skip-gradle   не пересобирать артефакты, взять готовые из build/
   -h, --help          эта справка
 
@@ -62,12 +61,11 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$SERVER_HOST" ] || { usage; exit 1; }
-case "$ONLY" in ""|server|web|frontend) ;; *) die "--only принимает server, web или frontend" ;; esac
+case "$ONLY" in ""|server|frontend) ;; *) die "--only принимает server или frontend" ;; esac
 
-DEPLOY_SERVER=1; DEPLOY_WEB=1; DEPLOY_FRONTEND=1
+DEPLOY_SERVER=1; DEPLOY_FRONTEND=1
 if [ -n "$ONLY" ]; then
     [ "$ONLY" = "server" ] || DEPLOY_SERVER=0
-    [ "$ONLY" = "web" ] || DEPLOY_WEB=0
     [ "$ONLY" = "frontend" ] || DEPLOY_FRONTEND=0
 fi
 
@@ -93,7 +91,6 @@ ssh_do "docker info >/dev/null 2>&1" || die "на сервере недосту�
 REPO=$(ssh_do "grep -E '^GITHUB_REPOSITORY=' '$DEPLOY_PATH/.env' | tail -1 | cut -d= -f2-" | tr -d '"'"'"' \r')
 [ -n "$REPO" ] || die "в $DEPLOY_PATH/.env не задан GITHUB_REPOSITORY"
 IMAGE_SERVER="ghcr.io/$REPO/server:latest"
-IMAGE_WEB="ghcr.io/$REPO/web:latest"
 IMAGE_FRONTEND="ghcr.io/$REPO/frontend:latest"
 
 REMOTE_ARCH=$(ssh_do "uname -m" | tr -d '\r')
@@ -102,30 +99,25 @@ case "$REMOTE_ARCH" in
     aarch64|arm64)  PLATFORM="linux/arm64" ;;
     *) die "неизвестная архитектура сервера: $REMOTE_ARCH" ;;
 esac
-hint "образы: $IMAGE_SERVER, $IMAGE_WEB, $IMAGE_FRONTEND ($PLATFORM)"
+hint "образы: $IMAGE_SERVER, $IMAGE_FRONTEND ($PLATFORM)"
 
 # ── 2. Локальная сборка артефактов ────────────────────────────────────────────
 JAR="server/build/libs/athletica.jar"
-WEB_DIST="composeApp/build/dist/wasmJs/productionExecutable"
 
-if [ "$DEPLOY_SERVER" = "0" ] && [ "$DEPLOY_WEB" = "0" ]; then
-    : # Gradle не нужен: новый фронтенд собирается в своём Dockerfile
+if [ "$DEPLOY_SERVER" = "0" ]; then
+    : # Gradle не нужен: фронтенд собирается в своём Dockerfile
 elif [ "$SKIP_GRADLE" = "1" ]; then
     warn "Gradle пропущен, использую то, что уже лежит в build/"
 else
-    TASKS=()
-    [ "$DEPLOY_SERVER" = "1" ] && TASKS+=(":server:shadowJar")
-    [ "$DEPLOY_WEB" = "1" ] && TASKS+=(":composeApp:wasmJsBrowserDistribution")
-    info "Собираю артефакты: ${TASKS[*]}"
-    ./gradlew "${TASKS[@]}"
+    info "Собираю артефакты: :server:shadowJar"
+    ./gradlew ":server:shadowJar"
 fi
 
 [ "$DEPLOY_SERVER" = "0" ] || [ -f "$JAR" ] || die "нет $JAR"
-[ "$DEPLOY_WEB" = "0" ] || [ -d "$WEB_DIST" ] || die "нет $WEB_DIST"
 
 # ── 3. Образы из готовых артефактов ───────────────────────────────────────────
-# Dockerfile.server и Dockerfile.web собирают проект внутри контейнера — это
-# долго. Здесь берём те же базовые образы и кладём в них уже собранное.
+# Dockerfile.server собирает проект внутри контейнера — это долго. Здесь
+# берём тот же базовый образ и кладём в него уже собранное.
 CONTEXT=$(mktemp -d)
 BUILD_LOG=$(mktemp)
 trap 'rm -rf "$CONTEXT" "$BUILD_LOG"' EXIT
@@ -185,20 +177,6 @@ DOCKERFILE
     fi
 fi
 
-if [ "$DEPLOY_WEB" = "1" ]; then
-    info "Собираю образ фронтенда"
-    mkdir -p "$CONTEXT/web"
-    cp -R "$WEB_DIST/." "$CONTEXT/web/"
-    cp nginx.conf "$CONTEXT/nginx.conf"
-    cat > "$CONTEXT/web.Dockerfile" <<'DOCKERFILE'
-FROM nginx:stable-alpine
-COPY web/ /usr/share/nginx/html/
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-DOCKERFILE
-    build_image "$IMAGE_WEB" "$CONTEXT/web.Dockerfile"
-fi
-
 if [ "$DEPLOY_FRONTEND" = "1" ]; then
     info "Собираю образ нового веб-фронтенда (web/)"
     # Сборка идёт внутри web/Dockerfile (npm ci + проверки + vite build).
@@ -209,7 +187,6 @@ fi
 # ── 4. Перенос образов на стенд ───────────────────────────────────────────────
 IMAGES=()
 [ "$DEPLOY_SERVER" = "1" ] && IMAGES+=("$IMAGE_SERVER")
-[ "$DEPLOY_WEB" = "1" ] && IMAGES+=("$IMAGE_WEB")
 [ "$DEPLOY_FRONTEND" = "1" ] && IMAGES+=("$IMAGE_FRONTEND")
 
 info "Заливаю образы на $SERVER_HOST"

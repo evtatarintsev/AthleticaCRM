@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
@@ -7,11 +5,6 @@ plugins {
 
 kotlin {
     jvm()
-
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-    }
 
     sourceSets {
         commonMain.dependencies {
@@ -25,9 +18,6 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.cio)
-        }
-        wasmJsMain.dependencies {
-            implementation(libs.ktor.client.js)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

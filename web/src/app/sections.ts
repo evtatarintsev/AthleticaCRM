@@ -18,7 +18,7 @@ export type SectionId =
 export interface Section {
   /** Идентификатор раздела. */
   readonly id: SectionId;
-  /** Путь раздела; совпадает в веб-клиенте (от `BASE_PATH`) и в KMP-клиенте (от `/`). */
+  /** Путь раздела в веб-клиенте. */
   readonly path: string;
   /** Ключ подписи в словаре. */
   readonly label: keyof typeof ru;
@@ -38,21 +38,7 @@ export const sections: readonly Section[] = [
 ];
 
 /**
- * Разделы, перенесённые в веб-клиент целиком. Навигация на неперенесённый раздел
- * ведёт в KMP-клиент обычной ссылкой; включение раздела — изменение одной строки.
- */
-export const migratedSections: Readonly<Record<SectionId, boolean>> = {
-  home: false,
-  schedule: false,
-  clients: false,
-  groups: false,
-  employees: false,
-  tasks: false,
-  settings: false,
-};
-
-/**
- * Раздел, к которому относится путь [pathname] веб-клиента (без `BASE_PATH`):
+ * Раздел, к которому относится путь [pathname] веб-клиента:
  * `/clients/…` → `clients`. Главная — только сам `/`.
  */
 export function sectionOf(pathname: string): SectionId | null {

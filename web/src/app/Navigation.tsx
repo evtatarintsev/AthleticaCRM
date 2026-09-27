@@ -2,12 +2,11 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { isStaticAppPath } from "./router";
-import { migratedSections, sectionOf, sections, type Section } from "./sections";
+import { sectionOf, sections, type Section } from "./sections";
 
 /**
- * Основная навигация по разделам. Перенесённый раздел открывается ссылкой роутера,
- * неперенесённый — обычной ссылкой на тот же путь KMP-клиента. [onNavigate] вызывается
- * после выбора пункта, чтобы закрыть выезжающее меню.
+ * Основная навигация по разделам; каждый пункт открывается ссылкой роутера.
+ * [onNavigate] вызывается после выбора пункта, чтобы закрыть выезжающее меню.
  */
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useI18n();
@@ -51,21 +50,17 @@ function SectionLink({
       <span className="truncate">{t(section.label)}</span>
     </>
   );
-  if (migratedSections[section.id] && isStaticAppPath(section.path)) {
-    return (
-      <Link
-        to={section.path}
-        aria-current={current ? "page" : undefined}
-        className={className}
-        onClick={onNavigate}
-      >
-        {content}
-      </Link>
-    );
+  if (!isStaticAppPath(section.path)) {
+    throw new Error(`раздел без маршрута веб-клиента: ${section.path}`);
   }
   return (
-    <a href={section.path} aria-current={current ? "page" : undefined} className={className}>
+    <Link
+      to={section.path}
+      aria-current={current ? "page" : undefined}
+      className={className}
+      onClick={onNavigate}
+    >
       {content}
-    </a>
+    </Link>
   );
 }

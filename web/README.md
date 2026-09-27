@@ -1,9 +1,8 @@
 # web — веб-фронтенд на React
 
-Новый веб-клиент AthleticaCRM: TypeScript + React + Vite + Tailwind CSS.
-Живёт под префиксом `/web/` рядом со старым KMP-клиентом (`/`) и постепенно его заменяет.
-Здесь каркас (сессия, раскладка, навигация, локализация RU/EN), вход и регистрация. Разделы
-переносятся по одному; неперенесённые открываются в KMP-клиенте по общей HttpOnly-cookie.
+Веб-клиент AthleticaCRM: TypeScript + React + Vite + Tailwind CSS. Отдаётся с корня (`/`);
+KMP-клиент, который он заменил, удалён (см. `openspec/changes/rewrite-web-frontend-typescript`).
+Старые адреса с префиксом `/web/...` постоянно перенаправляются на путь без префикса на уровне nginx.
 
 ## Команды
 
@@ -15,15 +14,14 @@ npm run format    # prettier --write
 npm run build     # сборка в dist/
 ```
 
-Открыть: http://localhost:5173/web/ или, через dev-nginx (`docker-compose.dev.yaml`),
-http://athletica.crm/web/.
+Открыть: http://localhost:5173/ или, через dev-nginx (`docker-compose.dev.yaml`), http://athletica.crm/.
 
 ## Устройство
 
 | Каталог              | Что внутри                                                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `src/api/`           | `generated/contracts.ts` — контракты из сервера (`npm run contracts`), `client.ts` — клиент, возвращает `ApiResult` |
-| `src/app/`           | маршруты (TanStack Router), раскладка, навигация, реестр перенесённых разделов `sections.ts`                        |
+| `src/app/`           | маршруты (TanStack Router), раскладка, навигация, разделы `sections.ts`                                             |
 | `src/auth/`          | экраны входа и регистрации, сценарий входа с выбором филиала, адрес возврата после входа                            |
 | `src/query/`         | TanStack Query: `apiQuery` (филиал в ключе), `ApiResult` → исключение `ApiFailure` для запросов                     |
 | `src/forms/`         | обёртки полей TanStack Form с `autocomplete`, подписью и доступной ошибкой                                          |
@@ -33,13 +31,8 @@ http://athletica.crm/web/.
 | `src/settings/`      | страница настроек и справочники: `directory/` — общая страница справочника, остальное — тарифы, роли, доп. поля     |
 | `src/ui/`            | общие элементы страниц: заголовок, аватар, диалог подтверждения, панель выбранных записей                           |
 
-Базовый путь (`/web`) — константа сборки `__BASE_PATH__` из `vite.config.ts`, в коде — `BASE_PATH` из `src/config.ts`.
-
-### Раздел в KMP-клиенте или здесь
-
-Навигация берёт разделы из `src/app/sections.ts`. Пока раздел не перенесён целиком, пункт — обычная
-`<a href="/<раздел>">` в KMP-клиент. Перенесли раздел — `migratedSections.<раздел> = true`; тест
-проверяет, что у перенесённого раздела есть маршрут.
+Базовый путь клиента — константа сборки `__BASE_PATH__` из `vite.config.ts` (сейчас `""`), в коде —
+`BASE_PATH` из `src/config.ts`; используется только для склейки адреса возврата после входа.
 
 ### Типовые приёмы
 
@@ -140,7 +133,8 @@ const api = { call: vi.fn<ApiClient["call"]>() } satisfies ApiClient;
 
 ## Деплой
 
-`Dockerfile` собирает статику и кладёт её в nginx под `/web/`. В проде это сервис
-`frontend` в `docker-compose.prod.yaml`; внешний nginx проксирует на него `/web/`.
+`Dockerfile` собирает статику и кладёт её в nginx под корнем. В проде это сервис `frontend`
+в `docker-compose.prod.yaml`; внешний nginx проксирует на него `/`, а старый префикс
+`/web/...` перенаправляет без него (`nginx/prod.conf.template`).
 Образ `ghcr.io/<repo>/frontend` собирает CI на push в `master`;
 для стенда — `./deploy_to_stand.sh <ip> --only frontend`.

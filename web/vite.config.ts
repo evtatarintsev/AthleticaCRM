@@ -5,15 +5,14 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 /**
- * Новый веб-фронтенд живёт под префиксом /web/ рядом со старым KMP-клиентом (/).
+ * Веб-фронтенд отдаётся с корня; исторический префикс `/web` сохраняется временными 301 в nginx.
  * В dev-режиме /api проксируется на локальный Ktor: по умолчанию порт 8080,
  * другой адрес задаётся переменной окружения API_PROXY.
  */
-/** Базовый путь веб-клиента; после переключения `/` на веб-клиент станет `""`. */
-const BASE_PATH = "/web";
+const BASE_PATH = "";
 
 export default defineConfig({
-  base: `${BASE_PATH}/`,
+  base: "/",
   define: { __BASE_PATH__: JSON.stringify(BASE_PATH) },
   plugins: [react(), tailwindcss()],
   resolve: {

@@ -32,25 +32,20 @@ server {
         proxy_set_header   X-Forwarded-Proto $scheme;
     }
 
-    # Новый веб-фронтенд (React): путь /web/ передаётся как есть
-    location = /web {
-        return 301 /web/;
+    # Старый префикс веб-фронтенда — постоянный редирект на путь без него
+    location /web/ {
+        rewrite ^/web/(.*)$ /$1 permanent;
     }
 
-    location /web/ {
+    location = /web {
+        return 301 /;
+    }
+
+    # Веб-фронтенд (React)
+    location / {
         resolver           127.0.0.11 valid=10s;
         set $upstream      http://frontend:80;
         proxy_pass         $upstream;
-        proxy_set_header   Host $host;
-    }
-
-    location / {
-        resolver           127.0.0.11 valid=10s;
-        set $upstream      http://web:80;
-        proxy_pass         $upstream;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade $http_upgrade;
-        proxy_set_header   Connection "upgrade";
         proxy_set_header   Host $host;
     }
 }

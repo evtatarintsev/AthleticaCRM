@@ -201,7 +201,7 @@ describe("создание клиента", () => {
     await user.click(screen.getByRole("button", { name: ru["action.create"] }));
 
     await screen.findByRole("table");
-    expect(history.location.pathname).toBe("/web/clients");
+    expect(history.location.pathname).toBe("/clients");
 
     const request = CreateClientRequestSchema.parse(api.to("clients/create").at(-1)?.body);
     expect(request.name).toBe("Новый клиент");
@@ -238,7 +238,7 @@ describe("редактирование клиента", () => {
     await user.click(screen.getByRole("button", { name: ru["action.save"] }));
 
     await screen.findByRole("table");
-    expect(history.location.pathname).toBe("/web/clients");
+    expect(history.location.pathname).toBe("/clients");
 
     const request = EditClientRequestSchema.parse(api.to("clients/edit").at(-1)?.body);
     expect(request.id).toBe(alice.id);

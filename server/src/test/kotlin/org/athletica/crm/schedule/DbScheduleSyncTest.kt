@@ -397,7 +397,7 @@ class DbScheduleSyncTest {
             val hallB = fixture.insertHall("B")
             setSchedule(group, today, listOf(mondayAt10(hallA)))
             sync()
-            val second = sessions(group).first { it.date > today.plusDays(1) }
+            val second = sessions(group)[1]
             val between = second.date.plusDays(-3)
 
             setSchedule(group, between, listOf(mondayAt10(hallB)))

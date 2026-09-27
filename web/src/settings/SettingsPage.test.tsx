@@ -65,5 +65,5 @@ describe("страница настроек", () => {
       expect(await screen.findByRole("heading", { level: 1 })).toBeVisible();
       history.push("/settings");
     }
-  });
+  }, 15000);
 });

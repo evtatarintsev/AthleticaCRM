@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Fragment } from "react";
 import type { LocalDate, ScheduleSessionSchema } from "@/api/generated/contracts";
 import { useI18n } from "@/i18n/context";
@@ -78,9 +79,11 @@ function SessionCard({ session }: { readonly session: ScheduleSessionSchema }) {
   const colors = scheduleCardColors(session.colorKey);
   const cancelled = session.status === "CANCELLED";
   return (
-    <article
+    <Link
+      to="/sessions/$sessionId"
+      params={{ sessionId: session.id }}
       className={cn(
-        "space-y-1 rounded-md border p-2 text-xs",
+        "block space-y-1 rounded-md border p-2 text-xs hover:brightness-95",
         colors.container,
         colors.text,
         cancelled && "opacity-50",
@@ -106,6 +109,6 @@ function SessionCard({ session }: { readonly session: ScheduleSessionSchema }) {
       <span className="inline-block rounded-full bg-background/60 px-1.5 py-0.5 text-[10px]">
         {t("schedule.freeSeatsStub")}
       </span>
-    </article>
+    </Link>
   );
 }

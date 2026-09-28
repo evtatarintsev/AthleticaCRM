@@ -15,10 +15,12 @@ import {
   ClientIdSchema,
   EmployeeIdSchema,
   GroupIdSchema,
+  SessionIdSchema,
   TaskIdSchema,
   type ClientId,
   type EmployeeId,
   type GroupId,
+  type SessionId,
   type TaskId,
 } from "@/api/generated/contracts";
 import { ChangePasswordPage } from "@/account/ChangePasswordPage";
@@ -43,6 +45,7 @@ import { GroupDetailPage } from "@/groups/GroupDetailPage";
 import { GroupListSearchSchema, type GroupListSearch } from "@/groups/groupListSearch";
 import { SchedulePage } from "@/schedule/SchedulePage";
 import { ScheduleSearchSchema, type ScheduleSearch } from "@/schedule/scheduleWeek";
+import { SessionDetailPage } from "@/sessions/SessionDetailPage";
 import { TaskCreatePage } from "@/tasks/TaskCreatePage";
 import { TaskDetailPage } from "@/tasks/TaskDetailPage";
 import { TasksPage } from "@/tasks/TasksPage";
@@ -420,6 +423,27 @@ const scheduleRoute = createRoute({
   },
 });
 
+/**
+ * Карточка занятия. Некорректный идентификатор не совпадает с маршрутом
+ * и даёт «не найдено» без запроса к API.
+ */
+const sessionRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/sessions/$sessionId",
+  params: {
+    parse: ({ sessionId }): { sessionId: SessionId } | false => {
+      const parsed = SessionIdSchema.safeParse(sessionId);
+      return parsed.success ? { sessionId: parsed.data } : false;
+    },
+    stringify: ({ sessionId }) => ({ sessionId }),
+  },
+  component: function SessionRoute() {
+    const { api } = sessionRoute.useRouteContext();
+    const { sessionId } = sessionRoute.useParams();
+    return <SessionDetailPage api={api} sessionId={sessionId} />;
+  },
+});
+
 /** Список групп: фильтры в search-параметрах адреса. */
 const groupsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -704,6 +728,7 @@ const routeTree = rootRoute.addChildren([
     clientImportRoute,
     auditLogRoute,
     scheduleRoute,
+    sessionRoute,
     groupsRoute,
     groupNewRoute,
     groupRoute,

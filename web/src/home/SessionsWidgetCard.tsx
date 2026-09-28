@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type { ApiClient } from "@/api/client";
 import type { BranchId } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,12 +41,18 @@ export function SessionsWidgetCard({
         {!query.isPending && !query.isError && sessions !== undefined && sessions.length > 0 && (
           <ul className="divide-y">
             {sessions.map((session) => (
-              <li key={session.sessionId} className="space-y-0.5 px-2 py-2">
-                <p className="font-medium">{session.groupName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {format.time(session.startTime)}–{format.time(session.endTime)} ·{" "}
-                  {t("home.hallLabel", { name: session.hallName })}
-                </p>
+              <li key={session.sessionId}>
+                <Link
+                  to="/sessions/$sessionId"
+                  params={{ sessionId: session.sessionId }}
+                  className="block space-y-0.5 px-2 py-2 hover:bg-accent"
+                >
+                  <p className="font-medium">{session.groupName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {format.time(session.startTime)}–{format.time(session.endTime)} ·{" "}
+                    {t("home.hallLabel", { name: session.hallName })}
+                  </p>
+                </Link>
               </li>
             ))}
           </ul>

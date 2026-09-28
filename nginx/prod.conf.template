@@ -32,15 +32,6 @@ server {
         proxy_set_header   X-Forwarded-Proto $scheme;
     }
 
-    # Старый префикс веб-фронтенда — постоянный редирект на путь без него
-    location /web/ {
-        rewrite ^/web/(.*)$ /$1 permanent;
-    }
-
-    location = /web {
-        return 301 /;
-    }
-
     # Веб-фронтенд (React)
     location / {
         resolver           127.0.0.11 valid=10s;

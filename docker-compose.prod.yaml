@@ -57,7 +57,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Веб-фронтенд (React), доступен с корня; старый префикс /web/ перенаправляется
+  # Веб-фронтенд (React), доступен с корня
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
     restart: unless-stopped

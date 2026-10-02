@@ -1,10 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { PencilIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type {
+  ClientId,
   DisciplineId,
   EmployeeId,
   GroupId,
@@ -14,6 +15,7 @@ import type {
 import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ClientPickerSheet, type PickedClient } from "@/clients/ClientPickerSheet";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate, WEEK_DAYS } from "@/lib/localDate";
@@ -26,8 +28,8 @@ import { cardsToSlotInputs, slotsToCards, type SlotCard } from "./groupSchedule"
 import { useGroup, useGroupDisciplines, useGroupEmployees, useGroupHalls } from "./groupsQueries";
 
 /**
- * Карточка группы: дисциплины, расписание, тренеры и клиенты. Дисциплины и тренеры
- * добавляются и убираются на месте — изменение сразу отражается в карточке (7.2).
+ * Карточка группы: дисциплины, расписание, тренеры и клиенты. Дисциплины, тренеры и
+ * клиенты добавляются и убираются на месте — изменение сразу отражается в карточке (7.2).
  */
 export function GroupDetailPage({
   api,
@@ -46,6 +48,7 @@ export function GroupDetailPage({
 
   const [picker, setPicker] = useState<"disciplines" | "employees" | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
 
   const refresh = () =>
     Promise.all([
@@ -73,6 +76,34 @@ export function GroupDetailPage({
     }
     await refresh();
     toast.success(t("groups.detail.employeesSaved"));
+  };
+
+  const refreshClients = () =>
+    Promise.all([
+      refresh(),
+      queryClient.invalidateQueries({ queryKey: ["api", branchId, "clients/list"] }),
+    ]);
+
+  const addClients = async (clients: readonly PickedClient[]): Promise<string | null> => {
+    const result = await api.call("clients/add-to-group", {
+      groupId,
+      clientIds: clients.map((client) => client.id),
+    });
+    if (!result.ok) {
+      return apiErrorMessage(t, result.error);
+    }
+    await refreshClients();
+    toast.success(t("groups.detail.clientsAdded", { count: clients.length }));
+    return null;
+  };
+
+  const removeClient = async (clientId: ClientId) => {
+    const result = await api.call("clients/remove-from-group", { groupId, clientIds: [clientId] });
+    if (!result.ok) {
+      toast.error(apiErrorMessage(t, result.error));
+      return;
+    }
+    await refreshClients();
   };
 
   const saveSchedule = async (
@@ -208,22 +239,44 @@ export function GroupDetailPage({
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("groups.detail.clientsTitle")}
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {t("groups.detail.clientsTitle")}
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setClientPickerOpen(true);
+            }}
+          >
+            <PlusIcon aria-hidden />
+            {t("groups.detail.addClients")}
+          </Button>
+        </div>
         {detail.clients.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("groups.detail.clientsEmpty")}</p>
         ) : (
           <ul className="divide-y rounded-md border">
             {detail.clients.map((client) => (
-              <li key={client.id}>
+              <li key={client.id} className="flex items-center hover:bg-accent">
                 <Link
                   to="/clients/$clientId"
                   params={{ clientId: client.id }}
-                  className="block px-4 py-3 text-sm hover:bg-accent"
+                  className="min-w-0 flex-1 truncate px-4 py-3 text-sm"
                 >
                   {client.name}
                 </Link>
+                <button
+                  type="button"
+                  aria-label={t("groups.detail.removeClientAria", { name: client.name })}
+                  onClick={() => {
+                    void removeClient(client.id);
+                  }}
+                  className="mr-2 rounded-full p-2 text-muted-foreground hover:text-destructive"
+                >
+                  <XIcon aria-hidden className="size-4" />
+                </button>
               </li>
             ))}
           </ul>
@@ -255,6 +308,20 @@ export function GroupDetailPage({
         onApply={(ids) => {
           void saveEmployees(ids);
         }}
+      />
+
+      <ClientPickerSheet
+        api={api}
+        branchId={branchId}
+        open={clientPickerOpen}
+        onOpenChange={setClientPickerOpen}
+        title={t("groups.detail.addClients")}
+        mode="multiple"
+        unavailable={
+          new Map(detail.clients.map((client) => [client.id, t("groups.detail.alreadyInGroup")]))
+        }
+        submitLabel={t("action.add")}
+        onSubmit={addClients}
       />
 
       {scheduleOpen && (

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { ru } from "@/i18n/ru";
@@ -15,9 +15,9 @@ describe("страница настроек", () => {
     const hrefs = settingsLinks.map((link) => link.getAttribute("href"));
     expect(hrefs).toEqual(
       expect.arrayContaining([
-        "/settings/edit-profile",
-        "/settings/switch-branch",
-        "/settings/change-password",
+        "/settings?panel=edit-profile",
+        "/settings?panel=switch-branch",
+        "/settings?panel=change-password",
         "/settings/branches",
         "/settings/disciplines",
         "/settings/halls",
@@ -46,9 +46,6 @@ describe("страница настроек", () => {
       ru["settings.itemSubscriptionTemplates"],
       ru["settings.itemRoles"],
       ru["settings.itemClientAdditionalAttributes"],
-      ru["settings.itemEditProfile"],
-      ru["settings.itemChangePassword"],
-      ru["settings.itemSwitchBranch"],
       ru["settings.itemBasicSettings"],
       ru["settings.itemOrgBalance"],
       ru["settings.itemActivityLog"],
@@ -66,4 +63,23 @@ describe("страница настроек", () => {
       history.push("/settings");
     }
   }, 15000);
+
+  it("пункты раздела «Пользователь» открывают панель, не уходя со страницы", async () => {
+    const user = userEvent.setup();
+    const { history } = openApp("/settings", appServer({}).fetch);
+    const items = [
+      [ru["settings.itemEditProfile"], ru["profile.title"]],
+      [ru["settings.itemChangePassword"], ru["password.title"]],
+      [ru["settings.itemSwitchBranch"], ru["branch.title"]],
+    ] as const;
+    for (const [item, title] of items) {
+      await user.click(await screen.findByRole("link", { name: new RegExp(item) }));
+      const dialog = await screen.findByRole("dialog", { name: title });
+      expect(history.location.pathname).toBe("/settings");
+      await user.click(within(dialog).getByRole("button", { name: ru["action.cancel"] }));
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog", { name: title })).toBeNull();
+      });
+    }
+  });
 });

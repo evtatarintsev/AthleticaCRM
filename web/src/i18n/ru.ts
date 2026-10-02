@@ -62,6 +62,10 @@ export const ru = {
   "language.ru": "Русский",
   "language.en": "English",
 
+  "editSheet.discardTitle": "Не сохранять изменения?",
+  "editSheet.discardDescription": "Внесённые изменения будут потеряны.",
+  "editSheet.discardConfirm": "Не сохранять",
+
   "profile.title": "Редактировать профиль",
   "profile.name": "Имя",
   "profile.addPhoto": "Добавить фото",

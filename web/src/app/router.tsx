@@ -23,9 +23,6 @@ import {
   type SessionId,
   type TaskId,
 } from "@/api/generated/contracts";
-import { ChangePasswordPage } from "@/account/ChangePasswordPage";
-import { ProfilePage } from "@/account/ProfilePage";
-import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
 import { ClientComingSoonPage } from "@/clients/ClientComingSoonPage";
@@ -50,6 +47,7 @@ import { TaskCreatePage } from "@/tasks/TaskCreatePage";
 import { TaskDetailPage } from "@/tasks/TaskDetailPage";
 import { TasksPage } from "@/tasks/TasksPage";
 import { TaskListSearchSchema, type TaskListSearch } from "@/tasks/taskListSearch";
+import { SettingsSearchSchema, type SettingsPanel } from "@/settings/settingsSearch";
 import { branches, disciplines, halls, leadSources } from "@/settings/directories";
 import { DirectoryPage } from "@/settings/directory/DirectoryPage";
 import { ChannelsPage } from "@/settings/channels/ChannelsPage";
@@ -185,41 +183,53 @@ const homeRoute = createRoute({
   },
 });
 
-/** Страница настроек со всеми пунктами. */
+/** Страница настроек со всеми пунктами; открытая панель — в search-параметрах адреса. */
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
-  component: SettingsPage,
+  validateSearch: SettingsSearchSchema,
+  component: function SettingsRoute() {
+    const { api } = settingsRoute.useRouteContext();
+    const { panel } = settingsRoute.useSearch();
+    const navigate = settingsRoute.useNavigate();
+    return (
+      <SettingsPage
+        api={api}
+        panel={panel}
+        onPanelChange={(next) => {
+          void navigate({ search: next === undefined ? {} : { panel: next }, replace: true });
+        }}
+      />
+    );
+  },
 });
 
-/** Профиль текущего пользователя. */
+/** Прежний адрес экрана [panel], ставшего панелью: перенаправляет на настройки с открытой панелью. */
+function settingsPanelRedirect(panel: SettingsPanel) {
+  return () => {
+    throw redirect({ to: "/settings", search: { panel }, replace: true });
+  };
+}
+
+/** Профиль текущего пользователя — теперь панель настроек. */
 const editProfileRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/edit-profile",
-  component: function EditProfileRoute() {
-    const { api } = editProfileRoute.useRouteContext();
-    return <ProfilePage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("edit-profile"),
 });
 
-/** Смена пароля текущего пользователя. */
+/** Смена пароля текущего пользователя — теперь панель настроек. */
 const changePasswordRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/change-password",
-  component: function ChangePasswordRoute() {
-    const { api } = changePasswordRoute.useRouteContext();
-    return <ChangePasswordPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("change-password"),
 });
 
-/** Смена филиала. */
+/** Смена филиала — теперь панель настроек. */
 const switchBranchRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/switch-branch",
-  component: function SwitchBranchRoute() {
-    const { api } = switchBranchRoute.useRouteContext();
-    return <SwitchBranchPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("switch-branch"),
 });
 
 /** Справочник залов. */

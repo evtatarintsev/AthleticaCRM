@@ -12,6 +12,7 @@ import {
   ListPlusIcon,
   MegaphoneIcon,
   MessagesSquareIcon,
+  PanelRightOpenIcon,
   SettingsIcon,
   ShieldCheckIcon,
   StoreIcon,
@@ -23,13 +24,20 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import type { ApiClient } from "@/api/client";
+import { ChangePasswordSheet } from "@/account/ChangePasswordSheet";
+import { ProfileSheet } from "@/account/ProfileSheet";
+import { SwitchBranchSheet } from "@/account/SwitchBranchSheet";
 import type { StaticAppPath } from "@/app/router";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import type { SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
 type SettingTarget =
   /** Страница веб-клиента. */
   | { readonly kind: "app"; readonly to: StaticAppPath }
+  /** Панель поверх страницы настроек. */
+  | { readonly kind: "panel"; readonly panel: SettingsPanel }
   /** Пункт-заготовка: экрана нет ни в веб-, ни в KMP-клиенте. */
   | { readonly kind: "none" };
 
@@ -50,6 +58,9 @@ interface SettingSection {
 /** Страница веб-клиента [to]. */
 const app = (to: StaticAppPath): SettingTarget => ({ kind: "app", to });
 
+/** Панель [panel] поверх страницы настроек. */
+const panel = (panel: SettingsPanel): SettingTarget => ({ kind: "panel", panel });
+
 /** Пункт без экрана. */
 const none: SettingTarget = { kind: "none" };
 
@@ -62,19 +73,19 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemEditProfile",
         subtitle: "settings.itemEditProfileSubtitle",
         icon: UserIcon,
-        target: app("/settings/edit-profile"),
+        target: panel("edit-profile"),
       },
       {
         title: "settings.itemSwitchBranch",
         subtitle: "settings.itemSwitchBranchSubtitle",
         icon: StoreIcon,
-        target: app("/settings/switch-branch"),
+        target: panel("switch-branch"),
       },
       {
         title: "settings.itemChangePassword",
         subtitle: "settings.itemChangePasswordSubtitle",
         icon: KeyRoundIcon,
-        target: app("/settings/change-password"),
+        target: panel("change-password"),
       },
     ],
   },
@@ -208,10 +219,27 @@ const SETTINGS: readonly SettingSection[] = [
 
 /**
  * Настройки: разделы и пункты как в KMP-клиенте. Пункты с готовым экраном — ссылки
- * роутера, заготовки без экрана показаны неактивной строкой.
+ * роутера, заготовки без экрана показаны неактивной строкой. Пункты раздела «Пользователь»
+ * открывают панель справа, не уходя со страницы; открытая панель [panel] хранится в адресе,
+ * её смена сообщается через [onPanelChange].
  */
-export function SettingsPage() {
+export function SettingsPage({
+  api,
+  panel,
+  onPanelChange,
+}: {
+  api: ApiClient;
+  panel: SettingsPanel | undefined;
+  onPanelChange: (panel: SettingsPanel | undefined) => void;
+}) {
   const { t } = useI18n();
+  const panelProps = (target: SettingsPanel) => ({
+    api,
+    open: panel === target,
+    onOpenChange: (open: boolean) => {
+      onPanelChange(open ? target : undefined);
+    },
+  });
   return (
     <section className="max-w-3xl space-y-8">
       <h1 className="text-2xl font-semibold tracking-tight">{t("settings.title")}</h1>
@@ -227,6 +255,9 @@ export function SettingsPage() {
           </ul>
         </section>
       ))}
+      <ProfileSheet {...panelProps("edit-profile")} />
+      <SwitchBranchSheet {...panelProps("switch-branch")} />
+      <ChangePasswordSheet {...panelProps("change-password")} />
     </section>
   );
 }
@@ -254,6 +285,16 @@ function SettingRow({ item }: { item: SettingItem }) {
       return (
         <Link to={item.target.to} className={`${className} hover:bg-accent/50`}>
           {content(<ChevronRightIcon aria-hidden className="size-4 text-muted-foreground" />)}
+        </Link>
+      );
+    case "panel":
+      return (
+        <Link
+          to="/settings"
+          search={{ panel: item.target.panel }}
+          className={`${className} hover:bg-accent/50`}
+        >
+          {content(<PanelRightOpenIcon aria-hidden className="size-4 text-muted-foreground" />)}
         </Link>
       );
     case "none":

@@ -62,6 +62,10 @@ interface Session {
     /** Признак, что состав преподавателей меняли вручную на уровне занятия. */
     val isEmployeeAssignmentOverridden: Boolean
 
+    /**
+     * Отменяет запланированное занятие и публикует событие об отмене; отметки журнала
+     * перестают учитываться. Проведённое занятие не отменяется: ошибка `SESSION_CANNOT_CANCEL`.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun cancel()
 
@@ -73,6 +77,11 @@ interface Session {
         newHallId: HallId,
     )
 
+    /**
+     * Проводит занятие — закрывает журнал посещаемости и публикует событие с итоговым составом.
+     * Ошибки: `SESSION_CANNOT_COMPLETE` (занятие не запланировано), `SESSION_NOT_STARTED`
+     * (время начала не наступило), `SESSION_JOURNAL_INCOMPLETE` (есть неотмеченные участники).
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun complete()
 

@@ -14,12 +14,24 @@ import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.sessions.SessionStatus
+import org.athletica.crm.domain.attendance.AttendanceMark
+import org.athletica.crm.domain.attendance.SessionRoster
+import org.athletica.crm.domain.attendance.toSnapshot
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.events.CompletedParticipant
+import org.athletica.crm.domain.events.DomainEvents
+import org.athletica.crm.domain.events.SessionCancelled
+import org.athletica.crm.domain.events.SessionCompleted
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asUuid
 
-/** Конкретная реализация [Session] на основе данных из PostgreSQL. */
+/**
+ * Конкретная реализация [Session] на основе данных из PostgreSQL.
+ * [events] публикует события о проведении и отмене занятия.
+ */
 class DbSession(
     override val id: SessionId,
     override val groupId: GroupId,
@@ -34,6 +46,7 @@ class DbSession(
     override val notes: String?,
     override val employeeIds: List<EmployeeId>,
     override val isEmployeeAssignmentOverridden: Boolean,
+    private val events: DomainEvents,
 ) : Session {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun cancel() {
@@ -50,6 +63,7 @@ class DbSession(
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .execute()
+        events.publish(SessionCancelled(id, groupId, date, ctx.employeeId))
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -84,6 +98,13 @@ class DbSession(
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_COMPLETE", "Можно завершить только запланированное занятие"))
         }
+        if (!hasStarted()) {
+            raise(CommonDomainError("SESSION_NOT_STARTED", Messages.SessionNotStarted.localize()))
+        }
+        val participants = SessionRoster.load(id, groupId, date, SessionStatus.SCHEDULED)
+        if (participants.any { it.mark is AttendanceMark.Unmarked }) {
+            raise(CommonDomainError("SESSION_JOURNAL_INCOMPLETE", Messages.SessionJournalIncomplete.localize()))
+        }
         tr
             .sql(
                 """
@@ -94,7 +115,40 @@ class DbSession(
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .execute()
+        events.publish(
+            SessionCompleted(
+                sessionId = id,
+                groupId = groupId,
+                date = date,
+                participants =
+                    participants.map {
+                        CompletedParticipant(
+                            clientId = it.clientId,
+                            kind = it.kind,
+                            presence = checkNotNull(it.mark.presence),
+                            labelIds = it.mark.toSnapshot().labelIds,
+                        )
+                    },
+                completedBy = ctx.employeeId,
+            ),
+        )
     }
+
+    /** Наступило ли время начала занятия в часовом поясе организации. */
+    context(ctx: EmployeeRequestContext, tr: Transaction)
+    private suspend fun hasStarted(): Boolean =
+        tr
+            .sql(
+                """
+                SELECT (s.date + s.start_time) AT TIME ZONE o.timezone <= now() AS started
+                FROM sessions s
+                JOIN organizations o ON o.id = s.org_id
+                WHERE s.id = :id AND s.org_id = :orgId
+                """.trimIndent(),
+            )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .firstOrNull { it.asBoolean("started") } ?: false
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun setEmployees(employees: List<Employee>) {

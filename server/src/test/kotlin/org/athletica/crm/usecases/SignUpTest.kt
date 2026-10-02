@@ -7,6 +7,7 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.asString
 import org.athletica.crm.usecases.auth.SignUpError
 import org.athletica.crm.usecases.auth.User
 import org.athletica.crm.usecases.auth.signUp
@@ -61,6 +62,31 @@ class SignUpTest {
             )
             assertIs<Either.Right<User>>(
                 TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { signUp(request(login = "user2@example.com")) } },
+            )
+        }
+
+    @Test
+    fun `signUp создаёт новой организации предустановленные метки посещаемости`() =
+        runTest {
+            val userSettings = DbUserDisplaySettings()
+            val result = TestPostgres.db.transaction { context(this, PasswordHasher(), userSettings) { signUp(request()) } }
+            val user = assertIs<Either.Right<User>>(result).value
+
+            val labels =
+                TestPostgres.db
+                    .sql("SELECT name, scope::text AS scope FROM attendance_labels WHERE org_id = :orgId ORDER BY position")
+                    .bind("orgId", user.orgId)
+                    .list { it.asString("name") to it.asString("scope") }
+
+            assertEquals(
+                listOf(
+                    "Опоздал" to "present",
+                    "Ушёл раньше" to "present",
+                    "Болеет" to "absent",
+                    "Предупредил" to "absent",
+                    "Прогул" to "absent",
+                ),
+                labels,
             )
         }
 }

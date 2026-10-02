@@ -1,5 +1,11 @@
 package org.athletica.crm.read
 
+import org.athletica.crm.read.attendance.ClientAttendanceView
+import org.athletica.crm.read.attendance.DbClientAttendanceView
+import org.athletica.crm.read.attendance.DbGroupAttendanceView
+import org.athletica.crm.read.attendance.DbSessionJournalView
+import org.athletica.crm.read.attendance.GroupAttendanceView
+import org.athletica.crm.read.attendance.SessionJournalView
 import org.athletica.crm.read.clients.ClientBalanceHistoryView
 import org.athletica.crm.read.clients.ClientListView
 import org.athletica.crm.read.clients.DbClientBalanceHistoryView
@@ -43,4 +49,10 @@ data class ReadViews(
     val todaySchedule: TodayScheduleView = DbTodayScheduleView(),
     /** Занятия текущего филиала за период для страницы «Расписание». */
     val schedule: ScheduleView = DbScheduleView(),
+    /** Карточка занятия с журналом посещаемости. */
+    val sessionJournal: SessionJournalView = DbSessionJournalView(),
+    /** Сводка посещаемости группы за период. */
+    val groupAttendance: GroupAttendanceView = DbGroupAttendanceView(),
+    /** Посещаемость клиента за период по всем группам. */
+    val clientAttendance: ClientAttendanceView = DbClientAttendanceView(),
 )

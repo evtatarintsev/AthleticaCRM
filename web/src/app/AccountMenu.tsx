@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronDownIcon, LogOutIcon, StoreIcon, UserIcon, WalletIcon } from "lucide-react";
 import type { ApiClient } from "@/api/client";
 import type { AuthMeResponse } from "@/api/generated/contracts";
 import { ProfileSheet } from "@/account/ProfileSheet";
+import { OrgBalanceSheet } from "@/settings/org/OrgBalanceSheet";
 import { useSwitchBranch } from "@/account/useSwitchBranch";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,7 @@ import { Avatar } from "@/ui/Avatar";
 
 /**
  * Меню аккаунта пользователя [me]: профиль, баланс организации, смена филиала, язык и выход
- * ([onLogout]). Профиль открывается панелью поверх текущей страницы.
+ * ([onLogout]). Профиль и баланс открываются панелью поверх текущей страницы.
  */
 export function AccountMenu({
   api,
@@ -40,6 +40,7 @@ export function AccountMenu({
 }) {
   const { t, format, locale, setLocale } = useI18n();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [balanceOpen, setBalanceOpen] = useState(false);
   return (
     <>
       <DropdownMenu>
@@ -64,18 +65,21 @@ export function AccountMenu({
             {t("account.profile")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link to="/settings/org-balance" className="flex-col items-start gap-0.5">
-              <span className="flex w-full items-center gap-2 truncate">
-                <WalletIcon aria-hidden />
-                {me.orgInfo.name}
+          <DropdownMenuItem
+            className="flex-col items-start gap-0.5"
+            onSelect={() => {
+              setBalanceOpen(true);
+            }}
+          >
+            <span className="flex w-full items-center gap-2 truncate">
+              <WalletIcon aria-hidden />
+              {me.orgInfo.name}
+            </span>
+            {me.orgInfo.balance !== null && (
+              <span className="pl-6 text-xs text-muted-foreground">
+                {t("account.orgBalance", { amount: format.money(me.orgInfo.balance) })}
               </span>
-              {me.orgInfo.balance !== null && (
-                <span className="pl-6 text-xs text-muted-foreground">
-                  {t("account.orgBalance", { amount: format.money(me.orgInfo.balance) })}
-                </span>
-              )}
-            </Link>
+            )}
           </DropdownMenuItem>
           <BranchSwitcher api={api} me={me} />
           <DropdownMenuSeparator />
@@ -105,6 +109,7 @@ export function AccountMenu({
         </DropdownMenuContent>
       </DropdownMenu>
       <ProfileSheet api={api} open={profileOpen} onOpenChange={setProfileOpen} />
+      <OrgBalanceSheet api={api} open={balanceOpen} onOpenChange={setBalanceOpen} />
     </>
   );
 }

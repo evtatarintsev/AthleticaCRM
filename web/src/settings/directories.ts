@@ -12,7 +12,7 @@ import {
 } from "@/api/generated/contracts";
 import { uuidv7 } from "@/lib/uuid";
 import { apiQuery, myBranchesQuery } from "@/query/queries";
-import type { DirectoryDefinition } from "./directory/DirectoryPage";
+import type { DirectoryDefinition } from "./directory/DirectorySheet";
 
 /** Залы филиала [branchId]. */
 function useHalls(api: ApiClient, branchId: BranchId) {

@@ -1,7 +1,19 @@
 import { z } from "zod";
 
-/** Панели раздела «Пользователь», открываемые поверх страницы настроек. */
-export const SettingsPanelSchema = z.enum(["edit-profile", "switch-branch", "change-password"]);
+/** Панели, открываемые поверх страницы настроек. */
+export const SettingsPanelSchema = z.enum([
+  "edit-profile",
+  "switch-branch",
+  "change-password",
+  "basic",
+  "org-balance",
+  "branches",
+  "disciplines",
+  "halls",
+  "client-sources",
+  "client-additional-attributes",
+  "client-import",
+]);
 
 /** Панель страницы настроек. */
 export type SettingsPanel = z.output<typeof SettingsPanelSchema>;

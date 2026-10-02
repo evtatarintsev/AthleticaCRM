@@ -19,6 +19,16 @@ import {
   type EditSheetGuard,
 } from "./editSheetContext";
 
+/** Ширина панели на широком экране; на узком панель всегда во всю ширину. */
+export type EditSheetSize = "md" | "lg" | "xl";
+
+/** Классы ширины для каждого размера панели. */
+const SIZE_CLASSES: Readonly<Record<EditSheetSize, string>> = {
+  md: "sm:max-w-md",
+  lg: "sm:max-w-2xl",
+  xl: "sm:max-w-4xl",
+};
+
 /** Свойства панели редактирования. */
 interface EditSheetProps {
   /** Открыта ли панель. */
@@ -27,6 +37,8 @@ interface EditSheetProps {
   readonly onOpenChange: (open: boolean) => void;
   /** Заголовок панели. */
   readonly title: string;
+  /** Ширина: форма — `md` (по умолчанию), список или таблица — шире. */
+  readonly size?: EditSheetSize;
   /**
    * Содержимое; монтируется только пока панель открыта, поэтому каждое открытие
    * начинается с чистой формы.
@@ -40,7 +52,7 @@ interface EditSheetProps {
  * требует подтверждения. Панели можно открывать одну поверх другой: вложенная [EditSheet]
  * внутри содержимого сдвигает родительскую влево, и под верхней панелью видно, откуда она открыта.
  */
-export function EditSheet({ open, onOpenChange, title, children }: EditSheetProps) {
+export function EditSheet({ open, onOpenChange, title, size = "md", children }: EditSheetProps) {
   const { t } = useI18n();
   const parent = useContext(EditSheetContext);
   const [childOpen, setChildOpen] = useState(false);
@@ -100,7 +112,7 @@ export function EditSheet({ open, onOpenChange, title, children }: EditSheetProp
         onInteractOutside={(event) => {
           event.preventDefault();
         }}
-        className={cn("w-full gap-0 sm:max-w-md", childOpen && "sm:-translate-x-20")}
+        className={cn("w-full gap-0", SIZE_CLASSES[size], childOpen && "sm:-translate-x-20")}
       >
         <SheetHeader className="border-b pr-12">
           <SheetTitle>{title}</SheetTitle>
@@ -130,6 +142,8 @@ interface EditSheetFormProps {
   readonly submitting: boolean;
   /** Отправка формы кнопкой «Сохранить» или Enter. */
   readonly onSubmit: () => void;
+  /** Подпись кнопки отправки вместо «Сохранить». */
+  readonly submitLabel?: string;
   /** Поля формы; прокручиваются, кнопки остаются внизу. */
   readonly children: ReactNode;
   /** Вложенные панели, открываемые из формы; рендерятся вне элемента `<form>`. */
@@ -141,6 +155,7 @@ export function EditSheetForm({
   dirty,
   submitting,
   onSubmit,
+  submitLabel,
   children,
   nested,
 }: EditSheetFormProps) {
@@ -163,17 +178,42 @@ export function EditSheetForm({
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">{children}</div>
+        <EditSheetBody>{children}</EditSheetBody>
         <SheetFooter className="flex-row justify-end border-t">
           <Button type="button" variant="outline" disabled={submitting} onClick={requestClose}>
             {t("action.cancel")}
           </Button>
           <Button type="submit" disabled={submitting} aria-busy={submitting}>
-            {t("action.save")}
+            {submitLabel ?? t("action.save")}
           </Button>
         </SheetFooter>
       </form>
       {nested}
     </>
+  );
+}
+
+/** Прокручиваемое содержимое панели между заголовком и нижней строкой. */
+export function EditSheetBody({ children }: { children: ReactNode }) {
+  return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">{children}</div>;
+}
+
+/**
+ * Нижняя строка панели со списком: число выбранных записей [count] и действия над ними
+ * [actions]. Заменяет `SelectionBar` страницы, который внутри панели был бы под затемнением.
+ * Скрывается, когда ничего не выбрано.
+ */
+export function EditSheetSelection({ count, actions }: { count: number; actions: ReactNode }) {
+  const { t } = useI18n();
+  if (count === 0) {
+    return null;
+  }
+  return (
+    <SheetFooter className="flex-row items-center justify-between border-t">
+      <span className="text-sm font-medium" aria-live="polite">
+        {t("directory.selected", { count })}
+      </span>
+      <div className="flex flex-wrap items-center gap-2">{actions}</div>
+    </SheetFooter>
   );
 }

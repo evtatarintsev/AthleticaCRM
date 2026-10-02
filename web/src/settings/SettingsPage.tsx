@@ -23,14 +23,20 @@ import {
   WalletIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { ApiClient } from "@/api/client";
 import { ChangePasswordSheet } from "@/account/ChangePasswordSheet";
 import { ProfileSheet } from "@/account/ProfileSheet";
 import { SwitchBranchSheet } from "@/account/SwitchBranchSheet";
 import type { StaticAppPath } from "@/app/router";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
-import type { SettingsPanel } from "./settingsSearch";
+import { ClientImportSheet } from "./import/ClientImportSheet";
+import { CustomFieldsSheet } from "./customFields/CustomFieldsSheet";
+import { branches, disciplines, halls, leadSources } from "./directories";
+import { DirectorySheet } from "./directory/DirectorySheet";
+import { OrgBalanceSheet } from "./org/OrgBalanceSheet";
+import { OrgSettingsSheet } from "./org/OrgSettingsSheet";
+import { SettingsPanelSchema, type SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
 type SettingTarget =
@@ -96,31 +102,31 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemBasicSettings",
         subtitle: "settings.itemBasicSettingsSubtitle",
         icon: SettingsIcon,
-        target: app("/settings/basic"),
+        target: panel("basic"),
       },
       {
         title: "settings.itemOrgBalance",
         subtitle: "settings.itemOrgBalanceSubtitle",
         icon: WalletIcon,
-        target: app("/settings/org-balance"),
+        target: panel("org-balance"),
       },
       {
         title: "settings.itemBranches",
         subtitle: "settings.itemBranchesSubtitle",
         icon: Building2Icon,
-        target: app("/settings/branches"),
+        target: panel("branches"),
       },
       {
         title: "settings.itemDisciplines",
         subtitle: "settings.itemDisciplinesSubtitle",
         icon: TrophyIcon,
-        target: app("/settings/disciplines"),
+        target: panel("disciplines"),
       },
       {
         title: "settings.itemHalls",
         subtitle: "settings.itemHallsSubtitle",
         icon: DoorOpenIcon,
-        target: app("/settings/halls"),
+        target: panel("halls"),
       },
       {
         title: "settings.itemRanks",
@@ -160,19 +166,19 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemClientSources",
         subtitle: "settings.itemClientSourcesSubtitle",
         icon: MegaphoneIcon,
-        target: app("/settings/client-sources"),
+        target: panel("client-sources"),
       },
       {
         title: "settings.itemClientAdditionalAttributes",
         subtitle: "settings.itemClientAdditionalAttributesSubtitle",
         icon: ListPlusIcon,
-        target: app("/settings/client-additional-attributes"),
+        target: panel("client-additional-attributes"),
       },
       {
         title: "settings.itemClientImport",
         subtitle: "settings.itemClientImportSubtitle",
         icon: FileUpIcon,
-        target: app("/settings/client-import"),
+        target: panel("client-import"),
       },
     ],
   },
@@ -217,11 +223,33 @@ const SETTINGS: readonly SettingSection[] = [
   },
 ];
 
+/** Свойства панели настроек. */
+interface SettingsSheetProps {
+  readonly api: ApiClient;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+}
+
+/** Панель для каждого пункта настроек, открываемого поверх страницы. */
+const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>> = {
+  "edit-profile": ProfileSheet,
+  "switch-branch": SwitchBranchSheet,
+  "change-password": ChangePasswordSheet,
+  basic: OrgSettingsSheet,
+  "org-balance": OrgBalanceSheet,
+  branches: (props) => <DirectorySheet {...props} definition={branches} />,
+  disciplines: (props) => <DirectorySheet {...props} definition={disciplines} />,
+  halls: (props) => <DirectorySheet {...props} definition={halls} />,
+  "client-sources": (props) => <DirectorySheet {...props} definition={leadSources} />,
+  "client-additional-attributes": CustomFieldsSheet,
+  "client-import": ClientImportSheet,
+};
+
 /**
  * Настройки: разделы и пункты как в KMP-клиенте. Пункты с готовым экраном — ссылки
- * роутера, заготовки без экрана показаны неактивной строкой. Пункты раздела «Пользователь»
- * открывают панель справа, не уходя со страницы; открытая панель [panel] хранится в адресе,
- * её смена сообщается через [onPanelChange].
+ * роутера, заготовки без экрана показаны неактивной строкой. Пункты разделов «Пользователь»,
+ * «Основное» и «Клиенты» открывают панель справа, не уходя со страницы; открытая панель
+ * [panel] хранится в адресе, её смена сообщается через [onPanelChange].
  */
 export function SettingsPage({
   api,
@@ -233,13 +261,6 @@ export function SettingsPage({
   onPanelChange: (panel: SettingsPanel | undefined) => void;
 }) {
   const { t } = useI18n();
-  const panelProps = (target: SettingsPanel) => ({
-    api,
-    open: panel === target,
-    onOpenChange: (open: boolean) => {
-      onPanelChange(open ? target : undefined);
-    },
-  });
   return (
     <section className="max-w-3xl space-y-8">
       <h1 className="text-2xl font-semibold tracking-tight">{t("settings.title")}</h1>
@@ -255,9 +276,19 @@ export function SettingsPage({
           </ul>
         </section>
       ))}
-      <ProfileSheet {...panelProps("edit-profile")} />
-      <SwitchBranchSheet {...panelProps("switch-branch")} />
-      <ChangePasswordSheet {...panelProps("change-password")} />
+      {SettingsPanelSchema.options.map((target) => {
+        const Sheet = SHEETS[target];
+        return (
+          <Sheet
+            key={target}
+            api={api}
+            open={panel === target}
+            onOpenChange={(open) => {
+              onPanelChange(open ? target : undefined);
+            }}
+          />
+        );
+      })}
     </section>
   );
 }

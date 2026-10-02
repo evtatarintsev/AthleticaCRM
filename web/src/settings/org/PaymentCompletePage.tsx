@@ -12,7 +12,7 @@ export function PaymentCompletePage() {
     <section className="max-w-prose space-y-4">
       <h1 className="text-2xl font-semibold tracking-tight">{t("orgBalance.completeTitle")}</h1>
       <p className="text-muted-foreground">{t("orgBalance.completeMessage")}</p>
-      <Link to="/settings/org-balance" className={buttonVariants()}>
+      <Link to="/settings" search={{ panel: "org-balance" }} className={buttonVariants()}>
         {t("orgBalance.title")}
       </Link>
     </section>

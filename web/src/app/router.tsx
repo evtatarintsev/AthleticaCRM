@@ -48,16 +48,10 @@ import { TaskDetailPage } from "@/tasks/TaskDetailPage";
 import { TasksPage } from "@/tasks/TasksPage";
 import { TaskListSearchSchema, type TaskListSearch } from "@/tasks/taskListSearch";
 import { SettingsSearchSchema, type SettingsPanel } from "@/settings/settingsSearch";
-import { branches, disciplines, halls, leadSources } from "@/settings/directories";
-import { DirectoryPage } from "@/settings/directory/DirectoryPage";
 import { ChannelsPage } from "@/settings/channels/ChannelsPage";
-import { OrgSettingsPage } from "@/settings/org/OrgSettingsPage";
-import { OrgBalancePage } from "@/settings/org/OrgBalancePage";
-import { ClientImportPage } from "@/settings/import/ClientImportPage";
 import { AuditLogPage } from "@/settings/audit/AuditLogPage";
 import { PaymentCompletePage } from "@/settings/org/PaymentCompletePage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
-import { CustomFieldsPage } from "@/settings/customFields/CustomFieldsPage";
 import { RolesPage } from "@/settings/roles/RolesPage";
 import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
@@ -232,54 +226,39 @@ const switchBranchRoute = createRoute({
   beforeLoad: settingsPanelRedirect("switch-branch"),
 });
 
-/** Справочник залов. */
+/** Справочник залов — теперь панель настроек. */
 const hallsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/halls",
-  component: function HallsRoute() {
-    const { api } = hallsRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={halls} />;
-  },
+  beforeLoad: settingsPanelRedirect("halls"),
 });
 
-/** Справочник дисциплин. */
+/** Справочник дисциплин — теперь панель настроек. */
 const disciplinesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/disciplines",
-  component: function DisciplinesRoute() {
-    const { api } = disciplinesRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={disciplines} />;
-  },
+  beforeLoad: settingsPanelRedirect("disciplines"),
 });
 
-/** Справочник источников клиентов. */
+/** Справочник источников клиентов — теперь панель настроек. */
 const clientSourcesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-sources",
-  component: function ClientSourcesRoute() {
-    const { api } = clientSourcesRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={leadSources} />;
-  },
+  beforeLoad: settingsPanelRedirect("client-sources"),
 });
 
-/** Филиалы организации. */
+/** Филиалы организации — теперь панель настроек. */
 const branchesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/branches",
-  component: function BranchesRoute() {
-    const { api } = branchesRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={branches} />;
-  },
+  beforeLoad: settingsPanelRedirect("branches"),
 });
 
-/** Дополнительные атрибуты клиентов. */
+/** Дополнительные атрибуты клиентов — теперь панель настроек. */
 const customFieldsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-additional-attributes",
-  component: function CustomFieldsRoute() {
-    const { api } = customFieldsRoute.useRouteContext();
-    return <CustomFieldsPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("client-additional-attributes"),
 });
 
 /** Роли и права сотрудников. */
@@ -312,24 +291,18 @@ const channelsRoute = createRoute({
   },
 });
 
-/** Основные настройки организации. */
+/** Основные настройки организации — теперь панель настроек. */
 const orgSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/basic",
-  component: function OrgSettingsRoute() {
-    const { api } = orgSettingsRoute.useRouteContext();
-    return <OrgSettingsPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("basic"),
 });
 
-/** Баланс организации и пополнение. */
+/** Баланс организации и пополнение — теперь панель настроек. */
 const orgBalanceRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/org-balance",
-  component: function OrgBalanceRoute() {
-    const { api } = orgBalanceRoute.useRouteContext();
-    return <OrgBalancePage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("org-balance"),
 });
 
 /** Страница возврата с оплаты ЮKassa. */
@@ -339,14 +312,11 @@ const paymentCompleteRoute = createRoute({
   component: PaymentCompletePage,
 });
 
-/** Импорт клиентов из файла. */
+/** Импорт клиентов из файла — теперь панель настроек. */
 const clientImportRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-import",
-  component: function ClientImportRoute() {
-    const { api } = clientImportRoute.useRouteContext();
-    return <ClientImportPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("client-import"),
 });
 
 /** Журнал действий. */

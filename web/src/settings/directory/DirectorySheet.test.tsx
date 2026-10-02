@@ -46,7 +46,10 @@ describe("справочник", () => {
     await user.click(within(dialog).getByRole("button", { name: ru["action.save"] }));
 
     expect(await screen.findByRole("button", { name: "Изменить «Зал для йоги»" })).toBeVisible();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["halls.create"] })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("dialog", { name: ru["halls.title"] })).toBeInTheDocument();
     const [created] = api.to("halls/create").map((r) => CreateHallRequestSchema.parse(r.body));
     expect(created?.name).toBe("Зал для йоги");
     expect(created?.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/);
@@ -162,19 +165,26 @@ describe("справочник", () => {
         return empty();
       },
     });
-    openApp("/settings/branches", api.fetch);
+    openApp("/settings", api.fetch);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: ru["account.menu"] }));
     expect(await screen.findByText(ru["account.currentBranch"])).toBeVisible();
     expect(screen.queryByRole("menuitem", { name: /Центр/ })).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
 
+    await user.click(
+      await screen.findByRole("link", { name: new RegExp(ru["settings.itemBranches"]) }),
+    );
     await user.click(await screen.findByRole("button", { name: ru["action.add"] }));
     const dialog = await screen.findByRole("dialog", { name: ru["branches.create"] });
     await user.type(within(dialog).getByLabelText(ru["directory.name"]), "Север");
     await user.click(within(dialog).getByRole("button", { name: ru["action.save"] }));
 
     expect(await screen.findByText("Север")).toBeVisible();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["branches.title"] })).not.toBeInTheDocument();
+    });
     await user.click(screen.getByRole("button", { name: ru["account.menu"] }));
     expect(
       await screen.findByRole("menuitem", { name: `${ru["account.switchBranch"]}: Центр` }),

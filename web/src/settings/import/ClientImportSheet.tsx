@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
   ClientImportCommitResponse,
@@ -20,7 +20,8 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
-import { PageHeader } from "@/ui/PageHeader";
+import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
 import {
   commitRequest,
   nameColumnCount,
@@ -45,11 +46,30 @@ type Phase =
     }
   | { readonly kind: "done"; readonly result: ClientImportCommitResponse };
 
+/** Панель импорта клиентов, открытая при [open]; мастер начинается заново при каждом открытии. */
+export function ClientImportSheet({
+  api,
+  open,
+  onOpenChange,
+}: {
+  api: ApiClient;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <EditSheet open={open} onOpenChange={onOpenChange} title={t("import.title")} size="xl">
+      <ClientImportPanel api={api} />
+    </EditSheet>
+  );
+}
+
 /**
  * Импорт клиентов из файла (паритет с `ClientImportScreen` KMP-клиента): загрузка файла,
- * сопоставление колонок с полями клиента, проверка без записи, импорт.
+ * сопоставление колонок с полями клиента, проверка без записи, импорт. Пока файл загружен,
+ * но не импортирован, закрытие панели требует подтверждения.
  */
-export function ClientImportPage({ api }: { readonly api: ApiClient }) {
+function ClientImportPanel({ api }: { readonly api: ApiClient }) {
   const { t } = useI18n();
   const branchId = useSession(api).currentBranch.id;
   const leadSources = useQuery({
@@ -61,6 +81,14 @@ export function ClientImportPage({ api }: { readonly api: ApiClient }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const { reportGuard } = useEditSheet();
+
+  useEffect(() => {
+    reportGuard({
+      dirty: phase.kind === "mapping" || phase.kind === "preview",
+      submitting: busy,
+    });
+  }, [reportGuard, phase.kind, busy]);
 
   const upload = async (file: File): Promise<void> => {
     setBusy(true);
@@ -112,8 +140,7 @@ export function ClientImportPage({ api }: { readonly api: ApiClient }) {
   };
 
   return (
-    <section className="max-w-3xl">
-      <PageHeader title={t("import.title")} />
+    <EditSheetBody>
       {error !== null && <FormAlert message={error} />}
       {phase.kind === "upload" && (
         <div className="space-y-3">
@@ -187,7 +214,7 @@ export function ClientImportPage({ api }: { readonly api: ApiClient }) {
           }}
         />
       )}
-    </section>
+    </EditSheetBody>
   );
 }
 

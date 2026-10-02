@@ -1,17 +1,11 @@
 import { useForm } from "@tanstack/react-form";
 import { useMemo, useState } from "react";
 import type { CustomFieldDefinition } from "@/api/generated/contracts";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { FormAlert } from "@/forms/FormAlert";
 import { CheckboxField, SelectField, TextAreaField, TextField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
+import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
 import {
   CUSTOM_FIELD_TYPES,
   customFieldSchema,
@@ -20,24 +14,54 @@ import {
   formValuesOf,
 } from "./customFieldForm";
 
-/** Свойства диалога определения дополнительного поля. */
-interface CustomFieldDialogProps {
+/** Свойства панели определения дополнительного поля. */
+interface CustomFieldSheetProps {
+  /** Открыта ли панель. */
+  readonly open: boolean;
+  /** Вызывается, когда панель надо открыть или закрыть. */
+  readonly onOpenChange: (open: boolean) => void;
   /** Редактируемое определение; `null` — новое. Ключ существующего поля не меняется. */
   readonly initial: CustomFieldDefinition | null;
   /** Ключи остальных полей: новый ключ не должен с ними совпадать. */
   readonly takenKeys: ReadonlySet<string>;
   /** Сохраняет определение; возвращает текст ошибки или `null` при успехе. */
   readonly onSave: (definition: CustomFieldDefinition) => Promise<string | null>;
-  /** Закрывает диалог. */
-  readonly onClose: () => void;
 }
 
 /**
- * Диалог создания или изменения дополнительного атрибута клиента: ключ, название, тип,
- * признаки и параметры типа — опции выбора, пределы числа, длина строки.
+ * Панель создания или изменения дополнительного атрибута клиента; открывается поверх
+ * списка атрибутов.
  */
-export function CustomFieldDialog({ initial, takenKeys, onSave, onClose }: CustomFieldDialogProps) {
+export function CustomFieldSheet({
+  open,
+  onOpenChange,
+  initial,
+  takenKeys,
+  onSave,
+}: CustomFieldSheetProps) {
   const { t } = useI18n();
+  return (
+    <EditSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={initial === null ? t("customFields.create") : t("customFields.edit")}
+    >
+      <CustomFieldForm initial={initial} takenKeys={takenKeys} onSave={onSave} />
+    </EditSheet>
+  );
+}
+
+/**
+ * Форма дополнительного атрибута: ключ, название, тип, признаки и параметры типа —
+ * опции выбора, пределы числа, длина строки. После сохранения закрывает свою панель.
+ */
+function CustomFieldForm({
+  initial,
+  takenKeys,
+  onSave,
+}: Pick<CustomFieldSheetProps, "initial" | "takenKeys" | "onSave">) {
+  const { t } = useI18n();
+  const { close } = useEditSheet();
   const schema = useMemo(() => customFieldSchema(t, takenKeys), [t, takenKeys]);
   const [failure, setFailure] = useState<string | null>(null);
   const form = useForm({
@@ -51,7 +75,7 @@ export function CustomFieldDialog({ initial, takenKeys, onSave, onClose }: Custo
       setFailure(null);
       const error = await onSave(definition);
       if (error === null) {
-        onClose();
+        close();
       } else {
         setFailure(error);
       }
@@ -63,32 +87,16 @@ export function CustomFieldDialog({ initial, takenKeys, onSave, onClose }: Custo
   }));
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
+    <form.Subscribe
+      selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
     >
-      <DialogContent
-        aria-describedby={undefined}
-        closeLabel={t("action.close")}
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
-      >
-        <DialogHeader>
-          <DialogTitle>
-            {initial === null ? t("customFields.create") : t("customFields.edit")}
-          </DialogTitle>
-        </DialogHeader>
-        <form
-          method="post"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
+      {({ dirty, submitting }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
             void form.handleSubmit();
           }}
-          className="space-y-4"
         >
           {failure !== null && <FormAlert message={failure} />}
           <form.Field name="fieldKey">
@@ -196,17 +204,8 @@ export function CustomFieldDialog({ initial, takenKeys, onSave, onClose }: Custo
               </>
             )}
           </form.Subscribe>
-          <DialogFooter closeLabel={t("action.cancel")}>
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(submitting) => (
-                <Button type="submit" disabled={submitting} aria-busy={submitting}>
-                  {t("action.save")}
-                </Button>
-              )}
-            </form.Subscribe>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </EditSheetForm>
+      )}
+    </form.Subscribe>
   );
 }

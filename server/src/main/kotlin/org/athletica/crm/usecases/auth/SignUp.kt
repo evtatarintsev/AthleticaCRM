@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.domain.attendance.DefaultAttendanceLabels
 import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.security.PasswordHasher
@@ -38,7 +39,8 @@ sealed class SignUpError : DomainError {
 
 /**
  * Регистрирует новую организацию и её владельца по данным [request].
- * Создаёт филиал по умолчанию с именем, локализованным по [lang].
+ * Создаёт филиал и зал по умолчанию и предустановленные метки посещаемости
+ * с названиями, локализованными по [lang].
  * Возвращает созданного пользователя, либо [SignUpError.UserAlreadyRegistered] если логин занят.
  */
 context(tr: Transaction, passwordHasher: PasswordHasher, userSettings: UserDisplaySettings)
@@ -84,6 +86,8 @@ suspend fun signUp(
             .bind("branchId", branchId)
             .bind("name", Messages.DefaultHallName.localize(lang))
             .execute()
+
+        DefaultAttendanceLabels.createFor(orgId, lang)
     } catch (e: R2dbcDataIntegrityViolationException) {
         if (e.message?.contains("users_login_key") == true) {
             return SignUpError.UserAlreadyRegistered.left()

@@ -281,4 +281,104 @@ object Messages {
         override val ru = "Ключ поля должен содержать только строчные латинские буквы и символ подчёркивания"
         override val en = "Field key must contain only lowercase letters and underscores"
     }
+
+    object AttendanceLabelAlreadyExists : LocalizationKey {
+        override val ru = "Метка с таким названием уже существует"
+        override val en = "Attendance label with this name already exists"
+    }
+
+    object AttendanceLabelNotFound : LocalizationKey {
+        override val ru = "Метка посещаемости не найдена"
+        override val en = "Attendance label not found"
+    }
+
+    object AttendanceLabelNameBlank : LocalizationKey {
+        override val ru = "Название метки не может быть пустым"
+        override val en = "Attendance label name must not be blank"
+    }
+
+    object AttendanceLabelNotApplicable : LocalizationKey {
+        override val ru = "Метка не применима к выбранному состоянию отметки"
+        override val en = "Label is not applicable to the selected attendance state"
+    }
+
+    object AttendanceLabelArchived : LocalizationKey {
+        override val ru = "Архивную метку нельзя назначить новой отметке"
+        override val en = "Archived label cannot be assigned to a new mark"
+    }
+
+    object AttendanceParticipantNotFound : LocalizationKey {
+        override val ru = "Клиент не числится в составе занятия"
+        override val en = "Client is not a participant of the session"
+    }
+
+    object AttendanceParticipantAlreadyExists : LocalizationKey {
+        override val ru = "Клиент уже числится в составе занятия"
+        override val en = "Client is already a participant of the session"
+    }
+
+    object AttendanceCannotRemoveRegular : LocalizationKey {
+        override val ru = "Постоянного участника группы нельзя убрать из состава занятия"
+        override val en = "A regular group member cannot be removed from the session"
+    }
+
+    object AttendanceJournalClosed : LocalizationKey {
+        override val ru = "Состав можно менять только у запланированного занятия"
+        override val en = "Participants can only be changed for a scheduled session"
+    }
+
+    object AttendanceSessionCancelled : LocalizationKey {
+        override val ru = "Занятие отменено, журнал недоступен"
+        override val en = "Session is cancelled, the journal is unavailable"
+    }
+
+    object AttendanceCannotUnmarkCompleted : LocalizationKey {
+        override val ru = "В проведённом занятии отметку нельзя снять"
+        override val en = "A mark cannot be cleared in a completed session"
+    }
+
+    object SessionJournalIncomplete : LocalizationKey {
+        override val ru = "Журнал не заполнен: есть неотмеченные участники"
+        override val en = "The journal is incomplete: some participants are not marked"
+    }
+
+    object SessionNotStarted : LocalizationKey {
+        override val ru = "Занятие ещё не началось"
+        override val en = "The session has not started yet"
+    }
+
+    object InvalidAttendancePeriod : LocalizationKey {
+        override val ru = "Конец периода раньше начала"
+        override val en = "Period end is before its start"
+    }
+
+    object AttendancePeriodTooLong : LocalizationKey {
+        override val ru = "Период посещаемости не может быть длиннее года"
+        override val en = "Attendance period cannot exceed one year"
+    }
+
+    object DefaultAttendanceLabelLate : LocalizationKey {
+        override val ru = "Опоздал"
+        override val en = "Late"
+    }
+
+    object DefaultAttendanceLabelLeftEarly : LocalizationKey {
+        override val ru = "Ушёл раньше"
+        override val en = "Left early"
+    }
+
+    object DefaultAttendanceLabelSick : LocalizationKey {
+        override val ru = "Болеет"
+        override val en = "Sick"
+    }
+
+    object DefaultAttendanceLabelExcused : LocalizationKey {
+        override val ru = "Предупредил"
+        override val en = "Excused"
+    }
+
+    object DefaultAttendanceLabelTruant : LocalizationKey {
+        override val ru = "Прогул"
+        override val en = "Truant"
+    }
 }

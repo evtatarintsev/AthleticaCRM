@@ -21,6 +21,7 @@ import org.athletica.crm.core.entityids.toSlotId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.events.DomainEvents
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -32,8 +33,11 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
-/** Реализация [Sessions] с доступом к PostgreSQL через R2DBC. */
-class DbSessions : Sessions {
+/**
+ * Реализация [Sessions] с доступом к PostgreSQL через R2DBC.
+ * [events] передаётся занятиям для публикации событий о проведении и отмене.
+ */
+class DbSessions(private val events: DomainEvents) : Sessions {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: SessionId,
@@ -122,7 +126,7 @@ class DbSessions : Sessions {
         val sessionIds = rows.map { it.id }
         val employeeIdsBySession = loadEmployeeIds(sessionIds)
         return rows.map { row ->
-            row.toSession(employeeIdsBySession[row.id] ?: emptyList())
+            row.toSession(employeeIdsBySession[row.id] ?: emptyList(), events)
         }
     }
 
@@ -153,7 +157,7 @@ class DbSessions : Sessions {
         val sessionIds = rows.map { it.id }
         val employeeIdsBySession = loadEmployeeIds(sessionIds)
         return rows.map { row ->
-            row.toSession(employeeIdsBySession[row.id] ?: emptyList())
+            row.toSession(employeeIdsBySession[row.id] ?: emptyList(), events)
         }
     }
 
@@ -178,7 +182,7 @@ class DbSessions : Sessions {
             .firstOrNull { row -> row.toSessionRow() }
             ?.let { row ->
                 val employeeIdsBySession = loadEmployeeIds(listOf(id))
-                row.toSession(employeeIdsBySession[id] ?: emptyList())
+                row.toSession(employeeIdsBySession[id] ?: emptyList(), events)
             }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -226,7 +230,10 @@ private fun io.r2dbc.spi.Row.toSessionRow(): SessionRow =
         isEmployeeAssignmentOverridden = asBoolean("is_employee_assignment_overridden"),
     )
 
-private fun SessionRow.toSession(employeeIds: List<EmployeeId>): DbSession =
+private fun SessionRow.toSession(
+    employeeIds: List<EmployeeId>,
+    events: DomainEvents,
+): DbSession =
     DbSession(
         id = id,
         groupId = groupId,
@@ -241,4 +248,5 @@ private fun SessionRow.toSession(employeeIds: List<EmployeeId>): DbSession =
         notes = notes,
         employeeIds = employeeIds,
         isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
+        events = events,
     )

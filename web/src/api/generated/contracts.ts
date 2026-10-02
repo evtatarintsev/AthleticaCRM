@@ -101,6 +101,74 @@ export const AttachTaskUploadRequestSchema = z
   .readonly();
 export type AttachTaskUploadRequest = z.output<typeof AttachTaskUploadRequestSchema>;
 
+export const AttendanceLabelIdSchema = z.uuid().brand<"AttendanceLabelId">();
+export type AttendanceLabelId = z.output<typeof AttendanceLabelIdSchema>;
+
+export const AttendanceLabelListRequestSchema = z
+  .object({
+    includeArchived: z.boolean().optional(),
+  })
+  .readonly();
+export type AttendanceLabelListRequest = z.output<typeof AttendanceLabelListRequestSchema>;
+
+export const AttendanceLabelScopeSchema = z.enum(["PRESENT", "ABSENT", "ANY"]);
+export type AttendanceLabelScope = z.output<typeof AttendanceLabelScopeSchema>;
+
+export const AttendanceLabelSchemaSchema = z
+  .object({
+    id: AttendanceLabelIdSchema,
+    name: z.string(),
+    scope: AttendanceLabelScopeSchema,
+    position: z.int32(),
+    isArchived: z.boolean(),
+  })
+  .readonly();
+export type AttendanceLabelSchema = z.output<typeof AttendanceLabelSchemaSchema>;
+
+export const AttendanceLabelListResponseSchema = z
+  .object({
+    labels: z.array(AttendanceLabelSchemaSchema).readonly(),
+  })
+  .readonly();
+export type AttendanceLabelListResponse = z.output<typeof AttendanceLabelListResponseSchema>;
+
+export const AttendanceLabelRequestSchema = z
+  .object({
+    id: AttendanceLabelIdSchema,
+  })
+  .readonly();
+export type AttendanceLabelRequest = z.output<typeof AttendanceLabelRequestSchema>;
+
+export const AttendancePresenceSchema = z.enum(["PRESENT", "ABSENT"]);
+export type AttendancePresence = z.output<typeof AttendancePresenceSchema>;
+
+export const SessionIdSchema = z.uuid().brand<"SessionId">();
+export type SessionId = z.output<typeof SessionIdSchema>;
+
+export const AttendanceMarkSchemaSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    presence: AttendancePresenceSchema,
+    labels: z.array(AttendanceLabelSchemaSchema).readonly(),
+  })
+  .readonly();
+export type AttendanceMarkSchema = z.output<typeof AttendanceMarkSchemaSchema>;
+
+export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
+export type LocalDate = z.output<typeof LocalDateSchema>;
+
+export const LocalTimeSchema = z.iso.time().brand<"LocalTime">();
+export type LocalTime = z.output<typeof LocalTimeSchema>;
+
+export const AttendanceSessionSchemaSchema = z
+  .object({
+    id: SessionIdSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+  })
+  .readonly();
+export type AttendanceSessionSchema = z.output<typeof AttendanceSessionSchemaSchema>;
+
 export const AuditLogItemSchema = z
   .object({
     id: z.uuid(),
@@ -319,6 +387,42 @@ export const ChannelListResponseSchema = z
   .readonly();
 export type ChannelListResponse = z.output<typeof ChannelListResponseSchema>;
 
+export const ScheduleGroupSchemaSchema = z
+  .object({
+    id: GroupIdSchema,
+    name: z.string(),
+  })
+  .readonly();
+export type ScheduleGroupSchema = z.output<typeof ScheduleGroupSchemaSchema>;
+
+export const ClientAttendanceItemSchemaSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    group: ScheduleGroupSchemaSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    presence: AttendancePresenceSchema,
+    labels: z.array(AttendanceLabelSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAttendanceItemSchema = z.output<typeof ClientAttendanceItemSchemaSchema>;
+
+export const ClientAttendanceRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    from: LocalDateSchema,
+    to: LocalDateSchema,
+  })
+  .readonly();
+export type ClientAttendanceRequest = z.output<typeof ClientAttendanceRequestSchema>;
+
+export const ClientAttendanceResponseSchema = z
+  .object({
+    items: z.array(ClientAttendanceItemSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAttendanceResponse = z.output<typeof ClientAttendanceResponseSchema>;
+
 export const ClientBalanceHistoryRequestSchema = z
   .object({
     id: ClientIdSchema,
@@ -362,9 +466,6 @@ export const ClientDetailRequestSchema = z
   })
   .readonly();
 export type ClientDetailRequest = z.output<typeof ClientDetailRequestSchema>;
-
-export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
-export type LocalDate = z.output<typeof LocalDateSchema>;
 
 export const ClientDocSchema = z
   .object({
@@ -750,6 +851,13 @@ export const ClientsDisplaySettingsInputSchema = z
   .readonly();
 export type ClientsDisplaySettingsInput = z.output<typeof ClientsDisplaySettingsInputSchema>;
 
+export const CompleteSessionRequestSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+  })
+  .readonly();
+export type CompleteSessionRequest = z.output<typeof CompleteSessionRequestSchema>;
+
 export const ConversationRequestSchema = z
   .object({
     clientId: ClientIdSchema,
@@ -806,6 +914,15 @@ export const ConversationResponseSchema = z
   })
   .readonly();
 export type ConversationResponse = z.output<typeof ConversationResponseSchema>;
+
+export const CreateAttendanceLabelRequestSchema = z
+  .object({
+    id: AttendanceLabelIdSchema,
+    name: z.string(),
+    scope: AttendanceLabelScopeSchema,
+  })
+  .readonly();
+export type CreateAttendanceLabelRequest = z.output<typeof CreateAttendanceLabelRequestSchema>;
 
 export const CreateChannelIntegrationRequestSchema = z
   .object({
@@ -884,12 +1001,6 @@ export const CreateRoleRequestSchema = z
   })
   .readonly();
 export type CreateRoleRequest = z.output<typeof CreateRoleRequestSchema>;
-
-export const LocalTimeSchema = z.iso.time().brand<"LocalTime">();
-export type LocalTime = z.output<typeof LocalTimeSchema>;
-
-export const SessionIdSchema = z.uuid().brand<"SessionId">();
-export type SessionId = z.output<typeof SessionIdSchema>;
 
 export const CreateSessionRequestSchema = z
   .object({
@@ -1490,6 +1601,34 @@ export const ErrorResponseSchema = z
   .readonly();
 export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
 
+export const GroupAttendanceRequestSchema = z
+  .object({
+    groupId: GroupIdSchema,
+    from: LocalDateSchema,
+    to: LocalDateSchema,
+  })
+  .readonly();
+export type GroupAttendanceRequest = z.output<typeof GroupAttendanceRequestSchema>;
+
+export const GroupAttendanceRowSchemaSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    name: z.string(),
+    presentCount: z.int32(),
+    absentCount: z.int32(),
+    marks: z.array(AttendanceMarkSchemaSchema).readonly(),
+  })
+  .readonly();
+export type GroupAttendanceRowSchema = z.output<typeof GroupAttendanceRowSchemaSchema>;
+
+export const GroupAttendanceResponseSchema = z
+  .object({
+    sessions: z.array(AttendanceSessionSchemaSchema).readonly(),
+    participants: z.array(GroupAttendanceRowSchemaSchema).readonly(),
+  })
+  .readonly();
+export type GroupAttendanceResponse = z.output<typeof GroupAttendanceResponseSchema>;
+
 export const GroupClientSchema = z
   .object({
     id: ClientIdSchema,
@@ -1642,6 +1781,28 @@ export const IssueMembershipRequestSchema = z
   .readonly();
 export type IssueMembershipRequest = z.output<typeof IssueMembershipRequestSchema>;
 
+export const JournalParticipantRequestSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type JournalParticipantRequest = z.output<typeof JournalParticipantRequestSchema>;
+
+export const ParticipationKindSchema = z.enum(["REGULAR", "ONE_TIME"]);
+export type ParticipationKind = z.output<typeof ParticipationKindSchema>;
+
+export const JournalParticipantSchemaSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    name: z.string(),
+    kind: ParticipationKindSchema,
+    presence: AttendancePresenceSchema.nullable(),
+    labels: z.array(AttendanceLabelSchemaSchema).readonly(),
+  })
+  .readonly();
+export type JournalParticipantSchema = z.output<typeof JournalParticipantSchemaSchema>;
+
 export const LeadSourceDetailResponseSchema = z
   .object({
     id: LeadSourceIdSchema,
@@ -1674,12 +1835,30 @@ export const LoginResponseSchema = z
   .readonly();
 export type LoginResponse = z.output<typeof LoginResponseSchema>;
 
+export const MarkAttendanceRequestSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    clientId: ClientIdSchema,
+    presence: AttendancePresenceSchema.nullable(),
+    labelIds: z.array(AttendanceLabelIdSchema).readonly().optional(),
+  })
+  .readonly();
+export type MarkAttendanceRequest = z.output<typeof MarkAttendanceRequestSchema>;
+
 export const MarkNotificationsReadRequestSchema = z
   .object({
     ids: z.array(z.uuid()).readonly(),
   })
   .readonly();
 export type MarkNotificationsReadRequest = z.output<typeof MarkNotificationsReadRequestSchema>;
+
+export const MarkRemainingAbsentRequestSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    labelId: AttendanceLabelIdSchema,
+  })
+  .readonly();
+export type MarkRemainingAbsentRequest = z.output<typeof MarkRemainingAbsentRequestSchema>;
 
 export const MembershipListRequestSchema = z
   .object({
@@ -1840,14 +2019,6 @@ export const ScheduleDisciplineSchemaSchema = z
   .readonly();
 export type ScheduleDisciplineSchema = z.output<typeof ScheduleDisciplineSchemaSchema>;
 
-export const ScheduleGroupSchemaSchema = z
-  .object({
-    id: GroupIdSchema,
-    name: z.string(),
-  })
-  .readonly();
-export type ScheduleGroupSchema = z.output<typeof ScheduleGroupSchemaSchema>;
-
 export const ScheduleHallSchemaSchema = z
   .object({
     id: HallIdSchema,
@@ -1960,6 +2131,29 @@ export const SessionDetailResponseSchema = z
   })
   .readonly();
 export type SessionDetailResponse = z.output<typeof SessionDetailResponseSchema>;
+
+export const SessionJournalRequestSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+  })
+  .readonly();
+export type SessionJournalRequest = z.output<typeof SessionJournalRequestSchema>;
+
+export const SessionJournalResponseSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    group: ScheduleGroupSchemaSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    endTime: LocalTimeSchema,
+    hall: ScheduleHallSchemaSchema,
+    coaches: z.array(ScheduleCoachSchemaSchema).readonly(),
+    status: SessionStatusSchema,
+    hasStarted: z.boolean(),
+    participants: z.array(JournalParticipantSchemaSchema).readonly(),
+  })
+  .readonly();
+export type SessionJournalResponse = z.output<typeof SessionJournalResponseSchema>;
 
 export const SetGroupDisciplinesRequestSchema = z
   .object({
@@ -2145,6 +2339,15 @@ export const UnassignTaskRequestSchema = z
   .readonly();
 export type UnassignTaskRequest = z.output<typeof UnassignTaskRequestSchema>;
 
+export const UpdateAttendanceLabelRequestSchema = z
+  .object({
+    id: AttendanceLabelIdSchema,
+    name: z.string(),
+    position: z.int32(),
+  })
+  .readonly();
+export type UpdateAttendanceLabelRequest = z.output<typeof UpdateAttendanceLabelRequestSchema>;
+
 export const UpdateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
@@ -2261,6 +2464,55 @@ export type UploadInfoRequest = z.output<typeof UploadInfoRequestSchema>;
 
 /** Все эндпоинты API: путь без `/api/` → метод, формат запроса и ответа. */
 export const endpoints = {
+  "attendance-labels/archive": {
+    method: "POST",
+    in: "body",
+    request: AttendanceLabelRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "attendance-labels/create": {
+    method: "POST",
+    in: "body",
+    request: CreateAttendanceLabelRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "attendance-labels/list": {
+    method: "GET",
+    in: "query",
+    request: AttendanceLabelListRequestSchema,
+    out: "json",
+    response: AttendanceLabelListResponseSchema,
+  },
+  "attendance-labels/restore": {
+    method: "POST",
+    in: "body",
+    request: AttendanceLabelRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "attendance-labels/update": {
+    method: "POST",
+    in: "body",
+    request: UpdateAttendanceLabelRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "attendance/client": {
+    method: "GET",
+    in: "query",
+    request: ClientAttendanceRequestSchema,
+    out: "json",
+    response: ClientAttendanceResponseSchema,
+  },
+  "attendance/group": {
+    method: "GET",
+    in: "query",
+    request: GroupAttendanceRequestSchema,
+    out: "json",
+    response: GroupAttendanceResponseSchema,
+  },
   "audit/log": {
     method: "GET",
     in: "query",
@@ -2842,6 +3094,13 @@ export const endpoints = {
     out: "json",
     response: ScheduleListResponseSchema,
   },
+  "sessions/complete": {
+    method: "POST",
+    in: "body",
+    request: CompleteSessionRequestSchema,
+    out: "json",
+    response: SessionJournalResponseSchema,
+  },
   "sessions/create": {
     method: "POST",
     in: "body",
@@ -2855,6 +3114,41 @@ export const endpoints = {
     request: SessionDetailRequestSchema,
     out: "json",
     response: SessionDetailResponseSchema,
+  },
+  "sessions/journal": {
+    method: "GET",
+    in: "query",
+    request: SessionJournalRequestSchema,
+    out: "json",
+    response: SessionJournalResponseSchema,
+  },
+  "sessions/journal/add-participant": {
+    method: "POST",
+    in: "body",
+    request: JournalParticipantRequestSchema,
+    out: "json",
+    response: SessionJournalResponseSchema,
+  },
+  "sessions/journal/mark": {
+    method: "POST",
+    in: "body",
+    request: MarkAttendanceRequestSchema,
+    out: "json",
+    response: SessionJournalResponseSchema,
+  },
+  "sessions/journal/mark-remaining-absent": {
+    method: "POST",
+    in: "body",
+    request: MarkRemainingAbsentRequestSchema,
+    out: "json",
+    response: SessionJournalResponseSchema,
+  },
+  "sessions/journal/remove-participant": {
+    method: "POST",
+    in: "body",
+    request: JournalParticipantRequestSchema,
+    out: "json",
+    response: SessionJournalResponseSchema,
   },
   "sessions/set-employees": {
     method: "POST",

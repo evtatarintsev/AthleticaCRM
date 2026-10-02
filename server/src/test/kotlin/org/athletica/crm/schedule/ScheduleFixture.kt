@@ -39,6 +39,10 @@ class ScheduleFixture {
     var branchId: BranchId = BranchId.notSelected()
         private set
 
+    /** Сотрудник, от имени которого выполняются запросы; по умолчанию в БД не существует. */
+    var actorId: EmployeeId = EmployeeId.new()
+        private set
+
     /** Создаёт организацию с филиалом и запоминает их как текущие. */
     suspend fun setUp(name: String = "Test Org") {
         orgId = Uuid.generateV7()
@@ -99,6 +103,9 @@ class ScheduleFixture {
             .execute()
         return id
     }
+
+    /** Создаёт сотрудника и делает его автором запросов [ctx], чтобы ссылки на автора проходили FK. */
+    suspend fun insertActor(): EmployeeId = insertEmployee("Автор").also { actorId = it }
 
     /** Привязывает сотрудника [employeeId] к группе [groupId] как её тренера. */
     suspend fun linkGroupEmployee(groupId: GroupId, employeeId: EmployeeId) {
@@ -199,7 +206,7 @@ class ScheduleFixture {
             userId = UserId.new(),
             orgId = OrgId(orgId),
             branchId = branchId,
-            employeeId = EmployeeId.new(),
+            employeeId = actorId,
             username = "test@example.com",
             clientIp = null,
             currency = Currency.RUB,

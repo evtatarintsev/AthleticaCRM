@@ -7,6 +7,11 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
+import org.athletica.crm.domain.attendance.AttendanceLabels
+import org.athletica.crm.domain.attendance.AuditAttendanceLabels
+import org.athletica.crm.domain.attendance.DbAttendanceLabels
+import org.athletica.crm.domain.attendance.DbSessionJournals
+import org.athletica.crm.domain.attendance.SessionJournals
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
@@ -137,7 +142,9 @@ data class Di(
     val bus: DomainEventBus = DomainEventBus()
     val groups: Groups = AuditGroups(DbGroups(), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
-    val sessions: Sessions = AuditSessions(DbSessions(), audit)
+    val sessions: Sessions = AuditSessions(DbSessions(bus), audit)
+    val attendanceLabels: AttendanceLabels = AuditAttendanceLabels(DbAttendanceLabels(), audit)
+    val sessionJournals: SessionJournals = DbSessionJournals(attendanceLabels, bus)
     val groupSchedule: GroupSchedule = DbGroupSchedule()
     val scheduleSync: ScheduleSync = DbScheduleSync()
     val halls: Halls = AuditHalls(DbHalls(), audit)

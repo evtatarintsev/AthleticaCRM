@@ -39,6 +39,7 @@ import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.systemContext
+import org.athletica.crm.routes.attendanceRoutes
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
 import org.athletica.crm.routes.branchesRoutes
@@ -197,6 +198,7 @@ fun Application.configureServer() {
                         }
                         groupsRoutes(di.groups, di.employees, di.groupSchedule, di.scheduleSync, di.views)
                         sessionsRoutes(di.groups, di.sessions, di.employees)
+                        attendanceRoutes(di.attendanceLabels, di.sessionJournals, di.sessions, di.views)
                         orgRoutes(di.organizations)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)

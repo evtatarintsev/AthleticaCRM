@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
-import org.athletica.crm.api.client.appJson
+import org.athletica.crm.api.appJson
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.errors.DomainError

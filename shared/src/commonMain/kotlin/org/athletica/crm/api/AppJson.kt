@@ -1,4 +1,4 @@
-package org.athletica.crm.api.client
+package org.athletica.crm.api
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
@@ -48,7 +48,7 @@ val appSerializersModule =
         }
     }
 
-/** Общий [Json] для API-клиента на всех платформах. */
+/** Общий [Json] для сериализации схем API с зарегистрированными полиморфными подтипами. */
 val appJson =
     Json {
         ignoreUnknownKeys = true

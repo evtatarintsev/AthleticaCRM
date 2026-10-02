@@ -1,14 +1,7 @@
 [versions]
 # 2.3.0 пока только alpha.4 — ждём стабильный релиз.
 arrow = "2.2.3"
-androidx-lifecycle = "2.11.0"
-# 2.10.0 пока только beta01 — ждём стабильный релиз.
-androidx-navigation = "2.9.2"
-composeHotReload = "1.2.0"
-kermit = "2.2.0"
 ktlint = "14.2.0"
-composeMultiplatform = "1.13.0-alpha01"
-junit = "4.13.2"
 kotlin = "2.4.20"
 kotlinx-coroutines = "1.11.0"
 kotlinx-datetime = "0.8.0"
@@ -22,16 +15,8 @@ r2dbc-postgresql = "1.1.2.RELEASE"
 r2dbc-pool = "1.0.2.RELEASE"
 testcontainers = "1.21.4"
 bouncycastle = "1.86"
-# org.jetbrains.compose.material3 публикуется отдельным alpha-каналом:
-# последний стабильный — 1.9.0, то есть старше текущего. Держим alpha,
-# синхронную с composeMultiplatform.
-material3 = "1.13.0-alpha01"
-# material-icons-extended заморожен на 1.7.3 и не следует за composeMultiplatform.
-composeMaterialIcons = "1.7.3"
 minio = "9.0.3"
 angus-mail = "2.0.5"
-coil3 = "3.6.2"
-reorderable = "3.1.0"
 sentry = "8.56.0"
 commons-csv = "1.14.1"
 clikt = "5.1.0"
@@ -39,30 +24,14 @@ clikt = "5.1.0"
 [libraries]
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
 arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines", version.ref = "arrow" }
-kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
-junit = { module = "junit:junit", version.ref = "junit" }
-compose-uiTooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "composeMultiplatform" }
-androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
-androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
-androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
-compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
-compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
-compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
-compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
-compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
-compose-material = { module = "org.jetbrains.compose.material:material", version.ref = "composeMultiplatform" }
-compose-materialIconsExtended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMaterialIcons" }
-kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
-ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 liquibase-core = { module = "org.liquibase:liquibase-core", version.ref = "liquibase" }
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 postgresql-jdbc = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
@@ -84,18 +53,12 @@ testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "tes
 bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
 angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-mail" }
-coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
-coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil3" }
-reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 sentry-logback = { module = "io.sentry:sentry-logback", version.ref = "sentry" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commons-csv" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 
 [plugins]
-composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
-composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
-composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }

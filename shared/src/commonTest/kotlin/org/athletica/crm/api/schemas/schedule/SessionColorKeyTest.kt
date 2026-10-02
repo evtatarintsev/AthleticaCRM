@@ -1,6 +1,6 @@
 package org.athletica.crm.api.schemas.schedule
 
-import org.athletica.crm.api.client.appJson
+import org.athletica.crm.api.appJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

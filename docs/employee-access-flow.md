@@ -84,7 +84,6 @@
 | Use case — список | `server/.../usecases/employees/EmployeeList.kt` |
 | Роуты | `server/.../routes/EmployeesRoutes.kt` |
 | Схемы | `shared/.../schemas/employees/` |
-| API-клиент | `shared/.../api/client/ApiClient.kt` |
-| Экран списка | `composeApp/.../components/employees/EmployeesScreen.kt` |
-| Экран создания | `composeApp/.../components/employees/EmployeeCreateScreen.kt` |
-| Диалог доступа | `composeApp/.../components/employees/SendAccessDialog.kt` |
+| Экран списка | `web/src/employees/EmployeesPage.tsx` |
+| Экран создания | `web/src/employees/EmployeeCreatePage.tsx` |
+| Диалог доступа | `web/src/employees/SendAccessDialog.tsx` |

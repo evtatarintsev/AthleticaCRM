@@ -75,8 +75,7 @@ Both files must be updated in the same commit as the `application.conf` change.
 
 ### Modules
 - **server**: Ktor backend (REST API, database access, business logic)
-- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs), JVM-only
-- **composeApp**: Compose Multiplatform desktop-клиент (JVM), веб-версии больше нет
+- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs), пока только JVM-таргет; задел под будущие мобильные KMP-клиенты
 - **web**: веб-фронтенд — TypeScript + React + Vite, отдаётся с `/`. Не Gradle-модуль, см. `web/README.md`
 
 ### Key Directories in `server/src/main/kotlin/org/athletica/crm/`
@@ -293,9 +292,8 @@ private fun ctx(orgId: Uuid) = RequestContext(
 - **Pooling**: `r2dbc-pool` for connection pooling
 
 ### Multimodule Gradle
-- **shared**: JVM-only; contains request/response schemas and IDs used across the JVM modules
+- **shared**: KMP-модуль (сейчас только `jvm()`); request/response schemas, entity IDs, `Money`, `appJson`. Не зависит от server и не содержит серверной логики
 - **server**: JVM-only, depends on shared
-- **composeApp**: JVM-only desktop client, depends on shared
 - Use `projects.shared` in dependencies (type-safe project accessors)
 
 ### Error Handling Strategy
@@ -531,97 +529,8 @@ if (updatedRows == 0L) {
 - Follow [Kotlin documentation comments conventions](https://kotlinlang.org/docs/coding-conventions.html#documentation-comments): avoid `@param`/`@return` tags — describe parameters inline using `[paramName]` references; tags are only acceptable when the description is too long to fit in the main text
 - No commented-out or dead code
 
-### UI String Localization (composeApp)
-All user-facing strings must use `stringResource(Res.string.key)`. Hardcoded strings in UI code are forbidden. Add missing strings to `composeApp/src/commonMain/composeResources/values/strings.xml` (and all `values-<lang>/strings.xml` files).
-
-```kotlin
-// Bad
-Text("Добавить группу")
-
-// Good
-Text(stringResource(Res.string.action_add_client_group))
-```
-
 ### Dependency Injection
 Inject via constructor only. Field injection and `lateinit var` are forbidden except when no other initialization is possible. Prefer `val`; use `by lazy` when the dependency requires a resource that starts after class construction.
-
-### Compose UI Architecture (composeApp)
-Every screen (NavHost destination) must have a corresponding ViewModel class. Composables are always stateless — they accept `state: XState` and event lambdas; they never call the API directly.
-
-- Business logic (`scope.launch { api.xxx() }`) lives only in ViewModels, never in composables
-- ViewModels use a **sealed class** for async state (`Idle`, `Loading`, `Error`) to prevent invalid state combinations
-- Error types are typed (`sealed class XError`); the composable maps them to localized strings via `stringResource`
-- Form fields with multiple related inputs are grouped into a `data class XForm` with an `isValid` computed property
-
-#### ViewModel state shape — one `var`, immutable snapshot
-
-A ViewModel must hold **exactly one** mutable cell — `var state: XState by mutableStateOf(...)` (or `StateFlow<XState>`), where `XState` is a `data class` with `val`-only fields. All transitions are pure functions on `XState` returning a new instance (`copy(...)`); VM methods only assign `state = state.with…(...)`.
-
-Multiple `var`s with `mutableStateOf` in one class is a smell: connected invariants cannot be guaranteed (one transition forgets to update the related field), and each mutation is an independent effect. Collapse them into one data class — bonus: tests assert one `state`, not 5 fields.
-
-```kotlin
-// Bad — пять отдельных var, инварианты держатся «на честном слове»
-class XViewModel {
-    var data by mutableStateOf<ListData<T>>(ListData.Loading); private set
-    var filter by mutableStateOf(F()); private set
-    var sort by mutableStateOf<SortState?>(null); private set
-    var searchQuery by mutableStateOf(""); private set
-    var activeSavedViewId by mutableStateOf<SavedViewId?>(null); private set
-
-    fun setFilter(f: F) { filter = f; activeSavedViewId = null } // легко забыть сбросить id
-}
-
-// Good — одна ячейка, чистые переходы на data class
-data class XState<T, F>(
-    val data: ListData<T>,
-    val filter: F,
-    val sort: SortState?,
-    val searchQuery: String,
-    val activeSavedViewId: SavedViewId?,
-) {
-    fun withFilter(f: F) = copy(filter = f, activeSavedViewId = null)
-}
-
-class XViewModel {
-    var state: XState<T, F> by mutableStateOf(initial); private set
-    fun setFilter(f: F) { state = state.withFilter(f) }
-}
-```
-
-#### Веб-интерфейс — только в `web/`
-
-Веб-интерфейс переехал с KMP (wasm) на `web/` (спека `openspec/changes/rewrite-web-frontend-typescript`).
-У `composeApp` веб-таргета больше нет — он собирает только desktop-клиент. Новые экраны
-и новая функциональность веба делаются в `web/`.
-
-#### Direction of composition: generic ⊃ specific
-
-A reusable coordinator (`ListPageViewModel`, `FormViewModel`, any generic «движок») accepts the domain-specific delegate **via its constructor**. The **specific** does not own the **generic** and pass `this` into it — that's inversion. Sign of inversion: the screen reads `viewModel.subVm.X` almost everywhere and only a couple of places hit the root VM. If you catch yourself writing `vm.x.y.z` across most callsites, you've broken encapsulation — either lift the field into the coordinator or pass the delegate directly where it's needed.
-
-```kotlin
-// Bad — specific хранит generic, экран читает viewModel.list.X почти везде
-class TasksViewModel(...) : ListPageDelegate<...> {
-    val list = ListPageViewModel(this)  // ← инверсия
-}
-
-// Good — generic принимает specific
-class TasksPageDelegate(...) : ListPageDelegate<...>
-val viewModel = ListPageViewModel(TasksPageDelegate(...), scope)
-```
-
-#### Response metadata lives inside `Loaded`, not as a sibling `var`
-
-If the server returns `total` (or any other metadata) alongside the list, it belongs inside `Loaded(items, total)`, **not** in a sibling `var total: Int` on the VM that gets set as a side effect inside `.map { ... }`. Keep the fetch → state pipeline pure; no hidden assignments.
-
-```kotlin
-// Bad — побочка внутри .map
-var total: Int by mutableStateOf(0); private set
-suspend fun fetch(...) = api.list(...).map { total = it.total; it.items }
-
-// Good — total часть данных
-data class Loaded<T>(val items: List<T>, val total: Int = items.size)
-suspend fun fetch(...) = api.list(...).map { FetchResult(it.items, it.total) }
-```
 
 ## Web Client (`web/`, TypeScript)
 

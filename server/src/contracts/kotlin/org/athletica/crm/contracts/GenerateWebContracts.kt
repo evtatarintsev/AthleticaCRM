@@ -1,7 +1,7 @@
 package org.athletica.crm.contracts
 
 import kotlinx.serialization.modules.SerializersModule
-import org.athletica.crm.api.client.appSerializersModule
+import org.athletica.crm.api.appSerializersModule
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.routes.ApiRequest
 import org.athletica.crm.routes.ApiResponse

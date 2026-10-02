@@ -2,7 +2,7 @@ package org.athletica.crm.core.customfields
 
 import arrow.core.Either
 import arrow.core.getOrElse
-import org.athletica.crm.api.client.appJson
+import org.athletica.crm.api.appJson
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import kotlin.test.Test

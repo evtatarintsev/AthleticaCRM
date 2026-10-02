@@ -2,7 +2,7 @@ package org.athletica.crm.core.customfields
 
 import arrow.core.Either
 import kotlinx.serialization.SerializationException
-import org.athletica.crm.api.client.appJson
+import org.athletica.crm.api.appJson
 import org.athletica.crm.core.errors.CommonDomainError
 import kotlin.test.Test
 import kotlin.test.assertEquals

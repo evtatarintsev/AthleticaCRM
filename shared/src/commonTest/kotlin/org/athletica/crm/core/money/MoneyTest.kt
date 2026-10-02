@@ -1,6 +1,6 @@
 package org.athletica.crm.core.money
 
-import org.athletica.crm.api.client.appJson
+import org.athletica.crm.api.appJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

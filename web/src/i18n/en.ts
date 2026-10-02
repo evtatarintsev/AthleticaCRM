@@ -1,7 +1,7 @@
 import type { Messages } from "./messages";
 import type { ru } from "./ru";
 
-/** Английский словарь; тексты совпадают с `composeApp/.../values-en/strings.xml`. */
+/** Английский словарь. */
 export const en: Messages<typeof ru> = {
   "app.name": "AthleticaCRM",
 

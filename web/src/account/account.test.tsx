@@ -86,6 +86,59 @@ describe("профиль", () => {
   });
 });
 
+describe("панель редактирования", () => {
+  it("клик мимо не закрывает панель, «Отмена» без изменений закрывает", async () => {
+    const { history } = openApp("/settings/edit-profile", server({}).fetch);
+    const user = userEvent.setup();
+
+    const dialog = await screen.findByRole("dialog", { name: ru["profile.title"] });
+    expect(history.location.search).toBe("?panel=edit-profile");
+    const overlay = document.body.querySelector('[data-slot="sheet-overlay"]');
+    expect(overlay).not.toBeNull();
+    if (overlay !== null) {
+      await user.click(overlay);
+    }
+    expect(dialog).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: ru["action.cancel"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["profile.title"] })).toBeNull();
+    });
+    expect(history.location.search).toBe("");
+  });
+
+  it("закрытие с изменениями спрашивает подтверждение", async () => {
+    openApp("/settings/edit-profile", server({}).fetch);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(ru["profile.name"]), "!");
+    await user.keyboard("{Escape}");
+    const confirm = await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] });
+    await user.click(within(confirm).getByRole("button", { name: ru["action.cancel"] }));
+    expect(screen.getByLabelText(ru["profile.name"])).toHaveValue("Иван Петров!");
+
+    await user.keyboard("{Escape}");
+    await user.click(await screen.findByRole("button", { name: ru["editSheet.discardConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["profile.title"] })).toBeNull();
+    });
+  });
+
+  it("смена пароля открывается поверх профиля, Esc закрывает только верхнюю панель", async () => {
+    openApp("/settings/edit-profile", server({}).fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["profile.changePassword"] }));
+    expect(await screen.findByRole("dialog", { name: ru["password.title"] })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["password.title"] })).toBeNull();
+    });
+    expect(screen.getByRole("dialog", { name: ru["profile.title"] })).toBeInTheDocument();
+  });
+});
+
 describe("смена пароля", () => {
   /** Заполняет форму смены пароля. */
   async function fill(current: string, next: string, confirm: string) {
@@ -123,15 +176,16 @@ describe("смена пароля", () => {
     expect(api.to("auth/me/change-password")).toHaveLength(0);
   });
 
-  it("отправляет старый и новый пароль и очищает форму", async () => {
+  it("отправляет старый и новый пароль и закрывает панель", async () => {
     const api = server({ "auth/me/change-password": () => empty() });
-    openApp("/settings/change-password", api.fetch);
+    const { history } = openApp("/settings/change-password", api.fetch);
 
     await fill("old-secret", "new-secret", "new-secret");
 
     await waitFor(() => {
-      expect(screen.getByLabelText(ru["password.current"])).toHaveValue("");
+      expect(screen.queryByRole("dialog", { name: ru["password.title"] })).toBeNull();
     });
+    expect(history.location.search).toBe("");
     expect(api.to("auth/me/change-password").map((r) => r.body)).toEqual([
       { oldPassword: "old-secret", newPassword: "new-secret" },
     ]);
@@ -164,19 +218,18 @@ describe("смена филиала", () => {
     });
   }
 
-  it("на странице: текущий филиал отмечен, выбор другого переключает сессию", async () => {
+  it("в панели: текущий филиал выбран, выбор другого и «Сохранить» переключают сессию", async () => {
     const api = twoBranches();
     openApp("/settings/switch-branch", api.fetch);
     const user = userEvent.setup();
 
-    expect(await screen.findByRole("button", { name: /Центр/ })).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
-    await user.click(screen.getByRole("button", { name: "Север" }));
+    expect(await screen.findByRole("radio", { name: /Центр/ })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Север" }));
+    expect(api.to("auth/switch-branch")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Север/ })).toHaveAttribute("aria-current", "true");
+      expect(screen.queryByRole("dialog", { name: ru["branch.title"] })).toBeNull();
     });
     expect(api.to("auth/switch-branch").map((r) => r.body)).toEqual([{ branchId: north.id }]);
   });
@@ -221,7 +274,7 @@ describe("выход", () => {
         return empty();
       },
     });
-    const { history } = openApp("/settings/edit-profile", api.fetch);
+    const { history } = openApp("/settings", api.fetch);
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: ru["account.menu"] }));

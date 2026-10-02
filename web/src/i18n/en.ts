@@ -62,6 +62,10 @@ export const en: Messages<typeof ru> = {
   "language.ru": "Русский",
   "language.en": "English",
 
+  "editSheet.discardTitle": "Discard changes?",
+  "editSheet.discardDescription": "Your changes will be lost.",
+  "editSheet.discardConfirm": "Discard",
+
   "profile.title": "Edit profile",
   "profile.name": "Name",
   "profile.addPhoto": "Add photo",

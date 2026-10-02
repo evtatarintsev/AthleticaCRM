@@ -122,7 +122,7 @@ describe("дополнительные атрибуты", () => {
 
     await user.click(await screen.findByRole("checkbox", { name: "Выбрать «Уровень»" }));
     await user.click(screen.getByRole("button", { name: ru["directory.deleteSelected"] }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog", { name: "Удалить 1 запись?" });
     await user.click(within(dialog).getByRole("button", { name: ru["action.delete"] }));
 
     expect(await screen.findByText(ru["customFields.empty"])).toBeVisible();

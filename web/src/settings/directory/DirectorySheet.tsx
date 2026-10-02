@@ -19,9 +19,8 @@ import { useI18n, type PlainMessageKey } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
-import { PageHeader } from "@/ui/PageHeader";
-import { SelectionBar } from "@/ui/SelectionBar";
-import { DirectoryItemDialog } from "./DirectoryItemDialog";
+import { EditSheet, EditSheetBody, EditSheetSelection } from "@/ui/EditSheet";
+import { DirectoryItemSheet } from "./DirectoryItemSheet";
 
 /** Запись справочника: идентификатор и название. */
 export interface DirectoryItem<Id extends string> {
@@ -29,13 +28,13 @@ export interface DirectoryItem<Id extends string> {
   readonly name: string;
 }
 
-/** Справочник, который показывает [DirectoryPage]: подписи, загрузка и изменение записей. */
+/** Справочник, который показывает [DirectorySheet]: подписи, загрузка и изменение записей. */
 export interface DirectoryDefinition<Id extends string> {
-  /** Заголовок страницы. */
+  /** Заголовок панели справочника. */
   readonly title: PlainMessageKey;
-  /** Заголовок диалога создания. */
+  /** Заголовок панели создания записи. */
   readonly createTitle: PlainMessageKey;
-  /** Заголовок диалога редактирования. */
+  /** Заголовок панели редактирования записи. */
   readonly editTitle: PlainMessageKey;
   /** Эндпоинт списка: его кэш сбрасывается после изменений. */
   readonly listPath: EndpointPath;
@@ -66,17 +65,38 @@ const features = tableFeatures({ rowSelectionFeature });
 const helper = createColumnHelper<typeof features, DirectoryItem<string>>();
 const columns = helper.columns([helper.accessor("name", {})]);
 
-/** Что редактируется сейчас: ничего, новая запись или существующая. */
+/**
+ * Что редактируется во вложенной панели: новая запись или существующая. Значение остаётся
+ * после закрытия панели, чтобы её содержимое не пропадало во время анимации закрытия.
+ */
 type Editing<Id extends string> =
-  | { readonly kind: "none" }
-  | { readonly kind: "create" }
-  | { readonly kind: "edit"; readonly item: DirectoryItem<Id> };
+  { readonly kind: "create" } | { readonly kind: "edit"; readonly item: DirectoryItem<Id> };
+
+/** Панель справочника [definition], открытая при [open]. */
+export function DirectorySheet<Id extends string>({
+  api,
+  definition,
+  open,
+  onOpenChange,
+}: {
+  api: ApiClient;
+  definition: DirectoryDefinition<Id>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <EditSheet open={open} onOpenChange={onOpenChange} title={t(definition.title)} size="lg">
+      <DirectoryPanel api={api} definition={definition} />
+    </EditSheet>
+  );
+}
 
 /**
- * Страница справочника [definition]: список с поиском, создание и переименование в диалоге,
- * выбор нескольких записей и их удаление с подтверждением.
+ * Содержимое панели справочника: список с поиском, выбор нескольких записей и их удаление
+ * с подтверждением. Создание и переименование открываются панелью поверх списка.
  */
-export function DirectoryPage<Id extends string>({
+function DirectoryPanel<Id extends string>({
   api,
   definition,
 }: {
@@ -87,7 +107,8 @@ export function DirectoryPage<Id extends string>({
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
   const items = definition.useItems(api, branchId);
-  const [editing, setEditing] = useState<Editing<Id>>({ kind: "none" });
+  const [editing, setEditing] = useState<Editing<Id>>({ kind: "create" });
+  const [editorOpen, setEditorOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [search, setSearch] = useState("");
@@ -149,51 +170,56 @@ export function DirectoryPage<Id extends string>({
     );
   };
 
+  const openEditor = (next: Editing<Id>) => {
+    setEditing(next);
+    setEditorOpen(true);
+  };
+
   return (
-    <section className="max-w-2xl pb-20">
-      <PageHeader
-        title={t(definition.title)}
-        actions={
+    <>
+      <EditSheetBody>
+        <div className="flex items-center gap-2">
+          {items.data !== undefined && items.data.length > 0 && (
+            <div className="relative flex-1">
+              <SearchIcon
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                }}
+                placeholder={t("directory.search")}
+                aria-label={t("directory.search")}
+                className="pl-9"
+              />
+            </div>
+          )}
           <Button
+            className="ml-auto"
             onClick={() => {
-              setEditing({ kind: "create" });
+              openEditor({ kind: "create" });
             }}
           >
             <PlusIcon aria-hidden />
             {t("action.add")}
           </Button>
-        }
-      />
-      {items.isPending && (
-        <div className="space-y-2">
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
         </div>
-      )}
-      {items.isError && <FormAlert message={t("directory.loadError")} />}
-      {items.data?.length === 0 && (
-        <p className="py-12 text-center text-muted-foreground">{t("directory.empty")}</p>
-      )}
-      {items.data !== undefined && items.data.length > 0 && (
-        <div className="space-y-3">
-          <div className="relative">
-            <SearchIcon
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              type="search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-              }}
-              placeholder={t("directory.search")}
-              aria-label={t("directory.search")}
-              className="pl-9"
-            />
+        {items.isPending && (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
           </div>
-          {visible.length === 0 ? (
+        )}
+        {items.isError && <FormAlert message={t("directory.loadError")} />}
+        {items.data?.length === 0 && (
+          <p className="py-12 text-center text-muted-foreground">{t("directory.empty")}</p>
+        )}
+        {items.data !== undefined &&
+          items.data.length > 0 &&
+          (visible.length === 0 ? (
             <p className="py-12 text-center text-muted-foreground">{t("directory.noResults")}</p>
           ) : (
             <div className="rounded-md border">
@@ -221,7 +247,7 @@ export function DirectoryPage<Id extends string>({
                       onClick={() => {
                         const item = visible.find((v) => v.id === row.id);
                         if (item !== undefined) {
-                          setEditing({ kind: "edit", item });
+                          openEditor({ kind: "edit", item });
                         }
                       }}
                       aria-label={t("directory.edit", { name: row.original.name })}
@@ -233,10 +259,9 @@ export function DirectoryPage<Id extends string>({
                 ))}
               </ul>
             </div>
-          )}
-        </div>
-      )}
-      <SelectionBar
+          ))}
+      </EditSheetBody>
+      <EditSheetSelection
         count={selected.length}
         actions={
           <Button
@@ -257,26 +282,17 @@ export function DirectoryPage<Id extends string>({
         confirmLabel={t("action.delete")}
         onConfirm={removeSelected}
       />
-      {editing.kind === "create" && (
-        <DirectoryItemDialog
-          title={t(definition.createTitle)}
-          initialName=""
-          onSave={(name) => save({ id: definition.newId(), name }, true)}
-          onClose={() => {
-            setEditing({ kind: "none" });
-          }}
-        />
-      )}
-      {editing.kind === "edit" && (
-        <DirectoryItemDialog
-          title={t(definition.editTitle)}
-          initialName={editing.item.name}
-          onSave={(name) => save({ id: editing.item.id, name }, false)}
-          onClose={() => {
-            setEditing({ kind: "none" });
-          }}
-        />
-      )}
-    </section>
+      <DirectoryItemSheet
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        title={t(editing.kind === "create" ? definition.createTitle : definition.editTitle)}
+        initialName={editing.kind === "create" ? "" : editing.item.name}
+        onSave={(name) =>
+          editing.kind === "create"
+            ? save({ id: definition.newId(), name }, true)
+            : save({ id: editing.item.id, name }, false)
+        }
+      />
+    </>
   );
 }

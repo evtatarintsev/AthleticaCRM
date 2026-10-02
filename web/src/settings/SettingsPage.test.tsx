@@ -15,19 +15,19 @@ describe("страница настроек", () => {
     const hrefs = settingsLinks.map((link) => link.getAttribute("href"));
     expect(hrefs).toEqual(
       expect.arrayContaining([
-        "/settings/edit-profile",
-        "/settings/switch-branch",
-        "/settings/change-password",
-        "/settings/branches",
-        "/settings/disciplines",
-        "/settings/halls",
+        "/settings?panel=edit-profile",
+        "/settings?panel=switch-branch",
+        "/settings?panel=change-password",
+        "/settings?panel=branches",
+        "/settings?panel=disciplines",
+        "/settings?panel=halls",
         "/settings/roles",
-        "/settings/client-sources",
-        "/settings/client-additional-attributes",
-        "/settings/client-import",
+        "/settings?panel=client-sources",
+        "/settings?panel=client-additional-attributes",
+        "/settings?panel=client-import",
         "/settings/tariffs",
-        "/settings/basic",
-        "/settings/org-balance",
+        "/settings?panel=basic",
+        "/settings?panel=org-balance",
         "/settings/activity-log",
         "/settings/channels",
       ]),
@@ -39,20 +39,9 @@ describe("страница настроек", () => {
     const user = userEvent.setup();
     const { history } = openApp("/settings", appServer({}).fetch);
     const titles = [
-      ru["settings.itemHalls"],
-      ru["settings.itemDisciplines"],
-      ru["settings.itemClientSources"],
-      ru["settings.itemBranches"],
       ru["settings.itemSubscriptionTemplates"],
       ru["settings.itemRoles"],
-      ru["settings.itemClientAdditionalAttributes"],
-      ru["settings.itemEditProfile"],
-      ru["settings.itemChangePassword"],
-      ru["settings.itemSwitchBranch"],
-      ru["settings.itemBasicSettings"],
-      ru["settings.itemOrgBalance"],
       ru["settings.itemActivityLog"],
-      ru["settings.itemClientImport"],
       ru["settings.itemChannels"],
     ];
     for (const title of titles) {
@@ -64,6 +53,33 @@ describe("страница настроек", () => {
       expect(screen.queryByRole("heading", { name: ru["notFound.title"] })).toBeNull();
       expect(await screen.findByRole("heading", { level: 1 })).toBeVisible();
       history.push("/settings");
+    }
+  }, 15000);
+
+  it("пункты разделов «Пользователь», «Основное» и «Клиенты» открывают панель на странице", async () => {
+    const user = userEvent.setup();
+    const { history } = openApp("/settings", appServer({}).fetch);
+    const items = [
+      [ru["settings.itemEditProfile"], ru["profile.title"]],
+      [ru["settings.itemChangePassword"], ru["password.title"]],
+      [ru["settings.itemSwitchBranch"], ru["branch.title"]],
+      [ru["settings.itemBasicSettings"], ru["orgSettings.title"]],
+      [ru["settings.itemOrgBalance"], ru["orgBalance.title"]],
+      [ru["settings.itemBranches"], ru["branches.title"]],
+      [ru["settings.itemDisciplines"], ru["disciplines.title"]],
+      [ru["settings.itemHalls"], ru["halls.title"]],
+      [ru["settings.itemClientSources"], ru["leadSources.title"]],
+      [ru["settings.itemClientAdditionalAttributes"], ru["customFields.title"]],
+      [ru["settings.itemClientImport"], ru["import.title"]],
+    ] as const;
+    for (const [item, title] of items) {
+      await user.click(await screen.findByRole("link", { name: new RegExp(item) }));
+      expect(await screen.findByRole("dialog", { name: title })).toBeInTheDocument();
+      expect(history.location.pathname).toBe("/settings");
+      await user.keyboard("{Escape}");
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog", { name: title })).toBeNull();
+      });
     }
   }, 15000);
 });

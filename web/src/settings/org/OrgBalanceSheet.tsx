@@ -5,13 +5,6 @@ import { z } from "zod";
 import type { ApiClient } from "@/api/client";
 import type { Currency, OrgBalanceJournalEntry } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { TextField } from "@/forms/fields";
@@ -21,7 +14,7 @@ import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { CURRENCIES } from "@/lib/currency";
 import { parseMoney } from "@/lib/money";
-import { PageHeader } from "@/ui/PageHeader";
+import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
 
 /** Описание платежа пополнения — то же значение, что шлёт KMP-клиент, для единого журнала. */
 const REPLENISH_DESCRIPTION = "Пополнение баланса";
@@ -44,12 +37,30 @@ function operationLabelKey(operationType: string): PlainMessageKey {
   }
 }
 
+/** Панель баланса организации, открытая при [open]. */
+export function OrgBalanceSheet({
+  api,
+  open,
+  onOpenChange,
+}: {
+  api: ApiClient;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <EditSheet open={open} onOpenChange={onOpenChange} title={t("orgBalance.title")} size="lg">
+      <OrgBalancePanel api={api} />
+    </EditSheet>
+  );
+}
+
 /**
  * Баланс организации и его история (паритет с `OrgBalanceScreen` KMP-клиента): пополнение
- * запускает оплату через ЮKassa и переводит браузер на её страницу; после оплаты ЮKassa
- * возвращает пользователя на страницу результата, а история перечитывается заново.
+ * открывается панелью поверх, запускает оплату через ЮKassa и переводит браузер на её
+ * страницу; после оплаты ЮKassa возвращает пользователя на страницу результата.
  */
-export function OrgBalancePage({ api }: { readonly api: ApiClient }) {
+function OrgBalancePanel({ api }: { readonly api: ApiClient }) {
   const { t, format } = useI18n();
   const branchId = useSession(api).currentBranch.id;
   const detail = useQuery(apiQuery(api, branchId, "org-balance/detail"));
@@ -57,10 +68,17 @@ export function OrgBalancePage({ api }: { readonly api: ApiClient }) {
   const [replenishOpen, setReplenishOpen] = useState(false);
 
   return (
-    <section className="max-w-2xl">
-      <PageHeader
-        title={t("orgBalance.title")}
-        actions={
+    <EditSheetBody>
+      {detail.isError && <FormAlert message={t("orgBalance.loadError")} />}
+      {detail.isPending && <Skeleton className="h-24 w-full" />}
+      {detail.data !== undefined && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4">
+          <div>
+            <p className="text-sm text-muted-foreground">{t("orgBalance.total")}</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {format.money(detail.data.totalAmount)}
+            </p>
+          </div>
           <Button
             disabled={settings.data === undefined}
             onClick={() => {
@@ -69,19 +87,9 @@ export function OrgBalancePage({ api }: { readonly api: ApiClient }) {
           >
             {t("orgBalance.replenish")}
           </Button>
-        }
-      />
-      {detail.isError && <FormAlert message={t("orgBalance.loadError")} />}
-      {detail.isPending && <Skeleton className="h-24 w-full" />}
-      {detail.data !== undefined && (
-        <div className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">{t("orgBalance.total")}</p>
-          <p className="text-2xl font-semibold tabular-nums">
-            {format.money(detail.data.totalAmount)}
-          </p>
         </div>
       )}
-      <h2 className="mt-6 mb-2 text-base font-semibold">{t("orgBalance.historyTitle")}</h2>
+      <h2 className="pt-2 text-base font-semibold">{t("orgBalance.historyTitle")}</h2>
       {detail.data?.history.length === 0 && (
         <p className="py-8 text-center text-muted-foreground">{t("orgBalance.historyEmpty")}</p>
       )}
@@ -92,16 +100,16 @@ export function OrgBalancePage({ api }: { readonly api: ApiClient }) {
           ))}
         </ul>
       )}
-      {replenishOpen && settings.data !== undefined && (
-        <ReplenishDialog
-          api={api}
-          currency={settings.data.currency}
-          onClose={() => {
-            setReplenishOpen(false);
-          }}
-        />
-      )}
-    </section>
+      <EditSheet
+        open={replenishOpen && settings.data !== undefined}
+        onOpenChange={setReplenishOpen}
+        title={t("orgBalance.replenishTitle")}
+      >
+        {settings.data !== undefined && (
+          <ReplenishForm api={api} currency={settings.data.currency} />
+        )}
+      </EditSheet>
+    </EditSheetBody>
   );
 }
 
@@ -126,15 +134,13 @@ function BalanceHistoryRow({ entry }: { readonly entry: OrgBalanceJournalEntry }
   );
 }
 
-/** Диалог пополнения баланса: сумма в валюте организации, запускает оплату ЮKassa. */
-function ReplenishDialog({
+/** Форма пополнения баланса: сумма в валюте организации, запускает оплату ЮKassa. */
+function ReplenishForm({
   api,
   currency,
-  onClose,
 }: {
   readonly api: ApiClient;
   readonly currency: Currency;
-  readonly onClose: () => void;
 }) {
   const { t } = useI18n();
   const [failure, setFailure] = useState<string | null>(null);
@@ -167,26 +173,17 @@ function ReplenishDialog({
   });
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
+    <form.Subscribe
+      selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
     >
-      <DialogContent aria-describedby={undefined} closeLabel={t("action.close")}>
-        <DialogHeader>
-          <DialogTitle>{t("orgBalance.replenishTitle")}</DialogTitle>
-        </DialogHeader>
-        <form
-          method="post"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
+      {({ dirty, submitting }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          submitLabel={t("orgBalance.replenish")}
+          onSubmit={() => {
             void form.handleSubmit();
           }}
-          className="space-y-4"
         >
           {failure !== null && <FormAlert message={failure} />}
           <form.Field name="amount">
@@ -197,20 +194,12 @@ function ReplenishDialog({
                 inputMode="decimal"
                 autoComplete="off"
                 required
+                autoFocus
               />
             )}
           </form.Field>
-          <DialogFooter closeLabel={t("action.cancel")}>
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(submitting) => (
-                <Button type="submit" disabled={submitting} aria-busy={submitting}>
-                  {t("orgBalance.replenish")}
-                </Button>
-              )}
-            </form.Subscribe>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </EditSheetForm>
+      )}
+    </form.Subscribe>
   );
 }

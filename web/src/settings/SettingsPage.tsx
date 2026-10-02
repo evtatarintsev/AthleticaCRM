@@ -12,6 +12,7 @@ import {
   ListPlusIcon,
   MegaphoneIcon,
   MessagesSquareIcon,
+  PanelRightOpenIcon,
   SettingsIcon,
   ShieldCheckIcon,
   StoreIcon,
@@ -22,14 +23,27 @@ import {
   WalletIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
+import type { ApiClient } from "@/api/client";
+import { ChangePasswordSheet } from "@/account/ChangePasswordSheet";
+import { ProfileSheet } from "@/account/ProfileSheet";
+import { SwitchBranchSheet } from "@/account/SwitchBranchSheet";
 import type { StaticAppPath } from "@/app/router";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import { ClientImportSheet } from "./import/ClientImportSheet";
+import { CustomFieldsSheet } from "./customFields/CustomFieldsSheet";
+import { branches, disciplines, halls, leadSources } from "./directories";
+import { DirectorySheet } from "./directory/DirectorySheet";
+import { OrgBalanceSheet } from "./org/OrgBalanceSheet";
+import { OrgSettingsSheet } from "./org/OrgSettingsSheet";
+import { SettingsPanelSchema, type SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
 type SettingTarget =
   /** Страница веб-клиента. */
   | { readonly kind: "app"; readonly to: StaticAppPath }
+  /** Панель поверх страницы настроек. */
+  | { readonly kind: "panel"; readonly panel: SettingsPanel }
   /** Пункт-заготовка: экрана нет ни в веб-, ни в KMP-клиенте. */
   | { readonly kind: "none" };
 
@@ -50,6 +64,9 @@ interface SettingSection {
 /** Страница веб-клиента [to]. */
 const app = (to: StaticAppPath): SettingTarget => ({ kind: "app", to });
 
+/** Панель [panel] поверх страницы настроек. */
+const panel = (panel: SettingsPanel): SettingTarget => ({ kind: "panel", panel });
+
 /** Пункт без экрана. */
 const none: SettingTarget = { kind: "none" };
 
@@ -62,19 +79,19 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemEditProfile",
         subtitle: "settings.itemEditProfileSubtitle",
         icon: UserIcon,
-        target: app("/settings/edit-profile"),
+        target: panel("edit-profile"),
       },
       {
         title: "settings.itemSwitchBranch",
         subtitle: "settings.itemSwitchBranchSubtitle",
         icon: StoreIcon,
-        target: app("/settings/switch-branch"),
+        target: panel("switch-branch"),
       },
       {
         title: "settings.itemChangePassword",
         subtitle: "settings.itemChangePasswordSubtitle",
         icon: KeyRoundIcon,
-        target: app("/settings/change-password"),
+        target: panel("change-password"),
       },
     ],
   },
@@ -85,31 +102,31 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemBasicSettings",
         subtitle: "settings.itemBasicSettingsSubtitle",
         icon: SettingsIcon,
-        target: app("/settings/basic"),
+        target: panel("basic"),
       },
       {
         title: "settings.itemOrgBalance",
         subtitle: "settings.itemOrgBalanceSubtitle",
         icon: WalletIcon,
-        target: app("/settings/org-balance"),
+        target: panel("org-balance"),
       },
       {
         title: "settings.itemBranches",
         subtitle: "settings.itemBranchesSubtitle",
         icon: Building2Icon,
-        target: app("/settings/branches"),
+        target: panel("branches"),
       },
       {
         title: "settings.itemDisciplines",
         subtitle: "settings.itemDisciplinesSubtitle",
         icon: TrophyIcon,
-        target: app("/settings/disciplines"),
+        target: panel("disciplines"),
       },
       {
         title: "settings.itemHalls",
         subtitle: "settings.itemHallsSubtitle",
         icon: DoorOpenIcon,
-        target: app("/settings/halls"),
+        target: panel("halls"),
       },
       {
         title: "settings.itemRanks",
@@ -149,19 +166,19 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemClientSources",
         subtitle: "settings.itemClientSourcesSubtitle",
         icon: MegaphoneIcon,
-        target: app("/settings/client-sources"),
+        target: panel("client-sources"),
       },
       {
         title: "settings.itemClientAdditionalAttributes",
         subtitle: "settings.itemClientAdditionalAttributesSubtitle",
         icon: ListPlusIcon,
-        target: app("/settings/client-additional-attributes"),
+        target: panel("client-additional-attributes"),
       },
       {
         title: "settings.itemClientImport",
         subtitle: "settings.itemClientImportSubtitle",
         icon: FileUpIcon,
-        target: app("/settings/client-import"),
+        target: panel("client-import"),
       },
     ],
   },
@@ -206,11 +223,43 @@ const SETTINGS: readonly SettingSection[] = [
   },
 ];
 
+/** Свойства панели настроек. */
+interface SettingsSheetProps {
+  readonly api: ApiClient;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+}
+
+/** Панель для каждого пункта настроек, открываемого поверх страницы. */
+const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>> = {
+  "edit-profile": ProfileSheet,
+  "switch-branch": SwitchBranchSheet,
+  "change-password": ChangePasswordSheet,
+  basic: OrgSettingsSheet,
+  "org-balance": OrgBalanceSheet,
+  branches: (props) => <DirectorySheet {...props} definition={branches} />,
+  disciplines: (props) => <DirectorySheet {...props} definition={disciplines} />,
+  halls: (props) => <DirectorySheet {...props} definition={halls} />,
+  "client-sources": (props) => <DirectorySheet {...props} definition={leadSources} />,
+  "client-additional-attributes": CustomFieldsSheet,
+  "client-import": ClientImportSheet,
+};
+
 /**
  * Настройки: разделы и пункты как в KMP-клиенте. Пункты с готовым экраном — ссылки
- * роутера, заготовки без экрана показаны неактивной строкой.
+ * роутера, заготовки без экрана показаны неактивной строкой. Пункты разделов «Пользователь»,
+ * «Основное» и «Клиенты» открывают панель справа, не уходя со страницы; открытая панель
+ * [panel] хранится в адресе, её смена сообщается через [onPanelChange].
  */
-export function SettingsPage() {
+export function SettingsPage({
+  api,
+  panel,
+  onPanelChange,
+}: {
+  api: ApiClient;
+  panel: SettingsPanel | undefined;
+  onPanelChange: (panel: SettingsPanel | undefined) => void;
+}) {
   const { t } = useI18n();
   return (
     <section className="max-w-3xl space-y-8">
@@ -227,6 +276,19 @@ export function SettingsPage() {
           </ul>
         </section>
       ))}
+      {SettingsPanelSchema.options.map((target) => {
+        const Sheet = SHEETS[target];
+        return (
+          <Sheet
+            key={target}
+            api={api}
+            open={panel === target}
+            onOpenChange={(open) => {
+              onPanelChange(open ? target : undefined);
+            }}
+          />
+        );
+      })}
     </section>
   );
 }
@@ -254,6 +316,16 @@ function SettingRow({ item }: { item: SettingItem }) {
       return (
         <Link to={item.target.to} className={`${className} hover:bg-accent/50`}>
           {content(<ChevronRightIcon aria-hidden className="size-4 text-muted-foreground" />)}
+        </Link>
+      );
+    case "panel":
+      return (
+        <Link
+          to="/settings"
+          search={{ panel: item.target.panel }}
+          className={`${className} hover:bg-accent/50`}
+        >
+          {content(<PanelRightOpenIcon aria-hidden className="size-4 text-muted-foreground" />)}
         </Link>
       );
     case "none":

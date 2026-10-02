@@ -23,9 +23,6 @@ import {
   type SessionId,
   type TaskId,
 } from "@/api/generated/contracts";
-import { ChangePasswordPage } from "@/account/ChangePasswordPage";
-import { ProfilePage } from "@/account/ProfilePage";
-import { SwitchBranchPage } from "@/account/SwitchBranchPage";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
 import { ClientComingSoonPage } from "@/clients/ClientComingSoonPage";
@@ -50,16 +47,11 @@ import { TaskCreatePage } from "@/tasks/TaskCreatePage";
 import { TaskDetailPage } from "@/tasks/TaskDetailPage";
 import { TasksPage } from "@/tasks/TasksPage";
 import { TaskListSearchSchema, type TaskListSearch } from "@/tasks/taskListSearch";
-import { branches, disciplines, halls, leadSources } from "@/settings/directories";
-import { DirectoryPage } from "@/settings/directory/DirectoryPage";
+import { SettingsSearchSchema, type SettingsPanel } from "@/settings/settingsSearch";
 import { ChannelsPage } from "@/settings/channels/ChannelsPage";
-import { OrgSettingsPage } from "@/settings/org/OrgSettingsPage";
-import { OrgBalancePage } from "@/settings/org/OrgBalancePage";
-import { ClientImportPage } from "@/settings/import/ClientImportPage";
 import { AuditLogPage } from "@/settings/audit/AuditLogPage";
 import { PaymentCompletePage } from "@/settings/org/PaymentCompletePage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
-import { CustomFieldsPage } from "@/settings/customFields/CustomFieldsPage";
 import { RolesPage } from "@/settings/roles/RolesPage";
 import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
@@ -185,91 +177,88 @@ const homeRoute = createRoute({
   },
 });
 
-/** Страница настроек со всеми пунктами. */
+/** Страница настроек со всеми пунктами; открытая панель — в search-параметрах адреса. */
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
-  component: SettingsPage,
+  validateSearch: SettingsSearchSchema,
+  component: function SettingsRoute() {
+    const { api } = settingsRoute.useRouteContext();
+    const { panel } = settingsRoute.useSearch();
+    const navigate = settingsRoute.useNavigate();
+    return (
+      <SettingsPage
+        api={api}
+        panel={panel}
+        onPanelChange={(next) => {
+          void navigate({ search: next === undefined ? {} : { panel: next }, replace: true });
+        }}
+      />
+    );
+  },
 });
 
-/** Профиль текущего пользователя. */
+/** Прежний адрес экрана [panel], ставшего панелью: перенаправляет на настройки с открытой панелью. */
+function settingsPanelRedirect(panel: SettingsPanel) {
+  return () => {
+    throw redirect({ to: "/settings", search: { panel }, replace: true });
+  };
+}
+
+/** Профиль текущего пользователя — теперь панель настроек. */
 const editProfileRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/edit-profile",
-  component: function EditProfileRoute() {
-    const { api } = editProfileRoute.useRouteContext();
-    return <ProfilePage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("edit-profile"),
 });
 
-/** Смена пароля текущего пользователя. */
+/** Смена пароля текущего пользователя — теперь панель настроек. */
 const changePasswordRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/change-password",
-  component: function ChangePasswordRoute() {
-    const { api } = changePasswordRoute.useRouteContext();
-    return <ChangePasswordPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("change-password"),
 });
 
-/** Смена филиала. */
+/** Смена филиала — теперь панель настроек. */
 const switchBranchRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/switch-branch",
-  component: function SwitchBranchRoute() {
-    const { api } = switchBranchRoute.useRouteContext();
-    return <SwitchBranchPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("switch-branch"),
 });
 
-/** Справочник залов. */
+/** Справочник залов — теперь панель настроек. */
 const hallsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/halls",
-  component: function HallsRoute() {
-    const { api } = hallsRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={halls} />;
-  },
+  beforeLoad: settingsPanelRedirect("halls"),
 });
 
-/** Справочник дисциплин. */
+/** Справочник дисциплин — теперь панель настроек. */
 const disciplinesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/disciplines",
-  component: function DisciplinesRoute() {
-    const { api } = disciplinesRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={disciplines} />;
-  },
+  beforeLoad: settingsPanelRedirect("disciplines"),
 });
 
-/** Справочник источников клиентов. */
+/** Справочник источников клиентов — теперь панель настроек. */
 const clientSourcesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-sources",
-  component: function ClientSourcesRoute() {
-    const { api } = clientSourcesRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={leadSources} />;
-  },
+  beforeLoad: settingsPanelRedirect("client-sources"),
 });
 
-/** Филиалы организации. */
+/** Филиалы организации — теперь панель настроек. */
 const branchesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/branches",
-  component: function BranchesRoute() {
-    const { api } = branchesRoute.useRouteContext();
-    return <DirectoryPage api={api} definition={branches} />;
-  },
+  beforeLoad: settingsPanelRedirect("branches"),
 });
 
-/** Дополнительные атрибуты клиентов. */
+/** Дополнительные атрибуты клиентов — теперь панель настроек. */
 const customFieldsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-additional-attributes",
-  component: function CustomFieldsRoute() {
-    const { api } = customFieldsRoute.useRouteContext();
-    return <CustomFieldsPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("client-additional-attributes"),
 });
 
 /** Роли и права сотрудников. */
@@ -302,24 +291,18 @@ const channelsRoute = createRoute({
   },
 });
 
-/** Основные настройки организации. */
+/** Основные настройки организации — теперь панель настроек. */
 const orgSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/basic",
-  component: function OrgSettingsRoute() {
-    const { api } = orgSettingsRoute.useRouteContext();
-    return <OrgSettingsPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("basic"),
 });
 
-/** Баланс организации и пополнение. */
+/** Баланс организации и пополнение — теперь панель настроек. */
 const orgBalanceRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/org-balance",
-  component: function OrgBalanceRoute() {
-    const { api } = orgBalanceRoute.useRouteContext();
-    return <OrgBalancePage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("org-balance"),
 });
 
 /** Страница возврата с оплаты ЮKassa. */
@@ -329,14 +312,11 @@ const paymentCompleteRoute = createRoute({
   component: PaymentCompletePage,
 });
 
-/** Импорт клиентов из файла. */
+/** Импорт клиентов из файла — теперь панель настроек. */
 const clientImportRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-import",
-  component: function ClientImportRoute() {
-    const { api } = clientImportRoute.useRouteContext();
-    return <ClientImportPage api={api} />;
-  },
+  beforeLoad: settingsPanelRedirect("client-import"),
 });
 
 /** Журнал действий. */

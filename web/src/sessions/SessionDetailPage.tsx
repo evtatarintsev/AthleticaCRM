@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon, XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient, ApiResult } from "@/api/client";
 import {
@@ -12,7 +12,6 @@ import {
   type BranchId,
   type ClientId,
   type EmployeeId,
-  type JournalParticipantSchema,
   type LocalDate,
   type LocalTime,
   type ParticipationKind,
@@ -23,7 +22,7 @@ import {
   type SessionStatus,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ClientPickerSheet } from "@/clients/ClientPickerSheet";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,13 +33,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { FormAlert } from "@/forms/FormAlert";
 import { manualField } from "@/forms/field";
 import { TextAreaField } from "@/forms/fields";
@@ -397,23 +389,38 @@ function SessionJournalCard({
         />
       )}
 
-      {dialog === "addParticipant" && (
-        <AddParticipantSheet
-          api={api}
-          branchId={branchId}
-          participants={journal.participants}
-          onAdd={async (clientId) => {
-            if (
-              apply(await api.call("sessions/journal/add-participant", { sessionId, clientId }))
-            ) {
-              setDialog(null);
-            }
-          }}
-          onClose={() => {
-            setDialog(null);
-          }}
-        />
-      )}
+      <ClientPickerSheet
+        api={api}
+        branchId={branchId}
+        open={dialog === "addParticipant"}
+        onOpenChange={(open) => {
+          setDialog(open ? "addParticipant" : null);
+        }}
+        title={t("sessionDetail.addParticipantAction")}
+        mode="single"
+        unavailable={
+          new Map(
+            journal.participants.map((participant) => [
+              participant.clientId,
+              t("sessionDetail.alreadyParticipant"),
+            ]),
+          )
+        }
+        onSubmit={async ([client]) => {
+          if (client === undefined) {
+            return null;
+          }
+          const result = await api.call("sessions/journal/add-participant", {
+            sessionId,
+            clientId: client.id,
+          });
+          if (!result.ok) {
+            return apiErrorMessage(t, result.error);
+          }
+          queryClient.setQueryData(journalKey, result.value);
+          return null;
+        }}
+      />
 
       {dialog === "reschedule" && (
         <RescheduleDialog
@@ -576,106 +583,6 @@ function MarkRemainingAbsentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * Шторка выбора клиента организации для разового участия. Клиенты, уже числящиеся
- * в составе [participants], показаны, но выбрать их нельзя.
- */
-function AddParticipantSheet({
-  api,
-  branchId,
-  participants,
-  onAdd,
-  onClose,
-}: {
-  readonly api: ApiClient;
-  readonly branchId: BranchId;
-  readonly participants: readonly JournalParticipantSchema[];
-  readonly onAdd: (clientId: ClientId) => Promise<void>;
-  readonly onClose: () => void;
-}) {
-  const { t } = useI18n();
-  const [query, setQuery] = useState("");
-  const [addingId, setAddingId] = useState<ClientId | null>(null);
-  const name = query.trim() === "" ? null : query.trim();
-  const clients = useQuery({
-    ...apiQuery(api, branchId, "clients/list", { name, limit: 20 }),
-    select: (r) => r.clients,
-  });
-  const inRoster = useMemo(
-    () => new Set(participants.map((participant) => participant.clientId)),
-    [participants],
-  );
-
-  return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <SheetContent
-        side="bottom"
-        className="max-h-[85vh] overflow-y-auto"
-        closeLabel={t("action.close")}
-      >
-        <SheetHeader>
-          <SheetTitle>{t("sessionDetail.addParticipantAction")}</SheetTitle>
-          <SheetDescription className="sr-only">
-            {t("sessionDetail.addParticipantAction")}
-          </SheetDescription>
-        </SheetHeader>
-        <div className="space-y-3 px-4 pb-4">
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-            placeholder={t("sessionDetail.addParticipantSearch")}
-            aria-label={t("sessionDetail.addParticipantSearch")}
-          />
-          {clients.data !== undefined &&
-            (clients.data.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {t("sessionDetail.addParticipantEmpty")}
-              </p>
-            ) : (
-              <ul className="max-h-96 divide-y overflow-y-auto">
-                {clients.data.map((client) => {
-                  const present = inRoster.has(client.id);
-                  return (
-                    <li key={client.id}>
-                      <button
-                        type="button"
-                        disabled={present || addingId !== null}
-                        onClick={() => {
-                          setAddingId(client.id);
-                          void onAdd(client.id).then(() => {
-                            setAddingId(null);
-                          });
-                        }}
-                        className="flex w-full items-center justify-between px-1 py-3 text-left text-sm hover:bg-accent disabled:opacity-50"
-                      >
-                        <span>{client.name}</span>
-                        {present && (
-                          <span className="text-xs text-muted-foreground">
-                            {t("sessionDetail.alreadyParticipant")}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ))}
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }
 

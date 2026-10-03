@@ -6,6 +6,7 @@ import org.athletica.crm.api.schemas.leadSources.DeleteLeadSourceRequest
 import org.athletica.crm.api.schemas.leadSources.LeadSourceDetailResponse
 import org.athletica.crm.api.schemas.leadSources.LeadSourceListResponse
 import org.athletica.crm.api.schemas.leadSources.UpdateLeadSourceRequest
+import org.athletica.crm.domain.leadSource.LeadSourceDescription
 import org.athletica.crm.domain.leadSource.LeadSources
 import org.athletica.crm.storage.Database
 
@@ -15,20 +16,22 @@ fun RouteWithContext.leadSourcesRoutes(leadSources: LeadSources) {
         get<Unit, LeadSourceListResponse>("/list") {
             db.transaction {
                 leadSources.list()
-                    .map { LeadSourceDetailResponse(id = it.id, name = it.name) }
+                    .map { LeadSourceDetailResponse(id = it.id, name = it.name, description = it.description.value) }
                     .let { LeadSourceListResponse(it) }
             }
         }
 
         post<CreateLeadSourceRequest, Unit>("/create") { request ->
+            val description = LeadSourceDescription.from(request.description).bind()
             db.transaction {
-                leadSources.new(request.id, request.name).save()
+                leadSources.new(request.id, request.name, description).save()
             }
         }
 
         post<UpdateLeadSourceRequest, Unit>("/update") { request ->
+            val description = LeadSourceDescription.from(request.description).bind()
             db.transaction {
-                leadSources.byId(request.id).withNew(name = request.name).save()
+                leadSources.byId(request.id).withNew(name = request.name, description = description).save()
             }
         }
 

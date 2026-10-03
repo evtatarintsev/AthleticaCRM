@@ -7,4 +7,6 @@ import org.athletica.crm.core.entityids.LeadSourceId
 data class UpdateLeadSourceRequest(
     val id: LeadSourceId,
     val name: String,
+    /** Пояснение: что относится к источнику; пустая строка — без пояснения. */
+    val description: String = "",
 )

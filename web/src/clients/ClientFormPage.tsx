@@ -9,6 +9,7 @@ import {
   type ClientDetailResponse,
   type CustomFieldValue,
   type Gender,
+  type LeadSourceDetailResponse,
   type LeadSourceId,
   type LocalDate,
   type UploadId,
@@ -47,6 +48,18 @@ interface ClientFormValues {
   readonly birthday: string;
   readonly avatarId: UploadId | null;
   readonly leadSourceId: LeadSourceFieldValue;
+}
+
+/**
+ * Подсказка под полем источника: пояснение источника [selected] из [sources];
+ * `undefined`, если источник не выбран или пояснение пустое.
+ */
+function leadSourceHint(
+  sources: readonly LeadSourceDetailResponse[],
+  selected: LeadSourceFieldValue,
+): string | undefined {
+  const description = sources.find((source) => source.id === selected)?.description;
+  return description === undefined || description === "" ? undefined : description;
 }
 
 /** Схема имени клиента с сообщением на языке [t]; обрезается по краям. */
@@ -187,6 +200,7 @@ export function ClientFormPage({
             <SelectField
               field={field}
               label={t("clients.leadSource")}
+              hint={leadSourceHint(leadSources.data?.leadSources ?? [], field.state.value)}
               options={leadSourceOptions}
             />
           )}

@@ -12,9 +12,12 @@ interface LeadSources {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun list(): List<LeadSource>
 
-    /** Создаёт несохранённый источник; запись в БД выполняется через [LeadSource.save]. */
+    /**
+     * Создаёт несохранённый источник [id] с названием [name] и пояснением [description];
+     * запись в БД выполняется через [LeadSource.save].
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun new(id: LeadSourceId, name: String): LeadSource
+    suspend fun new(id: LeadSourceId, name: String, description: LeadSourceDescription): LeadSource
 
     /** Возвращает источник по идентификатору; ошибка `LEAD_SOURCE_NOT_FOUND`, если не найден. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)

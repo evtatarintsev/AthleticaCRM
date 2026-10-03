@@ -9,11 +9,11 @@ import { fieldError, type BoundField } from "./field";
 /** Атрибуты `<input>`, которыми управляет обёртка поля. */
 type ManagedInputProps = "id" | "name" | "value" | "defaultValue" | "onChange" | "onBlur" | "type";
 
-/** Общие свойства обёрток: поле формы [field], подпись [label] и подсказка [hint]. */
+/** Общие свойства обёрток: поле формы [field], подпись [label] и подсказка [hint]; `undefined` — без подсказки. */
 interface FieldProps<T> {
   readonly field: BoundField<T>;
   readonly label: string;
-  readonly hint?: string;
+  readonly hint?: string | undefined;
 }
 
 /**

@@ -22,10 +22,12 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { EditSheet, EditSheetBody, EditSheetSelection } from "@/ui/EditSheet";
 import { DirectoryItemSheet } from "./DirectoryItemSheet";
 
-/** Запись справочника: идентификатор и название. */
+/** Запись справочника: идентификатор, название и — у справочников с пояснением — пояснение. */
 export interface DirectoryItem<Id extends string> {
   readonly id: Id;
   readonly name: string;
+  /** Что относится к записи; есть только у справочников с [DirectoryDefinition.describable]. */
+  readonly description?: string;
 }
 
 /** Справочник, который показывает [DirectorySheet]: подписи, загрузка и изменение записей. */
@@ -53,6 +55,8 @@ export interface DirectoryDefinition<Id extends string> {
   readonly remove: (api: ApiClient, ids: readonly Id[]) => Promise<ApiResult<undefined>>;
   /** Другие запросы, которые зависят от справочника и сбрасываются вместе со списком. */
   readonly alsoInvalidates?: readonly (readonly unknown[])[];
+  /** У записей есть необязательное пояснение: оно показывается в списке и редактируется в панели записи. */
+  readonly describable?: boolean;
 }
 
 /**
@@ -251,9 +255,18 @@ function DirectoryPanel<Id extends string>({
                         }
                       }}
                       aria-label={t("directory.edit", { name: row.original.name })}
-                      className="min-w-0 flex-1 truncate py-3 text-left font-medium outline-none hover:underline focus-visible:underline"
+                      className="group min-w-0 flex-1 py-3 text-left outline-none"
                     >
-                      {row.original.name}
+                      <span className="block truncate font-medium group-hover:underline group-focus-visible:underline">
+                        {row.original.name}
+                      </span>
+                      {definition.describable === true &&
+                        row.original.description !== undefined &&
+                        row.original.description !== "" && (
+                          <span className="line-clamp-2 text-sm text-muted-foreground">
+                            {row.original.description}
+                          </span>
+                        )}
                     </button>
                   </li>
                 ))}
@@ -286,12 +299,18 @@ function DirectoryPanel<Id extends string>({
         open={editorOpen}
         onOpenChange={setEditorOpen}
         title={t(editing.kind === "create" ? definition.createTitle : definition.editTitle)}
-        initialName={editing.kind === "create" ? "" : editing.item.name}
-        onSave={(name) =>
+        describable={definition.describable === true}
+        initial={
           editing.kind === "create"
-            ? save({ id: definition.newId(), name }, true)
-            : save({ id: editing.item.id, name }, false)
+            ? { name: "", description: "" }
+            : { name: editing.item.name, description: editing.item.description ?? "" }
         }
+        onSave={({ name, description }) => {
+          const fields = definition.describable === true ? { name, description } : { name };
+          return editing.kind === "create"
+            ? save({ id: definition.newId(), ...fields }, true)
+            : save({ id: editing.item.id, ...fields }, false);
+        }}
       />
     </>
   );

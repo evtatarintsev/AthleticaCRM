@@ -17,7 +17,7 @@ class AuditLeadSources(private val delegate: LeadSources, private val audit: Aud
     override suspend fun list() = delegate.list().map { AuditLeadSource(it, audit) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun new(id: LeadSourceId, name: String) = AuditLeadSource(delegate.new(id, name), audit)
+    override suspend fun new(id: LeadSourceId, name: String, description: LeadSourceDescription) = AuditLeadSource(delegate.new(id, name, description), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: LeadSourceId) = AuditLeadSource(delegate.byId(id), audit)
@@ -31,7 +31,7 @@ class AuditLeadSource(private val delegate: LeadSource, private val audit: Audit
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() =
         delegate.save().also {
-            audit.logUpdate("lead_source", id, Json.encodeToString(LeadSourceAuditData(name)))
+            audit.logUpdate("lead_source", id, Json.encodeToString(LeadSourceAuditData(name, description.value)))
         }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -40,9 +40,14 @@ class AuditLeadSource(private val delegate: LeadSource, private val audit: Audit
             audit.logDelete("lead_source", id, "")
         }
 
-    override fun withNew(name: String) = AuditLeadSource(delegate.withNew(name), audit)
+    override fun withNew(name: String, description: LeadSourceDescription) = AuditLeadSource(delegate.withNew(name, description), audit)
 }
 
 /** Снимок источника для журнала аудита (доменная сущность не сериализуется напрямую). */
 @Serializable
-private data class LeadSourceAuditData(val name: String)
+private data class LeadSourceAuditData(
+    /** Название источника. */
+    val name: String,
+    /** Пояснение источника; пустая строка, если не задано. */
+    val description: String,
+)

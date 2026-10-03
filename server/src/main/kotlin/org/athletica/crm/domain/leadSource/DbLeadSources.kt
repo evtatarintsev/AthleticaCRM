@@ -2,6 +2,7 @@ package org.athletica.crm.domain.leadSource
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.toLeadSourceId
@@ -16,14 +17,14 @@ import org.athletica.crm.storage.asUuid
 class DbLeadSources : LeadSources {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<LeadSource> =
-        tr.sql("SELECT ls.id, ls.name FROM lead_sources ls WHERE ls.org_id = :orgId ORDER BY ls.name")
+        tr.sql("SELECT ls.id, ls.name, ls.description FROM lead_sources ls WHERE ls.org_id = :orgId ORDER BY ls.name")
             .bind("orgId", ctx.orgId)
             .list {
-                DbLeadSource(id = it.asUuid("id").toLeadSourceId(), name = it.asString("name"))
+                it.toLeadSource()
             }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun new(id: LeadSourceId, name: String): LeadSource = DbLeadSource(id, name)
+    override suspend fun new(id: LeadSourceId, name: String, description: LeadSourceDescription): LeadSource = DbLeadSource(id, name, description)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: LeadSourceId): LeadSource =
@@ -38,11 +39,11 @@ class DbLeadSources : LeadSources {
         }
 
         val result =
-            tr.sql("SELECT ls.id, ls.name FROM lead_sources ls WHERE ls.id = ANY(:ids) AND ls.org_id = :orgId")
+            tr.sql("SELECT ls.id, ls.name, ls.description FROM lead_sources ls WHERE ls.id = ANY(:ids) AND ls.org_id = :orgId")
                 .bind("ids", distinctIds)
                 .bind("orgId", ctx.orgId)
                 .list {
-                    DbLeadSource(id = it.asUuid("id").toLeadSourceId(), name = it.asString("name"))
+                    it.toLeadSource()
                 }
 
         if (result.size != distinctIds.size) {
@@ -51,3 +52,11 @@ class DbLeadSources : LeadSources {
         return result
     }
 }
+
+/** Источник из строки выборки с колонками `id`, `name`, `description`; пояснение в БД уже нормализовано. */
+private fun Row.toLeadSource(): LeadSource =
+    DbLeadSource(
+        id = asUuid("id").toLeadSourceId(),
+        name = asString("name"),
+        description = LeadSourceDescription.fromDb(asString("description")),
+    )

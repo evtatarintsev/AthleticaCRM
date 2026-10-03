@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   BranchIdSchema,
@@ -9,10 +10,13 @@ import {
   type DisciplineId,
   type HallId,
   type LeadSourceId,
+  type SportCatalogResponse,
 } from "@/api/generated/contracts";
+import { useI18n } from "@/i18n/context";
 import { uuidv7 } from "@/lib/uuid";
 import { apiQuery, myBranchesQuery } from "@/query/queries";
 import type { DirectoryDefinition } from "./directory/DirectorySheet";
+import { catalogSuggestions } from "./sportCatalog";
 
 /** Залы филиала [branchId]. */
 function useHalls(api: ApiClient, branchId: BranchId) {
@@ -25,6 +29,24 @@ function useDisciplines(api: ApiClient, branchId: BranchId) {
     ...apiQuery(api, branchId, "disciplines/list"),
     select: (r) => r.disciplines,
   });
+}
+
+/**
+ * Подсказки названия дисциплины из каталога видов спорта, подписанные на языке интерфейса;
+ * `undefined`, пока каталог загружается или если его не удалось получить. Каталог не меняется
+ * во время работы, поэтому не перезапрашивается.
+ */
+function useDisciplineSuggestions(api: ApiClient, branchId: BranchId) {
+  const { locale } = useI18n();
+  const select = useCallback(
+    (catalog: SportCatalogResponse) => catalogSuggestions(catalog, locale),
+    [locale],
+  );
+  return useQuery({
+    ...apiQuery(api, branchId, "sport-catalog/list"),
+    select,
+    staleTime: Infinity,
+  }).data;
 }
 
 /** Источники клиентов филиала [branchId]. */
@@ -64,6 +86,7 @@ export const disciplines: DirectoryDefinition<DisciplineId> = {
   create: (api, item) => api.call("disciplines/create", item),
   update: (api, item) => api.call("disciplines/update", item),
   remove: (api, ids) => api.call("disciplines/delete", { ids }),
+  useNameSuggestions: useDisciplineSuggestions,
 };
 
 /** Справочник источников клиентов. */

@@ -29,6 +29,18 @@ const SIZE_CLASSES: Readonly<Record<EditSheetSize, string>> = {
   xl: "sm:max-w-4xl",
 };
 
+/**
+ * Esc пришёл из поля с раскрытым списком подсказок: его закрывает само поле, а панель
+ * остаётся открытой. Radix ловит Esc на документе раньше поля, поэтому проверка — здесь.
+ */
+function isExpandedCombobox(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.getAttribute("role") === "combobox" &&
+    target.getAttribute("aria-expanded") === "true"
+  );
+}
+
 /** Свойства панели редактирования. */
 interface EditSheetProps {
   /** Открыта ли панель. */
@@ -111,6 +123,11 @@ export function EditSheet({ open, onOpenChange, title, size = "md", children }: 
         aria-describedby={undefined}
         onInteractOutside={(event) => {
           event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (isExpandedCombobox(event.target)) {
+            event.preventDefault();
+          }
         }}
         className={cn("w-full gap-0", SIZE_CLASSES[size], childOpen && "sm:-translate-x-20")}
       >

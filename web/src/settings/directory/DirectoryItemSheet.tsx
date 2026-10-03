@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 import { FormAlert } from "@/forms/FormAlert";
 import { TextAreaField, TextField } from "@/forms/fields";
+import { NameComboboxField } from "@/forms/NameComboboxField";
+import type { SuggestionGroup } from "@/forms/nameSuggestions";
 import { useI18n } from "@/i18n/context";
 import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
@@ -16,6 +18,14 @@ export interface DirectoryItemValues {
   readonly description: string;
 }
 
+/** Подсказки названия записи и уже имеющиеся в справочнике подсказки. */
+export interface NameSuggestions {
+  /** Группы подсказок в порядке показа. */
+  readonly groups: readonly SuggestionGroup[];
+  /** Ключ подсказки → название записи, с которым она уже есть в справочнике. */
+  readonly existing: ReadonlyMap<string, string>;
+}
+
 /** Свойства панели записи справочника. */
 interface DirectoryItemSheetProps {
   /** Открыта ли панель. */
@@ -26,6 +36,8 @@ interface DirectoryItemSheetProps {
   readonly title: string;
   /** Показывать ли поле «Пояснение». */
   readonly describable: boolean;
+  /** Подсказки названия; `undefined` — обычное текстовое поле. */
+  readonly suggestions?: NameSuggestions | undefined;
   /** Значения при открытии; пустое название — новая запись. */
   readonly initial: DirectoryItemValues;
   /** Сохраняет обрезанные значения; возвращает текст ошибки или `null` при успехе. */
@@ -41,12 +53,18 @@ export function DirectoryItemSheet({
   onOpenChange,
   title,
   describable,
+  suggestions,
   initial,
   onSave,
 }: DirectoryItemSheetProps) {
   return (
     <EditSheet open={open} onOpenChange={onOpenChange} title={title}>
-      <DirectoryItemForm describable={describable} initial={initial} onSave={onSave} />
+      <DirectoryItemForm
+        describable={describable}
+        suggestions={suggestions}
+        initial={initial}
+        onSave={onSave}
+      />
     </EditSheet>
   );
 }
@@ -54,9 +72,10 @@ export function DirectoryItemSheet({
 /** Форма записи справочника; после успешного сохранения закрывает свою панель. */
 function DirectoryItemForm({
   describable,
+  suggestions,
   initial,
   onSave,
-}: Pick<DirectoryItemSheetProps, "describable" | "initial" | "onSave">) {
+}: Pick<DirectoryItemSheetProps, "describable" | "suggestions" | "initial" | "onSave">) {
   const { t } = useI18n();
   const { close } = useEditSheet();
   const nameSchema = useMemo(() => z.string().trim().min(1, t("error.required")), [t]);
@@ -103,15 +122,26 @@ function DirectoryItemForm({
         >
           {failure !== null && <FormAlert message={failure} />}
           <form.Field name="name" validators={{ onSubmit: nameSchema }}>
-            {(field) => (
-              <TextField
-                field={field}
-                label={t("directory.name")}
-                autoComplete="off"
-                required
-                autoFocus
-              />
-            )}
+            {(field) =>
+              suggestions === undefined ? (
+                <TextField
+                  field={field}
+                  label={t("directory.name")}
+                  autoComplete="off"
+                  required
+                  autoFocus
+                />
+              ) : (
+                <NameComboboxField
+                  field={field}
+                  label={t("directory.name")}
+                  groups={suggestions.groups}
+                  existing={suggestions.existing}
+                  required
+                  autoFocus
+                />
+              )
+            }
           </form.Field>
           {describable && (
             <form.Field name="description" validators={{ onSubmit: descriptionSchema }}>

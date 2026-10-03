@@ -12,7 +12,8 @@
 
 **Goals:**
 - Заполнение справочника при регистрации тем же способом, что и метки посещаемости.
-- Инвариант пояснения (обрезано, непустое, ≤ 500 символов) проверяется в одном месте — при создании значения.
+- Инвариант пояснения (обрезано, ≤ 500 символов) проверяется в одном месте — при создании значения.
+- У «пояснения нет» одно представление на всех слоях — пустая строка.
 - Механизм пояснения в вебе переиспользуем для других справочников, но включается только у источников.
 
 **Non-Goals:**
@@ -29,27 +30,43 @@
 
 Ключи `Messages`: по два на источник — `DefaultLeadSourceReferral` / `DefaultLeadSourceReferralDescription` и т. д., RU + EN.
 
-### 2. Пояснение — smart constructor `LeadSourceDescription`
+### 2. Пояснение — пустая строка вместо `null`
 
-`value class LeadSourceDescription private constructor(val value: String)` в `domain/leadSource` с фабрикой `from(raw: String): Either<DomainError, LeadSourceDescription?>`: обрезает пробелы, пустую строку превращает в `null`, длину > 500 отклоняет ошибкой `LEAD_SOURCE_DESCRIPTION_TOO_LONG` (локализованное сообщение в `Messages`, HTTP 400).
+Пояснение необязательно к заполнению, но в модели оно всегда есть: отсутствие — это `""`. Для пользователя «нет пояснения» и «пустое пояснение» неразличимы, а nullable-поле дало бы два представления одного и того же (`null` и `""`), нормализацию между ними на каждой границе и проверки на `null` в каждом потребителе — в Kotlin и в TS.
 
-- Домен: `LeadSource.description: LeadSourceDescription?`; `LeadSources.new(id, name, description)`; `withNew(name, description)`. `AuditLeadSource` пишет пояснение в `LeadSourceAuditData`.
-- Схемы `shared`: `description: String? = null` в `CreateLeadSourceRequest`, `UpdateLeadSourceRequest`, `LeadSourceDetailResponse`. Схема остаётся `String?`, а не value-классом: нормализация «пусто → отсутствует» — работа routes, а кастомный сериализатор не может превратить строку в `null`.
+Альтернатива — `String?` / `TEXT NULL` — отвергнута по этой причине. Различать «не задано» и «задано пустым» в продукте незачем.
+
+### 3. Пояснение — smart constructor `LeadSourceDescription`
+
+`value class LeadSourceDescription private constructor(val value: String)` в `domain/leadSource` с фабрикой `from(raw: String): Either<DomainError, LeadSourceDescription>`: обрезает пробелы, длину > 500 отклоняет ошибкой `LEAD_SOURCE_DESCRIPTION_TOO_LONG` (локализованное сообщение в `Messages`, HTTP 400). Константа `LeadSourceDescription.EMPTY` — для источников без пояснения.
+
+- Домен: `LeadSource.description: LeadSourceDescription`; `LeadSources.new(id, name, description)`; `withNew(name, description)`. `AuditLeadSource` пишет пояснение в `LeadSourceAuditData`.
+- Схемы `shared`: `description: String = ""` в `CreateLeadSourceRequest` и `UpdateLeadSourceRequest`, `description: String` в `LeadSourceDetailResponse`. В запросах схема — строка, а не value-класс: обрезка пробелов и ошибка с локализованным сообщением — работа routes.
 - Маршруты `create` / `update` разбирают `request.description` через `LeadSourceDescription.from(...).bind()`.
-- `ImportClientsCommit` создаёт источники с `description = null`.
+- `ImportClientsCommit` создаёт источники с `LeadSourceDescription.EMPTY`.
 
 Альтернатива — проверка длины в маршруте строкой — отвергнута правилом проекта «Parse, don't validate».
 
-### 3. БД — `description TEXT NULL`
+### 4. Язык стартового набора фиксируется при регистрации
 
-Миграция `0069-lead-source-description.sql`: `ALTER TABLE lead_sources ADD COLUMN description TEXT`. Ограничение длины держит `LeadSourceDescription`; дублировать его `CHECK`-ом не стали, чтобы лимит менялся в одном месте. `DbLeadSource.save()` пишет пояснение и в `INSERT`, и в ветке `ON CONFLICT DO UPDATE`; `list` / `byIds` читают его.
+Названия и пояснения записываются один раз на языке регистрации (`Accept-Language` запроса регистрации) и дальше — обычные данные организации. При смене языка интерфейса они не переводятся — так же, как филиал, зал и метки посещаемости, создаваемые при регистрации.
 
-### 4. Веб — флаг `describable` в `DirectoryDefinition`
+Отвергнутые альтернативы:
+- Переводить на лету по ключу `Messages`, пока запись не правили вручную. Язык — настройка браузера, а справочник общий: при двух сотрудниках с разными языками у источника нет единственного названия. Кроме того, предустановленные записи стали бы отличаться от ручных, а сопоставление при импорте CSV по точному имени перестало бы работать.
+- Пересоздавать набор при смене языка — к источникам уже могут быть привязаны клиенты.
 
-- `DirectoryItem` получает `description?: string | null`; `DirectoryDefinition` — `describable?: boolean`. У источников `describable: true`, их `create` / `update` передают пояснение; у залов, дисциплин и филиалов `create` / `update` по-прежнему отправляют только `id` и `name`.
+Регистрация на «не том» языке исправляется переименованием десяти записей; переключатель языка есть на самой странице регистрации.
+
+### 5. БД — `description TEXT NOT NULL DEFAULT ''`
+
+Миграция `0069-lead-source-description.sql`: `ALTER TABLE lead_sources ADD COLUMN description TEXT NOT NULL DEFAULT ''` — существующие строки сразу получают пустое пояснение. Ограничение длины держит `LeadSourceDescription`; дублировать его `CHECK`-ом не стали, чтобы лимит менялся в одном месте. `DbLeadSource.save()` пишет пояснение и в `INSERT`, и в ветке `ON CONFLICT DO UPDATE`; `list` / `byIds` читают его.
+
+### 6. Веб — флаг `describable` в `DirectoryDefinition`
+
+- `DirectoryItem` получает `description?: string` (поле есть только у справочников с пояснением, у залов, дисциплин и филиалов его нет); `DirectoryDefinition` — `describable?: boolean`. У источников `describable: true`, их `create` / `update` передают пояснение; у залов, дисциплин и филиалов `create` / `update` по-прежнему отправляют только `id` и `name`.
 - `DirectorySheet`: при `describable` в ячейке под названием выводится пояснение (`text-muted-foreground`, обрезка в одну-две строки). Поиск — по-прежнему по названию.
-- `DirectoryItemSheet`: при `describable` второе поле «Пояснение» — многострочное, необязательное, zod `trim().max(500)`; пустое отправляется как `null`.
-- `ClientFormPage`: `hint` у `SelectField` источника = пояснение выбранного источника (или нет подсказки).
+- `DirectoryItemSheet`: при `describable` второе поле «Пояснение» — многострочное, необязательное, zod `trim().max(500)`; пустое отправляется как `""`.
+- `ClientFormPage`: `hint` у `SelectField` источника = пояснение выбранного источника, если оно непустое.
 
 Альтернатива — отдельная панель только для источников — отвергнута: дублирует таблицу, выбор, удаление и вложенную панель; пояснение, вероятно, понадобится и другим справочникам.
 
@@ -57,13 +74,14 @@
 
 ## Risks / Trade-offs
 
-- [Desktop-клиент отправляет `update` без пояснения → пояснение стирается] → принято: desktop не поддерживается. Схема с `= null` по умолчанию сохраняет компиляцию `composeApp`.
+- [Desktop-клиент отправляет `update` без пояснения → пояснение стирается] → принято: desktop не поддерживается. Значение `= ""` по умолчанию в схемах запросов сохраняет компиляцию `composeApp`.
+- [Организация зарегистрировалась на английском и переключилась на русский — справочники остаются на английском] → принято (решение 4); исправляется переименованием.
 - [«Другое» при сортировке по названию оказывается в середине списка] → принято на этом этапе; см. Open Questions.
 - [CSV-импорт по совпадению имени теперь чаще попадает в предустановленные источники] → желаемое поведение: значения «Рекомендация», «Сайт» из выгрузок старой CRM сопоставятся без создания дублей.
 
 ## Migration Plan
 
-Миграция только добавляет nullable-колонку — существующие строки получают `NULL`, откат не требует переноса данных. Существующие организации не меняются. Веб и сервер выкатываются вместе (общий образ); старый веб без поля `description` продолжает работать, кроме сброса пояснения при переименовании — окно короткое.
+Миграция только добавляет колонку со значением по умолчанию `''` — существующие строки получают пустое пояснение, откат не требует переноса данных. Существующие организации не меняются. Веб и сервер выкатываются вместе (общий образ); старый веб без поля `description` продолжает работать, кроме сброса пояснения при переименовании — окно короткое.
 
 ## Open Questions
 

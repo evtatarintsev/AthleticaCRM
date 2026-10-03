@@ -7,48 +7,73 @@ import {
   type LocalDate,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n, type I18n } from "@/i18n/context";
 import { todayLocalDate, WEEK_DAYS } from "@/lib/localDate";
-import { cardErrors, newCard, type SlotCard, type SlotCardError } from "./groupSchedule";
+import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
+import {
+  cardErrors,
+  cardsChanged,
+  newCard,
+  type SlotCard,
+  type SlotCardError,
+} from "./groupSchedule";
+
+/** Свойства редактора расписания, общие для панели и её содержимого. */
+interface ScheduleEditorProps {
+  /** Карточки действующего расписания; с ними сравниваются правки. */
+  readonly initialCards: readonly SlotCard[];
+  /** Дата уже запланированного изменения расписания, если оно есть. */
+  readonly scheduleChangeAt: LocalDate | null;
+  /** Залы филиала для выбора в карточке. */
+  readonly halls: readonly { readonly id: HallId; readonly name: string }[];
+  /** Сохраняет карточки [cards] с даты [effectiveFrom]; возвращает текст ошибки или `null`. */
+  readonly onSave: (cards: readonly SlotCard[], effectiveFrom: LocalDate) => Promise<string | null>;
+}
 
 /**
- * Диалог редактирования расписания группы (спецификация `group-schedule-editor`):
+ * Панель справа с редактором расписания группы (спецификация `group-schedule-editor`):
  * карточки дней+времени+зала, дата вступления в силу, проверки перед сохранением,
  * работает без горизонтальной прокрутки от 320 CSS px, кнопки сохранения закреплены.
+ * Несохранённые правки защищены подтверждением при закрытии.
  */
-export function GroupScheduleDialog({
+export function GroupScheduleSheet({
+  open,
+  onOpenChange,
+  ...rest
+}: ScheduleEditorProps & {
+  /** Открыта ли панель. */
+  readonly open: boolean;
+  /** Вызывается, когда панель надо открыть или закрыть. */
+  readonly onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <EditSheet open={open} onOpenChange={onOpenChange} title={t("groups.schedule.title")}>
+      <ScheduleEditorContent {...rest} />
+    </EditSheet>
+  );
+}
+
+/** Содержимое панели расписания; монтируется заново при каждом открытии. */
+function ScheduleEditorContent({
   initialCards,
   scheduleChangeAt,
   halls,
   onSave,
-  onClose,
-}: {
-  readonly initialCards: readonly SlotCard[];
-  /** Дата уже запланированного изменения расписания, если оно есть. */
-  readonly scheduleChangeAt: LocalDate | null;
-  readonly halls: readonly { readonly id: HallId; readonly name: string }[];
-  /** Сохраняет карточки [cards] с даты [effectiveFrom]; возвращает текст ошибки или `null`. */
-  readonly onSave: (cards: readonly SlotCard[], effectiveFrom: LocalDate) => Promise<string | null>;
-  readonly onClose: () => void;
-}) {
+}: ScheduleEditorProps) {
   const { t } = useI18n();
-  const today = todayLocalDate();
+  const { close } = useEditSheet();
+  const [today] = useState(todayLocalDate);
   const [cards, setCards] = useState<readonly SlotCard[]>(initialCards);
   const [effectiveFrom, setEffectiveFrom] = useState<LocalDate>(today);
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const errors = cardErrors(cards);
-  const canSave = errors.size === 0 && !saving;
+  const dirty = cardsChanged(initialCards, cards) || effectiveFrom !== today;
   const cancelsPlannedChange =
     scheduleChangeAt !== null && !saving && effectiveFrom <= scheduleChangeAt;
 
@@ -60,103 +85,81 @@ export function GroupScheduleDialog({
     setSaving(true);
     setFailure(null);
     const error = await onSave(cards, effectiveFrom);
-    setSaving(false);
     if (error === null) {
-      onClose();
-    } else {
-      setFailure(error);
+      close();
+      return;
     }
+    setSaving(false);
+    setFailure(error);
   };
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
+    <EditSheetForm
+      dirty={dirty}
+      submitting={saving}
+      submitDisabled={errors.size > 0}
+      onSubmit={() => {
+        void save();
       }}
     >
-      <DialogContent
-        aria-describedby={undefined}
-        closeLabel={t("action.close")}
-        className="flex max-h-[90vh] flex-col gap-3 p-4 sm:max-w-md"
+      {failure !== null && <FormAlert message={failure} />}
+
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">{t("groups.schedule.effectiveFrom")}</span>
+        <input
+          type="date"
+          value={effectiveFrom}
+          min={today}
+          onChange={(event) => {
+            const parsed = LocalDateSchema.safeParse(event.target.value);
+            if (parsed.success) {
+              setEffectiveFrom(parsed.data);
+            }
+          }}
+          className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+        />
+      </label>
+      {cancelsPlannedChange && (
+        <p className="text-xs text-amber-600 dark:text-amber-500">
+          {t("groups.schedule.plannedChangeWarning", { date: scheduleChangeAt })}
+        </p>
+      )}
+
+      {halls.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("groups.schedule.noHalls")}</p>
+      )}
+
+      <div className="space-y-3">
+        {cards.map((card) => (
+          <SlotCardEditor
+            key={card.id}
+            card={card}
+            halls={halls}
+            errors={errors.get(card.id) ?? []}
+            onChange={(next) => {
+              updateCard(card.id, next);
+            }}
+            onRemove={() => {
+              setCards(cards.filter((c) => c.id !== card.id));
+            }}
+          />
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={() => {
+          const singleHallId = halls.length === 1 ? (halls[0]?.id ?? null) : null;
+          const nextId = Math.max(-1, ...cards.map((c) => c.id)) + 1;
+          setCards([...cards, newCard(nextId, singleHallId)]);
+        }}
       >
-        <DialogHeader>
-          <DialogTitle>{t("groups.schedule.title")}</DialogTitle>
-        </DialogHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-          {failure !== null && <FormAlert message={failure} />}
-
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium">{t("groups.schedule.effectiveFrom")}</span>
-            <input
-              type="date"
-              value={effectiveFrom}
-              min={today}
-              onChange={(event) => {
-                const parsed = LocalDateSchema.safeParse(event.target.value);
-                if (parsed.success) {
-                  setEffectiveFrom(parsed.data);
-                }
-              }}
-              className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-            />
-          </label>
-          {cancelsPlannedChange && (
-            <p className="text-xs text-amber-600 dark:text-amber-500">
-              {t("groups.schedule.plannedChangeWarning", { date: scheduleChangeAt })}
-            </p>
-          )}
-
-          {halls.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("groups.schedule.noHalls")}</p>
-          )}
-
-          <div className="space-y-3">
-            {cards.map((card) => (
-              <SlotCardEditor
-                key={card.id}
-                card={card}
-                halls={halls}
-                errors={errors.get(card.id) ?? []}
-                onChange={(next) => {
-                  updateCard(card.id, next);
-                }}
-                onRemove={() => {
-                  setCards(cards.filter((c) => c.id !== card.id));
-                }}
-              />
-            ))}
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              const singleHallId = halls.length === 1 ? (halls[0]?.id ?? null) : null;
-              const nextId = Math.max(-1, ...cards.map((c) => c.id)) + 1;
-              setCards([...cards, newCard(nextId, singleHallId)]);
-            }}
-          >
-            <PlusIcon aria-hidden />
-            {t("groups.schedule.addCard")}
-          </Button>
-        </div>
-        <DialogFooter closeLabel={t("action.cancel")}>
-          <Button
-            disabled={!canSave}
-            aria-busy={saving}
-            onClick={() => {
-              void save();
-            }}
-          >
-            {t("action.save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <PlusIcon aria-hidden />
+        {t("groups.schedule.addCard")}
+      </Button>
+    </EditSheetForm>
   );
 }
 

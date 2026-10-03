@@ -8,9 +8,11 @@ import {
   EmployeeListItemSchema,
   GroupDetailResponseSchema,
   GroupDisciplineSchema,
+  HallDetailResponseSchema,
   RemoveClientFromGroupRequestSchema,
   SetGroupDisciplinesRequestSchema,
   SetGroupEmployeesRequestSchema,
+  SetGroupScheduleRequestSchema,
   type GroupDetailResponse,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
@@ -64,6 +66,11 @@ const judo = GroupDisciplineSchema.parse({
   name: "Дзюдо",
 });
 
+const bigHall = HallDetailResponseSchema.parse({
+  id: "0199a0b2-0000-7000-8000-900000000001",
+  name: "Большой",
+});
+
 const juniors = GroupDetailResponseSchema.parse({
   id: "0199a0b2-0000-7000-8000-600000000001",
   name: "Юниоры",
@@ -81,7 +88,7 @@ const groupNotFound = () =>
 /**
  * Поддельный сервер карточки группы: хранит группу и применяет к ней изменения так же, как
  * сервер. [failRemove] — удаление клиента отвечает бизнес-ошибкой, [failSet] — замена
- * дисциплин и тренеров.
+ * дисциплин, тренеров и расписания.
  */
 function groupServer(
   initial: GroupDetailResponse,
@@ -119,7 +126,22 @@ function groupServer(
       };
       return empty();
     },
-    "halls/list": () => json({ halls: [] }),
+    "halls/list": () => json({ halls: [bigHall] }),
+    "groups/set-schedule": ({ body }) => {
+      if (failSet) {
+        return groupNotFound();
+      }
+      const request = SetGroupScheduleRequestSchema.parse(body);
+      group = {
+        ...group,
+        schedule: (request.slots ?? []).map((slot) => ({
+          ...slot,
+          hallName: bigHall.name,
+          validity: null,
+        })),
+      };
+      return json(group);
+    },
     "clients/list": () => json({ clients: all, total: all.length }),
     "clients/add-to-group": ({ body }) => {
       const request = AddClientsToGroupRequestSchema.parse(body);
@@ -345,5 +367,113 @@ describe("дисциплины и тренеры в карточке", () => {
     expect(
       within(section(ru["groups.detail.employeesTitle"])).queryByText(sidorova.name),
     ).not.toBeInTheDocument();
+  });
+});
+
+const scheduled = GroupDetailResponseSchema.parse({
+  ...juniors,
+  schedule: ["MONDAY", "WEDNESDAY"].map((dayOfWeek) => ({
+    dayOfWeek,
+    startAt: "15:00",
+    endAt: "17:00",
+    hallId: bigHall.id,
+    hallName: bigHall.name,
+    validity: null,
+  })),
+});
+
+/** Открывает панель расписания карточки группы и возвращает её. */
+async function openSchedule(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: ru["groups.detail.editSchedule"] }));
+  return screen.findByRole("dialog", { name: ru["groups.schedule.title"] });
+}
+
+/** Кнопка дня недели [day] в единственной карточке панели [sheet]. */
+const dayButton = (sheet: HTMLElement, day: "day.MONDAY" | "day.WEDNESDAY" | "day.FRIDAY") =>
+  within(sheet).getByRole("button", { name: ru[day] });
+
+describe("расписание в карточке группы", () => {
+  it("«Изменить расписание» открывает панель с карточками действующего расписания", async () => {
+    openApp(`/groups/${scheduled.id}`, groupServer(scheduled).fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openSchedule(user);
+    expect(dayButton(sheet, "day.MONDAY")).toHaveAttribute("aria-pressed", "true");
+    expect(dayButton(sheet, "day.WEDNESDAY")).toHaveAttribute("aria-pressed", "true");
+    expect(dayButton(sheet, "day.FRIDAY")).toHaveAttribute("aria-pressed", "false");
+    expect(within(sheet).getByLabelText(ru["groups.schedule.startTime"])).toHaveValue("15:00");
+  });
+
+  it("при карточке без дней «Сохранить» недоступна", async () => {
+    openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openSchedule(user);
+    await user.click(within(sheet).getByRole("button", { name: ru["groups.schedule.addCard"] }));
+
+    expect(within(sheet).getByText(ru["groups.schedule.errorNoDays"])).toBeVisible();
+    expect(within(sheet).getByRole("button", { name: ru["action.save"] })).toBeDisabled();
+  });
+
+  it("«Отмена» после правки просит подтверждение и не меняет расписание", async () => {
+    const server = groupServer(scheduled);
+    openApp(`/groups/${scheduled.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openSchedule(user);
+    await user.click(dayButton(sheet, "day.FRIDAY"));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.cancel"] }));
+
+    const confirm = await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] });
+    await user.click(within(confirm).getByRole("button", { name: ru["editSheet.discardConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(server.to("groups/set-schedule")).toHaveLength(0);
+  });
+
+  it("«Отмена» без правок закрывает панель сразу", async () => {
+    openApp(`/groups/${scheduled.id}`, groupServer(scheduled).fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openSchedule(user);
+    await user.click(dayButton(sheet, "day.FRIDAY"));
+    await user.click(dayButton(sheet, "day.FRIDAY"));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.cancel"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(ru["editSheet.discardTitle"])).not.toBeInTheDocument();
+  });
+
+  it("«Сохранить» отправляет новое расписание и закрывает панель", async () => {
+    const server = groupServer(scheduled);
+    openApp(`/groups/${scheduled.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openSchedule(user);
+    await user.click(dayButton(sheet, "day.FRIDAY"));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    const request = SetGroupScheduleRequestSchema.parse(server.to("groups/set-schedule")[0]?.body);
+    expect(request.effectiveFrom).toBeNull();
+    expect(request.slots?.map((slot) => slot.dayOfWeek)).toEqual(["MONDAY", "WEDNESDAY", "FRIDAY"]);
+    expect(toast.success).toHaveBeenCalledWith(ru["groups.schedule.savedToast"]);
+  });
+
+  it("при ошибке сохранения панель остаётся открытой с правками", async () => {
+    openApp(`/groups/${scheduled.id}`, groupServer(scheduled, { failSet: true }).fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openSchedule(user);
+    await user.click(dayButton(sheet, "day.FRIDAY"));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent("Группа не найдена");
+    expect(dayButton(sheet, "day.FRIDAY")).toHaveAttribute("aria-pressed", "true");
   });
 });

@@ -140,6 +140,8 @@ interface EditSheetFormProps {
   readonly dirty: boolean;
   /** Идёт сохранение: кнопки недоступны, панель не закрывается. */
   readonly submitting: boolean;
+  /** Отправка запрещена: кнопка «Сохранить» недоступна, Enter форму не отправляет. */
+  readonly submitDisabled?: boolean;
   /** Отправка формы кнопкой «Сохранить» или Enter. */
   readonly onSubmit: () => void;
   /** Подпись кнопки отправки вместо «Сохранить». */
@@ -154,6 +156,7 @@ interface EditSheetFormProps {
 export function EditSheetForm({
   dirty,
   submitting,
+  submitDisabled = false,
   onSubmit,
   submitLabel,
   children,
@@ -174,7 +177,9 @@ export function EditSheetForm({
         onSubmit={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          onSubmit();
+          if (!submitDisabled) {
+            onSubmit();
+          }
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
@@ -183,7 +188,7 @@ export function EditSheetForm({
           <Button type="button" variant="outline" disabled={submitting} onClick={requestClose}>
             {t("action.cancel")}
           </Button>
-          <Button type="submit" disabled={submitting} aria-busy={submitting}>
+          <Button type="submit" disabled={submitting || submitDisabled} aria-busy={submitting}>
             {submitLabel ?? t("action.save")}
           </Button>
         </SheetFooter>

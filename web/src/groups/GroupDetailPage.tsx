@@ -25,7 +25,7 @@ import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
 import { ChecklistSheet, type ChecklistItem } from "@/ui/ChecklistSheet";
 import { PageHeader } from "@/ui/PageHeader";
-import { GroupScheduleDialog } from "./GroupScheduleDialog";
+import { GroupScheduleSheet } from "./GroupScheduleSheet";
 import { cardsToSlotInputs, slotsToCards, type SlotCard } from "./groupSchedule";
 import { useGroup, useGroupDisciplines, useGroupEmployees, useGroupHalls } from "./groupsQueries";
 
@@ -315,17 +315,14 @@ export function GroupDetailPage({
         onSubmit={addClients}
       />
 
-      {scheduleOpen && (
-        <GroupScheduleDialog
-          initialCards={slotsToCards(detail.schedule)}
-          scheduleChangeAt={detail.scheduleChangeAt}
-          halls={halls.data ?? []}
-          onSave={saveSchedule}
-          onClose={() => {
-            setScheduleOpen(false);
-          }}
-        />
-      )}
+      <GroupScheduleSheet
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        initialCards={slotsToCards(detail.schedule)}
+        scheduleChangeAt={detail.scheduleChangeAt}
+        halls={halls.data ?? []}
+        onSave={saveSchedule}
+      />
     </section>
   );
 }

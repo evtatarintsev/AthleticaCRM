@@ -126,6 +126,32 @@ export function cardErrors(
   return result;
 }
 
+/**
+ * Отличаются ли карточки [cards] от исходных [initial]: попарно по порядку сравниваются
+ * дни, время и зал; локальный `id` карточки не учитывается. Добавленная пустая карточка —
+ * изменение, а добавленная и удалённая — нет.
+ */
+export function cardsChanged(initial: readonly SlotCard[], cards: readonly SlotCard[]): boolean {
+  return (
+    initial.length !== cards.length ||
+    cards.some((card, index) => {
+      const original = initial[index];
+      return original === undefined || !sameCardContent(original, card);
+    })
+  );
+}
+
+/** Совпадают ли у карточек [a] и [b] дни, время и зал. */
+function sameCardContent(a: SlotCard, b: SlotCard): boolean {
+  return (
+    a.startAt === b.startAt &&
+    a.endAt === b.endAt &&
+    a.hallId === b.hallId &&
+    a.days.size === b.days.size &&
+    Array.from(a.days).every((day) => b.days.has(day))
+  );
+}
+
 /** Индекс первого (по порядку недели) дня из [days]; для пустого набора — конец списка. */
 function earliestDayIndex(days: ReadonlySet<DayOfWeek>): number {
   const indices = WEEK_DAYS.map((day, index) => (days.has(day) ? index : WEEK_DAYS.length));

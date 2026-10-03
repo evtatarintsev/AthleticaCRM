@@ -8,6 +8,7 @@ import {
 import { uuidv7 } from "@/lib/uuid";
 import {
   cardErrors,
+  cardsChanged,
   cardsToSlotInputs,
   newCard,
   slotsToCards,
@@ -150,5 +151,51 @@ describe("cardErrors", () => {
 
   it("пустой список карточек разрешён", () => {
     expect(cardErrors([]).size).toBe(0);
+  });
+});
+
+describe("cardsChanged", () => {
+  const card: SlotCard = {
+    id: 0,
+    days: new Set([day("MONDAY"), day("WEDNESDAY")]),
+    startAt: "15:00",
+    endAt: "17:00",
+    hallId: hallA,
+  };
+  const initial: readonly SlotCard[] = [card];
+
+  it("без правок — без изменений", () => {
+    const reopened = slotsToCards([
+      slot("WEDNESDAY", "15:00", "17:00"),
+      slot("MONDAY", "15:00", "17:00"),
+    ]);
+    expect(cardsChanged(initial, reopened)).toBe(false);
+  });
+
+  it("добавленная пустая карточка — изменение", () => {
+    expect(cardsChanged(initial, [card, newCard(1, null)])).toBe(true);
+  });
+
+  it("добавленная и удалённая карточка — без изменений", () => {
+    const added = [card, newCard(1, null)];
+    expect(
+      cardsChanged(
+        initial,
+        added.filter((c) => c.id !== 1),
+      ),
+    ).toBe(false);
+  });
+
+  it("отмеченный и снятый тот же день — без изменений", () => {
+    expect(cardsChanged(initial, [{ ...card, id: 7, days: new Set(card.days) }])).toBe(false);
+  });
+
+  it("отмеченный день — изменение", () => {
+    const changed = { ...card, days: new Set([...card.days, day("FRIDAY")]) };
+    expect(cardsChanged(initial, [changed])).toBe(true);
+  });
+
+  it("другой зал — изменение", () => {
+    expect(cardsChanged(initial, [{ ...card, hallId: hallB }])).toBe(true);
   });
 });

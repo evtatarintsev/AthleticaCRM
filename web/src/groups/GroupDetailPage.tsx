@@ -11,6 +11,7 @@ import type {
   GroupId,
   LocalDate,
   ScheduleSlot,
+  UploadId,
 } from "@/api/generated/contracts";
 import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/components/ui/button";
@@ -19,17 +20,19 @@ import { ClientPickerSheet, type PickedClient } from "@/clients/ClientPickerShee
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate, WEEK_DAYS } from "@/lib/localDate";
+import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
-import { MultiSelectPicker } from "@/ui/MultiSelectPicker";
+import { ChecklistSheet, type ChecklistItem } from "@/ui/ChecklistSheet";
 import { PageHeader } from "@/ui/PageHeader";
 import { GroupScheduleDialog } from "./GroupScheduleDialog";
 import { cardsToSlotInputs, slotsToCards, type SlotCard } from "./groupSchedule";
 import { useGroup, useGroupDisciplines, useGroupEmployees, useGroupHalls } from "./groupsQueries";
 
 /**
- * Карточка группы: дисциплины, расписание, тренеры и клиенты. Дисциплины, тренеры и
- * клиенты добавляются и убираются на месте — изменение сразу отражается в карточке (7.2).
+ * Карточка группы: дисциплины, расписание, тренеры и клиенты. Дисциплины и тренеры
+ * меняются целиком в панели с чекбоксами, клиенты добавляются и убираются на месте —
+ * изменение сразу отражается в карточке (7.2).
  */
 export function GroupDetailPage({
   api,
@@ -58,25 +61,39 @@ export function GroupDetailPage({
       }),
     ]);
 
-  const saveDisciplines = async (disciplineIds: readonly DisciplineId[]) => {
+  const saveDisciplines = async (
+    disciplineIds: readonly DisciplineId[],
+  ): Promise<string | null> => {
     const result = await api.call("groups/set-disciplines", { groupId, disciplineIds });
     if (!result.ok) {
-      toast.error(apiErrorMessage(t, result.error));
-      return;
+      return apiErrorMessage(t, result.error);
     }
     await refresh();
     toast.success(t("groups.detail.disciplinesSaved"));
+    return null;
   };
 
-  const saveEmployees = async (employeeIds: readonly EmployeeId[]) => {
+  const saveEmployees = async (employeeIds: readonly EmployeeId[]): Promise<string | null> => {
     const result = await api.call("groups/set-employees", { groupId, employeeIds });
     if (!result.ok) {
-      toast.error(apiErrorMessage(t, result.error));
-      return;
+      return apiErrorMessage(t, result.error);
     }
     await refresh();
     toast.success(t("groups.detail.employeesSaved"));
+    return null;
   };
+
+  const withAvatar = (employee: {
+    readonly id: EmployeeId;
+    readonly name: string;
+    readonly avatarId: UploadId | null;
+  }): ChecklistItem<EmployeeId> => ({
+    id: employee.id,
+    name: employee.name,
+    avatar: (
+      <Avatar api={api} uploadId={employee.avatarId} name={employee.name} className="size-5" />
+    ),
+  });
 
   const refreshClients = () =>
     Promise.all([
@@ -155,21 +172,21 @@ export function GroupDetailPage({
       />
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("groups.detail.disciplinesTitle")}
-        </h2>
-        <ChipsList
-          items={detail.disciplines}
-          addLabel={t("groups.detail.addDiscipline")}
-          onAdd={() => {
-            setPicker("disciplines");
-          }}
-          onRemove={(id) => {
-            void saveDisciplines(
-              detail.disciplines.map((d) => d.id).filter((current) => current !== id),
-            );
-          }}
-        />
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {t("groups.detail.disciplinesTitle")}
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPicker("disciplines");
+            }}
+          >
+            {t("groups.detail.editSection")}
+          </Button>
+        </div>
+        <ChipsList items={detail.disciplines} emptyText={t("groups.detail.disciplinesEmpty")} />
       </section>
 
       <section className="space-y-2">
@@ -196,46 +213,24 @@ export function GroupDetailPage({
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("groups.detail.employeesTitle")}
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {detail.employees.map((employee) => (
-            <span
-              key={employee.id}
-              className="inline-flex items-center gap-2 rounded-full border bg-accent py-1 pr-3 pl-1 text-xs font-medium"
-            >
-              <Avatar
-                api={api}
-                uploadId={employee.avatarId}
-                name={employee.name}
-                className="size-5"
-              />
-              {employee.name}
-              <button
-                type="button"
-                aria-label={t("groups.removeChip", { name: employee.name })}
-                onClick={() => {
-                  void saveEmployees(
-                    detail.employees.map((e) => e.id).filter((current) => current !== employee.id),
-                  );
-                }}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {t("groups.detail.employeesTitle")}
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               setPicker("employees");
             }}
-            className="rounded-full border border-dashed px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
           >
-            <PlusIcon aria-hidden className="mr-1 inline size-3" />
-            {t("groups.detail.addEmployee")}
-          </button>
+            {t("groups.detail.editSection")}
+          </Button>
         </div>
+        <ChipsList
+          items={detail.employees.map(withAvatar)}
+          emptyText={t("groups.detail.employeesEmpty")}
+        />
       </section>
 
       <section className="space-y-2">
@@ -283,31 +278,27 @@ export function GroupDetailPage({
         )}
       </section>
 
-      <MultiSelectPicker
+      <ChecklistSheet
         open={picker === "disciplines"}
+        onOpenChange={(open) => {
+          setPicker(open ? "disciplines" : null);
+        }}
         title={t("groups.picker.disciplinesTitle")}
         items={disciplines.data ?? []}
         selected={detail.disciplines.map((d) => d.id)}
         emptyText={t("groups.picker.empty")}
-        onOpenChange={(open) => {
-          setPicker(open ? "disciplines" : null);
-        }}
-        onApply={(ids) => {
-          void saveDisciplines(ids);
-        }}
+        onSubmit={saveDisciplines}
       />
-      <MultiSelectPicker
+      <ChecklistSheet
         open={picker === "employees"}
-        title={t("groups.picker.employeesTitle")}
-        items={employees.data ?? []}
-        selected={detail.employees.map((e) => e.id)}
-        emptyText={t("groups.picker.empty")}
         onOpenChange={(open) => {
           setPicker(open ? "employees" : null);
         }}
-        onApply={(ids) => {
-          void saveEmployees(ids);
-        }}
+        title={t("groups.picker.employeesTitle")}
+        items={(employees.data ?? []).map(withAvatar)}
+        selected={detail.employees.map((e) => e.id)}
+        emptyText={t("groups.picker.empty")}
+        onSubmit={saveEmployees}
       />
 
       <ClientPickerSheet
@@ -339,46 +330,32 @@ export function GroupDetailPage({
   );
 }
 
-/** Список чипов [items] с крестиком удаления и кнопкой добавления. */
+/** Чипы набора [items] только для чтения; при пустом наборе — сообщение [emptyText]. */
 function ChipsList<Id extends string>({
   items,
-  addLabel,
-  onAdd,
-  onRemove,
+  emptyText,
 }: {
-  readonly items: readonly { readonly id: Id; readonly name: string }[];
-  readonly addLabel: string;
-  readonly onAdd: () => void;
-  readonly onRemove: (id: Id) => void;
+  readonly items: readonly ChecklistItem<Id>[];
+  readonly emptyText: string;
 }) {
-  const { t } = useI18n();
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyText}</p>;
+  }
   return (
-    <div className="flex flex-wrap gap-2">
+    <ul className="flex flex-wrap gap-2">
       {items.map((item) => (
-        <span
+        <li
           key={item.id}
-          className="inline-flex items-center gap-1 rounded-full border bg-accent px-3 py-1 text-xs font-medium"
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full border bg-accent py-1 pr-3 text-xs font-medium",
+            item.avatar === undefined ? "pl-3" : "pl-1",
+          )}
         >
+          {item.avatar}
           {item.name}
-          <button
-            type="button"
-            aria-label={t("groups.removeChip", { name: item.name })}
-            onClick={() => {
-              onRemove(item.id);
-            }}
-          >
-            ×
-          </button>
-        </span>
+        </li>
       ))}
-      <button
-        type="button"
-        onClick={onAdd}
-        className="rounded-full border border-dashed px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
-      >
-        {addLabel}
-      </button>
-    </div>
+    </ul>
   );
 }
 

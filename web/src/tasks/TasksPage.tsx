@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -19,18 +18,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
-import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { PageHeader } from "@/ui/PageHeader";
 import { SelectionBar } from "@/ui/SelectionBar";
+import { AssigneeSheet } from "./AssigneeSheet";
+import { TaskCreateSheet } from "./TaskCreateSheet";
 import { TaskListTable, type TaskSortState } from "./TaskListTable";
+import { TaskSheet } from "./TaskSheet";
 import { taskStatusLabelKey } from "./taskStatus";
 import {
   activeFilterCount,
+  panelOf,
   searchOf,
   taskListFilters,
   TASK_VIEW_IDS,
   viewOf,
+  withPanel,
   type TaskListFilters,
   type TaskListSearch,
   type TaskSortColumn,
@@ -77,26 +80,28 @@ function compareTasks(
 /**
  * Страница списка задач: поиск, системные виды («Все»/«Мои»), фильтр по статусам,
  * сортировка на клиенте, таблица с множественным выбором и групповыми действиями.
- * Видимость задач по праву `CAN_VIEW_ALL_TASKS` целиком определяет сервер.
+ * Создание и карточка задачи открываются панелями поверх списка; открытая панель
+ * хранится в адресе. Видимость задач по праву `CAN_VIEW_ALL_TASKS` целиком определяет сервер.
  */
 export function TasksPage({
   api,
   search,
   onSearchChange,
+  onPanelChange,
 }: {
   readonly api: ApiClient;
   readonly search: TaskListSearch;
+  /** Смена фильтров списка: новая запись в истории. */
   readonly onSearchChange: (search: TaskListSearch) => void;
+  /** Открытие или закрытие панели: адрес заменяется, чтобы «Назад» не листал панели. */
+  readonly onPanelChange: (search: TaskListSearch) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
   const filters = useMemo(() => taskListFilters(search), [search]);
   const tasksResult = useQuery(tasksQuery(api, branchId, filters));
-  const employees = useQuery({
-    ...apiQuery(api, branchId, "employees/list"),
-    select: (r) => r.employees,
-  });
+  const panel = panelOf(search);
 
   const tasks = useMemo(() => {
     const list = tasksResult.data?.tasks ?? [];
@@ -106,6 +111,7 @@ export function TasksPage({
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [query, setQuery] = useState(filters.q);
   const [syncedQ, setSyncedQ] = useState(filters.q);
   if (filters.q !== syncedQ) {
@@ -173,18 +179,18 @@ export function TasksPage({
   );
 
   const assign = useCallback(
-    async (assigneeId: EmployeeId | null) => {
+    async (assigneeId: EmployeeId | null): Promise<string | null> => {
       const result =
         assigneeId === null
           ? await api.call("tasks/unassign", { taskIds: selectedIds })
           : await api.call("tasks/assign", { taskIds: selectedIds, assigneeId });
       if (!result.ok) {
-        toast.error(apiErrorMessage(t, result.error));
-        return;
+        return apiErrorMessage(t, result.error);
       }
       setRowSelection({});
       await invalidate();
       toast.success(t("tasks.assigneeChangedToast"));
+      return null;
     },
     [api, invalidate, selectedIds, t],
   );
@@ -200,7 +206,7 @@ export function TasksPage({
         title={t("tasks.title")}
         actions={
           <Button asChild>
-            <Link to="/tasks/new">
+            <Link to="/tasks" search={withPanel(search, { kind: "create" })} replace>
               <PlusIcon aria-hidden />
               {t("tasks.create")}
             </Link>
@@ -303,6 +309,7 @@ export function TasksPage({
           onRowSelectionChange={setRowSelection}
           sort={sort}
           onSort={cycleSort}
+          cardSearch={(taskId) => withPanel(search, { kind: "task", taskId })}
         />
       )}
 
@@ -327,31 +334,14 @@ export function TasksPage({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">{t("tasks.bulkAssign")}</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {(employees.data ?? []).map((employee) => (
-                  <DropdownMenuItem
-                    key={employee.id}
-                    onSelect={() => {
-                      void assign(employee.id);
-                    }}
-                  >
-                    {employee.name}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => {
-                    void assign(null);
-                  }}
-                >
-                  {t("tasks.bulkUnassign")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkAssignOpen(true);
+              }}
+            >
+              {t("tasks.bulkAssign")}
+            </Button>
           </>
         }
       />
@@ -361,6 +351,26 @@ export function TasksPage({
         filters={filters}
         onOpenChange={setFiltersOpen}
         onApply={setFilters}
+      />
+      <AssigneeSheet
+        api={api}
+        open={bulkAssignOpen}
+        onOpenChange={setBulkAssignOpen}
+        onChoose={assign}
+      />
+      <TaskCreateSheet
+        api={api}
+        open={panel?.kind === "create"}
+        onOpenChange={(open) => {
+          onPanelChange(withPanel(search, open ? { kind: "create" } : null));
+        }}
+      />
+      <TaskSheet
+        api={api}
+        taskId={panel?.kind === "task" ? panel.taskId : null}
+        onClose={() => {
+          onPanelChange(withPanel(search, null));
+        }}
       />
     </section>
   );

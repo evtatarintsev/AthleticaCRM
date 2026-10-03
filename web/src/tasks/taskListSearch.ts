@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { TaskStatusSchema, type TaskListRequest, type TaskStatus } from "@/api/generated/contracts";
+import {
+  TaskIdSchema,
+  TaskStatusSchema,
+  type TaskId,
+  type TaskListRequest,
+  type TaskStatus,
+} from "@/api/generated/contracts";
 
 /** Колонка сортировки списка задач; сортировка применяется на клиенте — сервер её не поддерживает. */
 export type TaskSortColumn = "title" | "status" | "assignee" | "dueDate";
@@ -25,6 +31,9 @@ export interface TaskListFilters {
  * Search-параметры адреса `/tasks`. В адресе хранятся только отличия от значений
  * по умолчанию, поэтому фильтры переживают перезагрузку. Некорректное значение
  * сбрасывается к умолчанию схемой (`catch`), а не роняет страницу.
+ *
+ * Кроме фильтров в адресе хранится открытая панель: `task` — карточка задачи,
+ * `create` — создание задачи. К фильтрам списка они не относятся.
  */
 export const TaskListSearchSchema = z.object({
   q: z.string().optional().catch(undefined),
@@ -32,6 +41,8 @@ export const TaskListSearchSchema = z.object({
   statuses: z.array(TaskStatusSchema).optional().catch(undefined),
   sort: z.enum(["title", "status", "assignee", "dueDate"]).optional().catch(undefined),
   dir: z.enum(["asc", "desc"]).optional().catch(undefined),
+  task: TaskIdSchema.optional().catch(undefined),
+  create: z.literal(true).optional().catch(undefined),
 });
 
 /** Search-параметры адреса списка задач. */
@@ -48,7 +59,10 @@ export function taskListFilters(search: TaskListSearch): TaskListFilters {
   };
 }
 
-/** Search-параметры адреса из состояния [filters]: только отличия от значений по умолчанию. */
+/**
+ * Search-параметры адреса из состояния [filters]: только отличия от значений по умолчанию.
+ * Открытую панель не содержат — её добавляет [withPanel].
+ */
 export function searchOf(filters: TaskListFilters): TaskListSearch {
   return {
     ...(filters.q === "" ? {} : { q: filters.q }),
@@ -57,6 +71,32 @@ export function searchOf(filters: TaskListFilters): TaskListSearch {
     ...(filters.sort === "dueDate" ? {} : { sort: filters.sort }),
     ...(filters.dir === "asc" ? {} : { dir: filters.dir }),
   };
+}
+
+/** Открытая поверх списка панель: карточка задачи или создание. */
+export type TaskPanel =
+  { readonly kind: "task"; readonly taskId: TaskId } | { readonly kind: "create" };
+
+/** Открытая панель из search-параметров [search]; карточка важнее создания. */
+export function panelOf(search: TaskListSearch): TaskPanel | null {
+  if (search.task !== undefined) {
+    return { kind: "task", taskId: search.task };
+  }
+  return search.create === true ? { kind: "create" } : null;
+}
+
+/** Search-параметры [search] с открытой панелью [panel] вместо прежней; `null` — без панели. */
+export function withPanel(search: TaskListSearch, panel: TaskPanel | null): TaskListSearch {
+  const filters = searchOf(taskListFilters(search));
+  if (panel === null) {
+    return filters;
+  }
+  switch (panel.kind) {
+    case "task":
+      return { ...filters, task: panel.taskId };
+    case "create":
+      return { ...filters, create: true };
+  }
 }
 
 /** Количество активных фильтров (только мои, статусы) для бейджа кнопки фильтров. */

@@ -68,6 +68,7 @@ import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.scheduleRoutes
 import org.athletica.crm.routes.sessionsRoutes
+import org.athletica.crm.routes.sportCatalogRoutes
 import org.athletica.crm.routes.switchBranchRoute
 import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
@@ -205,6 +206,7 @@ fun Application.configureServer() {
                         homeRoutes(di.views)
                         scheduleRoutes(di.views)
                         disciplinesRoutes(di.disciplines)
+                        sportCatalogRoutes()
                         tariffsRoutes(di.tariffPlans)
                         membershipsRoutes(di.memberships)
                         leadSourcesRoutes(di.leadSources)

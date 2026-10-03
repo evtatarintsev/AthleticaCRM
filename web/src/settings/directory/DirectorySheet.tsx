@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
+import { markExisting, type SuggestionGroup } from "@/forms/nameSuggestions";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
@@ -57,6 +58,19 @@ export interface DirectoryDefinition<Id extends string> {
   readonly alsoInvalidates?: readonly (readonly unknown[])[];
   /** У записей есть необязательное пояснение: оно показывается в списке и редактируется в панели записи. */
   readonly describable?: boolean;
+  /**
+   * Подсказки названия при создании записи в филиале [branchId]; `undefined`, пока они
+   * загружаются или недоступны, — тогда поле названия обычное.
+   */
+  readonly useNameSuggestions?: (
+    api: ApiClient,
+    branchId: BranchId,
+  ) => readonly SuggestionGroup[] | undefined;
+}
+
+/** Справочник без подсказок названия. */
+function noNameSuggestions(): undefined {
+  return undefined;
 }
 
 /**
@@ -111,6 +125,21 @@ function DirectoryPanel<Id extends string>({
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
   const items = definition.useItems(api, branchId);
+  const useNameSuggestions = definition.useNameSuggestions ?? noNameSuggestions;
+  const suggestionGroups = useNameSuggestions(api, branchId);
+  const suggestions = useMemo(
+    () =>
+      suggestionGroups === undefined
+        ? undefined
+        : {
+            groups: suggestionGroups,
+            existing: markExisting(
+              suggestionGroups,
+              (items.data ?? []).map((item) => item.name),
+            ),
+          },
+    [suggestionGroups, items.data],
+  );
   const [editing, setEditing] = useState<Editing<Id>>({ kind: "create" });
   const [editorOpen, setEditorOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -300,6 +329,7 @@ function DirectoryPanel<Id extends string>({
         onOpenChange={setEditorOpen}
         title={t(editing.kind === "create" ? definition.createTitle : definition.editTitle)}
         describable={definition.describable === true}
+        suggestions={editing.kind === "create" ? suggestions : undefined}
         initial={
           editing.kind === "create"
             ? { name: "", description: "" }

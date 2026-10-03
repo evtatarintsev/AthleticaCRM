@@ -2202,6 +2202,39 @@ export const SignUpRequestSchema = z
   .readonly();
 export type SignUpRequest = z.output<typeof SignUpRequestSchema>;
 
+export const SportCatalogNamesSchemaSchema = z
+  .object({
+    ru: z.string(),
+    en: z.string(),
+  })
+  .readonly();
+export type SportCatalogNamesSchema = z.output<typeof SportCatalogNamesSchemaSchema>;
+
+export const SportCatalogDisciplineSchemaSchema = z
+  .object({
+    key: z.string(),
+    names: SportCatalogNamesSchemaSchema,
+    aliases: z.array(z.string()).readonly(),
+  })
+  .readonly();
+export type SportCatalogDisciplineSchema = z.output<typeof SportCatalogDisciplineSchemaSchema>;
+
+export const SportCatalogSportSchemaSchema = z
+  .object({
+    key: z.string(),
+    names: SportCatalogNamesSchemaSchema,
+    disciplines: z.array(SportCatalogDisciplineSchemaSchema).readonly(),
+  })
+  .readonly();
+export type SportCatalogSportSchema = z.output<typeof SportCatalogSportSchemaSchema>;
+
+export const SportCatalogResponseSchema = z
+  .object({
+    sports: z.array(SportCatalogSportSchemaSchema).readonly(),
+  })
+  .readonly();
+export type SportCatalogResponse = z.output<typeof SportCatalogResponseSchema>;
+
 export const SwitchBranchRequestSchema = z
   .object({
     branchId: BranchIdSchema,
@@ -3173,6 +3206,13 @@ export const endpoints = {
     request: RescheduleSessionRequestSchema,
     out: "json",
     response: SessionDetailResponseSchema,
+  },
+  "sport-catalog/list": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: SportCatalogResponseSchema,
   },
   "tariffs/archive": {
     method: "POST",

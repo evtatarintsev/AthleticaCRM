@@ -74,9 +74,12 @@ export const leadSources: DirectoryDefinition<LeadSourceId> = {
   listPath: "lead-sources/list",
   useItems: useLeadSources,
   newId: () => LeadSourceIdSchema.parse(uuidv7()),
-  create: (api, item) => api.call("lead-sources/create", item),
-  update: (api, item) => api.call("lead-sources/update", item),
+  create: (api, item) =>
+    api.call("lead-sources/create", { ...item, description: item.description ?? "" }),
+  update: (api, item) =>
+    api.call("lead-sources/update", { ...item, description: item.description ?? "" }),
   remove: (api, ids) => api.call("lead-sources/delete", { ids }),
+  describable: true,
 };
 
 /** Справочник филиалов; после изменений перечитывается и список филиалов в меню аккаунта. */

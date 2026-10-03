@@ -272,6 +272,11 @@ object Messages {
         override val en = "Lead source not found"
     }
 
+    object LeadSourceDescriptionTooLong : LocalizationTemplate1<Int> {
+        override val ru = { max: Int -> "Пояснение не может быть длиннее $max символов" }
+        override val en = { max: Int -> "Description cannot be longer than $max characters" }
+    }
+
     object MissingParameterEntityType : LocalizationKey {
         override val ru = "Параметр entityType обязателен"
         override val en = "Parameter entityType is required"
@@ -380,5 +385,105 @@ object Messages {
     object DefaultAttendanceLabelTruant : LocalizationKey {
         override val ru = "Прогул"
         override val en = "Truant"
+    }
+
+    object DefaultLeadSourceReferral : LocalizationKey {
+        override val ru = "Рекомендация"
+        override val en = "Referral"
+    }
+
+    object DefaultLeadSourceReferralDescription : LocalizationKey {
+        override val ru = "Посоветовали друзья, знакомые или действующие клиенты"
+        override val en = "Recommended by friends, acquaintances or current clients"
+    }
+
+    object DefaultLeadSourceSocialMedia : LocalizationKey {
+        override val ru = "Соцсети"
+        override val en = "Social media"
+    }
+
+    object DefaultLeadSourceSocialMediaDescription : LocalizationKey {
+        override val ru = "Публикации и страницы в соцсетях, кроме платной рекламы"
+        override val en = "Posts and pages on social networks, excluding paid ads"
+    }
+
+    object DefaultLeadSourcePaidSocialAds : LocalizationKey {
+        override val ru = "Таргетированная реклама"
+        override val en = "Paid social ads"
+    }
+
+    object DefaultLeadSourcePaidSocialAdsDescription : LocalizationKey {
+        override val ru = "Платная реклама в соцсетях"
+        override val en = "Paid advertising on social networks"
+    }
+
+    object DefaultLeadSourceWebSearch : LocalizationKey {
+        override val ru = "Поиск в интернете"
+        override val en = "Web search"
+    }
+
+    object DefaultLeadSourceWebSearchDescription : LocalizationKey {
+        override val ru = "Поисковые системы, включая контекстную рекламу"
+        override val en = "Search engines, including search ads"
+    }
+
+    object DefaultLeadSourceMapsAndReviews : LocalizationKey {
+        override val ru = "Карты и отзывы"
+        override val en = "Maps & reviews"
+    }
+
+    object DefaultLeadSourceMapsAndReviewsDescription : LocalizationKey {
+        override val ru = "Карточка организации на картах и в сервисах отзывов"
+        override val en = "Business listing on maps and review services"
+    }
+
+    object DefaultLeadSourceWebsite : LocalizationKey {
+        override val ru = "Сайт"
+        override val en = "Website"
+    }
+
+    object DefaultLeadSourceWebsiteDescription : LocalizationKey {
+        override val ru = "Пришёл напрямую через сайт организации"
+        override val en = "Came directly through the organization's website"
+    }
+
+    object DefaultLeadSourceWalkIn : LocalizationKey {
+        override val ru = "Вывеска / проходил мимо"
+        override val en = "Walk-in / signage"
+    }
+
+    object DefaultLeadSourceWalkInDescription : LocalizationKey {
+        override val ru = "Увидел зал, вывеску или листовку поблизости"
+        override val en = "Saw the venue, a sign or a flyer nearby"
+    }
+
+    object DefaultLeadSourceEvent : LocalizationKey {
+        override val ru = "Мероприятие"
+        override val en = "Event"
+    }
+
+    object DefaultLeadSourceEventDescription : LocalizationKey {
+        override val ru = "Соревнования, открытая тренировка, день открытых дверей, выступление"
+        override val en = "Competition, open class, open day or performance"
+    }
+
+    object DefaultLeadSourceSchool : LocalizationKey {
+        override val ru = "Школа / детский сад"
+        override val en = "School / kindergarten"
+    }
+
+    object DefaultLeadSourceSchoolDescription : LocalizationKey {
+        override val ru = "Презентации и объявления в школах и детских садах"
+        override val en = "Presentations and announcements at schools and kindergartens"
+    }
+
+    object DefaultLeadSourceOther : LocalizationKey {
+        override val ru = "Другое"
+        override val en = "Other"
+    }
+
+    object DefaultLeadSourceOtherDescription : LocalizationKey {
+        override val ru = "Всё, что не подходит под остальные источники"
+        override val en = "Anything that does not fit the other sources"
     }
 }

@@ -14,6 +14,9 @@ interface LeadSource {
     /** Название источника. */
     val name: String
 
+    /** Пояснение: что относится к этому источнику; [LeadSourceDescription.EMPTY], если не задано. */
+    val description: LeadSourceDescription
+
     /** Сохраняет источник: INSERT при создании либо UPDATE существующего. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun save()
@@ -22,6 +25,6 @@ interface LeadSource {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun delete()
 
-    /** Возвращает копию с новым именем (без записи в БД). */
-    fun withNew(name: String): LeadSource
+    /** Возвращает копию с новыми названием [name] и пояснением [description] (без записи в БД). */
+    fun withNew(name: String, description: LeadSourceDescription): LeadSource
 }

@@ -27,6 +27,7 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.leadSource.LeadSource
+import org.athletica.crm.domain.leadSource.LeadSourceDescription
 import org.athletica.crm.domain.leadSource.LeadSources
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
@@ -206,7 +207,7 @@ private suspend fun createMissingLeadSources(
             .filter { it.isNotEmpty() && !existingByName.containsKey(it) }
             .distinct()
     return toCreate.map { name ->
-        val created = leadSources.new(id = LeadSourceId.new(), name = name)
+        val created = leadSources.new(id = LeadSourceId.new(), name = name, description = LeadSourceDescription.EMPTY)
         created.save()
         created
     }

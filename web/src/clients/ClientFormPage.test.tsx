@@ -13,7 +13,12 @@ import {
 import { ru } from "@/i18n/ru";
 import { appServer, json, openApp } from "@/test/app";
 
-const leadSource = { id: "0199a0b2-7c3e-7d2a-9f10-000000000401", name: "Инстаграм" };
+const leadSource = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000401",
+  name: "Инстаграм",
+  description: "Публикации и страница в Instagram",
+};
+const otherSource = { id: "0199a0b2-7c3e-7d2a-9f10-000000000402", name: "Другое", description: "" };
 
 /** По одному определению на каждый тип дополнительного поля. */
 const customFieldDefs: readonly CustomFieldDefinition[] = [
@@ -111,7 +116,7 @@ if (aliceContact === undefined) {
 function clientFormServer(initial: readonly ClientDetailResponse[] = []) {
   let clients = initial;
   return appServer({
-    "lead-sources/list": () => json({ leadSources: [leadSource] }),
+    "lead-sources/list": () => json({ leadSources: [leadSource, otherSource] }),
     "custom-fields/list": () => json(customFieldDefs),
     "clients/list": () => json({ clients, total: clients.length }),
     "display-settings": () =>
@@ -220,6 +225,27 @@ describe("создание клиента", () => {
         { type: "text", fieldKey: "site", value: "https://example.com" },
       ]),
     );
+  });
+});
+
+describe("источник клиента", () => {
+  it("под полем показывает пояснение выбранного источника", async () => {
+    openApp("/clients/new", clientFormServer().fetch);
+    const user = userEvent.setup();
+    const field = await screen.findByLabelText(ru["clients.leadSource"]);
+    await screen.findByRole("option", { name: leadSource.name });
+    expect(screen.queryByText(leadSource.description)).not.toBeInTheDocument();
+
+    await user.selectOptions(field, leadSource.name);
+    expect(await screen.findByText(leadSource.description)).toBeVisible();
+    expect(field).toHaveAccessibleDescription(leadSource.description);
+
+    await user.selectOptions(field, otherSource.name);
+    expect(screen.queryByText(leadSource.description)).not.toBeInTheDocument();
+    expect(field).not.toHaveAccessibleDescription();
+
+    await user.selectOptions(field, ru["clients.leadSourceNone"]);
+    expect(field).not.toHaveAccessibleDescription();
   });
 });
 

@@ -989,6 +989,7 @@ export const CreateLeadSourceRequestSchema = z
   .object({
     id: LeadSourceIdSchema,
     name: z.string(),
+    description: z.string().optional(),
   })
   .readonly();
 export type CreateLeadSourceRequest = z.output<typeof CreateLeadSourceRequestSchema>;
@@ -1807,6 +1808,7 @@ export const LeadSourceDetailResponseSchema = z
   .object({
     id: LeadSourceIdSchema,
     name: z.string(),
+    description: z.string(),
   })
   .readonly();
 export type LeadSourceDetailResponse = z.output<typeof LeadSourceDetailResponseSchema>;
@@ -2394,6 +2396,7 @@ export const UpdateLeadSourceRequestSchema = z
   .object({
     id: LeadSourceIdSchema,
     name: z.string(),
+    description: z.string().optional(),
   })
   .readonly();
 export type UpdateLeadSourceRequest = z.output<typeof UpdateLeadSourceRequestSchema>;

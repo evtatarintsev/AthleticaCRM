@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
   CreateHallRequestSchema,
+  CreateLeadSourceRequestSchema,
   DeleteHallRequestSchema,
   UpdateHallRequestSchema,
+  UpdateLeadSourceRequestSchema,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
 import { appServer, center, empty, json, openApp } from "@/test/app";
@@ -147,11 +149,23 @@ describe("справочник", () => {
 
   it("источники клиентов", async () => {
     const api = appServer({
-      "lead-sources/list": () => json({ leadSources: [{ id: bigHall.id, name: "Instagram" }] }),
+      "lead-sources/list": () =>
+        json({ leadSources: [{ id: bigHall.id, name: "Instagram", description: "" }] }),
     });
     openApp("/settings/client-sources", api.fetch);
     expect(await screen.findByRole("heading", { name: ru["leadSources.title"] })).toBeVisible();
     expect(await screen.findByText("Instagram")).toBeVisible();
+  });
+
+  it("у справочника без пояснений нет поля «Пояснение»", async () => {
+    const api = hallsServer();
+    openApp("/settings/halls", api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Изменить «Малый зал»" }));
+    const dialog = await screen.findByRole("dialog", { name: ru["halls.edit"] });
+
+    expect(within(dialog).queryByLabelText(ru["directory.description"])).not.toBeInTheDocument();
   });
 
   it("новый филиал сразу доступен для переключения в меню аккаунта", async () => {
@@ -189,5 +203,98 @@ describe("справочник", () => {
     expect(
       await screen.findByRole("menuitem", { name: `${ru["account.switchBranch"]}: Центр` }),
     ).toBeVisible();
+  });
+});
+
+const signage = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000201",
+  name: "Вывеска",
+  description: "Увидел зал или листовку поблизости",
+};
+const other = { id: "0199a0b2-7c3e-7d2a-9f10-000000000202", name: "Другое", description: "" };
+
+/** Сервер со справочником источников в памяти: создание и изменение меняют список. */
+function leadSourcesServer() {
+  let list = [signage, other];
+  return appServer({
+    "lead-sources/list": () => json({ leadSources: list }),
+    "lead-sources/create": ({ body }) => {
+      const created = CreateLeadSourceRequestSchema.parse(body);
+      list = [...list, { ...created, description: created.description ?? "" }];
+      return empty();
+    },
+    "lead-sources/update": ({ body }) => {
+      const updated = UpdateLeadSourceRequestSchema.parse(body);
+      list = list.map((s) =>
+        s.id === updated.id ? { ...updated, description: updated.description ?? "" } : s,
+      );
+      return empty();
+    },
+  });
+}
+
+describe("справочник источников клиентов", () => {
+  it("показывает пояснение под названием", async () => {
+    openApp("/settings/client-sources", leadSourcesServer().fetch);
+
+    const row = await screen.findByRole("button", { name: "Изменить «Вывеска»" });
+
+    expect(within(row).getByText(signage.description)).toBeVisible();
+  });
+
+  it("создаёт источник с пояснением без пробелов по краям", async () => {
+    const api = leadSourcesServer();
+    openApp("/settings/client-sources", api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["action.add"] }));
+    const dialog = await screen.findByRole("dialog", { name: ru["leadSources.create"] });
+    await user.type(within(dialog).getByLabelText(ru["directory.name"]), "Партнёры");
+    await user.type(
+      within(dialog).getByLabelText(ru["directory.description"]),
+      "  Фитнес-клубы-партнёры ",
+    );
+    await user.click(within(dialog).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await screen.findByText("Фитнес-клубы-партнёры")).toBeVisible();
+    const [created] = api
+      .to("lead-sources/create")
+      .map((r) => CreateLeadSourceRequestSchema.parse(r.body));
+    expect(created?.name).toBe("Партнёры");
+    expect(created?.description).toBe("Фитнес-клубы-партнёры");
+  });
+
+  it("очищенное пояснение отправляется пустой строкой", async () => {
+    const api = leadSourcesServer();
+    openApp("/settings/client-sources", api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Изменить «Вывеска»" }));
+    const dialog = await screen.findByRole("dialog", { name: ru["leadSources.edit"] });
+    const description = within(dialog).getByLabelText(ru["directory.description"]);
+    expect(description).toHaveValue(signage.description);
+    await user.clear(description);
+    await user.click(within(dialog).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(api.to("lead-sources/update").map((r) => r.body)).toEqual([
+        { id: signage.id, name: "Вывеска", description: "" },
+      ]);
+    });
+  });
+
+  it("пояснение длиннее 500 символов не отправляется", async () => {
+    const api = leadSourcesServer();
+    openApp("/settings/client-sources", api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Изменить «Другое»" }));
+    const dialog = await screen.findByRole("dialog", { name: ru["leadSources.edit"] });
+    await user.click(within(dialog).getByLabelText(ru["directory.description"]));
+    await user.paste("а".repeat(501));
+    await user.click(within(dialog).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await within(dialog).findByText("Не длиннее 500 символов")).toBeVisible();
+    expect(api.to("lead-sources/update")).toHaveLength(0);
   });
 });

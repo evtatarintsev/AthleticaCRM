@@ -5,8 +5,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AddClientsToGroupRequestSchema,
   ClientListItemSchema,
+  EmployeeListItemSchema,
   GroupDetailResponseSchema,
+  GroupDisciplineSchema,
   RemoveClientFromGroupRequestSchema,
+  SetGroupDisciplinesRequestSchema,
+  SetGroupEmployeesRequestSchema,
   type GroupDetailResponse,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
@@ -33,6 +37,33 @@ const anna = client(1, "Анна Белова");
 const vera = client(2, "Вера Котова");
 const gleb = client(3, "Глеб Носов");
 
+/** Сотрудник списка с порядковым номером [n] и именем [name]. */
+const employee = (n: number, name: string, isActive = true) =>
+  EmployeeListItemSchema.parse({
+    id: `0199a0b2-0000-7000-8000-70000000000${String(n)}`,
+    name,
+    avatarId: null,
+    isOwner: false,
+    isActive,
+    joinedAt: "2026-01-01T00:00:00Z",
+    roles: [],
+    phoneNo: null,
+    email: null,
+  });
+
+const ivanov = employee(1, "Иванов");
+const kozlov = employee(2, "Козлов", false);
+const sidorova = employee(3, "Сидорова");
+
+const boxing = GroupDisciplineSchema.parse({
+  id: "0199a0b2-0000-7000-8000-800000000001",
+  name: "Бокс",
+});
+const judo = GroupDisciplineSchema.parse({
+  id: "0199a0b2-0000-7000-8000-800000000002",
+  name: "Дзюдо",
+});
+
 const juniors = GroupDetailResponseSchema.parse({
   id: "0199a0b2-0000-7000-8000-600000000001",
   name: "Юниоры",
@@ -43,17 +74,51 @@ const juniors = GroupDetailResponseSchema.parse({
   clients: [{ id: anna.id, name: anna.name }],
 });
 
+/** Ответ бизнес-ошибкой «группа не найдена». */
+const groupNotFound = () =>
+  json({ code: "GROUP_NOT_FOUND", message: "Группа не найдена", fields: null }, 404);
+
 /**
- * Поддельный сервер карточки группы: хранит состав и применяет к нему добавление и удаление
- * так же, как сервер. [failRemove] — удаление отвечает бизнес-ошибкой.
+ * Поддельный сервер карточки группы: хранит группу и применяет к ней изменения так же, как
+ * сервер. [failRemove] — удаление клиента отвечает бизнес-ошибкой, [failSet] — замена
+ * дисциплин и тренеров.
  */
-function groupServer(initial: GroupDetailResponse, failRemove = false) {
+function groupServer(
+  initial: GroupDetailResponse,
+  { failRemove = false, failSet = false }: { failRemove?: boolean; failSet?: boolean } = {},
+) {
   let group = initial;
   const all = [anna, vera, gleb];
+  const staff = [ivanov, kozlov, sidorova];
+  const disciplines = [boxing, judo];
   return appServer({
     "groups/detail": () => json(group),
-    "disciplines/list": () => json({ disciplines: [] }),
-    "employees/list": () => json({ employees: [], total: 0 }),
+    "disciplines/list": () => json({ disciplines }),
+    "employees/list": () => json({ employees: staff, total: staff.length }),
+    "groups/set-disciplines": ({ body }) => {
+      if (failSet) {
+        return groupNotFound();
+      }
+      const request = SetGroupDisciplinesRequestSchema.parse(body);
+      group = {
+        ...group,
+        disciplines: disciplines.filter((d) => request.disciplineIds.includes(d.id)),
+      };
+      return empty();
+    },
+    "groups/set-employees": ({ body }) => {
+      if (failSet) {
+        return groupNotFound();
+      }
+      const request = SetGroupEmployeesRequestSchema.parse(body);
+      group = {
+        ...group,
+        employees: staff
+          .filter((e) => request.employeeIds.includes(e.id))
+          .map((e) => ({ id: e.id, name: e.name, avatarId: e.avatarId })),
+      };
+      return empty();
+    },
     "halls/list": () => json({ halls: [] }),
     "clients/list": () => json({ clients: all, total: all.length }),
     "clients/add-to-group": ({ body }) => {
@@ -66,7 +131,7 @@ function groupServer(initial: GroupDetailResponse, failRemove = false) {
     },
     "clients/remove-from-group": ({ body }) => {
       if (failRemove) {
-        return json({ code: "GROUP_NOT_FOUND", message: "Группа не найдена", fields: null }, 404);
+        return groupNotFound();
       }
       const request = RemoveClientFromGroupRequestSchema.parse(body);
       group = { ...group, clients: group.clients.filter((c) => !request.clientIds.includes(c.id)) };
@@ -133,7 +198,7 @@ describe("состав группы в карточке", () => {
   });
 
   it("при ошибке удаления оставляет клиента в составе", async () => {
-    openApp(`/groups/${juniors.id}`, groupServer(juniors, true).fetch);
+    openApp(`/groups/${juniors.id}`, groupServer(juniors, { failRemove: true }).fetch);
     const user = userEvent.setup();
 
     await screen.findByRole("link", { name: anna.name });
@@ -147,5 +212,138 @@ describe("состав группы в карточке", () => {
       expect(toast.error).toHaveBeenCalledWith("Группа не найдена");
     });
     expect(screen.getByRole("link", { name: anna.name })).toBeVisible();
+  });
+});
+
+/** Группа с дисциплиной «Бокс» и тренером «Иванов». */
+const seniors = GroupDetailResponseSchema.parse({
+  ...juniors,
+  disciplines: [boxing],
+  employees: [{ id: ivanov.id, name: ivanov.name, avatarId: null }],
+});
+
+/**
+ * Секция карточки группы с заголовком [title]. Ищется и среди скрытых элементов: пока открыта
+ * панель, страница под ней недоступна вспомогательным технологиям, а заголовок панели может
+ * совпадать с заголовком секции.
+ */
+const section = (title: string) => {
+  const found = screen
+    .getAllByRole("heading", { name: title, hidden: true })
+    .map((heading) => heading.closest("section"))
+    .find((candidate) => candidate !== null);
+  if (!(found instanceof HTMLElement)) {
+    throw new Error(`Нет секции «${title}»`);
+  }
+  return found;
+};
+
+describe("дисциплины и тренеры в карточке", () => {
+  it("показывает чипы без крестиков и действие «Изменить»", async () => {
+    openApp(`/groups/${seniors.id}`, groupServer(seniors).fetch);
+
+    expect(await screen.findByText(boxing.name)).toBeVisible();
+    const disciplines = section(ru["groups.detail.disciplinesTitle"]);
+    const employees = section(ru["groups.detail.employeesTitle"]);
+    expect(within(employees).getByText(ivanov.name)).toBeVisible();
+    expect(
+      screen.queryByRole("button", {
+        name: ru["groups.removeChip"].replace("{name}", boxing.name),
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: ru["groups.removeChip"].replace("{name}", ivanov.name),
+      }),
+    ).not.toBeInTheDocument();
+    expect(within(disciplines).getAllByRole("button")).toHaveLength(1);
+    expect(
+      within(disciplines).getByRole("button", { name: ru["groups.detail.editSection"] }),
+    ).toBeVisible();
+    expect(
+      within(employees).getByRole("button", { name: ru["groups.detail.editSection"] }),
+    ).toBeVisible();
+  });
+
+  it("при пустом наборе показывает сообщения и действие «Изменить»", async () => {
+    openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
+
+    expect(await screen.findByText(ru["groups.detail.disciplinesEmpty"])).toBeVisible();
+    expect(screen.getByText(ru["groups.detail.employeesEmpty"])).toBeVisible();
+    expect(screen.getAllByRole("button", { name: ru["groups.detail.editSection"] })).toHaveLength(
+      2,
+    );
+  });
+
+  it("заменяет тренеров отмеченными в панели, включая неактивных в списке", async () => {
+    const server = groupServer(seniors);
+    openApp(`/groups/${seniors.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    await screen.findByText(ivanov.name);
+    await user.click(
+      within(section(ru["groups.detail.employeesTitle"])).getByRole("button", {
+        name: ru["groups.detail.editSection"],
+      }),
+    );
+    const sheet = await screen.findByRole("dialog", { name: ru["groups.picker.employeesTitle"] });
+    expect(await within(sheet).findByRole("checkbox", { name: ivanov.name })).toBeChecked();
+    expect(within(sheet).getByRole("checkbox", { name: kozlov.name })).not.toBeChecked();
+    await user.click(within(sheet).getByRole("checkbox", { name: ivanov.name }));
+    await user.click(within(sheet).getByRole("checkbox", { name: sidorova.name }));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(
+      SetGroupEmployeesRequestSchema.parse(server.to("groups/set-employees")[0]?.body),
+    ).toEqual({ groupId: seniors.id, employeeIds: [sidorova.id] });
+    const employees = section(ru["groups.detail.employeesTitle"]);
+    expect(await within(employees).findByText(sidorova.name)).toBeVisible();
+    expect(within(employees).queryByText(ivanov.name)).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith(ru["groups.detail.employeesSaved"]);
+  });
+
+  it("снятие всех дисциплин оставляет группу без дисциплин", async () => {
+    const server = groupServer(seniors);
+    openApp(`/groups/${seniors.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    await screen.findByText(boxing.name);
+    await user.click(
+      within(section(ru["groups.detail.disciplinesTitle"])).getByRole("button", {
+        name: ru["groups.detail.editSection"],
+      }),
+    );
+    const sheet = await screen.findByRole("dialog", { name: ru["groups.picker.disciplinesTitle"] });
+    await user.click(await within(sheet).findByRole("checkbox", { name: boxing.name }));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await screen.findByText(ru["groups.detail.disciplinesEmpty"])).toBeVisible();
+    expect(
+      SetGroupDisciplinesRequestSchema.parse(server.to("groups/set-disciplines")[0]?.body),
+    ).toEqual({ groupId: seniors.id, disciplineIds: [] });
+  });
+
+  it("при ошибке сохранения панель остаётся открытой, карточка не меняется", async () => {
+    openApp(`/groups/${seniors.id}`, groupServer(seniors, { failSet: true }).fetch);
+    const user = userEvent.setup();
+
+    await screen.findByText(ivanov.name);
+    await user.click(
+      within(section(ru["groups.detail.employeesTitle"])).getByRole("button", {
+        name: ru["groups.detail.editSection"],
+      }),
+    );
+    const sheet = await screen.findByRole("dialog", { name: ru["groups.picker.employeesTitle"] });
+    await user.click(await within(sheet).findByRole("checkbox", { name: sidorova.name }));
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent("Группа не найдена");
+    expect(within(sheet).getByRole("checkbox", { name: sidorova.name })).toBeChecked();
+    expect(
+      within(section(ru["groups.detail.employeesTitle"])).queryByText(sidorova.name),
+    ).not.toBeInTheDocument();
   });
 });

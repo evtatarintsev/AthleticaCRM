@@ -510,6 +510,9 @@ export const en: Messages<typeof ru> = {
   "groups.detail.loadError": "Failed to load group",
   "groups.detail.disciplinesSaved": "Disciplines updated",
   "groups.detail.employeesSaved": "Coaches updated",
+  "groups.detail.editSection": "Edit",
+  "groups.detail.disciplinesEmpty": "No disciplines specified",
+  "groups.detail.employeesEmpty": "No coaches specified",
 
   "groups.picker.disciplinesTitle": "Disciplines",
   "groups.picker.employeesTitle": "Coaches",

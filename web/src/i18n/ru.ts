@@ -529,6 +529,9 @@ export const ru = {
   "groups.detail.loadError": "Ошибка загрузки группы",
   "groups.detail.disciplinesSaved": "Дисциплины обновлены",
   "groups.detail.employeesSaved": "Тренеры обновлены",
+  "groups.detail.editSection": "Изменить",
+  "groups.detail.disciplinesEmpty": "Дисциплины не указаны",
+  "groups.detail.employeesEmpty": "Тренеры не указаны",
 
   "groups.picker.disciplinesTitle": "Дисциплины",
   "groups.picker.employeesTitle": "Тренеры",

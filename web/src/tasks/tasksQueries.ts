@@ -1,7 +1,9 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import type { ApiClient } from "@/api/client";
 import type { BranchId } from "@/api/generated/contracts";
 import { unwrap } from "@/query/apiFailure";
+import { apiQuery } from "@/query/queries";
+import { useSession } from "@/query/session";
 import { taskListRequest, type TaskListFilters } from "./taskListSearch";
 
 /**
@@ -12,5 +14,14 @@ export function tasksQuery(api: ApiClient, branchId: BranchId, filters: TaskList
   return queryOptions({
     queryKey: ["api", branchId, "tasks/list", filters] as const,
     queryFn: async () => unwrap(await api.call("tasks/list", taskListRequest(filters))),
+  });
+}
+
+/** Сотрудники филиала для выбора исполнителя; запрос общий у всех экранов задач. */
+export function useEmployees(api: ApiClient) {
+  const branchId = useSession(api).currentBranch.id;
+  return useQuery({
+    ...apiQuery(api, branchId, "employees/list"),
+    select: (r) => r.employees,
   });
 }

@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
@@ -58,8 +58,11 @@ const preparePlan = TaskListItemSchemaSchema.parse({
   dueDateEnd: null,
 });
 
-/** Сервер со списком задач [tasks]: фильтрует по `onlyMine`, статусам и тексту, как сервер. */
-function tasksServer(tasks: readonly TaskListItemSchema[]) {
+/**
+ * Сервер со списком задач [tasks]: фильтрует по `onlyMine`, статусам и тексту, как сервер.
+ * [assignFailure] — текст ошибки назначения исполнителя.
+ */
+function tasksServer(tasks: readonly TaskListItemSchema[], assignFailure: string | null = null) {
   return appServer({
     "tasks/list": ({ body }) => {
       const request = TaskListRequestSchema.parse(body);
@@ -88,7 +91,10 @@ function tasksServer(tasks: readonly TaskListItemSchema[]) {
     },
     "employees/list": () => json({ employees: [anna, boris], total: 2 }),
     "tasks/status": () => json({ updated: 1 }),
-    "tasks/assign": () => json({ updated: 1 }),
+    "tasks/assign": () =>
+      assignFailure === null
+        ? json({ updated: 1 })
+        : json({ code: "CONFLICT", message: assignFailure, fields: null }, 409),
     "tasks/unassign": () => json({ updated: 1 }),
   });
 }
@@ -170,7 +176,7 @@ describe("список задач", () => {
     expect(screen.queryByText(/Выбрано/)).not.toBeInTheDocument();
   });
 
-  it("массовое назначение исполнителя отправляет выбранные задачи", async () => {
+  it("массовое назначение через панель выбора отправляет выбранные задачи и снимает выбор", async () => {
     const api = tasksServer([callAnna, preparePlan]);
     openApp("/tasks", api.fetch);
     const user = userEvent.setup();
@@ -179,14 +185,79 @@ describe("список задач", () => {
     await user.click(
       table().getByRole("checkbox", { name: "Выбрать «Подготовить план тренировок»" }),
     );
-
     await user.click(screen.getByRole("button", { name: ru["tasks.bulkAssign"] }));
-    await user.click(await screen.findByRole("menuitem", { name: boris.name }));
+    const picker = within(await screen.findByRole("dialog", { name: ru["tasks.field.assignee"] }));
+    expect(picker.queryByRole("button", { current: true })).not.toBeInTheDocument();
+    await user.click(await picker.findByRole("button", { name: boris.name }));
 
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
     expect(api.to("tasks/assign").map((r) => AssignTaskRequestSchema.parse(r.body))).toEqual([
       { taskIds: [preparePlan.id], assigneeId: boris.id },
     ]);
-
     expect(api.to("tasks/unassign")).toHaveLength(0);
+    expect(screen.queryByText(/Выбрано/)).not.toBeInTheDocument();
+  });
+
+  it("«Не назначен» в массовом назначении снимает исполнителя", async () => {
+    const api = tasksServer([callAnna, preparePlan]);
+    openApp("/tasks", api.fetch);
+    const user = userEvent.setup();
+
+    await screen.findByRole("table");
+    await user.click(table().getByRole("checkbox", { name: "Выбрать «Позвонить Анне»" }));
+    await user.click(screen.getByRole("button", { name: ru["tasks.bulkAssign"] }));
+    const picker = within(await screen.findByRole("dialog", { name: ru["tasks.field.assignee"] }));
+    await user.click(picker.getByRole("button", { name: ru["tasks.assigneeUnassigned"] }));
+
+    await waitFor(() => {
+      expect(api.to("tasks/unassign")).toHaveLength(1);
+    });
+    expect(api.to("tasks/assign")).toHaveLength(0);
+  });
+
+  it("ошибка массового назначения оставляет панель открытой и выбор в списке", async () => {
+    openApp("/tasks", tasksServer([callAnna, preparePlan], "Нет прав").fetch);
+    const user = userEvent.setup();
+
+    await screen.findByRole("table");
+    await user.click(table().getByRole("checkbox", { name: "Выбрать «Позвонить Анне»" }));
+    await user.click(screen.getByRole("button", { name: ru["tasks.bulkAssign"] }));
+    const picker = within(await screen.findByRole("dialog", { name: ru["tasks.field.assignee"] }));
+    await user.click(await picker.findByRole("button", { name: boris.name }));
+
+    expect(await picker.findByRole("alert")).toHaveTextContent("Нет прав");
+    await user.keyboard("{Escape}");
+    expect(await screen.findByText("Выбрано: 1")).toBeVisible();
+  });
+
+  it("«Создать задачу» открывает панель создания поверх списка", async () => {
+    const { history } = openApp("/tasks?onlyMine=true", tasksServer([callAnna]).fetch);
+    const user = userEvent.setup();
+
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("link", { name: ru["tasks.create"] }));
+
+    expect(await screen.findByRole("dialog", { name: ru["tasks.newTitle"] })).toBeVisible();
+    expect(history.location.search).toContain("create=true");
+    expect(history.location.search).toContain("onlyMine=true");
+  });
+
+  it("клик по задаче открывает карточку, закрытие сохраняет фильтр", async () => {
+    const api = tasksServer([callAnna]);
+    const { history } = openApp("/tasks?onlyMine=true", api.fetch);
+    const user = userEvent.setup();
+
+    await screen.findByRole("table");
+    await user.click(table().getByRole("link", { name: "Позвонить Анне" }));
+
+    expect(history.location.search).toContain(`task=${callAnna.id}`);
+    expect(await screen.findByRole("dialog")).toBeVisible();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(history.location.search).not.toContain("task=");
+    });
+    expect(history.location.search).toContain("onlyMine=true");
   });
 });

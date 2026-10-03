@@ -16,12 +16,10 @@ import {
   EmployeeIdSchema,
   GroupIdSchema,
   SessionIdSchema,
-  TaskIdSchema,
   type ClientId,
   type EmployeeId,
   type GroupId,
   type SessionId,
-  type TaskId,
 } from "@/api/generated/contracts";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
@@ -43,8 +41,6 @@ import { GroupListSearchSchema, type GroupListSearch } from "@/groups/groupListS
 import { SchedulePage } from "@/schedule/SchedulePage";
 import { ScheduleSearchSchema, type ScheduleSearch } from "@/schedule/scheduleWeek";
 import { SessionDetailPage } from "@/sessions/SessionDetailPage";
-import { TaskCreatePage } from "@/tasks/TaskCreatePage";
-import { TaskDetailPage } from "@/tasks/TaskDetailPage";
 import { TasksPage } from "@/tasks/TasksPage";
 import { TaskListSearchSchema, type TaskListSearch } from "@/tasks/taskListSearch";
 import { SettingsSearchSchema, type SettingsPanel } from "@/settings/settingsSearch";
@@ -633,7 +629,10 @@ const clientPaymentHistoryRoute = createRoute({
   },
 });
 
-/** Список задач: фильтры и сортировка в search-параметрах адреса. */
+/**
+ * Список задач: фильтры, сортировка и открытая панель (создание или карточка задачи)
+ * в search-параметрах адреса.
+ */
 const tasksRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/tasks",
@@ -649,39 +648,11 @@ const tasksRoute = createRoute({
         onSearchChange={(next: TaskListSearch) => {
           void navigate({ search: next });
         }}
+        onPanelChange={(next: TaskListSearch) => {
+          void navigate({ search: next, replace: true });
+        }}
       />
     );
-  },
-});
-
-/** Создание новой задачи. */
-const taskNewRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/tasks/new",
-  component: function TaskNewRoute() {
-    const { api } = taskNewRoute.useRouteContext();
-    return <TaskCreatePage api={api} />;
-  },
-});
-
-/**
- * Карточка задачи. Некорректный идентификатор не совпадает с маршрутом
- * и даёт «не найдено» без запроса к API.
- */
-const taskRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/tasks/$taskId",
-  params: {
-    parse: ({ taskId }): { taskId: TaskId } | false => {
-      const parsed = TaskIdSchema.safeParse(taskId);
-      return parsed.success ? { taskId: parsed.data } : false;
-    },
-    stringify: ({ taskId }) => ({ taskId }),
-  },
-  component: function TaskRoute() {
-    const { api } = taskRoute.useRouteContext();
-    const { taskId } = taskRoute.useParams();
-    return <TaskDetailPage api={api} taskId={taskId} />;
   },
 });
 
@@ -726,8 +697,6 @@ const routeTree = rootRoute.addChildren([
     clientVisitHistoryRoute,
     clientPaymentHistoryRoute,
     tasksRoute,
-    taskNewRoute,
-    taskRoute,
   ]),
 ]);
 
@@ -788,7 +757,6 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/clients": true,
   "/clients/new": true,
   "/tasks": true,
-  "/tasks/new": true,
 };
 
 /** Истина, если [path] — маршрут веб-клиента без параметров. */

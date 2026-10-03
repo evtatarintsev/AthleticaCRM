@@ -7,7 +7,7 @@ import {
   type RowSelectionState,
 } from "@tanstack/react-table";
 import type { Dispatch, SetStateAction } from "react";
-import type { TaskListItemSchema } from "@/api/generated/contracts";
+import type { TaskId, TaskListItemSchema } from "@/api/generated/contracts";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { useI18n } from "@/i18n/context";
 import { TaskStatusBadge } from "./TaskStatusBadge";
-import type { TaskSortColumn } from "./taskListSearch";
+import type { TaskListSearch, TaskSortColumn } from "./taskListSearch";
 
 /** Возможности таблицы: выбор строк. Сортировка — на клиенте, отдельным состоянием. */
 const features = tableFeatures({ rowSelectionFeature });
@@ -44,11 +44,14 @@ export interface TaskListTableProps {
   readonly sort: TaskSortState;
   /** Циклически меняет сортировку по колонке [column]. */
   readonly onSort: (column: TaskSortColumn) => void;
+  /** Search-параметры адреса списка с открытой карточкой задачи [taskId]. */
+  readonly cardSearch: (taskId: TaskId) => TaskListSearch;
 }
 
 /**
  * Список задач: таблица на широком экране (≥ 768 px) и карточки на узком.
- * Клик по строке и карточке открывает карточку задачи, чекбоксы выбирают строки.
+ * Клик по строке и карточке открывает панель карточки задачи поверх списка, чекбоксы
+ * выбирают строки.
  */
 export function TaskListTable(props: TaskListTableProps) {
   const { t, format } = useI18n();
@@ -120,8 +123,9 @@ export function TaskListTable(props: TaskListTableProps) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    to="/tasks/$taskId"
-                    params={{ taskId: row.original.id }}
+                    to="/tasks"
+                    search={props.cardSearch(row.original.id)}
+                    replace
                     className="font-medium after:absolute after:inset-0 hover:underline"
                   >
                     {row.original.title}
@@ -150,8 +154,9 @@ export function TaskListTable(props: TaskListTableProps) {
               className="relative z-10 size-4 shrink-0 accent-primary"
             />
             <Link
-              to="/tasks/$taskId"
-              params={{ taskId: row.original.id }}
+              to="/tasks"
+              search={props.cardSearch(row.original.id)}
+              replace
               className="min-w-0 flex-1 after:absolute after:inset-0"
             >
               <span className="block truncate font-medium">{row.original.title}</span>

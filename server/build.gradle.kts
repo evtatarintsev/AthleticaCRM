@@ -5,6 +5,10 @@ plugins {
     application
 }
 
+kotlin {
+    jvmToolchain(25)
+}
+
 group = "org.athletica.crm"
 version = "1.0.0"
 application {

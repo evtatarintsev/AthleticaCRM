@@ -126,5 +126,5 @@ athletica admin org debit 019e1c25-7d23-7234-9ef8-160057bc67e4 500 --description
 
 ## Требования
 
-- Java 17+ (базовый образ `Dockerfile.server` — `eclipse-temurin:17`)
+- Java 25+ (базовый образ `Dockerfile.server` — `eclipse-temurin:25`)
 - PostgreSQL с базой данных AthleticaCRM

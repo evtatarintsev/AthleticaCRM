@@ -122,59 +122,26 @@ CONTEXT=$(mktemp -d)
 BUILD_LOG=$(mktemp)
 trap 'rm -rf "$CONTEXT" "$BUILD_LOG"' EXIT
 
-# Тихая сборка: вывод docker показывается только если сборка провалилась
-# и повторять её уже нечем (у образа сервера есть запасная база).
 build_image() {
-    local tag="$1" dockerfile="$2" quiet="${3:-0}"
-    if docker build --platform "$PLATFORM" -f "$dockerfile" -t "$tag" "$CONTEXT" \
-        >"$BUILD_LOG" 2>&1; then
-        return 0
-    fi
-    [ "$quiet" = "1" ] && return 1
-    cat "$BUILD_LOG" >&2
-    die "не собрался образ $tag"
+    local tag="$1" dockerfile="$2"
+    docker build --platform "$PLATFORM" -f "$dockerfile" -t "$tag" "$CONTEXT" \
+        >"$BUILD_LOG" 2>&1 || { cat "$BUILD_LOG" >&2; die "не собрался образ $tag"; }
 }
 
-# Версия JDK, под которую собран jar: major в class-файле минус 44
-# (61 → 17, 69 → 25). CI собирает внутри eclipse-temurin:17-jdk и всегда
-# получает 17, локальный Gradle — под тем JDK, что стоит у разработчика
-# (см. .sdkmanrc). Базовый образ подбирается под байткод, иначе JRE падает
-# с UnsupportedClassVersionError на старте.
-jar_jdk() {
-    local major
-    major=$(unzip -p "$1" org/athletica/crm/ApplicationKt.class 2>/dev/null |
-        od -An -tu1 -j7 -N1 | tr -d ' \n')
-    [ -n "$major" ] || die "не удалось прочитать версию байткода из $1"
-    echo $((major - 44))
-}
-
+# Тот же JRE, что в Dockerfile.server: toolchain в Gradle закреплён на 25,
+# поэтому байткод jar от JDK разработчика не зависит.
 if [ "$DEPLOY_SERVER" = "1" ]; then
-    JDK=$(jar_jdk "$JAR")
-    info "Собираю образ сервера (байткод Java $JDK)"
-    if [ "$JDK" != "17" ]; then
-        warn "Dockerfile.server в CI использует JRE 17, локальный jar собран под Java $JDK."
-        hint "беру eclipse-temurin:$JDK-jre; чтобы стенд и прод были на одном JRE,"
-        hint "закрепите toolchain в Gradle или соберите под JDK 17 (sdk use java 17…)"
-    fi
+    info "Собираю образ сервера"
     cp "$JAR" "$CONTEXT/athletica.jar"
-    write_server_dockerfile() {
-        cat > "$CONTEXT/server.Dockerfile" <<DOCKERFILE
-FROM eclipse-temurin:$JDK-jre$1
+    cat > "$CONTEXT/server.Dockerfile" <<'DOCKERFILE'
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 COPY athletica.jar athletica.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "athletica.jar"]
 CMD ["serve"]
 DOCKERFILE
-    }
-    # Для части версий Temurin alpine-образа нет под нужную архитектуру —
-    # тогда откатываемся на обычный (glibc) вариант.
-    write_server_dockerfile "-alpine"
-    if ! build_image "$IMAGE_SERVER" "$CONTEXT/server.Dockerfile" 1; then
-        warn "eclipse-temurin:$JDK-jre-alpine недоступен для $PLATFORM, беру eclipse-temurin:$JDK-jre"
-        write_server_dockerfile ""
-        build_image "$IMAGE_SERVER" "$CONTEXT/server.Dockerfile"
-    fi
+    build_image "$IMAGE_SERVER" "$CONTEXT/server.Dockerfile"
 fi
 
 if [ "$DEPLOY_FRONTEND" = "1" ]; then

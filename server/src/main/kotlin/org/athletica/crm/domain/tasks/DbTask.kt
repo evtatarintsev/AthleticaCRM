@@ -32,6 +32,8 @@ internal data class DbTask(
     override val createdAt: Instant,
     override val attachments: List<UploadId>,
     private val previousStatus: TaskStatus,
+    /** Вложения на момент загрузки из БД; [save] пишет только разницу с ними. */
+    private val persistedAttachments: List<UploadId>,
 ) : Task {
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
@@ -65,33 +67,25 @@ internal data class DbTask(
             .bind("orgId", orgId)
             .execute()
 
-        if (attachments.isEmpty()) {
-            tr.sql("DELETE FROM task_attachments WHERE task_id = :taskId")
+        val removed = persistedAttachments - attachments.toSet()
+        if (removed.isNotEmpty()) {
+            tr.sql("DELETE FROM task_attachments WHERE task_id = :taskId AND upload_id = ANY(:uploadIds)")
                 .bind("taskId", id)
+                .bind("uploadIds", removed)
                 .execute()
-        } else {
+        }
+
+        (attachments - persistedAttachments.toSet()).forEach { uploadId ->
             tr.sql(
                 """
-                DELETE FROM task_attachments
-                WHERE task_id = :taskId AND NOT (upload_id = ANY(:uploadIds))
+                INSERT INTO task_attachments (task_id, upload_id)
+                VALUES (:taskId, :uploadId)
+                ON CONFLICT DO NOTHING
                 """.trimIndent(),
             )
                 .bind("taskId", id)
-                .bind("uploadIds", attachments)
+                .bind("uploadId", uploadId)
                 .execute()
-
-            attachments.forEach { uploadId ->
-                tr.sql(
-                    """
-                    INSERT INTO task_attachments (task_id, upload_id)
-                    VALUES (:taskId, :uploadId)
-                    ON CONFLICT DO NOTHING
-                    """.trimIndent(),
-                )
-                    .bind("taskId", id)
-                    .bind("uploadId", uploadId)
-                    .execute()
-            }
         }
     }
 

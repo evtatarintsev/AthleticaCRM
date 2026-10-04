@@ -50,7 +50,20 @@ const customFieldDefs: readonly CustomFieldDefinition[] = [
 ];
 
 /** Поддельный сервер: клиент, его заметки и документы в памяти. */
-function detailServer(initial: ClientDetailResponse, notes: readonly ClientNoteSchema[] = []) {
+/** Загруженный файл паспорта клиента. */
+const passport = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000801",
+  url: "https://files.example.com/passport.pdf",
+  originalName: "passport.pdf",
+  contentType: "application/pdf",
+  sizeBytes: 1234,
+};
+
+function detailServer(
+  initial: ClientDetailResponse,
+  notes: readonly ClientNoteSchema[] = [],
+  uploadInfo: typeof passport = passport,
+) {
   let client = initial;
   let currentNotes = notes;
   return appServer({
@@ -91,22 +104,8 @@ function detailServer(initial: ClientDetailResponse, notes: readonly ClientNoteS
       currentNotes = currentNotes.filter((note) => note.id !== request.noteId);
       return json({ notes: currentNotes });
     },
-    upload: () =>
-      json({
-        id: "0199a0b2-7c3e-7d2a-9f10-000000000801",
-        url: "https://files.example.com/passport.pdf",
-        originalName: "passport.pdf",
-        contentType: "application/pdf",
-        sizeBytes: 1234,
-      }),
-    "upload/info": () =>
-      json({
-        id: "0199a0b2-7c3e-7d2a-9f10-000000000801",
-        url: "https://files.example.com/passport.pdf",
-        originalName: "passport.pdf",
-        contentType: "application/pdf",
-        sizeBytes: 1234,
-      }),
+    upload: () => json(passport),
+    "upload/info": () => json(uploadInfo),
     "clients/docs/attach": ({ body }) => {
       const request = AttachClientDocRequestSchema.parse(body);
       client = {
@@ -202,19 +201,57 @@ describe("карточка клиента", () => {
     const file = new File(["content"], "passport.pdf", { type: "application/pdf" });
     await user.upload(fileInput, file);
 
-    const docLink = await screen.findByRole("link", { name: "passport.pdf" });
-    expect(docLink).toHaveAttribute("href", "https://files.example.com/passport.pdf");
+    expect(await screen.findByRole("button", { name: "Открыть «passport.pdf»" })).toBeEnabled();
 
     await user.click(
       screen.getByRole("button", {
         name: ru["clients.detail.deleteDoc"].replace("{name}", "passport.pdf"),
       }),
     );
-    await user.click(screen.getByRole("button", { name: ru["action.delete"] }));
+    const confirm = await screen.findByRole("dialog", {
+      name: ru["clients.detail.deleteDocTitle"],
+    });
+    await user.click(within(confirm).getByRole("button", { name: ru["action.delete"] }));
 
     await waitFor(() => {
       expect(screen.getByText(ru["clients.detail.noDocuments"])).toBeInTheDocument();
     });
+  });
+
+  it("документ-изображение показывается миниатюрой и открывается в просмотрщике", async () => {
+    const withDoc = ClientDetailResponseSchema.parse({
+      ...alice,
+      docs: [
+        {
+          id: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+          uploadId: passport.id,
+          name: "Справка от врача",
+          createdAt: "2024-01-01T10:00:00Z",
+        },
+      ],
+    });
+    const scan = {
+      ...passport,
+      url: "https://files.example.com/scan.jpg",
+      originalName: "scan.jpg",
+      contentType: "image/jpeg",
+    };
+    openApp(`/clients/${alice.id}`, detailServer(withDoc, [], scan).fetch);
+    const user = userEvent.setup();
+
+    const tile = await screen.findByRole("button", { name: "Открыть «Справка от врача»" });
+    await waitFor(() => {
+      expect(tile.querySelector("img")).toHaveAttribute(
+        "src",
+        "https://files.example.com/scan.jpg",
+      );
+    });
+    await user.click(tile);
+
+    const viewer = within(
+      await screen.findByRole("dialog", { name: ru["attachments.viewerTitle"] }),
+    );
+    expect(viewer.getByRole("img", { name: "Справка от врача" })).toBeVisible();
   });
 
   it("показывает дополнительные поля клиента", async () => {

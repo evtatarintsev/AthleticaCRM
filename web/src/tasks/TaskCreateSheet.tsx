@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { PlusIcon, XIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import { TaskIdSchema, type UploadResponse } from "@/api/generated/contracts";
@@ -11,6 +11,7 @@ import { useI18n } from "@/i18n/context";
 import { uuidv7 } from "@/lib/uuid";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
+import { AttachmentList } from "@/ui/attachments/AttachmentList";
 import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
 import { AssigneeSheet } from "./AssigneeSheet";
@@ -201,24 +202,17 @@ function NewAttachments({
       {attachments.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("tasks.noAttachments")}</p>
       ) : (
-        <ul className="divide-y">
-          {attachments.map((attachment) => (
-            <li key={attachment.id} className="flex items-center gap-2 py-2 text-sm">
-              <span className="flex-1 truncate">{attachment.originalName}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t("tasks.removeAttachment", { name: attachment.originalName })}
-                onClick={() => {
-                  onChange(attachments.filter((a) => a.id !== attachment.id));
-                }}
-              >
-                <XIcon aria-hidden />
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <AttachmentList
+          items={attachments.map((attachment) => ({
+            key: attachment.id,
+            name: attachment.originalName,
+            file: attachment,
+          }))}
+          onRemove={(item) => {
+            onChange(attachments.filter((a) => a.id !== item.key));
+          }}
+          removeLabel={(name) => t("tasks.removeAttachment", { name })}
+        />
       )}
       <input
         ref={fileInput}

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PencilIcon, PlusIcon, XIcon } from "lucide-react";
+import { PencilIcon, PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import {
@@ -25,6 +25,7 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
+import { AttachmentList } from "@/ui/attachments/AttachmentList";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import { AssigneeSheet } from "./AssigneeSheet";
 import { PickerField } from "./TaskFields";
@@ -221,31 +222,19 @@ function TaskCard({ api, task }: { readonly api: ApiClient; readonly task: TaskD
           {task.attachments.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("tasks.noAttachments")}</p>
           ) : (
-            <ul className="divide-y">
-              {task.attachments.map((attachment) => (
-                <li key={attachment.id} className="flex items-center gap-2 py-2 text-sm">
-                  <a
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 truncate text-primary underline"
-                  >
-                    {attachment.originalName}
-                  </a>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("tasks.removeAttachment", { name: attachment.originalName })}
-                    onClick={() => {
-                      void detach(attachment.id);
-                    }}
-                  >
-                    <XIcon aria-hidden />
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            <AttachmentList
+              items={task.attachments.map((attachment) => ({
+                key: attachment.id,
+                name: attachment.originalName,
+                file: attachment,
+              }))}
+              onRemove={(item) => {
+                if (item.file !== null) {
+                  void detach(item.file.id);
+                }
+              }}
+              removeLabel={(name) => t("tasks.removeAttachment", { name })}
+            />
           )}
           <input
             ref={fileInput}

@@ -2,6 +2,9 @@ package org.athletica.crm.domain.tasks
 
 import arrow.core.getOrElse
 import arrow.core.raise.context.either
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
@@ -22,6 +25,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.junit.Before
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -305,6 +309,42 @@ class DbTasksTest {
                     .list { row -> row.asString(0) }
                     .toSet()
             assertEquals(setOf(upload2.value.toString()), remaining)
+        }
+
+    @Test
+    fun `параллельные attach в отдельных транзакциях сохраняют все вложения`() =
+        runTest {
+            val uploads = List(4) { insertUpload() }
+            val task =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                        }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            val loadedCount = AtomicInteger()
+            val allLoaded = CompletableDeferred<Unit>()
+            uploads
+                .map { upload ->
+                    async {
+                        either {
+                            TestPostgres.db.transaction {
+                                context(ctx) {
+                                    val loaded = tasks.byId(task.id)
+                                    if (loadedCount.incrementAndGet() == uploads.size) {
+                                        allLoaded.complete(Unit)
+                                    }
+                                    allLoaded.await()
+                                    loaded.attach(upload).save()
+                                }
+                            }
+                        }.getOrElse { fail("Unexpected error: $it") }
+                    }
+                }.awaitAll()
+
+            assertEquals(uploads.size.toLong(), countAttachments(task.id))
         }
 
     // ─── byIds() ─────────────────────────────────────────────────────────────

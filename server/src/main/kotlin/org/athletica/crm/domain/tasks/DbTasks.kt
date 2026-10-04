@@ -50,7 +50,11 @@ class DbTasks : Tasks {
         }
 
         val attachmentsByTask = loadAttachments(rows.map { it.id }, tr)
-        val byId = rows.associate { it.id to it.copy(attachments = attachmentsByTask[it.id] ?: emptyList()) }
+        val byId =
+            rows.associate {
+                val attachments = attachmentsByTask[it.id] ?: emptyList()
+                it.id to it.copy(attachments = attachments, persistedAttachments = attachments)
+            }
         return ids.map { byId.getValue(it) }
     }
 
@@ -98,6 +102,7 @@ class DbTasks : Tasks {
             createdAt = now,
             attachments = emptyList(),
             previousStatus = TaskStatus.PENDING,
+            persistedAttachments = emptyList(),
         )
     }
 
@@ -135,5 +140,6 @@ class DbTasks : Tasks {
             createdAt = asInstant("created_at"),
             attachments = attachments,
             previousStatus = TaskStatus.valueOf(asString("status")),
+            persistedAttachments = attachments,
         )
 }

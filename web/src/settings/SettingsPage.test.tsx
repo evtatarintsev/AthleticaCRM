@@ -21,7 +21,7 @@ describe("страница настроек", () => {
         "/settings?panel=branches",
         "/settings?panel=disciplines",
         "/settings?panel=halls",
-        "/settings/roles",
+        "/settings?panel=roles",
         "/settings?panel=client-sources",
         "/settings?panel=client-additional-attributes",
         "/settings?panel=client-import",
@@ -40,7 +40,6 @@ describe("страница настроек", () => {
     const { history } = openApp("/settings", appServer({}).fetch);
     const titles = [
       ru["settings.itemSubscriptionTemplates"],
-      ru["settings.itemRoles"],
       ru["settings.itemActivityLog"],
       ru["settings.itemChannels"],
     ];
@@ -56,7 +55,7 @@ describe("страница настроек", () => {
     }
   }, 15000);
 
-  it("пункты разделов «Пользователь», «Основное» и «Клиенты» открывают панель на странице", async () => {
+  it("пункты разделов «Пользователь», «Основное», «Клиенты» и роли открывают панель на странице", async () => {
     const user = userEvent.setup();
     const { history } = openApp("/settings", appServer({}).fetch);
     const items = [
@@ -68,6 +67,7 @@ describe("страница настроек", () => {
       [ru["settings.itemBranches"], ru["branches.title"]],
       [ru["settings.itemDisciplines"], ru["disciplines.title"]],
       [ru["settings.itemHalls"], ru["halls.title"]],
+      [ru["settings.itemRoles"], ru["roles.title"]],
       [ru["settings.itemClientSources"], ru["leadSources.title"]],
       [ru["settings.itemClientAdditionalAttributes"], ru["customFields.title"]],
       [ru["settings.itemClientImport"], ru["import.title"]],

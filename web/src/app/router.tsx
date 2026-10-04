@@ -29,9 +29,8 @@ import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
 import { ClientIssueSubscriptionPage } from "@/clients/ClientIssueSubscriptionPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
-import { EmployeeCreatePage } from "@/employees/EmployeeCreatePage";
 import { EmployeeDetailPage } from "@/employees/EmployeeDetailPage";
-import { EmployeeEditPage } from "@/employees/EmployeeEditPage";
+import { EmployeeDetailSearchSchema, EmployeeListSearchSchema } from "@/employees/employeeSearch";
 import { EmployeesPage } from "@/employees/EmployeesPage";
 import { GroupsPage } from "@/groups/GroupsPage";
 import { GroupCreatePage } from "@/groups/GroupCreatePage";
@@ -325,27 +324,28 @@ const auditLogRoute = createRoute({
   },
 });
 
-/** Список сотрудников организации. */
+/** Список сотрудников организации; открытая панель создания — в search-параметрах адреса. */
 const employeesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/employees",
+  validateSearch: EmployeeListSearchSchema,
   component: function EmployeesRoute() {
     const { api } = employeesRoute.useRouteContext();
-    return <EmployeesPage api={api} />;
+    const { create } = employeesRoute.useSearch();
+    const navigate = employeesRoute.useNavigate();
+    return (
+      <EmployeesPage
+        api={api}
+        createOpen={create === true}
+        onCreateOpenChange={(open) => {
+          void navigate({ search: open ? { create: true } : {}, replace: true });
+        }}
+      />
+    );
   },
 });
 
-/** Создание нового сотрудника. */
-const employeeCreateRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/employees/new",
-  component: function EmployeeCreateRoute() {
-    const { api } = employeeCreateRoute.useRouteContext();
-    return <EmployeeCreatePage api={api} />;
-  },
-});
-
-/** Параметр `employeeId` маршрутов карточки и редактирования сотрудника. */
+/** Параметр `employeeId` карточки сотрудника. */
 const employeeIdParams = {
   parse: ({ employeeId }: { employeeId: string }): { employeeId: EmployeeId } | false => {
     const parsed = EmployeeIdSchema.safeParse(employeeId);
@@ -354,27 +354,27 @@ const employeeIdParams = {
   stringify: ({ employeeId }: { employeeId: EmployeeId }) => ({ employeeId }),
 };
 
-/** Карточка сотрудника. */
+/** Карточка сотрудника; открытая панель редактирования — в search-параметрах адреса. */
 const employeeDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/employees/$employeeId",
   params: employeeIdParams,
+  validateSearch: EmployeeDetailSearchSchema,
   component: function EmployeeDetailRoute() {
     const { api } = employeeDetailRoute.useRouteContext();
     const { employeeId } = employeeDetailRoute.useParams();
-    return <EmployeeDetailPage api={api} employeeId={employeeId} />;
-  },
-});
-
-/** Редактирование сотрудника. */
-const employeeEditRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/employees/$employeeId/edit",
-  params: employeeIdParams,
-  component: function EmployeeEditRoute() {
-    const { api } = employeeEditRoute.useRouteContext();
-    const { employeeId } = employeeEditRoute.useParams();
-    return <EmployeeEditPage api={api} employeeId={employeeId} />;
+    const { edit } = employeeDetailRoute.useSearch();
+    const navigate = employeeDetailRoute.useNavigate();
+    return (
+      <EmployeeDetailPage
+        api={api}
+        employeeId={employeeId}
+        editOpen={edit === true}
+        onEditOpenChange={(open) => {
+          void navigate({ search: open ? { edit: true } : {}, replace: true });
+        }}
+      />
+    );
   },
 });
 
@@ -685,9 +685,7 @@ const routeTree = rootRoute.addChildren([
     groupRoute,
     groupEditRoute,
     employeesRoute,
-    employeeCreateRoute,
     employeeDetailRoute,
-    employeeEditRoute,
     clientsRoute,
     clientNewRoute,
     clientRoute,
@@ -753,7 +751,6 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/groups": true,
   "/groups/new": true,
   "/employees": true,
-  "/employees/new": true,
   "/clients": true,
   "/clients/new": true,
   "/tasks": true,

@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
+import { Input } from "@/components/ui/input";
 import { FormAlert } from "@/forms/FormAlert";
+import { useI18n } from "@/i18n/context";
 import { EditSheet, EditSheetForm } from "./EditSheet";
 import { useEditSheet } from "./editSheetContext";
 
@@ -28,6 +30,13 @@ interface ChecklistSheetProps<Id extends string> {
   /** Сообщение при пустом списке [items]. */
   readonly emptyText: string;
   /**
+   * Подпись поля поиска по подписям записей; без неё поля поиска нет. Нужна длинным спискам,
+   * например правам и ролям сотрудника.
+   */
+  readonly searchLabel?: string | undefined;
+  /** Подпись кнопки подтверждения вместо «Сохранить». */
+  readonly submitLabel?: string | undefined;
+  /**
    * Сохранение нового набора: `null` — успех, панель закрывается; строка — текст ошибки,
    * панель остаётся открытой с прежними отметками.
    */
@@ -38,6 +47,8 @@ interface ChecklistSheetProps<Id extends string> {
  * Панель справа для замены небольшого набора записей целиком: все записи [items] с
  * чекбоксами, отмечен текущий набор [selected]. «Сохранить» передаёт отмеченные в
  * `onSubmit`, «Отмена» ничего не меняет; изменённые отметки защищены подтверждением.
+ * Поиск [ChecklistSheetProps.searchLabel] только скрывает записи: отмеченные, но скрытые
+ * поиском записи остаются в наборе.
  */
 export function ChecklistSheet<Id extends string>({
   open,
@@ -57,10 +68,14 @@ function ChecklistContent<Id extends string>({
   items,
   selected,
   emptyText,
+  searchLabel,
+  submitLabel,
   onSubmit,
 }: Omit<ChecklistSheetProps<Id>, "open" | "onOpenChange" | "title">) {
+  const { t } = useI18n();
   const { close } = useEditSheet();
   const [draft, setDraft] = useState<ReadonlySet<Id>>(new Set(selected));
+  const [query, setQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +91,10 @@ function ChecklistContent<Id extends string>({
     }
     setDraft(next);
   };
+
+  const needle = query.trim().toLocaleLowerCase();
+  const visible =
+    needle === "" ? items : items.filter((item) => item.name.toLocaleLowerCase().includes(needle));
 
   const submit = async () => {
     setSubmitting(true);
@@ -93,16 +112,37 @@ function ChecklistContent<Id extends string>({
     <EditSheetForm
       dirty={dirty}
       submitting={submitting}
+      submitLabel={submitLabel ?? t("action.save")}
       onSubmit={() => {
         void submit();
       }}
     >
+      {searchLabel !== undefined && items.length > 0 && (
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          }}
+          placeholder={searchLabel}
+          aria-label={searchLabel}
+        />
+      )}
       {error !== null && <FormAlert message={error} />}
-      {items.length === 0 ? (
+      {items.length === 0 && (
         <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>
-      ) : (
+      )}
+      {items.length > 0 && visible.length === 0 && (
+        <p className="py-6 text-center text-sm text-muted-foreground">{t("picker.nothingFound")}</p>
+      )}
+      {visible.length > 0 && (
         <ul className="divide-y">
-          {items.map((item) => (
+          {visible.map((item) => (
             <li key={item.id}>
               <label className="flex cursor-pointer items-center gap-3 px-1 py-3 text-sm hover:bg-accent has-disabled:cursor-default has-disabled:opacity-50">
                 <input

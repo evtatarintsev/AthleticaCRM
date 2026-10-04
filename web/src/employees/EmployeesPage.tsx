@@ -15,6 +15,7 @@ import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
 import { PageHeader } from "@/ui/PageHeader";
 import { OwnerBadge, RoleChip, StatusBadge } from "./EmployeeBadges";
+import { EmployeeSheet } from "./EmployeeSheet";
 import { SendAccessDialog } from "./SendAccessDialog";
 
 /** Истина, если [employee] подходит под текст поиска [query]: по имени, email или телефону. */
@@ -32,10 +33,21 @@ function matchesSearch(employee: EmployeeListItem, query: string): boolean {
 /**
  * Список сотрудников организации: поиск, быстрый фильтр «только активные», таблица на широких
  * экранах и карточки на узких. API отдаёт список целиком без серверной фильтрации, поэтому поиск
- * и фильтр применяются на клиенте. Переход к карточке сотрудника и созданию — ссылками роутера;
- * отправка доступа неактивному сотруднику — диалогом прямо из строки.
+ * и фильтр применяются на клиенте. Переход к карточке сотрудника — ссылкой роутера; создание —
+ * панелью поверх списка, открытой, пока [createOpen]; отправка доступа неактивному сотруднику —
+ * диалогом прямо из строки.
  */
-export function EmployeesPage({ api }: { api: ApiClient }) {
+export function EmployeesPage({
+  api,
+  createOpen,
+  onCreateOpenChange,
+}: {
+  readonly api: ApiClient;
+  /** Открыта ли панель создания сотрудника. */
+  readonly createOpen: boolean;
+  /** Вызывается, когда панель создания надо открыть или закрыть. */
+  readonly onCreateOpenChange: (open: boolean) => void;
+}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
@@ -60,7 +72,7 @@ export function EmployeesPage({ api }: { api: ApiClient }) {
         title={t("employees.title")}
         actions={
           <Button asChild>
-            <Link to="/employees/new">
+            <Link to="/employees" search={{ create: true }} replace>
               <PlusIcon aria-hidden />
               {t("employees.add")}
             </Link>
@@ -176,6 +188,12 @@ export function EmployeesPage({ api }: { api: ApiClient }) {
           }}
         />
       )}
+      <EmployeeSheet
+        api={api}
+        open={createOpen}
+        onOpenChange={onCreateOpenChange}
+        employee={null}
+      />
     </section>
   );
 }

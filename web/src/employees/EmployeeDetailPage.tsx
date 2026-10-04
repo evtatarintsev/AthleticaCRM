@@ -13,18 +13,26 @@ import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
 import { PageHeader } from "@/ui/PageHeader";
 import { OwnerBadge, RoleChip, StatusBadge } from "./EmployeeBadges";
+import { EmployeeSheet } from "./EmployeeSheet";
 import { SendAccessDialog } from "./SendAccessDialog";
 
 /**
  * Карточка сотрудника: аватар, имя, статус активности, контактная информация и роли.
- * Для неактивного сотрудника доступна отправка доступа; для всех — переход к редактированию.
+ * Для неактивного сотрудника доступна отправка доступа; для всех — редактирование в панели
+ * поверх карточки, открытой, пока [editOpen].
  */
 export function EmployeeDetailPage({
   api,
   employeeId,
+  editOpen,
+  onEditOpenChange,
 }: {
-  api: ApiClient;
-  employeeId: EmployeeId;
+  readonly api: ApiClient;
+  readonly employeeId: EmployeeId;
+  /** Открыта ли панель редактирования. */
+  readonly editOpen: boolean;
+  /** Вызывается, когда панель редактирования надо открыть или закрыть. */
+  readonly onEditOpenChange: (open: boolean) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -66,7 +74,12 @@ export function EmployeeDetailPage({
                   </Button>
                 )}
                 <Button asChild>
-                  <Link to="/employees/$employeeId/edit" params={{ employeeId }}>
+                  <Link
+                    to="/employees/$employeeId"
+                    params={{ employeeId }}
+                    search={{ edit: true }}
+                    replace
+                  >
                     <PencilIcon aria-hidden />
                     {t("action.edit")}
                   </Link>
@@ -123,6 +136,12 @@ export function EmployeeDetailPage({
               </section>
             )}
           </div>
+          <EmployeeSheet
+            api={api}
+            open={editOpen}
+            onOpenChange={onEditOpenChange}
+            employee={detail.data}
+          />
           {sendAccessOpen && (
             <SendAccessDialog
               api={api}

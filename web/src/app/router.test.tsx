@@ -70,6 +70,16 @@ describe("маршрутизация", () => {
     expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();
   });
 
+  it("отдельных страниц формы сотрудника больше нет — «не найдено»", async () => {
+    openApp("/employees/new", true);
+    expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();
+  });
+
+  it("адрес редактирования сотрудника больше не существует — «не найдено»", async () => {
+    openApp("/employees/0199a0b2-7c3e-7d2a-9f10-000000000403/edit", true);
+    expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();
+  });
+
   it("некорректный идентификатор задачи в адресе — список без панели и без запроса карточки", async () => {
     const { fetch } = openApp("/tasks?task=not-a-uuid", true);
 

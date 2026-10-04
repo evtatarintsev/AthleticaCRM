@@ -123,20 +123,20 @@ describe("список сотрудников", () => {
     expect(sent).toMatchObject({ employeeId: boris.id, email: boris.email, password: "secret123" });
   });
 
-  it("переход к карточке сотрудника показывает контакты и роли", async () => {
+  it("клик по сотруднику открывает панель карточки с контактами и ролями", async () => {
     openApp("/employees", employeesServer().fetch);
     const user = userEvent.setup();
 
     const nameLink = first(await screen.findAllByText(anna.name));
     await user.click(nameLink);
 
-    expect(await screen.findByRole("heading", { name: anna.name })).toBeVisible();
-    expect(screen.getByText(anna.email)).toBeVisible();
-    expect(screen.getByText(anna.phoneNo)).toBeVisible();
-    expect(screen.getByText("Тренер")).toBeVisible();
-    expect(screen.getByText(ru["employees.owner"])).toBeVisible();
+    const card = within(await screen.findByRole("dialog", { name: anna.name }));
+    expect(await card.findByText(anna.email)).toBeVisible();
+    expect(card.getByText(anna.phoneNo)).toBeVisible();
+    expect(card.getByText("Тренер")).toBeVisible();
+    expect(card.getByText(ru["employees.owner"])).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: ru["employees.sendAccess"] }),
+      card.queryByRole("button", { name: ru["employees.sendAccess"] }),
     ).not.toBeInTheDocument();
   });
 });

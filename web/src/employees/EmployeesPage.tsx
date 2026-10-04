@@ -15,6 +15,9 @@ import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
 import { PageHeader } from "@/ui/PageHeader";
 import { OwnerBadge, RoleChip, StatusBadge } from "./EmployeeBadges";
+import { EmployeeCardSheet } from "./EmployeeCardSheet";
+import { type EmployeeListSearch } from "./employeeSearch";
+import { EmployeeSheet } from "./EmployeeSheet";
 import { SendAccessDialog } from "./SendAccessDialog";
 
 /** Истина, если [employee] подходит под текст поиска [query]: по имени, email или телефону. */
@@ -32,10 +35,21 @@ function matchesSearch(employee: EmployeeListItem, query: string): boolean {
 /**
  * Список сотрудников организации: поиск, быстрый фильтр «только активные», таблица на широких
  * экранах и карточки на узких. API отдаёт список целиком без серверной фильтрации, поэтому поиск
- * и фильтр применяются на клиенте. Переход к карточке сотрудника и созданию — ссылками роутера;
- * отправка доступа неактивному сотруднику — диалогом прямо из строки.
+ * и фильтр применяются на клиенте. Карточка, редактирование и создание сотрудника — панелями
+ * поверх списка, открытая панель хранится в адресе [search]; отправка доступа неактивному
+ * сотруднику — диалогом прямо из строки.
  */
-export function EmployeesPage({ api }: { api: ApiClient }) {
+export function EmployeesPage({
+  api,
+  search: panels,
+  onPanelChange,
+}: {
+  readonly api: ApiClient;
+  /** Открытые панели из search-параметров адреса. */
+  readonly search: EmployeeListSearch;
+  /** Открытие или закрытие панели: новые search-параметры адреса. */
+  readonly onPanelChange: (search: EmployeeListSearch) => void;
+}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
@@ -60,7 +74,7 @@ export function EmployeesPage({ api }: { api: ApiClient }) {
         title={t("employees.title")}
         actions={
           <Button asChild>
-            <Link to="/employees/new">
+            <Link to="/employees" search={{ create: true }} replace>
               <PlusIcon aria-hidden />
               {t("employees.add")}
             </Link>
@@ -176,6 +190,29 @@ export function EmployeesPage({ api }: { api: ApiClient }) {
           }}
         />
       )}
+      <EmployeeSheet
+        api={api}
+        open={panels.employee === undefined && panels.create === true}
+        onOpenChange={(open) => {
+          onPanelChange(open ? { create: true } : {});
+        }}
+        employee={null}
+      />
+      <EmployeeCardSheet
+        api={api}
+        employeeId={panels.employee ?? null}
+        editOpen={panels.edit === true}
+        onEditOpenChange={(open) => {
+          if (panels.employee !== undefined) {
+            onPanelChange(
+              open ? { employee: panels.employee, edit: true } : { employee: panels.employee },
+            );
+          }
+        }}
+        onClose={() => {
+          onPanelChange({});
+        }}
+      />
     </section>
   );
 }
@@ -218,8 +255,9 @@ function EmployeeRow({
     <tr className="hover:bg-muted/30">
       <td className="px-4 py-2">
         <Link
-          to="/employees/$employeeId"
-          params={{ employeeId: employee.id }}
+          to="/employees"
+          search={{ employee: employee.id }}
+          replace
           className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <Avatar
@@ -270,8 +308,9 @@ function EmployeeCard({
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
       <Link
-        to="/employees/$employeeId"
-        params={{ employeeId: employee.id }}
+        to="/employees"
+        search={{ employee: employee.id }}
+        replace
         className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <Avatar

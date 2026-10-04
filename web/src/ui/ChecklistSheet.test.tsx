@@ -19,10 +19,12 @@ function openChecklist({
   list = items,
   selected = ["ivanov"],
   onSubmit = () => Promise.resolve(null),
+  searchLabel,
 }: {
   list?: readonly ChecklistItem<string>[];
   selected?: readonly string[];
   onSubmit?: (ids: readonly string[]) => Promise<string | null>;
+  searchLabel?: string;
 }) {
   /** Экран, держащий панель открытой, пока она сама не попросит закрыться. */
   function Harness() {
@@ -35,6 +37,7 @@ function openChecklist({
         items={list}
         selected={selected}
         emptyText="Список пуст"
+        searchLabel={searchLabel}
         onSubmit={onSubmit}
       />
     );
@@ -126,5 +129,47 @@ describe("панель с чекбоксами", () => {
 
     await closed();
     expect(screen.queryByText(ru["editSheet.discardTitle"])).not.toBeInTheDocument();
+  });
+
+  it("без подписи поиска поля поиска нет", async () => {
+    openChecklist({});
+
+    await screen.findByRole("checkbox", { name: "Иванов" });
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  });
+
+  it("поиск оставляет записи с подстрокой в подписи без учёта регистра", async () => {
+    openChecklist({ searchLabel: "Поиск" });
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByRole("searchbox", { name: "Поиск" }), "ВА");
+
+    expect(screen.getByRole("checkbox", { name: "Иванов" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Сидорова" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Козлов" })).not.toBeInTheDocument();
+  });
+
+  it("показывает сообщение, если поиск ничего не нашёл", async () => {
+    openChecklist({ searchLabel: "Поиск" });
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByRole("searchbox", { name: "Поиск" }), "Петров");
+
+    expect(screen.getByText(ru["picker.nothingFound"])).toBeVisible();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("сохраняет отмеченные записи, скрытые поиском", async () => {
+    const onSubmit = vi.fn(() => Promise.resolve(null));
+    openChecklist({ searchLabel: "Поиск", onSubmit });
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByRole("searchbox", { name: "Поиск" }), "Сидор{Enter}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Сидорова" }));
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    await closed();
+    expect(onSubmit).toHaveBeenCalledWith(["ivanov", "sidorova"]);
   });
 });

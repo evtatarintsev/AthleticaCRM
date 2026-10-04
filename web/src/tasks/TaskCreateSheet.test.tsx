@@ -40,6 +40,14 @@ function createServer(failure: string | null = null) {
     "tasks/list": () => json({ tasks: [], total: 0 }),
     "employees/list": () => json({ employees: [anna], total: 1 }),
     "clients/list": () => json({ clients: [petrov], total: 1 }),
+    upload: () =>
+      json({
+        id: "0199a0b2-7c3e-7d2a-9f10-000000000601",
+        url: "https://files.example/photo.png",
+        originalName: "photo.png",
+        contentType: "image/png",
+        sizeBytes: 2048,
+      }),
     "tasks/create": ({ body }) => {
       if (failure !== null) {
         return json({ code: "CONFLICT", message: failure, fields: null }, 409);
@@ -157,5 +165,32 @@ describe("создание задачи", () => {
 
     expect(await sheet.findByRole("alert")).toHaveTextContent("Задача уже существует");
     expect(sheet.getByLabelText(ru["tasks.field.title"])).toHaveValue("Новая задача");
+  });
+
+  it("прикреплённое изображение открывается в просмотрщике, Esc не теряет введённое", async () => {
+    openApp("/tasks?create=true", createServer().fetch);
+    const user = userEvent.setup();
+
+    const sheet = await createSheet();
+    await user.type(sheet.getByLabelText(ru["tasks.field.title"]), "Черновик");
+    const input = document.body.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+    if (input !== null) {
+      await user.upload(input, new File(["png"], "photo.png", { type: "image/png" }));
+    }
+    await user.click(await sheet.findByRole("button", { name: "Открыть «photo.png»" }));
+    const viewer = within(
+      await screen.findByRole("dialog", { name: ru["attachments.viewerTitle"] }),
+    );
+    expect(viewer.getByRole("img", { name: "photo.png" })).toBeVisible();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: ru["attachments.viewerTitle"] }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeNull();
+    expect((await createSheet()).getByLabelText(ru["tasks.field.title"])).toHaveValue("Черновик");
   });
 });

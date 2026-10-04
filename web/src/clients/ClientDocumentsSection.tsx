@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import { ClientDocIdSchema, type ClientDoc, type ClientId } from "@/api/generated/contracts";
@@ -10,50 +10,13 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { uploadInfoQuery } from "@/query/queries";
 import { uuidv7 } from "@/lib/uuid";
+import { AttachmentList } from "@/ui/attachments/AttachmentList";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
-/** Строка документа: ссылка на подписанный файл и удаление. */
-function DocRow({
-  api,
-  doc,
-  onAskDelete,
-}: {
-  readonly api: ApiClient;
-  readonly doc: ClientDoc;
-  readonly onAskDelete: (doc: ClientDoc) => void;
-}) {
-  const { t } = useI18n();
-  const info = useQuery(uploadInfoQuery(api, doc.uploadId));
-  return (
-    <li className="flex items-center gap-2 py-2 text-sm">
-      {info.data === undefined ? (
-        <span className="flex-1 truncate">{doc.name}</span>
-      ) : (
-        <a
-          href={info.data.url}
-          target="_blank"
-          rel="noreferrer"
-          className="flex-1 truncate text-primary underline"
-        >
-          {doc.name}
-        </a>
-      )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t("clients.detail.deleteDoc", { name: doc.name })}
-        onClick={() => {
-          onAskDelete(doc);
-        }}
-      >
-        <TrashIcon aria-hidden className="text-destructive" />
-      </Button>
-    </li>
-  );
-}
-
-/** Документы клиента: загрузка файла, список с подписанными ссылками, удаление с подтверждением. */
+/**
+ * Документы клиента: загрузка файла, миниатюры и просмотр по подписанным ссылкам,
+ * удаление с подтверждением.
+ */
 export function ClientDocumentsSection({
   api,
   clientId,
@@ -72,6 +35,7 @@ export function ClientDocumentsSection({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<ClientDoc | null>(null);
+  const files = useQueries({ queries: docs.map((doc) => uploadInfoQuery(api, doc.uploadId)) });
 
   const upload = async (file: File) => {
     setUploading(true);
@@ -113,18 +77,17 @@ export function ClientDocumentsSection({
       {docs.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("clients.detail.noDocuments")}</p>
       ) : (
-        <ul className="divide-y">
-          {docs.map((doc) => (
-            <DocRow
-              key={doc.id}
-              api={api}
-              doc={doc}
-              onAskDelete={(d) => {
-                setDocToDelete(d);
-              }}
-            />
-          ))}
-        </ul>
+        <AttachmentList
+          items={docs.map((doc, index) => ({
+            key: doc.id,
+            name: doc.name,
+            file: files[index]?.data ?? null,
+          }))}
+          onRemove={(item) => {
+            setDocToDelete(docs.find((doc) => doc.id === item.key) ?? null);
+          }}
+          removeLabel={(name) => t("clients.detail.deleteDoc", { name })}
+        />
       )}
 
       <input

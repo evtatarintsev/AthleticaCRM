@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   AssignTaskRequestSchema,
   AttachTaskUploadRequestSchema,
+  DetachTaskUploadRequestSchema,
   TaskDetailResponseSchema,
   UnassignTaskRequestSchema,
   UpdateTaskRequestSchema,
@@ -129,8 +130,27 @@ function taskServer(current: TaskDetailResponse, assignFailure: string | null = 
       };
       return json(state);
     },
+    "tasks/detach": ({ body }) => {
+      const request = DetachTaskUploadRequestSchema.parse(body);
+      state = { ...state, attachments: state.attachments.filter((a) => a.id !== request.uploadId) };
+      return json(state);
+    },
   });
 }
+
+/** Задача с прикреплённой фотографией. */
+const taskWithPhoto = TaskDetailResponseSchema.parse({
+  ...task,
+  attachments: [
+    {
+      id: uploadId,
+      url: "https://files.example/photo.jpg",
+      originalName: "photo.jpg",
+      contentType: "image/jpeg",
+      sizeBytes: 2048,
+    },
+  ],
+});
 
 /** Панель карточки задачи с заголовком [title]. */
 const card = async (title = task.title) =>
@@ -244,8 +264,56 @@ describe("карточка задачи", () => {
       await user.upload(input, new File(["pdf"], "plan.pdf", { type: "application/pdf" }));
     }
 
-    expect(await screen.findByRole("link", { name: "plan.pdf" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Открыть «plan.pdf»" })).toBeVisible();
     expect(api.to("tasks/attach").map((r) => AttachTaskUploadRequestSchema.parse(r.body))).toEqual([
+      { taskId: task.id, uploadId },
+    ]);
+  });
+
+  it("показывает изображение миниатюрой и открывает его в просмотрщике", async () => {
+    openApp(`/tasks?task=${task.id}`, taskServer(taskWithPhoto).fetch);
+    const user = userEvent.setup();
+
+    const tile = (await card()).getByRole("button", { name: "Открыть «photo.jpg»" });
+    expect(tile.querySelector("img")).toHaveAttribute("src", "https://files.example/photo.jpg");
+    await user.click(tile);
+
+    const viewer = within(
+      await screen.findByRole("dialog", { name: ru["attachments.viewerTitle"] }),
+    );
+    expect(viewer.getByRole("img", { name: "photo.jpg" })).toBeVisible();
+    expect(viewer.getByText("1 из 1")).toBeVisible();
+  });
+
+  it("Esc в просмотрщике закрывает только его, карточка остаётся открытой", async () => {
+    openApp(`/tasks?task=${task.id}`, taskServer(taskWithPhoto).fetch);
+    const user = userEvent.setup();
+
+    await user.click((await card()).getByRole("button", { name: "Открыть «photo.jpg»" }));
+    await screen.findByRole("dialog", { name: ru["attachments.viewerTitle"] });
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: ru["attachments.viewerTitle"] }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("dialog", { name: task.title })).toBeVisible();
+  });
+
+  it("открепляет вложение без открытия просмотрщика", async () => {
+    const api = taskServer(taskWithPhoto);
+    openApp(`/tasks?task=${task.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await card();
+    await user.click(sheet.getByRole("button", { name: "Убрать «photo.jpg»" }));
+
+    await waitFor(() => {
+      expect(sheet.queryByRole("button", { name: "Открыть «photo.jpg»" })).toBeNull();
+    });
+    expect(screen.queryByRole("dialog", { name: ru["attachments.viewerTitle"] })).toBeNull();
+    expect(api.to("tasks/detach").map((r) => DetachTaskUploadRequestSchema.parse(r.body))).toEqual([
       { taskId: task.id, uploadId },
     ]);
   });

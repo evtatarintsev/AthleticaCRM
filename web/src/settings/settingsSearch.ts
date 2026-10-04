@@ -10,6 +10,7 @@ export const SettingsPanelSchema = z.enum([
   "branches",
   "disciplines",
   "halls",
+  "roles",
   "client-sources",
   "client-additional-attributes",
   "client-import",

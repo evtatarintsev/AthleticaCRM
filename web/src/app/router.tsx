@@ -44,7 +44,6 @@ import { ChannelsPage } from "@/settings/channels/ChannelsPage";
 import { AuditLogPage } from "@/settings/audit/AuditLogPage";
 import { PaymentCompletePage } from "@/settings/org/PaymentCompletePage";
 import { TariffsPage } from "@/settings/tariffs/TariffsPage";
-import { RolesPage } from "@/settings/roles/RolesPage";
 import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
@@ -251,16 +250,6 @@ const customFieldsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-additional-attributes",
   beforeLoad: settingsPanelRedirect("client-additional-attributes"),
-});
-
-/** Роли и права сотрудников. */
-const rolesRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/roles",
-  component: function RolesRoute() {
-    const { api } = rolesRoute.useRouteContext();
-    return <RolesPage api={api} />;
-  },
 });
 
 /** Тарифы абонементов. */
@@ -638,7 +627,6 @@ const routeTree = rootRoute.addChildren([
     tariffsRoute,
     branchesRoute,
     customFieldsRoute,
-    rolesRoute,
     channelsRoute,
     orgSettingsRoute,
     orgBalanceRoute,
@@ -706,7 +694,6 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/tariffs": true,
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
-  "/settings/roles": true,
   "/settings/channels": true,
   "/settings/basic": true,
   "/settings/org-balance": true,

@@ -36,6 +36,7 @@ import { branches, disciplines, halls, leadSources } from "./directories";
 import { DirectorySheet } from "./directory/DirectorySheet";
 import { OrgBalanceSheet } from "./org/OrgBalanceSheet";
 import { OrgSettingsSheet } from "./org/OrgSettingsSheet";
+import { RolesSheet } from "./roles/RolesSheet";
 import { SettingsPanelSchema, type SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
@@ -149,7 +150,7 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemRoles",
         subtitle: "settings.itemRolesSubtitle",
         icon: ShieldCheckIcon,
-        target: app("/settings/roles"),
+        target: panel("roles"),
       },
     ],
   },
@@ -240,6 +241,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   branches: (props) => <DirectorySheet {...props} definition={branches} />,
   disciplines: (props) => <DirectorySheet {...props} definition={disciplines} />,
   halls: (props) => <DirectorySheet {...props} definition={halls} />,
+  roles: RolesSheet,
   "client-sources": (props) => <DirectorySheet {...props} definition={leadSources} />,
   "client-additional-attributes": CustomFieldsSheet,
   "client-import": ClientImportSheet,
@@ -248,7 +250,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
 /**
  * Настройки: разделы и пункты как в KMP-клиенте. Пункты с готовым экраном — ссылки
  * роутера, заготовки без экрана показаны неактивной строкой. Пункты разделов «Пользователь»,
- * «Основное» и «Клиенты» открывают панель справа, не уходя со страницы; открытая панель
+ * «Основное», «Клиенты» и роли открывают панель справа, не уходя со страницы; открытая панель
  * [panel] хранится в адресе, её смена сообщается через [onPanelChange].
  */
 export function SettingsPage({

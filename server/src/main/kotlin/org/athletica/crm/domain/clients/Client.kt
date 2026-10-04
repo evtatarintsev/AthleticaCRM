@@ -109,9 +109,13 @@ data class ClientDoc(
     val createdAt: Instant,
 )
 
-fun clientDoc(uploadId: UploadId, name: String) =
+/**
+ * Новый документ клиента для файла [uploadId] с названием [name].
+ * [id] — идентификатор документа; веб-клиент генерирует его сам, по умолчанию — новый UUID v7.
+ */
+fun clientDoc(uploadId: UploadId, name: String, id: ClientDocId = ClientDocId.new()) =
     ClientDoc(
-        ClientDocId.new(),
+        id,
         uploadId,
         name,
         Clock.System.now(),

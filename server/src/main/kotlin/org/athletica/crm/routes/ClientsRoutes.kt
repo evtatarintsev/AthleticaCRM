@@ -174,7 +174,7 @@ fun RouteWithContext.clientsRoutes(
             clients
                 .byId(request.clientId)
                 .requireActive()
-                .attachDoc(clientDoc(request.uploadId, request.name))
+                .attachDoc(clientDoc(request.uploadId, request.name, request.docId))
                 .save()
         }
     }

@@ -338,6 +338,7 @@ export const ru = {
   "employees.sendAccessPassword": "Пароль",
   "employees.sendAccessSent": "Доступ отправлен",
   "employees.create": "Новый сотрудник",
+  "employees.cardTitle": "Сотрудник",
   "employees.edit": "Редактировать сотрудника",
   "employees.phone": "Телефон",
   "employees.phoneHint": "+7 (999) 999-99-99",

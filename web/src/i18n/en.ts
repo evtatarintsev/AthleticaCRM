@@ -323,6 +323,7 @@ export const en: Messages<typeof ru> = {
   "employees.sendAccessPassword": "Password",
   "employees.sendAccessSent": "Access sent",
   "employees.create": "New employee",
+  "employees.cardTitle": "Employee",
   "employees.edit": "Edit employee",
   "employees.phone": "Phone",
   "employees.phoneHint": "+1 (555) 000-0000",

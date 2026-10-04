@@ -13,11 +13,9 @@ import { useMemo, type ReactElement } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   ClientIdSchema,
-  EmployeeIdSchema,
   GroupIdSchema,
   SessionIdSchema,
   type ClientId,
-  type EmployeeId,
   type GroupId,
   type SessionId,
 } from "@/api/generated/contracts";
@@ -29,8 +27,7 @@ import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
 import { ClientIssueSubscriptionPage } from "@/clients/ClientIssueSubscriptionPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
-import { EmployeeDetailPage } from "@/employees/EmployeeDetailPage";
-import { EmployeeDetailSearchSchema, EmployeeListSearchSchema } from "@/employees/employeeSearch";
+import { EmployeeListSearchSchema } from "@/employees/employeeSearch";
 import { EmployeesPage } from "@/employees/EmployeesPage";
 import { GroupsPage } from "@/groups/GroupsPage";
 import { GroupCreatePage } from "@/groups/GroupCreatePage";
@@ -324,54 +321,24 @@ const auditLogRoute = createRoute({
   },
 });
 
-/** Список сотрудников организации; открытая панель создания — в search-параметрах адреса. */
+/**
+ * Список сотрудников организации; карточка, редактирование и создание сотрудника — панелями
+ * поверх списка, открытая панель — в search-параметрах адреса.
+ */
 const employeesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/employees",
   validateSearch: EmployeeListSearchSchema,
   component: function EmployeesRoute() {
     const { api } = employeesRoute.useRouteContext();
-    const { create } = employeesRoute.useSearch();
+    const search = employeesRoute.useSearch();
     const navigate = employeesRoute.useNavigate();
     return (
       <EmployeesPage
         api={api}
-        createOpen={create === true}
-        onCreateOpenChange={(open) => {
-          void navigate({ search: open ? { create: true } : {}, replace: true });
-        }}
-      />
-    );
-  },
-});
-
-/** Параметр `employeeId` карточки сотрудника. */
-const employeeIdParams = {
-  parse: ({ employeeId }: { employeeId: string }): { employeeId: EmployeeId } | false => {
-    const parsed = EmployeeIdSchema.safeParse(employeeId);
-    return parsed.success ? { employeeId: parsed.data } : false;
-  },
-  stringify: ({ employeeId }: { employeeId: EmployeeId }) => ({ employeeId }),
-};
-
-/** Карточка сотрудника; открытая панель редактирования — в search-параметрах адреса. */
-const employeeDetailRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/employees/$employeeId",
-  params: employeeIdParams,
-  validateSearch: EmployeeDetailSearchSchema,
-  component: function EmployeeDetailRoute() {
-    const { api } = employeeDetailRoute.useRouteContext();
-    const { employeeId } = employeeDetailRoute.useParams();
-    const { edit } = employeeDetailRoute.useSearch();
-    const navigate = employeeDetailRoute.useNavigate();
-    return (
-      <EmployeeDetailPage
-        api={api}
-        employeeId={employeeId}
-        editOpen={edit === true}
-        onEditOpenChange={(open) => {
-          void navigate({ search: open ? { edit: true } : {}, replace: true });
+        search={search}
+        onPanelChange={(next) => {
+          void navigate({ search: next, replace: true });
         }}
       />
     );
@@ -685,7 +652,6 @@ const routeTree = rootRoute.addChildren([
     groupRoute,
     groupEditRoute,
     employeesRoute,
-    employeeDetailRoute,
     clientsRoute,
     clientNewRoute,
     clientRoute,

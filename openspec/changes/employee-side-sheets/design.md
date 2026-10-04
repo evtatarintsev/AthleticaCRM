@@ -26,10 +26,11 @@
 ### 1. Структура панелей
 
 ```
-EmployeesPage (search: create?: true)
- '-- EmployeeSheet mode=create        EditSheet md, EditSheetForm "Создать"
-EmployeeDetailPage (search: edit?: true)
- '-- EmployeeSheet mode=edit          EditSheet md, EditSheetForm "Сохранить"
+EmployeesPage (search: employee?: EmployeeId, edit?: true, create?: true)
+ |-- EmployeeSheet mode=create        EditSheet md, EditSheetForm "Создать"
+ '-- EmployeeCardSheet                EditSheet md, EditSheetBody, без формы
+       фото, статус, контакты, роли; [Отправить доступ] [Редактировать]
+       '-- EmployeeSheet mode=edit    EditSheet md, EditSheetForm "Сохранить"
 
 EmployeeSheet
   +-- фото (AvatarPicker), имя, телефон, email
@@ -40,15 +41,19 @@ EmployeeSheet
 
 Одна `EmployeeSheet` с режимом вместо двух компонентов: отличаются только начальные значения, запрос (`employees/create` с новым `uuidv7()` или `employees/update` с `id`), подпись кнопки, флаг `allBranchesAccess` и что инвалидировать после успеха. Роли и филиалы загружаются внутри панели (`employees/roles`, `branches/list`) со скелетоном в `EditSheetBody`, пока не пришли; для редактирования сотрудник передаётся пропсом — карточка его уже загрузила, как `TaskEditSheet` получает `task`.
 
-После создания панель закрывается, инвалидируется `employees/list`, переход в карточку не делается (как у задач — пользователь остаётся в списке). После редактирования — инвалидация `employees/detail` и `employees/list`, закрытие.
+`EmployeeCardSheet` — бывшая `EmployeeDetailPage`, перенесённая в панель как `TaskSheet`: монтируется постоянно с `open={employee !== undefined}` и грузит `employees/detail` только при открытой панели. Без формы `dirty` всегда `false`, крестик и Esc закрывают карточку сразу; вложенная панель редактирования защищает свои изменения сама.
+
+После создания панель закрывается, инвалидируется `employees/list`, карточка не открывается (как у задач — пользователь остаётся в списке). После редактирования — инвалидация `employees/detail` и `employees/list`, закрытие панели редактирования; карточка под ней обновляется.
 
 *Альтернатива:* сохранять каждую вложенную панель сразу на сервер, как тренеры группы. Отклонено: при создании сотрудника ещё нет, а для редактирования это превратило бы форму в смесь «сохраняется сразу» и «по кнопке».
 
-### 2. Адрес: `create` и `edit`
+### 2. Адрес: `employee`, `edit`, `create`
 
-`/employees` получает `validateSearch` со схемой `{ create: z.literal(true).optional().catch(undefined) }`, `/employees/$employeeId` — `{ edit: z.literal(true).optional().catch(undefined) }`. Кнопка «Добавить сотрудника» — `<Link to="/employees" search={{ create: true }} replace>`, «Редактировать» в карточке — `<Link search={{ edit: true }} replace>`; закрытие — `navigate({ search: {}, replace: true })`. Поиск и фильтр «только активные» списка остаются локальным состоянием и в адрес не переносятся — это не часть изменения.
+`/employees` получает `validateSearch` со схемой `{ employee: EmployeeIdSchema, edit: true, create: true }` (все `optional().catch(undefined)`). Строки списка — `<Link to="/employees" search={{ employee }} replace>`, «Добавить сотрудника» — `search={{ create: true }}`; «Редактировать» в карточке добавляет `edit: true` к `employee`; закрытие панелей — `navigate({ search, replace: true })`. `employee` важнее `create`; `edit` без `employee` ничего не открывает. Поиск и фильтр «только активные» списка остаются локальным состоянием и в адрес не переносятся.
 
-Маршруты `employeeCreateRoute`, `employeeEditRoute` и запись `"/employees/new"` в `staticAppPaths` удаляются без редиректов; требование app-shell обновляется (delta-спека).
+Маршруты `/employees/new`, `/employees/$employeeId`, `/employees/$employeeId/edit` и запись `"/employees/new"` в `staticAppPaths` удаляются без редиректов; требование app-shell обновляется (delta-спека).
+
+*Альтернатива:* оставить карточку страницей, а редактирование — панелью поверх неё. Отклонено после первой итерации: просмотр уводил из списка, в отличие от задач.
 
 ### 3. Значения формы
 
@@ -104,7 +109,7 @@ PermissionsSheet({ open, onOpenChange, value, rolePermissions, onApply })
 
 - [`isDirty` в TanStack Form не сбрасывается, если пользователь вернул исходное значение] → так же ведут себя `ProfileSheet` и задачи; лишнее подтверждение безопаснее потерянных изменений.
 - [Сотрудник с включённым флагом «все филиалы» не может получить ограниченный доступ из веба до удаления флага на сервере] → осознанно принято; пометка в секции объясняет состояние.
-- [Старые закладки `/employees/new` и `/employees/{id}/edit` ведут на «не найдено»] → адреса внутренние, сервер ссылок на них не формирует; зафиксировано в app-shell.
+- [Старые закладки `/employees/new`, `/employees/{id}` и `/employees/{id}/edit` ведут на «не найдено»] → адреса внутренние, сервер ссылок на них не формирует; зафиксировано в app-shell.
 - [Пометка «из роли» считается на клиенте и может разойтись с серверной логикой эффективных прав] → правило простое (объединение прав ролей), сервер остаётся источником истины для проверок; пометка — подсказка, не гарантия.
 
 ## Migration Plan

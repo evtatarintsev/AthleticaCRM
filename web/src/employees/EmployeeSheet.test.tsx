@@ -253,23 +253,60 @@ describe("панель создания сотрудника", () => {
   });
 });
 
-describe("панель редактирования сотрудника", () => {
-  it("«Редактировать» в карточке открывает панель с текущими данными", async () => {
-    const { history } = openApp(`/employees/${existing.id}`, formServer().fetch);
+describe("панель карточки сотрудника", () => {
+  it("клик по сотруднику открывает карточку поверх списка, закрытие убирает её из адреса", async () => {
+    const { history } = openApp("/employees", formServer().fetch);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("link", { name: ru["action.edit"] }));
+    const [row] = await screen.findAllByRole("link", { name: new RegExp(existing.name) });
+    if (row === undefined) {
+      throw new Error("строка сотрудника не найдена");
+    }
+    await user.click(row);
+
+    const card = await screen.findByRole("dialog", { name: existing.name });
+    expect(history.location.search).toContain(`employee=${existing.id}`);
+    expect(within(card).getByText(existing.email)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: ru["employees.title"], hidden: true }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await sheetClosed(existing.name);
+    expect(history.location.search).not.toContain("employee");
+  });
+
+  it("«Редактировать» открывает поверх карточки панель с текущими данными", async () => {
+    const { history } = openApp(`/employees?employee=${existing.id}`, formServer().fetch);
+    const user = userEvent.setup();
+
+    const card = await screen.findByRole("dialog", { name: existing.name });
+    await user.click(within(card).getByRole("button", { name: ru["action.edit"] }));
 
     const form = await screen.findByRole("dialog", { name: ru["employees.edit"] });
     expect(history.location.search).toContain("edit=true");
+    expect(history.location.search).toContain(`employee=${existing.id}`);
     expect(await within(form).findByLabelText(ru["employees.name"])).toHaveValue(existing.name);
     expect(within(form).getByLabelText(ru["employees.email"])).toHaveValue(existing.email);
     expect(within(form).getByText(ru["employees.allBranchesAccess"])).toBeVisible();
   });
 
+  it("Esc в панели редактирования без изменений закрывает только её", async () => {
+    const { history } = openApp(`/employees?employee=${existing.id}&edit=true`, formServer().fetch);
+    const user = userEvent.setup();
+
+    await screen.findByLabelText(ru["employees.name"]);
+    await user.keyboard("{Escape}");
+
+    await sheetClosed(ru["employees.edit"]);
+    expect(screen.getByRole("dialog", { name: existing.name })).toBeVisible();
+    expect(history.location.search).not.toContain("edit");
+  });
+});
+
+describe("панель редактирования сотрудника", () => {
   it("сохраняет изменения, не трогая доступ ко всем филиалам", async () => {
     const api = formServer();
-    const { history } = openApp(`/employees/${existing.id}?edit=true`, api.fetch);
+    const { history } = openApp(`/employees?employee=${existing.id}&edit=true`, api.fetch);
     const user = userEvent.setup();
 
     const phone = await screen.findByLabelText(ru["employees.phone"]);
@@ -278,7 +315,8 @@ describe("панель редактирования сотрудника", () =>
     await user.click(screen.getByRole("button", { name: ru["action.save"] }));
 
     await sheetClosed(ru["employees.edit"]);
-    expect(await screen.findByText("+79995554433")).toBeVisible();
+    const card = screen.getByRole("dialog", { name: existing.name });
+    expect(await within(card).findByText("+79995554433")).toBeVisible();
     expect(history.location.search).not.toContain("edit");
     const [updated] = api
       .to("employees/update")

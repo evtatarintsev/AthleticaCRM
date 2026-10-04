@@ -44,7 +44,7 @@ data class AuditActiveClient(
                 AuditActionType.CREATE,
                 "client_doc",
                 doc.id.value,
-                doc.id.toString(),
+                Json.encodeToString(doc.auditData()),
             )
         return AuditActiveClient(client.attachDoc(doc), audit, auditEvents + auditEvent)
     }
@@ -61,7 +61,7 @@ data class AuditActiveClient(
                 AuditActionType.DELETE,
                 "client_doc",
                 docToDelete.id.value,
-                docToDelete.id.toString(),
+                Json.encodeToString(docToDelete.auditData()),
             )
         return AuditActiveClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
     }
@@ -114,6 +114,18 @@ private data class ClientAuditData(
     val gender: Gender,
     val leadSourceId: LeadSourceId?,
 )
+
+/** Снимок документа клиента для журнала аудита: поле `data` журнала хранится как JSONB. */
+@Serializable
+private data class ClientDocAuditData(
+    /** Идентификатор загруженного файла документа. */
+    val uploadId: UploadId,
+    /** Отображаемое название документа. */
+    val name: String,
+)
+
+/** Снимок документа для журнала аудита. */
+private fun ClientDoc.auditData() = ClientDocAuditData(uploadId, name)
 
 data class AuditArchivedClient(
     private val client: ArchivedClient,

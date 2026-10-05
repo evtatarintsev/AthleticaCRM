@@ -14,10 +14,12 @@ import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.NewSlot
+import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.groups.GroupListQuery
 import org.athletica.crm.storage.Database
+import org.athletica.crm.usecases.groups.setGroupSchedule
 import org.athletica.crm.api.schemas.groups.ScheduleSlot as ScheduleSlotSchema
 
 /**
@@ -30,6 +32,7 @@ fun RouteWithContext.groupsRoutes(
     employees: Employees,
     schedule: GroupSchedule,
     sync: ScheduleSync,
+    notifications: Notifications,
     views: ReadViews,
 ) {
     route("/groups") {
@@ -82,8 +85,16 @@ fun RouteWithContext.groupsRoutes(
 
         post<SetGroupScheduleRequest, GroupDetailResponse>("/set-schedule") { request ->
             db.transaction {
-                schedule.setFrom(request.groupId, request.effectiveFrom, request.slots.map { it.toNewSlot() })
-                sync.sync()
+                setGroupSchedule(
+                    schedule,
+                    sync,
+                    groups,
+                    employees,
+                    notifications,
+                    request.groupId,
+                    request.effectiveFrom,
+                    request.slots.map { it.toNewSlot() },
+                )
                 views.groupDetail.byId(request.groupId)
             }
         }

@@ -1,5 +1,6 @@
 package org.athletica.crm.i18n
 
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
@@ -485,5 +486,19 @@ object Messages {
     object DefaultLeadSourceOtherDescription : LocalizationKey {
         override val ru = "Всё, что не подходит под остальные источники"
         override val en = "Anything that does not fit the other sources"
+    }
+
+    object GroupScheduleChangedTitle : LocalizationTemplate1<String> {
+        override val ru = { group: String -> "Изменено расписание группы «$group»" }
+        override val en = { group: String -> "Schedule changed for group “$group”" }
+    }
+
+    object GroupScheduleChangedBody : LocalizationTemplate2<LocalDate, String> {
+        override val ru = { from: LocalDate, author: String ->
+            "Новое расписание действует с ${from.localized(Lang.RU)}. Автор изменения: $author"
+        }
+        override val en = { from: LocalDate, author: String ->
+            "The new schedule takes effect on ${from.localized(Lang.EN)}. Changed by $author"
+        }
     }
 }

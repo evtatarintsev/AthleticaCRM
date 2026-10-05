@@ -13,10 +13,10 @@ import org.athletica.crm.storage.Transaction
  */
 interface Notifications {
     /**
-     * Создаёт новое (ещё не сохранённое) уведомление [title]/[body] для [recipients].
+     * Создаёт новое (ещё не сохранённое) уведомление с содержимым [content] для [recipients].
      * Для сохранения вызвать [Notification.save].
      */
-    fun new(title: String, body: String, recipients: List<EmployeeId>): Notification
+    fun new(content: NotificationContent, recipients: List<EmployeeId>): Notification
 
     /**
      * Возвращает уведомления текущего сотрудника ([ctx]) в рамках его организации.

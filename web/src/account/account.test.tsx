@@ -298,13 +298,15 @@ describe("уведомления", () => {
     id: "0199a0b2-7c3e-7d2a-9f10-000000000010",
     title: "Новый клиент",
     body: "Анна записалась в группу",
+    subject: { type: "none" },
     isRead: false,
     createdAt: "2025-02-10T11:55:00Z",
   };
   const other = {
     ...unread,
     id: "0199a0b2-7c3e-7d2a-9f10-000000000011",
-    title: "Оплата",
+    title: "Изменено расписание группы «Йога»",
+    subject: { type: "group", id: "0199a0b2-7c3e-7d2a-9f10-000000000020" },
   };
 
   /** Сервер, который хранит отметки о прочтении уведомлений [unread] и [other]. */
@@ -375,5 +377,28 @@ describe("уведомления", () => {
     expect(
       await screen.findByRole("button", { name: ru["notifications.title"] }),
     ).toBeInTheDocument();
+  });
+
+  it("заголовок с объектом ведёт на его страницу и отмечает уведомление прочитанным", async () => {
+    const api = withNotifications();
+    const { history } = openApp("/", api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /Уведомления, 2/ }));
+    const dialog = await screen.findByRole("dialog", { name: ru["notifications.title"] });
+    expect(within(dialog).queryByRole("link", { name: unread.title })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("link", { name: other.title }));
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe(`/groups/${other.subject.id}`);
+    });
+    expect(
+      screen.queryByRole("dialog", { name: ru["notifications.title"] }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.to("notifications/mark-as-read").map((r) => r.body)).toEqual([
+        { ids: [other.id] },
+      ]);
+    });
   });
 });

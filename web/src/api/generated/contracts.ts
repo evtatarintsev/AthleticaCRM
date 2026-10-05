@@ -1893,11 +1893,30 @@ export const MembershipListResponseSchema = z
   .readonly();
 export type MembershipListResponse = z.output<typeof MembershipListResponseSchema>;
 
+export const NotificationSubjectSchemaGroupSchema = z
+  .object({
+    type: z.literal("group"),
+    id: GroupIdSchema,
+  })
+  .readonly();
+export type NotificationSubjectSchemaGroup = z.output<typeof NotificationSubjectSchemaGroupSchema>;
+
+export const NotificationSubjectSchemaNoneSchema = z
+  .object({
+    type: z.literal("none"),
+  })
+  .readonly();
+export type NotificationSubjectSchemaNone = z.output<typeof NotificationSubjectSchemaNoneSchema>;
+
+export const NotificationSubjectSchemaSchema = z.discriminatedUnion("type", [NotificationSubjectSchemaGroupSchema, NotificationSubjectSchemaNoneSchema]);
+export type NotificationSubjectSchema = z.output<typeof NotificationSubjectSchemaSchema>;
+
 export const NotificationItemSchema = z
   .object({
     id: z.uuid(),
     title: z.string(),
     body: z.string(),
+    subject: NotificationSubjectSchemaSchema,
     isRead: z.boolean(),
     createdAt: InstantSchema,
   })

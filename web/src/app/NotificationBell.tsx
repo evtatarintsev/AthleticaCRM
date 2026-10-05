@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { BellIcon, CheckCheckIcon, CheckIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
@@ -19,7 +20,8 @@ const BADGE_LIMIT = 99;
 /**
  * Колокольчик уведомлений с числом непрочитанных. Список открывается выезжающей панелью;
  * уведомление можно отметить прочитанным по одному или все сразу. Отметка сразу видна
- * в интерфейсе, затем список перечитывается с сервера.
+ * в интерфейсе, затем список перечитывается с сервера. Заголовок уведомления с объектом —
+ * ссылка на него: переход закрывает панель и отмечает уведомление прочитанным.
  */
 export function NotificationBell({ api, branchId }: { api: ApiClient; branchId: BranchId }) {
   const { t } = useI18n();
@@ -119,6 +121,12 @@ export function NotificationBell({ api, branchId }: { api: ApiClient; branchId: 
                   onMarkRead={() => {
                     void markRead([notification.id]);
                   }}
+                  onOpenSubject={() => {
+                    setOpen(false);
+                    if (!notification.isRead) {
+                      void markRead([notification.id]);
+                    }
+                  }}
                 />
               ))}
             </ul>
@@ -129,13 +137,18 @@ export function NotificationBell({ api, branchId }: { api: ApiClient; branchId: 
   );
 }
 
-/** Строка уведомления [notification]; у непрочитанного — отметка и кнопка [onMarkRead]. */
+/**
+ * Строка уведомления [notification]; у непрочитанного — отметка и кнопка [onMarkRead].
+ * Если у уведомления есть объект, заголовок ведёт на него, переход сообщается через [onOpenSubject].
+ */
 function NotificationRow({
   notification,
   onMarkRead,
+  onOpenSubject,
 }: {
   notification: NotificationItem;
   onMarkRead: () => void;
+  onOpenSubject: () => void;
 }) {
   const { t, format } = useI18n();
   return (
@@ -150,7 +163,7 @@ function NotificationRow({
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className={cn("text-sm break-words", !notification.isRead && "font-semibold")}>
-          {notification.title}
+          <NotificationTitle notification={notification} onOpenSubject={onOpenSubject} />
         </p>
         <p className="text-sm break-words text-muted-foreground">{notification.body}</p>
         <time dateTime={notification.createdAt} className="text-xs text-muted-foreground">
@@ -169,4 +182,33 @@ function NotificationRow({
       )}
     </li>
   );
+}
+
+/**
+ * Заголовок уведомления [notification]: ссылка на страницу его объекта, а без объекта — текст.
+ * Адрес страницы объекта знает только клиент; переход сообщается через [onOpenSubject].
+ */
+function NotificationTitle({
+  notification,
+  onOpenSubject,
+}: {
+  notification: NotificationItem;
+  onOpenSubject: () => void;
+}) {
+  const { subject, title } = notification;
+  switch (subject.type) {
+    case "none":
+      return title;
+    case "group":
+      return (
+        <Link
+          to="/groups/$groupId"
+          params={{ groupId: subject.id }}
+          className="hover:underline"
+          onClick={onOpenSubject}
+        >
+          {title}
+        </Link>
+      );
+  }
 }

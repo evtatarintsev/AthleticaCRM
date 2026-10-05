@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.notifications
 
 import arrow.core.raise.context.Raise
+import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.NotificationId
@@ -15,7 +16,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [Notifications] поверх таблиц `notifications` и `notification_recipients`. */
 class DbNotifications : Notifications {
-    override fun new(title: String, body: String, recipients: List<EmployeeId>): Notification = DbNotification(NotificationId.new(), title, body, recipients = recipients)
+    override fun new(content: NotificationContent, recipients: List<EmployeeId>): Notification = DbNotification(NotificationId.new(), content, recipients = recipients)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun of(isRead: Boolean?): List<Notification> {
@@ -24,7 +25,7 @@ class DbNotifications : Notifications {
         return tr
             .sql(
                 """
-                SELECT n.id, n.title, n.body, nr.is_read, n.created_at
+                SELECT n.id, n.content, nr.is_read, n.created_at
                 FROM notifications n
                 JOIN notification_recipients nr ON nr.notification_id = n.id
                 WHERE nr.employee_id = :employeeId AND n.org_id = :orgId $isReadFilter
@@ -38,8 +39,7 @@ class DbNotifications : Notifications {
             .list { row ->
                 DbNotification(
                     id = row.asUuid("id").toNotificationId(),
-                    title = row.asString("title"),
-                    body = row.asString("body"),
+                    content = Json.decodeFromString<NotificationContent>(row.asString("content")),
                     isRead = row.asBoolean("is_read"),
                     createdAt = row.asInstant("created_at"),
                 )

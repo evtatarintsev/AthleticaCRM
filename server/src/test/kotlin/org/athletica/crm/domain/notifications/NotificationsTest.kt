@@ -1,25 +1,24 @@
 package org.athletica.crm.domain.notifications
 
-import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.storage.asLong
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.fail
 
 /** Тесты доменной сущности уведомлений [DbNotifications] / [DbNotification]. */
@@ -30,6 +29,16 @@ class NotificationsTest {
     private val stranger = EmployeeId.new()
 
     private val notifications = DbNotifications()
+
+    private val groupId = GroupId.new()
+
+    private val content =
+        GroupScheduleChanged(
+            groupId = groupId,
+            groupName = "Йога",
+            effectiveFrom = LocalDate(2026, 10, 12),
+            changedByName = "Сотрудник 1",
+        )
 
     private fun ctx(employeeId: EmployeeId) =
         EmployeeRequestContext(
@@ -80,7 +89,7 @@ class NotificationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx(emp1)) {
-                        notifications.new("Заголовок", "Текст", listOf(emp1, emp2)).save()
+                        notifications.new(content, listOf(emp1, emp2)).save()
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -95,7 +104,7 @@ class NotificationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx(emp1)) {
-                        notifications.new("Заголовок", "Текст", listOf(emp1)).save()
+                        notifications.new(content, listOf(emp1)).save()
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -110,7 +119,9 @@ class NotificationsTest {
                 }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(1, mine.size)
-            assertEquals("Заголовок", mine.first().title)
+            assertEquals("Изменено расписание группы «Йога»", mine.first().title(Lang.RU))
+            assertEquals("Schedule changed for group “Йога”", mine.first().title(Lang.EN))
+            assertEquals(NotificationSubject.Group(groupId), mine.first().subject)
             assertEquals(false, mine.first().isRead)
             assertEquals(1, myUnread)
 
@@ -134,7 +145,7 @@ class NotificationsTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx(emp1)) {
-                            val notification = notifications.new("Заголовок", "Текст", listOf(emp1))
+                            val notification = notifications.new(content, listOf(emp1))
                             notification.save()
                             notification.id
                         }
@@ -181,8 +192,8 @@ class NotificationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx(emp1)) {
-                        notifications.new("A", "1", listOf(emp1)).save()
-                        notifications.new("B", "2", listOf(emp1)).save()
+                        notifications.new(content, listOf(emp1)).save()
+                        notifications.new(content.copy(groupName = "Пилатес"), listOf(emp1)).save()
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -208,60 +219,12 @@ class NotificationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx(emp1)) {
-                        notifications.new("Заголовок", "Текст", emptyList()).save()
+                        notifications.new(content, emptyList()).save()
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
 
             assertEquals(0, countNotifications())
             assertEquals(0, countRecipients())
-        }
-
-    @Test
-    fun `save возвращает ошибку если заголовок пустой`() =
-        runTest {
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx(emp1)) {
-                            notifications.new("  ", "Текст", listOf(emp1)).save()
-                        }
-                    }
-                }
-
-            assertIs<Either.Left<DomainError>>(result)
-            assertEquals("NOTIFICATION_TITLE_REQUIRED", result.value.code)
-        }
-
-    @Test
-    fun `save возвращает ошибку если текст пустой`() =
-        runTest {
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx(emp1)) {
-                            notifications.new("Заголовок", "", listOf(emp1)).save()
-                        }
-                    }
-                }
-
-            assertIs<Either.Left<DomainError>>(result)
-            assertEquals("NOTIFICATION_BODY_REQUIRED", result.value.code)
-        }
-
-    @Test
-    fun `save возвращает ошибку если заголовок слишком длинный`() =
-        runTest {
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx(emp1)) {
-                            notifications.new("x".repeat(256), "Текст", listOf(emp1)).save()
-                        }
-                    }
-                }
-
-            assertIs<Either.Left<DomainError>>(result)
-            assertEquals("NOTIFICATION_TITLE_TOO_LONG", result.value.code)
         }
 }

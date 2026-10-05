@@ -19,12 +19,18 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
+import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.notifications.GroupScheduleChanged
+import org.athletica.crm.domain.notifications.NotificationContent
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.usecases.auth.User
@@ -42,6 +48,7 @@ import kotlin.test.assertTrue
 class GroupScheduleRouteTest {
     private lateinit var di: Di
     private lateinit var token: String
+    private lateinit var user: User
     private var hallId: HallId = HallId.new()
     private val today = java.time.LocalDate.now().toKotlinLocalDate()
     private val json = Json { ignoreUnknownKeys = true }
@@ -69,7 +76,7 @@ class GroupScheduleRouteTest {
                     )
                 }
             }
-        val user = assertIs<Either.Right<User>>(result).value
+        user = assertIs<Either.Right<User>>(result).value
         token = testJwtConfig.makeAccessToken(user)
         hallId = HallId.new()
         TestPostgres.db
@@ -168,6 +175,62 @@ class GroupScheduleRouteTest {
                         .bind("groupId", groupId)
                         .firstOrNull { it.asLong("cnt") } ?: 0L
                 assertTrue(count > 0, "занятия должны существовать сразу после изменения расписания")
+            }
+        }
+
+    /** Добавляет в организацию сотрудника [name] с признаком активности [isActive] и доступом [allBranches]. */
+    private suspend fun insertColleague(name: String, isActive: Boolean, allBranches: Boolean): EmployeeId {
+        val id = EmployeeId.new()
+        TestPostgres.db
+            .sql(
+                """
+                INSERT INTO employees (id, org_id, name, is_owner, is_active, all_branches_access)
+                VALUES (:id, :orgId, :name, false, :isActive, :allBranches)
+                """.trimIndent(),
+            )
+            .bind("id", id)
+            .bind("orgId", user.orgId)
+            .bind("name", name)
+            .bind("isActive", isActive)
+            .bind("allBranches", allBranches)
+            .execute()
+        return id
+    }
+
+    /** Получатели уведомлений в порядке возрастания идентификатора. */
+    private suspend fun notificationRecipients(): List<EmployeeId> =
+        TestPostgres.db
+            .sql("SELECT employee_id FROM notification_recipients ORDER BY employee_id")
+            .list { it.asUuid("employee_id").toEmployeeId() }
+
+    @Test
+    fun `изменение расписания уведомляет коллег с доступом к филиалу группы, кроме автора`() =
+        runTest {
+            signUpWithHall()
+            val colleague = insertColleague("Коллега", isActive = true, allBranches = true)
+            val assigned = insertColleague("Сотрудник филиала", isActive = true, allBranches = false)
+            TestPostgres.db
+                .sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
+                .bind("employeeId", assigned)
+                .bind("branchId", user.branchId)
+                .execute()
+            insertColleague("Другой филиал", isActive = true, allBranches = false)
+            insertColleague("Неактивный", isActive = false, allBranches = true)
+            val groupId = GroupId.new()
+            testApplication {
+                application { context(di) { configureServer() } }
+                createGroup(groupId)
+
+                val response = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
+
+                assertEquals(HttpStatusCode.OK, response.status)
+                assertEquals(listOf(colleague, assigned).sortedBy { it.value }, notificationRecipients())
+                val content =
+                    TestPostgres.db
+                        .sql("SELECT content FROM notifications")
+                        .list { Json.decodeFromString<NotificationContent>(it.asString("content")) }
+                        .single()
+                assertEquals(GroupScheduleChanged(groupId, "Йога", today, "John"), content)
             }
         }
 }

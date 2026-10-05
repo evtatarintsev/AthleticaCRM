@@ -238,6 +238,28 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
     }
 
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> =
+        tr
+            .sql(
+                """
+                SELECT e.id
+                FROM employees e
+                WHERE e.org_id = :orgId
+                  AND e.is_active
+                  AND (
+                      e.all_branches_access
+                      OR EXISTS (
+                          SELECT 1 FROM employee_branches eb
+                          WHERE eb.employee_id = e.id AND eb.branch_id = :branchId
+                      )
+                  )
+                """.trimIndent(),
+            )
+            .bind("orgId", ctx.orgId)
+            .bind("branchId", branchId)
+            .list { row -> row.asUuid("id").toEmployeeId() }
+
     context(tr: Transaction)
     private suspend fun branchIdsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<BranchId>> =
         tr

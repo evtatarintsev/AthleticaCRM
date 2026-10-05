@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.notifications
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.NotificationId
 import org.athletica.crm.core.errors.DomainError
@@ -15,17 +16,20 @@ interface Notification {
     /** Идентификатор уведомления. */
     val id: NotificationId
 
-    /** Заголовок. */
-    val title: String
-
-    /** Текст. */
-    val body: String
+    /** Объект уведомления; `null`, если ссылаться не на что. */
+    val subject: NotificationSubject?
 
     /** Прочитано ли уведомление текущим сотрудником; для только что созданного — `false`. */
     val isRead: Boolean
 
     /** Момент создания. */
     val createdAt: Instant
+
+    /** Заголовок на языке [lang]. */
+    fun title(lang: Lang): String
+
+    /** Текст на языке [lang]. */
+    fun body(lang: Lang): String
 
     /**
      * Сохраняет уведомление и назначает его получателям в рамках [ctx].orgId.

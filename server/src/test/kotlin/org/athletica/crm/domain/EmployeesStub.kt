@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
@@ -90,4 +91,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(): List<Employee> = employees
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> = employees.filter { it.isActive && it.availableBranches.contains(branchId) }.map { it.id }
 }

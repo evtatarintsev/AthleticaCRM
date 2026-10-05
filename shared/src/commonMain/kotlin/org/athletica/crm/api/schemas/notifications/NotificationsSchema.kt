@@ -28,8 +28,8 @@ data class NotificationItem(
     val id: Uuid,
     val title: String,
     val body: String,
-    /** Объект уведомления, на который ведёт ссылка; `null` — уведомление без ссылки. */
-    val subject: NotificationSubjectSchema?,
+    /** Объект уведомления, на который ведёт ссылка; `none` — уведомление без ссылки. */
+    val subject: NotificationSubjectSchema,
     val isRead: Boolean,
     val createdAt: Instant,
 )
@@ -39,6 +39,11 @@ data class NotificationItem(
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface NotificationSubjectSchema
+
+/** Уведомление ни к какому объекту не относится — ссылки нет. */
+@Serializable
+@SerialName("none")
+data object NoneNotificationSubjectSchema : NotificationSubjectSchema
 
 /** Уведомление относится к группе [id]. */
 @Serializable

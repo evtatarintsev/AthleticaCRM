@@ -1901,7 +1901,14 @@ export const NotificationSubjectSchemaGroupSchema = z
   .readonly();
 export type NotificationSubjectSchemaGroup = z.output<typeof NotificationSubjectSchemaGroupSchema>;
 
-export const NotificationSubjectSchemaSchema = z.discriminatedUnion("type", [NotificationSubjectSchemaGroupSchema]);
+export const NotificationSubjectSchemaNoneSchema = z
+  .object({
+    type: z.literal("none"),
+  })
+  .readonly();
+export type NotificationSubjectSchemaNone = z.output<typeof NotificationSubjectSchemaNoneSchema>;
+
+export const NotificationSubjectSchemaSchema = z.discriminatedUnion("type", [NotificationSubjectSchemaGroupSchema, NotificationSubjectSchemaNoneSchema]);
 export type NotificationSubjectSchema = z.output<typeof NotificationSubjectSchemaSchema>;
 
 export const NotificationItemSchema = z
@@ -1909,7 +1916,7 @@ export const NotificationItemSchema = z
     id: z.uuid(),
     title: z.string(),
     body: z.string(),
-    subject: NotificationSubjectSchemaSchema.nullable(),
+    subject: NotificationSubjectSchemaSchema,
     isRead: z.boolean(),
     createdAt: InstantSchema,
   })

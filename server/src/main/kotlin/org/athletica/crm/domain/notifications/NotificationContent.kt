@@ -22,8 +22,8 @@ import org.athletica.crm.i18n.Messages
 @Serializable
 @JsonClassDiscriminator("kind")
 sealed interface NotificationContent {
-    /** Объект уведомления; `null`, если ссылаться не на что. */
-    val subject: NotificationSubject?
+    /** Объект уведомления; [NotificationSubject.None], если ссылаться не на что. */
+    val subject: NotificationSubject
 
     /** Заголовок на языке [lang]. */
     fun title(lang: Lang): String

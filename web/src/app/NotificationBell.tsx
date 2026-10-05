@@ -3,11 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { BellIcon, CheckCheckIcon, CheckIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
-import type {
-  BranchId,
-  NotificationItem,
-  NotificationSubjectSchemaGroup,
-} from "@/api/generated/contracts";
+import type { BranchId, NotificationItem } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -167,13 +163,7 @@ function NotificationRow({
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className={cn("text-sm break-words", !notification.isRead && "font-semibold")}>
-          {notification.subject === null ? (
-            notification.title
-          ) : (
-            <SubjectLink subject={notification.subject} onClick={onOpenSubject}>
-              {notification.title}
-            </SubjectLink>
-          )}
+          <NotificationTitle notification={notification} onOpenSubject={onOpenSubject} />
         </p>
         <p className="text-sm break-words text-muted-foreground">{notification.body}</p>
         <time dateTime={notification.createdAt} className="text-xs text-muted-foreground">
@@ -195,28 +185,30 @@ function NotificationRow({
 }
 
 /**
- * Ссылка на объект уведомления [subject]: адрес страницы объекта знает только клиент.
- * Пока объектом может быть только группа, поэтому разбора вариантов нет: появление
- * нового варианта в `NotificationSubjectSchema` сломает типизацию вызова, и сюда
- * добавится исчерпывающий `switch` по `subject.type`.
+ * Заголовок уведомления [notification]: ссылка на страницу его объекта, а без объекта — текст.
+ * Адрес страницы объекта знает только клиент; переход сообщается через [onOpenSubject].
  */
-function SubjectLink({
-  subject,
-  onClick,
-  children,
+function NotificationTitle({
+  notification,
+  onOpenSubject,
 }: {
-  subject: NotificationSubjectSchemaGroup;
-  onClick: () => void;
-  children: string;
+  notification: NotificationItem;
+  onOpenSubject: () => void;
 }) {
-  return (
-    <Link
-      to="/groups/$groupId"
-      params={{ groupId: subject.id }}
-      className="hover:underline"
-      onClick={onClick}
-    >
-      {children}
-    </Link>
-  );
+  const { subject, title } = notification;
+  switch (subject.type) {
+    case "none":
+      return title;
+    case "group":
+      return (
+        <Link
+          to="/groups/$groupId"
+          params={{ groupId: subject.id }}
+          className="hover:underline"
+          onClick={onOpenSubject}
+        >
+          {title}
+        </Link>
+      );
+  }
 }

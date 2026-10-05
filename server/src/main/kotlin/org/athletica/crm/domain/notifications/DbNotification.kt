@@ -25,7 +25,7 @@ data class DbNotification(
     override val isRead: Boolean = false,
     override val createdAt: Instant = Clock.System.now(),
 ) : Notification {
-    override val subject: NotificationSubject?
+    override val subject: NotificationSubject
         get() = content.subject
 
     override fun title(lang: Lang): String = content.title(lang)

@@ -2,6 +2,7 @@ package org.athletica.crm.routes
 
 import org.athletica.crm.api.schemas.notifications.GroupNotificationSubjectSchema
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
+import org.athletica.crm.api.schemas.notifications.NoneNotificationSubjectSchema
 import org.athletica.crm.api.schemas.notifications.NotificationItem
 import org.athletica.crm.api.schemas.notifications.NotificationSubjectSchema
 import org.athletica.crm.api.schemas.notifications.NotificationsRequest
@@ -53,7 +54,7 @@ private fun Notification.toItem() =
         id = id.value,
         title = title(ctx.lang),
         body = body(ctx.lang),
-        subject = subject?.toSchema(),
+        subject = subject.toSchema(),
         isRead = isRead,
         createdAt = createdAt,
     )
@@ -61,5 +62,6 @@ private fun Notification.toItem() =
 /** Преобразует объект уведомления в схему ответа. */
 private fun NotificationSubject.toSchema(): NotificationSubjectSchema =
     when (this) {
+        is NotificationSubject.None -> NoneNotificationSubjectSchema
         is NotificationSubject.Group -> GroupNotificationSubjectSchema(id)
     }

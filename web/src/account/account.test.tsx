@@ -298,7 +298,7 @@ describe("уведомления", () => {
     id: "0199a0b2-7c3e-7d2a-9f10-000000000010",
     title: "Новый клиент",
     body: "Анна записалась в группу",
-    subject: null,
+    subject: { type: "none" },
     isRead: false,
     createdAt: "2025-02-10T11:55:00Z",
   };

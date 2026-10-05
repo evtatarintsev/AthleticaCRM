@@ -16,8 +16,8 @@ interface Notification {
     /** Идентификатор уведомления. */
     val id: NotificationId
 
-    /** Объект уведомления; `null`, если ссылаться не на что. */
-    val subject: NotificationSubject?
+    /** Объект уведомления; [NotificationSubject.None], если ссылаться не на что. */
+    val subject: NotificationSubject
 
     /** Прочитано ли уведомление текущим сотрудником; для только что созданного — `false`. */
     val isRead: Boolean

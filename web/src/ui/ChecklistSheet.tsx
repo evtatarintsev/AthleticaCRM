@@ -1,4 +1,6 @@
+import { PlusIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
@@ -13,6 +15,26 @@ export interface ChecklistItem<Id extends string> {
   readonly name: string;
   /** Необязательная картинка перед подписью, например аватар сотрудника. */
   readonly avatar?: ReactNode;
+}
+
+/** Свойства вложенной панели создания записи, которую открывает [ChecklistSheet]. */
+export interface ChecklistCreateProps<Id extends string> {
+  /** Открыта ли панель создания. */
+  readonly open: boolean;
+  /** Вызывается, когда панель создания надо открыть или закрыть. */
+  readonly onOpenChange: (open: boolean) => void;
+  /** Строка поиска на момент открытия — заготовка названия новой записи; может быть пустой. */
+  readonly name: string;
+  /** Сообщает о созданной записи: она сразу отмечается в списке. */
+  readonly onCreated: (id: Id) => void;
+}
+
+/** Создание новой записи прямо из списка, когда подходящей в нём нет. */
+export interface ChecklistCreate<Id extends string> {
+  /** Подпись кнопки создания по строке поиска [query]; пустая строка — поиск не заполнен. */
+  readonly label: (query: string) => string;
+  /** Вложенная панель создания записи. */
+  readonly render: (props: ChecklistCreateProps<Id>) => ReactNode;
 }
 
 /** Свойства панели с чекбоксами. */
@@ -41,6 +63,8 @@ interface ChecklistSheetProps<Id extends string> {
    * панель остаётся открытой с прежними отметками.
    */
   readonly onSubmit: (ids: readonly Id[]) => Promise<string | null>;
+  /** Кнопка создания записи под списком; без неё создавать из панели нельзя. */
+  readonly create?: ChecklistCreate<Id> | undefined;
 }
 
 /**
@@ -48,7 +72,8 @@ interface ChecklistSheetProps<Id extends string> {
  * чекбоксами, отмечен текущий набор [selected]. «Сохранить» передаёт отмеченные в
  * `onSubmit`, «Отмена» ничего не меняет; изменённые отметки защищены подтверждением.
  * Поиск [ChecklistSheetProps.searchLabel] только скрывает записи: отмеченные, но скрытые
- * поиском записи остаются в наборе.
+ * поиском записи остаются в наборе. С [ChecklistSheetProps.create] под списком есть кнопка
+ * создания записи: созданная запись сразу отмечается, сохраняет набор по-прежнему «Сохранить».
  */
 export function ChecklistSheet<Id extends string>({
   open,
@@ -71,6 +96,7 @@ function ChecklistContent<Id extends string>({
   searchLabel,
   submitLabel,
   onSubmit,
+  create,
 }: Omit<ChecklistSheetProps<Id>, "open" | "onOpenChange" | "title">) {
   const { t } = useI18n();
   const { close } = useEditSheet();
@@ -78,6 +104,7 @@ function ChecklistContent<Id extends string>({
   const [query, setQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState<string | null>(null);
 
   const initial = new Set(selected);
   const dirty = draft.size !== initial.size || Array.from(draft).some((id) => !initial.has(id));
@@ -90,6 +117,11 @@ function ChecklistContent<Id extends string>({
       next.add(id);
     }
     setDraft(next);
+  };
+
+  const created = (id: Id) => {
+    setDraft(new Set(draft).add(id));
+    setQuery("");
   };
 
   const needle = query.trim().toLocaleLowerCase();
@@ -116,6 +148,14 @@ function ChecklistContent<Id extends string>({
       onSubmit={() => {
         void submit();
       }}
+      nested={create?.render({
+        open: creating !== null,
+        onOpenChange: (next) => {
+          setCreating(next ? query.trim() : null);
+        },
+        name: creating ?? "",
+        onCreated: created,
+      })}
     >
       {searchLabel !== undefined && items.length > 0 && (
         <Input
@@ -160,6 +200,20 @@ function ChecklistContent<Id extends string>({
             </li>
           ))}
         </ul>
+      )}
+      {create !== undefined && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={submitting}
+          onClick={() => {
+            setCreating(query.trim());
+          }}
+        >
+          <PlusIcon />
+          {create.label(visible.length === 0 ? query.trim() : "")}
+        </Button>
       )}
     </EditSheetForm>
   );

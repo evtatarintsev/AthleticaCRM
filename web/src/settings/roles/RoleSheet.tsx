@@ -26,6 +26,8 @@ interface RoleSheetProps {
   readonly onOpenChange: (open: boolean) => void;
   /** Редактируемая роль; `null` — новая. */
   readonly initial: RoleItem | null;
+  /** Заготовка названия новой роли, например строка поиска, по которой роль не нашлась. */
+  readonly defaultName?: string | undefined;
   /** Сохраняет роль; возвращает текст ошибки или `null` при успехе. */
   readonly onSave: (terms: RoleTerms) => Promise<string | null>;
 }
@@ -35,7 +37,7 @@ interface RoleSheetProps {
  * списка ролей в настройках или поверх панели сотрудника; что делать с сохранённой ролью,
  * решает владелец панели через [RoleSheetProps.onSave].
  */
-export function RoleSheet({ open, onOpenChange, initial, onSave }: RoleSheetProps) {
+export function RoleSheet({ open, onOpenChange, initial, defaultName, onSave }: RoleSheetProps) {
   const { t } = useI18n();
   return (
     <EditSheet
@@ -43,7 +45,7 @@ export function RoleSheet({ open, onOpenChange, initial, onSave }: RoleSheetProp
       onOpenChange={onOpenChange}
       title={initial === null ? t("roles.create") : t("roles.edit")}
     >
-      <RoleForm initial={initial} onSave={onSave} />
+      <RoleForm initial={initial} defaultName={defaultName} onSave={onSave} />
     </EditSheet>
   );
 }
@@ -52,14 +54,18 @@ export function RoleSheet({ open, onOpenChange, initial, onSave }: RoleSheetProp
  * Форма роли. Права — поле формы наравне с названием, поэтому их изменение тоже защищено
  * подтверждением при закрытии. После сохранения закрывает свою панель.
  */
-function RoleForm({ initial, onSave }: Pick<RoleSheetProps, "initial" | "onSave">) {
+function RoleForm({
+  initial,
+  defaultName = "",
+  onSave,
+}: Pick<RoleSheetProps, "initial" | "defaultName" | "onSave">) {
   const { t } = useI18n();
   const { close } = useEditSheet();
   const nameSchema = useMemo(() => z.string().trim().min(1, t("error.required")), [t]);
   const [failure, setFailure] = useState<string | null>(null);
   const defaultPermissions: readonly UserPermission[] = initial?.permissions ?? [];
   const form = useForm({
-    defaultValues: { name: initial?.name ?? "", permissions: defaultPermissions },
+    defaultValues: { name: initial?.name ?? defaultName, permissions: defaultPermissions },
     onSubmit: async ({ value }) => {
       const name = nameSchema.safeParse(value.name);
       if (!name.success) {

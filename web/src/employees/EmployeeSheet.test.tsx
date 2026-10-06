@@ -266,8 +266,18 @@ describe("панель создания сотрудника", () => {
   });
 });
 
-describe("создание роли из панели сотрудника", () => {
-  it("без ролей создаёт роль и выбирает её, не создавая сотрудника", async () => {
+describe("создание роли из списка ролей сотрудника", () => {
+  /** Открывает список ролей из формы [form]. */
+  const openRoles = async (user: ReturnType<typeof userEvent.setup>, form: HTMLElement) => {
+    await user.click(
+      within(form).getByRole("button", {
+        name: `${ru["employees.editSection"]}: ${ru["employees.columnRoles"]}`,
+      }),
+    );
+    return within(await screen.findByRole("dialog", { name: ru["employees.columnRoles"] }));
+  };
+
+  it("без ролей создаёт роль, отмечает её в списке и не создаёт сотрудника", async () => {
     const api = formServer({ roles: [] });
     openApp("/employees?create=true", api.fetch);
     const user = userEvent.setup();
@@ -275,55 +285,44 @@ describe("создание роли из панели сотрудника", () 
     const form = await screen.findByRole("dialog", { name: ru["employees.create"] });
     await user.type(await within(form).findByLabelText(ru["employees.name"]), "Мария Кузнецова");
     expect(within(form).getByText(ru["employees.rolesEmpty"])).toBeVisible();
-    expect(within(form).queryByRole("link")).toBeNull();
-    expect(
-      within(form).queryByRole("button", {
-        name: `${ru["employees.editSection"]}: ${ru["employees.columnRoles"]}`,
-      }),
-    ).toBeNull();
+    expect(within(form).queryByRole("button", { name: ru["roles.add"] })).toBeNull();
 
-    await user.click(within(form).getByRole("button", { name: ru["roles.add"] }));
+    const roles = await openRoles(user, form);
+    await user.click(roles.getByRole("button", { name: ru["roles.add"] }));
     const editor = await screen.findByRole("dialog", { name: ru["roles.create"] });
     await user.type(within(editor).getByLabelText(ru["roles.name"]), "Тренер");
     await user.click(within(editor).getByRole("button", { name: ru["action.save"] }));
     await sheetClosed(ru["roles.create"]);
 
+    expect(await roles.findByRole("checkbox", { name: "Тренер" })).toBeChecked();
+    await user.click(roles.getByRole("button", { name: ru["action.done"] }));
+    await sheetClosed(ru["employees.columnRoles"]);
+
     expect(await within(form).findByText("Тренер")).toBeVisible();
     expect(within(form).getByLabelText(ru["employees.name"])).toHaveValue("Мария Кузнецова");
     expect(api.to("employees/roles/create")).toHaveLength(1);
     expect(api.to("employees/create")).toHaveLength(0);
-
-    await user.keyboard("{Escape}");
-    expect(await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeVisible();
   });
 
-  it("при редактировании добавляет новую роль к уже выбранным", async () => {
+  it("при редактировании добавляет новую роль к уже отмеченным", async () => {
     const api = formServer();
     openApp(`/employees?employee=${existing.id}&edit=true`, api.fetch);
     const user = userEvent.setup();
 
     const form = await screen.findByRole("dialog", { name: ru["employees.edit"] });
     await within(form).findByLabelText(ru["employees.name"]);
-    await user.click(
-      within(form).getByRole("button", {
-        name: `${ru["employees.editSection"]}: ${ru["employees.columnRoles"]}`,
-      }),
-    );
-    await user.click(
-      sheet(ru["employees.columnRoles"]).getByRole("checkbox", { name: coachRole.name }),
-    );
-    await user.click(
-      sheet(ru["employees.columnRoles"]).getByRole("button", { name: ru["action.done"] }),
-    );
-    await sheetClosed(ru["employees.columnRoles"]);
+    const roles = await openRoles(user, form);
+    await user.click(roles.getByRole("checkbox", { name: coachRole.name }));
 
-    await user.click(within(form).getByRole("button", { name: ru["roles.add"] }));
+    await user.click(roles.getByRole("button", { name: ru["roles.add"] }));
     const editor = await screen.findByRole("dialog", { name: ru["roles.create"] });
     await user.type(within(editor).getByLabelText(ru["roles.name"]), "Кассир");
     await user.click(within(editor).getByRole("button", { name: ru["action.save"] }));
     await sheetClosed(ru["roles.create"]);
-    expect(await within(form).findByText("Кассир")).toBeVisible();
-    expect(within(form).getByText(coachRole.name)).toBeVisible();
+    expect(await roles.findByRole("checkbox", { name: "Кассир" })).toBeChecked();
+    expect(roles.getByRole("checkbox", { name: coachRole.name })).toBeChecked();
+    await user.click(roles.getByRole("button", { name: ru["action.done"] }));
+    await sheetClosed(ru["employees.columnRoles"]);
 
     await user.click(within(form).getByRole("button", { name: ru["action.save"] }));
     await sheetClosed(ru["employees.edit"]);
@@ -336,22 +335,43 @@ describe("создание роли из панели сотрудника", () 
     expect(updated?.roleIds).toEqual([coachRole.id, role?.id]);
   });
 
-  it("отмена панели роли не меняет форму", async () => {
+  it("подставляет в название роли строку поиска, по которой ничего не нашлось", async () => {
     const api = formServer();
     openApp("/employees?create=true", api.fetch);
     const user = userEvent.setup();
 
     const form = await screen.findByRole("dialog", { name: ru["employees.create"] });
     await within(form).findByLabelText(ru["employees.name"]);
-    await user.click(within(form).getByRole("button", { name: ru["roles.add"] }));
+    const roles = await openRoles(user, form);
+    await user.type(roles.getByLabelText(ru["employees.searchRoles"]), "Бухгалтер");
+    await user.click(
+      roles.getByRole("button", {
+        name: ru["roles.addNamed"].replace("{name}", "Бухгалтер"),
+      }),
+    );
+
+    const editor = await screen.findByRole("dialog", { name: ru["roles.create"] });
+    expect(within(editor).getByLabelText(ru["roles.name"])).toHaveValue("Бухгалтер");
+  });
+
+  it("отмена панели роли оставляет список ролей открытым и ничего не создаёт", async () => {
+    const api = formServer();
+    openApp("/employees?create=true", api.fetch);
+    const user = userEvent.setup();
+
+    const form = await screen.findByRole("dialog", { name: ru["employees.create"] });
+    await within(form).findByLabelText(ru["employees.name"]);
+    const roles = await openRoles(user, form);
+    await user.click(roles.getByRole("button", { name: ru["roles.add"] }));
     const editor = await screen.findByRole("dialog", { name: ru["roles.create"] });
     await user.click(within(editor).getByRole("button", { name: ru["action.cancel"] }));
     await sheetClosed(ru["roles.create"]);
 
-    expect(within(form).getByText(ru["employees.rolesNone"])).toBeVisible();
+    expect(roles.getByRole("checkbox", { name: coachRole.name })).not.toBeChecked();
     expect(api.to("employees/roles/create")).toHaveLength(0);
-    await user.keyboard("{Escape}");
-    await sheetClosed(ru["employees.create"]);
+    await user.click(roles.getByRole("button", { name: ru["action.done"] }));
+    await sheetClosed(ru["employees.columnRoles"]);
+    expect(within(form).getByText(ru["employees.rolesNone"])).toBeVisible();
   });
 });
 

@@ -17,6 +17,45 @@
 
 ---
 
+### 🚀 Локальный запуск через https://athletica.crm
+
+Dev-nginx (`docker-compose.dev.yaml`) проксирует фронт (Vite, :5173), API (Ktor, :8080) и RustFS
+по HTTPS на самоподписанном сертификате. HTTPS нужен, чтобы страница была secure context
+(без него в браузере нет `crypto.randomUUID`, `navigator.clipboard` и т.п.).
+
+1. Хосты в `/etc/hosts`:
+   ```
+   127.0.0.1 athletica.crm minio.athletica.crm console.minio.athletica.crm
+   ```
+2. Сертификат (один раз; кладётся в `nginx/certs/`, в git не попадает):
+   ```bash
+   ./nginx/gen-dev-cert.sh
+   ```
+3. Добавить сертификат в доверенные (macOS) — без этого браузер покажет предупреждение,
+   а Ktor не сможет подписывать ссылки на файлы через `https://minio.athletica.crm`:
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain nginx/certs/dev.crt
+   ```
+   После этого перезапустить браузер.
+4. Инфраструктура (переменные `POSTGRES_*`, `MINIO_*` — из `.envrc`):
+   ```bash
+   docker compose -f docker-compose.dev.yaml up -d
+   ```
+   После изменения `docker-compose.dev.yaml` контейнеры нужно пересоздать (`up -d`),
+   `docker compose restart` новых томов и портов не подхватывает.
+5. Бэкенд с `MINIO_PUBLIC_ENDPOINT=https://minio.athletica.crm` (`MINIO_ENDPOINT` остаётся
+   `http://localhost:9000`):
+   ```bash
+   ./gradlew server:run
+   ```
+6. Фронтенд:
+   ```bash
+   cd web && npm ci && npm run dev
+   ```
+7. Открыть https://athletica.crm/.
+
+---
+
 ### Единый язык (Ubiquitous language)
 
 - **AthleticaCRM** — название проекта

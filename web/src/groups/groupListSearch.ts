@@ -20,11 +20,13 @@ export interface GroupListFilters {
 /**
  * Search-параметры адреса `/groups`. В адресе хранятся только отличия от значений
  * по умолчанию, некорректное значение сбрасывается к умолчанию, а не роняет страницу.
+ * `create` — открыта панель создания группы.
  */
 export const GroupListSearchSchema = z.object({
   q: z.string().optional().catch(undefined),
   disciplineIds: z.array(DisciplineIdSchema).optional().catch(undefined),
   employeeIds: z.array(EmployeeIdSchema).optional().catch(undefined),
+  create: z.literal(true).optional().catch(undefined),
 });
 
 /** Search-параметры адреса списка групп. */

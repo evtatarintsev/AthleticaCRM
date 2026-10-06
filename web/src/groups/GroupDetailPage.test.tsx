@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AddClientsToGroupRequestSchema,
   ClientListItemSchema,
+  EditGroupRequestSchema,
   EmployeeListItemSchema,
   GroupDetailResponseSchema,
   GroupDisciplineSchema,
@@ -125,6 +126,14 @@ function groupServer(
           .map((e) => ({ id: e.id, name: e.name, avatarId: e.avatarId })),
       };
       return empty();
+    },
+    "groups/edit": ({ body }) => {
+      if (failSet) {
+        return groupNotFound();
+      }
+      const request = EditGroupRequestSchema.parse(body);
+      group = { ...group, name: request.name };
+      return json(group);
     },
     "halls/list": () => json({ halls: [bigHall] }),
     "groups/set-schedule": ({ body }) => {
@@ -268,16 +277,7 @@ describe("дисциплины и тренеры в карточке", () => {
     const disciplines = section(ru["groups.detail.disciplinesTitle"]);
     const employees = section(ru["groups.detail.employeesTitle"]);
     expect(within(employees).getByText(ivanov.name)).toBeVisible();
-    expect(
-      screen.queryByRole("button", {
-        name: ru["groups.removeChip"].replace("{name}", boxing.name),
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: ru["groups.removeChip"].replace("{name}", ivanov.name),
-      }),
-    ).not.toBeInTheDocument();
+    expect(within(employees).getAllByRole("button")).toHaveLength(1);
     expect(within(disciplines).getAllByRole("button")).toHaveLength(1);
     expect(
       within(disciplines).getByRole("button", { name: ru["groups.detail.editSection"] }),
@@ -391,6 +391,83 @@ async function openSchedule(user: ReturnType<typeof userEvent.setup>) {
 /** Кнопка дня недели [day] в единственной карточке панели [sheet]. */
 const dayButton = (sheet: HTMLElement, day: "day.MONDAY" | "day.WEDNESDAY" | "day.FRIDAY") =>
   within(sheet).getByRole("button", { name: ru[day] });
+
+describe("изменение названия группы", () => {
+  /** Открывает панель изменения названия на карточке. */
+  const openRename = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole("button", { name: ru["groups.detail.editAction"] }));
+    return screen.findByRole("dialog", { name: ru["groups.edit"] });
+  };
+
+  it("меняет только название, дисциплины и тренеры отправляются прежними", async () => {
+    const server = groupServer(seniors);
+    openApp(`/groups/${seniors.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openRename(user);
+    const name = within(sheet).getByLabelText(ru["groups.name"], { exact: false });
+    expect(name).toHaveValue(seniors.name);
+    await user.clear(name);
+    await user.type(name, "  Старшие  ");
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(EditGroupRequestSchema.parse(server.to("groups/edit")[0]?.body)).toEqual({
+      id: seniors.id,
+      name: "Старшие",
+      disciplineIds: [boxing.id],
+      employeeIds: [ivanov.id],
+    });
+    expect(await screen.findByRole("heading", { name: "Старшие" })).toBeVisible();
+    expect(
+      within(section(ru["groups.detail.employeesTitle"])).getByText(ivanov.name),
+    ).toBeVisible();
+    expect(toast.success).toHaveBeenCalledWith(ru["groups.detail.renamed"]);
+  });
+
+  it("пустое название — ошибка без запроса", async () => {
+    const server = groupServer(seniors);
+    openApp(`/groups/${seniors.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openRename(user);
+    await user.clear(within(sheet).getByLabelText(ru["groups.name"], { exact: false }));
+    await user.type(within(sheet).getByLabelText(ru["groups.name"], { exact: false }), "   ");
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await within(sheet).findByText(ru["error.required"])).toBeVisible();
+    expect(server.to("groups/edit")).toHaveLength(0);
+  });
+
+  it("при ошибке сервера панель остаётся открытой с введённым названием", async () => {
+    openApp(`/groups/${seniors.id}`, groupServer(seniors, { failSet: true }).fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openRename(user);
+    const name = within(sheet).getByLabelText(ru["groups.name"], { exact: false });
+    await user.clear(name);
+    await user.type(name, "Старшие");
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await within(sheet).findByText("Группа не найдена")).toBeVisible();
+    expect(name).toHaveValue("Старшие");
+  });
+
+  it("Esc без изменений закрывает панель без подтверждения", async () => {
+    openApp(`/groups/${seniors.id}`, groupServer(seniors).fetch);
+    const user = userEvent.setup();
+
+    await openRename(user);
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(ru["editSheet.discardTitle"])).not.toBeInTheDocument();
+  });
+});
 
 describe("расписание в карточке группы", () => {
   it("«Изменить расписание» открывает панель с карточками действующего расписания", async () => {

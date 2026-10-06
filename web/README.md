@@ -14,7 +14,9 @@ npm run format    # prettier --write
 npm run build     # сборка в dist/
 ```
 
-Открыть: http://localhost:5173/ или, через dev-nginx (`docker-compose.dev.yaml`), http://athletica.crm/.
+Открыть: http://localhost:5173/ или, через dev-nginx (`docker-compose.dev.yaml`), https://athletica.crm/.
+Dev-nginx работает по HTTPS на самоподписанном сертификате — настройка в корневом
+[README](../README.md#-локальный-запуск-через-httpsathleticacrm).
 
 ## Устройство
 

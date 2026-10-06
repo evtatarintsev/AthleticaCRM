@@ -30,8 +30,6 @@ import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientL
 import { EmployeeListSearchSchema } from "@/employees/employeeSearch";
 import { EmployeesPage } from "@/employees/EmployeesPage";
 import { GroupsPage } from "@/groups/GroupsPage";
-import { GroupCreatePage } from "@/groups/GroupCreatePage";
-import { GroupEditPage } from "@/groups/GroupEditPage";
 import { GroupDetailPage } from "@/groups/GroupDetailPage";
 import { GroupListSearchSchema, type GroupListSearch } from "@/groups/groupListSearch";
 import { SchedulePage } from "@/schedule/SchedulePage";
@@ -397,16 +395,6 @@ const groupsRoute = createRoute({
   },
 });
 
-/** Создание новой группы. */
-const groupNewRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/groups/new",
-  component: function GroupNewRoute() {
-    const { api } = groupNewRoute.useRouteContext();
-    return <GroupCreatePage api={api} />;
-  },
-});
-
 /** Карточка группы [groupId]. */
 const groupRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -422,24 +410,6 @@ const groupRoute = createRoute({
     const { api } = groupRoute.useRouteContext();
     const { groupId } = groupRoute.useParams();
     return <GroupDetailPage api={api} groupId={groupId} />;
-  },
-});
-
-/** Редактирование группы [groupId]. */
-const groupEditRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/groups/$groupId/edit",
-  params: {
-    parse: ({ groupId }): { groupId: GroupId } | false => {
-      const parsed = GroupIdSchema.safeParse(groupId);
-      return parsed.success ? { groupId: parsed.data } : false;
-    },
-    stringify: ({ groupId }) => ({ groupId }),
-  },
-  component: function GroupEditRoute() {
-    const { api } = groupEditRoute.useRouteContext();
-    const { groupId } = groupEditRoute.useParams();
-    return <GroupEditPage api={api} groupId={groupId} />;
   },
 });
 
@@ -636,9 +606,7 @@ const routeTree = rootRoute.addChildren([
     scheduleRoute,
     sessionRoute,
     groupsRoute,
-    groupNewRoute,
     groupRoute,
-    groupEditRoute,
     employeesRoute,
     clientsRoute,
     clientNewRoute,
@@ -702,7 +670,6 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/activity-log": true,
   "/schedule": true,
   "/groups": true,
-  "/groups/new": true,
   "/employees": true,
   "/clients": true,
   "/clients/new": true,

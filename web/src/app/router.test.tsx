@@ -80,6 +80,16 @@ describe("маршрутизация", () => {
     expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();
   });
 
+  it("отдельных страниц формы группы больше нет — «не найдено»", async () => {
+    openApp("/groups/new", true);
+    expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();
+  });
+
+  it("адрес редактирования группы больше не существует — «не найдено»", async () => {
+    openApp("/groups/0199a0b2-7c3e-7d2a-9f10-000000000601/edit", true);
+    expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();
+  });
+
   it("отдельной страницы карточки сотрудника больше нет — «не найдено»", async () => {
     openApp("/employees/0199a0b2-7c3e-7d2a-9f10-000000000403", true);
     expect(await screen.findByRole("heading", { name: ru["notFound.title"] })).toBeInTheDocument();

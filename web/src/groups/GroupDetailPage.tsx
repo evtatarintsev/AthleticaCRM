@@ -13,18 +13,19 @@ import type {
   ScheduleSlot,
   UploadId,
 } from "@/api/generated/contracts";
-import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientPickerSheet, type PickedClient } from "@/clients/ClientPickerSheet";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate, WEEK_DAYS } from "@/lib/localDate";
-import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
-import { ChecklistSheet, type ChecklistItem } from "@/ui/ChecklistSheet";
+import { ChecklistSheet } from "@/ui/ChecklistSheet";
 import { PageHeader } from "@/ui/PageHeader";
+import { employeeChecklistItem } from "./employeeChecklistItem";
+import { GroupChips, GroupChipsSection } from "./GroupChips";
+import { GroupRenameSheet } from "./GroupRenameSheet";
 import { GroupScheduleSheet } from "./GroupScheduleSheet";
 import { cardsToSlotInputs, slotsToCards, type SlotCard } from "./groupSchedule";
 import { useGroup, useGroupDisciplines, useGroupEmployees, useGroupHalls } from "./groupsQueries";
@@ -51,6 +52,7 @@ export function GroupDetailPage({
 
   const [picker, setPicker] = useState<"disciplines" | "employees" | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
 
   const refresh = () =>
@@ -87,13 +89,7 @@ export function GroupDetailPage({
     readonly id: EmployeeId;
     readonly name: string;
     readonly avatarId: UploadId | null;
-  }): ChecklistItem<EmployeeId> => ({
-    id: employee.id,
-    name: employee.name,
-    avatar: (
-      <Avatar api={api} uploadId={employee.avatarId} name={employee.name} className="size-5" />
-    ),
-  });
+  }) => employeeChecklistItem(api, employee);
 
   const refreshClients = () =>
     Promise.all([
@@ -162,32 +158,26 @@ export function GroupDetailPage({
       <PageHeader
         title={detail.name}
         actions={
-          <Button asChild variant="outline">
-            <Link to="/groups/$groupId/edit" params={{ groupId }}>
-              <PencilIcon aria-hidden />
-              {t("groups.detail.editAction")}
-            </Link>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setRenameOpen(true);
+            }}
+          >
+            <PencilIcon aria-hidden />
+            {t("groups.detail.editAction")}
           </Button>
         }
       />
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("groups.detail.disciplinesTitle")}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setPicker("disciplines");
-            }}
-          >
-            {t("groups.detail.editSection")}
-          </Button>
-        </div>
-        <ChipsList items={detail.disciplines} emptyText={t("groups.detail.disciplinesEmpty")} />
-      </section>
+      <GroupChipsSection
+        title={t("groups.detail.disciplinesTitle")}
+        onEdit={() => {
+          setPicker("disciplines");
+        }}
+      >
+        <GroupChips items={detail.disciplines} emptyText={t("groups.detail.disciplinesEmpty")} />
+      </GroupChipsSection>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
@@ -212,26 +202,17 @@ export function GroupDetailPage({
         )}
       </section>
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("groups.detail.employeesTitle")}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setPicker("employees");
-            }}
-          >
-            {t("groups.detail.editSection")}
-          </Button>
-        </div>
-        <ChipsList
+      <GroupChipsSection
+        title={t("groups.detail.employeesTitle")}
+        onEdit={() => {
+          setPicker("employees");
+        }}
+      >
+        <GroupChips
           items={detail.employees.map(withAvatar)}
           emptyText={t("groups.detail.employeesEmpty")}
         />
-      </section>
+      </GroupChipsSection>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
@@ -315,6 +296,8 @@ export function GroupDetailPage({
         onSubmit={addClients}
       />
 
+      <GroupRenameSheet api={api} open={renameOpen} onOpenChange={setRenameOpen} group={detail} />
+
       <GroupScheduleSheet
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
@@ -324,35 +307,6 @@ export function GroupDetailPage({
         onSave={saveSchedule}
       />
     </section>
-  );
-}
-
-/** Чипы набора [items] только для чтения; при пустом наборе — сообщение [emptyText]. */
-function ChipsList<Id extends string>({
-  items,
-  emptyText,
-}: {
-  readonly items: readonly ChecklistItem<Id>[];
-  readonly emptyText: string;
-}) {
-  if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyText}</p>;
-  }
-  return (
-    <ul className="flex flex-wrap gap-2">
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border bg-accent py-1 pr-3 text-xs font-medium",
-            item.avatar === undefined ? "pl-3" : "pl-1",
-          )}
-        >
-          {item.avatar}
-          {item.name}
-        </li>
-      ))}
-    </ul>
   );
 }
 

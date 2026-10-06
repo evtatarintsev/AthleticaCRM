@@ -20,6 +20,7 @@ import { WEEK_DAYS } from "@/lib/localDate";
 import { useSession } from "@/query/session";
 import { MultiSelectPicker } from "@/ui/MultiSelectPicker";
 import { PageHeader } from "@/ui/PageHeader";
+import { GroupCreateSheet } from "./GroupCreateSheet";
 import { slotsToCards } from "./groupSchedule";
 import {
   activeFilterCount,
@@ -34,9 +35,14 @@ import { useGroupDisciplines, useGroupEmployees, useGroups } from "./groupsQueri
 /** Задержка между вводом в поиск и запросом к серверу, мс. */
 const SEARCH_DEBOUNCE_MS = 400;
 
+/** Признак открытой панели из search-параметров [search], чтобы смена фильтров её не закрывала. */
+function panelOf(search: GroupListSearch): GroupListSearch {
+  return search.create === true ? { create: true } : {};
+}
+
 /**
  * Список групп: поиск по названию, фильтры по дисциплинам и тренерам в адресе страницы,
- * таблица с расписанием и составом тренеров, создание новой группы.
+ * таблица с расписанием и составом тренеров, создание новой группы в панели поверх списка.
  */
 export function GroupsPage({
   api,
@@ -68,18 +74,18 @@ export function GroupsPage({
       return;
     }
     const timer = setTimeout(() => {
-      onSearchChange(searchOf({ ...filters, q: query }));
+      onSearchChange({ ...searchOf({ ...filters, q: query }), ...panelOf(search) });
     }, SEARCH_DEBOUNCE_MS);
     return () => {
       clearTimeout(timer);
     };
-  }, [query, filters, onSearchChange]);
+  }, [query, filters, search, onSearchChange]);
 
   const setFilters = useCallback(
     (next: GroupListFilters) => {
-      onSearchChange(searchOf(next));
+      onSearchChange({ ...searchOf(next), ...panelOf(search) });
     },
-    [onSearchChange],
+    [search, onSearchChange],
   );
 
   const filterCount = activeFilterCount(filters);
@@ -91,7 +97,7 @@ export function GroupsPage({
         title={t("groups.title")}
         actions={
           <Button asChild>
-            <Link to="/groups/new">
+            <Link to="/groups" search={{ ...search, create: true }}>
               <PlusIcon aria-hidden />
               {t("groups.create")}
             </Link>
@@ -202,6 +208,13 @@ export function GroupsPage({
         }}
         onApply={(employeeIds) => {
           setFilters({ ...filters, employeeIds });
+        }}
+      />
+      <GroupCreateSheet
+        api={api}
+        open={search.create === true}
+        onOpenChange={(open) => {
+          onSearchChange({ ...searchOf(filters), ...(open ? { create: true } : {}) });
         }}
       />
     </section>

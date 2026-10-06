@@ -215,6 +215,7 @@ export const ru = {
 
   "roles.title": "Роли",
   "roles.add": "Добавить роль",
+  "roles.addNamed": "Добавить роль «{name}»",
   "roles.empty": "Роли не созданы",
   "roles.create": "Новая роль",
   "roles.edit": "Изменить роль",

@@ -35,8 +35,8 @@ import {
 } from "./employeeForm";
 import { PermissionsSheet } from "./PermissionsSheet";
 
-/** Вложенная панель формы сотрудника, открытая сейчас; `new-role` — создание роли. */
-type EmployeePicker = "roles" | "new-role" | "permissions" | "branches" | null;
+/** Вложенная панель формы сотрудника, открытая сейчас. */
+type EmployeePicker = "roles" | "permissions" | "branches" | null;
 
 /** Свойства панели сотрудника. */
 interface EmployeeSheetProps {
@@ -54,7 +54,7 @@ interface EmployeeSheetProps {
  * Панель справа для создания или редактирования сотрудника [EmployeeSheetProps.employee]:
  * фото, контакты, роли, права и доступ к филиалам. Роли, права и филиалы выбираются во
  * вложенных панелях и сохраняются вместе с остальными полями одним запросом. Новую роль можно
- * создать прямо из формы: она сохраняется сразу и выбирается у сотрудника.
+ * создать из списка ролей: она сохраняется сразу и отмечается в списке.
  */
 export function EmployeeSheet({ api, open, onOpenChange, employee }: EmployeeSheetProps) {
   const { t } = useI18n();
@@ -181,17 +181,19 @@ function EmployeeForm({
     },
   });
 
-  const addRole = async (terms: RoleTerms): Promise<string | null> => {
-    const result = await api.call("employees/roles/create", { id: uuidv7(), ...terms });
-    if (!result.ok) {
-      return apiErrorMessage(t, result.error);
-    }
-    form.setFieldValue("roleIds", [...form.getFieldValue("roleIds"), result.value.id]);
-    await queryClient.invalidateQueries({
-      queryKey: apiQuery(api, branchId, "employees/roles").queryKey,
-    });
-    return null;
-  };
+  const addRole =
+    (onCreated: (id: string) => void) =>
+    async (terms: RoleTerms): Promise<string | null> => {
+      const result = await api.call("employees/roles/create", { id: uuidv7(), ...terms });
+      if (!result.ok) {
+        return apiErrorMessage(t, result.error);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: apiQuery(api, branchId, "employees/roles").queryKey,
+      });
+      onCreated(result.value.id);
+      return null;
+    };
 
   const openPicker = (next: EmployeePicker) => () => {
     setPicker(next);
@@ -235,12 +237,19 @@ function EmployeeForm({
                       form.setFieldValue("roleIds", ids);
                       return Promise.resolve(null);
                     }}
-                  />
-                  <RoleSheet
-                    open={picker === "new-role"}
-                    onOpenChange={pickerOpenChange("new-role")}
-                    initial={null}
-                    onSave={addRole}
+                    create={{
+                      label: (query) =>
+                        query === "" ? t("roles.add") : t("roles.addNamed", { name: query }),
+                      render: ({ open, onOpenChange, name, onCreated }) => (
+                        <RoleSheet
+                          open={open}
+                          onOpenChange={onOpenChange}
+                          initial={null}
+                          defaultName={name}
+                          onSave={addRole(onCreated)}
+                        />
+                      ),
+                    }}
                   />
                   <PermissionsSheet
                     open={picker === "permissions"}
@@ -318,21 +327,7 @@ function EmployeeForm({
           </form.Field>
           <form.Subscribe selector={(state) => state.values.roleIds}>
             {(roleIds) => (
-              <FormSection
-                title={t("employees.columnRoles")}
-                onEdit={roles.length === 0 ? null : openPicker("roles")}
-                extraAction={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={submitting}
-                    onClick={openPicker("new-role")}
-                  >
-                    {t("roles.add")}
-                  </Button>
-                }
-              >
+              <FormSection title={t("employees.columnRoles")} onEdit={openPicker("roles")}>
                 {roles.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("employees.rolesEmpty")}</p>
                 ) : (
@@ -386,17 +381,15 @@ function rolePermissionsOf(
 
 /**
  * Секция формы со сводкой выбора [children] и кнопкой «Изменить», открывающей вложенную
- * панель [onEdit]; без [onEdit] кнопки нет. [extraAction] показывается перед «Изменить».
+ * панель [onEdit].
  */
 function FormSection({
   title,
   onEdit,
-  extraAction,
   children,
 }: {
   readonly title: string;
-  readonly onEdit: (() => void) | null;
-  readonly extraAction?: ReactNode;
+  readonly onEdit: () => void;
   readonly children: ReactNode;
 }) {
   const { t } = useI18n();
@@ -404,20 +397,15 @@ function FormSection({
     <section className="space-y-2 border-t pt-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium">{title}</h3>
-        <div className="flex items-center gap-1">
-          {extraAction}
-          {onEdit !== null && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={`${t("employees.editSection")}: ${title}`}
-              onClick={onEdit}
-            >
-              {t("employees.editSection")}
-            </Button>
-          )}
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={`${t("employees.editSection")}: ${title}`}
+          onClick={onEdit}
+        >
+          {t("employees.editSection")}
+        </Button>
       </div>
       {children}
     </section>

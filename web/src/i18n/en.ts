@@ -203,6 +203,7 @@ export const en: Messages<typeof ru> = {
 
   "roles.title": "Roles",
   "roles.add": "Add role",
+  "roles.addNamed": "Add role “{name}”",
   "roles.empty": "No roles created",
   "roles.create": "New role",
   "roles.edit": "Edit role",

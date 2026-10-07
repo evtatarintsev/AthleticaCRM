@@ -2,10 +2,10 @@ import type { LocalDate } from "@/api/generated/contracts";
 import { addDays } from "@/lib/localDate";
 
 /** Сколько дней до сегодняшнего входит в окно блока занятий по умолчанию. */
-const DAYS_BEFORE = 14;
+const DAYS_BEFORE = 7;
 
 /** Сколько дней после сегодняшнего входит в окно блока занятий по умолчанию. */
-const DAYS_AFTER = 28;
+const DAYS_AFTER = 14;
 
 /** Длина окна в днях, включая обе границы; на неё же окно сдвигается. */
 export const WINDOW_LENGTH_DAYS = DAYS_BEFORE + DAYS_AFTER + 1;
@@ -16,7 +16,7 @@ export interface SessionsWindow {
   readonly to: LocalDate;
 }
 
-/** Окно по умолчанию вокруг сегодняшнего дня [today]: от двух недель назад до четырёх вперёд. */
+/** Окно по умолчанию вокруг сегодняшнего дня [today]: от недели назад до двух недель вперёд. */
 export function defaultSessionsWindow(today: LocalDate): SessionsWindow {
   return { from: addDays(today, -DAYS_BEFORE), to: addDays(today, DAYS_AFTER) };
 }

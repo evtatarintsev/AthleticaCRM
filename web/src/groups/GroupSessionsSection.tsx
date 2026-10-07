@@ -44,11 +44,23 @@ export function GroupSessionsSection({
 
   return (
     <section className="space-y-3">
+      <h2 className="text-sm font-medium text-muted-foreground">{t("groups.sessions.title")}</h2>
+
+      {data !== undefined && (data.last !== null || data.next !== null) && (
+        <ul className="divide-y rounded-md border bg-muted/40">
+          {data.last !== null && <SessionRow session={data.last} pin={t("groups.sessions.last")} />}
+          {data.next !== null && <SessionRow session={data.next} pin={t("groups.sessions.next")} />}
+        </ul>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto text-sm font-medium text-muted-foreground">
-          {t("groups.sessions.title")}
-        </h2>
-        <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/schedule" search={{ groupIds: [groupId] }}>
+            <CalendarDaysIcon aria-hidden />
+            {t("groups.sessions.calendar")}
+          </Link>
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
           <Button
             variant="outline"
             size="icon-sm"
@@ -76,20 +88,7 @@ export function GroupSessionsSection({
             <ChevronRightIcon aria-hidden />
           </Button>
         </div>
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/schedule" search={{ groupIds: [groupId] }}>
-            <CalendarDaysIcon aria-hidden />
-            {t("groups.sessions.calendar")}
-          </Link>
-        </Button>
       </div>
-
-      {data !== undefined && (data.last !== null || data.next !== null) && (
-        <ul className="divide-y rounded-md border bg-muted/40">
-          {data.last !== null && <SessionRow session={data.last} pin={t("groups.sessions.last")} />}
-          {data.next !== null && <SessionRow session={data.next} pin={t("groups.sessions.next")} />}
-        </ul>
-      )}
 
       {query.isPending && <Skeleton className="h-32 w-full" />}
       {query.isError && (

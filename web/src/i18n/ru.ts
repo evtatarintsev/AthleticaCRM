@@ -556,7 +556,7 @@ export const ru = {
   "groups.sessions.range": "{from} – {to}",
   "groups.sessions.calendar": "Календарь",
   "groups.sessions.last": "Последнее",
-  "groups.sessions.next": "Ближайшее",
+  "groups.sessions.next": "Следующее",
   "groups.sessions.today": "Сегодня",
   "groups.sessions.empty": "В этом периоде занятий нет",
   "groups.sessions.loadError": "Не удалось загрузить занятия",

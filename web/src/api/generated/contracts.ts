@@ -1741,6 +1741,68 @@ export const GroupSelectItemSchema = z
   .readonly();
 export type GroupSelectItem = z.output<typeof GroupSelectItemSchema>;
 
+export const GroupSessionAttendanceSchemaSchema = z
+  .object({
+    present: z.int32(),
+    total: z.int32(),
+  })
+  .readonly();
+export type GroupSessionAttendanceSchema = z.output<typeof GroupSessionAttendanceSchemaSchema>;
+
+export const ScheduleCoachSchemaSchema = z
+  .object({
+    id: EmployeeIdSchema,
+    name: z.string(),
+  })
+  .readonly();
+export type ScheduleCoachSchema = z.output<typeof ScheduleCoachSchemaSchema>;
+
+export const ScheduleHallSchemaSchema = z
+  .object({
+    id: HallIdSchema,
+    name: z.string(),
+  })
+  .readonly();
+export type ScheduleHallSchema = z.output<typeof ScheduleHallSchemaSchema>;
+
+export const SessionStatusSchema = z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]);
+export type SessionStatus = z.output<typeof SessionStatusSchema>;
+
+export const GroupSessionSchemaSchema = z
+  .object({
+    id: SessionIdSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    endTime: LocalTimeSchema,
+    hall: ScheduleHallSchemaSchema,
+    coaches: z.array(ScheduleCoachSchemaSchema).readonly(),
+    coachesOverridden: z.boolean(),
+    status: SessionStatusSchema,
+    rescheduledFrom: LocalDateSchema.nullable(),
+    isManual: z.boolean(),
+    attendance: GroupSessionAttendanceSchemaSchema.nullable(),
+  })
+  .readonly();
+export type GroupSessionSchema = z.output<typeof GroupSessionSchemaSchema>;
+
+export const GroupSessionsRequestSchema = z
+  .object({
+    groupId: GroupIdSchema,
+    from: LocalDateSchema,
+    to: LocalDateSchema,
+  })
+  .readonly();
+export type GroupSessionsRequest = z.output<typeof GroupSessionsRequestSchema>;
+
+export const GroupSessionsResponseSchema = z
+  .object({
+    sessions: z.array(GroupSessionSchemaSchema).readonly(),
+    last: GroupSessionSchemaSchema.nullable(),
+    next: GroupSessionSchemaSchema.nullable(),
+  })
+  .readonly();
+export type GroupSessionsResponse = z.output<typeof GroupSessionsResponseSchema>;
+
 export const HallDetailResponseSchema = z
   .object({
     id: HallIdSchema,
@@ -2024,14 +2086,6 @@ export const SaveCustomFieldsRequestSchema = z
   .readonly();
 export type SaveCustomFieldsRequest = z.output<typeof SaveCustomFieldsRequestSchema>;
 
-export const ScheduleCoachSchemaSchema = z
-  .object({
-    id: EmployeeIdSchema,
-    name: z.string(),
-  })
-  .readonly();
-export type ScheduleCoachSchema = z.output<typeof ScheduleCoachSchemaSchema>;
-
 export const ScheduleDisciplineSchemaSchema = z
   .object({
     id: DisciplineIdSchema,
@@ -2040,14 +2094,6 @@ export const ScheduleDisciplineSchemaSchema = z
   .readonly();
 export type ScheduleDisciplineSchema = z.output<typeof ScheduleDisciplineSchemaSchema>;
 
-export const ScheduleHallSchemaSchema = z
-  .object({
-    id: HallIdSchema,
-    name: z.string(),
-  })
-  .readonly();
-export type ScheduleHallSchema = z.output<typeof ScheduleHallSchemaSchema>;
-
 export const ScheduleListRequestSchema = z
   .object({
     from: LocalDateSchema,
@@ -2055,15 +2101,13 @@ export const ScheduleListRequestSchema = z
     disciplineIds: z.array(DisciplineIdSchema).readonly().optional(),
     hallIds: z.array(HallIdSchema).readonly().optional(),
     employeeIds: z.array(EmployeeIdSchema).readonly().optional(),
+    groupIds: z.array(GroupIdSchema).readonly().optional(),
   })
   .readonly();
 export type ScheduleListRequest = z.output<typeof ScheduleListRequestSchema>;
 
 export const SessionColorKeySchema = z.enum(["ORANGE", "PURPLE", "STEEL", "CYAN", "GREEN", "LIME", "LILAC", "GREY", "UNKNOWN"]);
 export type SessionColorKey = z.output<typeof SessionColorKeySchema>;
-
-export const SessionStatusSchema = z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]);
-export type SessionStatus = z.output<typeof SessionStatusSchema>;
 
 export const ScheduleSessionSchemaSchema = z
   .object({
@@ -2980,6 +3024,13 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: z.array(GroupSelectItemSchema).readonly(),
+  },
+  "groups/sessions": {
+    method: "GET",
+    in: "query",
+    request: GroupSessionsRequestSchema,
+    out: "json",
+    response: GroupSessionsResponseSchema,
   },
   "groups/set-disciplines": {
     method: "POST",

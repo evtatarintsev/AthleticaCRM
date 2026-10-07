@@ -6,6 +6,7 @@ import org.athletica.crm.api.schemas.schedule.ScheduleListResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -33,4 +34,6 @@ data class ScheduleQuery(
     val disciplineIds: List<DisciplineId>? = null,
     /** Тренеры занятия; `null` — фильтр не задан. */
     val employeeIds: List<EmployeeId>? = null,
+    /** Группы занятия; `null` — фильтр не задан. */
+    val groupIds: List<GroupId>? = null,
 )

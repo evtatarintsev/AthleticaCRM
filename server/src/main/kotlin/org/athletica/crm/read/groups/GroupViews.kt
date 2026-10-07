@@ -1,9 +1,11 @@
 package org.athletica.crm.read.groups
 
 import arrow.core.raise.context.Raise
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
+import org.athletica.crm.api.schemas.groups.GroupSessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -50,4 +52,27 @@ interface GroupDetailView {
     /** Возвращает карточку группы [id]; ошибка, если группа не найдена в организации. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: GroupId): GroupDetailResponse
+}
+
+/** Параметры выборки занятий группы; период проверен маршрутом. */
+data class GroupSessionsQuery(
+    /** Группа. */
+    val groupId: GroupId,
+    /** Первый день периода включительно. */
+    val from: LocalDate,
+    /** Последний день периода включительно. */
+    val to: LocalDate,
+)
+
+/**
+ * Read-проекция блока «Занятия» карточки группы: занятия группы за период во всех статусах
+ * и закреплённые последнее и ближайшее занятия. Только читает уже материализованные занятия.
+ */
+interface GroupSessionsView {
+    /**
+     * Возвращает занятия группы и периода из [query]; ошибка `GROUP_NOT_FOUND`, если группы
+     * нет в текущем филиале организации.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun list(query: GroupSessionsQuery): GroupSessionsResponse
 }

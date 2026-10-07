@@ -22,3 +22,11 @@ export function useScheduleHalls(api: ApiClient, branchId: BranchId) {
 export function useScheduleEmployees(api: ApiClient, branchId: BranchId) {
   return useQuery({ ...apiQuery(api, branchId, "employees/list"), select: (r) => r.employees });
 }
+
+/**
+ * Группы филиала [branchId] для подписи активного фильтра по группе; запрашиваются,
+ * только когда фильтр задан ([enabled]).
+ */
+export function useScheduleGroups(api: ApiClient, branchId: BranchId, enabled: boolean) {
+  return useQuery({ ...apiQuery(api, branchId, "groups/list-for-select"), enabled });
+}

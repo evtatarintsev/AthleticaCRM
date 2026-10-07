@@ -239,4 +239,48 @@ class DbScheduleViewTest {
             assertEquals(first, second)
             assertEquals(1, first.sessions.size)
         }
+
+    @Test
+    fun `фильтр по группе оставляет занятия выбранных групп и сочетается с залом`() =
+        runTest {
+            val hallA = fixture.insertHall("A")
+            val hallB = fixture.insertHall("B")
+            val target = fixture.insertGroup("Нужная")
+            val other = fixture.insertGroup("Другая")
+            val inA = session(target, hallA)
+            val inB = session(target, hallB, date = sunday)
+            session(other, hallA)
+
+            val byGroup = list(ScheduleQuery(monday, sunday, groupIds = listOf(target))).sessions.map { it.id }
+            assertEquals(listOf(inA, inB), byGroup)
+
+            val byGroupAndHall =
+                list(ScheduleQuery(monday, sunday, hallIds = listOf(hallA), groupIds = listOf(target))).sessions.map { it.id }
+            assertEquals(listOf(inA), byGroupAndHall)
+        }
+
+    @Test
+    fun `фильтр по группе другого филиала даёт пустой ответ`() =
+        runTest {
+            val hall = fixture.insertHall()
+            session(fixture.insertGroup(), hall)
+            val otherBranch = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", otherBranch)
+                .bind("orgId", fixture.orgId)
+                .bind("name", "Другой")
+                .execute()
+            val otherGroup = GroupId.new()
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                .bind("id", otherGroup)
+                .bind("orgId", fixture.orgId)
+                .bind("branchId", otherBranch)
+                .bind("name", "Чужая")
+                .execute()
+            session(otherGroup, hall)
+
+            assertTrue(list(ScheduleQuery(monday, sunday, groupIds = listOf(otherGroup))).sessions.isEmpty())
+        }
 }

@@ -15,6 +15,7 @@ import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.sessions.SessionStatus
+import org.athletica.crm.read.SessionSql
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
@@ -36,7 +37,7 @@ class DbScheduleView : ScheduleView {
                     """
                     SELECT s.id, s.group_id, g.name AS group_name, s.date, s.start_time, s.end_time,
                            s.status::text AS status, h.id AS hall_id, h.name AS hall_name,
-                           $COACHES_JSON AS coaches, $DISCIPLINES_JSON AS disciplines
+                           ${SessionSql.COACHES_JSON} AS coaches, $DISCIPLINES_JSON AS disciplines
                     FROM sessions s
                     JOIN groups g ON g.id = s.group_id AND g.org_id = s.org_id AND g.branch_id = :branchId
                     JOIN halls h ON h.id = s.hall_id
@@ -56,6 +57,9 @@ class DbScheduleView : ScheduleView {
     /** Условия фильтров, заданных в [ScheduleQuery]: внутри фильтра «или», между фильтрами «и». */
     private fun ScheduleQuery.filters(): String =
         buildString {
+            if (groupIds != null) {
+                append(" AND s.group_id = ANY(:groupIds)")
+            }
             if (hallIds != null) {
                 append(" AND s.hall_id = ANY(:hallIds)")
             }
@@ -75,7 +79,8 @@ class DbScheduleView : ScheduleView {
 
     /** Привязывает параметры фильтров, объявленных в [ScheduleQuery.filters]. */
     private fun QueryBuilder.bindFilters(query: ScheduleQuery): QueryBuilder =
-        let { q -> query.hallIds?.let { q.bind("hallIds", it) } ?: q }
+        let { q -> query.groupIds?.let { q.bind("groupIds", it) } ?: q }
+            .let { q -> query.hallIds?.let { q.bind("hallIds", it) } ?: q }
             .let { q -> query.employeeIds?.let { q.bind("employeeIds", it) } ?: q }
             .let { q -> query.disciplineIds?.let { q.bind("disciplineIds", it) } ?: q }
 
@@ -98,15 +103,6 @@ class DbScheduleView : ScheduleView {
     }
 
     private companion object {
-        /** Тренеры занятия с учётом переопределения состава, по имени. */
-        val COACHES_JSON =
-            """
-            (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', e.id, 'name', e.name) ORDER BY e.name, e.id), '[]'::jsonb)
-               FROM session_employees se
-               JOIN employees e ON e.id = se.employee_id
-              WHERE se.session_id = s.id)
-            """.trimIndent()
-
         /** Дисциплины группы занятия, по названию; первая определяет запасной цвет карточки. */
         val DISCIPLINES_JSON =
             """

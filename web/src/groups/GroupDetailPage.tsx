@@ -27,6 +27,7 @@ import { employeeChecklistItem } from "./employeeChecklistItem";
 import { GroupChips, GroupChipsSection } from "./GroupChips";
 import { GroupRenameSheet } from "./GroupRenameSheet";
 import { GroupScheduleSheet } from "./GroupScheduleSheet";
+import { GroupSessionsSection } from "./GroupSessionsSection";
 import { cardsToSlotInputs, slotsToCards, type SlotCard } from "./groupSchedule";
 import { useGroup, useGroupDisciplines, useGroupEmployees, useGroupHalls } from "./groupsQueries";
 
@@ -154,7 +155,7 @@ export function GroupDetailPage({
   const detail = group.data;
 
   return (
-    <section className="max-w-3xl space-y-6 pb-16">
+    <section className="max-w-6xl pb-16">
       <PageHeader
         title={detail.name}
         actions={
@@ -170,94 +171,103 @@ export function GroupDetailPage({
         }
       />
 
-      <GroupChipsSection
-        title={t("groups.detail.disciplinesTitle")}
-        onEdit={() => {
-          setPicker("disciplines");
-        }}
-      >
-        <GroupChips items={detail.disciplines} emptyText={t("groups.detail.disciplinesEmpty")} />
-      </GroupChipsSection>
-
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("groups.detail.scheduleTitle")}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setScheduleOpen(true);
+      <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-8 xl:space-y-0">
+        <div className="min-w-0 space-y-6">
+          <GroupChipsSection
+            title={t("groups.detail.disciplinesTitle")}
+            onEdit={() => {
+              setPicker("disciplines");
             }}
           >
-            {t("groups.detail.editSchedule")}
-          </Button>
-        </div>
-        <ScheduleSummaryList schedule={detail.schedule} />
-        {detail.scheduleChangeAt !== null && (
-          <p className="text-xs text-muted-foreground">
-            {t("groups.scheduleChangeNote", { date: detail.scheduleChangeAt })}
-          </p>
-        )}
-      </section>
+            <GroupChips
+              items={detail.disciplines}
+              emptyText={t("groups.detail.disciplinesEmpty")}
+            />
+          </GroupChipsSection>
 
-      <GroupChipsSection
-        title={t("groups.detail.employeesTitle")}
-        onEdit={() => {
-          setPicker("employees");
-        }}
-      >
-        <GroupChips
-          items={detail.employees.map(withAvatar)}
-          emptyText={t("groups.detail.employeesEmpty")}
-        />
-      </GroupChipsSection>
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-muted-foreground">
+                {t("groups.detail.scheduleTitle")}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setScheduleOpen(true);
+                }}
+              >
+                {t("groups.detail.editSchedule")}
+              </Button>
+            </div>
+            <ScheduleSummaryList schedule={detail.schedule} />
+            {detail.scheduleChangeAt !== null && (
+              <p className="text-xs text-muted-foreground">
+                {t("groups.scheduleChangeNote", { date: detail.scheduleChangeAt })}
+              </p>
+            )}
+          </section>
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("groups.detail.clientsTitle")}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setClientPickerOpen(true);
+          <GroupChipsSection
+            title={t("groups.detail.employeesTitle")}
+            onEdit={() => {
+              setPicker("employees");
             }}
           >
-            <PlusIcon aria-hidden />
-            {t("groups.detail.addClients")}
-          </Button>
+            <GroupChips
+              items={detail.employees.map(withAvatar)}
+              emptyText={t("groups.detail.employeesEmpty")}
+            />
+          </GroupChipsSection>
+
+          <GroupSessionsSection api={api} branchId={branchId} groupId={groupId} />
         </div>
-        {detail.clients.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("groups.detail.clientsEmpty")}</p>
-        ) : (
-          <ul className="divide-y rounded-md border">
-            {detail.clients.map((client) => (
-              <li key={client.id} className="flex items-center hover:bg-accent">
-                <Link
-                  to="/clients/$clientId"
-                  params={{ clientId: client.id }}
-                  className="min-w-0 flex-1 truncate px-4 py-3 text-sm"
-                >
-                  {client.name}
-                </Link>
-                <button
-                  type="button"
-                  aria-label={t("groups.detail.removeClientAria", { name: client.name })}
-                  onClick={() => {
-                    void removeClient(client.id);
-                  }}
-                  className="mr-2 rounded-full p-2 text-muted-foreground hover:text-destructive"
-                >
-                  <XIcon aria-hidden className="size-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+
+        <section className="space-y-2 xl:sticky xl:top-20 xl:flex xl:max-h-[calc(100dvh-6rem)] xl:flex-col">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              {t("groups.detail.clientsTitle")}
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setClientPickerOpen(true);
+              }}
+            >
+              <PlusIcon aria-hidden />
+              {t("groups.detail.addClients")}
+            </Button>
+          </div>
+          {detail.clients.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("groups.detail.clientsEmpty")}</p>
+          ) : (
+            <ul className="divide-y rounded-md border xl:min-h-0 xl:overflow-y-auto">
+              {detail.clients.map((client) => (
+                <li key={client.id} className="flex items-center hover:bg-accent">
+                  <Link
+                    to="/clients/$clientId"
+                    params={{ clientId: client.id }}
+                    className="min-w-0 flex-1 truncate px-4 py-3 text-sm"
+                  >
+                    {client.name}
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label={t("groups.detail.removeClientAria", { name: client.name })}
+                    onClick={() => {
+                      void removeClient(client.id);
+                    }}
+                    className="mr-2 rounded-full p-2 text-muted-foreground hover:text-destructive"
+                  >
+                    <XIcon aria-hidden className="size-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
       <ChecklistSheet
         open={picker === "disciplines"}

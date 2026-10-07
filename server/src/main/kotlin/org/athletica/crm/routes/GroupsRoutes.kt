@@ -1,5 +1,6 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.context.Raise
 import org.athletica.crm.api.schemas.groups.EditGroupRequest
 import org.athletica.crm.api.schemas.groups.GroupCreateRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailRequest
@@ -7,9 +8,13 @@ import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
+import org.athletica.crm.api.schemas.groups.GroupSessionsRequest
+import org.athletica.crm.api.schemas.groups.GroupSessionsResponse
 import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupScheduleRequest
+import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
@@ -18,6 +23,7 @@ import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.groups.GroupListQuery
+import org.athletica.crm.read.groups.GroupSessionsQuery
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.groups.setGroupSchedule
 import org.athletica.crm.api.schemas.groups.ScheduleSlot as ScheduleSlotSchema
@@ -45,6 +51,13 @@ fun RouteWithContext.groupsRoutes(
         get<GroupDetailRequest, GroupDetailResponse>("/detail") { request ->
             db.transaction {
                 views.groupDetail.byId(request.id)
+            }
+        }
+
+        get<GroupSessionsRequest, GroupSessionsResponse>("/sessions") { request ->
+            val query = request.toQuery()
+            db.transaction {
+                views.groupSessions.list(query)
             }
         }
 
@@ -130,3 +143,10 @@ private fun GroupListRequest.toQuery() =
 
 /** Преобразует слот из запроса в доменное правило расписания; период действия задаёт домен. */
 fun ScheduleSlotSchema.toNewSlot() = NewSlot(dayOfWeek, startAt, endAt, hallId)
+
+/** Преобразует запрос занятий группы в параметры выборки, проверив границы периода. */
+context(ctx: RequestContext, raise: Raise<DomainError>)
+private fun GroupSessionsRequest.toQuery(): GroupSessionsQuery {
+    checkSchedulePeriod(from, to)
+    return GroupSessionsQuery(groupId = groupId, from = from, to = to)
+}

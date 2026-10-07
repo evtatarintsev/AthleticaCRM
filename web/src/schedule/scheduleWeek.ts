@@ -2,10 +2,12 @@ import { z } from "zod";
 import {
   DisciplineIdSchema,
   EmployeeIdSchema,
+  GroupIdSchema,
   HallIdSchema,
   LocalDateSchema,
   type DisciplineId,
   type EmployeeId,
+  type GroupId,
   type HallId,
   type LocalDate,
   type ScheduleListRequest,
@@ -18,6 +20,7 @@ export const ScheduleSearchSchema = z.object({
   disciplineIds: z.array(DisciplineIdSchema).optional().catch(undefined),
   hallIds: z.array(HallIdSchema).optional().catch(undefined),
   employeeIds: z.array(EmployeeIdSchema).optional().catch(undefined),
+  groupIds: z.array(GroupIdSchema).optional().catch(undefined),
 });
 
 /** Search-параметры адреса расписания. */
@@ -28,6 +31,8 @@ export interface ScheduleFilters {
   readonly disciplineIds: readonly DisciplineId[];
   readonly hallIds: readonly HallId[];
   readonly employeeIds: readonly EmployeeId[];
+  /** Группы; задаются только переходом из карточки группы. */
+  readonly groupIds: readonly GroupId[];
 }
 
 /** Понедельник отображаемой недели из search-параметров [search]; по умолчанию — текущая неделя. */
@@ -41,6 +46,7 @@ export function scheduleFiltersOf(search: ScheduleSearch): ScheduleFilters {
     disciplineIds: search.disciplineIds ?? [],
     hallIds: search.hallIds ?? [],
     employeeIds: search.employeeIds ?? [],
+    groupIds: search.groupIds ?? [],
   };
 }
 
@@ -51,6 +57,7 @@ export function scheduleSearchOf(weekStart: LocalDate, filters: ScheduleFilters)
     ...(filters.disciplineIds.length === 0 ? {} : { disciplineIds: [...filters.disciplineIds] }),
     ...(filters.hallIds.length === 0 ? {} : { hallIds: [...filters.hallIds] }),
     ...(filters.employeeIds.length === 0 ? {} : { employeeIds: [...filters.employeeIds] }),
+    ...(filters.groupIds.length === 0 ? {} : { groupIds: [...filters.groupIds] }),
   };
 }
 
@@ -65,6 +72,7 @@ export function scheduleListRequest(
     ...(filters.disciplineIds.length === 0 ? {} : { disciplineIds: filters.disciplineIds }),
     ...(filters.hallIds.length === 0 ? {} : { hallIds: filters.hallIds }),
     ...(filters.employeeIds.length === 0 ? {} : { employeeIds: filters.employeeIds }),
+    ...(filters.groupIds.length === 0 ? {} : { groupIds: filters.groupIds }),
   };
 }
 
@@ -73,6 +81,7 @@ export function activeScheduleFilterCount(filters: ScheduleFilters): number {
   return (
     (filters.disciplineIds.length > 0 ? 1 : 0) +
     (filters.hallIds.length > 0 ? 1 : 0) +
-    (filters.employeeIds.length > 0 ? 1 : 0)
+    (filters.employeeIds.length > 0 ? 1 : 0) +
+    (filters.groupIds.length > 0 ? 1 : 0)
   );
 }

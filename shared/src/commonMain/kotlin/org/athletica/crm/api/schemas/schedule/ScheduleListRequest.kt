@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 
 /**
@@ -22,4 +23,6 @@ data class ScheduleListRequest(
     val hallIds: List<HallId> = emptyList(),
     /** Тренеры занятия; совпадение с любым из них. */
     val employeeIds: List<EmployeeId> = emptyList(),
+    /** Группы занятия; совпадение с любой из них. */
+    val groupIds: List<GroupId> = emptyList(),
 )

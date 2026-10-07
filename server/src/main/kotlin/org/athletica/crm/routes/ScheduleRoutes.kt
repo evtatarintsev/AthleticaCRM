@@ -2,6 +2,7 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import org.athletica.crm.api.schemas.schedule.ScheduleListRequest
 import org.athletica.crm.api.schemas.schedule.ScheduleListResponse
@@ -38,17 +39,30 @@ fun RouteWithContext.scheduleRoutes(views: ReadViews) {
  */
 context(ctx: RequestContext, raise: Raise<DomainError>)
 internal fun ScheduleListRequest.toQuery(): ScheduleQuery {
-    if (to < from) {
-        raise(CommonDomainError("INVALID_SCHEDULE_PERIOD", Messages.InvalidSchedulePeriod.localize()))
-    }
-    if (from.daysUntil(to) + 1 > MAX_SCHEDULE_PERIOD_DAYS) {
-        raise(CommonDomainError("SCHEDULE_PERIOD_TOO_LONG", Messages.SchedulePeriodTooLong.localize(MAX_SCHEDULE_PERIOD_DAYS)))
-    }
+    checkSchedulePeriod(from, to)
     return ScheduleQuery(
         from = from,
         to = to,
         hallIds = hallIds.takeIf { it.isNotEmpty() },
         disciplineIds = disciplineIds.takeIf { it.isNotEmpty() },
         employeeIds = employeeIds.takeIf { it.isNotEmpty() },
+        groupIds = groupIds.takeIf { it.isNotEmpty() },
     )
+}
+
+/**
+ * Проверяет период занятий с [from] по [to] включительно: начало не позже окончания
+ * и длина не больше [MAX_SCHEDULE_PERIOD_DAYS].
+ */
+context(ctx: RequestContext, raise: Raise<DomainError>)
+internal fun checkSchedulePeriod(
+    from: LocalDate,
+    to: LocalDate,
+) {
+    if (to < from) {
+        raise(CommonDomainError("INVALID_SCHEDULE_PERIOD", Messages.InvalidSchedulePeriod.localize()))
+    }
+    if (from.daysUntil(to) + 1 > MAX_SCHEDULE_PERIOD_DAYS) {
+        raise(CommonDomainError("SCHEDULE_PERIOD_TOO_LONG", Messages.SchedulePeriodTooLong.localize(MAX_SCHEDULE_PERIOD_DAYS)))
+    }
 }

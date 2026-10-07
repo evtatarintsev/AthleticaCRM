@@ -1,4 +1,4 @@
-import { ChevronLeftIcon, ChevronRightIcon, SlidersHorizontalIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type { LocalDate } from "@/api/generated/contracts";
@@ -14,6 +14,7 @@ import { ScheduleWeekGrid } from "./ScheduleWeekGrid";
 import {
   useScheduleDisciplines,
   useScheduleEmployees,
+  useScheduleGroups,
   useScheduleHalls,
   useSchedule,
 } from "./scheduleQueries";
@@ -51,6 +52,7 @@ export function SchedulePage({
   const disciplines = useScheduleDisciplines(api, branchId);
   const halls = useScheduleHalls(api, branchId);
   const employees = useScheduleEmployees(api, branchId);
+  const groups = useScheduleGroups(api, branchId, filters.groupIds.length > 0);
 
   const [picker, setPicker] = useState<"disciplines" | "halls" | "employees" | null>(null);
 
@@ -98,6 +100,18 @@ export function SchedulePage({
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {filters.groupIds.map((groupId) => (
+            <GroupFilterChip
+              key={groupId}
+              name={groups.data?.find((group) => group.id === groupId)?.name ?? null}
+              onRemove={() => {
+                setFilters({
+                  ...filters,
+                  groupIds: filters.groupIds.filter((id) => id !== groupId),
+                });
+              }}
+            />
+          ))}
           <FilterPill
             label={t("schedule.filter.disciplines")}
             count={filters.disciplineIds.length}
@@ -124,7 +138,7 @@ export function SchedulePage({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setFilters({ disciplineIds: [], hallIds: [], employeeIds: [] });
+                setFilters({ disciplineIds: [], hallIds: [], employeeIds: [], groupIds: [] });
               }}
             >
               {t("schedule.filter.reset")}
@@ -217,5 +231,32 @@ function FilterPill({
         </span>
       )}
     </Button>
+  );
+}
+
+/**
+ * Снимаемый чип активного фильтра по группе [name]; `null` — группы нет в списке
+ * филиала (или он ещё загружается), показывается общая подпись.
+ */
+function GroupFilterChip({
+  name,
+  onRemove,
+}: {
+  readonly name: string | null;
+  readonly onRemove: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border bg-accent py-0.5 pr-1 pl-3 text-sm">
+      {name === null ? t("schedule.filter.groupUnknown") : t("schedule.filter.group", { name })}
+      <button
+        type="button"
+        aria-label={t("schedule.filter.removeGroup")}
+        onClick={onRemove}
+        className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+      >
+        <XIcon aria-hidden className="size-3.5" />
+      </button>
+    </span>
   );
 }

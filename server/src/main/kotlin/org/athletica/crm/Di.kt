@@ -231,18 +231,21 @@ fun Application.minio(): MinioService {
     val accessKey = environment.config.property("minio.accessKey").getString()
     val secretKey = environment.config.property("minio.secretKey").getString()
     val bucket = environment.config.property("minio.bucket").getString()
+    val region = environment.config.property("minio.region").getString()
     return MinioService(
         internalClient =
             MinioClient
                 .builder()
                 .endpoint(environment.config.property("minio.endpoint").getString())
                 .credentials(accessKey, secretKey)
+                .region(region)
                 .build(),
         publicClient =
             MinioClient
                 .builder()
                 .endpoint(environment.config.property("minio.publicEndpoint").getString())
                 .credentials(accessKey, secretKey)
+                .region(region)
                 .build(),
         bucket = bucket,
     ).also { it.ensureBucketExists() }

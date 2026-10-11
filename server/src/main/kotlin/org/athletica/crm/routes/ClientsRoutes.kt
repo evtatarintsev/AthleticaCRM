@@ -3,6 +3,7 @@ package org.athletica.crm.routes
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import io.ktor.http.HttpHeaders
+import org.athletica.crm.api.schemas.clients.AddClientToGroupsRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
@@ -50,6 +51,7 @@ import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
+import org.athletica.crm.domain.enrollments.addToGroups
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.clients.ClientListQuery
 import org.athletica.crm.read.clients.ClientSortColumn
@@ -149,6 +151,12 @@ fun RouteWithContext.clientsRoutes(
     post<AddClientsToGroupRequest, Unit>("/clients/add-to-group") { request ->
         db.transaction {
             enrollments.add(request.groupId, request.clientIds)
+        }
+    }
+
+    post<AddClientToGroupsRequest, Unit>("/clients/add-to-groups") { request ->
+        db.transaction {
+            enrollments.addToGroups(request.clientId, request.groupIds)
         }
     }
 

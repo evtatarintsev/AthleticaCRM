@@ -1,23 +1,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type { BranchId, ClientGroup, ClientId } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
+import { ChecklistSheet } from "@/ui/ChecklistSheet";
 
-/** Группы клиента: чипы с удалением и добавление в новую группу через шторку выбора. */
+/**
+ * Группы клиента: чипы с удалением и запись сразу в несколько групп через панель с чекбоксами
+ * одной операцией — во все отмеченные или ни в одну; группы, в которых клиент уже состоит, видны
+ * в панели заблокированными.
+ */
 export function ClientGroupsSection({
   api,
   branchId,
@@ -29,10 +26,24 @@ export function ClientGroupsSection({
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly groups: readonly ClientGroup[];
-  readonly onChanged: () => void;
+  readonly onChanged: () => Promise<void>;
 }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const allGroups = useQuery({
+    ...apiQuery(api, branchId, "groups/list-for-select"),
+    enabled: sheetOpen,
+  });
+
+  const refresh = async () => {
+    await Promise.all([
+      onChanged(),
+      queryClient.invalidateQueries({ queryKey: ["api", branchId, "clients/list"] }),
+      queryClient.invalidateQueries({ queryKey: ["api", branchId, "groups/list"] }),
+      queryClient.invalidateQueries({ queryKey: ["api", branchId, "groups/detail"] }),
+    ]);
+  };
 
   const removeGroup = async (groupId: ClientGroup["id"]) => {
     const result = await api.call("clients/remove-from-group", { clientIds: [clientId], groupId });
@@ -40,8 +51,23 @@ export function ClientGroupsSection({
       toast.error(apiErrorMessage(t, result.error));
       return;
     }
-    onChanged();
+    await refresh();
   };
+
+  const addToGroups = async (groupIds: readonly ClientGroup["id"][]) => {
+    const result = await api.call("clients/add-to-groups", {
+      clientId,
+      groupIds: [...groupIds],
+    });
+    if (!result.ok) {
+      return apiErrorMessage(t, result.error);
+    }
+    await refresh();
+    toast.success(t("clients.detail.groupsAdded", { count: groupIds.length }));
+    return null;
+  };
+
+  const memberIds = new Set(groups.map((group) => group.id));
 
   return (
     <div className="space-y-3 rounded-lg border bg-card p-4">
@@ -84,117 +110,22 @@ export function ClientGroupsSection({
         </div>
       )}
 
-      <ClientAddToGroupSheet
-        api={api}
-        branchId={branchId}
-        clientId={clientId}
-        existingGroupIds={new Set(groups.map((group) => group.id))}
+      <ChecklistSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        onAdded={() => {
-          setSheetOpen(false);
-          onChanged();
-        }}
+        title={t("clients.detail.addToGroupsTitle")}
+        items={(allGroups.data ?? []).map((group) => ({
+          id: group.id,
+          name: group.name,
+          disabledReason: memberIds.has(group.id) ? t("groups.detail.alreadyInGroup") : undefined,
+        }))}
+        selected={[]}
+        emptyText={t("groups.empty")}
+        searchLabel={t("clients.detail.searchGroup")}
+        submitLabel={t("action.add")}
+        requireSelection
+        onSubmit={addToGroups}
       />
     </div>
-  );
-}
-
-/** Шторка выбора группы для добавления клиента [clientId]; уже добавленные группы скрыты. */
-function ClientAddToGroupSheet({
-  api,
-  branchId,
-  clientId,
-  existingGroupIds,
-  open,
-  onOpenChange,
-  onAdded,
-}: {
-  readonly api: ApiClient;
-  readonly branchId: BranchId;
-  readonly clientId: ClientId;
-  readonly existingGroupIds: ReadonlySet<ClientGroup["id"]>;
-  readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
-  readonly onAdded: () => void;
-}) {
-  const { t } = useI18n();
-  const groupsQuery = apiQuery(api, branchId, "groups/list-for-select");
-  const groups = useQuery({ ...groupsQuery, enabled: open });
-  const queryClient = useQueryClient();
-  const [query, setQuery] = useState("");
-  const [addingId, setAddingId] = useState<ClientGroup["id"] | null>(null);
-
-  const available = useMemo(
-    () =>
-      (groups.data ?? []).filter(
-        (group) =>
-          !existingGroupIds.has(group.id) &&
-          (query.trim() === "" || group.name.toLowerCase().includes(query.trim().toLowerCase())),
-      ),
-    [groups.data, existingGroupIds, query],
-  );
-
-  const addToGroup = async (groupId: ClientGroup["id"]) => {
-    setAddingId(groupId);
-    const result = await api.call("clients/add-to-group", { clientIds: [clientId], groupId });
-    setAddingId(null);
-    if (!result.ok) {
-      toast.error(apiErrorMessage(t, result.error));
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["api", branchId, "clients/list"] });
-    setQuery("");
-    onAdded();
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[85vh] overflow-y-auto"
-        closeLabel={t("action.close")}
-      >
-        <SheetHeader>
-          <SheetTitle>{t("clients.detail.addToGroup")}</SheetTitle>
-          <SheetDescription className="sr-only">{t("clients.detail.addToGroup")}</SheetDescription>
-        </SheetHeader>
-        <div className="space-y-3 px-4 pb-4">
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-            placeholder={t("clients.detail.searchGroup")}
-            aria-label={t("clients.detail.searchGroup")}
-          />
-          {groups.isError && (
-            <p className="text-sm text-destructive">{t("clients.detail.loadError")}</p>
-          )}
-          {groups.data !== undefined &&
-            (available.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">{t("groups.empty")}</p>
-            ) : (
-              <ul className="max-h-96 divide-y overflow-y-auto">
-                {available.map((group) => (
-                  <li key={group.id}>
-                    <button
-                      type="button"
-                      disabled={addingId !== null}
-                      onClick={() => {
-                        void addToGroup(group.id);
-                      }}
-                      className="w-full px-1 py-3 text-left text-sm hover:bg-accent disabled:opacity-50"
-                    >
-                      {group.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ))}
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }

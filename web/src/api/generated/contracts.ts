@@ -17,6 +17,14 @@ export type AddClientNoteRequest = z.output<typeof AddClientNoteRequestSchema>;
 export const GroupIdSchema = z.uuid().brand<"GroupId">();
 export type GroupId = z.output<typeof GroupIdSchema>;
 
+export const AddClientToGroupsRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    groupIds: z.array(GroupIdSchema).readonly(),
+  })
+  .readonly();
+export type AddClientToGroupsRequest = z.output<typeof AddClientToGroupsRequestSchema>;
+
 export const AddClientsToGroupRequestSchema = z
   .object({
     clientIds: z.array(ClientIdSchema).readonly(),
@@ -2749,6 +2757,13 @@ export const endpoints = {
     method: "POST",
     in: "body",
     request: AddClientsToGroupRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "clients/add-to-groups": {
+    method: "POST",
+    in: "body",
+    request: AddClientToGroupsRequestSchema,
     out: "empty",
     response: z.undefined(),
   },

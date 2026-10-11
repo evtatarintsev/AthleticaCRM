@@ -49,7 +49,6 @@ ktor-server-statusPages = { module = "io.ktor:ktor-server-status-pages", version
 ktor-server-callLogging = { module = "io.ktor:ktor-server-call-logging-jvm", version.ref = "ktor" }
 ktor-server-testHost = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers" }
 bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
 angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-mail" }

@@ -15,6 +15,11 @@ export interface ChecklistItem<Id extends string> {
   readonly name: string;
   /** Необязательная картинка перед подписью, например аватар сотрудника. */
   readonly avatar?: ReactNode;
+  /**
+   * Причина, по которой запись нельзя отметить, например «уже в группе». Такая запись видна и
+   * находится поиском, но её отметка недоступна и в подтверждаемый набор она не попадает.
+   */
+  readonly disabledReason?: string | undefined;
 }
 
 /** Свойства вложенной панели создания записи, которую открывает [ChecklistSheet]. */
@@ -58,6 +63,8 @@ interface ChecklistSheetProps<Id extends string> {
   readonly searchLabel?: string | undefined;
   /** Подпись кнопки подтверждения вместо «Сохранить». */
   readonly submitLabel?: string | undefined;
+  /** Подтверждение доступно, только когда отмечена хотя бы одна запись. */
+  readonly requireSelection?: boolean | undefined;
   /**
    * Сохранение нового набора: `null` — успех, панель закрывается; строка — текст ошибки,
    * панель остаётся открытой с прежними отметками.
@@ -74,6 +81,8 @@ interface ChecklistSheetProps<Id extends string> {
  * Поиск [ChecklistSheetProps.searchLabel] только скрывает записи: отмеченные, но скрытые
  * поиском записи остаются в наборе. С [ChecklistSheetProps.create] под списком есть кнопка
  * создания записи: созданная запись сразу отмечается, сохраняет набор по-прежнему «Сохранить».
+ * Записи с [ChecklistItem.disabledReason] показываются с причиной и не отмечаются; если запись
+ * стала такой, пока панель открыта, она молча выпадает из подтверждаемого набора.
  */
 export function ChecklistSheet<Id extends string>({
   open,
@@ -95,6 +104,7 @@ function ChecklistContent<Id extends string>({
   emptyText,
   searchLabel,
   submitLabel,
+  requireSelection = false,
   onSubmit,
   create,
 }: Omit<ChecklistSheetProps<Id>, "open" | "onOpenChange" | "title">) {
@@ -106,8 +116,12 @@ function ChecklistContent<Id extends string>({
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState<string | null>(null);
 
-  const initial = new Set(selected);
-  const dirty = draft.size !== initial.size || Array.from(draft).some((id) => !initial.has(id));
+  const blocked = new Set(
+    items.filter((item) => item.disabledReason !== undefined).map((item) => item.id),
+  );
+  const chosen = Array.from(draft).filter((id) => !blocked.has(id));
+  const initial = new Set(selected.filter((id) => !blocked.has(id)));
+  const dirty = chosen.length !== initial.size || chosen.some((id) => !initial.has(id));
 
   const toggle = (id: Id) => {
     const next = new Set(draft);
@@ -131,7 +145,7 @@ function ChecklistContent<Id extends string>({
   const submit = async () => {
     setSubmitting(true);
     setError(null);
-    const failure = await onSubmit(Array.from(draft));
+    const failure = await onSubmit(chosen);
     if (failure === null) {
       close();
       return;
@@ -145,6 +159,7 @@ function ChecklistContent<Id extends string>({
       dirty={dirty}
       submitting={submitting}
       submitLabel={submitLabel ?? t("action.save")}
+      submitDisabled={requireSelection && chosen.length === 0}
       onSubmit={() => {
         void submit();
       }}
@@ -187,8 +202,8 @@ function ChecklistContent<Id extends string>({
               <label className="flex cursor-pointer items-center gap-3 px-1 py-3 text-sm hover:bg-accent has-disabled:cursor-default has-disabled:opacity-50">
                 <input
                   type="checkbox"
-                  checked={draft.has(item.id)}
-                  disabled={submitting}
+                  checked={draft.has(item.id) && item.disabledReason === undefined}
+                  disabled={item.disabledReason !== undefined || submitting}
                   onChange={() => {
                     toggle(item.id);
                   }}
@@ -196,6 +211,11 @@ function ChecklistContent<Id extends string>({
                 />
                 {item.avatar}
                 <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                {item.disabledReason !== undefined && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {item.disabledReason}
+                  </span>
+                )}
               </label>
             </li>
           ))}

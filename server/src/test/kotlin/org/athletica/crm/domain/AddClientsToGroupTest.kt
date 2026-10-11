@@ -18,6 +18,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.enrollments.DbEnrollments
+import org.athletica.crm.domain.enrollments.addToGroups
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asUuid
 import org.junit.Before
@@ -260,6 +261,51 @@ class AddClientsToGroupTest {
                 assertEquals("GROUP_NOT_FOUND", (error as CommonDomainError).code)
             }
             assertTrue(raised)
+            assertEquals(0L, activeEnrollmentCount(clientId, foreignGroupId))
+        }
+
+    @Test
+    fun `addToGroups записывает клиента в несколько групп`() =
+        runTest {
+            val orgId = insertOrg()
+            val clientId = insertClient(orgId)
+            val groupId1 = insertGroup(orgId, "Группа 1")
+            val groupId2 = insertGroup(orgId, "Группа 2")
+
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx(orgId)) {
+                        enrollments.addToGroups(clientId, listOf(groupId1, groupId2))
+                    }
+                }
+            }.getOrElse { error(it.message) }
+
+            assertEquals(1L, activeEnrollmentCount(clientId, groupId1))
+            assertEquals(1L, activeEnrollmentCount(clientId, groupId2))
+        }
+
+    @Test
+    fun `addToGroups при ошибке на одной группе не записывает ни в одну`() =
+        runTest {
+            val orgId1 = insertOrg("Org 1")
+            val orgId2 = insertOrg("Org 2")
+            val clientId = insertClient(orgId1)
+            val ownGroupId = insertGroup(orgId1)
+            val foreignGroupId = insertGroup(orgId2)
+
+            var raised = false
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx(orgId1)) {
+                        enrollments.addToGroups(clientId, listOf(ownGroupId, foreignGroupId))
+                    }
+                }
+            }.onLeft { error ->
+                raised = true
+                assertEquals("GROUP_NOT_FOUND", (error as CommonDomainError).code)
+            }
+            assertTrue(raised)
+            assertEquals(0L, activeEnrollmentCount(clientId, ownGroupId))
             assertEquals(0L, activeEnrollmentCount(clientId, foreignGroupId))
         }
 

@@ -468,6 +468,8 @@ export const ru = {
   "clients.detail.balanceNote": "Комментарий",
   "clients.detail.addToGroup": "Добавить в группу",
   "clients.detail.searchGroup": "Поиск группы",
+  "clients.detail.addToGroupsTitle": "Добавить в группы",
+  "clients.detail.groupsAdded": "Добавлено в группы: {count}",
   "clients.detail.removeFromGroupAria": "Убрать из группы «{name}»",
   "clients.detail.subscriptions": "Абонементы",
   "clients.detail.subscriptionsEmpty": "Абонементов пока нет",

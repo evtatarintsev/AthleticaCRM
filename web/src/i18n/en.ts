@@ -451,6 +451,8 @@ export const en: Messages<typeof ru> = {
   "clients.detail.balanceNote": "Comment",
   "clients.detail.addToGroup": "Add to group",
   "clients.detail.searchGroup": "Search group",
+  "clients.detail.addToGroupsTitle": "Add to groups",
+  "clients.detail.groupsAdded": "Added to groups: {count}",
   "clients.detail.removeFromGroupAria": "Remove from group “{name}”",
   "clients.detail.subscriptions": "Subscriptions",
   "clients.detail.subscriptionsEmpty": "No subscriptions yet",

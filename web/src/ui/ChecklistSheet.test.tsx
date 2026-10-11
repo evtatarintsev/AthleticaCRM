@@ -172,4 +172,101 @@ describe("панель с чекбоксами", () => {
     await closed();
     expect(onSubmit).toHaveBeenCalledWith(["ivanov", "sidorova"]);
   });
+
+  it("заблокированная запись видна с причиной, находится поиском и не отмечается", async () => {
+    const onSubmit = vi.fn(() => Promise.resolve(null));
+    openChecklist({
+      list: [{ id: "ivanov", name: "Иванов", disabledReason: "уже в группе" }, ...items.slice(1)],
+      searchLabel: "Поиск",
+      onSubmit,
+    });
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByRole("searchbox", { name: "Поиск" }), "иван");
+    const blocked = screen.getByRole("checkbox", { name: /Иванов/ });
+    expect(blocked).toBeDisabled();
+    expect(blocked).not.toBeChecked();
+    expect(screen.getByText("уже в группе")).toBeVisible();
+    await user.click(blocked);
+    expect(blocked).not.toBeChecked();
+
+    await user.clear(screen.getByRole("searchbox", { name: "Поиск" }));
+    await user.click(screen.getByRole("checkbox", { name: "Козлов" }));
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    await closed();
+    expect(onSubmit).toHaveBeenCalledWith(["kozlov"]);
+  });
+
+  it("с обязательным выбором подтверждение недоступно без отметок", async () => {
+    /** Экран с панелью, где подтверждение требует хотя бы одной отметки. */
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <ChecklistSheet
+          open={open}
+          onOpenChange={setOpen}
+          title="Группы"
+          items={items}
+          selected={[]}
+          emptyText="Список пуст"
+          submitLabel="Добавить"
+          requireSelection
+          onSubmit={() => Promise.resolve(null)}
+        />
+      );
+    }
+    renderPage(<Harness />);
+    const user = userEvent.setup();
+
+    const submit = await screen.findByRole("button", { name: "Добавить" });
+    expect(submit).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: "Козлов" }));
+    expect(submit).toBeEnabled();
+  });
+
+  it("запись, заблокированная после ошибки, не уходит в повторное подтверждение", async () => {
+    const onSubmit = vi.fn<(ids: readonly string[]) => Promise<string | null>>();
+    /** Экран, который после первой ошибки блокирует уже обработанную запись «Иванов». */
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      const [list, setList] = useState<readonly ChecklistItem<string>[]>(items);
+      return (
+        <ChecklistSheet
+          open={open}
+          onOpenChange={setOpen}
+          title="Группы"
+          items={list}
+          selected={[]}
+          emptyText="Список пуст"
+          onSubmit={async (ids) => {
+            const failure = await onSubmit(ids);
+            if (failure !== null) {
+              setList([
+                { id: "ivanov", name: "Иванов", disabledReason: "уже в группе" },
+                ...items.slice(1),
+              ]);
+            }
+            return failure;
+          }}
+        />
+      );
+    }
+    onSubmit.mockResolvedValueOnce("Ошибка").mockResolvedValueOnce(null);
+    renderPage(<Harness />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("checkbox", { name: "Иванов" }));
+    await user.click(screen.getByRole("checkbox", { name: "Козлов" }));
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ошибка");
+    expect(screen.getByRole("checkbox", { name: /Иванов/ })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Козлов" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    await closed();
+    expect(onSubmit).toHaveBeenNthCalledWith(1, ["ivanov", "kozlov"]);
+    expect(onSubmit).toHaveBeenNthCalledWith(2, ["kozlov"]);
+  });
 });

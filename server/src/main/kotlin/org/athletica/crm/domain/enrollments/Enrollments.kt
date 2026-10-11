@@ -42,3 +42,14 @@ interface Enrollments {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun activeOn(groupId: GroupId, date: LocalDate): List<Enrollment> = activeIn(groupId, date, date)
 }
+
+/**
+ * Записывает клиента [clientId] в каждую из групп [groupIds] через [Enrollments.add].
+ * Расширение, а не член интерфейса: вызов идёт через `add` конкретного экземпляра,
+ * поэтому декоратор аудита логирует каждую запись. Атомарность обеспечивает
+ * транзакция [tr]: ошибка на любой группе откатывает записи во все предыдущие.
+ */
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+suspend fun Enrollments.addToGroups(clientId: ClientId, groupIds: List<GroupId>) {
+    groupIds.forEach { add(it, listOf(clientId)) }
+}

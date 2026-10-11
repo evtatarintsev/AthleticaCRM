@@ -132,9 +132,7 @@ export function ClientDetailPage({
         branchId={branchId}
         clientId={clientId}
         groups={data.groups}
-        onChanged={() => {
-          void refreshDetail();
-        }}
+        onChanged={refreshDetail}
       />
       {hasPermission(session, "CAN_VIEW_CLIENT_BALANCE") && (
         <ClientBalanceSection

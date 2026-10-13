@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type { BranchId, ClientDetailResponse, ClientId } from "@/api/generated/contracts";
@@ -11,7 +12,7 @@ import { apiQuery } from "@/query/queries";
 import { hasPermission, useSession } from "@/query/session";
 import { PageHeader } from "@/ui/PageHeader";
 import { ClientMessagesSection, ClientTasksSection } from "./ClientActivitySections";
-import { ClientBalanceSection } from "./ClientBalanceSection";
+import { ClientBalanceSheet } from "./ClientBalanceSheet";
 import { ClientDocumentsSection } from "./ClientDocumentsSection";
 import { ClientGroupsSection } from "./ClientGroupsSection";
 import { ClientNotesSection } from "./ClientNotesSection";
@@ -34,8 +35,9 @@ import { ClientCardProfile } from "./card/ClientCardProfile";
 
 /**
  * Карточка клиента: шапка с действиями и предупреждениями, слева — контакты и анкета,
- * справа — лента блоков (занятия, абонементы, платежи, посещения, задачи, сообщения,
- * заметки, документы) в порядке шаблона карточки.
+ * справа — лента блоков (занятия, абонементы, группы, посещения, задачи, сообщения,
+ * заметки, документы) в порядке шаблона карточки. Плитка баланса открывает панель «Баланс»,
+ * если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`.
  */
 export function ClientDetailPage({
   api,
@@ -49,6 +51,7 @@ export function ClientDetailPage({
   const session = useSession(api);
   const branchId = session.currentBranch.id;
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
+  const [balanceOpen, setBalanceOpen] = useState(false);
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
@@ -115,6 +118,13 @@ export function ClientDetailPage({
         quickInfo={
           <ClientCardQuickInfo
             balance={data.balance}
+            onBalanceClick={
+              canViewBalance
+                ? () => {
+                    setBalanceOpen(true);
+                  }
+                : undefined
+            }
             memberships={memberships.data?.memberships}
             lastVisit={
               attendance.data === undefined
@@ -153,39 +163,44 @@ export function ClientDetailPage({
               api={api}
               branchId={branchId}
               client={data}
-              canViewBalance={canViewBalance}
               currentEmployeeId={session.employeeId}
               onChanged={refreshDetail}
-              onDetail={(updated) => {
-                queryClient.setQueryData(detailQuery.queryKey, updated);
-              }}
             />
           ))}
         </div>
       </div>
+
+      {canViewBalance && (
+        <ClientBalanceSheet
+          api={api}
+          branchId={branchId}
+          client={data}
+          open={balanceOpen}
+          onOpenChange={setBalanceOpen}
+          onChanged={(updated) => {
+            queryClient.setQueryData(detailQuery.queryKey, updated);
+          }}
+        />
+      )}
     </section>
   );
 }
 
-/** Блок ленты по его типу; блок, недоступный по правам, не показывается. */
+/** Блок ленты по его типу. */
 function FeedBlock({
   block,
   api,
   branchId,
   client,
-  canViewBalance,
   currentEmployeeId,
   onChanged,
-  onDetail,
 }: {
   readonly block: ClientCardBlock;
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly client: ClientDetailResponse;
-  readonly canViewBalance: boolean;
   readonly currentEmployeeId: string;
   readonly onChanged: () => Promise<void>;
-  readonly onDetail: (client: ClientDetailResponse) => void;
 }) {
   const clientId = client.id;
   switch (block.type) {
@@ -217,17 +232,6 @@ function FeedBlock({
           onChanged={onChanged}
         />
       );
-    case "payments":
-      return canViewBalance ? (
-        <ClientBalanceSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          balance={client.balance}
-          limit={block.limit}
-          onChanged={onDetail}
-        />
-      ) : null;
     case "visits":
       return (
         <ClientAttendanceSection

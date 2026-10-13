@@ -1,5 +1,5 @@
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
+import { FileTextIcon, PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import { ClientDocIdSchema, type ClientDoc, type ClientId } from "@/api/generated/contracts";
@@ -12,9 +12,10 @@ import { uploadInfoQuery } from "@/query/queries";
 import { uuidv7 } from "@/lib/uuid";
 import { AttachmentList } from "@/ui/attachments/AttachmentList";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { ClientCardBlock } from "./card/ClientCardBlock";
 
 /**
- * Документы клиента: загрузка файла, миниатюры и просмотр по подписанным ссылкам,
+ * Блок документов клиента: загрузка файла, миниатюры и просмотр по подписанным ссылкам,
  * удаление с подтверждением.
  */
 export function ClientDocumentsSection({
@@ -69,27 +70,7 @@ export function ClientDocumentsSection({
   };
 
   return (
-    <div className="space-y-2 rounded-lg border bg-card p-4">
-      <h2 className="text-base font-semibold">{t("clients.detail.documents")}</h2>
-
-      {error !== null && <FormAlert message={error} />}
-
-      {docs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("clients.detail.noDocuments")}</p>
-      ) : (
-        <AttachmentList
-          items={docs.map((doc, index) => ({
-            key: doc.id,
-            name: doc.name,
-            file: files[index]?.data ?? null,
-          }))}
-          onRemove={(item) => {
-            setDocToDelete(docs.find((doc) => doc.id === item.key) ?? null);
-          }}
-          removeLabel={(name) => t("clients.detail.deleteDoc", { name })}
-        />
-      )}
-
+    <>
       <input
         ref={input}
         type="file"
@@ -104,34 +85,70 @@ export function ClientDocumentsSection({
           }
         }}
       />
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={uploading}
-        aria-busy={uploading}
-        onClick={() => {
-          input.current?.click();
-        }}
+      <ClientCardBlock
+        icon={<FileTextIcon aria-hidden />}
+        title={t("clients.detail.documents")}
+        count={docs.length}
+        actions={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={uploading}
+            aria-busy={uploading}
+            aria-label={t("clients.detail.uploadDocument")}
+            title={t("clients.detail.uploadDocument")}
+            onClick={() => {
+              input.current?.click();
+            }}
+          >
+            <PlusIcon aria-hidden />
+          </Button>
+        }
       >
-        <PlusIcon aria-hidden />
-        {uploading ? t("clients.detail.uploading") : t("clients.detail.uploadDocument")}
-      </Button>
+        {error !== null && (
+          <div className="px-4 pt-3">
+            <FormAlert message={error} />
+          </div>
+        )}
+        {uploading && (
+          <p className="px-4 pt-3 text-sm text-muted-foreground">{t("clients.detail.uploading")}</p>
+        )}
+        {docs.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted-foreground">
+            {t("clients.detail.noDocuments")}
+          </p>
+        ) : (
+          <div className="p-4">
+            <AttachmentList
+              items={docs.map((doc, index) => ({
+                key: doc.id,
+                name: doc.name,
+                file: files[index]?.data ?? null,
+              }))}
+              onRemove={(item) => {
+                setDocToDelete(docs.find((doc) => doc.id === item.key) ?? null);
+              }}
+              removeLabel={(name) => t("clients.detail.deleteDoc", { name })}
+            />
+          </div>
+        )}
 
-      {docToDelete !== null && (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setDocToDelete(null);
-            }
-          }}
-          title={t("clients.detail.deleteDocTitle")}
-          description={t("clients.detail.deleteDocMessage", { name: docToDelete.name })}
-          confirmLabel={t("action.delete")}
-          onConfirm={() => deleteDoc(docToDelete)}
-        />
-      )}
-    </div>
+        {docToDelete !== null && (
+          <ConfirmDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setDocToDelete(null);
+              }
+            }}
+            title={t("clients.detail.deleteDocTitle")}
+            description={t("clients.detail.deleteDocMessage", { name: docToDelete.name })}
+            confirmLabel={t("action.delete")}
+            onConfirm={() => deleteDoc(docToDelete)}
+          />
+        )}
+      </ClientCardBlock>
+    </>
   );
 }

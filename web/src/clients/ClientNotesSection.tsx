@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PencilIcon, TrashIcon } from "lucide-react";
+import { PencilIcon, StickyNoteIcon, TrashIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
@@ -17,21 +17,24 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { BlockStatus, ClientCardBlock, ShowAllButton } from "./card/ClientCardBlock";
 
 /** Максимальная длина текста заметки; совпадает с ограничением сервера. */
 const MAX_NOTE_LENGTH = 2000;
 
-/** Заметки клиента: лента, добавление и правка своих заметок, удаление с подтверждением. */
+/** Блок заметок клиента: добавление, лента, правка своих заметок, удаление с подтверждением. */
 export function ClientNotesSection({
   api,
   branchId,
   clientId,
   currentEmployeeId,
+  limit,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly currentEmployeeId: string;
+  readonly limit: number;
 }) {
   const { t, format } = useI18n();
   const queryClient = useQueryClient();
@@ -44,6 +47,7 @@ export function ClientNotesSection({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<ClientNoteSchema | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const applyResponse = (response: ClientNotesListResponse) => {
     queryClient.setQueryData(notesQuery.queryKey, response);
@@ -85,13 +89,27 @@ export function ClientNotesSection({
     }
   };
 
+  const count = notes.data?.notes.length ?? 0;
+  const shown = showAll ? (notes.data?.notes ?? []) : (notes.data?.notes ?? []).slice(0, limit);
+
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
-      <h2 className="text-base font-semibold">{t("clients.detail.notes")}</h2>
-
-      {error !== null && <FormAlert message={error} />}
-
-      <div className="space-y-2">
+    <ClientCardBlock
+      icon={<StickyNoteIcon aria-hidden />}
+      title={t("clients.detail.notes")}
+      count={count}
+      footer={
+        <ShowAllButton
+          total={count}
+          limit={limit}
+          showAll={showAll}
+          onToggle={() => {
+            setShowAll(!showAll);
+          }}
+        />
+      }
+    >
+      <div className="space-y-2 border-b px-4 py-3">
+        {error !== null && <FormAlert message={error} />}
         <TextAreaField
           field={manualField(fieldId, draft, setDraft)}
           label={t("clients.detail.noteFieldLabel")}
@@ -123,52 +141,54 @@ export function ClientNotesSection({
         </div>
       </div>
 
-      {notes.isError && <FormAlert message={t("clients.detail.loadError")} />}
-      {notes.data !== undefined &&
-        (notes.data.notes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("clients.detail.noteEmpty")}</p>
-        ) : (
-          <ul className="divide-y">
-            {notes.data.notes.map((note) => (
-              <li key={note.id} className="space-y-1 py-3 first:pt-0">
-                <p className="text-sm whitespace-pre-wrap">{note.text}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-medium">{note.author.name}</span>
-                  <span>{format.dateTime(note.createdAt)}</span>
-                  {note.updatedAt !== null && <span>{t("clients.detail.noteEdited")}</span>}
-                  {note.author.id === currentEmployeeId && (
-                    <span className="ml-auto flex gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t("clients.detail.noteEditAria")}
-                        onClick={() => {
-                          setEditingId(note.id);
-                          setDraft(note.text);
-                          setError(null);
-                        }}
-                      >
-                        <PencilIcon aria-hidden />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t("clients.detail.noteDeleteAria")}
-                        onClick={() => {
-                          setNoteToDelete(note);
-                        }}
-                      >
-                        <TrashIcon aria-hidden className="text-destructive" />
-                      </Button>
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ))}
+      <BlockStatus
+        isPending={notes.isPending}
+        isError={notes.isError}
+        isEmpty={count === 0}
+        empty={t("clients.detail.noteEmpty")}
+      />
+      {shown.length > 0 && (
+        <ul className="divide-y">
+          {shown.map((note) => (
+            <li key={note.id} className="space-y-1 px-4 py-2">
+              <p className="text-sm whitespace-pre-wrap">{note.text}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium">{note.author.name}</span>
+                <span>{format.dateTime(note.createdAt)}</span>
+                {note.updatedAt !== null && <span>{t("clients.detail.noteEdited")}</span>}
+                {note.author.id === currentEmployeeId && (
+                  <span className="ml-auto flex gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("clients.detail.noteEditAria")}
+                      onClick={() => {
+                        setEditingId(note.id);
+                        setDraft(note.text);
+                        setError(null);
+                      }}
+                    >
+                      <PencilIcon aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("clients.detail.noteDeleteAria")}
+                      onClick={() => {
+                        setNoteToDelete(note);
+                      }}
+                    >
+                      <TrashIcon aria-hidden className="text-destructive" />
+                    </Button>
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {noteToDelete !== null && (
         <ConfirmDialog
@@ -184,6 +204,6 @@ export function ClientNotesSection({
           onConfirm={() => deleteNote(noteToDelete)}
         />
       )}
-    </div>
+    </ClientCardBlock>
   );
 }

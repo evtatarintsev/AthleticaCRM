@@ -11,11 +11,13 @@ import {
   DeleteClientNoteRequestSchema,
   EditClientNoteRequestSchema,
   InstantSchema,
+  ScheduleListRequestSchema,
   type ClientDetailResponse,
   type ClientNoteSchema,
   type CustomFieldDefinition,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
+import { addDays, todayLocalDate } from "@/lib/localDate";
 import { appServer, empty, json, openApp, session } from "@/test/app";
 
 const alice = ClientDetailResponseSchema.parse({
@@ -63,6 +65,7 @@ function detailServer(
   initial: ClientDetailResponse,
   notes: readonly ClientNoteSchema[] = [],
   uploadInfo: typeof passport = passport,
+  extra: Parameters<typeof appServer>[0] = {},
 ) {
   let client = initial;
   let currentNotes = notes;
@@ -122,6 +125,7 @@ function detailServer(
       };
       return empty();
     },
+    ...extra,
     "clients/docs/delete": ({ body }) => {
       const request = DeleteClientDocRequestSchema.parse(body);
       client = { ...client, docs: client.docs.filter((doc) => doc.id !== request.docId) };
@@ -152,7 +156,8 @@ describe("карточка клиента", () => {
     expect(addRequest.clientId).toBe(alice.id);
     expect(addRequest.text).toBe("Перезвонить завтра");
 
-    await user.click(screen.getByRole("button", { name: ru["action.archive"] }));
+    await user.click(screen.getByRole("button", { name: ru["clientCard.action.more"] }));
+    await user.click(await screen.findByRole("menuitem", { name: ru["action.archive"] }));
     await screen.findByText(ru["clients.detail.archivedBanner"]);
     expect(api.to("clients/archive").at(-1)?.body).toEqual({ clientIds: [alice.id] });
     expect(screen.queryByRole("link", { name: ru["action.edit"] })).not.toBeInTheDocument();
@@ -268,5 +273,89 @@ describe("карточка клиента", () => {
       throw new Error("section not found");
     }
     expect(within(section).getByText("Заметка")).toBeInTheDocument();
+  });
+  it("показывает ближайшие занятия, посещения, пропуски, задачи и предупреждения", async () => {
+    const today = todayLocalDate();
+    const group = alice.groups[0] ?? { id: "", name: "" };
+    const api = detailServer(alice, [], passport, {
+      "schedule/list": () =>
+        json({
+          sessions: [
+            {
+              id: "0199a0b2-7c3e-7d2a-9f10-000000000c01",
+              group,
+              date: addDays(today, 1),
+              startTime: "10:00:00",
+              endTime: "11:00:00",
+              hall: { id: "0199a0b2-7c3e-7d2a-9f10-000000000d01", name: "Большой зал" },
+              coaches: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000d02", name: "Ксения" }],
+              disciplines: [],
+              status: "SCHEDULED",
+              colorKey: "GREEN",
+            },
+          ],
+        }),
+      "attendance/client": () =>
+        json({
+          items: [
+            {
+              sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000c02",
+              group: { id: group.id, name: "Посещённая группа" },
+              date: addDays(today, -2),
+              startTime: "10:00:00",
+              presence: "PRESENT",
+              labels: [],
+            },
+            {
+              sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000c03",
+              group: { id: group.id, name: "Пропущенная группа" },
+              date: addDays(today, -4),
+              startTime: "10:00:00",
+              presence: "ABSENT",
+              labels: [
+                {
+                  id: "0199a0b2-7c3e-7d2a-9f10-000000000c04",
+                  name: "Болезнь",
+                  scope: "ABSENT",
+                  position: 0,
+                  isArchived: false,
+                },
+              ],
+            },
+          ],
+        }),
+      "tasks/list": () =>
+        json({
+          tasks: [
+            {
+              id: "0199a0b2-7c3e-7d2a-9f10-000000000c05",
+              title: "Напомнить о продлении",
+              assigneeId: null,
+              assigneeName: null,
+              clientId: alice.id,
+              clientName: alice.name,
+              status: "PENDING",
+              dueDate: "2024-01-01T10:00:00Z",
+              dueDateEnd: null,
+            },
+          ],
+          total: 1,
+        }),
+      "memberships/list": () => json({ memberships: [] }),
+    });
+    openApp(`/clients/${alice.id}`, api.fetch);
+
+    await screen.findByText("Большой зал");
+    expect(await screen.findAllByText("Посещённая группа")).toHaveLength(2);
+    expect(screen.getByText("Пропущенная группа")).toBeInTheDocument();
+    expect(screen.getByText("Болезнь")).toBeInTheDocument();
+    expect(await screen.findByText("Напомнить о продлении")).toBeInTheDocument();
+
+    const alerts = within(screen.getByRole("list", { name: ru["clientCard.alerts"] }));
+    expect(alerts.getByText(ru["clientCard.alert.noActiveSubscription"])).toBeInTheDocument();
+    expect(alerts.getByText("1 просроченная задача")).toBeInTheDocument();
+
+    const schedule = ScheduleListRequestSchema.parse(api.to("schedule/list").at(-1)?.body);
+    expect(schedule.groupIds).toEqual([group.id]);
   });
 });

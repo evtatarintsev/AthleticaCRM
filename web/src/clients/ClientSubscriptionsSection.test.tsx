@@ -79,6 +79,6 @@ describe("абонементы клиента", () => {
     expect(request.sessions).toBe(10);
     expect(request.price).toEqual({ minorUnits: 500000, currency: "RUB" });
 
-    await screen.findByText(ru["clients.detail.subscriptionIndividual"]);
+    expect(await screen.findAllByText(ru["clients.detail.subscriptionIndividual"])).toHaveLength(2);
   });
 });

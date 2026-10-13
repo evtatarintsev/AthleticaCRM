@@ -1,88 +1,120 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { TicketIcon } from "lucide-react";
+import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type { BranchId, ClientId, MembershipSchema } from "@/api/generated/contracts";
-import { Button } from "@/components/ui/button";
-import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
-import { apiQuery } from "@/query/queries";
 import { cn } from "@/lib/utils";
+import {
+  BlockRow,
+  BlockStatus,
+  BlockSub,
+  ClientCardBlock,
+  Pill,
+  ShowAllButton,
+} from "./card/ClientCardBlock";
+import { membershipEndingSoon } from "./card/clientCardAlerts";
+import { membershipsQuery } from "./card/clientCardQueries";
 
-/** Абонементы клиента: история выданных абонементов и переход к выдаче нового. */
+/** Порядок абонементов: действующие раньше истёкших, внутри — по дате окончания, поздние выше. */
+function compareMemberships(a: MembershipSchema, b: MembershipSchema): number {
+  const activeA = a.status === "ACTIVE";
+  const activeB = b.status === "ACTIVE";
+  if (activeA !== activeB) {
+    return activeA ? -1 : 1;
+  }
+  return b.endDate.localeCompare(a.endDate);
+}
+
+/** Блок абонементов клиента: сначала действующие, затем истёкшие; выдача — из шапки карточки. */
 export function ClientSubscriptionsSection({
   api,
   branchId,
   clientId,
+  limit,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
+  readonly limit: number;
 }) {
   const { t } = useI18n();
-  const membershipsQuery = apiQuery(api, branchId, "memberships/list", { clientId });
-  const memberships = useQuery(membershipsQuery);
+  const [showAll, setShowAll] = useState(false);
+  const memberships = useQuery(membershipsQuery(api, branchId, clientId));
+  const items = (memberships.data?.memberships ?? []).toSorted(compareMemberships);
+  const shown = showAll ? items : items.slice(0, limit);
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{t("clients.detail.subscriptions")}</h2>
-        <Button asChild size="sm">
-          <Link to="/clients/$clientId/issue-subscription" params={{ clientId }}>
-            {t("clients.detail.issueSubscription")}
-          </Link>
-        </Button>
-      </div>
-
-      {memberships.isError && <FormAlert message={t("clients.detail.loadError")} />}
-      {memberships.data !== undefined &&
-        (memberships.data.memberships.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("clients.detail.subscriptionsEmpty")}</p>
-        ) : (
-          <ul className="divide-y">
-            {memberships.data.memberships.map((membership) => (
-              <MembershipRow key={membership.id} membership={membership} />
-            ))}
-          </ul>
-        ))}
-    </div>
+    <ClientCardBlock
+      icon={<TicketIcon aria-hidden />}
+      title={t("clients.detail.subscriptions")}
+      count={items.length}
+      footer={
+        <ShowAllButton
+          total={items.length}
+          limit={limit}
+          showAll={showAll}
+          onToggle={() => {
+            setShowAll(!showAll);
+          }}
+        />
+      }
+    >
+      <BlockStatus
+        isPending={memberships.isPending}
+        isError={memberships.isError}
+        isEmpty={items.length === 0}
+        empty={t("clients.detail.subscriptionsEmpty")}
+      />
+      {shown.length > 0 && (
+        <ul className="divide-y">
+          {shown.map((membership) => (
+            <MembershipRow key={membership.id} membership={membership} />
+          ))}
+        </ul>
+      )}
+    </ClientCardBlock>
   );
 }
 
+/** Строка абонемента: название, срок, остаток занятий с полосой прогресса и состояние. */
 function MembershipRow({ membership }: { readonly membership: MembershipSchema }) {
   const { t, format } = useI18n();
+  const active = membership.status === "ACTIVE";
+  const total = membership.sessionsTotal;
+  const remaining = membership.sessionsRemaining ?? 0;
   const sessions =
-    membership.sessionsTotal === null
+    total === null
       ? t("clients.detail.subscriptionUnlimited")
-      : t("clients.detail.subscriptionSessions", {
-          remaining: membership.sessionsRemaining ?? 0,
-          total: membership.sessionsTotal,
-        });
+      : t("clients.detail.subscriptionSessions", { remaining, total });
   return (
-    <li className="space-y-1 py-3 first:pt-0">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="font-medium">{membership.name}</span>
-        <span className="font-medium">{format.money(membership.price)}</span>
-      </div>
-      <p className="text-sm text-muted-foreground">{sessions}</p>
-      <p className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>
-          {format.date(membership.startDate)} — {format.date(membership.endDate)}
-        </span>
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5",
-            membership.status === "ACTIVE"
-              ? "bg-primary/10 text-primary"
-              : "bg-secondary text-secondary-foreground",
+    <BlockRow
+      className={cn(!active && "text-muted-foreground")}
+      aside={
+        <div className="space-y-1">
+          <div className="font-medium tabular-nums">{format.money(membership.price)}</div>
+          {!active ? (
+            <Pill tone="gray">{t("clients.detail.subscriptionExpired")}</Pill>
+          ) : membershipEndingSoon(membership) ? (
+            <Pill tone="amber">{t("clientCard.subscriptionEnding")}</Pill>
+          ) : (
+            <Pill tone="green">{t("clients.detail.subscriptionActive")}</Pill>
           )}
-        >
-          {t(
-            membership.status === "ACTIVE"
-              ? "clients.detail.subscriptionActive"
-              : "clients.detail.subscriptionExpired",
-          )}
-        </span>
-      </p>
-    </li>
+        </div>
+      }
+    >
+      <div className="font-medium">{membership.name}</div>
+      <BlockSub>
+        {format.date(membership.startDate)} — {format.date(membership.endDate)} · {sessions}
+      </BlockSub>
+      {active && total !== null && total > 0 && (
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${String(Math.round((remaining / total) * 100))}%` }}
+          />
+        </div>
+      )}
+    </BlockRow>
   );
 }

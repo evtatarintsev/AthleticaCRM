@@ -60,20 +60,23 @@ function balanceServer(initial: ClientDetailResponse, permissions: readonly stri
 }
 
 describe("баланс клиента", () => {
-  it("без права CAN_VIEW_CLIENT_BALANCE блок не показывается", async () => {
+  it("без права CAN_VIEW_CLIENT_BALANCE баланс в шапке есть, блока платежей нет", async () => {
     const api = balanceServer(bob, []);
     openApp(`/clients/${bob.id}`, api.fetch);
 
     await screen.findByRole("heading", { name: bob.name });
-    expect(screen.queryByText(ru["clients.detail.balance"])).not.toBeInTheDocument();
+    expect(screen.getByText(ru["clientCard.balance"])).toBeInTheDocument();
+    expect(screen.getByText("100,00 ₽")).toBeInTheDocument();
+    expect(screen.queryByText(ru["clientCard.block.payments"])).not.toBeInTheDocument();
   });
 
-  it("корректирует баланс и показывает историю", async () => {
+  it("корректирует баланс и показывает операции по счёту", async () => {
     const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"]);
     openApp(`/clients/${bob.id}`, api.fetch);
     const user = userEvent.setup();
 
-    await screen.findByText(ru["clients.detail.balance"]);
+    await screen.findByText(ru["clientCard.balance"]);
+    await screen.findByText("Пополнение наличными");
     await user.click(screen.getByRole("button", { name: ru["clients.detail.balanceAdjust"] }));
 
     const dialog = await screen.findByRole("dialog", {
@@ -91,7 +94,9 @@ describe("баланс клиента", () => {
     expect(request.amount).toEqual({ minorUnits: -5000, currency: "RUB" });
     expect(request.note).toBe("Списание");
 
-    await user.click(screen.getByRole("button", { name: ru["clients.detail.balanceHistory"] }));
-    await screen.findByText("Пополнение наличными");
+    expect(screen.getByText("Пополнение наличными")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.to("clients/balance/history").length).toBeGreaterThan(1);
+    });
   });
 });

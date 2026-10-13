@@ -1,5 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PlusIcon, WalletIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import type { ApiClient } from "@/api/client";
@@ -12,20 +13,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { FormAlert } from "@/forms/FormAlert";
 import { RadioGroupField, TextField } from "@/forms/fields";
-import { useI18n, type I18n } from "@/i18n/context";
+import { useI18n, type I18n, type PlainMessageKey } from "@/i18n/context";
 import { parseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
+import {
+  BlockRow,
+  BlockStatus,
+  BlockSub,
+  ClientCardBlock,
+  ShowAllButton,
+} from "./card/ClientCardBlock";
 
 /** Направление корректировки баланса. */
 type Direction = "credit" | "debit";
@@ -48,58 +49,125 @@ function adjustBalanceSchema(t: I18n["t"], currency: Money["currency"]) {
   });
 }
 
+/** Ключ подписи типа операции [operationType] журнала баланса клиента. */
+function operationLabelKey(operationType: string): PlainMessageKey {
+  switch (operationType) {
+    case "sale_overpayment":
+      return "clientCard.operation.sale_overpayment";
+    case "sale_payment":
+      return "clientCard.operation.sale_payment";
+    case "refund":
+      return "clientCard.operation.refund";
+    case "admin_credit":
+      return "clientCard.operation.admin_credit";
+    case "admin_debit":
+      return "clientCard.operation.admin_debit";
+    default:
+      return "clientCard.operation.other";
+  }
+}
+
 /**
- * Раздел баланса клиента в карточке: текущий баланс, корректировка и история операций.
- * Показывается, только если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`
- * (проверка — в вызывающем компоненте, у которого есть сессия).
+ * Блок платежей карточки клиента: операции по счёту от новых к старым и административная
+ * корректировка баланса. Показывается, только если у сотрудника есть право
+ * `CAN_VIEW_CLIENT_BALANCE` (проверка — в вызывающем компоненте, у которого есть сессия).
  */
 export function ClientBalanceSection({
   api,
   branchId,
   clientId,
   balance,
+  limit,
   onChanged,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly balance: Money;
+  readonly limit: number;
   readonly onChanged: (client: ClientDetailResponse) => void;
 }) {
   const { t, format } = useI18n();
   const queryClient = useQueryClient();
   const [adjustOpen, setAdjustOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const historyQuery = apiQuery(api, branchId, "clients/balance/history", { id: clientId });
+  const history = useQuery(historyQuery);
+  const entries = history.data?.entries ?? [];
+  const shown = showAll ? entries : entries.slice(0, limit);
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{t("clients.detail.balance")}</h2>
-        <div className="flex gap-2">
+    <>
+      <ClientCardBlock
+        icon={<WalletIcon aria-hidden />}
+        title={t("clientCard.block.payments")}
+        count={entries.length}
+        actions={
           <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setHistoryOpen(true);
-            }}
-          >
-            {t("clients.detail.balanceHistory")}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("clients.detail.balanceAdjust")}
+            title={t("clients.detail.balanceAdjust")}
             onClick={() => {
               setAdjustOpen(true);
             }}
           >
-            {t("clients.detail.balanceAdjust")}
+            <PlusIcon aria-hidden />
           </Button>
-        </div>
-      </div>
-      <p className={cn("text-2xl font-semibold", balance.minorUnits < 0 && "text-destructive")}>
-        {format.money(balance)}
-      </p>
+        }
+        footer={
+          <ShowAllButton
+            total={entries.length}
+            limit={limit}
+            showAll={showAll}
+            onToggle={() => {
+              setShowAll(!showAll);
+            }}
+          />
+        }
+      >
+        <BlockStatus
+          isPending={history.isPending}
+          isError={history.isError}
+          isEmpty={entries.length === 0}
+          empty={t("clients.detail.balanceHistoryEmpty")}
+        />
+        {shown.length > 0 && (
+          <ul className="divide-y">
+            {shown.map((entry) => (
+              <BlockRow
+                key={entry.id}
+                aside={
+                  <div>
+                    <div
+                      className={cn(
+                        "font-medium tabular-nums",
+                        entry.amount.minorUnits < 0
+                          ? "text-destructive"
+                          : "text-emerald-700 dark:text-emerald-400",
+                      )}
+                    >
+                      {entry.amount.minorUnits > 0 ? "+" : ""}
+                      {format.money(entry.amount)}
+                    </div>
+                    <BlockSub>
+                      {t("clientCard.balanceAfter", { amount: format.money(entry.balanceAfter) })}
+                    </BlockSub>
+                  </div>
+                }
+              >
+                <div>{t(operationLabelKey(entry.operationType))}</div>
+                {entry.note !== null && entry.note !== "" && <div>{entry.note}</div>}
+                <BlockSub>
+                  {[format.dateTime(entry.createdAt), entry.performedBy?.name]
+                    .filter((part) => part !== undefined && part !== "")
+                    .join(" · ")}
+                </BlockSub>
+              </BlockRow>
+            ))}
+          </ul>
+        )}
+      </ClientCardBlock>
 
       {adjustOpen && (
         <AdjustBalanceDialog
@@ -109,24 +177,14 @@ export function ClientBalanceSection({
           onSuccess={(client) => {
             setAdjustOpen(false);
             onChanged(client);
-            void queryClient.invalidateQueries({
-              queryKey: ["api", branchId, "clients/balance/history", { id: clientId }],
-            });
+            void queryClient.invalidateQueries({ queryKey: historyQuery.queryKey });
           }}
           onClose={() => {
             setAdjustOpen(false);
           }}
         />
       )}
-
-      <BalanceHistorySheet
-        api={api}
-        branchId={branchId}
-        clientId={clientId}
-        open={historyOpen}
-        onOpenChange={setHistoryOpen}
-      />
-    </div>
+    </>
   );
 }
 
@@ -243,79 +301,5 @@ function AdjustBalanceDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** Панель истории операций по балансу клиента, в обратном хронологическом порядке. */
-function BalanceHistorySheet({
-  api,
-  branchId,
-  clientId,
-  open,
-  onOpenChange,
-}: {
-  readonly api: ApiClient;
-  readonly branchId: BranchId;
-  readonly clientId: ClientId;
-  readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
-}) {
-  const { t, format } = useI18n();
-  const historyQuery = apiQuery(api, branchId, "clients/balance/history", { id: clientId });
-  const history = useQuery({ ...historyQuery, enabled: open });
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[85vh] overflow-y-auto"
-        closeLabel={t("action.close")}
-      >
-        <SheetHeader>
-          <SheetTitle>{t("clients.detail.balanceHistory")}</SheetTitle>
-          <SheetDescription className="sr-only">
-            {t("clients.detail.balanceHistory")}
-          </SheetDescription>
-        </SheetHeader>
-        <div className="px-4 pb-4">
-          {history.isError && <FormAlert message={t("clients.detail.loadError")} />}
-          {history.data !== undefined &&
-            (history.data.entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("clients.detail.balanceHistoryEmpty")}
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {history.data.entries.map((entry) => (
-                  <li key={entry.id} className="space-y-1 py-3 first:pt-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span
-                        className={cn(
-                          "font-medium",
-                          entry.amount.minorUnits < 0 ? "text-destructive" : "text-primary",
-                        )}
-                      >
-                        {entry.amount.minorUnits > 0 ? "+" : ""}
-                        {format.money(entry.amount)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format.money(entry.balanceAfter)}
-                      </span>
-                    </div>
-                    {entry.note !== null && entry.note !== "" && (
-                      <p className="text-sm">{entry.note}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {[entry.performedBy?.name, format.dateTime(entry.createdAt)]
-                        .filter((part) => part !== undefined && part !== "")
-                        .join(" · ")}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ))}
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }

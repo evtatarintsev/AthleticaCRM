@@ -1,28 +1,42 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { ArchiveIcon, ArchiveRestoreIcon, MessageSquareIcon, PencilIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
-import type { ClientId } from "@/api/generated/contracts";
-import { Button } from "@/components/ui/button";
+import type { BranchId, ClientDetailResponse, ClientId } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
+import { todayLocalDate } from "@/lib/localDate";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { hasPermission, useSession } from "@/query/session";
-import { Avatar } from "@/ui/Avatar";
 import { PageHeader } from "@/ui/PageHeader";
+import { ClientMessagesSection, ClientTasksSection } from "./ClientActivitySections";
 import { ClientBalanceSection } from "./ClientBalanceSection";
-import { ClientCustomFieldsSection } from "./ClientCustomFieldsSection";
 import { ClientDocumentsSection } from "./ClientDocumentsSection";
 import { ClientGroupsSection } from "./ClientGroupsSection";
-import { ClientInfoSection } from "./ClientInfoSection";
 import { ClientNotesSection } from "./ClientNotesSection";
+import { ClientAttendanceSection, ClientUpcomingSection } from "./ClientScheduleSections";
 import { ClientSubscriptionsSection } from "./ClientSubscriptionsSection";
+import {
+  attendanceWith,
+  clientAttendanceQuery,
+  clientTasksQuery,
+  clientUpcomingQuery,
+  membershipsQuery,
+  upcomingSessions,
+} from "./card/clientCardQueries";
+import { ClientCardQuickInfo } from "./card/ClientCardQuickInfo";
 import { clientCustomFieldsQuery } from "./clientsQueries";
+import { clientAlerts } from "./card/clientCardAlerts";
+import { defaultTemplate, visibleBlocks, type ClientCardBlock } from "./card/clientCardBlocks";
+import { ClientCardHeader } from "./card/ClientCardHeader";
+import { ClientCardProfile } from "./card/ClientCardProfile";
 
-/** Карточка клиента: сведения, заметки, документы и дополнительные поля. */
+/**
+ * Карточка клиента: шапка с действиями и предупреждениями, слева — контакты и анкета,
+ * справа — лента блоков (занятия, абонементы, платежи, посещения, задачи, сообщения,
+ * заметки, документы) в порядке шаблона карточки.
+ */
 export function ClientDetailPage({
   api,
   clientId,
@@ -34,9 +48,15 @@ export function ClientDetailPage({
   const queryClient = useQueryClient();
   const session = useSession(api);
   const branchId = session.currentBranch.id;
+  const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
+  const leadSources = useQuery(apiQuery(api, branchId, "lead-sources/list"));
+  const memberships = useQuery(membershipsQuery(api, branchId, clientId));
+  const tasks = useQuery(clientTasksQuery(api, branchId, clientId));
+  const attendance = useQuery(clientAttendanceQuery(api, branchId, clientId));
+  const upcoming = useQuery(clientUpcomingQuery(api, branchId, client.data?.groups ?? []));
 
   const refreshDetail = async () => {
     await queryClient.invalidateQueries({ queryKey: detailQuery.queryKey });
@@ -59,13 +79,15 @@ export function ClientDetailPage({
 
   if (client.data === undefined) {
     return (
-      <section className="max-w-3xl">
+      <section className="max-w-6xl">
         <PageHeader title={t("clients.title")} />
         {client.isPending && (
           <div className="space-y-4">
-            <Skeleton className="h-16 w-16 rounded-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-36 w-full" />
+            <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
           </div>
         )}
         {client.isError && <FormAlert message={t("clients.loadClientError")} />}
@@ -74,105 +96,182 @@ export function ClientDetailPage({
   }
 
   const data = client.data;
-  const archived = data.state === "ARCHIVED";
+  const leadSourceName =
+    leadSources.data?.leadSources.find((source) => source.id === data.leadSourceId)?.name ?? null;
+  const alerts = clientAlerts({
+    client: data,
+    memberships: memberships.data?.memberships,
+    tasks: tasks.data?.tasks,
+    today: todayLocalDate(),
+    now: new Date(),
+  });
 
   return (
-    <section className="max-w-3xl space-y-4 pb-16">
-      <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            <Avatar
-              api={api}
-              uploadId={data.avatarId}
-              name={data.name}
-              className="size-10 text-sm"
-            />
-            {data.name}
-          </span>
-        }
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/clients/$clientId/messages" params={{ clientId }}>
-                <MessageSquareIcon aria-hidden />
-                {t("messaging.open")}
-              </Link>
-            </Button>
-            {!archived && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/clients/$clientId/edit" params={{ clientId }}>
-                  <PencilIcon aria-hidden />
-                  {t("action.edit")}
-                </Link>
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void toggleArchived(!archived);
-              }}
-            >
-              {archived ? <ArchiveRestoreIcon aria-hidden /> : <ArchiveIcon aria-hidden />}
-              {t(archived ? "action.restore" : "action.archive")}
-            </Button>
-          </div>
-        }
-      />
-
-      {archived && (
-        <div className="rounded-lg border bg-secondary px-4 py-3 text-sm text-secondary-foreground">
-          {t("clients.detail.archivedBanner")}
-        </div>
-      )}
-
-      <ClientInfoSection client={data} />
-      <ClientGroupsSection
+    <section className="max-w-6xl space-y-4 pb-16">
+      <ClientCardHeader
         api={api}
-        branchId={branchId}
-        clientId={clientId}
-        groups={data.groups}
-        onChanged={refreshDetail}
+        client={data}
+        leadSourceName={leadSourceName}
+        quickInfo={
+          <ClientCardQuickInfo
+            balance={data.balance}
+            memberships={memberships.data?.memberships}
+            lastVisit={
+              attendance.data === undefined
+                ? undefined
+                : (attendanceWith(attendance.data.items, "PRESENT")[0] ?? null)
+            }
+            nextSession={
+              data.groups.length === 0
+                ? null
+                : upcoming.data === undefined
+                  ? undefined
+                  : (upcomingSessions(upcoming.data.sessions)[0] ?? null)
+            }
+          />
+        }
+        alerts={alerts}
+        onToggleArchived={(archived) => {
+          void toggleArchived(archived);
+        }}
       />
-      {hasPermission(session, "CAN_VIEW_CLIENT_BALANCE") && (
+
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+        <aside className="lg:sticky lg:top-4">
+          <ClientCardProfile
+            client={data}
+            leadSourceName={leadSourceName}
+            customFieldDefs={customFieldDefs.data ?? []}
+            editable={data.state === "ACTIVE"}
+          />
+        </aside>
+        <div className="space-y-4">
+          {visibleBlocks(defaultTemplate()).map((block) => (
+            <FeedBlock
+              key={block.id}
+              block={block}
+              api={api}
+              branchId={branchId}
+              client={data}
+              canViewBalance={canViewBalance}
+              currentEmployeeId={session.employeeId}
+              onChanged={refreshDetail}
+              onDetail={(updated) => {
+                queryClient.setQueryData(detailQuery.queryKey, updated);
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Блок ленты по его типу; блок, недоступный по правам, не показывается. */
+function FeedBlock({
+  block,
+  api,
+  branchId,
+  client,
+  canViewBalance,
+  currentEmployeeId,
+  onChanged,
+  onDetail,
+}: {
+  readonly block: ClientCardBlock;
+  readonly api: ApiClient;
+  readonly branchId: BranchId;
+  readonly client: ClientDetailResponse;
+  readonly canViewBalance: boolean;
+  readonly currentEmployeeId: string;
+  readonly onChanged: () => Promise<void>;
+  readonly onDetail: (client: ClientDetailResponse) => void;
+}) {
+  const clientId = client.id;
+  switch (block.type) {
+    case "upcoming":
+      return (
+        <ClientUpcomingSection
+          api={api}
+          branchId={branchId}
+          groups={client.groups}
+          limit={block.limit}
+        />
+      );
+    case "subscriptions":
+      return (
+        <ClientSubscriptionsSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          limit={block.limit}
+        />
+      );
+    case "groups":
+      return (
+        <ClientGroupsSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          groups={client.groups}
+          onChanged={onChanged}
+        />
+      );
+    case "payments":
+      return canViewBalance ? (
         <ClientBalanceSection
           api={api}
           branchId={branchId}
           clientId={clientId}
-          balance={data.balance}
-          onChanged={(updated) => {
-            queryClient.setQueryData(detailQuery.queryKey, updated);
-          }}
+          balance={client.balance}
+          limit={block.limit}
+          onChanged={onDetail}
         />
-      )}
-      <ClientSubscriptionsSection api={api} branchId={branchId} clientId={clientId} />
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/clients/$clientId/visits" params={{ clientId }}>
-            {t("clients.detail.visitHistory")}
-          </Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/clients/$clientId/payments" params={{ clientId }}>
-            {t("clients.detail.paymentHistory")}
-          </Link>
-        </Button>
-      </div>
-      {customFieldDefs.data !== undefined && customFieldDefs.data.length > 0 && (
-        <ClientCustomFieldsSection definitions={customFieldDefs.data} values={data.customFields} />
-      )}
-      <ClientNotesSection
-        api={api}
-        branchId={branchId}
-        clientId={clientId}
-        currentEmployeeId={session.employeeId}
-      />
-      <ClientDocumentsSection
-        api={api}
-        clientId={clientId}
-        docs={data.docs}
-        onChanged={refreshDetail}
-      />
-    </section>
-  );
+      ) : null;
+    case "visits":
+      return (
+        <ClientAttendanceSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          presence="PRESENT"
+          limit={block.limit}
+        />
+      );
+    case "missed":
+      return (
+        <ClientAttendanceSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          presence="ABSENT"
+          limit={block.limit}
+        />
+      );
+    case "tasks":
+      return (
+        <ClientTasksSection api={api} branchId={branchId} clientId={clientId} limit={block.limit} />
+      );
+    case "messages":
+      return <ClientMessagesSection api={api} branchId={branchId} clientId={clientId} />;
+    case "notes":
+      return (
+        <ClientNotesSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          currentEmployeeId={currentEmployeeId}
+          limit={block.limit}
+        />
+      );
+    case "documents":
+      return (
+        <ClientDocumentsSection
+          api={api}
+          clientId={clientId}
+          docs={client.docs}
+          onChanged={onChanged}
+        />
+      );
+  }
 }

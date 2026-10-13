@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { XIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { PlusIcon, UsersIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
@@ -9,11 +10,12 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
+import { BlockRow, BlockStatus, ClientCardBlock } from "./card/ClientCardBlock";
 
 /**
- * Группы клиента: чипы с удалением и запись сразу в несколько групп через панель с чекбоксами
- * одной операцией — во все отмеченные или ни в одну; группы, в которых клиент уже состоит, видны
- * в панели заблокированными.
+ * Блок групп клиента: список групп со ссылками и удалением, запись сразу в несколько групп
+ * через панель с чекбоксами одной операцией — во все отмеченные или ни в одну; группы,
+ * в которых клиент уже состоит, видны в панели заблокированными.
  */
 export function ClientGroupsSection({
   api,
@@ -42,6 +44,7 @@ export function ClientGroupsSection({
       queryClient.invalidateQueries({ queryKey: ["api", branchId, "clients/list"] }),
       queryClient.invalidateQueries({ queryKey: ["api", branchId, "groups/list"] }),
       queryClient.invalidateQueries({ queryKey: ["api", branchId, "groups/detail"] }),
+      queryClient.invalidateQueries({ queryKey: ["api", branchId, "schedule/list"] }),
     ]);
   };
 
@@ -70,45 +73,62 @@ export function ClientGroupsSection({
   const memberIds = new Set(groups.map((group) => group.id));
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{t("clients.column.groups")}</h2>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setSheetOpen(true);
-          }}
-        >
-          {t("clients.detail.addToGroup")}
-        </Button>
-      </div>
-
-      {groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("clients.detail.noGroups")}</p>
-      ) : (
-        <div className="flex flex-wrap gap-1">
-          {groups.map((group) => (
-            <span
-              key={group.id}
-              className="flex items-center gap-1 rounded-full border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
-            >
-              {group.name}
-              <button
-                type="button"
-                aria-label={t("clients.detail.removeFromGroupAria", { name: group.name })}
-                onClick={() => {
-                  void removeGroup(group.id);
-                }}
-                className="rounded-full hover:text-destructive"
+    <>
+      <ClientCardBlock
+        icon={<UsersIcon aria-hidden />}
+        title={t("clientCard.block.groups")}
+        count={groups.length}
+        actions={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("clients.detail.addToGroup")}
+            title={t("clients.detail.addToGroup")}
+            onClick={() => {
+              setSheetOpen(true);
+            }}
+          >
+            <PlusIcon aria-hidden />
+          </Button>
+        }
+      >
+        <BlockStatus
+          isPending={false}
+          isError={false}
+          isEmpty={groups.length === 0}
+          empty={t("clients.detail.noGroups")}
+        />
+        {groups.length > 0 && (
+          <ul className="divide-y">
+            {groups.map((group) => (
+              <BlockRow
+                key={group.id}
+                aside={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={t("clients.detail.removeFromGroupAria", { name: group.name })}
+                    title={t("clients.detail.removeFromGroupAria", { name: group.name })}
+                    onClick={() => {
+                      void removeGroup(group.id);
+                    }}
+                  >
+                    <XIcon aria-hidden />
+                  </Button>
+                }
               >
-                <XIcon aria-hidden className="size-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+                <Link
+                  to="/groups/$groupId"
+                  params={{ groupId: group.id }}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {group.name}
+                </Link>
+              </BlockRow>
+            ))}
+          </ul>
+        )}
+      </ClientCardBlock>
 
       <ChecklistSheet
         open={sheetOpen}
@@ -126,6 +146,6 @@ export function ClientGroupsSection({
         requireSelection
         onSubmit={addToGroups}
       />
-    </div>
+    </>
   );
 }

@@ -65,7 +65,7 @@ internal data class DbClientNote(
     /** Проверяет, что заметку правит/удаляет её автор. Иначе — `PERMISSION_DENIED`. */
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     private fun requireAuthor() {
-        if (authorId != ctx.employeeId) {
+        if (authorId != ctx.employee.id) {
             raise(CommonDomainError("PERMISSION_DENIED", "Заметку может изменять только её автор"))
         }
     }

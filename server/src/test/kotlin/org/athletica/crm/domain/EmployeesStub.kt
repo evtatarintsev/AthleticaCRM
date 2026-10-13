@@ -9,6 +9,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -17,19 +18,26 @@ import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+/**
+ * Сотрудник в памяти для тестов: права проверяются по настройке [permissionSettings],
+ * команды `save`/`invite` ничего не делают.
+ */
 data class EmployeeStub(
-    override val id: EmployeeId,
-    override val userId: UserId?,
-    override val name: String,
-    override val avatarId: UploadId?,
-    override val isOwner: Boolean,
-    override val isActive: Boolean,
-    override val joinedAt: Instant,
-    override val permissions: EmployeePermission,
-    override val phoneNo: String?,
-    override val email: EmailAddress?,
+    override val id: EmployeeId = EmployeeId.new(),
+    override val userId: UserId? = null,
+    override val name: String = "Сотрудник",
+    override val avatarId: UploadId? = null,
+    override val isOwner: Boolean = false,
+    override val isActive: Boolean = true,
+    override val joinedAt: Instant = Clock.System.now(),
+    /** Роли, персональные выдачи и отзывы прав сотрудника. */
+    val permissionSettings: EmployeePermission = EmployeePermission(),
+    override val phoneNo: String? = null,
+    override val email: EmailAddress? = null,
     override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
 ) : Employee {
+    override fun hasPermission(p: UserPermission): Boolean = permissionSettings.hasPermission(p)
+
     context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {
     }
@@ -48,7 +56,7 @@ data class EmployeeStub(
         newAvailableBranches: EmployeeBranchAccess,
     ) = copy(
         name = newName,
-        permissions = newPermissions,
+        permissionSettings = newPermissions,
         email = newEmail,
         avatarId = newAvatarId,
         phoneNo = newPhoneNo,
@@ -79,7 +87,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             phoneNo = phoneNo,
             email = email,
             avatarId = avatarId,
-            permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
+            permissionSettings = permissions,
             availableBranches = availableBranches,
         ).also { employees.add(it) }
 
@@ -88,9 +96,6 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byIds(ids: List<EmployeeId>): List<Employee> = employees.filter { it.id in ids }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(): List<Employee> = employees
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> = employees.filter { it.isActive && it.availableBranches.contains(branchId) }.map { it.id }

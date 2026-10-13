@@ -10,6 +10,10 @@ import org.athletica.crm.read.clients.ClientBalanceHistoryView
 import org.athletica.crm.read.clients.ClientListView
 import org.athletica.crm.read.clients.DbClientBalanceHistoryView
 import org.athletica.crm.read.clients.DbClientListView
+import org.athletica.crm.read.employees.DbEmployeeDetailView
+import org.athletica.crm.read.employees.DbEmployeeListView
+import org.athletica.crm.read.employees.EmployeeDetailView
+import org.athletica.crm.read.employees.EmployeeListView
 import org.athletica.crm.read.groups.DbGroupDetailView
 import org.athletica.crm.read.groups.DbGroupListView
 import org.athletica.crm.read.groups.DbGroupSessionsView
@@ -59,4 +63,8 @@ data class ReadViews(
     val groupAttendance: GroupAttendanceView = DbGroupAttendanceView(),
     /** Посещаемость клиента за период по всем группам. */
     val clientAttendance: ClientAttendanceView = DbClientAttendanceView(),
+    /** Список сотрудников организации с названиями ролей. */
+    val employeeList: EmployeeListView = DbEmployeeListView(),
+    /** Карточка сотрудника с ролями, персональными правами и филиалами. */
+    val employeeDetail: EmployeeDetailView = DbEmployeeDetailView(),
 )

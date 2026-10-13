@@ -17,27 +17,23 @@ import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
+import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 
 context(db: Database)
-fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
+fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: ReadViews) {
     route("/employees") {
         get<Unit, EmployeeListResponse>("/list") {
             db.transaction {
-                employees.list()
-            }.let { employees ->
-                EmployeeListResponse(
-                    employees.map { it.toListItem() },
-                    employees.size.toUInt(),
-                )
+                views.employeeList.list()
             }
         }
 
         get<EmployeeDetailRequest, EmployeeDetailResponse>("/detail") { request ->
             db.transaction {
-                employees.byId(request.id)
-            }.toDetailResponse()
+                views.employeeDetail.byId(request.id)
+            }
         }
 
         post<CreateEmployeeRequest, EmployeeListItem>("/create") { request ->
@@ -50,16 +46,17 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
                         grantedPermissions = request.grantedPermissions,
                         revokedPermissions = request.revokedPermissions,
                     )
-                employees.new(
-                    id = request.id,
-                    name = request.name,
-                    phoneNo = request.phoneNo,
-                    email = request.email,
-                    avatarId = request.avatarId,
-                    permissions = permissions,
-                    availableBranches = request.toAvailableBranches(),
-                )
-            }.toListItem()
+                employees
+                    .new(
+                        id = request.id,
+                        name = request.name,
+                        phoneNo = request.phoneNo,
+                        email = request.email,
+                        avatarId = request.avatarId,
+                        permissions = permissions,
+                        availableBranches = request.toAvailableBranches(),
+                    ).toListItem(selectedRoles)
+            }
         }
 
         post<UpdateEmployeeRequest, Unit>("/update") { request ->
@@ -117,7 +114,8 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles) {
     }
 }
 
-fun Employee.toListItem() =
+/** Собирает элемент списка из только что созданного сотрудника и назначенных ему ролей [roles]. */
+private fun Employee.toListItem(roles: List<DomainEmployeeRole>) =
     EmployeeListItem(
         id,
         name,
@@ -125,24 +123,7 @@ fun Employee.toListItem() =
         isOwner,
         isActive,
         joinedAt,
-        permissions.roles.map { role -> EmployeeRole(role.id, role.name) },
-    )
-
-fun Employee.toDetailResponse() =
-    EmployeeDetailResponse(
-        id,
-        name,
-        avatarId,
-        isOwner,
-        isActive,
-        joinedAt,
-        permissions.roles.map { role -> EmployeeRole(role.id, role.name) },
-        phoneNo,
-        email?.value,
-        permissions.grantedPermissions,
-        permissions.revokedPermissions,
-        availableBranches is EmployeeBranchAccess.All,
-        (availableBranches as? EmployeeBranchAccess.Selected)?.ids ?: emptyList(),
+        roles.map { role -> EmployeeRole(role.id, role.name) },
     )
 
 /** Конвертирует [CreateEmployeeRequest] в доменный [EmployeeBranchAccess]. */

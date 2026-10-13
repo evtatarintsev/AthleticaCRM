@@ -21,6 +21,7 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLong
 import kotlin.uuid.Uuid
@@ -201,7 +202,7 @@ class ScheduleFixture {
 
     /** Контекст сотрудника текущей организации и филиала. */
     fun ctx(): EmployeeRequestContext =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = UserId.new(),
             orgId = OrgId(orgId),
@@ -210,7 +211,7 @@ class ScheduleFixture {
             username = "test@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     /** Выполняет [block] в транзакции с контекстом сотрудника; ошибка домена роняет тест. */

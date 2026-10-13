@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -16,6 +15,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.verifyCredentials
 import org.athletica.crm.usecases.auth.changePassword
@@ -63,7 +63,7 @@ class ChangePasswordTest {
         orgId: OrgId,
         employeeId: EmployeeId,
         username: String = "user",
-    ) = EmployeeRequestContext(
+    ) = employeeContext(
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,
@@ -72,7 +72,7 @@ class ChangePasswordTest {
         username = username,
         clientIp = "127.0.0.1",
         currency = Currency.RUB,
-        permission = EmployeePermission(),
+        permissions = EmployeePermission(),
     )
 
     private suspend fun runChangePassword(

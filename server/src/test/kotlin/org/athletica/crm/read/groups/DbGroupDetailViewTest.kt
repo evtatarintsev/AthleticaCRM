@@ -9,7 +9,6 @@ import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.core.DayOfWeek
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.DisciplineId
@@ -22,6 +21,7 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asUuid
 import org.junit.Before
 import kotlin.test.Test
@@ -153,7 +153,7 @@ class DbGroupDetailViewTest {
 
     private suspend fun detail(orgId: Uuid, id: GroupId): Either<DomainError, GroupDetailResponse> {
         val context =
-            EmployeeRequestContext(
+            employeeContext(
                 lang = Lang.RU,
                 userId = UserId.new(),
                 orgId = OrgId(orgId),
@@ -162,7 +162,7 @@ class DbGroupDetailViewTest {
                 username = "test@example.com",
                 clientIp = null,
                 currency = Currency.RUB,
-                permission = EmployeePermission(),
+                permissions = EmployeePermission(),
             )
         return either {
             val raise: Raise<DomainError> = this

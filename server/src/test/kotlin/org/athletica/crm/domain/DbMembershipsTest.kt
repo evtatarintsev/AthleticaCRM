@@ -21,6 +21,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.memberships.DbMemberships
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
@@ -40,7 +41,7 @@ class DbMembershipsTest {
     private lateinit var memberships: DbMemberships
 
     private fun ctxFor(orgId: OrgId, employeeId: EmployeeId) =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = orgId,
             currency = Currency.RUB,
@@ -49,7 +50,7 @@ class DbMembershipsTest {
             employeeId = employeeId,
             username = "user@example.com",
             clientIp = "127.0.0.1",
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     @Before

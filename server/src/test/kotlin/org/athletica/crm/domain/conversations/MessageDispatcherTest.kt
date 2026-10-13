@@ -7,7 +7,6 @@ import arrow.core.right
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
@@ -25,6 +24,7 @@ import org.athletica.crm.domain.messagedelivery.MessageChannel
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
 import org.athletica.crm.domain.messagedelivery.ProviderMessageRef
 import org.athletica.crm.domain.messagedelivery.SendError
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -46,7 +46,7 @@ class MessageDispatcherTest {
     private val channels = org.athletica.crm.domain.channels.DbChannelIntegrations()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = userId,
             orgId = orgId,
@@ -55,7 +55,7 @@ class MessageDispatcherTest {
             username = "user@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     /** Реестр-заглушка с настраиваемым поведением отправки. */

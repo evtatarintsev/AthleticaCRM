@@ -17,7 +17,7 @@ import org.athletica.crm.storage.asUuid
 class DbBranches : Branches {
     context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun list(): List<Branch> =
-        when (val access = ctx.availableBranches) {
+        when (val access = ctx.employee.availableBranches) {
             is EmployeeBranchAccess.All ->
                 tr
                     .sql("SELECT id, name FROM branches WHERE org_id = :orgId ORDER BY name")

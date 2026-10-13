@@ -144,7 +144,7 @@ internal data class DbTask(
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     private fun requireEditable() {
         if (ctx.hasPermission(UserPermission.CAN_MANAGE_TASKS)) return
-        if (createdBy == ctx.employeeId || assigneeId == ctx.employeeId) return
+        if (createdBy == ctx.employee.id || assigneeId == ctx.employee.id) return
         raise(CommonDomainError("PERMISSION_DENIED", "Нет прав для редактирования задачи $id"))
     }
 }

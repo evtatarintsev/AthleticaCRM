@@ -48,7 +48,7 @@ class DbPayments : Payments {
             .bind("amount", amount)
             .bind("currency", amount.currency.name)
             .bind("description", description)
-            .bind("createdBy", ctx.employeeId)
+            .bind("createdBy", ctx.employee.id)
             .bind("confirmationUrl", confirmationUrl)
             .firstOrNull { row -> row.toPayment() }!!
     }

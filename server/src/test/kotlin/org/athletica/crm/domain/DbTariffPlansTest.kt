@@ -20,6 +20,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tariffs.DbTariffPlans
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
@@ -34,7 +35,7 @@ class DbTariffPlansTest {
     private val otherOrgId = OrgId.new()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = orgId,
             currency = Currency.RUB,
@@ -43,10 +44,10 @@ class DbTariffPlansTest {
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
     private val otherCtx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = otherOrgId,
             currency = Currency.RUB,
@@ -55,7 +56,7 @@ class DbTariffPlansTest {
             employeeId = EmployeeId.new(),
             username = "user@example.com",
             clientIp = "127.0.0.1",
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private lateinit var tariffs: DbTariffPlans

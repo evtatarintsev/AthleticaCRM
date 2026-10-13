@@ -63,7 +63,7 @@ class DbSession(
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .execute()
-        events.publish(SessionCancelled(id, groupId, date, ctx.employeeId))
+        events.publish(SessionCancelled(id, groupId, date, ctx.employee.id))
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -129,7 +129,7 @@ class DbSession(
                             labelIds = it.mark.toSnapshot().labelIds,
                         )
                     },
-                completedBy = ctx.employeeId,
+                completedBy = ctx.employee.id,
             ),
         )
     }

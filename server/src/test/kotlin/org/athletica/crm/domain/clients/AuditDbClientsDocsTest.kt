@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.ClientId
@@ -18,6 +17,7 @@ import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -36,7 +36,7 @@ class AuditDbClientsDocsTest {
     private val branchId = Uuid.generateV7()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = orgId,
             currency = Currency.RUB,
@@ -45,7 +45,7 @@ class AuditDbClientsDocsTest {
             employeeId = EmployeeId.new(),
             username = "test@example.com",
             clientIp = "127.0.0.1",
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private val clients = AuditClients(DbClients(), PostgresAuditLog())

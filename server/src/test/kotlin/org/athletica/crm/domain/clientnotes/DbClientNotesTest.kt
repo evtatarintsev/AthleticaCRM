@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.clientnotes.ClientNoteText
 import org.athletica.crm.core.entityids.BranchId
@@ -16,6 +15,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -43,7 +43,7 @@ class DbClientNotesTest {
     private fun ctx(
         id: EmployeeId = authorId,
         org: OrgId = orgId,
-    ) = EmployeeRequestContext(
+    ) = employeeContext(
         lang = Lang.RU,
         userId = userId,
         orgId = org,
@@ -52,7 +52,7 @@ class DbClientNotesTest {
         username = "test@example.com",
         clientIp = null,
         currency = Currency.RUB,
-        permission = EmployeePermission(),
+        permissions = EmployeePermission(),
     )
 
     private val authorCtx = ctx()

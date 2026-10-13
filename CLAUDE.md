@@ -82,7 +82,7 @@ Both files must be updated in the same commit as the `application.conf` change.
 
 ```
 ├── core/                  # Core types and foundational patterns
-│   ├── RequestContext.kt  # HTTP request context (userId, orgId, permissions)
+│   ├── RequestContext.kt  # HTTP request context (userId, orgId, acting employee)
 │   ├── Lang.kt           # Language enum
 │   ├── entityids/        # Strongly-typed entity IDs (UserId, ClientId, etc.)
 │   ├── permissions/      # Actor interface for permission checks
@@ -192,7 +192,7 @@ suspend fun doSomething(): Either<DomainError, String> = either {
 // Function requires RequestContext in scope
 context(RequestContext)
 suspend fun clientList(request: ClientListRequest): Either<DomainError, List<ClientListItem>> {
-    // RequestContext is implicitly available (userId, orgId, permissions)
+    // RequestContext is implicitly available (userId, orgId, acting employee)
 }
 
 // Caller provides context via context() builder
@@ -226,9 +226,10 @@ HTTP Response (ErrorResponse or data)
 ```
 
 ### 5. Permission Checking
-- `RequestContext` implements `Actor` (delegates to `EmployeePermission`)
-- `EmployeePermission.hasPermission(permission: Permission): Boolean`
-- Permissions loaded lazily from database (caching planned)
+- `EmployeeRequestContext` holds the acting `employee: Employee` and implements `UserActor by employee`
+- `Employee` is a `UserActor`: `employee.hasPermission(p)`; role/grant/revoke settings (`EmployeePermission`) are private to the implementation
+- Employee identity and branches come from the context: `ctx.employee.id`, `ctx.employee.availableBranches`
+- The employee is loaded from the database once per request (caching planned)
 - Used in domain layer to restrict operations: `require(ctx.hasPermission(CAN_VIEW_CLIENT_BALANCE))`
 
 ### 6. Audit Logging
@@ -264,16 +265,17 @@ fun `my test`() = runTest {
     assertEquals(1, clients.size)
 }
 
-// Test context: empty EmployeePermission() (unprivileged)
-private fun ctx(orgId: Uuid) = RequestContext(
-    lang = Lang.EN,
-    userId = UserId.new(),
-    orgId = OrgId(orgId),
-    employeeId = EmployeeId.new(),
-    username = "user@example.com",
-    clientIp = "127.0.0.1",
-    permission = EmployeePermission(),  // No special permissions for tests
-)
+// Test context: shared helper employeeContext() (server/src/test/.../TestEmployeeContext.kt)
+// builds EmployeeRequestContext around an EmployeeStub; no permissions by default
+private val testContext = employeeContext(orgId = orgId)
+
+// With permissions / restricted branches
+private val managerContext =
+    employeeContext(
+        orgId = orgId,
+        permissions = EmployeePermission(emptyList(), setOf(CAN_MANAGE_TASKS), emptySet()),
+        availableBranches = EmployeeBranchAccess.Selected(listOf(branchId)),
+    )
 ```
 
 ### Running Tests

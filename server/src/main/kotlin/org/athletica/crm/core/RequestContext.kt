@@ -1,7 +1,6 @@
 package org.athletica.crm.core
 
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
@@ -9,8 +8,7 @@ import org.athletica.crm.core.permissions.SystemActor
 import org.athletica.crm.core.permissions.SystemPermission
 import org.athletica.crm.core.permissions.UserActor
 import org.athletica.crm.core.permissions.UserPermission
-import org.athletica.crm.domain.employees.EmployeeBranchAccess
-import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.Employee
 
 /**
  * Базовый контекст выполнения операции.
@@ -34,15 +32,15 @@ sealed interface RequestContext {
 
 /**
  * Контекст аутентифицированного HTTP-запроса от сотрудника организации.
+ * Актор запроса — сам [employee]: проверки прав делегируются ему.
  *
  * [userId] — идентификатор пользователя из JWT-токена.
  * [branchId] — идентификатор текущего филиала из JWT-токена;
  *   [BranchId.notSelected] для bootstrap-эндпоинтов (`/auth/branches`), где филиал ещё не выбран.
- * [employeeId] — идентификатор сотрудника из JWT-токена.
  * [username] — имя пользователя из JWT-токена (денормализовано).
  * [clientIp] — IP-адрес клиента; IPv4 или IPv6; null если определить не удалось.
- * [availableBranches] — филиалы, доступные сотруднику ([EmployeeBranchAccess.All] либо
- *   [EmployeeBranchAccess.Selected]); загружается из агрегата `Employee` при сборке контекста.
+ * [employee] — сотрудник, выполняющий запрос; загружается при сборке контекста и является
+ *   снимком на момент начала запроса (идентификатор, имя, доступные филиалы, права).
  */
 data class EmployeeRequestContext(
     override val lang: Lang,
@@ -50,13 +48,11 @@ data class EmployeeRequestContext(
     override val currency: Currency,
     val userId: UserId,
     val branchId: BranchId,
-    val employeeId: EmployeeId,
     val username: String,
     val clientIp: String?,
-    val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
-    private val permission: EmployeePermission,
+    val employee: Employee,
 ) : RequestContext,
-    UserActor by permission
+    UserActor by employee
 
 /**
  * Контекст системных фоновых операций (cron, event handlers, воркеры).

@@ -24,6 +24,7 @@ import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import kotlin.test.Test
@@ -119,7 +120,7 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
 class AuditClientsTest {
     private val orgId = OrgId.new()
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = orgId,
             currency = Currency.RUB,
@@ -128,7 +129,7 @@ class AuditClientsTest {
             employeeId = EmployeeId.new(),
             username = "owner@example.com",
             clientIp = "127.0.0.1",
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
     private val tr = FakeTransaction
 

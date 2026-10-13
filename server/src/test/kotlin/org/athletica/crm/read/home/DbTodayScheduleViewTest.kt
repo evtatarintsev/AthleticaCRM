@@ -10,7 +10,6 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.home.TodaySessionsResponse
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -19,6 +18,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -45,7 +45,7 @@ class DbTodayScheduleViewTest {
     }
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = UserId.new(),
             orgId = orgId,
@@ -54,7 +54,7 @@ class DbTodayScheduleViewTest {
             username = "test@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private suspend fun insertHall(name: String): Uuid {

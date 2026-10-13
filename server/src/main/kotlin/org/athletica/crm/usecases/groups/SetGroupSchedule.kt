@@ -42,8 +42,8 @@ suspend fun setGroupSchedule(
                 groupId = group.id,
                 groupName = group.name,
                 effectiveFrom = from,
-                changedByName = employees.byId(ctx.employeeId).name,
+                changedByName = ctx.employee.name,
             ),
-            employees.activeIdsWithAccessTo(group.branchId) - ctx.employeeId,
+            employees.activeIdsWithAccessTo(group.branchId) - ctx.employee.id,
         ).save()
 }

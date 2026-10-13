@@ -21,9 +21,6 @@ class AuditEmployees(private val delegate: Employees, private val audit: AuditLo
     override suspend fun byIds(ids: List<EmployeeId>) = delegate.byIds(ids).map { AuditEmployee(it, audit) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list() = delegate.list().map { AuditEmployee(it, audit) }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,

@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.CustomFieldKey
@@ -17,6 +16,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,7 +29,7 @@ class DbCustomFieldDefinitionsTest {
     private val otherOrgId = OrgId.new()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = orgId,
             currency = Currency.RUB,
@@ -38,10 +38,10 @@ class DbCustomFieldDefinitionsTest {
             employeeId = EmployeeId.new(),
             username = "test@example.com",
             clientIp = null,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
     private val otherCtx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             orgId = otherOrgId,
             currency = Currency.RUB,
@@ -50,7 +50,7 @@ class DbCustomFieldDefinitionsTest {
             employeeId = EmployeeId.new(),
             username = "other@example.com",
             clientIp = null,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private val definitions = DbCustomFieldDefinitions()

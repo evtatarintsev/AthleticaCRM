@@ -11,7 +11,7 @@ interface Payments {
     /**
      * Создаёт транзакцию в статусе PENDING.
      * Требует [EmployeeRequestContext]: платёж инициируется только аутентифицированным сотрудником.
-     * [ctx.employeeId] автоматически используется как [Payment.createdBy].
+     * [ctx.employee.id] автоматически используется как [Payment.createdBy].
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun create(

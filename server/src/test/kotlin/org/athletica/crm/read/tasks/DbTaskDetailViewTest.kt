@@ -22,6 +22,7 @@ import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
@@ -44,7 +45,7 @@ class DbTaskDetailViewTest {
     private val view = DbTaskDetailView()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = userId,
             orgId = orgId,
@@ -53,7 +54,7 @@ class DbTaskDetailViewTest {
             username = "test@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     @Before

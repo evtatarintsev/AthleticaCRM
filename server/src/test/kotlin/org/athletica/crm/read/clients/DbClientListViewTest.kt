@@ -8,7 +8,6 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.core.DateRange
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.contacts.ContactType
@@ -21,6 +20,7 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asUuid
 import org.junit.Before
 import kotlin.test.Test
@@ -178,7 +178,7 @@ class DbClientListViewTest {
     }
 
     private fun ctx(orgId: Uuid) =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             userId = UserId.new(),
             orgId = OrgId(orgId),
@@ -187,7 +187,7 @@ class DbClientListViewTest {
             username = "user@example.com",
             clientIp = "127.0.0.1",
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private suspend fun page(orgId: Uuid, query: ClientListQuery): ClientListResponse {

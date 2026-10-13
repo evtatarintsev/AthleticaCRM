@@ -50,7 +50,7 @@ class DbMemberships : Memberships {
             startDate = startDate,
             endDate = endDate(startDate, durationValue, durationUnit),
             price = price,
-            issuedBy = ctx.employeeId,
+            issuedBy = ctx.employee.id,
         )
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)

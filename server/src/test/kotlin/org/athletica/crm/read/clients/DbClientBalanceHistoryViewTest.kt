@@ -6,7 +6,6 @@ import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
@@ -17,6 +16,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -96,7 +96,7 @@ class DbClientBalanceHistoryViewTest {
 
     private suspend fun history(orgId: Uuid, clientId: ClientId): Either<DomainError, ClientBalanceHistoryResponse> {
         val context =
-            EmployeeRequestContext(
+            employeeContext(
                 lang = Lang.RU,
                 userId = UserId.new(),
                 orgId = OrgId(orgId),
@@ -105,7 +105,7 @@ class DbClientBalanceHistoryViewTest {
                 username = "test@example.com",
                 clientIp = null,
                 currency = Currency.RUB,
-                permission = EmployeePermission(),
+                permissions = EmployeePermission(),
             )
         return either {
             val raise: Raise<DomainError> = this

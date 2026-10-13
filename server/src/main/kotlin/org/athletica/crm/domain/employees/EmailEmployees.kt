@@ -18,9 +18,6 @@ class EmailEmployees(private val delegate: Employees, private val orgEmails: Org
     override suspend fun byIds(ids: List<EmployeeId>) = delegate.byIds(ids).map { EmailEmployee(it, orgEmails) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list() = delegate.list().map { EmailEmployee(it, orgEmails) }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,

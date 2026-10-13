@@ -35,10 +35,6 @@ interface Employees {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byIds(ids: List<EmployeeId>): List<Employee>
 
-    /** Возвращает всех сотрудников организации. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun list(): List<Employee>
-
     /**
      * Возвращает идентификаторы активных сотрудников организации,
      * которым доступен филиал [branchId]: со всеми филиалами либо с явно назначенным [branchId].

@@ -45,9 +45,9 @@ class DbSessionJournal(
         write(participant, mark)
         val event =
             if (participant.mark is AttendanceMark.Unmarked) {
-                AttendanceMarked(sessionId, clientId, mark.toSnapshot(), ctx.employeeId)
+                AttendanceMarked(sessionId, clientId, mark.toSnapshot(), ctx.employee.id)
             } else {
-                AttendanceChanged(sessionId, clientId, participant.mark.toSnapshot(), mark.toSnapshot(), ctx.employeeId)
+                AttendanceChanged(sessionId, clientId, participant.mark.toSnapshot(), mark.toSnapshot(), ctx.employee.id)
             }
         events.publish(event)
     }
@@ -163,7 +163,7 @@ class DbSessionJournal(
                 .bind("clientId", participant.clientId)
                 .bind("kind", participant.kind.toDb())
                 .bind("presence", mark.presence?.toDb())
-                .bind("employeeId", ctx.employeeId)
+                .bind("employeeId", ctx.employee.id)
                 .firstOrNull { it.asUuid("id") }
                 ?: error("INSERT ... RETURNING не вернул строку журнала")
         tr

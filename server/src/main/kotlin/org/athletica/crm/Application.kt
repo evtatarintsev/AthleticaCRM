@@ -211,7 +211,7 @@ fun Application.configureServer() {
                         membershipsRoutes(di.memberships)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
-                        employeesRoutes(di.employees, di.roles)
+                        employeesRoutes(di.employees, di.roles, di.views)
                         context(di.passwordHasher) {
                             profileRoutes(di.organizations, di.orgBalances)
                         }

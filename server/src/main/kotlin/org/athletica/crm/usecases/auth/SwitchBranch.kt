@@ -20,7 +20,7 @@ import org.athletica.crm.storage.Transaction
  */
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun switchBranch(branchId: BranchId): User {
-    if (!ctx.availableBranches.contains(branchId)) {
+    if (!ctx.employee.availableBranches.contains(branchId)) {
         raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
     }
     return userById(ctx.userId, branchId)

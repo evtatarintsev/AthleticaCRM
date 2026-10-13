@@ -6,7 +6,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
@@ -19,6 +18,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.addToGroups
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asUuid
 import org.junit.Before
@@ -104,7 +104,7 @@ class AddClientsToGroupTest {
             ?: 0L
 
     private fun ctx(orgId: Uuid) =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             userId = userId,
             orgId = OrgId(orgId),
@@ -113,7 +113,7 @@ class AddClientsToGroupTest {
             username = "user@example.com",
             clientIp = "127.0.0.1",
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     @Test

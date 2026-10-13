@@ -4,7 +4,6 @@ import arrow.core.Either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.UpdateMeRequest
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -14,6 +13,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.auth.UserProfile
 import org.athletica.crm.usecases.auth.profile
@@ -66,7 +66,7 @@ class ProfileTest {
         orgId: OrgId,
         employeeId: EmployeeId,
         username: String = "",
-    ) = EmployeeRequestContext(
+    ) = employeeContext(
         lang = Lang.EN,
         userId = userId,
         orgId = orgId,
@@ -75,7 +75,7 @@ class ProfileTest {
         username = username,
         clientIp = "127.0.0.1",
         currency = Currency.RUB,
-        permission = EmployeePermission(),
+        permissions = EmployeePermission(),
     )
 
     @Test

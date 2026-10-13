@@ -100,7 +100,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             name = name, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
-            permissions = permissions,
+            permissionSettings = permissions,
             availableBranches = availableBranches,
         )
     }
@@ -144,7 +144,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email")?.toEmailAddress(),
                         users = users,
-                        permissions =
+                        permissionSettings =
                             EmployeePermission(
                                 roles = rolesByEmployee[employeeId] ?: emptyList(),
                                 grantedPermissions = overrides.granted,
@@ -157,46 +157,6 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
         }
         return result
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(): List<Employee> {
-        val rolesByEmployee = rolesByOrg()
-        val permissionsByEmployee = permissionsByOrg()
-        val branchIdsByEmployee = branchIdsByOrg()
-        return tr
-            .sql(
-                """
-                SELECT e.id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at, e.phone_no, e.email, e.user_id, e.all_branches_access
-                FROM employees e
-                WHERE e.org_id = :orgId
-                ORDER BY e.is_owner DESC, e.name
-                """.trimIndent(),
-            )
-            .bind("orgId", ctx.orgId)
-            .list { row ->
-                val id = row.asUuid("id").toEmployeeId()
-                val overrides = permissionsByEmployee[id] ?: PermissionOverrides(emptySet(), emptySet())
-                DbEmployee(
-                    id = id,
-                    name = row.asString("name"),
-                    avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
-                    isOwner = row.asBoolean("is_owner"),
-                    isActive = row.asBoolean("is_active"),
-                    joinedAt = row.asInstant("joined_at"),
-                    phoneNo = row.asStringOrNull("phone_no"),
-                    email = row.asStringOrNull("email")?.toEmailAddress(),
-                    userId = row.asUuidOrNull("user_id")?.toUserId(),
-                    users = users,
-                    permissions =
-                        EmployeePermission(
-                            roles = rolesByEmployee[id] ?: emptyList(),
-                            grantedPermissions = overrides.granted,
-                            revokedPermissions = overrides.revoked,
-                        ),
-                    availableBranches = toAvailableBranches(row.asBoolean("all_branches_access"), branchIdsByEmployee[id]),
-                )
-            }
     }
 
     private fun toAvailableBranches(allBranchesAccess: Boolean, branchIds: List<BranchId>?): EmployeeBranchAccess =
@@ -288,76 +248,6 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 """.trimIndent(),
             )
             .bind("ids", ids)
-            .list { row ->
-                row.asUuid("employee_id").toEmployeeId() to row.asUuid("role_id")
-            }
-            .groupBy({ it.first }, { rolesById[it.second] })
-            .mapValues { (_, roles) -> roles.filterNotNull() }
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction)
-    private suspend fun permissionsByOrg(): Map<EmployeeId, PermissionOverrides> {
-        data class Row(val employeeId: EmployeeId, val permission: UserPermission, val isGranted: Boolean)
-
-        val rows =
-            tr
-                .sql(
-                    """
-                    SELECT po.employee_id, po.permission_key, po.is_granted
-                    FROM employee_permission_overrides po
-                    JOIN employees e ON e.id = po.employee_id
-                    WHERE e.org_id = :orgId
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .list { row ->
-                    Row(
-                        employeeId = row.asUuid("employee_id").toEmployeeId(),
-                        permission = UserPermission.valueOf(row.asString("permission_key")),
-                        isGranted = row.asBoolean("is_granted"),
-                    )
-                }
-
-        return rows
-            .groupBy { it.employeeId }
-            .mapValues { (_, overrides) ->
-                PermissionOverrides(
-                    granted = overrides.filter { it.isGranted }.map { it.permission }.toSet(),
-                    revoked = overrides.filter { !it.isGranted }.map { it.permission }.toSet(),
-                )
-            }
-    }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction)
-    private suspend fun branchIdsByOrg(): Map<EmployeeId, List<BranchId>> =
-        tr
-            .sql(
-                """
-                SELECT eb.employee_id, eb.branch_id
-                FROM employee_branches eb
-                JOIN employees e ON e.id = eb.employee_id
-                WHERE e.org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("orgId", ctx.orgId)
-            .list { row ->
-                row.asUuid("employee_id").toEmployeeId() to row.asUuid("branch_id").toBranchId()
-            }
-            .groupBy({ it.first }, { it.second })
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    private suspend fun rolesByOrg(): Map<EmployeeId, List<EmployeeRole>> {
-        val rolesById = roles.list().associateBy { it.id }
-        return tr
-            .sql(
-                """
-                SELECT er.employee_id, er.role_id
-                FROM employee_roles er
-                JOIN employees e ON e.id = er.employee_id
-                WHERE e.org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("orgId", ctx.orgId)
             .list { row ->
                 row.asUuid("employee_id").toEmployeeId() to row.asUuid("role_id")
             }

@@ -6,7 +6,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -15,6 +14,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.junit.Before
 import kotlin.test.Test
@@ -41,7 +41,7 @@ class NotificationsTest {
         )
 
     private fun ctx(employeeId: EmployeeId) =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             orgId = orgId,
             currency = Currency.RUB,
@@ -50,7 +50,7 @@ class NotificationsTest {
             employeeId = employeeId,
             username = "user@example.com",
             clientIp = null,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     @Before

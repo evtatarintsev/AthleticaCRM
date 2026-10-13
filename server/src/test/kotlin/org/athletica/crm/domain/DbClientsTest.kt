@@ -7,7 +7,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
@@ -25,6 +24,7 @@ import org.athletica.crm.domain.clients.ArchivedClient
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.junit.Before
 import kotlin.test.Test
@@ -43,8 +43,8 @@ class DbClientsTest {
     private val otherEmployeeId = EmployeeId.new()
     private val branchId = Uuid.generateV7()
 
-    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = userId, branchId = branchId.toBranchId(), employeeId = employeeId, username = "test@example.com", clientIp = null, permission = EmployeePermission())
-    private val otherCtx = EmployeeRequestContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "test@example.com", clientIp = null, permission = EmployeePermission())
+    private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = userId, branchId = branchId.toBranchId(), employeeId = employeeId, username = "test@example.com", clientIp = null, permissions = EmployeePermission())
+    private val otherCtx = employeeContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "test@example.com", clientIp = null, permissions = EmployeePermission())
 
     private val clients = DbClients()
 

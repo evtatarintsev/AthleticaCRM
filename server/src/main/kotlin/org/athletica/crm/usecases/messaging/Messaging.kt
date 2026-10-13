@@ -76,7 +76,7 @@ suspend fun sendMessage(
         }
 
     val conversation = conversations.forClient(request.clientId)
-    val message = conversation.appendOutbound(Author.Employee(ctx.employeeId), request.body)
+    val message = conversation.appendOutbound(Author.Employee(ctx.employee.id), request.body)
     deliveries.create(message.id, integration.id, recipientAddress)
     conversation.touch()
 

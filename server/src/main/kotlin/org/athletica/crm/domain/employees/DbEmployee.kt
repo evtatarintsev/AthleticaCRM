@@ -7,6 +7,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
@@ -21,10 +22,12 @@ data class DbEmployee(
     override val joinedAt: Instant,
     override val phoneNo: String?,
     override val email: EmailAddress?,
-    override val permissions: EmployeePermission,
     override val availableBranches: EmployeeBranchAccess,
+    private val permissionSettings: EmployeePermission,
     private val users: Users,
 ) : Employee {
+    override fun hasPermission(p: UserPermission): Boolean = permissionSettings.hasPermission(p)
+
     context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {
         val (allBranchesAccess, branchIds) =
@@ -61,7 +64,7 @@ data class DbEmployee(
             .bind("id", id)
             .execute()
 
-        for (role in permissions.roles) {
+        for (role in permissionSettings.roles) {
             tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                 .bind("employeeId", id)
                 .bind("roleId", role.id)
@@ -72,7 +75,7 @@ data class DbEmployee(
             .bind("id", id)
             .execute()
 
-        for (permission in permissions.grantedPermissions) {
+        for (permission in permissionSettings.grantedPermissions) {
             tr.sql(
                 """
                 INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
@@ -84,7 +87,7 @@ data class DbEmployee(
                 .execute()
         }
 
-        for (permission in permissions.revokedPermissions) {
+        for (permission in permissionSettings.revokedPermissions) {
             tr.sql(
                 """
                 INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
@@ -125,7 +128,7 @@ data class DbEmployee(
     ): Employee =
         copy(
             name = newName,
-            permissions = newPermissions,
+            permissionSettings = newPermissions,
             email = newEmail,
             avatarId = newAvatarId,
             phoneNo = newPhoneNo,

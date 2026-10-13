@@ -9,7 +9,6 @@ import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.DeliveryStateSchema
 import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
@@ -25,6 +24,7 @@ import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.conversations.DbConversations
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
@@ -48,7 +48,7 @@ class SendMessageTest {
     private val deliveries = DbDeliveries()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = userId,
             orgId = orgId,
@@ -57,7 +57,7 @@ class SendMessageTest {
             username = "user@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     @Before

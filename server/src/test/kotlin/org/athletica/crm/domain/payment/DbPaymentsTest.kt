@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -14,6 +13,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -191,7 +191,7 @@ class DbPaymentsTest {
     private fun ctx(
         orgId: Uuid,
         empId: EmployeeId = employeeId,
-    ) = EmployeeRequestContext(
+    ) = employeeContext(
         lang = Lang.RU,
         userId = userId,
         orgId = OrgId(orgId),
@@ -200,6 +200,6 @@ class DbPaymentsTest {
         username = "test@example.com",
         clientIp = "127.0.0.1",
         currency = Currency.RUB,
-        permission = EmployeePermission(),
+        permissions = EmployeePermission(),
     )
 }

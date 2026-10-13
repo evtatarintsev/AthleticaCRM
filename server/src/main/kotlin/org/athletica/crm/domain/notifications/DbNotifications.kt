@@ -33,7 +33,7 @@ class DbNotifications : Notifications {
                 LIMIT 50
                 """.trimIndent(),
             )
-            .bind("employeeId", ctx.employeeId)
+            .bind("employeeId", ctx.employee.id)
             .bind("orgId", ctx.orgId)
             .bind("isRead", isRead)
             .list { row ->
@@ -57,7 +57,7 @@ class DbNotifications : Notifications {
                 WHERE nr.employee_id = :employeeId AND n.org_id = :orgId AND nr.is_read = false
                 """.trimIndent(),
             )
-            .bind("employeeId", ctx.employeeId)
+            .bind("employeeId", ctx.employee.id)
             .bind("orgId", ctx.orgId)
             .firstOrNull { row -> row.asLong("cnt") }
             ?.toInt() ?: 0
@@ -82,7 +82,7 @@ class DbNotifications : Notifications {
                 """.trimIndent(),
             )
             .bind("ids", ids)
-            .bind("employeeId", ctx.employeeId)
+            .bind("employeeId", ctx.employee.id)
             .bind("orgId", ctx.orgId)
             .execute()
     }
@@ -102,7 +102,7 @@ class DbNotifications : Notifications {
                   )
                 """.trimIndent(),
             )
-            .bind("employeeId", ctx.employeeId)
+            .bind("employeeId", ctx.employee.id)
             .bind("orgId", ctx.orgId)
             .execute()
     }

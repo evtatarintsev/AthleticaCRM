@@ -84,7 +84,7 @@ class DbTaskListView : TaskListView {
         return tr
             .sql(sql)
             .bind("orgId", ctx.orgId)
-            .bind("me", ctx.employeeId)
+            .bind("me", ctx.employee.id)
             .let { q ->
                 if (query.statuses.isNotEmpty()) {
                     q.bind("statuses", query.statuses.map { it.name }.toTypedArray())

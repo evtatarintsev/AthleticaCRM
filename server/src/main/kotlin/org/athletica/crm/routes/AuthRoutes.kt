@@ -165,11 +165,9 @@ private suspend fun buildBootstrapContext(
         currency = currency,
         userId = userId,
         branchId = branchId,
-        employeeId = employee.id,
         username = username,
         clientIp = call.clientIp(),
-        permission = employee.permissions,
-        availableBranches = employee.availableBranches,
+        employee = employee,
     )
 }
 

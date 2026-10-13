@@ -2,7 +2,6 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
@@ -16,6 +15,7 @@ import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import kotlin.collections.emptyList
@@ -48,7 +48,7 @@ private class AuditLogStub : AuditLog {
 class AuditEmployeesTest {
     private val orgId = OrgId.new()
     private val employeeId = EmployeeId.new()
-    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
+    private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
     private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())

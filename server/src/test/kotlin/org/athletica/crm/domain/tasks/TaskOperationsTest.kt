@@ -22,6 +22,7 @@ import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -48,7 +49,7 @@ class TaskOperationsTest {
     private fun ctx(
         id: EmployeeId = employeeId,
         permission: EmployeePermission = EmployeePermission(),
-    ) = EmployeeRequestContext(
+    ) = employeeContext(
         lang = Lang.RU,
         userId = userId,
         orgId = orgId,
@@ -57,7 +58,7 @@ class TaskOperationsTest {
         username = "test@example.com",
         clientIp = null,
         currency = Currency.RUB,
-        permission = permission,
+        permissions = permission,
     )
 
     private val ctx = ctx()
@@ -104,10 +105,11 @@ class TaskOperationsTest {
             override val isOwner = false
             override val isActive = true
             override val joinedAt: Instant = Clock.System.now()
-            override val permissions = EmployeePermission()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
             override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All
+
+            override fun hasPermission(p: UserPermission): Boolean = false
 
             context(ctx: EmployeeRequestContext, tr: Transaction)
             override suspend fun save() = Unit

@@ -10,7 +10,6 @@ import org.athletica.crm.api.schemas.clients.import.ClientImportCommitResponse
 import org.athletica.crm.api.schemas.clients.import.ColumnMapping
 import org.athletica.crm.api.schemas.clients.import.ImportTarget
 import org.athletica.crm.api.schemas.clients.import.LeadSourceAction
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
@@ -25,6 +24,7 @@ import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.leadSource.DbLeadSources
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -95,7 +95,7 @@ class ImportClientsCommitTest {
     }
 
     private fun ctx(org: TestOrg) =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.EN,
             userId = UserId(org.userId),
             orgId = OrgId(org.orgId),
@@ -104,7 +104,7 @@ class ImportClientsCommitTest {
             username = "user@example.com",
             clientIp = "127.0.0.1",
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private suspend fun runImport(

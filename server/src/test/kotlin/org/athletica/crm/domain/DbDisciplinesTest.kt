@@ -6,7 +6,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
@@ -17,6 +16,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,8 +30,8 @@ class DbDisciplinesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "user@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
-    private val otherCtx = EmployeeRequestContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "user@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
+    private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "user@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
+    private val otherCtx = employeeContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "user@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
 
     private lateinit var disciplines: DbDisciplines
 

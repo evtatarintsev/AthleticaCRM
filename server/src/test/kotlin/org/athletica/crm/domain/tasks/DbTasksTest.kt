@@ -8,7 +8,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -22,6 +21,7 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -47,7 +47,7 @@ class DbTasksTest {
     private fun ctx(
         id: EmployeeId = employeeId,
         permission: EmployeePermission = EmployeePermission(),
-    ) = EmployeeRequestContext(
+    ) = employeeContext(
         lang = Lang.RU,
         userId = userId,
         orgId = orgId,
@@ -56,7 +56,7 @@ class DbTasksTest {
         username = "test@example.com",
         clientIp = null,
         currency = Currency.RUB,
-        permission = permission,
+        permissions = permission,
     )
 
     private val ctx = ctx()

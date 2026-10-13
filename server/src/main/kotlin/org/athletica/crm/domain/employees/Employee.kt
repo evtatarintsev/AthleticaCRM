@@ -13,7 +13,13 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
-interface Employee {
+/**
+ * Сотрудник организации — агрегат и одновременно актор запроса:
+ * ответ «что может сотрудник» даёт [hasPermission]. Устройство прав (роли,
+ * персональные выдачи и отзывы) — вход команд [withNew] и `Employees.new`
+ * и не раскрывается через интерфейс.
+ */
+interface Employee : UserActor {
     val id: EmployeeId
     val userId: UserId?
     val name: String
@@ -21,7 +27,6 @@ interface Employee {
     val isOwner: Boolean
     val isActive: Boolean
     val joinedAt: Instant
-    val permissions: EmployeePermission
     val phoneNo: String?
     val email: EmailAddress?
 

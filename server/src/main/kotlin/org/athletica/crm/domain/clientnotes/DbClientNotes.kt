@@ -67,7 +67,7 @@ class DbClientNotes : ClientNotes {
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .bind("clientId", clientId)
-            .bind("authorId", ctx.employeeId)
+            .bind("authorId", ctx.employee.id)
             .bind("text", text.value)
             .bind("now", now)
             .execute()
@@ -76,7 +76,7 @@ class DbClientNotes : ClientNotes {
             id = id,
             orgId = ctx.orgId,
             clientId = clientId,
-            authorId = ctx.employeeId,
+            authorId = ctx.employee.id,
             text = text,
             createdAt = now,
             updatedAt = null,

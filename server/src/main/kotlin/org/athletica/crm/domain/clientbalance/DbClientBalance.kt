@@ -55,7 +55,7 @@ class DbClientBalance(
             .bind("amount", amount)
             .bind("operationType", operationType)
             .bind("note", note)
-            .bind("performedBy", ctx.employeeId)
+            .bind("performedBy", ctx.employee.id)
             .execute()
 
         return DbClientBalance(clientId, balanceAfter)

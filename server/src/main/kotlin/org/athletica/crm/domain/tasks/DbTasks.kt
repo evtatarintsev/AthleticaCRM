@@ -78,7 +78,7 @@ class DbTasks : Tasks {
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .bind("createdBy", ctx.employeeId)
+            .bind("createdBy", ctx.employee.id)
             .bind("clientId", clientId)
             .bind("title", title)
             .bind("description", description)
@@ -90,7 +90,7 @@ class DbTasks : Tasks {
         return DbTask(
             id = id,
             orgId = ctx.orgId,
-            createdBy = ctx.employeeId,
+            createdBy = ctx.employee.id,
             assigneeId = null,
             clientId = clientId,
             title = title,

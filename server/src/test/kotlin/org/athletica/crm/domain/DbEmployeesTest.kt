@@ -15,18 +15,22 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
+import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.EmployeeRole
+import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
 import kotlin.collections.emptyList
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -40,8 +44,8 @@ class DbEmployeesTest {
     private val employeeId = EmployeeId.new()
     private val otherEmployeeId = EmployeeId.new()
 
-    private val ctx = EmployeeRequestContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
-    private val otherCtx = EmployeeRequestContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "other@example.com", clientIp = "127.0.0.1", permission = EmployeePermission())
+    private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
+    private val otherCtx = employeeContext(lang = Lang.EN, orgId = otherOrgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = otherEmployeeId, username = "other@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
     private val users = DbUsers(PasswordHasher())
     private val roles = DbRoles()
     private val employees = DbEmployees(users, roles)
@@ -82,7 +86,7 @@ class DbEmployeesTest {
             assertEquals(false, employee.isActive)
             assertEquals(false, employee.isOwner)
             assertNull(employee.userId)
-            assertTrue(employee.permissions.roles.isEmpty())
+            assertTrue(UserPermission.entries.none { employee.hasPermission(it) })
         }
 
     @Test
@@ -174,7 +178,7 @@ class DbEmployeesTest {
         }
 
     @Test
-    fun `byId загружает роли сотрудника`() =
+    fun `byId загружает права ролей сотрудника`() =
         runTest {
             val id = EmployeeId.new()
             val roleId = Uuid.random()
@@ -195,6 +199,11 @@ class DbEmployeesTest {
                     .bind("name", "Тренер")
                     .execute()
                 TestPostgres.db
+                    .sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
+                    .bind("roleId", roleId)
+                    .bind("key", UserPermission.CAN_VIEW_CLIENT_BALANCE.name)
+                    .execute()
+                TestPostgres.db
                     .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                     .bind("employeeId", id)
                     .bind("roleId", roleId)
@@ -206,13 +215,12 @@ class DbEmployeesTest {
                     TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(1, employee.permissions.roles.size)
-            assertEquals(roleId, employee.permissions.roles.first().id)
-            assertEquals("Тренер", employee.permissions.roles.first().name)
+            assertTrue(employee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+            assertFalse(employee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
         }
 
     @Test
-    fun `byId возвращает пустой список ролей если ролей нет`() =
+    fun `byId - сотрудник без ролей и выдач не имеет прав`() =
         runTest {
             val id = EmployeeId.new()
             either {
@@ -226,83 +234,36 @@ class DbEmployeesTest {
                     TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            assertTrue(employee.permissions.roles.isEmpty())
-        }
-
-    // ─── list ─────────────────────────────────────────────────────────────────
-
-    @Test
-    fun `list возвращает пустой список если сотрудников нет`() =
-        runTest {
-            either {
-                val list = TestPostgres.db.transaction { context(ctx) { employees.list() } }
-                assertTrue(list.isEmpty())
-            }.getOrElse { fail("Unexpected error: $it") }
+            assertTrue(UserPermission.entries.none { employee.hasPermission(it) })
         }
 
     @Test
-    fun `list возвращает только сотрудников своей организации`() =
-        runTest {
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) { employees.new(EmployeeId.new(), "Свой", null, null, null, emptyPermission) }
-                }
-                TestPostgres.db.transaction {
-                    context(otherCtx) { employees.new(EmployeeId.new(), "Чужой", null, null, null, emptyPermission) }
-                }
-                val list = TestPostgres.db.transaction { context(ctx) { employees.list() } }
-                assertEquals(1, list.size)
-                assertEquals("Свой", list.first().name)
-            }.getOrElse { fail("Unexpected error: $it") }
-        }
-
-    @Test
-    fun `list возвращает сотрудников отсортированных по имени`() =
-        runTest {
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        employees.new(EmployeeId.new(), "Яков", null, null, null, emptyPermission)
-                        employees.new(EmployeeId.new(), "Антон", null, null, null, emptyPermission)
-                        employees.new(EmployeeId.new(), "Михаил", null, null, null, emptyPermission)
-                    }
-                }
-                val list = TestPostgres.db.transaction { context(ctx) { employees.list() } }
-                assertEquals(listOf("Антон", "Михаил", "Яков"), list.map { it.name })
-            }.getOrElse { fail("Unexpected error: $it") }
-        }
-
-    @Test
-    fun `list включает роли для каждого сотрудника`() =
+    fun `byId - персональный отзыв перекрывает право роли`() =
         runTest {
             val id = EmployeeId.new()
-            val roleId = Uuid.random()
-
             either {
+                val role = EmployeeRole(Uuid.random(), "Кассир", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_MANAGE_ORG_BALANCE))
                 TestPostgres.db.transaction {
-                    context(ctx) { employees.new(id, "Сотрудник", null, null, null, emptyPermission) }
+                    context(ctx) {
+                        roles.new(role)
+                        employees.new(
+                            id,
+                            "Кассир",
+                            null,
+                            null,
+                            null,
+                            EmployeePermission(
+                                roles = listOf(role),
+                                grantedPermissions = emptySet(),
+                                revokedPermissions = setOf(UserPermission.CAN_MANAGE_ORG_BALANCE),
+                            ),
+                        )
+                    }
                 }
-            }.getOrElse { fail("Setup failed: $it") }
 
-            runBlocking {
-                TestPostgres.db
-                    .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
-                    .bind("id", roleId)
-                    .bind("orgId", orgId)
-                    .bind("name", "Администратор")
-                    .execute()
-                TestPostgres.db
-                    .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
-                    .bind("employeeId", id)
-                    .bind("roleId", roleId)
-                    .execute()
-            }
-
-            either {
-                val list = TestPostgres.db.transaction { context(ctx) { employees.list() } }
-                val employee = list.first()
-                assertEquals(1, employee.permissions.roles.size)
-                assertEquals("Администратор", employee.permissions.roles.first().name)
+                val employee = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+                assertTrue(employee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                assertFalse(employee.hasPermission(UserPermission.CAN_MANAGE_ORG_BALANCE))
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -361,78 +322,77 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either {
-                val createdRoles =
-                    TestPostgres.db.transaction {
-                        context(ctx) {
-                            roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet()))
-                            roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet()))
-                            roles.list()
-                        }
+                val trainer = EmployeeRole(Uuid.random(), "Тренер", setOf(UserPermission.CAN_VIEW_ALL_TASKS))
+                val manager = EmployeeRole(Uuid.random(), "Менеджер", setOf(UserPermission.CAN_MANAGE_TASKS))
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        roles.new(trainer)
+                        roles.new(manager)
                     }
+                }
 
-                val roleIds = createdRoles.map { it.id }
-                val permission = EmployeePermission(roles = createdRoles, grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val permission = EmployeePermission(roles = listOf(trainer, manager), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 val employee =
                     TestPostgres.db.transaction {
                         context(ctx) { employees.new(id, "Сотрудник с ролями", null, null, null, permission) }
                     }
 
-                // Verify roles were saved on creation
                 var retrieved = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
-                assertEquals(2, retrieved.permissions.roles.size)
-                assertTrue(retrieved.permissions.roles.map { it.id }.containsAll(roleIds))
+                assertTrue(retrieved.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+                assertTrue(retrieved.hasPermission(UserPermission.CAN_MANAGE_TASKS))
 
-                // Modify permissions and save
-                val updatedPermission = EmployeePermission(roles = createdRoles.drop(1), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val updatedPermission = EmployeePermission(roles = listOf(manager), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 TestPostgres.db.transaction {
                     context(this, ctx) {
-                        (employee as DbEmployee)
-                            .copy(permissions = updatedPermission)
-                            .save()
+                        employee.withNewPermissions(updatedPermission).save()
                     }
                 }
 
-                // Verify role changes were persisted
                 retrieved = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
-                assertEquals(1, retrieved.permissions.roles.size)
-                assertEquals(createdRoles[1].id, retrieved.permissions.roles.first().id)
+                assertFalse(retrieved.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+                assertTrue(retrieved.hasPermission(UserPermission.CAN_MANAGE_TASKS))
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
     @Test
-    fun `save удаляет роли и вставляет новые при обновлении`() =
+    fun `save заменяет роли и персональные права при обновлении`() =
         runTest {
             val id = EmployeeId.new()
             either {
-                val createdRoles =
-                    TestPostgres.db.transaction {
-                        context(ctx) {
-                            roles.new(EmployeeRole(Uuid.random(), "Роль 1", emptySet()))
-                            roles.new(EmployeeRole(Uuid.random(), "Роль 2", emptySet()))
-                            roles.new(EmployeeRole(Uuid.random(), "Роль 3", emptySet()))
-                            roles.list()
-                        }
+                val first = EmployeeRole(Uuid.random(), "Роль 1", setOf(UserPermission.CAN_VIEW_ALL_TASKS))
+                val second = EmployeeRole(Uuid.random(), "Роль 2", setOf(UserPermission.CAN_MANAGE_TASKS))
+                val third = EmployeeRole(Uuid.random(), "Роль 3", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        roles.new(first)
+                        roles.new(second)
+                        roles.new(third)
                     }
+                }
 
-                val initialPermission = EmployeePermission(roles = createdRoles.take(2), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val initialPermission = EmployeePermission(roles = listOf(first, second), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 val employee =
                     TestPostgres.db.transaction {
                         context(ctx) { employees.new(id, "Сотрудник", null, null, null, initialPermission) }
                     }
 
-                // Replace roles: remove first two, add the third
-                val newPermission = EmployeePermission(roles = listOf(createdRoles[2]), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val newPermission =
+                    EmployeePermission(
+                        roles = listOf(third),
+                        grantedPermissions = setOf(UserPermission.CAN_MANAGE_ORG_BALANCE),
+                        revokedPermissions = emptySet(),
+                    )
                 TestPostgres.db.transaction {
                     context(this, ctx) {
-                        (employee as DbEmployee)
-                            .copy(permissions = newPermission)
-                            .save()
+                        employee.withNewPermissions(newPermission).save()
                     }
                 }
 
                 val updated = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
-                assertEquals(1, updated.permissions.roles.size)
-                assertEquals(createdRoles[2].id, updated.permissions.roles.first().id)
+                assertFalse(updated.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+                assertFalse(updated.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+                assertTrue(updated.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                assertTrue(updated.hasPermission(UserPermission.CAN_MANAGE_ORG_BALANCE))
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -496,4 +456,8 @@ class DbEmployeesTest {
                 }
             assertEquals("LOGIN_TAKEN", assertIs<Either.Left<DomainError>>(result).value.code)
         }
+
+    /** Возвращает [Employee] с теми же данными и новой настройкой прав [permissions]. */
+    context(ctx: EmployeeRequestContext)
+    private fun Employee.withNewPermissions(permissions: EmployeePermission): Employee = withNew(name, permissions, avatarId, phoneNo, email, availableBranches)
 }

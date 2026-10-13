@@ -23,6 +23,7 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
 import org.junit.Before
@@ -148,7 +149,7 @@ class DbGroupListViewTest {
     }
 
     private suspend fun ctx(orgId: Uuid) =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = UserId.new(),
             orgId = OrgId(orgId),
@@ -157,7 +158,7 @@ class DbGroupListViewTest {
             username = "test@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     private suspend fun <T> inContext(orgId: Uuid, block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): T {

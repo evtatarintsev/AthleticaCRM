@@ -196,13 +196,11 @@ suspend fun RoutingCall.contextFromRequest(
             userId = userId,
             orgId = orgId,
             branchId = branchId,
-            employeeId = employeeId,
             lang = langFromRequest(),
             username = principal.payload.getClaim(JwtConfig.CLAIM_USERNAME).asString(),
             clientIp = clientIp(),
             currency = currency,
-            permission = employee.permissions,
-            availableBranches = employee.availableBranches,
+            employee = employee,
         )
     }.getOrElse { throw RuntimeException("Error getting context from request: $it") }
 

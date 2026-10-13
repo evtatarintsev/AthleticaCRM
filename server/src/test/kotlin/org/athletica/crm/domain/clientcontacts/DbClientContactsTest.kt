@@ -4,7 +4,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.BranchId
@@ -15,6 +14,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,7 +28,7 @@ class DbClientContactsTest {
     private val contacts = DbClientContacts()
 
     private val ctx =
-        EmployeeRequestContext(
+        employeeContext(
             lang = Lang.RU,
             userId = UserId.new(),
             orgId = orgId,
@@ -37,7 +37,7 @@ class DbClientContactsTest {
             username = "user@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permission = EmployeePermission(),
+            permissions = EmployeePermission(),
         )
 
     @Before

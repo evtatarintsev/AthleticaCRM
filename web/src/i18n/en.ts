@@ -343,6 +343,9 @@ export const en: Messages<typeof ru> = {
   "employees.branchesNone": "No branches selected",
   "employees.branchesEmpty": "No branches",
   "employees.allBranchesAccess": "Has access to all branches",
+  "employees.ownerAccessTitle": "Full access",
+  "employees.ownerAccessHint":
+    "The owner can do everything: all permissions and access to every branch of the organization, including new ones. Roles and permissions can't be configured for the owner.",
   "employees.permissionsSummary": "Granted: {granted}, revoked: {revoked}",
   "employees.permissionsByRoles": "Permissions come from roles",
   "employees.permissionInherit": "By role",

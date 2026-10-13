@@ -110,7 +110,8 @@ function EmployeeSheetContent({
 
 /**
  * Форма сотрудника. При создании доступ ко всем филиалам отправляется выключенным, при
- * редактировании — текущим значением сотрудника: флаг из формы не меняется.
+ * редактировании — текущим значением сотрудника: флаг из формы не меняется. У владельца
+ * организации роли, права и филиалы не редактируются и уходят на сервер такими, какими пришли.
  */
 function EmployeeForm({
   api,
@@ -201,6 +202,7 @@ function EmployeeForm({
   const pickerOpenChange = (which: EmployeePicker) => (next: boolean) => {
     setPicker(next ? which : null);
   };
+  const isOwner = employee?.isOwner === true;
 
   return (
     <form.Subscribe
@@ -215,68 +217,70 @@ function EmployeeForm({
             void form.handleSubmit();
           }}
           nested={
-            <form.Subscribe
-              selector={(state) => ({
-                roleIds: state.values.roleIds,
-                permissions: state.values.permissions,
-                branchIds: state.values.branchIds,
-              })}
-            >
-              {(values) => (
-                <>
-                  <ChecklistSheet
-                    open={picker === "roles"}
-                    onOpenChange={pickerOpenChange("roles")}
-                    title={t("employees.columnRoles")}
-                    items={roles}
-                    selected={values.roleIds}
-                    emptyText={t("employees.rolesEmpty")}
-                    searchLabel={t("employees.searchRoles")}
-                    submitLabel={t("action.done")}
-                    onSubmit={(ids) => {
-                      form.setFieldValue("roleIds", ids);
-                      return Promise.resolve(null);
-                    }}
-                    create={{
-                      label: (query) =>
-                        query === "" ? t("roles.add") : t("roles.addNamed", { name: query }),
-                      render: ({ open, onOpenChange, name, onCreated }) => (
-                        <RoleSheet
-                          open={open}
-                          onOpenChange={onOpenChange}
-                          initial={null}
-                          defaultName={name}
-                          onSave={addRole(onCreated)}
-                        />
-                      ),
-                    }}
-                  />
-                  <PermissionsSheet
-                    open={picker === "permissions"}
-                    onOpenChange={pickerOpenChange("permissions")}
-                    value={values.permissions}
-                    rolePermissions={rolePermissionsOf(roles, values.roleIds)}
-                    onApply={(permissions) => {
-                      form.setFieldValue("permissions", permissions);
-                    }}
-                  />
-                  <ChecklistSheet<BranchId>
-                    open={picker === "branches"}
-                    onOpenChange={pickerOpenChange("branches")}
-                    title={t("employees.sectionBranchAccess")}
-                    items={branches}
-                    selected={values.branchIds}
-                    emptyText={t("employees.branchesEmpty")}
-                    searchLabel={t("employees.searchBranches")}
-                    submitLabel={t("action.done")}
-                    onSubmit={(ids) => {
-                      form.setFieldValue("branchIds", ids);
-                      return Promise.resolve(null);
-                    }}
-                  />
-                </>
-              )}
-            </form.Subscribe>
+            !isOwner && (
+              <form.Subscribe
+                selector={(state) => ({
+                  roleIds: state.values.roleIds,
+                  permissions: state.values.permissions,
+                  branchIds: state.values.branchIds,
+                })}
+              >
+                {(values) => (
+                  <>
+                    <ChecklistSheet
+                      open={picker === "roles"}
+                      onOpenChange={pickerOpenChange("roles")}
+                      title={t("employees.columnRoles")}
+                      items={roles}
+                      selected={values.roleIds}
+                      emptyText={t("employees.rolesEmpty")}
+                      searchLabel={t("employees.searchRoles")}
+                      submitLabel={t("action.done")}
+                      onSubmit={(ids) => {
+                        form.setFieldValue("roleIds", ids);
+                        return Promise.resolve(null);
+                      }}
+                      create={{
+                        label: (query) =>
+                          query === "" ? t("roles.add") : t("roles.addNamed", { name: query }),
+                        render: ({ open, onOpenChange, name, onCreated }) => (
+                          <RoleSheet
+                            open={open}
+                            onOpenChange={onOpenChange}
+                            initial={null}
+                            defaultName={name}
+                            onSave={addRole(onCreated)}
+                          />
+                        ),
+                      }}
+                    />
+                    <PermissionsSheet
+                      open={picker === "permissions"}
+                      onOpenChange={pickerOpenChange("permissions")}
+                      value={values.permissions}
+                      rolePermissions={rolePermissionsOf(roles, values.roleIds)}
+                      onApply={(permissions) => {
+                        form.setFieldValue("permissions", permissions);
+                      }}
+                    />
+                    <ChecklistSheet<BranchId>
+                      open={picker === "branches"}
+                      onOpenChange={pickerOpenChange("branches")}
+                      title={t("employees.sectionBranchAccess")}
+                      items={branches}
+                      selected={values.branchIds}
+                      emptyText={t("employees.branchesEmpty")}
+                      searchLabel={t("employees.searchBranches")}
+                      submitLabel={t("action.done")}
+                      onSubmit={(ids) => {
+                        form.setFieldValue("branchIds", ids);
+                        return Promise.resolve(null);
+                      }}
+                    />
+                  </>
+                )}
+              </form.Subscribe>
+            )
           }
         >
           {failure !== null && <FormAlert message={failure} />}
@@ -325,49 +329,69 @@ function EmployeeForm({
               />
             )}
           </form.Field>
-          <form.Subscribe selector={(state) => state.values.roleIds}>
-            {(roleIds) => (
-              <FormSection title={t("employees.columnRoles")} onEdit={openPicker("roles")}>
-                {roles.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("employees.rolesEmpty")}</p>
-                ) : (
-                  <NameChips
-                    items={roles.filter((role) => roleIds.includes(role.id))}
-                    emptyText={t("employees.rolesNone")}
-                  />
+          {isOwner ? (
+            <OwnerAccess />
+          ) : (
+            <>
+              <form.Subscribe selector={(state) => state.values.roleIds}>
+                {(roleIds) => (
+                  <FormSection title={t("employees.columnRoles")} onEdit={openPicker("roles")}>
+                    {roles.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{t("employees.rolesEmpty")}</p>
+                    ) : (
+                      <NameChips
+                        items={roles.filter((role) => roleIds.includes(role.id))}
+                        emptyText={t("employees.rolesNone")}
+                      />
+                    )}
+                  </FormSection>
                 )}
-              </FormSection>
-            )}
-          </form.Subscribe>
-          <form.Subscribe selector={(state) => state.values.permissions}>
-            {(permissions) => (
-              <FormSection
-                title={t("employees.sectionPermissions")}
-                onEdit={openPicker("permissions")}
-              >
-                <PermissionsSummary permissions={permissions} />
-              </FormSection>
-            )}
-          </form.Subscribe>
-          <form.Subscribe selector={(state) => state.values.branchIds}>
-            {(branchIds) => (
-              <FormSection
-                title={t("employees.sectionBranchAccess")}
-                onEdit={openPicker("branches")}
-              >
-                {employee?.allBranchesAccess === true && (
-                  <p className="text-sm">{t("employees.allBranchesAccess")}</p>
+              </form.Subscribe>
+              <form.Subscribe selector={(state) => state.values.permissions}>
+                {(permissions) => (
+                  <FormSection
+                    title={t("employees.sectionPermissions")}
+                    onEdit={openPicker("permissions")}
+                  >
+                    <PermissionsSummary permissions={permissions} />
+                  </FormSection>
                 )}
-                <NameChips
-                  items={branches.filter((branch) => branchIds.includes(branch.id))}
-                  emptyText={t("employees.branchesNone")}
-                />
-              </FormSection>
-            )}
-          </form.Subscribe>
+              </form.Subscribe>
+              <form.Subscribe selector={(state) => state.values.branchIds}>
+                {(branchIds) => (
+                  <FormSection
+                    title={t("employees.sectionBranchAccess")}
+                    onEdit={openPicker("branches")}
+                  >
+                    {employee?.allBranchesAccess === true && (
+                      <p className="text-sm">{t("employees.allBranchesAccess")}</p>
+                    )}
+                    <NameChips
+                      items={branches.filter((branch) => branchIds.includes(branch.id))}
+                      emptyText={t("employees.branchesNone")}
+                    />
+                  </FormSection>
+                )}
+              </form.Subscribe>
+            </>
+          )}
         </EditSheetForm>
       )}
     </form.Subscribe>
+  );
+}
+
+/**
+ * Блок вместо секций ролей, прав и филиалов у владельца организации: доступы владельца не
+ * настраиваются, форма отправляет их без изменений.
+ */
+function OwnerAccess() {
+  const { t } = useI18n();
+  return (
+    <section className="space-y-2 border-t pt-4">
+      <h3 className="text-sm font-medium">{t("employees.ownerAccessTitle")}</h3>
+      <p className="text-sm text-muted-foreground">{t("employees.ownerAccessHint")}</p>
+    </section>
   );
 }
 

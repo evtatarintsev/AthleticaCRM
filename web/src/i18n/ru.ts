@@ -358,6 +358,9 @@ export const ru = {
   "employees.branchesNone": "Филиалы не выбраны",
   "employees.branchesEmpty": "Филиалов нет",
   "employees.allBranchesAccess": "Есть доступ ко всем филиалам",
+  "employees.ownerAccessTitle": "Полный доступ",
+  "employees.ownerAccessHint":
+    "Владелец может всё: у него есть все права и доступ ко всем филиалам организации, включая новые. Роли и права для владельца не настраиваются.",
   "employees.permissionsSummary": "Выдано: {granted}, отозвано: {revoked}",
   "employees.permissionsByRoles": "Права определяются ролями",
   "employees.permissionInherit": "По роли",

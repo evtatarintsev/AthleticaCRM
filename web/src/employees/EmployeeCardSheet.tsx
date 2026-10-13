@@ -117,7 +117,6 @@ function EmployeeCard({
           className="size-20 text-2xl"
         />
         <div className="flex flex-wrap items-center justify-center gap-2">
-          {employee.isOwner && <OwnerBadge />}
           <StatusBadge active={employee.isActive} />
         </div>
         <div className="flex flex-wrap justify-center gap-2">
@@ -167,13 +166,15 @@ function EmployeeCard({
           </dl>
         )}
       </section>
-      {employee.roles.length > 0 && (
+      {(employee.isOwner || employee.roles.length > 0) && (
         <section className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 font-semibold">{t("employees.columnRoles")}</h3>
           <div className="flex flex-wrap gap-1.5">
-            {employee.roles.map((role) => (
-              <RoleChip key={role.id} name={role.name} />
-            ))}
+            {employee.isOwner ? (
+              <OwnerBadge />
+            ) : (
+              employee.roles.map((role) => <RoleChip key={role.id} name={role.name} />)
+            )}
           </div>
         </section>
       )}

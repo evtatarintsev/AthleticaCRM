@@ -31,8 +31,20 @@ const existing = {
   branchIds: [],
 };
 
+const owner = {
+  ...existing,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000404",
+  name: "Ольга Владелец",
+  isOwner: true,
+  roles: [{ id: coachRole.id, name: coachRole.name }],
+  grantedPermissions: ["CAN_MANAGE_TASKS"],
+  revokedPermissions: ["CAN_VIEW_ALL_TASKS"],
+  allBranchesAccess: false,
+  branchIds: [center.id],
+};
+
 /**
- * Сервер с ролями [roles], филиалами и сотрудником [existing] в памяти; [failSave] — сохранение
+ * Сервер с ролями [roles], филиалами и сотрудниками [existing] и [owner] в памяти; [failSave] — сохранение
  * сотрудника отклоняется. Созданные роли добавляются к [roles].
  */
 function formServer({
@@ -40,7 +52,10 @@ function formServer({
   roles = [coachRole],
 }: { failSave?: boolean; roles?: readonly unknown[] } = {}) {
   let orgRoles = roles;
-  const detailsById = new Map<string, Record<string, unknown>>([[existing.id, existing]]);
+  const detailsById = new Map<string, Record<string, unknown>>([
+    [existing.id, existing],
+    [owner.id, owner],
+  ]);
   const conflict = () => json({ code: "EMAIL_TAKEN", message: "Email уже занят" }, 409);
   return appServer({
     "employees/list": () => json({ employees: [...detailsById.values()], total: detailsById.size }),
@@ -77,7 +92,7 @@ function formServer({
       }
       const request = UpdateEmployeeRequestSchema.parse(body);
       detailsById.set(request.id, {
-        ...existing,
+        ...detailsById.get(request.id),
         name: request.name,
         phoneNo: request.phoneNo ?? null,
         email: request.email,
@@ -448,5 +463,59 @@ describe("панель редактирования сотрудника", () =>
       phoneNo: "+79995554433",
       allBranchesAccess: true,
     });
+  });
+});
+
+describe("панель редактирования владельца", () => {
+  it("вместо ролей, прав и филиалов показывает блок полного доступа", async () => {
+    openApp(`/employees?employee=${owner.id}&edit=true`, formServer().fetch);
+
+    const form = await screen.findByRole("dialog", { name: ru["employees.edit"] });
+    expect(await within(form).findByLabelText(ru["employees.name"])).toHaveValue(owner.name);
+    expect(within(form).getByText(ru["employees.ownerAccessTitle"])).toBeVisible();
+    expect(within(form).getByText(ru["employees.ownerAccessHint"])).toBeVisible();
+    expect(within(form).queryByText(ru["employees.columnRoles"])).toBeNull();
+    expect(within(form).queryByText(ru["employees.sectionPermissions"])).toBeNull();
+    expect(within(form).queryByText(ru["employees.sectionBranchAccess"])).toBeNull();
+    expect(
+      within(form).queryByRole("button", { name: new RegExp(ru["employees.editSection"]) }),
+    ).toBeNull();
+    expect(within(form).queryByRole("button", { name: ru["roles.add"] })).toBeNull();
+  });
+
+  it("сохраняет контакты, не меняя роли, права и филиалы", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${owner.id}&edit=true`, api.fetch);
+    const user = userEvent.setup();
+
+    const phone = await screen.findByLabelText(ru["employees.phone"]);
+    await user.clear(phone);
+    await user.type(phone, "+79995554433");
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    await sheetClosed(ru["employees.edit"]);
+    const [updated] = api
+      .to("employees/update")
+      .map((r) => UpdateEmployeeRequestSchema.parse(r.body));
+    expect(updated).toMatchObject({
+      id: owner.id,
+      phoneNo: "+79995554433",
+      roleIds: [coachRole.id],
+      grantedPermissions: owner.grantedPermissions,
+      revokedPermissions: owner.revokedPermissions,
+      allBranchesAccess: false,
+      branchIds: [center.id],
+    });
+  });
+
+  it("у обычного сотрудника блока полного доступа нет, секции на месте", async () => {
+    openApp(`/employees?employee=${existing.id}&edit=true`, formServer().fetch);
+
+    const form = await screen.findByRole("dialog", { name: ru["employees.edit"] });
+    await within(form).findByLabelText(ru["employees.name"]);
+    expect(within(form).queryByText(ru["employees.ownerAccessTitle"])).toBeNull();
+    expect(within(form).getByText(ru["employees.columnRoles"])).toBeVisible();
+    expect(within(form).getByText(ru["employees.sectionPermissions"])).toBeVisible();
+    expect(within(form).getByText(ru["employees.sectionBranchAccess"])).toBeVisible();
   });
 });

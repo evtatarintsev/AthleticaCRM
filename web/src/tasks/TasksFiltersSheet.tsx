@@ -18,7 +18,7 @@ import type { TaskListFilters } from "./taskListSearch";
 const ALL_STATUSES: readonly TaskStatus[] = TaskStatusSchema.options;
 
 /**
- * Панель фильтров списка задач (паритет с `TasksFilterContent` KMP-клиента):
+ * Панель фильтров списка задач справа (паритет с `TasksFilterContent` KMP-клиента):
  * переключатель «только мои» и множественный выбор статусов. Черновик применяется
  * кнопкой, сбрасывается кнопкой «Сбросить».
  */
@@ -55,15 +55,15 @@ export function TasksFiltersSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="max-h-[85vh] overflow-y-auto"
+        side="right"
+        className="w-full gap-0 sm:max-w-md"
         closeLabel={t("action.close")}
       >
-        <SheetHeader>
+        <SheetHeader className="border-b pr-12">
           <SheetTitle>{t("tasks.filters")}</SheetTitle>
           <SheetDescription className="sr-only">{t("tasks.filters")}</SheetDescription>
         </SheetHeader>
-        <div className="space-y-6 px-4">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
           <fieldset>
             <legend className="mb-2 text-sm font-medium">
               {t("tasks.filter.sectionAssignee")}
@@ -108,7 +108,7 @@ export function TasksFiltersSheet({
             </div>
           </fieldset>
         </div>
-        <SheetFooter className="flex-row">
+        <SheetFooter className="flex-row border-t">
           <Button
             variant="outline"
             className="flex-1"

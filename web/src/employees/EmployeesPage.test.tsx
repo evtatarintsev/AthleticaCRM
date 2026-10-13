@@ -32,7 +32,7 @@ const boris = {
   isOwner: false,
   isActive: false,
   joinedAt: "2024-02-01T00:00:00Z",
-  roles: [],
+  roles: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000302", name: "Администратор" }],
   phoneNo: null,
   email: "boris@example.com",
 };
@@ -73,7 +73,22 @@ describe("список сотрудников", () => {
     expect(screen.getAllByText(boris.name)[0]).toBeVisible();
     expect(screen.getAllByText(ru["employees.statusActive"]).length).toBeGreaterThan(0);
     expect(screen.getAllByText(ru["employees.statusInactive"]).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Тренер").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Администратор").length).toBeGreaterThan(0);
+  });
+
+  it("показывает владельца на месте ролей, а не рядом с именем", async () => {
+    openApp("/employees", employeesServer().fetch);
+
+    const names = await screen.findAllByText(anna.name);
+    names.forEach((name) => {
+      expect(name.parentElement).not.toHaveTextContent(ru["employees.owner"]);
+    });
+    const row = first(
+      screen.getAllByRole("row").filter((r) => within(r).queryByText(anna.name) !== null),
+    );
+    const cells = within(row).getAllByRole("cell");
+    expect(within(first(cells.slice(2))).getByText(ru["employees.owner"])).toBeVisible();
+    expect(screen.queryAllByText("Тренер")).toHaveLength(0);
   });
 
   it("фильтрует по тексту поиска", async () => {
@@ -133,8 +148,10 @@ describe("список сотрудников", () => {
     const card = within(await screen.findByRole("dialog", { name: anna.name }));
     expect(await card.findByText(anna.email)).toBeVisible();
     expect(card.getByText(anna.phoneNo)).toBeVisible();
-    expect(card.getByText("Тренер")).toBeVisible();
-    expect(card.getByText(ru["employees.owner"])).toBeVisible();
+    expect(card.queryByText("Тренер")).not.toBeInTheDocument();
+    expect(card.getByText(ru["employees.owner"]).closest("section")).toHaveTextContent(
+      ru["employees.columnRoles"],
+    );
     expect(
       card.queryByRole("button", { name: ru["employees.sendAccess"] }),
     ).not.toBeInTheDocument();

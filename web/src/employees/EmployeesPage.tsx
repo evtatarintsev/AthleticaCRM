@@ -267,14 +267,15 @@ function EmployeeRow({
             className="size-8 text-xs"
           />
           <span className="min-w-0 truncate font-medium">{employee.name}</span>
-          {employee.isOwner && <OwnerBadge />}
         </Link>
       </td>
       <td className="px-4 py-2">
         <StatusBadge active={employee.isActive} />
       </td>
       <td className="px-4 py-2">
-        {employee.roles.length === 0 ? (
+        {employee.isOwner ? (
+          <OwnerBadge />
+        ) : employee.roles.length === 0 ? (
           <span className="text-muted-foreground">—</span>
         ) : (
           <div className="flex flex-wrap gap-1">
@@ -322,13 +323,14 @@ function EmployeeCard({
         <span className="min-w-0 flex-1 space-y-1">
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="truncate font-medium">{employee.name}</span>
-            {employee.isOwner && <OwnerBadge />}
           </span>
           <span className="flex flex-wrap items-center gap-1.5">
             <StatusBadge active={employee.isActive} />
-            {employee.roles.map((role) => (
-              <RoleChip key={role.id} name={role.name} />
-            ))}
+            {employee.isOwner ? (
+              <OwnerBadge />
+            ) : (
+              employee.roles.map((role) => <RoleChip key={role.id} name={role.name} />)
+            )}
           </span>
           {contact !== null && (
             <span className="block truncate text-xs text-muted-foreground">{contact}</span>

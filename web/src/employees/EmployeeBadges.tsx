@@ -1,7 +1,7 @@
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
-/** Бейдж «Владелец» рядом с именем сотрудника-владельца организации. */
+/** Бейдж «Владелец» на месте ролей сотрудника-владельца организации. */
 export function OwnerBadge() {
   const { t } = useI18n();
   return (

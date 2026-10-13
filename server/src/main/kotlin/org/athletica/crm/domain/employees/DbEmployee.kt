@@ -26,7 +26,11 @@ data class DbEmployee(
     private val permissionSettings: EmployeePermission,
     private val users: Users,
 ) : Employee {
-    override fun hasPermission(p: UserPermission): Boolean = permissionSettings.hasPermission(p)
+    /**
+     * Проверяет право [p]: владелец организации имеет все права независимо от ролей,
+     * персональных выдач и отзывов; остальным права даёт настройка [permissionSettings].
+     */
+    override fun hasPermission(p: UserPermission): Boolean = isOwner || permissionSettings.hasPermission(p)
 
     context(ctx: EmployeeRequestContext, tr: Transaction)
     override suspend fun save() {

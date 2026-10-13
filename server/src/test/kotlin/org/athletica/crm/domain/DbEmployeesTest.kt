@@ -267,6 +267,91 @@ class DbEmployeesTest {
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
+    @Test
+    fun `byId - владелец без ролей и выдач имеет все права`() =
+        runTest {
+            val id = EmployeeId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { employees.new(id, "Владелец", null, null, null, emptyPermission) }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+            markOwner(id)
+
+            val employee =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            assertTrue(employee.isOwner)
+            assertTrue(UserPermission.entries.all { employee.hasPermission(it) })
+        }
+
+    @Test
+    fun `byId - персональный отзыв у владельца не действует`() =
+        runTest {
+            val id = EmployeeId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        employees.new(
+                            id,
+                            "Владелец",
+                            null,
+                            null,
+                            null,
+                            EmployeePermission(
+                                roles = emptyList(),
+                                grantedPermissions = emptySet(),
+                                revokedPermissions = setOf(UserPermission.CAN_MANAGE_TASKS),
+                            ),
+                        )
+                    }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+            markOwner(id)
+
+            val employee =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+                }.getOrElse { fail("Unexpected error: $it") }
+
+            assertTrue(employee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+        }
+
+    @Test
+    fun `byId - обычный сотрудник имеет только права ролей за вычетом отзывов`() =
+        runTest {
+            val id = EmployeeId.new()
+            either {
+                val role = EmployeeRole(Uuid.random(), "Кассир", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_MANAGE_ORG_BALANCE))
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        roles.new(role)
+                        employees.new(
+                            id,
+                            "Кассир",
+                            null,
+                            null,
+                            null,
+                            EmployeePermission(
+                                roles = listOf(role),
+                                grantedPermissions = emptySet(),
+                                revokedPermissions = setOf(UserPermission.CAN_MANAGE_ORG_BALANCE),
+                            ),
+                        )
+                    }
+                }
+
+                val employee = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+                assertFalse(employee.isOwner)
+                assertEquals(
+                    setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE),
+                    UserPermission.entries.filterTo(mutableSetOf()) { employee.hasPermission(it) },
+                )
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
     // ─── save ─────────────────────────────────────────────────────────────────
 
     @Test
@@ -456,6 +541,14 @@ class DbEmployeesTest {
                 }
             assertEquals("LOGIN_TAKEN", assertIs<Either.Left<DomainError>>(result).value.code)
         }
+
+    /** Делает сотрудника [id] владельцем организации, как это делает регистрация. */
+    private suspend fun markOwner(id: EmployeeId) {
+        TestPostgres.db
+            .sql("UPDATE employees SET is_owner = true WHERE id = :id")
+            .bind("id", id)
+            .execute()
+    }
 
     /** Возвращает [Employee] с теми же данными и новой настройкой прав [permissions]. */
     context(ctx: EmployeeRequestContext)

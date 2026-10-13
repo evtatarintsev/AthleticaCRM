@@ -1,3 +1,4 @@
+import { ChevronRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ClientAttendanceItemSchema,
@@ -13,12 +14,14 @@ import { cn } from "@/lib/utils";
  * Быстрая информация в шапке карточки: баланс, действующий абонемент, последнее посещение
  * и ближайшее занятие из данных сервера; статус, ответственный и скидка — заглушки до появления
  * этих полей в анкете. `undefined` во входных данных — значение ещё загружается.
+ * Если задан [onBalanceClick], плитка баланса кликабельна и открывает историю баланса.
  */
 export function ClientCardQuickInfo({
   balance,
   memberships,
   lastVisit,
   nextSession,
+  onBalanceClick,
 }: {
   readonly balance: Money;
   readonly memberships: readonly MembershipSchema[] | undefined;
@@ -26,13 +29,19 @@ export function ClientCardQuickInfo({
   readonly lastVisit: ClientAttendanceItemSchema | null | undefined;
   /** Ближайшее занятие; `null` — занятий нет. */
   readonly nextSession: ScheduleSessionSchema | null | undefined;
+  /** Открывает историю баланса; `undefined` — плитка баланса некликабельна. */
+  readonly onBalanceClick: (() => void) | undefined;
 }) {
   const { t, format } = useI18n();
   const active = memberships?.find((membership) => membership.status === "ACTIVE");
 
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-      <Tile label={t("clientCard.balance")}>
+      <Tile
+        label={t("clientCard.balance")}
+        onClick={onBalanceClick}
+        actionLabel={t("clientCard.balanceOpen", { amount: format.money(balance) })}
+      >
         <span
           className={cn(
             "text-lg font-semibold tabular-nums",
@@ -99,27 +108,60 @@ export function ClientCardQuickInfo({
   );
 }
 
-/** Плитка быстрой информации; [stub] — поле ещё не поддержано, рамка пунктиром. */
+/**
+ * Плитка быстрой информации; [stub] — поле ещё не поддержано, рамка пунктиром.
+ * С [onClick] плитка кликабельна целиком: значение — кнопка с доступным именем [actionLabel],
+ * зона нажатия растянута на всю плитку, справа от подписи — стрелка перехода.
+ */
 function Tile({
   label,
   stub = false,
+  onClick,
+  actionLabel,
   children,
 }: {
   readonly label: string;
   readonly stub?: boolean;
+  readonly onClick?: (() => void) | undefined;
+  readonly actionLabel?: string;
   readonly children: ReactNode;
 }) {
   const { t } = useI18n();
+  const clickable = onClick !== undefined;
   return (
     <div
       className={cn(
-        "min-w-0 rounded-md border bg-background/40 px-3 py-2",
+        "relative min-w-0 rounded-md border bg-background/40 px-3 py-2",
         stub && "border-dashed",
+        clickable &&
+          "group transition-colors hover:border-foreground/20 hover:bg-accent has-[:active]:bg-accent/70 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
       )}
       title={stub ? t("clientCard.quick.stubHint") : undefined}
     >
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 min-w-0 text-sm">{children}</dd>
+      <dt className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+        {label}
+        {clickable && (
+          <ChevronRightIcon
+            aria-hidden
+            className="size-4 shrink-0 transition-colors group-hover:text-foreground"
+          />
+        )}
+      </dt>
+      <dd className="mt-0.5 min-w-0 text-sm">
+        {clickable ? (
+          <button
+            type="button"
+            aria-label={actionLabel}
+            aria-haspopup="dialog"
+            onClick={onClick}
+            className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-md"
+          >
+            {children}
+          </button>
+        ) : (
+          children
+        )}
+      </dd>
     </div>
   );
 }

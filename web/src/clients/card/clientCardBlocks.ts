@@ -3,7 +3,6 @@ export const BLOCK_TYPES = [
   "upcoming",
   "subscriptions",
   "groups",
-  "payments",
   "visits",
   "missed",
   "tasks",

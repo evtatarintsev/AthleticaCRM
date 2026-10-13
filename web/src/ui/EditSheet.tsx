@@ -63,6 +63,8 @@ interface EditSheetProps {
  * её не закрывает, а закрытие крестиком, Esc или «Отменой» при несохранённых изменениях
  * требует подтверждения. Панели можно открывать одну поверх другой: вложенная [EditSheet]
  * внутри содержимого сдвигает родительскую влево, и под верхней панелью видно, откуда она открыта.
+ * После закрытия фокус возвращается на элемент, с которого панель открыли: панель управляется
+ * через [open] без `SheetTrigger`, и сам Radix вернуть фокус некуда.
  */
 export function EditSheet({ open, onOpenChange, title, size = "md", children }: EditSheetProps) {
   const { t } = useI18n();
@@ -70,6 +72,7 @@ export function EditSheet({ open, onOpenChange, title, size = "md", children }: 
   const [childOpen, setChildOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const guard = useRef<EditSheetGuard>({ dirty: false, submitting: false });
+  const returnFocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (parent === null) {
@@ -121,6 +124,18 @@ export function EditSheet({ open, onOpenChange, title, size = "md", children }: 
         side="right"
         closeLabel={t("action.close")}
         aria-describedby={undefined}
+        onOpenAutoFocus={() => {
+          returnFocus.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          const target = returnFocus.current;
+          returnFocus.current = null;
+          if (target?.isConnected === true) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
         onInteractOutside={(event) => {
           event.preventDefault();
         }}

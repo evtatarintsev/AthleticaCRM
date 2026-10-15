@@ -2,7 +2,6 @@ package org.athletica.crm.usecases.messaging
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
-import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.DeliverySchema
 import org.athletica.crm.api.schemas.messaging.DeliveryStateSchema
@@ -15,8 +14,6 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.channels.ChannelIntegrations
-import org.athletica.crm.domain.clientcontacts.ClientContact
-import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.conversations.Author
 import org.athletica.crm.domain.conversations.Conversation
 import org.athletica.crm.domain.conversations.Conversations
@@ -40,7 +37,6 @@ context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun sendMessage(
     request: SendMessageRequest,
     channels: ChannelIntegrations,
-    contacts: ClientContacts,
     conversations: Conversations,
     deliveries: Deliveries,
 ): ConversationResponse {
@@ -61,7 +57,7 @@ suspend fun sendMessage(
     deliveries.create(message.id, integration.id, recipientAddress)
     conversation.touch()
 
-    return conversationResponse(request.clientId, conversation, deliveries, contacts)
+    return conversationResponse(request.clientId, conversation, deliveries)
 }
 
 /** Возвращает ленту диалога с клиентом [clientId] (сообщения по всем каналам, от старых к новым). */
@@ -70,10 +66,9 @@ suspend fun conversationView(
     clientId: ClientId,
     conversations: Conversations,
     deliveries: Deliveries,
-    contacts: ClientContacts,
 ): ConversationResponse {
     val conversation = conversations.forClient(clientId)
-    return conversationResponse(clientId, conversation, deliveries, contacts)
+    return conversationResponse(clientId, conversation, deliveries)
 }
 
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -81,12 +76,10 @@ private suspend fun conversationResponse(
     clientId: ClientId,
     conversation: Conversation,
     deliveries: Deliveries,
-    contacts: ClientContacts,
 ): ConversationResponse =
     ConversationResponse(
         clientId = clientId,
         messages = conversation.messages().map { it.toSchema(deliveries) },
-        contacts = contacts.byClient(clientId).map { it.toSchema() },
     )
 
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -109,13 +102,6 @@ private suspend fun Message.toSchema(deliveries: Deliveries): MessageSchema =
                 receivedVia = receivedVia,
             )
     }
-
-private fun ClientContact.toSchema(): ClientContactSchema =
-    ClientContactSchema(
-        id = id,
-        type = type,
-        value = value,
-    )
 
 private fun Delivery.toSchema(): DeliverySchema =
     DeliverySchema(

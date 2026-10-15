@@ -32,7 +32,10 @@ interface ChannelIntegrations {
         enabled: Boolean,
     )
 
-    /** Удаляет интеграцию [id]. */
+    /**
+     * Удаляет интеграцию [id]. `CHANNEL_IN_USE`, если через неё уже отправлялись сообщения:
+     * история доставок ссылается на канал, такой канал отключают, а не удаляют.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun remove(id: ChannelIntegrationId)
 

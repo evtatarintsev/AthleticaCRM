@@ -42,7 +42,11 @@ interface InboundReceipts {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: InboundReceiptId): InboundReceipt?
 
-    /** Помечает входящее [id] разобранным, связывая его с порождённым сообщением [messageId]. */
+    /**
+     * Помечает неразобранное входящее [id] разобранным, связывая его с порождённым сообщением [messageId].
+     * `RECEIPT_ALREADY_RESOLVED`, если запись уже разобрана (в том числе параллельным запросом):
+     * переход выполняется условным UPDATE, поэтому из двух одновременных разборов проходит один.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun markResolved(id: InboundReceiptId, messageId: MessageId)
 }

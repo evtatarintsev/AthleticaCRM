@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelConfig
+import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
@@ -18,10 +19,13 @@ import org.athletica.crm.storage.asUuid
 
 /**
  * Реализация коллекции интеграций каналов на PostgreSQL через R2DBC.
- * [factory] собирает строку результата в конкретную интеграцию (адаптер провайдера).
+ * Строка результата собирается в [DbChannelIntegration]: транспорт провайдера берётся из [transports],
+ * адрес получателя разрешается через [contacts] (прямые каналы) или [bindings] (связанные).
  */
 class DbChannelIntegrations(
-    private val factory: ChannelIntegrationFactory,
+    private val transports: ChannelTransports,
+    private val contacts: ClientContacts,
+    private val bindings: ChannelBindings,
 ) : ChannelIntegrations {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: ChannelIntegrationId): ChannelIntegration =
@@ -34,7 +38,7 @@ class DbChannelIntegrations(
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .firstOrNull { row -> row.toChannelIntegration(factory) }
+            .firstOrNull { row -> row.toChannelIntegration() }
             ?: raise(CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена"))
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -78,6 +82,20 @@ class DbChannelIntegrations(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun remove(id: ChannelIntegrationId) {
+        val used =
+            tr.sql(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM message_deliveries WHERE channel_integration_id = :id AND org_id = :orgId
+                ) AS used
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .firstOrNull { row -> row.asBoolean("used") } ?: false
+        ensure(!used) {
+            CommonDomainError("CHANNEL_IN_USE", "Через канал уже отправлялись сообщения — отключите его вместо удаления")
+        }
         tr.sql("DELETE FROM channel_integrations WHERE id = :id AND org_id = :orgId")
             .bind("id", id)
             .bind("orgId", ctx.orgId)
@@ -88,17 +106,22 @@ class DbChannelIntegrations(
     override suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration? =
         tr.sql("SELECT id, name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
             .bind("id", id)
-            .firstOrNull { row -> row.toChannelIntegration(factory) }
-}
+            .firstOrNull { row -> row.toChannelIntegration() }
 
-/** Собирает интеграцию-отправитель из строки результата через [factory]. */
-internal fun Row.toChannelIntegration(factory: ChannelIntegrationFactory): ChannelIntegration =
-    factory.create(
-        id = asUuid("id").toChannelIntegrationId(),
-        name = asString("name"),
-        config = decodeChannelConfig(asString("config")),
-        enabled = asBoolean("enabled"),
-    )
+    /** Собирает интеграцию-отправитель из строки результата. */
+    private fun Row.toChannelIntegration(): ChannelIntegration {
+        val config = decodeChannelConfig(asString("config"))
+        return DbChannelIntegration(
+            id = asUuid("id").toChannelIntegrationId(),
+            name = asString("name"),
+            enabled = asBoolean("enabled"),
+            addressing = config.addressing,
+            transport = transports.transport(config),
+            contacts = contacts,
+            bindings = bindings,
+        )
+    }
+}
 
 /** Сериализует конфиг канала для хранения в jsonb-колонке. */
 internal fun encodeChannelConfig(config: ChannelConfig): String = Json.encodeToString(ChannelConfig.serializer(), config)

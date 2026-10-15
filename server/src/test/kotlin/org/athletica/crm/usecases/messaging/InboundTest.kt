@@ -15,8 +15,10 @@ import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.InboundReceiptId
+import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.conversations.DbConversations
@@ -165,6 +167,23 @@ class InboundTest {
             val second = assertIs<Either.Right<ReceiveInboundResponse>>(receive("chat-3", "Второе")).value
             assertEquals(clientId, second.resolvedClientId)
             assertEquals(2L, inboundMessageCount())
+        }
+
+    @Test
+    fun `повторная пометка разобранного входящего возвращает RECEIPT_ALREADY_RESOLVED`() =
+        runTest {
+            linkBinding("chat-4")
+            val receipt = assertIs<Either.Right<ReceiveInboundResponse>>(receive("chat-4", "Привет")).value
+
+            val result =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) { receipts.markResolved(receipt.receiptId, MessageId.new()) }
+                    }
+                }
+
+            val error = assertIs<Either.Left<DomainError>>(result).value
+            assertEquals("RECEIPT_ALREADY_RESOLVED", error.code)
         }
 
     private companion object {

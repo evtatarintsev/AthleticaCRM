@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.inbound
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
@@ -9,6 +10,7 @@ import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toInboundReceiptId
 import org.athletica.crm.core.entityids.toMessageId
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -63,17 +65,19 @@ class DbInboundReceipts : InboundReceipts {
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun markResolved(id: InboundReceiptId, messageId: MessageId) {
-        tr.sql(
-            """
-            UPDATE inbound_receipts
-            SET state = 'RESOLVED', resolved_message_id = :messageId
-            WHERE id = :id AND org_id = :orgId
-            """.trimIndent(),
-        )
-            .bind("id", id)
-            .bind("messageId", messageId)
-            .bind("orgId", ctx.orgId)
-            .execute()
+        val updated =
+            tr.sql(
+                """
+                UPDATE inbound_receipts
+                SET state = 'RESOLVED', resolved_message_id = :messageId
+                WHERE id = :id AND org_id = :orgId AND state = 'UNRESOLVED'
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("messageId", messageId)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        ensure(updated != 0L) { CommonDomainError("RECEIPT_ALREADY_RESOLVED", "Входящее уже разобрано") }
     }
 
     private fun Row.toReceipt(): InboundReceipt =

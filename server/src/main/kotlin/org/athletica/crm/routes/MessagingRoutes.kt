@@ -1,15 +1,14 @@
 package org.athletica.crm.routes
 
 import org.athletica.crm.api.schemas.messaging.AssignInboundRequest
+import org.athletica.crm.api.schemas.messaging.ClientChannelsRequest
+import org.athletica.crm.api.schemas.messaging.ClientChannelsResponse
 import org.athletica.crm.api.schemas.messaging.ConversationRequest
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
-import org.athletica.crm.api.schemas.messaging.ReceiveInboundRequest
-import org.athletica.crm.api.schemas.messaging.ReceiveInboundResponse
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.api.schemas.messaging.TriageListResponse
 import org.athletica.crm.domain.channels.ChannelBindings
 import org.athletica.crm.domain.channels.ChannelIntegrations
-import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.conversations.Conversations
 import org.athletica.crm.domain.inbound.InboundReceipts
 import org.athletica.crm.domain.messagedelivery.Deliveries
@@ -17,7 +16,6 @@ import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.messaging.assignInbound
 import org.athletica.crm.usecases.messaging.conversationView
-import org.athletica.crm.usecases.messaging.receiveInbound
 import org.athletica.crm.usecases.messaging.sendMessage
 
 /**
@@ -27,7 +25,6 @@ import org.athletica.crm.usecases.messaging.sendMessage
 context(db: Database)
 fun RouteWithContext.messagingRoutes(
     channels: ChannelIntegrations,
-    contacts: ClientContacts,
     conversations: Conversations,
     deliveries: Deliveries,
     bindings: ChannelBindings,
@@ -37,19 +34,19 @@ fun RouteWithContext.messagingRoutes(
     route("/messaging") {
         get<ConversationRequest, ConversationResponse>("/conversation") { request ->
             db.transaction {
-                conversationView(request.clientId, conversations, deliveries, contacts)
+                conversationView(request.clientId, conversations, deliveries)
+            }
+        }
+
+        get<ClientChannelsRequest, ClientChannelsResponse>("/channels") { request ->
+            db.transaction {
+                views.clientChannels.list(request.clientId)
             }
         }
 
         post<SendMessageRequest, ConversationResponse>("/send") { request ->
             db.transaction {
-                sendMessage(request, channels, contacts, conversations, deliveries)
-            }
-        }
-
-        post<ReceiveInboundRequest, ReceiveInboundResponse>("/inbound") { request ->
-            db.transaction {
-                receiveInbound(request, bindings, receipts, conversations)
+                sendMessage(request, channels, conversations, deliveries)
             }
         }
 

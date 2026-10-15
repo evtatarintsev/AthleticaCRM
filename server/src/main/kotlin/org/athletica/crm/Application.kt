@@ -195,7 +195,6 @@ fun Application.configureServer() {
                         channelsRoutes(di.channelIntegrations, di.views)
                         messagingRoutes(
                             di.channelIntegrations,
-                            di.clientContacts,
                             di.conversations,
                             di.deliveries,
                             di.channelBindings,

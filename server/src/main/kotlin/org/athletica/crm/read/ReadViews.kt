@@ -6,6 +6,8 @@ import org.athletica.crm.read.attendance.DbGroupAttendanceView
 import org.athletica.crm.read.attendance.DbSessionJournalView
 import org.athletica.crm.read.attendance.GroupAttendanceView
 import org.athletica.crm.read.attendance.SessionJournalView
+import org.athletica.crm.read.channels.ChannelListView
+import org.athletica.crm.read.channels.DbChannelListView
 import org.athletica.crm.read.clients.ClientBalanceHistoryView
 import org.athletica.crm.read.clients.ClientListView
 import org.athletica.crm.read.clients.DbClientBalanceHistoryView
@@ -22,6 +24,8 @@ import org.athletica.crm.read.groups.GroupListView
 import org.athletica.crm.read.groups.GroupSessionsView
 import org.athletica.crm.read.home.DbTodayScheduleView
 import org.athletica.crm.read.home.TodayScheduleView
+import org.athletica.crm.read.messaging.DbInboundTriageView
+import org.athletica.crm.read.messaging.InboundTriageView
 import org.athletica.crm.read.schedule.DbScheduleView
 import org.athletica.crm.read.schedule.ScheduleView
 import org.athletica.crm.read.tasks.DbTaskDetailView
@@ -67,4 +71,8 @@ data class ReadViews(
     val employeeList: EmployeeListView = DbEmployeeListView(),
     /** Карточка сотрудника с ролями, персональными правами и филиалами. */
     val employeeDetail: EmployeeDetailView = DbEmployeeDetailView(),
+    /** Интеграции каналов связи для раздела настроек «Каналы». */
+    val channelList: ChannelListView = DbChannelListView(),
+    /** Очередь ручного разбора неразобранных входящих. */
+    val inboundTriage: InboundTriageView = DbInboundTriageView(),
 )

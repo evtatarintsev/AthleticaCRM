@@ -798,7 +798,6 @@ export const en: Messages<typeof ru> = {
   "channels.field.accountSid": "Account SID",
   "channels.field.authToken": "Auth Token",
   "channels.field.from": "Sender number",
-  "channels.provider.in_app": "In-app",
   "channels.provider.smsc_sms": "SMS (SMSC)",
   "channels.provider.telegram_bot": "Telegram bot",
   "channels.provider.twilio_sms": "SMS (Twilio)",

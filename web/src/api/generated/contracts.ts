@@ -71,6 +71,17 @@ export const ArchiveTariffPlanRequestSchema = z
   .readonly();
 export type ArchiveTariffPlanRequest = z.output<typeof ArchiveTariffPlanRequestSchema>;
 
+export const InboundReceiptIdSchema = z.uuid().brand<"InboundReceiptId">();
+export type InboundReceiptId = z.output<typeof InboundReceiptIdSchema>;
+
+export const AssignInboundRequestSchema = z
+  .object({
+    receiptId: InboundReceiptIdSchema,
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type AssignInboundRequest = z.output<typeof AssignInboundRequestSchema>;
+
 export const EmployeeIdSchema = z.uuid().brand<"EmployeeId">();
 export type EmployeeId = z.output<typeof EmployeeIdSchema>;
 
@@ -334,13 +345,6 @@ export const ChangePasswordRequestSchema = z
   .readonly();
 export type ChangePasswordRequest = z.output<typeof ChangePasswordRequestSchema>;
 
-export const ChannelConfigInAppSchema = z
-  .object({
-    type: z.literal("in_app"),
-  })
-  .readonly();
-export type ChannelConfigInApp = z.output<typeof ChannelConfigInAppSchema>;
-
 export const ChannelConfigSmscSmsSchema = z
   .object({
     type: z.literal("smsc_sms"),
@@ -368,19 +372,15 @@ export const ChannelConfigTwilioSmsSchema = z
   .readonly();
 export type ChannelConfigTwilioSms = z.output<typeof ChannelConfigTwilioSmsSchema>;
 
-export const ChannelConfigSchema = z.discriminatedUnion("type", [ChannelConfigInAppSchema, ChannelConfigSmscSmsSchema, ChannelConfigTelegramBotSchema, ChannelConfigTwilioSmsSchema]);
+export const ChannelConfigSchema = z.discriminatedUnion("type", [ChannelConfigSmscSmsSchema, ChannelConfigTelegramBotSchema, ChannelConfigTwilioSmsSchema]);
 export type ChannelConfig = z.output<typeof ChannelConfigSchema>;
 
 export const ChannelIntegrationIdSchema = z.uuid().brand<"ChannelIntegrationId">();
 export type ChannelIntegrationId = z.output<typeof ChannelIntegrationIdSchema>;
 
-export const ChannelTypeSchema = z.enum(["SMS", "TELEGRAM", "WHATSAPP", "EMAIL", "MAX", "VK", "IN_APP"]);
-export type ChannelType = z.output<typeof ChannelTypeSchema>;
-
 export const ChannelIntegrationSchemaSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
-    channelType: ChannelTypeSchema,
     name: z.string(),
     config: ChannelConfigSchema,
     enabled: z.boolean(),
@@ -1826,6 +1826,17 @@ export const HallListResponseSchema = z
   .readonly();
 export type HallListResponse = z.output<typeof HallListResponseSchema>;
 
+export const InboundReceiptSchemaSchema = z
+  .object({
+    id: InboundReceiptIdSchema,
+    integrationId: ChannelIntegrationIdSchema,
+    fromAddress: z.string(),
+    body: z.string(),
+    receivedAt: z.string(),
+  })
+  .readonly();
+export type InboundReceiptSchema = z.output<typeof InboundReceiptSchemaSchema>;
+
 export const InitiatePaymentRequestSchema = z
   .object({
     amount: z.int(),
@@ -2044,6 +2055,23 @@ export const PaymentUrlResponseSchema = z
   })
   .readonly();
 export type PaymentUrlResponse = z.output<typeof PaymentUrlResponseSchema>;
+
+export const ReceiveInboundRequestSchema = z
+  .object({
+    integrationId: ChannelIntegrationIdSchema,
+    fromAddress: z.string(),
+    body: z.string(),
+  })
+  .readonly();
+export type ReceiveInboundRequest = z.output<typeof ReceiveInboundRequestSchema>;
+
+export const ReceiveInboundResponseSchema = z
+  .object({
+    resolvedClientId: ClientIdSchema.nullable(),
+    receiptId: InboundReceiptIdSchema,
+  })
+  .readonly();
+export type ReceiveInboundResponse = z.output<typeof ReceiveInboundResponseSchema>;
 
 export const RemoveClientFromGroupRequestSchema = z
   .object({
@@ -2437,6 +2465,13 @@ export const TodaySessionsResponseSchema = z
   })
   .readonly();
 export type TodaySessionsResponse = z.output<typeof TodaySessionsResponseSchema>;
+
+export const TriageListResponseSchema = z
+  .object({
+    receipts: z.array(InboundReceiptSchemaSchema).readonly(),
+  })
+  .readonly();
+export type TriageListResponse = z.output<typeof TriageListResponseSchema>;
 
 export const UnassignTaskRequestSchema = z
   .object({
@@ -3152,12 +3187,33 @@ export const endpoints = {
     out: "json",
     response: ConversationResponseSchema,
   },
+  "messaging/inbound": {
+    method: "POST",
+    in: "body",
+    request: ReceiveInboundRequestSchema,
+    out: "json",
+    response: ReceiveInboundResponseSchema,
+  },
   "messaging/send": {
     method: "POST",
     in: "body",
     request: SendMessageRequestSchema,
     out: "json",
     response: ConversationResponseSchema,
+  },
+  "messaging/triage/assign": {
+    method: "POST",
+    in: "body",
+    request: AssignInboundRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "messaging/triage/list": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: TriageListResponseSchema,
   },
   "notifications": {
     method: "GET",

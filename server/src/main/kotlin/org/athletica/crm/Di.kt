@@ -19,7 +19,10 @@ import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.channels.AuditChannelIntegrations
+import org.athletica.crm.domain.channels.ChannelBindings
+import org.athletica.crm.domain.channels.ChannelIntegrationFactory
 import org.athletica.crm.domain.channels.ChannelIntegrations
+import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -53,6 +56,8 @@ import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.hall.AuditHalls
 import org.athletica.crm.domain.hall.DbHalls
 import org.athletica.crm.domain.hall.Halls
+import org.athletica.crm.domain.inbound.DbInboundReceipts
+import org.athletica.crm.domain.inbound.InboundReceipts
 import org.athletica.crm.domain.leadSource.AuditLeadSources
 import org.athletica.crm.domain.leadSource.DbLeadSources
 import org.athletica.crm.domain.leadSource.LeadSources
@@ -64,7 +69,6 @@ import org.athletica.crm.domain.mail.OrgEmails
 import org.athletica.crm.domain.memberships.AuditMemberships
 import org.athletica.crm.domain.memberships.DbMemberships
 import org.athletica.crm.domain.memberships.Memberships
-import org.athletica.crm.domain.messagedelivery.ChannelRegistry
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
 import org.athletica.crm.domain.notifications.DbNotifications
@@ -90,7 +94,6 @@ import org.athletica.crm.domain.tariffs.DbTariffPlans
 import org.athletica.crm.domain.tariffs.TariffPlans
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.domain.tasks.Tasks
-import org.athletica.crm.integrations.messaging.StubChannelRegistry
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -98,6 +101,7 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
+import org.athletica.infra.messaging.StubChannelIntegrationFactory
 import org.athletica.infra.yookassa.YookassaApi
 import org.athletica.infra.yookassa.YookassaConfig
 import org.athletica.infra.yookassa.YookassaPaymentGateway
@@ -149,14 +153,16 @@ data class Di(
     val scheduleSync: ScheduleSync = DbScheduleSync()
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
-    val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(), audit)
     val clientContacts = DbClientContacts()
     val views = ReadViews()
+    val channelBindings: ChannelBindings = DbChannelBindings()
+    val inboundReceipts: InboundReceipts = DbInboundReceipts()
+    val channelIntegrationFactory: ChannelIntegrationFactory = StubChannelIntegrationFactory(clientContacts, channelBindings)
+    val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(channelIntegrationFactory), audit)
     val conversations = DbConversations()
     val deliveries = DbDeliveries()
-    val channelRegistry: ChannelRegistry = StubChannelRegistry()
     val messageDispatcher: MessageDispatcher =
-        MessageDispatcher(database, deliveries, channelIntegrations, channelRegistry)
+        MessageDispatcher(database, deliveries, channelIntegrations)
 }
 
 data class DatabaseConfig(

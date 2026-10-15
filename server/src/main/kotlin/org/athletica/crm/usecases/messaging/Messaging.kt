@@ -2,7 +2,6 @@ package org.athletica.crm.usecases.messaging
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
-import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.DeliverySchema
@@ -15,7 +14,6 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.messaging.ChannelType
 import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
@@ -34,8 +32,8 @@ import org.athletica.crm.storage.Transaction
  * Отправляет сообщение клиенту через выбранную интеграцию канала.
  *
  * Валидация до создания доставки: интеграция существует, принадлежит организации и включена;
- * у клиента есть контакт нужного типа (кроме IN_APP, где адрес получателя — сам клиент). При
- * нарушении ошибка возвращается до создания сообщения. Создаёт одну доставку (структура поддерживает
+ * адрес получателя разрешается самой интеграцией (прямые каналы — из контакта, связанные — из связки).
+ * При нарушении ошибка возвращается до создания сообщения. Создаёт одну доставку (структура поддерживает
  * фан-аут на несколько каналов). Возвращает обновлённую ленту диалога.
  */
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -56,24 +54,7 @@ suspend fun sendMessage(
         CommonDomainError("MESSAGE_EMPTY", "Сообщение не может быть пустым")
     }
 
-    val recipientAddress =
-        if (integration.channelType == ChannelType.IN_APP) {
-            request.clientId.toString()
-        } else {
-            val candidates =
-                contacts
-                    .byClient(request.clientId)
-                    .filter { integration.channelType in it.type.compatibleChannels }
-            val chosen =
-                request.contactId
-                    ?.let { id ->
-                        candidates.firstOrNull { it.id == id }
-                            ?: raise(CommonDomainError("CONTACT_NOT_FOUND", "Контакт не найден или не подходит для канала"))
-                    }
-                    ?: candidates.firstOrNull()
-                    ?: raise(CommonDomainError("CLIENT_HAS_NO_CONTACT", "У клиента нет контакта для этого канала"))
-            chosen.value
-        }
+    val recipientAddress = integration.recipientAddress(request.clientId, request.contactId)
 
     val conversation = conversations.forClient(request.clientId)
     val message = conversation.appendOutbound(Author.Employee(ctx.employee.id), request.body)

@@ -4,6 +4,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import org.athletica.crm.domain.channels.ChannelIntegrations
+import org.athletica.crm.domain.channels.SendResult
 import org.athletica.crm.storage.Database
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.cancellation.CancellationException
@@ -14,10 +15,11 @@ import kotlin.time.Duration.Companion.seconds
  * Фоновый диспетчер исходящих доставок (outbox).
  *
  * Поллит доставки в статусе `PENDING` (только для включённых интеграций), отправляет их через
- * адаптер канала из [registry] и проставляет итоговый статус:
+ * саму интеграцию ([org.athletica.crm.domain.channels.ChannelIntegration.send]) и проставляет
+ * итоговый статус:
  * - успех -> `SENT` с идентификатором у провайдера;
- * - [SendError.Permanent] -> `FAILED`;
- * - [SendError.Transient] -> повтор (увеличивается счётчик попыток), а при достижении
+ * - [SendResult.PermanentFailure] -> `FAILED`;
+ * - [SendResult.TransientFailure] -> повтор (увеличивается счётчик попыток), а при достижении
  *   [maxRetries] -> `FAILED`.
  *
  * Работает в одном процессе с приложением; запускается в отдельной корутине при старте.
@@ -26,7 +28,6 @@ class MessageDispatcher(
     private val db: Database,
     private val deliveries: Deliveries,
     private val channels: ChannelIntegrations,
-    private val registry: ChannelRegistry,
     private val checkEvery: Duration = 5.seconds,
     private val maxRetries: Int = 5,
 ) {
@@ -54,27 +55,20 @@ class MessageDispatcher(
     }
 
     private suspend fun dispatch(delivery: PendingDelivery) {
-        val config = db.transaction { channels.configById(delivery.channelIntegrationId) } ?: return
-        val channel = registry.resolve(config)
-        val request = ChannelSendRequest(delivery.recipientAddress, delivery.body)
+        val sender = db.transaction { channels.senderById(delivery.channelIntegrationId) } ?: return
 
-        channel.send(request).fold(
-            { error -> onError(delivery, error) },
-            { ref -> db.transaction { deliveries.markSent(delivery.id, ref) } },
-        )
-    }
+        when (val result = sender.send(delivery.recipientAddress, delivery.body)) {
+            is SendResult.Sent ->
+                db.transaction { deliveries.markSent(delivery.id, ProviderMessageRef(result.providerRef)) }
 
-    private suspend fun onError(delivery: PendingDelivery, error: SendError) {
-        val failure = DeliveryError(error.code, error.message)
-        when (error) {
-            is SendError.Permanent ->
-                db.transaction { deliveries.markFailed(delivery.id, failure) }
+            is SendResult.PermanentFailure ->
+                db.transaction { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) }
 
-            is SendError.Transient ->
+            is SendResult.TransientFailure ->
                 if (delivery.attempts + 1 >= maxRetries) {
-                    db.transaction { deliveries.markFailed(delivery.id, failure) }
+                    db.transaction { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) }
                 } else {
-                    db.transaction { deliveries.retryLater(delivery.id, failure) }
+                    db.transaction { deliveries.retryLater(delivery.id, DeliveryError(result.code, result.message)) }
                 }
         }
     }

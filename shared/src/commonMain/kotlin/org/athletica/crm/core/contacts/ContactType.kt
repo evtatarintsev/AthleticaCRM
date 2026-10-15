@@ -1,30 +1,23 @@
 package org.athletica.crm.core.contacts
 
-import org.athletica.crm.core.messaging.ChannelType
-
 /**
  * Тип контакта клиента: чем является значение контакта (номер телефона, email, имя пользователя
- * и т.п.). В отличие от [ChannelType] (способ доставки), тип описывает сам адрес.
- *
- * Каналы, по которым контакт можно использовать, выводятся из типа через [compatibleChannels]
- * и не хранятся отдельно: один телефон годится сразу для нескольких каналов.
+ * и т.п.). Таксономия самого адреса; какие каналы умеют его адресовать — свойство вида канала
+ * ([org.athletica.crm.core.messaging.ChannelConfig.acceptedContactTypes]), а не контакта.
  */
-enum class ContactType(
-    /** Каналы доставки, для которых пригоден контакт данного типа. */
-    val compatibleChannels: Set<ChannelType>,
-) {
-    /** Номер телефона: подходит для SMS, WhatsApp, Telegram и MAX. */
-    PHONE(setOf(ChannelType.SMS, ChannelType.WHATSAPP, ChannelType.TELEGRAM, ChannelType.MAX)),
+enum class ContactType {
+    /** Номер телефона. */
+    PHONE,
 
     /** Адрес электронной почты. */
-    EMAIL(setOf(ChannelType.EMAIL)),
+    EMAIL,
 
     /** Имя пользователя в Telegram. */
-    TELEGRAM(setOf(ChannelType.TELEGRAM)),
+    TELEGRAM,
 
     /** Профиль во ВКонтакте. */
-    VK(setOf(ChannelType.VK)),
+    VK,
 
-    /** Профиль в Facebook: пока без канала доставки, хранится как справочный. */
-    FACEBOOK(emptySet()),
+    /** Профиль в Facebook. */
+    FACEBOOK,
 }

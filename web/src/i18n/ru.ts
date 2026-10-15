@@ -824,7 +824,6 @@ export const ru = {
   "channels.field.accountSid": "Account SID",
   "channels.field.authToken": "Auth Token",
   "channels.field.from": "Номер отправителя",
-  "channels.provider.in_app": "Внутри приложения",
   "channels.provider.smsc_sms": "SMS (SMSC)",
   "channels.provider.telegram_bot": "Telegram-бот",
   "channels.provider.twilio_sms": "SMS (Twilio)",

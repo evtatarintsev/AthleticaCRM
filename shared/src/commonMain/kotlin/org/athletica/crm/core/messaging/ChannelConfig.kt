@@ -4,21 +4,29 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.core.contacts.ContactType
 
 /**
- * Типизированный конфиг интеграции канала: провайдер-специфичные настройки (токены, отправитель и т.п.).
+ * Типизированные настройки вида канала: провайдер-специфичные поля (токены, отправитель и т.п.)
+ * плюс статические свойства вида (возможности, принимаемые типы контактов).
  *
- * Заменяет нетипизированный `Map<String, String>`: каждый провайдер описывает свои поля явно,
- * инвариант проверяется в момент десериализации (Parse, Don't Validate). Сериализуется полиморфно
- * с дискриминатором `type` и хранится в БД как JSONB. [provider] выводит провайдера (а через него —
- * [ChannelType]) из конкретного подтипа конфига, так что отдельные колонки-дискриминаторы не нужны.
+ * Подтип конфига — и есть «вид канала»: отдельных дискриминаторов (тип канала/провайдер) больше нет.
+ * Возможности ([supportsInbound], [supportsReceipts]) и [acceptedContactTypes] заданы на уровне подтипа,
+ * так как это свойства конкретной реализации, а не абстрактного типа. Сериализуется полиморфно с
+ * дискриминатором `type` и хранится в БД как JSONB; при десериализации инвариант проверяется (Parse, Don't Validate).
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed interface ChannelConfig {
-    /** Провайдер, которому принадлежит этот конфиг. */
-    val provider: ChannelProvider
+    /** Умеет ли вид канала принимать входящие сообщения (webhook / long-poll). */
+    val supportsInbound: Boolean
+
+    /** Присылает ли вид канала квитанции о доставке/прочтении. */
+    val supportsReceipts: Boolean
+
+    /** Типы контактов клиента, которые этот вид канала умеет адресовать. */
+    val acceptedContactTypes: Set<ContactType>
 
     /** SMS через Twilio. */
     @Serializable
@@ -28,7 +36,9 @@ sealed interface ChannelConfig {
         val authToken: String,
         val from: String,
     ) : ChannelConfig {
-        override val provider: ChannelProvider get() = ChannelProvider.TWILIO_SMS
+        override val supportsInbound: Boolean get() = false
+        override val supportsReceipts: Boolean get() = true
+        override val acceptedContactTypes: Set<ContactType> get() = setOf(ContactType.PHONE)
     }
 
     /** SMS через SMSC. */
@@ -38,7 +48,9 @@ sealed interface ChannelConfig {
         val login: String,
         val password: String,
     ) : ChannelConfig {
-        override val provider: ChannelProvider get() = ChannelProvider.SMSC_SMS
+        override val supportsInbound: Boolean get() = false
+        override val supportsReceipts: Boolean get() = true
+        override val acceptedContactTypes: Set<ContactType> get() = setOf(ContactType.PHONE)
     }
 
     /** Telegram-бот. */
@@ -47,13 +59,8 @@ sealed interface ChannelConfig {
     data class TelegramBot(
         val botToken: String,
     ) : ChannelConfig {
-        override val provider: ChannelProvider get() = ChannelProvider.TELEGRAM_BOT
-    }
-
-    /** Личный кабинет клиента: внешних настроек нет. */
-    @Serializable
-    @SerialName("in_app")
-    data object InApp : ChannelConfig {
-        override val provider: ChannelProvider get() = ChannelProvider.IN_APP
+        override val supportsInbound: Boolean get() = true
+        override val supportsReceipts: Boolean get() = true
+        override val acceptedContactTypes: Set<ContactType> get() = setOf(ContactType.TELEGRAM)
     }
 }

@@ -10,7 +10,8 @@ import org.athletica.crm.storage.Transaction
 
 /**
  * Контакт клиента: значение [value] определённого типа [type] (телефон, email, Telegram и т.п.).
- * Каналы, по которым контакт можно использовать, выводятся из [ContactType.compatibleChannels].
+ * Какие каналы умеют адресовать контакт — свойство вида канала
+ * ([org.athletica.crm.core.messaging.ChannelConfig.acceptedContactTypes]), а не контакта.
  */
 data class ClientContact(
     val id: ClientContactId,

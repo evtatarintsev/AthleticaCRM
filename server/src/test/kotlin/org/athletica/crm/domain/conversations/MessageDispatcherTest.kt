@@ -1,12 +1,11 @@
 package org.athletica.crm.domain.conversations
 
 import arrow.core.Either
-import arrow.core.left
 import arrow.core.raise.context.either
-import arrow.core.right
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
@@ -16,14 +15,13 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.channels.ChannelIntegration
+import org.athletica.crm.domain.channels.ChannelIntegrationFactory
+import org.athletica.crm.domain.channels.DbChannelIntegrations
+import org.athletica.crm.domain.channels.SendResult
 import org.athletica.crm.domain.employees.EmployeePermission
-import org.athletica.crm.domain.messagedelivery.ChannelRegistry
-import org.athletica.crm.domain.messagedelivery.ChannelSendRequest
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
-import org.athletica.crm.domain.messagedelivery.MessageChannel
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
-import org.athletica.crm.domain.messagedelivery.ProviderMessageRef
-import org.athletica.crm.domain.messagedelivery.SendError
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
@@ -43,7 +41,6 @@ class MessageDispatcherTest {
 
     private val conversations = DbConversations()
     private val deliveries = DbDeliveries()
-    private val channels = org.athletica.crm.domain.channels.DbChannelIntegrations()
 
     private val ctx =
         employeeContext(
@@ -58,15 +55,31 @@ class MessageDispatcherTest {
             permissions = EmployeePermission(),
         )
 
-    /** Реестр-заглушка с настраиваемым поведением отправки. */
-    private class FakeRegistry(
-        private val behavior: () -> Either<SendError, ProviderMessageRef>,
-    ) : ChannelRegistry {
-        override fun resolve(config: ChannelConfig): MessageChannel =
-            object : MessageChannel {
-                override suspend fun send(request: ChannelSendRequest): Either<SendError, ProviderMessageRef> = behavior()
-            }
-    }
+    /** Интеграции с фабрикой-заглушкой: каждая отправка возвращает фиксированный [result]. */
+    private fun channelsWith(result: SendResult) =
+        DbChannelIntegrations(
+            object : ChannelIntegrationFactory {
+                override fun create(
+                    id: ChannelIntegrationId,
+                    name: String,
+                    config: ChannelConfig,
+                    enabled: Boolean,
+                ): ChannelIntegration =
+                    object : ChannelIntegration {
+                        override val id = id
+                        override val name = name
+                        override val enabled = enabled
+
+                        context(ctx: EmployeeRequestContext, tr: org.athletica.crm.storage.Transaction, raise: arrow.core.raise.context.Raise<org.athletica.crm.core.errors.DomainError>)
+                        override suspend fun recipientAddress(
+                            clientId: org.athletica.crm.core.entityids.ClientId,
+                            contactId: org.athletica.crm.core.entityids.ClientContactId?,
+                        ): String = ""
+
+                        override suspend fun send(address: String, body: String): SendResult = result
+                    }
+            },
+        )
 
     @Before
     fun setUp() {
@@ -82,8 +95,8 @@ class MessageDispatcherTest {
                 .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
             TestPostgres.db.sql(
                 """
-                INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
-                VALUES (:id, :orgId, 'SMS', 'Test SMS', :config::jsonb, true)
+                INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+                VALUES (:id, :orgId, 'Test SMS', :config::jsonb, true)
                 """.trimIndent(),
             ).bind("id", integrationId).bind("orgId", orgId).bind("config", TWILIO_CONFIG).execute()
         }
@@ -127,8 +140,7 @@ class MessageDispatcherTest {
                 MessageDispatcher(
                     TestPostgres.db,
                     deliveries,
-                    channels,
-                    FakeRegistry { ProviderMessageRef("provider-123").right() },
+                    channelsWith(SendResult.Sent("provider-123")),
                 )
 
             dispatcher.pollOnce()
@@ -145,8 +157,7 @@ class MessageDispatcherTest {
                 MessageDispatcher(
                     TestPostgres.db,
                     deliveries,
-                    channels,
-                    FakeRegistry { SendError.Transient("TIMEOUT", "Таймаут").left() },
+                    channelsWith(SendResult.TransientFailure("TIMEOUT", "Таймаут")),
                     maxRetries = 5,
                 )
 
@@ -164,8 +175,7 @@ class MessageDispatcherTest {
                 MessageDispatcher(
                     TestPostgres.db,
                     deliveries,
-                    channels,
-                    FakeRegistry { SendError.Permanent("INVALID_NUMBER", "Неверный номер").left() },
+                    channelsWith(SendResult.PermanentFailure("INVALID_NUMBER", "Неверный номер")),
                 )
 
             dispatcher.pollOnce()
@@ -183,8 +193,7 @@ class MessageDispatcherTest {
                 MessageDispatcher(
                     TestPostgres.db,
                     deliveries,
-                    channels,
-                    FakeRegistry { ProviderMessageRef("provider-123").right() },
+                    channelsWith(SendResult.Sent("provider-123")),
                 )
 
             dispatcher.pollOnce()

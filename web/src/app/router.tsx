@@ -41,7 +41,6 @@ import { SettingsSearchSchema, type SettingsPanel } from "@/settings/settingsSea
 import { ChannelsPage } from "@/settings/channels/ChannelsPage";
 import { AuditLogPage } from "@/settings/audit/AuditLogPage";
 import { PaymentCompletePage } from "@/settings/org/PaymentCompletePage";
-import { TariffsPage } from "@/settings/tariffs/TariffsPage";
 import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
@@ -248,16 +247,6 @@ const customFieldsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-additional-attributes",
   beforeLoad: settingsPanelRedirect("client-additional-attributes"),
-});
-
-/** Тарифы абонементов. */
-const tariffsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/tariffs",
-  component: function TariffsRoute() {
-    const { api } = tariffsRoute.useRouteContext();
-    return <TariffsPage api={api} />;
-  },
 });
 
 /** Каналы связи. */
@@ -594,7 +583,6 @@ const routeTree = rootRoute.addChildren([
     hallsRoute,
     disciplinesRoute,
     clientSourcesRoute,
-    tariffsRoute,
     branchesRoute,
     customFieldsRoute,
     channelsRoute,
@@ -659,7 +647,6 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/halls": true,
   "/settings/disciplines": true,
   "/settings/client-sources": true,
-  "/settings/tariffs": true,
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
   "/settings/channels": true,

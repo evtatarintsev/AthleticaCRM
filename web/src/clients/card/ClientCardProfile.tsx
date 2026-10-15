@@ -1,23 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import {
-  AtSignIcon,
-  ChevronDownIcon,
-  MailIcon,
-  PencilIcon,
-  PhoneIcon,
-  SendIcon,
-} from "lucide-react";
-import { useState, type ReactNode } from "react";
-import type {
-  ClientContactSchema,
-  ClientDetailResponse,
-  CustomFieldDefinition,
-} from "@/api/generated/contracts";
+import { ChevronDownIcon, PencilIcon } from "lucide-react";
+import { useState } from "react";
+import type { ClientDetailResponse, CustomFieldDefinition } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { customFieldDisplay } from "../clientCells";
 import { customFieldValueOf } from "../customFieldValues";
+import { ClientContactList } from "./ClientContactList";
 
 /** Поле анкеты: подпись и значение; `null` — значение не указано. */
 interface ProfileField {
@@ -60,15 +50,7 @@ export function ClientCardProfile({
     <div className="space-y-4">
       <div className="rounded-lg border bg-card">
         <h2 className="border-b px-4 py-3 font-medium">{t("clients.contacts")}</h2>
-        {client.contacts.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-muted-foreground">{t("clientCard.noContacts")}</p>
-        ) : (
-          <ul className="divide-y">
-            {client.contacts.map((contact) => (
-              <ContactRow key={contact.id} contact={contact} />
-            ))}
-          </ul>
-        )}
+        <ClientContactList contacts={client.contacts} />
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -95,39 +77,6 @@ export function ClientCardProfile({
         </div>
       </div>
     </div>
-  );
-}
-
-/** Строка контакта: иконка типа, значение-ссылка и подпись типа. */
-function ContactRow({ contact }: { readonly contact: ClientContactSchema }) {
-  const { t } = useI18n();
-  const view = ((): { icon: ReactNode; href: string } => {
-    switch (contact.type) {
-      case "PHONE":
-        return { icon: <PhoneIcon aria-hidden />, href: `tel:${contact.value}` };
-      case "EMAIL":
-        return { icon: <MailIcon aria-hidden />, href: `mailto:${contact.value}` };
-      case "TELEGRAM":
-        return {
-          icon: <SendIcon aria-hidden />,
-          href: `https://t.me/${contact.value.replace(/^@/, "")}`,
-        };
-      case "VK":
-        return { icon: <AtSignIcon aria-hidden />, href: `https://vk.com/${contact.value}` };
-      case "FACEBOOK":
-        return { icon: <AtSignIcon aria-hidden />, href: `https://facebook.com/${contact.value}` };
-    }
-  })();
-  return (
-    <li className="flex items-center gap-3 px-4 py-2 text-sm">
-      <span className="text-muted-foreground [&_svg]:size-4">{view.icon}</span>
-      <a href={view.href} className="min-w-0 flex-1 truncate text-primary hover:underline">
-        {contact.value}
-      </a>
-      <span className="shrink-0 text-xs text-muted-foreground">
-        {t(`contactType.${contact.type}`)}
-      </span>
-    </li>
   );
 }
 

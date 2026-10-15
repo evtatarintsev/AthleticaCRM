@@ -33,57 +33,12 @@ export function ClientCardQuickInfo({
   readonly onBalanceClick: (() => void) | undefined;
 }) {
   const { t, format } = useI18n();
-  const active = memberships?.find((membership) => membership.status === "ACTIVE");
 
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-      <Tile
-        label={t("clientCard.balance")}
-        onClick={onBalanceClick}
-        actionLabel={t("clientCard.balanceOpen", { amount: format.money(balance) })}
-      >
-        <span
-          className={cn(
-            "text-lg font-semibold tabular-nums",
-            balance.minorUnits < 0 && "text-destructive",
-          )}
-        >
-          {format.money(balance)}
-        </span>
-      </Tile>
-      <Tile label={t("clientCard.quick.subscription")}>
-        {memberships === undefined ? (
-          <Skeleton className="h-5 w-24" />
-        ) : active === undefined ? (
-          <Muted>{t("clientCard.quick.noSubscription")}</Muted>
-        ) : (
-          <>
-            <span className="block truncate font-medium" title={active.name}>
-              {active.name}
-            </span>
-            <Sub>
-              {active.sessionsTotal === null
-                ? t("clientCard.quick.until", { date: format.date(active.endDate) })
-                : t("clients.detail.subscriptionSessions", {
-                    remaining: active.sessionsRemaining ?? 0,
-                    total: active.sessionsTotal,
-                  })}
-            </Sub>
-          </>
-        )}
-      </Tile>
-      <Tile label={t("clientCard.quick.lastVisit")}>
-        {lastVisit === undefined ? (
-          <Skeleton className="h-5 w-24" />
-        ) : lastVisit === null ? (
-          <Muted>{t("clientCard.quick.never")}</Muted>
-        ) : (
-          <>
-            <span className="block font-medium">{format.date(lastVisit.date)}</span>
-            <Sub>{lastVisit.group.name}</Sub>
-          </>
-        )}
-      </Tile>
+      <BalanceTile balance={balance} onClick={onBalanceClick} />
+      <SubscriptionTile memberships={memberships} />
+      <LastVisitTile lastVisit={lastVisit} />
       <Tile label={t("clientCard.quick.nextSession")}>
         {nextSession === undefined ? (
           <Skeleton className="h-5 w-24" />
@@ -105,6 +60,98 @@ export function ClientCardQuickInfo({
         <Muted>{t("clientCard.quick.stub")}</Muted>
       </Tile>
     </dl>
+  );
+}
+
+/**
+ * Плитка баланса [balance]; отрицательный выделен. С [onClick] плитка кликабельна
+ * и открывает историю баланса. Ставится внутрь `<dl>`.
+ */
+export function BalanceTile({
+  balance,
+  onClick,
+}: {
+  readonly balance: Money;
+  readonly onClick: (() => void) | undefined;
+}) {
+  const { t, format } = useI18n();
+  return (
+    <Tile
+      label={t("clientCard.balance")}
+      onClick={onClick}
+      actionLabel={t("clientCard.balanceOpen", { amount: format.money(balance) })}
+    >
+      <span
+        className={cn(
+          "text-lg font-semibold tabular-nums",
+          balance.minorUnits < 0 && "text-destructive",
+        )}
+      >
+        {format.money(balance)}
+      </span>
+    </Tile>
+  );
+}
+
+/**
+ * Плитка действующего абонемента из [memberships]: название и остаток занятий или срок.
+ * `undefined` — абонементы ещё загружаются. Ставится внутрь `<dl>`.
+ */
+export function SubscriptionTile({
+  memberships,
+}: {
+  readonly memberships: readonly MembershipSchema[] | undefined;
+}) {
+  const { t, format } = useI18n();
+  const active = memberships?.find((membership) => membership.status === "ACTIVE");
+  return (
+    <Tile label={t("clientCard.quick.subscription")}>
+      {memberships === undefined ? (
+        <Skeleton className="h-5 w-24" />
+      ) : active === undefined ? (
+        <Muted>{t("clientCard.quick.noSubscription")}</Muted>
+      ) : (
+        <>
+          <span className="block truncate font-medium" title={active.name}>
+            {active.name}
+          </span>
+          <Sub>
+            {active.sessionsTotal === null
+              ? t("clientCard.quick.until", { date: format.date(active.endDate) })
+              : t("clients.detail.subscriptionSessions", {
+                  remaining: active.sessionsRemaining ?? 0,
+                  total: active.sessionsTotal,
+                })}
+          </Sub>
+        </>
+      )}
+    </Tile>
+  );
+}
+
+/**
+ * Плитка последнего посещения [lastVisit]: `null` — посещений не было,
+ * `undefined` — ещё загружается. Ставится внутрь `<dl>`.
+ */
+export function LastVisitTile({
+  lastVisit,
+}: {
+  readonly lastVisit: ClientAttendanceItemSchema | null | undefined;
+}) {
+  const { t, format } = useI18n();
+  return (
+    <Tile label={t("clientCard.quick.lastVisit")}>
+      {lastVisit === undefined ? (
+        <Skeleton className="h-5 w-24" />
+      ) : lastVisit === null ? (
+        <Muted>{t("clientCard.quick.never")}</Muted>
+      ) : (
+        <>
+          <span className="block font-medium">{format.date(lastVisit.date)}</span>
+          <Sub>{lastVisit.group.name}</Sub>
+        </>
+      )}
+    </Tile>
   );
 }
 

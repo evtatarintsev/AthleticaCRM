@@ -1,25 +1,19 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeftIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient, ApiResult } from "@/api/client";
-import {
-  LocalDateSchema,
-  LocalTimeSchema,
-  type AttendanceLabelId,
-  type AttendanceLabelSchema,
-  type BranchId,
-  type ClientId,
-  type EmployeeId,
-  type LocalDate,
-  type LocalTime,
-  type ParticipationKind,
-  type ScheduleCoachSchema,
-  type ScheduleHallSchema,
-  type SessionId,
-  type SessionJournalResponse,
-  type SessionStatus,
+import type {
+  AttendanceLabelId,
+  AttendanceLabelSchema,
+  BranchId,
+  ClientId,
+  EmployeeId,
+  HallId,
+  ScheduleCoachSchema,
+  SessionId,
+  SessionJournalResponse,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { ClientPickerSheet } from "@/clients/ClientPickerSheet";
@@ -36,16 +30,18 @@ import {
 import { FormAlert } from "@/forms/FormAlert";
 import { manualField } from "@/forms/field";
 import { TextAreaField } from "@/forms/fields";
-import type { PlainMessageKey } from "@/i18n/context";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
+import { Avatar } from "@/ui/Avatar";
+import { ChecklistSheet } from "@/ui/ChecklistSheet";
+import { ChoiceSheet } from "@/ui/ChoiceSheet";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
-import { MultiSelectPicker } from "@/ui/MultiSelectPicker";
-import { PageHeader } from "@/ui/PageHeader";
 import { completeBlock, isApplicable, unmarkedCount, type MarkDraft } from "./attendance";
-import { ParticipantAttendance } from "./ParticipantAttendance";
+import { SessionInfoPanel } from "./card/SessionInfoPanel";
+import { SessionParticipantsSection } from "./card/SessionParticipantsSection";
+import { SessionRescheduleSheet } from "./card/SessionRescheduleSheet";
 import {
   cancelSession,
   changeCoaches,
@@ -53,20 +49,20 @@ import {
   rescheduleSession,
   sessionCard,
   setNote,
-  type SessionCard,
   type SessionCardOverrides,
 } from "./sessionDetailMock";
-import { isEditableStatus, sessionStatusLabelKey } from "./sessionStatus";
+import { isEditableStatus } from "./sessionStatus";
 
-/** Какой из диалогов действий сейчас открыт. */
+/** Какая из панелей и диалогов действий сейчас открыта. */
 type ActionDialog =
   "reschedule" | "hall" | "coaches" | "note" | "markRemainingAbsent" | "addParticipant" | null;
 
 /**
- * Карточка занятия: данные занятия и журнал посещаемости с сервера — состав, отметки,
- * проведение занятия, массовая отметка отсутствующих, разовые участники.
- * Отмена, перенос, смена зала и тренеров и заметка пока меняют только локальное
- * состояние страницы (см. `sessionDetailMock.ts`).
+ * Карточка занятия: слева — что за занятие (группа, дата, зал, тренеры, заполненность
+ * журнала) и действия, справа — состав и журнал посещаемости. Данные занятия и журнал
+ * приходят с сервера — состав, отметки, проведение занятия, массовая отметка отсутствующих,
+ * разовые участники. Отмена, перенос, смена зала и тренеров и заметка пока меняют только
+ * локальное состояние страницы (см. `sessionDetailMock.ts`).
  */
 export function SessionDetailPage({
   api,
@@ -82,15 +78,18 @@ export function SessionDetailPage({
 
   if (journal.isPending) {
     return (
-      <section className="max-w-2xl space-y-4">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-24 w-full" />
+      <section className="max-w-6xl space-y-4">
+        <Skeleton className="h-8 w-24" />
+        <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <Skeleton className="h-96 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
       </section>
     );
   }
   if (journal.data === undefined) {
     return (
-      <section className="max-w-2xl space-y-4">
+      <section className="max-w-6xl space-y-4">
         <FormAlert message={t("sessionDetail.loadError")} />
       </section>
     );
@@ -117,7 +116,7 @@ function SessionJournalCard({
   readonly journal: SessionJournalResponse;
   readonly journalKey: ReturnType<typeof apiQuery<"sessions/journal">>["queryKey"];
 }) {
-  const { t, format } = useI18n();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const halls = useQuery({
     ...apiQuery(api, branchId, "halls/list"),
@@ -169,8 +168,14 @@ function SessionJournalCard({
     }
   };
 
+  const closeDialog = (open: boolean) => {
+    if (!open) {
+      setDialog(null);
+    }
+  };
+
   return (
-    <section className="max-w-2xl space-y-6 pb-16">
+    <section className="max-w-6xl space-y-4 pb-16">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
         <Link to="/schedule">
           <ArrowLeftIcon aria-hidden />
@@ -178,186 +183,58 @@ function SessionJournalCard({
         </Link>
       </Button>
 
-      <PageHeader
-        title={journal.group.name}
-        actions={<SessionStatusBadge status={card.status} />}
-      />
-
-      <div className="space-y-1 text-sm text-muted-foreground">
-        <p>
-          {format.date(card.date)} · {format.time(card.startTime)}–{format.time(card.endTime)}
-        </p>
-        <p>{t("home.hallLabel", { name: card.hall.name })}</p>
-      </div>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("sessionDetail.coachesTitle")}
-        </h2>
-        {card.coaches.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("sessionDetail.noCoaches")}</p>
-        ) : (
-          <p className="text-sm">{card.coaches.map((coach) => coach.name).join(", ")}</p>
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("sessionDetail.actionsTitle")}
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {editable && (
-            <Button
-              size="sm"
-              disabled={block !== null}
-              onClick={() => {
-                void complete();
-              }}
-            >
-              {t("sessionDetail.completeAction")}
-            </Button>
-          )}
-          {editable && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setCancelling(true);
-              }}
-            >
-              {t("sessionDetail.cancelAction")}
-            </Button>
-          )}
-          {editable && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDialog("reschedule");
-              }}
-            >
-              {t("sessionDetail.rescheduleAction")}
-            </Button>
-          )}
-          {editable && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDialog("hall");
-              }}
-            >
-              {t("sessionDetail.changeHallAction")}
-            </Button>
-          )}
-          {editable && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDialog("coaches");
-              }}
-            >
-              {t("sessionDetail.changeCoachesAction")}
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
+      <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+        <aside className="lg:sticky lg:top-4">
+          <SessionInfoPanel
+            api={api}
+            group={journal.group}
+            card={card}
+            employees={employees.data}
+            editable={editable}
+            block={block}
+            marked={journal.participants.length - unmarked}
+            total={journal.participants.length}
+            onReschedule={() => {
+              setDialog("reschedule");
+            }}
+            onChangeHall={() => {
+              setDialog("hall");
+            }}
+            onChangeCoaches={() => {
+              setDialog("coaches");
+            }}
+            onComplete={() => {
+              void complete();
+            }}
+            onCancel={() => {
+              setCancelling(true);
+            }}
+            onNote={() => {
               setDialog("note");
             }}
-          >
-            {t("sessionDetail.noteAction")}
-          </Button>
-        </div>
-        {editable && block === "unmarked" && (
-          <p className="text-sm text-muted-foreground">
-            {t("sessionDetail.completeBlocked.unmarked", { count: unmarked })}
-          </p>
-        )}
-        {editable && block === "notStarted" && (
-          <p className="text-sm text-muted-foreground">
-            {t("sessionDetail.completeBlocked.notStarted")}
-          </p>
-        )}
-        {card.note !== "" && <p className="text-sm whitespace-pre-wrap">{card.note}</p>}
-      </section>
-
-      <section className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("sessionDetail.participantsTitle")}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {editable && unmarked > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDialog("markRemainingAbsent");
-                }}
-              >
-                {t("sessionDetail.markRemainingAbsentAction")}
-              </Button>
-            )}
-            {editable && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDialog("addParticipant");
-                }}
-              >
-                {t("sessionDetail.addParticipantAction")}
-              </Button>
-            )}
-          </div>
-        </div>
-        {journal.participants.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("sessionDetail.noParticipants")}</p>
-        ) : (
-          <ul className="divide-y rounded-md border">
-            {journal.participants.map((participant) => (
-              <li
-                key={participant.clientId}
-                aria-label={participant.name}
-                className="flex flex-wrap items-start justify-between gap-2 px-4 py-3"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{participant.name}</span>
-                  <ParticipationBadge kind={participant.kind} />
-                  {editable && participant.kind === "ONE_TIME" && (
-                    <button
-                      type="button"
-                      aria-label={t("sessionDetail.removeParticipantAria", {
-                        name: participant.name,
-                      })}
-                      onClick={() => {
-                        void api
-                          .call("sessions/journal/remove-participant", {
-                            sessionId,
-                            clientId: participant.clientId,
-                          })
-                          .then(apply);
-                      }}
-                      className="rounded-full text-muted-foreground hover:text-destructive"
-                    >
-                      <XIcon aria-hidden className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-                <ParticipantAttendance
-                  participant={participant}
-                  catalog={labels.data ?? []}
-                  editable={journalOpen}
-                  onSave={(mark) => saveMark(participant.clientId, mark)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          />
+        </aside>
+        <SessionParticipantsSection
+          api={api}
+          participants={journal.participants}
+          catalog={labels.data ?? []}
+          editable={editable}
+          journalOpen={journalOpen}
+          unmarked={unmarked}
+          onSaveMark={saveMark}
+          onRemove={(clientId) => {
+            void api
+              .call("sessions/journal/remove-participant", { sessionId, clientId })
+              .then(apply);
+          }}
+          onAdd={() => {
+            setDialog("addParticipant");
+          }}
+          onMarkRemainingAbsent={() => {
+            setDialog("markRemainingAbsent");
+          }}
+        />
+      </div>
 
       <ConfirmDialog
         open={cancelling}
@@ -422,55 +299,52 @@ function SessionJournalCard({
         }}
       />
 
-      {dialog === "reschedule" && (
-        <RescheduleDialog
-          card={card}
-          onSave={(date, startTime, endTime) => {
-            setOverrides((current) => rescheduleSession(current, date, startTime, endTime));
-            setDialog(null);
-          }}
-          onClose={() => {
-            setDialog(null);
-          }}
-        />
-      )}
+      <SessionRescheduleSheet
+        open={dialog === "reschedule"}
+        onOpenChange={closeDialog}
+        card={card}
+        onSave={(date, startTime, endTime) => {
+          setOverrides((current) => rescheduleSession(current, date, startTime, endTime));
+        }}
+      />
 
-      {dialog === "hall" && (
-        <ChangeHallDialog
-          halls={halls.data ?? []}
-          value={card.hall}
-          onSave={(hall) => {
-            setOverrides((current) => changeHall(current, hall));
-            setDialog(null);
-          }}
-          onClose={() => {
-            setDialog(null);
-          }}
-        />
-      )}
+      <ChoiceSheet
+        open={dialog === "hall"}
+        onOpenChange={closeDialog}
+        title={t("sessionDetail.changeHallDialogTitle")}
+        items={halls.data ?? []}
+        current={card.hall.id}
+        emptyText={t("sessionDetail.hallsEmpty")}
+        onChoose={(hallId: HallId | null) => {
+          const hall = (halls.data ?? []).find((h) => h.id === hallId);
+          if (hall !== undefined) {
+            setOverrides((current) => changeHall(current, { id: hall.id, name: hall.name }));
+          }
+          return Promise.resolve(null);
+        }}
+      />
 
-      {dialog === "coaches" && (
-        <MultiSelectPicker
-          open
-          title={t("sessionDetail.changeCoachesDialogTitle")}
-          items={employees.data ?? []}
-          selected={card.coaches.map((coach) => coach.id)}
-          emptyText={t("groups.picker.empty")}
-          onOpenChange={(open) => {
-            if (!open) {
-              setDialog(null);
-            }
-          }}
-          onApply={(selected: readonly EmployeeId[]) => {
-            const byId = new Map((employees.data ?? []).map((employee) => [employee.id, employee]));
-            const coaches: ScheduleCoachSchema[] = selected.flatMap((id) => {
-              const employee = byId.get(id);
-              return employee === undefined ? [] : [{ id: employee.id, name: employee.name }];
-            });
-            setOverrides((current) => changeCoaches(current, coaches));
-          }}
-        />
-      )}
+      <ChecklistSheet
+        open={dialog === "coaches"}
+        onOpenChange={closeDialog}
+        title={t("sessionDetail.changeCoachesDialogTitle")}
+        items={(employees.data ?? []).map((employee) => ({
+          id: employee.id,
+          name: employee.name,
+          avatar: <Avatar api={api} uploadId={employee.avatarId} name={employee.name} />,
+        }))}
+        selected={card.coaches.map((coach) => coach.id)}
+        emptyText={t("sessionDetail.coachesEmpty")}
+        onSubmit={(selected: readonly EmployeeId[]) => {
+          const byId = new Map((employees.data ?? []).map((employee) => [employee.id, employee]));
+          const coaches: ScheduleCoachSchema[] = selected.flatMap((id) => {
+            const employee = byId.get(id);
+            return employee === undefined ? [] : [{ id: employee.id, name: employee.name }];
+          });
+          setOverrides((current) => changeCoaches(current, coaches));
+          return Promise.resolve(null);
+        }}
+      />
 
       {dialog === "note" && (
         <NoteDialog
@@ -485,40 +359,6 @@ function SessionJournalCard({
         />
       )}
     </section>
-  );
-}
-
-/** Цветной бейдж статуса занятия. */
-function SessionStatusBadge({ status }: { readonly status: SessionStatus }) {
-  const { t } = useI18n();
-  const color = status === "COMPLETED" ? "#388E3C" : status === "CANCELLED" ? "#D32F2F" : "#1976D2";
-  return (
-    <span
-      className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium text-white"
-      style={{ backgroundColor: color }}
-    >
-      {t(sessionStatusLabelKey(status))}
-    </span>
-  );
-}
-
-/** Ключ словаря подписи вида участия [kind]. */
-function participationLabelKey(kind: ParticipationKind): PlainMessageKey {
-  switch (kind) {
-    case "REGULAR":
-      return "sessionDetail.participant.REGULAR";
-    case "ONE_TIME":
-      return "sessionDetail.participant.ONE_TIME";
-  }
-}
-
-/** Бейдж вида участия: постоянный участник группы или разовый. */
-function ParticipationBadge({ kind }: { readonly kind: ParticipationKind }) {
-  const { t } = useI18n();
-  return (
-    <span className="rounded-full border px-1.5 py-0.5 text-xs text-muted-foreground">
-      {t(participationLabelKey(kind))}
-    </span>
   );
 }
 
@@ -586,150 +426,6 @@ function MarkRemainingAbsentDialog({
   );
 }
 
-/** Диалог переноса занятия: новая дата и время. */
-function RescheduleDialog({
-  card,
-  onSave,
-  onClose,
-}: {
-  readonly card: SessionCard;
-  readonly onSave: (date: LocalDate, startTime: LocalTime, endTime: LocalTime) => void;
-  readonly onClose: () => void;
-}) {
-  const { t } = useI18n();
-  const [date, setDate] = useState(card.date);
-  const [startTime, setStartTime] = useState(card.startTime);
-  const [endTime, setEndTime] = useState(card.endTime);
-  const canSave = startTime < endTime;
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent closeLabel={t("action.close")}>
-        <DialogHeader>
-          <DialogTitle>{t("sessionDetail.rescheduleDialogTitle")}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium">{t("sessionDetail.field.date")}</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => {
-                setDate(localDateValue(event.target.value, date));
-              }}
-              className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium">{t("sessionDetail.field.startTime")}</span>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(event) => {
-                  setStartTime(localTimeValue(event.target.value, startTime));
-                }}
-                className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium">{t("sessionDetail.field.endTime")}</span>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(event) => {
-                  setEndTime(localTimeValue(event.target.value, endTime));
-                }}
-                className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-              />
-            </label>
-          </div>
-        </div>
-        <DialogFooter closeLabel={t("action.cancel")}>
-          <Button
-            disabled={!canSave}
-            onClick={() => {
-              onSave(date, startTime, endTime);
-            }}
-          >
-            {t("action.save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** Диалог смены зала занятия. */
-function ChangeHallDialog({
-  halls,
-  value,
-  onSave,
-  onClose,
-}: {
-  readonly halls: readonly ScheduleHallSchema[];
-  readonly value: ScheduleHallSchema;
-  readonly onSave: (hall: ScheduleHallSchema) => void;
-  readonly onClose: () => void;
-}) {
-  const { t } = useI18n();
-  const options = halls.length === 0 ? [value] : halls;
-  const initial = options.find((hall) => hall.id === value.id) ?? options[0] ?? value;
-  const [hallId, setHallId] = useState(initial.id);
-  const selected = options.find((hall) => hall.id === hallId) ?? initial;
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent closeLabel={t("action.close")}>
-        <DialogHeader>
-          <DialogTitle>{t("sessionDetail.changeHallDialogTitle")}</DialogTitle>
-        </DialogHeader>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium">{t("sessionDetail.field.hall")}</span>
-          <NativeSelect
-            value={hallId}
-            onChange={(event) => {
-              const hall = options.find((h) => h.id === event.target.value);
-              if (hall !== undefined) {
-                setHallId(hall.id);
-              }
-            }}
-          >
-            {options.map((hall) => (
-              <option key={hall.id} value={hall.id}>
-                {hall.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-        <DialogFooter closeLabel={t("action.cancel")}>
-          <Button
-            onClick={() => {
-              onSave(selected);
-            }}
-          >
-            {t("action.save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 /** Диалог заметки к занятию. */
 function NoteDialog({
   initialNote,
@@ -773,16 +469,4 @@ function NoteDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-/** Значение `<input type="date">` [raw] как `LocalDate`; некорректное значение не меняет [fallback]. */
-function localDateValue(raw: string, fallback: LocalDate): LocalDate {
-  const parsed = LocalDateSchema.safeParse(raw);
-  return parsed.success ? parsed.data : fallback;
-}
-
-/** Значение `<input type="time">` [raw] как `LocalTime`; некорректное значение не меняет [fallback]. */
-function localTimeValue(raw: string, fallback: LocalTime): LocalTime {
-  const parsed = LocalTimeSchema.safeParse(raw);
-  return parsed.success ? parsed.data : fallback;
 }

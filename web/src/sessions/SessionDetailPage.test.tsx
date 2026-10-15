@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 import {
   AttendanceLabelSchemaSchema,
+  ClientDetailResponseSchema,
   ClientListItemSchema,
   JournalParticipantRequestSchema,
   MarkAttendanceRequestSchema,
@@ -42,6 +43,23 @@ const truant = AttendanceLabelSchemaSchema.parse({
 });
 const labels = [late, sick, truant];
 
+/** Тренер занятия — детали для ответа `employees/detail`. */
+const coach = {
+  id: "0199a0b2-0000-7000-8000-300000000001",
+  name: "Сергей Волков",
+  avatarId: null,
+  isOwner: false,
+  isActive: true,
+  joinedAt: "2024-01-01T00:00:00Z",
+  roles: [],
+  phoneNo: null,
+  email: "volkov@example.com",
+  grantedPermissions: [],
+  revokedPermissions: [],
+  allBranchesAccess: true,
+  branchIds: [],
+};
+
 const participant = (
   id: string,
   name: string,
@@ -63,6 +81,18 @@ const client = (id: string, name: string) =>
     state: "ACTIVE",
   });
 
+/** Полная карточка участницы «Аня» с телефоном и почтой. */
+const annaDetail = ClientDetailResponseSchema.parse({
+  ...client("1", "Аня"),
+  groups: [{ id: "0199a0b2-0000-7000-8000-100000000001", name: "Юниоры У8" }],
+  docs: [],
+  leadSourceId: null,
+  contacts: [
+    { id: "0199a0b2-0000-7000-8000-700000000001", type: "PHONE", value: "+70000000001" },
+    { id: "0199a0b2-0000-7000-8000-700000000002", type: "EMAIL", value: "anna@example.com" },
+  ],
+});
+
 /** Журнал запланированного, уже начавшегося занятия с участниками [participants]. */
 function journalOf(
   participants: readonly ReturnType<typeof participant>[],
@@ -75,7 +105,7 @@ function journalOf(
     startTime: "17:00",
     endTime: "18:00",
     hall: { id: "0199a0b2-0000-7000-8000-200000000001", name: "Зал А" },
-    coaches: [{ id: "0199a0b2-0000-7000-8000-300000000001", name: "Сергей Волков" }],
+    coaches: [{ id: coach.id, name: coach.name }],
     status,
     hasStarted: true,
     participants,
@@ -97,6 +127,36 @@ function journalServer(initial: SessionJournalResponse, failMark = false) {
     "attendance-labels/list": () => json({ labels }),
     "halls/list": () => json({ halls: [] }),
     "employees/list": () => json({ employees: [], total: 0 }),
+    "employees/detail": () => json(coach),
+    "clients/detail": () => json(annaDetail),
+    "memberships/list": () =>
+      json({
+        memberships: [
+          {
+            id: "0199a0b2-0000-7000-8000-800000000001",
+            name: "8 занятий",
+            sessionsTotal: 8,
+            sessionsRemaining: 3,
+            startDate: "2026-09-01",
+            endDate: "2026-10-31",
+            price: { minorUnits: 400_000, currency: "RUB" },
+            status: "ACTIVE",
+          },
+        ],
+      }),
+    "attendance/client": () =>
+      json({
+        items: [
+          {
+            sessionId: "0199a0b2-0000-7000-8000-500000000002",
+            group: { id: "0199a0b2-0000-7000-8000-100000000001", name: "Юниоры У8" },
+            date: "2026-09-28",
+            startTime: "17:00",
+            presence: "ABSENT",
+            labels: [sick],
+          },
+        ],
+      }),
     "clients/list": () => json({ clients: [client("1", "Аня"), client("9", "Гость")], total: 2 }),
     "sessions/journal/mark": ({ body }) => {
       if (failMark) {
@@ -167,6 +227,61 @@ const labelGroup = (name: string) =>
   within(row(name)).getByRole("group", { name: `Метки: ${name}` });
 
 describe("карточка занятия", () => {
+  it("клик по тренеру открывает его карточку панелью, после закрытия остаётся занятие", async () => {
+    const server = journalServer(journalOf([participant("1", "Аня")]));
+    const { history } = openApp(`/sessions/${sessionId}`, server.fetch);
+    const user = userEvent.setup();
+
+    const coachLink = await screen.findByRole("link", { name: coach.name });
+    expect(coachLink).toHaveAttribute("href", expect.stringContaining(`employee=${coach.id}`));
+    await user.click(coachLink);
+
+    const card = within(await screen.findByRole("dialog", { name: coach.name }));
+    expect(await card.findByText(coach.email)).toBeVisible();
+    expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
+
+    await user.click(card.getByRole("button", { name: ru["action.close"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
+    expect(screen.getByText("Юниоры У8")).toBeVisible();
+  });
+
+  it("клик по участнику открывает краткую карточку клиента панелью, не уходя с занятия", async () => {
+    const server = journalServer(journalOf([participant("1", "Аня")]));
+    const { history } = openApp(`/sessions/${sessionId}`, server.fetch);
+    const user = userEvent.setup();
+
+    const clientLink = await screen.findByRole("link", { name: "Аня" });
+    expect(clientLink).toHaveAttribute("href", `/clients/${annaDetail.id}`);
+    await user.click(clientLink);
+
+    const card = within(await screen.findByRole("dialog", { name: "Аня" }));
+    expect(await card.findByRole("link", { name: "+70000000001" })).toHaveAttribute(
+      "href",
+      "tel:+70000000001",
+    );
+    expect(card.getByRole("link", { name: "anna@example.com" })).toHaveAttribute(
+      "href",
+      "mailto:anna@example.com",
+    );
+    expect(await card.findAllByText("8 занятий")).not.toHaveLength(0);
+    expect(await card.findByText(ru["sessionDetail.attendance.ABSENT"])).toBeVisible();
+    expect(card.getByRole("link", { name: ru["participantCard.openFull"] })).toHaveAttribute(
+      "href",
+      `/clients/${annaDetail.id}`,
+    );
+    expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
+
+    await user.click(card.getByRole("button", { name: ru["action.close"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
+  });
+
   it("показывает данные занятия и состав с сервера, различая вид участия", async () => {
     const server = journalServer(
       journalOf([participant("1", "Аня"), participant("2", "Гость", "ONE_TIME")]),
@@ -307,8 +422,11 @@ describe("карточка занятия", () => {
       name: ru["sessionDetail.completeAction"],
     });
     expect(complete).toBeDisabled();
+    expect(complete).toHaveAccessibleDescription(
+      new RegExp(ru["sessionDetail.completeBlocked.title"]),
+    );
     expect(
-      screen.getByText(ru["sessionDetail.completeBlocked.unmarked"].replace("{count}", String(1))),
+      screen.getByText(ru["sessionDetail.completeBlocked.unmarked"].one.replace("{count}", "1")),
     ).toBeVisible();
 
     await user.click(presenceButton("Аня", ru["sessionDetail.attendance.PRESENT"]));

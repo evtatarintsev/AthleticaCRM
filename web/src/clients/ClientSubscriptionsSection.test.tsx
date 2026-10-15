@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
@@ -30,6 +30,7 @@ function subscriptionsServer(initial: ClientDetailResponse) {
   let memberships: MembershipSchema[] = [];
   return appServer({
     "custom-fields/list": () => json([]),
+    "org/settings": () => json({ name: "Лига", timezone: "Europe/Moscow", currency: "RUB" }),
     "clients/detail": () => json(client),
     "clients/notes/list": () => json({ notes: [] }),
     "tariffs/list": () => json({ tariffs: [] }),
@@ -61,15 +62,22 @@ describe("абонементы клиента", () => {
     const user = userEvent.setup();
 
     await screen.findByText(ru["clients.detail.subscriptionsEmpty"]);
-    await user.click(screen.getByRole("link", { name: ru["clients.detail.issueSubscription"] }));
+    await user.click(screen.getByRole("button", { name: ru["clients.detail.issueSubscription"] }));
 
-    await screen.findByRole("heading", { name: ru["clients.detail.issueSubscription"] });
+    const panel = await screen.findByRole("dialog", {
+      name: ru["clients.detail.issueSubscription"],
+    });
+    await user.click(
+      await within(panel).findByRole("button", {
+        name: new RegExp(`^${ru["clients.detail.subscriptionIndividual"]}`),
+      }),
+    );
     await user.type(screen.getByLabelText(ru["clients.detail.subscriptionSessionsField"]), "10");
     await user.type(
       screen.getByLabelText(ru["clients.detail.subscriptionPrice"].replace("{currency}", "RUB")),
       "5000",
     );
-    await user.click(screen.getByRole("button", { name: ru["clients.detail.issueSubscription"] }));
+    await user.click(within(panel).getByRole("button", { name: ru["clients.issue.submit"] }));
 
     await waitFor(() => {
       expect(api.to("memberships/issue")).toHaveLength(1);
@@ -78,6 +86,11 @@ describe("абонементы клиента", () => {
     expect(request.clientId).toBe(dana.id);
     expect(request.sessions).toBe(10);
     expect(request.price).toEqual({ minorUnits: 500000, currency: "RUB" });
+    expect(request.tariffPlanId).toBeNull();
+    expect(request.name).toBe(ru["clients.detail.subscriptionIndividual"]);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
 
     expect(await screen.findAllByText(ru["clients.detail.subscriptionIndividual"])).toHaveLength(2);
   });

@@ -44,7 +44,6 @@ val appSerializersModule =
             subclass(ChannelConfig.TwilioSms::class, ChannelConfig.TwilioSms.serializer())
             subclass(ChannelConfig.SmscSms::class, ChannelConfig.SmscSms.serializer())
             subclass(ChannelConfig.TelegramBot::class, ChannelConfig.TelegramBot.serializer())
-            subclass(ChannelConfig.InApp::class, ChannelConfig.InApp.serializer())
         }
     }
 

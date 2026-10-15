@@ -34,15 +34,15 @@ function addressOptions(
   channel: ChannelIntegrationSchema,
   contacts: readonly ClientContactSchema[],
 ): readonly ClientContactSchema[] {
-  return contacts.filter((contact) => isContactCompatible(contact.type, channel.channelType));
+  return contacts.filter((contact) => isContactCompatible(contact.type, channel.config.type));
 }
 
-/** Канал доступен для отправки, если это IN_APP или у клиента есть подходящий контакт. */
+/** Канал доступен для отправки, если у клиента есть подходящий контакт. */
 function isAvailable(
   channel: ChannelIntegrationSchema,
   contacts: readonly ClientContactSchema[],
 ): boolean {
-  return channel.channelType === "IN_APP" || addressOptions(channel, contacts).length > 0;
+  return addressOptions(channel, contacts).length > 0;
 }
 
 /** Канал, выбранный по умолчанию, пока пользователь не выбрал свой: первый доступный. */
@@ -247,7 +247,7 @@ function deliveryStateLabel(
   }
 }
 
-/** Выбор канала отправки: недоступные (без подходящего контакта, кроме IN_APP) отключены. */
+/** Выбор канала отправки: недоступные (без подходящего контакта) отключены. */
 function ChannelPicker({
   channels,
   contacts,

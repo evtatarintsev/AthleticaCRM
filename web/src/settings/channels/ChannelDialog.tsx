@@ -18,7 +18,7 @@ import { useI18n, type I18n } from "@/i18n/context";
 export type ChannelProvider = ChannelConfig["type"];
 
 /** Провайдеры в порядке показа в выпадающем списке. */
-const PROVIDERS: readonly ChannelProvider[] = ["in_app", "smsc_sms", "telegram_bot", "twilio_sms"];
+const PROVIDERS: readonly ChannelProvider[] = ["smsc_sms", "telegram_bot", "twilio_sms"];
 
 /** Настройки канала из формы: имя, включённость и конфигурация провайдера. */
 export interface ChannelTerms {
@@ -43,8 +43,6 @@ interface ChannelFormValues {
 /** Конфигурация провайдера [provider] со значениями пустой строки. */
 function defaultConfig(provider: ChannelProvider): ChannelConfig {
   switch (provider) {
-    case "in_app":
-      return { type: "in_app" };
     case "smsc_sms":
       return { type: "smsc_sms", login: "", password: "" };
     case "telegram_bot":
@@ -63,8 +61,6 @@ function valuesFromConfig(
 > {
   const blank = { login: "", password: "", botToken: "", accountSid: "", authToken: "", from: "" };
   switch (config.type) {
-    case "in_app":
-      return { ...blank, provider: "in_app" };
     case "smsc_sms":
       return { ...blank, provider: "smsc_sms", login: config.login, password: config.password };
     case "telegram_bot":
@@ -83,8 +79,6 @@ function valuesFromConfig(
 /** Конфигурация из значений формы [values] для провайдера `values.provider`. */
 function configFromValues(values: ChannelFormValues): ChannelConfig {
   switch (values.provider) {
-    case "in_app":
-      return { type: "in_app" };
     case "smsc_sms":
       return { type: "smsc_sms", login: values.login.trim(), password: values.password };
     case "telegram_bot":
@@ -117,7 +111,6 @@ function channelSchema(t: I18n["t"]) {
       type CredentialField =
         "login" | "password" | "botToken" | "accountSid" | "authToken" | "from";
       const required: Readonly<Record<ChannelProvider, readonly CredentialField[]>> = {
-        in_app: [],
         smsc_sms: ["login", "password"],
         telegram_bot: ["botToken"],
         twilio_sms: ["accountSid", "authToken", "from"],
@@ -152,7 +145,7 @@ export function ChannelDialog({
   const defaultValues: ChannelFormValues = {
     name: initial?.name ?? "",
     enabled: initial?.enabled ?? true,
-    ...valuesFromConfig(initial?.config ?? defaultConfig("in_app")),
+    ...valuesFromConfig(initial?.config ?? defaultConfig("smsc_sms")),
   };
   const form = useForm({
     defaultValues,

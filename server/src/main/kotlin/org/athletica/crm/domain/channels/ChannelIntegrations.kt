@@ -7,24 +7,39 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.storage.Transaction
 
-/** Репозиторий интеграций каналов связи. Все операции изолированы по организации. */
+/**
+ * Коллекция интеграций каналов организации: хранит их и выдаёт по id.
+ * Все запросные операции изолированы по организации; персистентность — здесь, а не на элементе.
+ */
 interface ChannelIntegrations {
-    /** Возвращает все интеграции организации в порядке создания. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun list(): List<ChannelIntegration>
-
-    /** Возвращает интеграцию по [id]; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации. */
+    /**
+     * Возвращает интеграцию-отправитель по [id]; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит
+     * другой организации.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: ChannelIntegrationId): ChannelIntegration
 
-    /** Создаёт несохранённую (активную) интеграцию; запись в БД — через [ChannelIntegration.save]. */
+    /** Добавляет новую (активную) интеграцию [id] с настройками [config]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun new(id: ChannelIntegrationId, name: String, config: ChannelConfig): ChannelIntegration
+    suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig)
+
+    /** Обновляет интеграцию [id]; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun update(
+        id: ChannelIntegrationId,
+        name: String,
+        config: ChannelConfig,
+        enabled: Boolean,
+    )
+
+    /** Удаляет интеграцию [id]. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun remove(id: ChannelIntegrationId)
 
     /**
-     * Worker-путь: возвращает конфиг интеграции по [id] без привязки к организации.
-     * Используется фоновым диспетчером при отправке. `null`, если интеграция удалена.
+     * Worker-путь: возвращает интеграцию по [id] без привязки к организации, готовую к отправке
+     * ([ChannelIntegration.send]). Используется фоновым диспетчером. `null`, если интеграция удалена.
      */
     context(tr: Transaction)
-    suspend fun configById(id: ChannelIntegrationId): ChannelConfig?
+    suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration?
 }

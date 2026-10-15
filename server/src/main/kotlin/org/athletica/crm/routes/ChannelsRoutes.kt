@@ -1,13 +1,12 @@
 package org.athletica.crm.routes
 
 import io.ktor.server.routing.route
-import org.athletica.crm.api.schemas.channels.ChannelIntegrationSchema
 import org.athletica.crm.api.schemas.channels.ChannelListResponse
 import org.athletica.crm.api.schemas.channels.CreateChannelIntegrationRequest
 import org.athletica.crm.api.schemas.channels.DeleteChannelIntegrationRequest
 import org.athletica.crm.api.schemas.channels.UpdateChannelIntegrationRequest
-import org.athletica.crm.domain.channels.ChannelIntegration
 import org.athletica.crm.domain.channels.ChannelIntegrations
+import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 
 /**
@@ -15,41 +14,33 @@ import org.athletica.crm.storage.Database
  * Требует контекстного параметра [Database].
  */
 context(db: Database)
-fun RouteWithContext.channelsRoutes(channels: ChannelIntegrations) {
+fun RouteWithContext.channelsRoutes(
+    channels: ChannelIntegrations,
+    views: ReadViews,
+) {
     route("/channels") {
         get<Unit, ChannelListResponse>("/list") {
             db.transaction {
-                ChannelListResponse(channels.list().map { it.toSchema() })
+                views.channelList.list()
             }
         }
 
         post<CreateChannelIntegrationRequest, Unit>("/create") { request ->
             db.transaction {
-                channels.new(id = request.id, name = request.name, config = request.config).save()
+                channels.add(id = request.id, name = request.name, config = request.config)
             }
         }
 
         post<UpdateChannelIntegrationRequest, Unit>("/update") { request ->
             db.transaction {
-                channels.byId(request.id)
-                    .withNew(name = request.name, config = request.config, enabled = request.enabled)
-                    .save()
+                channels.update(id = request.id, name = request.name, config = request.config, enabled = request.enabled)
             }
         }
 
         post<DeleteChannelIntegrationRequest, Unit>("/delete") { request ->
             db.transaction {
-                channels.byId(request.id).delete()
+                channels.remove(request.id)
             }
         }
     }
 }
-
-private fun ChannelIntegration.toSchema(): ChannelIntegrationSchema =
-    ChannelIntegrationSchema(
-        id = id,
-        channelType = channelType,
-        name = name,
-        config = config,
-        enabled = enabled,
-    )

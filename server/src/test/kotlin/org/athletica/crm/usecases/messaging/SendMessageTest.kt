@@ -19,6 +19,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.conversations.DbConversations
@@ -26,6 +27,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asString
+import org.athletica.infra.messaging.StubChannelIntegrationFactory
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,10 +42,10 @@ class SendMessageTest {
     private val clientId = ClientId.new()
     private val smsIntegrationId = ChannelIntegrationId.new()
     private val disabledIntegrationId = ChannelIntegrationId.new()
-    private val inAppIntegrationId = ChannelIntegrationId.new()
 
-    private val channels = DbChannelIntegrations()
     private val contacts = DbClientContacts()
+    private val bindings = DbChannelBindings()
+    private val channels = DbChannelIntegrations(StubChannelIntegrationFactory(contacts, bindings))
     private val conversations = DbConversations()
     private val deliveries = DbDeliveries()
 
@@ -72,26 +74,24 @@ class SendMessageTest {
                 .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
             TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
                 .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
-            insertIntegration(smsIntegrationId, "SMS", SMS_CONFIG, enabled = true)
-            insertIntegration(disabledIntegrationId, "SMS", SMS_CONFIG, enabled = false)
-            insertIntegration(inAppIntegrationId, "IN_APP", IN_APP_CONFIG, enabled = true)
+            insertIntegration(smsIntegrationId, SMS_CONFIG, enabled = true)
+            insertIntegration(disabledIntegrationId, SMS_CONFIG, enabled = false)
         }
     }
 
     private suspend fun insertIntegration(
         id: ChannelIntegrationId,
-        channelType: String,
         config: String,
         enabled: Boolean,
     ) {
         TestPostgres.db.sql(
             """
-            INSERT INTO channel_integrations (id, org_id, channel_type, name, config, enabled)
-            VALUES (:id, :orgId, :channelType, :name, :config::jsonb, :enabled)
+            INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+            VALUES (:id, :orgId, :name, :config::jsonb, :enabled)
             """.trimIndent(),
         )
-            .bind("id", id).bind("orgId", orgId).bind("channelType", channelType)
-            .bind("name", "Test $channelType").bind("config", config).bind("enabled", enabled).execute()
+            .bind("id", id).bind("orgId", orgId)
+            .bind("name", "Test SMS").bind("config", config).bind("enabled", enabled).execute()
     }
 
     private suspend fun addPhoneContact(value: String = "+79990001122"): ClientContactId {
@@ -183,15 +183,6 @@ class SendMessageTest {
         }
 
     @Test
-    fun `IN_APP использует идентификатор клиента как адрес получателя`() =
-        runTest {
-            val result = send(inAppIntegrationId)
-
-            assertIs<Either.Right<ConversationResponse>>(result)
-            assertEquals(clientId.toString(), recipientAddress())
-        }
-
-    @Test
     fun `без контакта нужного типа возвращает CLIENT_HAS_NO_CONTACT и не создаёт доставку`() =
         runTest {
             val result = send(smsIntegrationId)
@@ -215,6 +206,5 @@ class SendMessageTest {
 
     private companion object {
         const val SMS_CONFIG = """{"type":"twilio_sms","accountSid":"sid","authToken":"tok","from":"+10000000000"}"""
-        const val IN_APP_CONFIG = """{"type":"in_app"}"""
     }
 }

@@ -3,16 +3,14 @@ package org.athletica.crm.api.schemas.channels
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.messaging.ChannelConfig
-import org.athletica.crm.core.messaging.ChannelType
 
 /**
  * Настроенная интеграция канала связи организации.
- * [channelType] выводится из провайдера [config] и отдаётся клиенту для группировки/фильтрации.
+ * Вид канала и его возможности выводятся из [config] (его подтипа).
  */
 @Serializable
 data class ChannelIntegrationSchema(
     val id: ChannelIntegrationId,
-    val channelType: ChannelType,
     val name: String,
     val config: ChannelConfig,
     val enabled: Boolean,

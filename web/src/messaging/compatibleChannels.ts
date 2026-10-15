@@ -1,19 +1,19 @@
-import type { ChannelType, ContactType } from "@/api/generated/contracts";
+import type { ChannelConfig, ContactType } from "@/api/generated/contracts";
+
+/** Вид канала — дискриминатор `type` в `ChannelConfig`. */
+type ChannelKind = ChannelConfig["type"];
 
 /**
- * Каналы доставки, для которых пригоден контакт данного типа (буквальный порт
- * `ContactType.compatibleChannels` из `shared`): один телефон годится для нескольких каналов,
- * профиль в Facebook пока без канала доставки.
+ * Типы контактов, которые умеет адресовать вид канала (буквальный порт
+ * `ChannelConfig.acceptedContactTypes` из `shared`).
  */
-const COMPATIBLE_CHANNELS: Readonly<Record<ContactType, readonly ChannelType[]>> = {
-  PHONE: ["SMS", "WHATSAPP", "TELEGRAM", "MAX"],
-  EMAIL: ["EMAIL"],
-  TELEGRAM: ["TELEGRAM"],
-  VK: ["VK"],
-  FACEBOOK: [],
+const ACCEPTED_CONTACT_TYPES: Readonly<Record<ChannelKind, readonly ContactType[]>> = {
+  smsc_sms: ["PHONE"],
+  twilio_sms: ["PHONE"],
+  telegram_bot: ["TELEGRAM"],
 };
 
-/** Истина, если контакт типа [contactType] пригоден для канала доставки [channelType]. */
-export function isContactCompatible(contactType: ContactType, channelType: ChannelType): boolean {
-  return COMPATIBLE_CHANNELS[contactType].includes(channelType);
+/** Истина, если контакт типа [contactType] пригоден для канала вида [kind]. */
+export function isContactCompatible(contactType: ContactType, kind: ChannelKind): boolean {
+  return ACCEPTED_CONTACT_TYPES[kind].includes(contactType);
 }

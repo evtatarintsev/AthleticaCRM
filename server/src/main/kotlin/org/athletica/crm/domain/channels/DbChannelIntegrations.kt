@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.channels
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import kotlinx.serialization.json.Json
@@ -15,21 +16,13 @@ import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
-/** Реализация репозитория интеграций каналов на PostgreSQL через R2DBC. */
-class DbChannelIntegrations : ChannelIntegrations {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun list(): List<ChannelIntegration> =
-        tr.sql(
-            """
-            SELECT id, name, config::text AS config, enabled
-            FROM channel_integrations
-            WHERE org_id = :orgId
-            ORDER BY created_at
-            """.trimIndent(),
-        )
-            .bind("orgId", ctx.orgId)
-            .list { row -> row.toChannelIntegration() }
-
+/**
+ * Реализация коллекции интеграций каналов на PostgreSQL через R2DBC.
+ * [factory] собирает строку результата в конкретную интеграцию (адаптер провайдера).
+ */
+class DbChannelIntegrations(
+    private val factory: ChannelIntegrationFactory,
+) : ChannelIntegrations {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: ChannelIntegrationId): ChannelIntegration =
         tr.sql(
@@ -41,22 +34,66 @@ class DbChannelIntegrations : ChannelIntegrations {
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .firstOrNull { row -> row.toChannelIntegration() }
+            .firstOrNull { row -> row.toChannelIntegration(factory) }
             ?: raise(CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена"))
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun new(id: ChannelIntegrationId, name: String, config: ChannelConfig): ChannelIntegration = DbChannelIntegration(id = id, name = name, config = config, enabled = true)
+    override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
+        tr.sql(
+            """
+            INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+            VALUES (:id, :orgId, :name, :config::jsonb, true)
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", name)
+            .bind("config", encodeChannelConfig(config))
+            .execute()
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun update(
+        id: ChannelIntegrationId,
+        name: String,
+        config: ChannelConfig,
+        enabled: Boolean,
+    ) {
+        val updated =
+            tr.sql(
+                """
+                UPDATE channel_integrations
+                SET name = :name, config = :config::jsonb, enabled = :enabled
+                WHERE id = :id AND org_id = :orgId
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("name", name)
+                .bind("config", encodeChannelConfig(config))
+                .bind("enabled", enabled)
+                .execute()
+        ensure(updated != 0L) { CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена") }
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun remove(id: ChannelIntegrationId) {
+        tr.sql("DELETE FROM channel_integrations WHERE id = :id AND org_id = :orgId")
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .execute()
+    }
 
     context(tr: Transaction)
-    override suspend fun configById(id: ChannelIntegrationId): ChannelConfig? =
-        tr.sql("SELECT config::text AS config FROM channel_integrations WHERE id = :id")
+    override suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration? =
+        tr.sql("SELECT id, name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
             .bind("id", id)
-            .firstOrNull { row -> decodeChannelConfig(row.asString("config")) }
+            .firstOrNull { row -> row.toChannelIntegration(factory) }
 }
 
-/** Собирает доменную интеграцию из строки результата. */
-internal fun Row.toChannelIntegration(): ChannelIntegration =
-    DbChannelIntegration(
+/** Собирает интеграцию-отправитель из строки результата через [factory]. */
+internal fun Row.toChannelIntegration(factory: ChannelIntegrationFactory): ChannelIntegration =
+    factory.create(
         id = asUuid("id").toChannelIntegrationId(),
         name = asString("name"),
         config = decodeChannelConfig(asString("config")),

@@ -192,8 +192,16 @@ fun Application.configureServer() {
                             di.clientContacts,
                         )
                         clientNotesRoutes(di.clientNotes)
-                        channelsRoutes(di.channelIntegrations)
-                        messagingRoutes(di.channelIntegrations, di.clientContacts, di.conversations, di.deliveries)
+                        channelsRoutes(di.channelIntegrations, di.views)
+                        messagingRoutes(
+                            di.channelIntegrations,
+                            di.clientContacts,
+                            di.conversations,
+                            di.deliveries,
+                            di.channelBindings,
+                            di.inboundReceipts,
+                            di.views,
+                        )
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }

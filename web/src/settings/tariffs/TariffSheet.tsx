@@ -1,4 +1,5 @@
 import { useForm } from "@tanstack/react-form";
+import { ArchiveIcon, ArchiveRestoreIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import {
@@ -9,18 +10,13 @@ import {
   type TariffPlanSchema,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { FormAlert } from "@/forms/FormAlert";
 import { CheckboxField, RadioGroupField, TextField } from "@/forms/fields";
 import { useI18n, type I18n } from "@/i18n/context";
 import { CURRENCIES } from "@/lib/currency";
 import { moneyEditText, parseMoney } from "@/lib/money";
+import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
 
 /** Условия тарифа из формы: всё, кроме идентификатора и признака архива. */
 export interface TariffTerms {
@@ -68,23 +64,55 @@ function tariffSchema(t: I18n["t"], currency: Currency) {
     });
 }
 
-/** Свойства диалога тарифа. */
-interface TariffDialogProps {
-  /** Заголовок: создание или редактирование. */
-  readonly title: string;
-  /** Редактируемый тариф; `null` — новый. */
+/** Свойства панели тарифа. */
+interface TariffSheetProps {
+  /** Открыта ли панель. */
+  readonly open: boolean;
+  /** Вызывается, когда панель надо открыть или закрыть. */
+  readonly onOpenChange: (open: boolean) => void;
+  /**
+   * Редактируемый тариф; `null` — новый. Владелец передаёт актуальное состояние тарифа:
+   * по нему панель показывает признак архива, а поля формы остаются как при открытии.
+   */
   readonly initial: TariffPlanSchema | null;
   /** Валюта организации: в ней вводится стоимость. */
   readonly currency: Currency;
-  /** Сохраняет условия [terms]; возвращает текст ошибки или `null` при успехе. */
+  /** Сохраняет условия [TariffTerms]; возвращает текст ошибки или `null` при успехе. */
   readonly onSave: (terms: TariffTerms) => Promise<string | null>;
-  /** Закрывает диалог. */
-  readonly onClose: () => void;
+  /**
+   * Переносит редактируемый тариф в архив или восстанавливает его; возвращает текст ошибки
+   * или `null` при успехе. Без обработчика действий архива в панели нет.
+   */
+  readonly onArchiveToggle?: (() => Promise<string | null>) | undefined;
 }
 
-/** Диалог создания или изменения тарифа: название, число занятий или безлимит, срок, стоимость. */
-export function TariffDialog({ title, initial, currency, onSave, onClose }: TariffDialogProps) {
+/**
+ * Панель создания или изменения тарифа: название, число занятий или безлимит, срок и стоимость;
+ * при изменении — перенос в архив и восстановление. Что делать с сохранённым тарифом, решает
+ * владелец панели через [TariffSheetProps.onSave].
+ */
+export function TariffSheet({ open, onOpenChange, initial, ...rest }: TariffSheetProps) {
   const { t } = useI18n();
+  return (
+    <EditSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={initial === null ? t("tariffs.create") : t("tariffs.edit")}
+    >
+      <TariffForm initial={initial} {...rest} />
+    </EditSheet>
+  );
+}
+
+/** Форма тарифа; после сохранения закрывает свою панель. */
+function TariffForm({
+  initial,
+  currency,
+  onSave,
+  onArchiveToggle,
+}: Omit<TariffSheetProps, "open" | "onOpenChange">) {
+  const { t } = useI18n();
+  const { close } = useEditSheet();
   const schema = useMemo(() => tariffSchema(t, currency), [t, currency]);
   const [failure, setFailure] = useState<string | null>(null);
   const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? currency;
@@ -115,7 +143,7 @@ export function TariffDialog({ title, initial, currency, onSave, onClose }: Tari
         price,
       });
       if (error === null) {
-        onClose();
+        close();
       } else {
         setFailure(error);
       }
@@ -123,26 +151,16 @@ export function TariffDialog({ title, initial, currency, onSave, onClose }: Tari
   });
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
+    <form.Subscribe
+      selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
     >
-      <DialogContent aria-describedby={undefined} closeLabel={t("action.close")}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <form
-          method="post"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
+      {({ dirty, submitting }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
             void form.handleSubmit();
           }}
-          className="space-y-4"
         >
           {failure !== null && <FormAlert message={failure} />}
           <form.Field name="name">
@@ -206,17 +224,64 @@ export function TariffDialog({ title, initial, currency, onSave, onClose }: Tari
               />
             )}
           </form.Field>
-          <DialogFooter closeLabel={t("action.cancel")}>
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(submitting) => (
-                <Button type="submit" disabled={submitting} aria-busy={submitting}>
-                  {t("action.save")}
-                </Button>
-              )}
-            </form.Subscribe>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          {initial !== null && onArchiveToggle !== undefined && (
+            <ArchiveSection archived={initial.archived} onToggle={onArchiveToggle} />
+          )}
+        </EditSheetForm>
+      )}
+    </form.Subscribe>
+  );
+}
+
+/**
+ * Блок архива тарифа: перенос в архив или восстановление по признаку [archived]. Действие
+ * [onToggle] выполняется сразу и не затрагивает черновик формы.
+ */
+function ArchiveSection({
+  archived,
+  onToggle,
+}: {
+  archived: boolean;
+  onToggle: () => Promise<string | null>;
+}) {
+  const { t } = useI18n();
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const toggle = async () => {
+    setPending(true);
+    setFailure(null);
+    const error = await onToggle();
+    setPending(false);
+    setFailure(error);
+  };
+
+  return (
+    <section className="space-y-3 border-t pt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-medium">{t("tariffs.archiveSection")}</h3>
+        {archived && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {t("tariffs.archived")}
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {archived ? t("tariffs.archivedHint") : t("tariffs.archiveHint")}
+      </p>
+      {failure !== null && <FormAlert message={failure} />}
+      <Button
+        type="button"
+        variant="outline"
+        disabled={pending}
+        aria-busy={pending}
+        onClick={() => {
+          void toggle();
+        }}
+      >
+        {archived ? <ArchiveRestoreIcon aria-hidden /> : <ArchiveIcon aria-hidden />}
+        {archived ? t("tariffs.restore") : t("tariffs.archive")}
+      </Button>
+    </section>
   );
 }

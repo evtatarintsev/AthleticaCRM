@@ -14,6 +14,7 @@ export const SettingsPanelSchema = z.enum([
   "client-sources",
   "client-additional-attributes",
   "client-import",
+  "tariffs",
 ]);
 
 /** Панель страницы настроек. */

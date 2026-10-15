@@ -25,7 +25,7 @@ describe("страница настроек", () => {
         "/settings?panel=client-sources",
         "/settings?panel=client-additional-attributes",
         "/settings?panel=client-import",
-        "/settings/tariffs",
+        "/settings?panel=tariffs",
         "/settings?panel=basic",
         "/settings?panel=org-balance",
         "/settings/activity-log",
@@ -38,11 +38,7 @@ describe("страница настроек", () => {
   it("каждый пункт веб-клиента открывает свою страницу", async () => {
     const user = userEvent.setup();
     const { history } = openApp("/settings", appServer({}).fetch);
-    const titles = [
-      ru["settings.itemSubscriptionTemplates"],
-      ru["settings.itemActivityLog"],
-      ru["settings.itemChannels"],
-    ];
+    const titles = [ru["settings.itemActivityLog"], ru["settings.itemChannels"]];
     for (const title of titles) {
       await screen.findByRole("heading", { level: 1, name: ru["settings.title"] });
       await user.click(await screen.findByRole("link", { name: new RegExp(title) }));
@@ -55,7 +51,7 @@ describe("страница настроек", () => {
     }
   }, 15000);
 
-  it("пункты разделов «Пользователь», «Основное», «Клиенты» и роли открывают панель на странице", async () => {
+  it("пункты разделов «Пользователь», «Основное», «Клиенты», роли и тарифы открывают панель на странице", async () => {
     const user = userEvent.setup();
     const { history } = openApp("/settings", appServer({}).fetch);
     const items = [
@@ -71,6 +67,7 @@ describe("страница настроек", () => {
       [ru["settings.itemClientSources"], ru["leadSources.title"]],
       [ru["settings.itemClientAdditionalAttributes"], ru["customFields.title"]],
       [ru["settings.itemClientImport"], ru["import.title"]],
+      [ru["settings.itemSubscriptionTemplates"], ru["tariffs.title"]],
     ] as const;
     for (const [item, title] of items) {
       await user.click(await screen.findByRole("link", { name: new RegExp(item) }));

@@ -37,6 +37,7 @@ import { DirectorySheet } from "./directory/DirectorySheet";
 import { OrgBalanceSheet } from "./org/OrgBalanceSheet";
 import { OrgSettingsSheet } from "./org/OrgSettingsSheet";
 import { RolesSheet } from "./roles/RolesSheet";
+import { TariffsSheet } from "./tariffs/TariffsSheet";
 import { SettingsPanelSchema, type SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
@@ -196,7 +197,7 @@ const SETTINGS: readonly SettingSection[] = [
         title: "settings.itemSubscriptionTemplates",
         subtitle: "settings.itemSubscriptionTemplatesSubtitle",
         icon: TicketIcon,
-        target: app("/settings/tariffs"),
+        target: panel("tariffs"),
       },
     ],
   },
@@ -245,6 +246,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   "client-sources": (props) => <DirectorySheet {...props} definition={leadSources} />,
   "client-additional-attributes": CustomFieldsSheet,
   "client-import": ClientImportSheet,
+  tariffs: TariffsSheet,
 };
 
 /**

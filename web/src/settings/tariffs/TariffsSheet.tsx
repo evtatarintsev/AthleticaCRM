@@ -14,8 +14,8 @@ import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
-import { TariffRow } from "./TariffRow";
-import { TariffSheet, type TariffTerms } from "./TariffSheet";
+import { TariffRow } from "@/tariffs/TariffRow";
+import { TariffSheet, type TariffTerms } from "@/tariffs/TariffSheet";
 
 /**
  * Что редактируется во вложенной панели: новый тариф или существующий. Значение остаётся

@@ -25,7 +25,6 @@ import { ClientComingSoonPage } from "@/clients/ClientComingSoonPage";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
 import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
-import { ClientIssueSubscriptionPage } from "@/clients/ClientIssueSubscriptionPage";
 import { ClientListSearchSchema, type ClientListSearch } from "@/clients/clientListSearch";
 import { EmployeeListSearchSchema } from "@/employees/employeeSearch";
 import { EmployeesPage } from "@/employees/EmployeesPage";
@@ -490,24 +489,6 @@ const clientEditRoute = createRoute({
   },
 });
 
-/** Выдача абонемента клиенту [clientId]. */
-const clientIssueSubscriptionRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/clients/$clientId/issue-subscription",
-  params: {
-    parse: ({ clientId }): { clientId: ClientId } | false => {
-      const parsed = ClientIdSchema.safeParse(clientId);
-      return parsed.success ? { clientId: parsed.data } : false;
-    },
-    stringify: ({ clientId }) => ({ clientId }),
-  },
-  component: function ClientIssueSubscriptionRoute() {
-    const { api } = clientIssueSubscriptionRoute.useRouteContext();
-    const { clientId } = clientIssueSubscriptionRoute.useParams();
-    return <ClientIssueSubscriptionPage api={api} clientId={clientId} />;
-  },
-});
-
 /** История посещений клиента [clientId] (заглушка, как и в KMP-клиенте). */
 const clientVisitHistoryRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -601,7 +582,6 @@ const routeTree = rootRoute.addChildren([
     clientRoute,
     clientEditRoute,
     clientMessagesRoute,
-    clientIssueSubscriptionRoute,
     clientVisitHistoryRoute,
     clientPaymentHistoryRoute,
     tasksRoute,

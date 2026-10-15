@@ -18,6 +18,7 @@ import { ClientGroupsSection } from "./ClientGroupsSection";
 import { ClientNotesSection } from "./ClientNotesSection";
 import { ClientAttendanceSection, ClientUpcomingSection } from "./ClientScheduleSections";
 import { ClientSubscriptionsSection } from "./ClientSubscriptionsSection";
+import { IssueSubscriptionSheet } from "./IssueSubscriptionSheet";
 import {
   attendanceWith,
   clientAttendanceQuery,
@@ -36,8 +37,8 @@ import { ClientCardProfile } from "./card/ClientCardProfile";
 /**
  * Карточка клиента: шапка с действиями и предупреждениями, слева — контакты и анкета,
  * справа — лента блоков (занятия, абонементы, группы, посещения, задачи, сообщения,
- * заметки, документы) в порядке шаблона карточки. Плитка баланса открывает панель «Баланс»,
- * если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`.
+ * заметки, документы) в порядке шаблона карточки. «Выдать абонемент» открывает панель выдачи;
+ * плитка баланса открывает панель «Баланс», если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`.
  */
 export function ClientDetailPage({
   api,
@@ -52,6 +53,7 @@ export function ClientDetailPage({
   const branchId = session.currentBranch.id;
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
@@ -144,6 +146,9 @@ export function ClientDetailPage({
         onToggleArchived={(archived) => {
           void toggleArchived(archived);
         }}
+        onIssueSubscription={() => {
+          setIssueOpen(true);
+        }}
       />
 
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
@@ -170,6 +175,13 @@ export function ClientDetailPage({
         </div>
       </div>
 
+      <IssueSubscriptionSheet
+        api={api}
+        branchId={branchId}
+        clientId={clientId}
+        open={issueOpen}
+        onOpenChange={setIssueOpen}
+      />
       {canViewBalance && (
         <ClientBalanceSheet
           api={api}

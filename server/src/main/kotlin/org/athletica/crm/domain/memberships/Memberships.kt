@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.DomainError
@@ -23,6 +24,7 @@ interface Memberships {
      * Выдаёт абонемент [id] клиенту [clientId] в дату [issuedOn] (в часовом поясе организации)
      * и сохраняет его вместе с записью истории о выдаче.
      *
+     * Абонемент действует в группах [groupIds] организации — хотя бы одной.
      * Остаток занятий равен [sessions] (`null` — безлимит). Начальное состояние определяют
      * [activation] и правила выдачи ([issueOutcome]): при активации при выдаче в историю
      * пишется и активация. Выдавший — сотрудник из контекста.
@@ -34,6 +36,7 @@ interface Memberships {
         tariffPlanId: TariffPlanId?,
         name: String,
         sessions: Int?,
+        groupIds: List<GroupId>,
         duration: MembershipDuration,
         price: Money,
         activation: Activation,

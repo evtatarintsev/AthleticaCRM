@@ -32,6 +32,7 @@ export function testMembership(params: TestMembership): MembershipSchema {
     activationDeadline: params.activationDeadline ?? null,
     closeMode: params.closeMode ?? "MANUAL",
     issuedOn: "2026-09-01",
+    groups: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000901", name: "Утренняя группа" }],
     state: params.state,
   });
 }

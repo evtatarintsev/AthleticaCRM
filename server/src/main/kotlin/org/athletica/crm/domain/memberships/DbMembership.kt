@@ -31,6 +31,7 @@ data class StoredMembershipTerms(
     override val name: String,
     override val sessionsTotal: Int?,
     override val duration: MembershipDuration,
+    override val groups: List<MembershipGroup>,
     override val price: Money,
     override val closeMode: CloseMode,
     override val issuedOn: LocalDate,

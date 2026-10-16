@@ -14,6 +14,7 @@ import {
   type CloseMode,
   type Currency,
   type DurationUnit,
+  type GroupId,
   type TariffPlanSchema,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,14 @@ interface IssueSubscriptionFormValues {
   /** Необязательная крайняя дата для режима «при первом посещении». */
   readonly activationDeadline: string;
   readonly closeMode: CloseMode;
+  /** Группы, в которых действует абонемент. */
+  readonly groupIds: readonly GroupId[];
+}
+
+/** Группа, которую можно выбрать для абонемента. */
+interface GroupOption {
+  readonly id: GroupId;
+  readonly name: string;
 }
 
 /** Наибольшее значение `Int` в Kotlin: больше сервер не примет. */
@@ -81,10 +90,15 @@ function issueSubscriptionSchema(t: I18n["t"], currency: Currency) {
       activateOn: z.string(),
       activationDeadline: z.string(),
       closeMode: z.enum(["MANUAL", "ON_LAST_SESSION", "ON_EXPIRY"]),
+      groupIds: z.custom<readonly GroupId[]>((value) => Array.isArray(value)),
     })
     .refine((v) => v.unlimited || positiveInt(v.sessions) !== null, {
       path: ["sessions"],
       message: t("error.positiveInteger"),
+    })
+    .refine((v) => v.groupIds.length > 0, {
+      path: ["groupIds"],
+      message: t("clients.issue.groupsRequired"),
     })
     .refine((v) => v.activationMode !== "ON_DATE" || v.activateOn !== "", {
       path: ["activateOn"],
@@ -103,15 +117,16 @@ function templateKey(template: Template): string {
 }
 
 /**
- * Значения формы по шаблону [template]: активация «сразу», закрытие «вручную»;
- * дата для режима «с даты» по умолчанию — сегодня.
+ * Значения формы по шаблону [template]: активация «сразу», закрытие «вручную»,
+ * отмечены группы [groupIds]; дата для режима «с даты» по умолчанию — сегодня.
  */
-function valuesFrom(template: Template): IssueSubscriptionFormValues {
+function valuesFrom(template: Template, groupIds: readonly GroupId[]): IssueSubscriptionFormValues {
   const modes = {
     activationMode: "IMMEDIATE",
     activateOn: todayLocalDate(),
     activationDeadline: "",
     closeMode: "MANUAL",
+    groupIds,
   } as const;
   switch (template.kind) {
     case "tariff":
@@ -177,14 +192,16 @@ function IssueSubscriptionPanel({
 }) {
   const { t } = useI18n();
   const settings = useQuery(apiQuery(api, branchId, "org/settings"));
-  if (settings.isError) {
+  const client = useQuery(apiQuery(api, branchId, "clients/detail", { id: clientId }));
+  const groups = useQuery(apiQuery(api, branchId, "groups/list", {}));
+  if (settings.isError || client.isError || groups.isError) {
     return (
       <EditSheetBody>
         <FormAlert message={t("directory.loadError")} />
       </EditSheetBody>
     );
   }
-  if (settings.data === undefined) {
+  if (settings.data === undefined || client.data === undefined || groups.data === undefined) {
     return (
       <EditSheetBody>
         <Skeleton className="h-32 w-full" />
@@ -197,12 +214,32 @@ function IssueSubscriptionPanel({
       branchId={branchId}
       clientId={clientId}
       currency={settings.data.currency}
+      groupOptions={groupOptions(client.data.groups, groups.data.groups)}
+      clientGroupIds={client.data.groups.map((group) => group.id)}
     />
   );
 }
 
+/** Группы для выбора: группы клиента [clientGroups] и группы филиала [branchGroups] без повторов. */
+function groupOptions(
+  clientGroups: readonly GroupOption[],
+  branchGroups: readonly GroupOption[],
+): readonly GroupOption[] {
+  const seen = new Set<string>();
+  return [...clientGroups, ...branchGroups]
+    .filter((group) => {
+      if (seen.has(group.id)) {
+        return false;
+      }
+      seen.add(group.id);
+      return true;
+    })
+    .map(({ id, name }) => ({ id, name }));
+}
+
 /**
- * Шаги выдачи в валюте [currency]. Форма условий живёт на обоих шагах: повторный выбор того же
+ * Шаги выдачи в валюте [currency]; группы — из [groupOptions], по умолчанию отмечены
+ * группы клиента [clientGroupIds]. Форма условий живёт на обоих шагах: повторный выбор того же
  * шаблона сохраняет введённые значения, выбор другого заполняет поля его условиями заново.
  */
 function IssueSubscriptionSteps({
@@ -210,11 +247,15 @@ function IssueSubscriptionSteps({
   branchId,
   clientId,
   currency,
+  groupOptions: options,
+  clientGroupIds,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly currency: Currency;
+  readonly groupOptions: readonly GroupOption[];
+  readonly clientGroupIds: readonly GroupId[];
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -224,7 +265,9 @@ function IssueSubscriptionSteps({
   const schema = useMemo(() => issueSubscriptionSchema(t, currency), [t, currency]);
   const [step, setStep] = useState<"pick" | "terms">("pick");
   const [chosen, setChosen] = useState<Template | null>(null);
-  const [defaults, setDefaults] = useState(() => valuesFrom({ kind: "individual" }));
+  const [defaults, setDefaults] = useState(() =>
+    valuesFrom({ kind: "individual" }, clientGroupIds),
+  );
   const [failure, setFailure] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>({ kind: "create" });
   const [editorOpen, setEditorOpen] = useState(false);
@@ -256,6 +299,7 @@ function IssueSubscriptionSteps({
             ? chosen.tariff.name
             : t("clients.detail.subscriptionIndividual"),
         sessions,
+        groupIds: value.groupIds,
         durationValue,
         durationUnit: value.durationUnit,
         price,
@@ -294,7 +338,7 @@ function IssueSubscriptionSteps({
 
   const choose = (template: Template) => {
     if (chosen === null || templateKey(chosen) !== templateKey(template)) {
-      const values = valuesFrom(template);
+      const values = valuesFrom(template, clientGroupIds);
       setDefaults(values);
       form.reset(values);
       setFailure(null);
@@ -411,12 +455,17 @@ function IssueSubscriptionSteps({
       )}
       {step === "terms" && chosen !== null && (
         <form.Subscribe
-          selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
+          selector={(state) => ({
+            dirty: state.isDirty,
+            submitting: state.isSubmitting,
+            noGroups: state.values.groupIds.length === 0,
+          })}
         >
-          {({ dirty: formDirty, submitting }) => (
+          {({ dirty: formDirty, submitting, noGroups }) => (
             <EditSheetForm
               dirty={formDirty}
               submitting={submitting}
+              submitDisabled={noGroups}
               submitLabel={t("clients.issue.submit")}
               onSubmit={() => {
                 void form.handleSubmit();
@@ -430,6 +479,17 @@ function IssueSubscriptionSteps({
                   setStep("pick");
                 }}
               />
+              <form.Field name="groupIds">
+                {(field) => (
+                  <GroupsField
+                    options={options}
+                    value={field.state.value}
+                    onChange={(next) => {
+                      field.handleChange(next);
+                    }}
+                  />
+                )}
+              </form.Field>
               <form.Field
                 name="unlimited"
                 listeners={{
@@ -613,5 +673,53 @@ function TemplateSummary({
         {t("clients.issue.change")}
       </Button>
     </div>
+  );
+}
+
+/**
+ * Выбор групп абонемента из [options] с отмеченными [value]; изменения — через [onChange].
+ * Без отмеченных групп показывает, что нужна хотя бы одна.
+ */
+function GroupsField({
+  options,
+  value,
+  onChange,
+}: {
+  readonly options: readonly GroupOption[];
+  readonly value: readonly GroupId[];
+  readonly onChange: (next: readonly GroupId[]) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <fieldset className="space-y-1.5">
+      <legend className="text-sm font-medium">{t("clients.issue.groups")}</legend>
+      {options.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("clients.issue.noGroups")}</p>
+      )}
+      <div className="space-y-1">
+        {options.map((group) => (
+          <label key={group.id} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={value.includes(group.id)}
+              onChange={(event) => {
+                onChange(
+                  event.target.checked
+                    ? [...value, group.id]
+                    : value.filter((id) => id !== group.id),
+                );
+              }}
+              className="size-4 accent-primary"
+            />
+            {group.name}
+          </label>
+        ))}
+      </div>
+      {value.length === 0 && (
+        <p role="status" className="text-xs text-destructive">
+          {t("clients.issue.groupsRequired")}
+        </p>
+      )}
+    </fieldset>
   );
 }

@@ -16,7 +16,10 @@ const dana = ClientDetailResponseSchema.parse({
   avatarId: null,
   birthday: null,
   gender: "FEMALE",
-  groups: [],
+  groups: [
+    { id: "0199a0b2-7c3e-7d2a-9f10-000000000901", name: "Утренняя группа" },
+    { id: "0199a0b2-7c3e-7d2a-9f10-000000000902", name: "Вечерняя группа" },
+  ],
   balance: { minorUnits: 0, currency: "RUB" },
   docs: [],
   leadSourceId: null,
@@ -60,6 +63,19 @@ function issueServer({ failIssue = false }: { failIssue?: boolean } = {}) {
     "clients/detail": () => json(dana),
     "clients/notes/list": () => json({ notes: [] }),
     "memberships/list": () => json({ memberships: [] }),
+    "groups/list": () =>
+      json({
+        groups: [
+          {
+            id: "0199a0b2-7c3e-7d2a-9f10-000000000903",
+            name: "Дневная группа",
+            schedule: [],
+            scheduleChangeAt: null,
+            employees: [],
+          },
+        ],
+        total: 1,
+      }),
     "tariffs/list": () => json({ tariffs: tariffs.filter((t) => t["archived"] !== true) }),
     "tariffs/create": ({ body }) => {
       tariffs = [...tariffs, { ...CreateTariffPlanRequestSchema.parse(body), archived: false }];
@@ -119,6 +135,7 @@ describe("выдача абонемента", () => {
     expect(request.sessions).toBe(8);
     expect(request.price).toEqual({ minorUnits: 480000, currency: "RUB" });
     expect(request.activationMode).toBe("IMMEDIATE");
+    expect(request.groupIds).toEqual(dana.groups.map((group) => group.id));
     expect(request.closeMode).toBe("MANUAL");
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
@@ -303,5 +320,27 @@ describe("выдача абонемента", () => {
     expect(onLast).toBeDisabled();
     expect(onLast).not.toBeChecked();
     expect(panel.getByRole("radio", { name: ru["membership.close.MANUAL"] })).toBeChecked();
+  });
+  it("группы клиента отмечены по умолчанию, остальные группы филиала — нет", async () => {
+    const { user, dialog, panel } = await openIssue(issueServer());
+
+    await user.click(await pick(dialog, "Месяц"));
+
+    expect(panel.getByRole("checkbox", { name: "Утренняя группа" })).toBeChecked();
+    expect(panel.getByRole("checkbox", { name: "Вечерняя группа" })).toBeChecked();
+    expect(panel.getByRole("checkbox", { name: "Дневная группа" })).not.toBeChecked();
+  });
+
+  it("без групп выдать нельзя", async () => {
+    const api = issueServer();
+    const { user, dialog, panel } = await openIssue(api);
+
+    await user.click(await pick(dialog, "Месяц"));
+    await user.click(panel.getByRole("checkbox", { name: "Утренняя группа" }));
+    await user.click(panel.getByRole("checkbox", { name: "Вечерняя группа" }));
+
+    expect(panel.getByRole("button", { name: ru["clients.issue.submit"] })).toBeDisabled();
+    expect(panel.getByText(ru["clients.issue.groupsRequired"])).toBeInTheDocument();
+    expect(api.to("memberships/issue")).toHaveLength(0);
   });
 });

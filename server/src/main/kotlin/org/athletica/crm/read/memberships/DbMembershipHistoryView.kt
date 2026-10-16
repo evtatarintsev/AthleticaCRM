@@ -11,6 +11,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.athletica.crm.api.schemas.memberships.MembershipActivatedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipCloseNotifiedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipClosedEventSchema
+import org.athletica.crm.api.schemas.memberships.MembershipDebitReversedEventSchema
+import org.athletica.crm.api.schemas.memberships.MembershipDebitedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryEntrySchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
@@ -19,6 +21,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipRevokedEventSchema
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
@@ -32,6 +35,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
+import kotlin.uuid.Uuid
 
 /** Реализация [MembershipHistoryView] поверх `membership_events` одним запросом. */
 class DbMembershipHistoryView : MembershipHistoryView {
@@ -93,6 +97,17 @@ class DbMembershipHistoryView : MembershipHistoryView {
                     closedOn = LocalDate.parse(payload.string("closedOn")),
                 )
             "REVOKED" -> MembershipRevokedEventSchema
+            "DEBITED" ->
+                MembershipDebitedEventSchema(
+                    sessionId = Uuid.parse(payload.string("sessionId")).toSessionId(),
+                    sessionDate = LocalDate.parse(payload.string("sessionDate")),
+                    debtRepayment = payload.string("kind") == "DEBT",
+                )
+            "DEBIT_REVERSED" ->
+                MembershipDebitReversedEventSchema(
+                    sessionId = Uuid.parse(payload.string("sessionId")).toSessionId(),
+                    sessionDate = LocalDate.parse(payload.string("sessionDate")),
+                )
             else -> error("Неизвестный вид записи истории абонемента: $kind")
         }
 

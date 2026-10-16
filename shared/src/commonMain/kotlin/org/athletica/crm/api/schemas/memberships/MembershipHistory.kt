@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
@@ -94,3 +95,25 @@ data class MembershipClosedEventSchema(
 @Serializable
 @SerialName("revoked")
 data object MembershipRevokedEventSchema : MembershipEventSchema
+
+/** Списание занятия с абонемента. */
+@Serializable
+@SerialName("debited")
+data class MembershipDebitedEventSchema(
+    /** Занятие. */
+    val sessionId: SessionId,
+    /** Дата занятия. */
+    val sessionDate: LocalDate,
+    /** Списание — погашение долга сотрудником, а не списание при проведении. */
+    val debtRepayment: Boolean,
+) : MembershipEventSchema
+
+/** Возврат занятия на абонемент при правке отметки. */
+@Serializable
+@SerialName("debit_reversed")
+data class MembershipDebitReversedEventSchema(
+    /** Занятие. */
+    val sessionId: SessionId,
+    /** Дата занятия. */
+    val sessionDate: LocalDate,
+) : MembershipEventSchema

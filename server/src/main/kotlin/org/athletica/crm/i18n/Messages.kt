@@ -556,4 +556,14 @@ object Messages {
         override val ru = "Группа абонемента не найдена"
         override val en = "Membership group not found"
     }
+
+    object MembershipHasDebits : LocalizationKey {
+        override val ru = "С абонемента списаны занятия: сначала верните их, затем отзывайте абонемент"
+        override val en = "Sessions were debited from this membership: return them before revoking it"
+    }
+
+    object SessionNotFound : LocalizationKey {
+        override val ru = "Занятие не найдено"
+        override val en = "Session not found"
+    }
 }

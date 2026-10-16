@@ -125,6 +125,7 @@ function journalServer(initial: SessionJournalResponse, failMark = false) {
   };
   const server = appServer({
     "sessions/journal": () => json(journal),
+    "sessions/debit-preview": () => json(debitPreview(journal)),
     "attendance-labels/list": () => json({ labels }),
     "halls/list": () => json({ halls: [] }),
     "employees/list": () => json({ employees: [], total: 0 }),
@@ -207,6 +208,34 @@ function journalServer(initial: SessionJournalResponse, failMark = false) {
     },
   });
   return server;
+}
+
+/** Абонемент списания в превью: «8 занятий» с остатком [remaining]. */
+const eightSessions = (remaining: number) => ({
+  id: "0199a0b2-0000-7000-8000-800000000001",
+  name: "8 занятий",
+  sessionsRemaining: remaining,
+  sessionsTotal: 8,
+});
+
+/**
+ * Превью списаний поддельного сервера: у участника «1» есть абонемент (до проведения — спишется,
+ * остаток 4; после — списан, остаток 3), у остальных абонемента нет.
+ */
+function debitPreview(journal: SessionJournalResponse) {
+  const completed = journal.status === "COMPLETED";
+  return {
+    participants: journal.participants.map((p) => ({
+      clientId: p.clientId,
+      debit: p.clientId.endsWith("1")
+        ? completed
+          ? { type: "debited", membership: eightSessions(3) }
+          : { type: "will_debit", membership: eightSessions(4), activates: false }
+        : completed && p.presence !== "PRESENT"
+          ? { type: "not_debited" }
+          : { type: "no_membership" },
+    })),
+  };
 }
 
 /** Строка участника [name] в составе. */
@@ -437,6 +466,32 @@ describe("карточка занятия", () => {
     expect(
       screen.queryByRole("button", { name: ru["sessionDetail.completeAction"] }),
     ).not.toBeInTheDocument();
+  });
+
+  it("показывает абонемент списания участника или «Нет абонемента»", async () => {
+    const server = journalServer(journalOf([participant("1", "Аня"), participant("2", "Борис")]));
+    openApp(`/sessions/${sessionId}`, server.fetch);
+
+    expect(
+      await within(await screen.findByRole("listitem", { name: "Аня" })).findByText(
+        /8 занятий · осталось 4/,
+      ),
+    ).toBeVisible();
+    expect(
+      await within(row("Борис")).findByText(ru["sessionDetail.debit.noMembership"]),
+    ).toBeVisible();
+  });
+
+  it("после проведения показывает фактическое списание", async () => {
+    const server = journalServer(journalOf([participant("1", "Аня", "REGULAR", "PRESENT")]));
+    openApp(`/sessions/${sessionId}`, server.fetch);
+    const user = userEvent.setup();
+
+    await within(await screen.findByRole("listitem", { name: "Аня" })).findByText(/осталось 4/);
+    await user.click(screen.getByRole("button", { name: ru["sessionDetail.completeAction"] }));
+
+    expect(await within(row("Аня")).findByText(/8 занятий · осталось 3/)).toBeVisible();
+    expect(server.to("sessions/debit-preview").length).toBeGreaterThan(1);
   });
 
   it("в проведённом занятии отметку можно изменить", async () => {

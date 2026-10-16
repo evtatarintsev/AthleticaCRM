@@ -320,6 +320,16 @@ function EventText({ event }: { readonly event: MembershipEventSchema }) {
       );
     case "revoked":
       return <>{t("membership.history.revoked")}</>;
+    case "debited":
+      return (
+        <>
+          {event.debtRepayment
+            ? t("membership.history.debtRepaid", { date: format.date(event.sessionDate) })
+            : t("membership.history.debited", { date: format.date(event.sessionDate) })}
+        </>
+      );
+    case "debit_reversed":
+      return <>{t("membership.history.debitReversed", { date: format.date(event.sessionDate) })}</>;
   }
 }
 

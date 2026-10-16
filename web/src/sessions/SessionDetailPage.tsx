@@ -57,6 +57,9 @@ import { isEditableStatus } from "./sessionStatus";
 type ActionDialog =
   "reschedule" | "hall" | "coaches" | "note" | "markRemainingAbsent" | "addParticipant" | null;
 
+/** Через сколько миллисекунд после команды журнала превью списаний запрашивается повторно. */
+const DEBIT_REFRESH_DELAY_MS = 2000;
+
 /**
  * Карточка занятия: слева — что за занятие (группа, дата, зал, тренеры, заполненность
  * журнала) и действия, справа — состав и журнал посещаемости. Данные занятия и журнал
@@ -130,6 +133,13 @@ function SessionJournalCard({
     ...apiQuery(api, branchId, "attendance-labels/list", { includeArchived: false }),
     select: (r) => r.labels,
   });
+  const previewQuery = apiQuery(api, branchId, "sessions/debit-preview", {
+    sessionId: journal.sessionId,
+  });
+  const debits = useQuery({
+    ...previewQuery,
+    select: (r) => new Map(r.participants.map((p) => [p.clientId, p.debit])),
+  });
 
   const [overrides, setOverrides] = useState<SessionCardOverrides>({});
   const [dialog, setDialog] = useState<ActionDialog>(null);
@@ -149,7 +159,20 @@ function SessionJournalCard({
       return false;
     }
     queryClient.setQueryData(journalKey, result.value);
+    refreshDebits();
     return true;
+  };
+
+  /**
+   * Обновляет превью списаний после команды журнала: сразу и ещё раз через
+   * [DEBIT_REFRESH_DELAY_MS] — списания выполняются асинхронно обработчиком событий.
+   */
+  const refreshDebits = () => {
+    const refresh = () => queryClient.invalidateQueries({ queryKey: previewQuery.queryKey });
+    void refresh();
+    setTimeout(() => {
+      void refresh();
+    }, DEBIT_REFRESH_DELAY_MS);
   };
 
   const saveMark = async (clientId: ClientId, mark: MarkDraft) =>
@@ -217,6 +240,7 @@ function SessionJournalCard({
         <SessionParticipantsSection
           api={api}
           participants={journal.participants}
+          debits={debits.data}
           catalog={labels.data ?? []}
           editable={editable}
           journalOpen={journalOpen}

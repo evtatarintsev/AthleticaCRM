@@ -10,7 +10,9 @@ import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AuditAttendanceLabels
 import org.athletica.crm.domain.attendance.DbAttendanceLabels
+import org.athletica.crm.domain.attendance.DbParticipations
 import org.athletica.crm.domain.attendance.DbSessionJournals
+import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.attendance.SessionJournals
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
@@ -46,8 +48,11 @@ import org.athletica.crm.domain.employees.EmailEmployees
 import org.athletica.crm.domain.enrollments.AuditEnrollments
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollments
+import org.athletica.crm.domain.events.AttendanceChanged
+import org.athletica.crm.domain.events.AttendanceMarked
 import org.athletica.crm.domain.events.DomainEventBus
 import org.athletica.crm.domain.events.DomainEventWorker
+import org.athletica.crm.domain.events.SessionCompleted
 import org.athletica.crm.domain.groups.AuditGroups
 import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.DbGroups
@@ -101,6 +106,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.memberships.DebitReconciliation
 import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
@@ -157,6 +163,9 @@ data class Di(
     val scheduleSync: ScheduleSync = DbScheduleSync()
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
+    val participations: Participations = DbParticipations()
+    val debitReconciliation: DebitReconciliation =
+        DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar)
     val membershipScheduler: MembershipScheduler = MembershipScheduler(database, memberships, notifications, employees, orgCalendar)
     val clientContacts = DbClientContacts()
     val views = ReadViews()
@@ -169,6 +178,12 @@ data class Di(
     val deliveries = DbDeliveries()
     val messageDispatcher: MessageDispatcher =
         MessageDispatcher(database, deliveries, channelIntegrations)
+
+    init {
+        bus.on<SessionCompleted> { orgId, event -> debitReconciliation.sessionCompleted(orgId, event) }
+        bus.on<AttendanceChanged> { orgId, event -> debitReconciliation.attendanceChanged(orgId, event) }
+        bus.on<AttendanceMarked> { orgId, event -> debitReconciliation.attendanceMarked(orgId, event) }
+    }
 }
 
 data class DatabaseConfig(

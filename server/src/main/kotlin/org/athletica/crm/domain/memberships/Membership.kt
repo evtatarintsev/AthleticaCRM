@@ -7,6 +7,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
@@ -15,6 +16,7 @@ import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 /**
  * Параметры абонемента, общие для всех состояний: снимок условий на момент выдачи.
@@ -137,6 +139,23 @@ interface ActiveMembership : Membership {
     /** Отмечает отправку уведомления «к закрытию» в текущем эпизоде и пишет её в историю. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun markCloseNotified(): ActiveMembership
+
+    /**
+     * Списывает с абонемента одно занятие [sessionId] от [sessionDate] за клиента-владельца и пишет
+     * списание в историю. Остаток уменьшается на 1 (кроме безлимита) guarded-обновлением: если
+     * параллельная транзакция успела обнулить остаток, бросает [MembershipDebitConflict].
+     * С режимом «при списании последнего» абонемент, остаток которого стал 0, закрывается датой [today].
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun debit(sessionId: SessionId, sessionDate: LocalDate, today: LocalDate): Membership
+
+    /**
+     * Возвращает занятие действующего списания [debit] на абонемент. Если после возврата абонемент
+     * на дату [today] больше не «к закрытию», эпизод уведомления закрывается: следующее «к закрытию»
+     * снова уведомит выдавшего.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun reverse(debit: MembershipDebit, today: LocalDate): ActiveMembership
 }
 
 /** Закрытый абонемент: финальное состояние, переходов нет. */
@@ -152,7 +171,45 @@ interface ClosedMembership : Membership {
 
     /** Причина закрытия. */
     val closeReason: CloseReason
+
+    /**
+     * Возвращает занятие действующего списания [debit] на закрытый абонемент: корректировка
+     * допустима, остаток растёт, состояние остаётся «Закрыт».
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun reverse(debit: MembershipDebit): ClosedMembership
 }
+
+/** Вид списания. */
+enum class DebitKind {
+    /** Списание при проведении занятия или правке отметки. */
+    REGULAR,
+
+    /** Погашение долга сотрудником. */
+    DEBT,
+}
+
+/** Действующее списание занятия [sessionId] клиента [clientId] с абонемента [membershipId]. */
+data class MembershipDebit(
+    /** Идентификатор списания. */
+    val id: Uuid,
+    /** Абонемент, с которого списано занятие. */
+    val membershipId: MembershipId,
+    /** Клиент-участник. */
+    val clientId: ClientId,
+    /** Занятие. */
+    val sessionId: SessionId,
+    /** Дата занятия. */
+    val sessionDate: LocalDate,
+    /** Вид списания. */
+    val kind: DebitKind,
+)
+
+/**
+ * Подбор или списание не удались из-за параллельных списаний с тех же абонементов.
+ * Это временный сбой, а не отсутствие абонемента: обработка повторяется воркером событий.
+ */
+class MembershipDebitConflict(message: String) : RuntimeException(message)
 
 /** Отозванный абонемент: финальное состояние, в списаниях не участвует. */
 interface RevokedMembership : Membership {

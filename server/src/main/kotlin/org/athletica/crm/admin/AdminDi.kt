@@ -2,6 +2,7 @@ package org.athletica.crm.admin
 
 import com.github.ajalt.clikt.core.CliktError
 import org.athletica.crm.createDatabase
+import org.athletica.crm.domain.events.FailedDomainEvents
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.storage.Database
@@ -20,6 +21,9 @@ class AdminDi(
 
     /** Балансы организаций. */
     val orgBalances: OrgBalances = DbOrgBalances()
+
+    /** Неуспешные доменные события всех организаций. */
+    val failedEvents: FailedDomainEvents by lazy { FailedDomainEvents(database) }
 
     /** Поиск организаций без привязки к организации запроса. */
     val orgSearch: OrgSearch by lazy { OrgSearch(database) }

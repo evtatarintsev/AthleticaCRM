@@ -2,6 +2,7 @@ package org.athletica.crm.domain.memberships
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -154,6 +155,57 @@ data class DbActiveMembership(
             debited.close(CloseReason.LAST_SESSION, today)
         } else {
             debited
+        }
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun repayDebt(sessions: List<DebtSession>, today: LocalDate): Membership {
+        val count = sessions.size
+        val remaining = sessionsRemaining
+        if (remaining != null && count > remaining) {
+            raise(CommonDomainError("DEBT_EXCEEDS_REMAINING", Messages.MembershipDebtExceedsRemaining.localize()))
+        }
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE memberships SET sessions_remaining = sessions_remaining - :count
+                    WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'
+                      AND (sessions_remaining IS NULL OR sessions_remaining >= :count)
+                    """.trimIndent(),
+                )
+                .bind("count", count)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        if (updated != 1L) {
+            raise(CommonDomainError("DEBT_EXCEEDS_REMAINING", Messages.MembershipDebtExceedsRemaining.localize()))
+        }
+        sessions.forEach { session ->
+            try {
+                tr
+                    .sql(
+                        """
+                        INSERT INTO membership_debits (org_id, membership_id, client_id, session_id, kind)
+                        VALUES (:orgId, :membershipId, :clientId, :sessionId, :kind)
+                        """.trimIndent(),
+                    )
+                    .bind("orgId", ctx.orgId)
+                    .bind("membershipId", id)
+                    .bind("clientId", clientId)
+                    .bind("sessionId", session.sessionId)
+                    .bind("kind", DebitKind.DEBT.name)
+                    .execute()
+            } catch (e: R2dbcDataIntegrityViolationException) {
+                raise(CommonDomainError("ALREADY_DEBITED", Messages.SessionAlreadyDebited.localize()))
+            }
+            recordMembershipEvent(id, MembershipEventKind.DEBITED, debitPayload(session.sessionId, session.sessionDate, DebitKind.DEBT))
+        }
+        val repaid = copy(sessionsRemaining = remaining?.minus(count))
+        return if (closeMode == CloseMode.ON_LAST_SESSION && repaid.sessionsRemaining == 0) {
+            repaid.close(CloseReason.LAST_SESSION, today)
+        } else {
+            repaid
         }
     }
 

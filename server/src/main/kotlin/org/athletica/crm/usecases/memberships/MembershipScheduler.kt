@@ -23,6 +23,8 @@ import org.athletica.crm.domain.memberships.Memberships
 import org.athletica.crm.domain.memberships.RevokedMembership
 import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.read.memberships.UnpaidSessionsView
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
@@ -48,6 +50,8 @@ class MembershipScheduler(
     private val notifications: Notifications,
     private val employees: Employees,
     private val calendar: OrgCalendar,
+    private val unpaidSessions: UnpaidSessionsView,
+    private val tasks: Tasks,
     private val clock: Clock = Clock.System,
     private val interval: Duration = 15.minutes,
 ) {
@@ -86,19 +90,22 @@ class MembershipScheduler(
 
     /**
      * Применяет к абонементу [id] положенное на дату [today] действие по его текущему состоянию:
-     * активацию, закрытие по сроку или уведомление «к закрытию».
+     * активацию (с задачей «Проверить клиента» при долгах), закрытие по сроку или уведомление
+     * «к закрытию».
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     private suspend fun process(id: MembershipId, today: LocalDate) {
         when (val membership = memberships.byId(id)) {
             is InactiveMembership.OnDate ->
                 if (membership.activation.date <= today) {
-                    membership.activate(membership.activation.date, ActivationReason.ON_DATE)
+                    val active = membership.activate(membership.activation.date, ActivationReason.ON_DATE)
+                    createCheckClientTaskIfDebts(unpaidSessions, tasks, active)
                 }
             is InactiveMembership.OnFirstVisit -> {
                 val deadline = membership.activation.deadline
                 if (deadline != null && deadline <= today) {
-                    membership.activate(deadline, ActivationReason.ON_DEADLINE)
+                    val active = membership.activate(deadline, ActivationReason.ON_DEADLINE)
+                    createCheckClientTaskIfDebts(unpaidSessions, tasks, active)
                 }
             }
             is ActiveMembership ->

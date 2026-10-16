@@ -26,6 +26,8 @@ import org.athletica.crm.domain.memberships.Memberships
 import org.athletica.crm.domain.memberships.RevokedMembership
 import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.read.memberships.UnpaidSessionsView
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 
@@ -49,6 +51,8 @@ class DebitReconciliation(
     private val notifications: Notifications,
     private val employees: Employees,
     private val calendar: OrgCalendar,
+    private val unpaidSessions: UnpaidSessionsView,
+    private val tasks: Tasks,
 ) {
     /** Сверяет списания всех участников проведённого занятия [event] организации [orgId]. */
     suspend fun sessionCompleted(orgId: OrgId, event: SessionCompleted) {
@@ -98,12 +102,15 @@ class DebitReconciliation(
     /**
      * Списывает занятие [participation] группы [groupId] с подобранного абонемента, активируя
      * неактивированный: «с даты» — датой активации, «при первом посещении» — датой занятия.
-     * Если абонемент стал «к закрытию», сразу уведомляет выдавшего.
+     * Если абонемент стал «к закрытию», сразу уведомляет выдавшего. Если списание активировало
+     * абонемент, в той же транзакции проверяет долги клиента и при их наличии создаёт задачу
+     * «Проверить клиента»: активация → списание → проверка долгов → задача.
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     private suspend fun debit(participation: Participation, groupId: GroupId, today: LocalDate) {
         val candidate =
             memberships.debitCandidate(participation.clientId, groupId, participation.sessionDate, today) ?: return
+        val activated = candidate is InactiveMembership
         val active =
             when (candidate) {
                 is ActiveMembership -> candidate
@@ -114,6 +121,9 @@ class DebitReconciliation(
         val debited = active.debit(participation.sessionId, participation.sessionDate, today)
         if (debited is ActiveMembership) {
             notifyClosePendingIfDue(notifications, employees, debited, today)
+        }
+        if (activated) {
+            createCheckClientTaskIfDebts(unpaidSessions, tasks, debited)
         }
     }
 

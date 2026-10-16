@@ -66,10 +66,10 @@ data class TaskDetailRequest(val taskId: TaskId)
 @Serializable
 data class TaskDetailResponse(
     val id: TaskId,
-    /** Идентификатор создателя задачи. */
-    val createdBy: EmployeeId,
-    /** Имя создателя задачи. */
-    val createdByName: String,
+    /** Идентификатор создателя задачи; `null` — задачу создала система. */
+    val createdBy: EmployeeId?,
+    /** Имя создателя задачи; `null` — задачу создала система. */
+    val createdByName: String?,
     val assigneeId: EmployeeId?,
     val assigneeName: String?,
     val clientId: ClientId?,

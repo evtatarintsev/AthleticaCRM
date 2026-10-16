@@ -26,6 +26,7 @@ import {
   MembershipSessionsBar,
 } from "./MembershipParts";
 import { membershipView, type MembershipView } from "./membershipView";
+import { RepayDebtSheet } from "./RepayDebt";
 
 /**
  * Панель абонемента [membership] клиента [clientId] справа поверх карточки клиента: состояние,
@@ -96,6 +97,7 @@ function MembershipPanel({
   const [error, setError] = useState<string | null>(null);
   const canClose = membership.state.type === "active";
   const canRevoke = membership.state.type === "active" || membership.state.type === "inactive";
+  const [repaying, setRepaying] = useState(false);
 
   const ask = (action: PendingAction) => {
     setError(null);
@@ -142,6 +144,17 @@ function MembershipPanel({
               {t("clientCard.membership.close")}
             </Button>
           )}
+          {canClose && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setRepaying(true);
+              }}
+            >
+              {t("membership.repay.action")}
+            </Button>
+          )}
           {canRevoke && (
             <Button
               type="button"
@@ -156,6 +169,15 @@ function MembershipPanel({
         </div>
       )}
       <MembershipHistory api={api} branchId={branchId} membershipId={membership.id} />
+      <RepayDebtSheet
+        open={repaying}
+        onOpenChange={setRepaying}
+        api={api}
+        branchId={branchId}
+        clientId={clientId}
+        membershipId={membership.id}
+        remaining={membership.sessionsRemaining}
+      />
       <ConfirmDialog
         open={confirming !== null}
         onOpenChange={(next) => {

@@ -163,12 +163,13 @@ data class Di(
     val scheduleSync: ScheduleSync = DbScheduleSync()
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
-    val participations: Participations = DbParticipations()
-    val debitReconciliation: DebitReconciliation =
-        DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar)
-    val membershipScheduler: MembershipScheduler = MembershipScheduler(database, memberships, notifications, employees, orgCalendar)
     val clientContacts = DbClientContacts()
     val views = ReadViews()
+    val participations: Participations = DbParticipations()
+    val debitReconciliation: DebitReconciliation =
+        DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
+    val membershipScheduler: MembershipScheduler =
+        MembershipScheduler(database, memberships, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
     val channelBindings: ChannelBindings = DbChannelBindings()
     val inboundReceipts: InboundReceipts = DbInboundReceipts()
     val channelTransports: ChannelTransports = StubChannelTransports()

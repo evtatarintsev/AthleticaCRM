@@ -15,6 +15,8 @@ import {
   type Currency,
   type DurationUnit,
   type GroupId,
+  type MembershipId,
+  type UnpaidSessionSchema,
   type TariffPlanSchema,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,7 @@ import { TariffSheet, type TariffTerms } from "@/tariffs/TariffSheet";
 import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
 import { membershipsQuery } from "./card/clientCardQueries";
+import { RepayDebtChoice } from "./membership/RepayDebt";
 
 /** Шаблон абонемента: тариф, из которого берутся условия, или индивидуальные условия. */
 type Template =
@@ -60,6 +63,14 @@ interface IssueSubscriptionFormValues {
   readonly closeMode: CloseMode;
   /** Группы, в которых действует абонемент. */
   readonly groupIds: readonly GroupId[];
+}
+
+/** Предложение погасить долг после выдачи: абонемент, его остаток и неоплаченные занятия. */
+interface RepayOffer {
+  readonly membershipId: MembershipId;
+  /** Остаток выданного абонемента; `null` — безлимит. */
+  readonly remaining: number | null;
+  readonly sessions: readonly UnpaidSessionSchema[];
 }
 
 /** Группа, которую можно выбрать для абонемента. */
@@ -263,7 +274,8 @@ function IssueSubscriptionSteps({
   const tariffsQuery = apiQuery(api, branchId, "tariffs/list", {});
   const tariffs = useQuery(tariffsQuery);
   const schema = useMemo(() => issueSubscriptionSchema(t, currency), [t, currency]);
-  const [step, setStep] = useState<"pick" | "terms">("pick");
+  const [step, setStep] = useState<"pick" | "terms" | "repay">("pick");
+  const [offer, setOffer] = useState<RepayOffer | null>(null);
   const [chosen, setChosen] = useState<Template | null>(null);
   const [defaults, setDefaults] = useState(() =>
     valuesFrom({ kind: "individual" }, clientGroupIds),
@@ -290,8 +302,9 @@ function IssueSubscriptionSteps({
         return;
       }
       setFailure(null);
+      const membershipId = MembershipIdSchema.parse(uuidv7());
       const result = await api.call("memberships/issue", {
-        id: MembershipIdSchema.parse(uuidv7()),
+        id: membershipId,
         clientId,
         tariffPlanId: chosen.kind === "tariff" ? chosen.tariff.id : null,
         name:
@@ -325,6 +338,17 @@ function IssueSubscriptionSteps({
           queryKey: apiQuery(api, branchId, "clients/detail", { id: clientId }).queryKey,
         }),
       ]);
+      const activeNow =
+        value.activationMode === "IMMEDIATE" ||
+        (value.activationMode === "ON_DATE" && value.activateOn <= todayLocalDate());
+      if (activeNow) {
+        const unpaid = await api.call("memberships/unpaid-sessions", { membershipId });
+        if (unpaid.ok && unpaid.value.sessions.length > 0) {
+          setOffer({ membershipId, remaining: sessions, sessions: unpaid.value.sessions });
+          setStep("repay");
+          return;
+        }
+      }
       close();
     },
   });
@@ -451,6 +475,21 @@ function IssueSubscriptionSteps({
               </button>
             </li>
           </ul>
+        </EditSheetBody>
+      )}
+      {step === "repay" && offer !== null && (
+        <EditSheetBody>
+          <p className="text-sm">{t("membership.repay.offer")}</p>
+          <RepayDebtChoice
+            api={api}
+            branchId={branchId}
+            clientId={clientId}
+            membershipId={offer.membershipId}
+            remaining={offer.remaining}
+            sessions={offer.sessions}
+            skipLabel={t("membership.repay.skip")}
+            onFinished={close}
+          />
         </EditSheetBody>
       )}
       {step === "terms" && chosen !== null && (

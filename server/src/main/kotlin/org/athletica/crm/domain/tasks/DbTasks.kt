@@ -3,6 +3,8 @@ package org.athletica.crm.domain.tasks
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.actingEmployeeId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
@@ -58,7 +60,7 @@ class DbTasks : Tasks {
         return ids.map { byId.getValue(it) }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun new(
         id: TaskId,
         title: String,
@@ -78,7 +80,7 @@ class DbTasks : Tasks {
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .bind("createdBy", ctx.employee.id)
+            .bind("createdBy", ctx.actingEmployeeId)
             .bind("clientId", clientId)
             .bind("title", title)
             .bind("description", description)
@@ -90,7 +92,7 @@ class DbTasks : Tasks {
         return DbTask(
             id = id,
             orgId = ctx.orgId,
-            createdBy = ctx.employee.id,
+            createdBy = ctx.actingEmployeeId,
             assigneeId = null,
             clientId = clientId,
             title = title,
@@ -128,7 +130,7 @@ class DbTasks : Tasks {
         DbTask(
             id = asUuid("id").toTaskId(),
             orgId = org.athletica.crm.core.entityids.OrgId(asUuid("org_id")),
-            createdBy = asUuid("created_by").toEmployeeId(),
+            createdBy = asUuidOrNull("created_by")?.toEmployeeId(),
             assigneeId = asUuidOrNull("assignee_id")?.toEmployeeId(),
             clientId = asUuidOrNull("client_id")?.toClientId(),
             title = asString("title"),

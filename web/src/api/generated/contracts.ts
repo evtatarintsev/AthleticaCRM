@@ -2325,6 +2325,14 @@ export const RemoveClientFromGroupRequestSchema = z
   .readonly();
 export type RemoveClientFromGroupRequest = z.output<typeof RemoveClientFromGroupRequestSchema>;
 
+export const RepayDebtRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+    sessionIds: z.array(SessionIdSchema).readonly(),
+  })
+  .readonly();
+export type RepayDebtRequest = z.output<typeof RepayDebtRequestSchema>;
+
 export const RescheduleSessionRequestSchema = z
   .object({
     newDate: LocalDateSchema,
@@ -2657,8 +2665,8 @@ export type TaskStatus = z.output<typeof TaskStatusSchema>;
 export const TaskDetailResponseSchema = z
   .object({
     id: TaskIdSchema,
-    createdBy: EmployeeIdSchema,
-    createdByName: z.string(),
+    createdBy: EmployeeIdSchema.nullable(),
+    createdByName: z.string().nullable(),
     assigneeId: EmployeeIdSchema.nullable(),
     assigneeName: z.string().nullable(),
     clientId: ClientIdSchema.nullable(),
@@ -2744,6 +2752,31 @@ export const UnassignTaskRequestSchema = z
   })
   .readonly();
 export type UnassignTaskRequest = z.output<typeof UnassignTaskRequestSchema>;
+
+export const UnpaidSessionSchemaSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    groupId: GroupIdSchema,
+    groupName: z.string(),
+  })
+  .readonly();
+export type UnpaidSessionSchema = z.output<typeof UnpaidSessionSchemaSchema>;
+
+export const UnpaidSessionsRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+  })
+  .readonly();
+export type UnpaidSessionsRequest = z.output<typeof UnpaidSessionsRequestSchema>;
+
+export const UnpaidSessionsResponseSchema = z
+  .object({
+    sessions: z.array(UnpaidSessionSchemaSchema).readonly(),
+  })
+  .readonly();
+export type UnpaidSessionsResponse = z.output<typeof UnpaidSessionsResponseSchema>;
 
 export const UpdateAttendanceLabelRequestSchema = z
   .object({
@@ -3459,12 +3492,26 @@ export const endpoints = {
     out: "json",
     response: MembershipListResponseSchema,
   },
+  "memberships/repay-debt": {
+    method: "POST",
+    in: "body",
+    request: RepayDebtRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "memberships/revoke": {
     method: "POST",
     in: "body",
     request: RevokeMembershipRequestSchema,
     out: "empty",
     response: z.undefined(),
+  },
+  "memberships/unpaid-sessions": {
+    method: "POST",
+    in: "body",
+    request: UnpaidSessionsRequestSchema,
+    out: "json",
+    response: UnpaidSessionsResponseSchema,
   },
   "messaging/channels": {
     method: "GET",

@@ -55,7 +55,10 @@ const summer = {
  * Сервер карточки клиента с тарифами в памяти; валюта организации — рубль. Список тарифов, как
  * и настоящий сервер, без `includeArchived` архивные не отдаёт. [failIssue] — выдача отклоняется.
  */
-function issueServer({ failIssue = false }: { failIssue?: boolean } = {}) {
+function issueServer({
+  failIssue = false,
+  unpaid = [],
+}: { failIssue?: boolean; unpaid?: readonly Record<string, unknown>[] } = {}) {
   let tariffs: readonly Record<string, unknown>[] = [monthly, unlimited, summer];
   return appServer({
     "custom-fields/list": () => json([]),
@@ -86,6 +89,8 @@ function issueServer({ failIssue = false }: { failIssue?: boolean } = {}) {
       tariffs = tariffs.map((t) => (t["id"] === tariff.id ? { ...t, ...tariff } : t));
       return empty();
     },
+    "memberships/unpaid-sessions": () => json({ sessions: unpaid }),
+    "memberships/repay-debt": () => empty(),
     "memberships/issue": () =>
       failIssue
         ? json({ code: "MEMBERSHIP_CONFLICT", message: "Абонемент не выдан" }, 409)
@@ -342,5 +347,56 @@ describe("выдача абонемента", () => {
     expect(panel.getByRole("button", { name: ru["clients.issue.submit"] })).toBeDisabled();
     expect(panel.getByText(ru["clients.issue.groupsRequired"])).toBeInTheDocument();
     expect(api.to("memberships/issue")).toHaveLength(0);
+  });
+  it("после выдачи «сразу» предлагает погасить долг, «Пропустить» закрывает без списания", async () => {
+    const unpaid = [
+      {
+        sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000e01",
+        date: "2026-10-01",
+        startTime: "17:00:00",
+        groupId: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+        groupName: "Утренняя группа",
+      },
+      {
+        sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000e02",
+        date: "2026-10-03",
+        startTime: "17:00:00",
+        groupId: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+        groupName: "Утренняя группа",
+      },
+      {
+        sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000e03",
+        date: "2026-10-05",
+        startTime: "17:00:00",
+        groupId: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+        groupName: "Утренняя группа",
+      },
+    ].slice(0, 2);
+    const api = issueServer({ unpaid });
+    const { user, dialog, panel } = await openIssue(api);
+
+    await user.click(await pick(dialog, "Месяц"));
+    await user.click(panel.getByRole("button", { name: ru["clients.issue.submit"] }));
+
+    expect(await panel.findByText(ru["membership.repay.offer"])).toBeVisible();
+    expect(panel.getAllByRole("checkbox", { checked: true })).toHaveLength(2);
+    await user.click(panel.getByRole("button", { name: ru["membership.repay.skip"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(api.to("memberships/repay-debt")).toHaveLength(0);
+  });
+
+  it("после выдачи без долгов панель закрывается сразу", async () => {
+    const api = issueServer();
+    const { user, dialog, panel } = await openIssue(api);
+
+    await user.click(await pick(dialog, "Месяц"));
+    await user.click(panel.getByRole("button", { name: ru["clients.issue.submit"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 });

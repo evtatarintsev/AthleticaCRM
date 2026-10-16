@@ -52,8 +52,10 @@ class DbTaskListView : TaskListView {
     private fun buildQuery(query: TaskListQuery, select: String, paginate: Boolean): QueryBuilder {
         val conditions = mutableListOf("t.org_id = :orgId")
 
-        if (!ctx.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS) || query.onlyMine) {
+        if (query.onlyMine) {
             conditions += "(t.assignee_id = :me OR t.created_by = :me)"
+        } else if (!ctx.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS)) {
+            conditions += "(t.assignee_id = :me OR t.created_by = :me OR t.assignee_id IS NULL)"
         }
         if (query.statuses.isNotEmpty()) {
             conditions += "t.status = ANY(:statuses)"

@@ -566,4 +566,38 @@ object Messages {
         override val ru = "Занятие не найдено"
         override val en = "Session not found"
     }
+
+    object MembershipDebtExceedsRemaining : LocalizationKey {
+        override val ru = "Выбрано больше занятий, чем осталось на абонементе"
+        override val en = "More sessions are selected than the membership has left"
+    }
+
+    object SessionAlreadyDebited : LocalizationKey {
+        override val ru = "Занятие уже списано"
+        override val en = "The session has already been debited"
+    }
+
+    object SessionNotUnpaid : LocalizationKey {
+        override val ru = "Занятие не является неоплаченным занятием клиента в группах абонемента"
+        override val en = "The session is not an unpaid session of the client in the membership groups"
+    }
+
+    object DebtSessionsRequired : LocalizationKey {
+        override val ru = "Выберите занятия для погашения"
+        override val en = "Select sessions to repay"
+    }
+
+    object CheckClientTaskTitle : LocalizationKey {
+        override val ru = "Проверить клиента"
+        override val en = "Check the client"
+    }
+
+    object CheckClientTaskDescription : LocalizationTemplate2<String, Int> {
+        override val ru = { membership: String, count: Int ->
+            "Абонемент «$membership» активирован без участия сотрудника. Неоплаченных занятий в группах абонемента: $count. Погасите долг с абонемента или свяжитесь с клиентом."
+        }
+        override val en = { membership: String, count: Int ->
+            "Membership “$membership” was activated automatically. Unpaid sessions in its groups: $count. Repay the debt from the membership or contact the client."
+        }
+    }
 }

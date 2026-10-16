@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
@@ -199,7 +200,28 @@ function TaskCard({ api, task }: { readonly api: ApiClient; readonly task: TaskD
           }}
         />
 
-        <ReadOnlyField label={t("tasks.field.client")} value={task.clientName} />
+        <ReadOnlyField
+          label={t("tasks.field.author")}
+          value={task.createdByName ?? t("tasks.authorSystem")}
+        />
+        <div className="space-y-1">
+          <span className="text-sm font-medium text-muted-foreground">
+            {t("tasks.field.client")}
+          </span>
+          <p className="text-sm">
+            {task.clientId === null ? (
+              "—"
+            ) : (
+              <Link
+                to="/clients/$clientId"
+                params={{ clientId: task.clientId }}
+                className="hover:underline"
+              >
+                {task.clientName ?? "—"}
+              </Link>
+            )}
+          </p>
+        </div>
         <ReadOnlyField
           label={t("tasks.field.dueDate")}
           value={task.dueDate === null ? null : format.dateTime(task.dueDate)}

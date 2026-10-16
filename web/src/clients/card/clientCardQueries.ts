@@ -33,6 +33,15 @@ export function membershipHistoryQuery(
   return apiQuery(api, branchId, "memberships/history", { membershipId });
 }
 
+/** Запрос неоплаченных занятий клиента в группах абонемента [membershipId]. */
+export function unpaidSessionsQuery(
+  api: ApiClient,
+  branchId: BranchId,
+  membershipId: MembershipId,
+) {
+  return apiQuery(api, branchId, "memberships/unpaid-sessions", { membershipId });
+}
+
 /** Запрос задач клиента [clientId]; общий для блока и предупреждений шапки. */
 export function clientTasksQuery(api: ApiClient, branchId: BranchId, clientId: ClientId) {
   return apiQuery(api, branchId, "tasks/list", { clientId, limit: TASKS_LIMIT });

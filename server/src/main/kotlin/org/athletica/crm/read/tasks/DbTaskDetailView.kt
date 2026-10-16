@@ -41,8 +41,8 @@ class DbTaskDetailView : TaskDetailView {
     private fun Row.toDetailRow(): TaskDetailRow =
         TaskDetailRow(
             id = asUuid("id").toTaskId(),
-            createdBy = asUuid("created_by").toEmployeeId(),
-            createdByName = asStringOrNull("created_by_name") ?: "",
+            createdBy = asUuidOrNull("created_by")?.toEmployeeId(),
+            createdByName = asStringOrNull("created_by_name"),
             assigneeId = asUuidOrNull("assignee_id")?.toEmployeeId(),
             assigneeName = asStringOrNull("assignee_name"),
             clientId = asUuidOrNull("client_id")?.toClientId(),

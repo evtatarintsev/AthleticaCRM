@@ -22,9 +22,9 @@ data class TaskDetailRow(
     /** Идентификатор задачи. */
     val id: TaskId,
     /** Сотрудник, создавший задачу. */
-    val createdBy: EmployeeId,
+    val createdBy: EmployeeId?,
     /** Имя создателя задачи. */
-    val createdByName: String,
+    val createdByName: String?,
     /** Назначенный исполнитель, либо `null`. */
     val assigneeId: EmployeeId?,
     /** Имя исполнителя, либо `null` если исполнитель не назначен. */

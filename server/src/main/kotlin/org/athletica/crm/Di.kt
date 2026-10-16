@@ -20,8 +20,8 @@ import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.channels.AuditChannelIntegrations
 import org.athletica.crm.domain.channels.ChannelBindings
-import org.athletica.crm.domain.channels.ChannelIntegrationFactory
 import org.athletica.crm.domain.channels.ChannelIntegrations
+import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
@@ -104,7 +104,7 @@ import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
-import org.athletica.infra.messaging.StubChannelIntegrationFactory
+import org.athletica.infra.messaging.StubChannelTransports
 import org.athletica.infra.yookassa.YookassaApi
 import org.athletica.infra.yookassa.YookassaConfig
 import org.athletica.infra.yookassa.YookassaPaymentGateway
@@ -162,8 +162,9 @@ data class Di(
     val views = ReadViews()
     val channelBindings: ChannelBindings = DbChannelBindings()
     val inboundReceipts: InboundReceipts = DbInboundReceipts()
-    val channelIntegrationFactory: ChannelIntegrationFactory = StubChannelIntegrationFactory(clientContacts, channelBindings)
-    val channelIntegrations: ChannelIntegrations = AuditChannelIntegrations(DbChannelIntegrations(channelIntegrationFactory), audit)
+    val channelTransports: ChannelTransports = StubChannelTransports()
+    val channelIntegrations: ChannelIntegrations =
+        AuditChannelIntegrations(DbChannelIntegrations(channelTransports, clientContacts, channelBindings), audit)
     val conversations = DbConversations()
     val deliveries = DbDeliveries()
     val messageDispatcher: MessageDispatcher =

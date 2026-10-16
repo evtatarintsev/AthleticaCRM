@@ -11,10 +11,12 @@ import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.entityids.ChannelBindingId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.InboundReceiptId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -27,7 +29,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asString
-import org.athletica.infra.messaging.StubChannelIntegrationFactory
+import org.athletica.infra.messaging.StubChannelTransports
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -45,7 +47,7 @@ class SendMessageTest {
 
     private val contacts = DbClientContacts()
     private val bindings = DbChannelBindings()
-    private val channels = DbChannelIntegrations(StubChannelIntegrationFactory(contacts, bindings))
+    private val channels = DbChannelIntegrations(StubChannelTransports(), contacts, bindings)
     private val conversations = DbConversations()
     private val deliveries = DbDeliveries()
 
@@ -124,7 +126,6 @@ class SendMessageTest {
                 sendMessage(
                     SendMessageRequest(clientId, integrationId, "Привет", contactId),
                     channels,
-                    contacts,
                     conversations,
                     deliveries,
                 )
@@ -204,7 +205,88 @@ class SendMessageTest {
             assertEquals(null, deliveryState())
         }
 
+    @Test
+    fun `Telegram без связки возвращает CLIENT_NOT_LINKED, даже если есть контакт-юзернейм`() =
+        runTest {
+            val telegramId = ChannelIntegrationId.new()
+            insertIntegration(telegramId, TELEGRAM_CONFIG, enabled = true)
+            TestPostgres.db.sql(
+                """
+                INSERT INTO client_contacts (id, org_id, client_id, type, value)
+                VALUES (:id, :orgId, :clientId, 'TELEGRAM', '@client')
+                """.trimIndent(),
+            ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId).execute()
+
+            val result = send(telegramId)
+
+            val error = assertIs<Either.Left<DomainError>>(result).value
+            assertEquals("CLIENT_NOT_LINKED", error.code)
+            assertEquals(null, deliveryState())
+        }
+
+    @Test
+    fun `Telegram со связкой отправляет на адрес из связки`() =
+        runTest {
+            val telegramId = ChannelIntegrationId.new()
+            insertIntegration(telegramId, TELEGRAM_CONFIG, enabled = true)
+            TestPostgres.db.sql(
+                """
+                INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
+                VALUES (:id, :orgId, :integrationId, :clientId, 'chat-42')
+                """.trimIndent(),
+            ).bind("id", ChannelBindingId.new()).bind("orgId", orgId).bind("integrationId", telegramId).bind("clientId", clientId).execute()
+
+            val result = send(telegramId)
+
+            assertIs<Either.Right<ConversationResponse>>(result)
+            assertEquals("chat-42", recipientAddress())
+        }
+
+    @Test
+    fun `канал с историей отправок нельзя удалить`() =
+        runTest {
+            addPhoneContact()
+            assertIs<Either.Right<ConversationResponse>>(send(smsIntegrationId))
+
+            val error = assertIs<Either.Left<DomainError>>(remove(smsIntegrationId)).value
+
+            assertEquals("CHANNEL_IN_USE", error.code)
+        }
+
+    @Test
+    fun `канал только с входящими нельзя удалить`() =
+        runTest {
+            TestPostgres.db.sql(
+                """
+                INSERT INTO inbound_receipts (id, org_id, integration_id, from_address, body)
+                VALUES (:id, :orgId, :integrationId, 'chat-1', 'Привет')
+                """.trimIndent(),
+            ).bind("id", InboundReceiptId.new()).bind("orgId", orgId).bind("integrationId", smsIntegrationId).execute()
+
+            val error = assertIs<Either.Left<DomainError>>(remove(smsIntegrationId)).value
+
+            assertEquals("CHANNEL_IN_USE", error.code)
+        }
+
+    @Test
+    fun `неиспользованный канал удаляется`() =
+        runTest {
+            assertIs<Either.Right<Unit>>(remove(smsIntegrationId))
+
+            val error = assertIs<Either.Left<DomainError>>(send(smsIntegrationId)).value
+            assertEquals("CHANNEL_NOT_FOUND", error.code)
+        }
+
+    /** Удаляет канал [id] от имени сотрудника. */
+    private suspend fun remove(id: ChannelIntegrationId): Either<DomainError, Unit> =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) { channels.remove(id) }
+            }
+        }
+
     private companion object {
+        const val TELEGRAM_CONFIG = """{"type":"telegram_bot","botToken":"tok"}"""
         const val SMS_CONFIG = """{"type":"twilio_sms","accountSid":"sid","authToken":"tok","from":"+10000000000"}"""
     }
 }

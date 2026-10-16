@@ -71,8 +71,6 @@ enum class DeliveryStateSchema {
 data class ConversationResponse(
     val clientId: ClientId,
     val messages: List<MessageSchema>,
-    /** Контакты клиента: определяют доступность каналов и выбор адреса при отправке. */
-    val contacts: List<ClientContactSchema> = emptyList(),
 )
 
 /** Запрос ленты диалога с клиентом. */
@@ -92,4 +90,47 @@ data class SendMessageRequest(
      * `null` — взять первый подходящий (поведение по умолчанию).
      */
     val contactId: ClientContactId? = null,
+)
+
+/** Запрос каналов, через которые можно написать клиенту [clientId]. */
+@Serializable
+data class ClientChannelsRequest(
+    val clientId: ClientId,
+)
+
+/** Провайдер канала — для подписи канала в интерфейсе. */
+@Serializable
+enum class ChannelProviderSchema {
+    /** SMS через SMSC. */
+    @SerialName("smsc_sms")
+    SMSC_SMS,
+
+    /** Telegram-бот. */
+    @SerialName("telegram_bot")
+    TELEGRAM_BOT,
+
+    /** SMS через Twilio. */
+    @SerialName("twilio_sms")
+    TWILIO_SMS,
+}
+
+/** Включённый канал организации с точки зрения отправки конкретному клиенту. */
+@Serializable
+data class ClientChannelSchema(
+    /** Идентификатор интеграции канала. */
+    val id: ChannelIntegrationId,
+    /** Отображаемое имя канала. */
+    val name: String,
+    /** Провайдер канала. */
+    val provider: ChannelProviderSchema,
+    /** Можно ли написать клиенту через канал: есть подходящий контакт или связка с каналом. */
+    val available: Boolean,
+    /** Контакты-адресаты на выбор; заполнено только у каналов, адресуемых по контакту. */
+    val contacts: List<ClientContactSchema>,
+)
+
+/** Каналы, через которые можно написать клиенту, в порядке создания. */
+@Serializable
+data class ClientChannelsResponse(
+    val channels: List<ClientChannelSchema>,
 )

@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
@@ -15,10 +14,12 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.channels.ChannelIntegration
-import org.athletica.crm.domain.channels.ChannelIntegrationFactory
+import org.athletica.crm.domain.channels.ChannelTransport
+import org.athletica.crm.domain.channels.ChannelTransports
+import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.channels.SendResult
+import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
@@ -55,30 +56,17 @@ class MessageDispatcherTest {
             permissions = EmployeePermission(),
         )
 
-    /** Интеграции с фабрикой-заглушкой: каждая отправка возвращает фиксированный [result]. */
+    /** Интеграции с транспортом-заглушкой: каждая отправка возвращает фиксированный [result]. */
     private fun channelsWith(result: SendResult) =
         DbChannelIntegrations(
-            object : ChannelIntegrationFactory {
-                override fun create(
-                    id: ChannelIntegrationId,
-                    name: String,
-                    config: ChannelConfig,
-                    enabled: Boolean,
-                ): ChannelIntegration =
-                    object : ChannelIntegration {
-                        override val id = id
-                        override val name = name
-                        override val enabled = enabled
-
-                        context(ctx: EmployeeRequestContext, tr: org.athletica.crm.storage.Transaction, raise: arrow.core.raise.context.Raise<org.athletica.crm.core.errors.DomainError>)
-                        override suspend fun recipientAddress(
-                            clientId: org.athletica.crm.core.entityids.ClientId,
-                            contactId: org.athletica.crm.core.entityids.ClientContactId?,
-                        ): String = ""
-
+            object : ChannelTransports {
+                override fun transport(config: ChannelConfig): ChannelTransport =
+                    object : ChannelTransport {
                         override suspend fun send(address: String, body: String): SendResult = result
                     }
             },
+            DbClientContacts(),
+            DbChannelBindings(),
         )
 
     @Before

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
   ChannelIntegrationId,
-  ChannelIntegrationSchema,
+  ClientChannelSchema,
   ClientContactId,
   ClientContactSchema,
   ClientId,
@@ -27,35 +27,16 @@ import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { PageHeader } from "@/ui/PageHeader";
-import { isContactCompatible } from "./compatibleChannels";
-
-/** Контакты клиента, подходящие для канала [channel]. */
-function addressOptions(
-  channel: ChannelIntegrationSchema,
-  contacts: readonly ClientContactSchema[],
-): readonly ClientContactSchema[] {
-  return contacts.filter((contact) => isContactCompatible(contact.type, channel.config.type));
-}
-
-/** Канал доступен для отправки, если у клиента есть подходящий контакт. */
-function isAvailable(
-  channel: ChannelIntegrationSchema,
-  contacts: readonly ClientContactSchema[],
-): boolean {
-  return addressOptions(channel, contacts).length > 0;
-}
 
 /** Канал, выбранный по умолчанию, пока пользователь не выбрал свой: первый доступный. */
-function defaultChannel(
-  channels: readonly ChannelIntegrationSchema[],
-  contacts: readonly ClientContactSchema[],
-): ChannelIntegrationSchema | null {
-  return channels.find((channel) => isAvailable(channel, contacts)) ?? channels[0] ?? null;
+function defaultChannel(channels: readonly ClientChannelSchema[]): ClientChannelSchema | null {
+  return channels.find((channel) => channel.available) ?? channels[0] ?? null;
 }
 
 /**
  * Переписка с клиентом (паритет с `ConversationScreen` KMP-клиента): лента сообщений,
- * выбор канала и адреса-получателя, отправка. Контакты редактируются на карточке клиента —
+ * выбор канала и адреса-получателя, отправка. Доступность каналов и адреса считает сервер
+ * (`messaging/channels`). Контакты редактируются на карточке клиента —
  * здесь они только определяют доступность каналов.
  */
 export function ConversationPage({
@@ -70,9 +51,9 @@ export function ConversationPage({
   const branchId = useSession(api).currentBranch.id;
   const conversationQuery = apiQuery(api, branchId, "messaging/conversation", { clientId });
   const conversation = useQuery(conversationQuery);
-  const channelsQuery = apiQuery(api, branchId, "channels/list");
+  const channelsQuery = apiQuery(api, branchId, "messaging/channels", { clientId });
   const channelsResult = useQuery(channelsQuery);
-  const channels = channelsResult.data?.channels.filter((channel) => channel.enabled) ?? [];
+  const channels = channelsResult.data?.channels ?? [];
 
   const [selectedChannelId, setSelectedChannelId] = useState<ChannelIntegrationId | null>(null);
   const [selectedContactId, setSelectedContactId] = useState<ClientContactId | null>(null);
@@ -80,15 +61,13 @@ export function ConversationPage({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  const contacts = conversation.data?.contacts ?? [];
-
   const selectedChannel =
     (selectedChannelId === null
-      ? defaultChannel(channels, contacts)
+      ? defaultChannel(channels)
       : channels.find((channel) => channel.id === selectedChannelId)) ?? null;
-  const options = selectedChannel === null ? [] : addressOptions(selectedChannel, contacts);
+  const options = selectedChannel?.contacts ?? [];
   const effectiveContactId = selectedContactId ?? options[0]?.id ?? null;
-  const available = selectedChannel !== null && isAvailable(selectedChannel, contacts);
+  const available = selectedChannel?.available ?? false;
   const canSend = !sending && draft.trim() !== "" && available;
 
   const send = async (): Promise<void> => {
@@ -143,11 +122,10 @@ export function ConversationPage({
               <div className="flex flex-wrap items-center gap-2">
                 <ChannelPicker
                   channels={channels}
-                  contacts={contacts}
                   selected={selectedChannel}
                   onSelect={(channel) => {
                     setSelectedChannelId(channel.id);
-                    setSelectedContactId(addressOptions(channel, contacts)[0]?.id ?? null);
+                    setSelectedContactId(channel.contacts[0]?.id ?? null);
                     setSendError(null);
                   }}
                 />
@@ -247,17 +225,15 @@ function deliveryStateLabel(
   }
 }
 
-/** Выбор канала отправки: недоступные (без подходящего контакта) отключены. */
+/** Выбор канала отправки: недоступные (нет подходящего контакта или связки) отключены. */
 function ChannelPicker({
   channels,
-  contacts,
   selected,
   onSelect,
 }: {
-  readonly channels: readonly ChannelIntegrationSchema[];
-  readonly contacts: readonly ClientContactSchema[];
-  readonly selected: ChannelIntegrationSchema | null;
-  readonly onSelect: (channel: ChannelIntegrationSchema) => void;
+  readonly channels: readonly ClientChannelSchema[];
+  readonly selected: ClientChannelSchema | null;
+  readonly onSelect: (channel: ClientChannelSchema) => void;
 }) {
   const { t } = useI18n();
   return (
@@ -282,9 +258,9 @@ function ChannelPicker({
             <DropdownMenuRadioItem
               key={channel.id}
               value={channel.id}
-              disabled={!isAvailable(channel, contacts)}
+              disabled={!channel.available}
             >
-              {channel.name} ({t(`channels.provider.${channel.config.type}`)})
+              {channel.name} ({t(`channels.provider.${channel.provider}`)})
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

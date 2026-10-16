@@ -8,10 +8,10 @@ import org.athletica.crm.core.contacts.ContactType
 
 /**
  * Типизированные настройки вида канала: провайдер-специфичные поля (токены, отправитель и т.п.)
- * плюс статические свойства вида (возможности, принимаемые типы контактов).
+ * плюс статические свойства вида (возможности, способ адресации получателя).
  *
  * Подтип конфига — и есть «вид канала»: отдельных дискриминаторов (тип канала/провайдер) больше нет.
- * Возможности ([supportsInbound], [supportsReceipts]) и [acceptedContactTypes] заданы на уровне подтипа,
+ * Возможности ([supportsInbound], [supportsReceipts]) и [addressing] заданы на уровне подтипа,
  * так как это свойства конкретной реализации, а не абстрактного типа. Сериализуется полиморфно с
  * дискриминатором `type` и хранится в БД как JSONB; при десериализации инвариант проверяется (Parse, Don't Validate).
  */
@@ -25,8 +25,8 @@ sealed interface ChannelConfig {
     /** Присылает ли вид канала квитанции о доставке/прочтении. */
     val supportsReceipts: Boolean
 
-    /** Типы контактов клиента, которые этот вид канала умеет адресовать. */
-    val acceptedContactTypes: Set<ContactType>
+    /** Как вид канала находит адрес клиента: по контакту или по связке. */
+    val addressing: ChannelAddressing
 
     /** SMS через Twilio. */
     @Serializable
@@ -38,7 +38,7 @@ sealed interface ChannelConfig {
     ) : ChannelConfig {
         override val supportsInbound: Boolean get() = false
         override val supportsReceipts: Boolean get() = true
-        override val acceptedContactTypes: Set<ContactType> get() = setOf(ContactType.PHONE)
+        override val addressing: ChannelAddressing get() = ChannelAddressing.ByContact(setOf(ContactType.PHONE))
     }
 
     /** SMS через SMSC. */
@@ -50,7 +50,7 @@ sealed interface ChannelConfig {
     ) : ChannelConfig {
         override val supportsInbound: Boolean get() = false
         override val supportsReceipts: Boolean get() = true
-        override val acceptedContactTypes: Set<ContactType> get() = setOf(ContactType.PHONE)
+        override val addressing: ChannelAddressing get() = ChannelAddressing.ByContact(setOf(ContactType.PHONE))
     }
 
     /** Telegram-бот. */
@@ -61,6 +61,6 @@ sealed interface ChannelConfig {
     ) : ChannelConfig {
         override val supportsInbound: Boolean get() = true
         override val supportsReceipts: Boolean get() = true
-        override val acceptedContactTypes: Set<ContactType> get() = setOf(ContactType.TELEGRAM)
+        override val addressing: ChannelAddressing get() = ChannelAddressing.ByBinding
     }
 }

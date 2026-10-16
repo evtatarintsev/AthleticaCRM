@@ -26,6 +26,8 @@ import org.athletica.crm.read.home.DbTodayScheduleView
 import org.athletica.crm.read.home.TodayScheduleView
 import org.athletica.crm.read.memberships.DbMembershipHistoryView
 import org.athletica.crm.read.memberships.MembershipHistoryView
+import org.athletica.crm.read.messaging.ClientChannelsView
+import org.athletica.crm.read.messaging.DbClientChannelsView
 import org.athletica.crm.read.messaging.DbInboundTriageView
 import org.athletica.crm.read.messaging.InboundTriageView
 import org.athletica.crm.read.schedule.DbScheduleView
@@ -79,4 +81,6 @@ data class ReadViews(
     val inboundTriage: InboundTriageView = DbInboundTriageView(),
     /** История абонемента для панели абонемента. */
     val membershipHistory: MembershipHistoryView = DbMembershipHistoryView(),
+    /** Каналы, через которые можно написать клиенту, для страницы переписки. */
+    val clientChannels: ClientChannelsView = DbClientChannelsView(),
 )

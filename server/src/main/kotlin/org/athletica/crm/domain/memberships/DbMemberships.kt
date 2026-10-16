@@ -15,11 +15,13 @@ import org.athletica.crm.core.actingEmployeeId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toMembershipId
+import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.entityids.toTariffPlanId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -39,6 +41,7 @@ import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
+import org.athletica.crm.storage.sql.MembershipCandidateSql
 import kotlin.uuid.Uuid
 
 /**
@@ -129,16 +132,77 @@ class DbMemberships : Memberships {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byId(id: MembershipId): Membership =
         tr
-            .sql("$SELECT_MEMBERSHIP WHERE id = :id AND org_id = :orgId FOR UPDATE")
+            .sql("$SELECT_MEMBERSHIP m WHERE m.id = :id AND m.org_id = :orgId FOR UPDATE OF m")
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .firstOrNull { it.toMembership() }
             ?: raise(CommonDomainError("MEMBERSHIP_NOT_FOUND", Messages.MembershipNotFound.localize()))
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun debitCandidate(
+        clientId: ClientId,
+        groupId: GroupId,
+        sessionDate: LocalDate,
+        today: LocalDate,
+    ): Membership? {
+        repeat(CANDIDATE_ATTEMPTS) {
+            val candidate =
+                tr
+                    .sql(
+                        """
+                        $SELECT_MEMBERSHIP m
+                        WHERE ${MembershipCandidateSql.condition(":clientId", ":groupId", ":sessionDate", ":today")}
+                        ORDER BY ${MembershipCandidateSql.ORDER}
+                        LIMIT 1
+                        FOR UPDATE OF m
+                        """.trimIndent(),
+                    )
+                    .bind("orgId", ctx.orgId)
+                    .bind("clientId", clientId)
+                    .bind("groupId", groupId)
+                    .bind("sessionDate", sessionDate)
+                    .bind("today", today)
+                    .firstOrNull { it.toMembership() }
+                    ?: return null
+            if (candidate.isDebitCandidate(groupId, sessionDate, today)) {
+                return candidate
+            }
+        }
+        throw MembershipDebitConflict(
+            "Абонемент клиента $clientId для занятия от $sessionDate перехвачен параллельными списаниями",
+        )
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun activeDebit(sessionId: SessionId, clientId: ClientId): MembershipDebit? =
+        tr
+            .sql(
+                """
+                SELECT d.id, d.membership_id, d.client_id, d.session_id, s.date, d.kind
+                FROM membership_debits d
+                JOIN sessions s ON s.id = d.session_id
+                WHERE d.session_id = :sessionId AND d.client_id = :clientId
+                  AND d.org_id = :orgId AND d.reversed_at IS NULL
+                """.trimIndent(),
+            )
+            .bind("sessionId", sessionId)
+            .bind("clientId", clientId)
+            .bind("orgId", ctx.orgId)
+            .firstOrNull {
+                MembershipDebit(
+                    id = it.asUuid("id"),
+                    membershipId = it.asUuid("membership_id").toMembershipId(),
+                    clientId = it.asUuid("client_id").toClientId(),
+                    sessionId = it.asUuid("session_id").toSessionId(),
+                    sessionDate = it.asLocalDate("date"),
+                    kind = DebitKind.valueOf(it.asString("kind")),
+                )
+            }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun forClient(clientId: ClientId): List<Membership> =
         tr
-            .sql("$SELECT_MEMBERSHIP WHERE client_id = :clientId AND org_id = :orgId ORDER BY created_at DESC, id DESC")
+            .sql("$SELECT_MEMBERSHIP m WHERE m.client_id = :clientId AND m.org_id = :orgId ORDER BY m.created_at DESC, m.id DESC")
             .bind("clientId", clientId)
             .bind("orgId", ctx.orgId)
             .list { it.toMembership() }
@@ -215,6 +279,9 @@ class DbMemberships : Memberships {
         }
 
     private companion object {
+        /** Сколько раз подбор повторяется, если кандидата перехватила параллельная транзакция. */
+        const val CANDIDATE_ATTEMPTS = 3
+
         /** Колонки абонемента, из которых собирается доменный тип. */
         const val SELECT_MEMBERSHIP =
             """
@@ -224,7 +291,7 @@ class DbMemberships : Memberships {
                    close_notified_at, closed_on, close_reason,
                    (SELECT COALESCE(json_agg(json_build_object('id', g.id, 'name', g.name) ORDER BY g.name, g.id), '[]')::text
                     FROM membership_groups mg JOIN groups g ON g.id = mg.group_id
-                    WHERE mg.membership_id = memberships.id) AS groups
+                    WHERE mg.membership_id = m.id) AS groups
             FROM memberships
             """
     }

@@ -1404,6 +1404,16 @@ export type DashboardSettingsInput = z.output<typeof DashboardSettingsInputSchem
 export const DayOfWeekSchema = z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]);
 export type DayOfWeek = z.output<typeof DayOfWeekSchema>;
 
+export const DebitMembershipSchemaSchema = z
+  .object({
+    id: MembershipIdSchema,
+    name: z.string(),
+    sessionsRemaining: z.int32().nullable(),
+    sessionsTotal: z.int32().nullable(),
+  })
+  .readonly();
+export type DebitMembershipSchema = z.output<typeof DebitMembershipSchemaSchema>;
+
 export const DeleteBranchRequestSchema = z
   .object({
     ids: z.array(BranchIdSchema).readonly(),
@@ -2022,6 +2032,25 @@ export const MembershipEventSchemaClosedSchema = z
   .readonly();
 export type MembershipEventSchemaClosed = z.output<typeof MembershipEventSchemaClosedSchema>;
 
+export const MembershipEventSchemaDebitReversedSchema = z
+  .object({
+    type: z.literal("debit_reversed"),
+    sessionId: SessionIdSchema,
+    sessionDate: LocalDateSchema,
+  })
+  .readonly();
+export type MembershipEventSchemaDebitReversed = z.output<typeof MembershipEventSchemaDebitReversedSchema>;
+
+export const MembershipEventSchemaDebitedSchema = z
+  .object({
+    type: z.literal("debited"),
+    sessionId: SessionIdSchema,
+    sessionDate: LocalDateSchema,
+    debtRepayment: z.boolean(),
+  })
+  .readonly();
+export type MembershipEventSchemaDebited = z.output<typeof MembershipEventSchemaDebitedSchema>;
+
 export const MembershipEventSchemaIssuedSchema = z
   .object({
     type: z.literal("issued"),
@@ -2040,7 +2069,7 @@ export const MembershipEventSchemaRevokedSchema = z
   .readonly();
 export type MembershipEventSchemaRevoked = z.output<typeof MembershipEventSchemaRevokedSchema>;
 
-export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema]);
+export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaDebitReversedSchema, MembershipEventSchemaDebitedSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema]);
 export type MembershipEventSchema = z.output<typeof MembershipEventSchemaSchema>;
 
 export const MembershipGroupSchemaSchema = z
@@ -2238,6 +2267,48 @@ export const OrgSettingsResponseSchema = z
   .readonly();
 export type OrgSettingsResponse = z.output<typeof OrgSettingsResponseSchema>;
 
+export const ParticipantDebitStateSchemaDebitedSchema = z
+  .object({
+    type: z.literal("debited"),
+    membership: DebitMembershipSchemaSchema,
+  })
+  .readonly();
+export type ParticipantDebitStateSchemaDebited = z.output<typeof ParticipantDebitStateSchemaDebitedSchema>;
+
+export const ParticipantDebitStateSchemaNoMembershipSchema = z
+  .object({
+    type: z.literal("no_membership"),
+  })
+  .readonly();
+export type ParticipantDebitStateSchemaNoMembership = z.output<typeof ParticipantDebitStateSchemaNoMembershipSchema>;
+
+export const ParticipantDebitStateSchemaNotDebitedSchema = z
+  .object({
+    type: z.literal("not_debited"),
+  })
+  .readonly();
+export type ParticipantDebitStateSchemaNotDebited = z.output<typeof ParticipantDebitStateSchemaNotDebitedSchema>;
+
+export const ParticipantDebitStateSchemaWillDebitSchema = z
+  .object({
+    type: z.literal("will_debit"),
+    membership: DebitMembershipSchemaSchema,
+    activates: z.boolean(),
+  })
+  .readonly();
+export type ParticipantDebitStateSchemaWillDebit = z.output<typeof ParticipantDebitStateSchemaWillDebitSchema>;
+
+export const ParticipantDebitStateSchemaSchema = z.discriminatedUnion("type", [ParticipantDebitStateSchemaDebitedSchema, ParticipantDebitStateSchemaNoMembershipSchema, ParticipantDebitStateSchemaNotDebitedSchema, ParticipantDebitStateSchemaWillDebitSchema]);
+export type ParticipantDebitStateSchema = z.output<typeof ParticipantDebitStateSchemaSchema>;
+
+export const ParticipantDebitSchemaSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    debit: ParticipantDebitStateSchemaSchema,
+  })
+  .readonly();
+export type ParticipantDebitSchema = z.output<typeof ParticipantDebitSchemaSchema>;
+
 export const PaymentUrlResponseSchema = z
   .object({
     paymentId: z.uuid(),
@@ -2386,6 +2457,20 @@ export const SendMessageRequestSchema = z
   })
   .readonly();
 export type SendMessageRequest = z.output<typeof SendMessageRequestSchema>;
+
+export const SessionDebitPreviewRequestSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+  })
+  .readonly();
+export type SessionDebitPreviewRequest = z.output<typeof SessionDebitPreviewRequestSchema>;
+
+export const SessionDebitPreviewResponseSchema = z
+  .object({
+    participants: z.array(ParticipantDebitSchemaSchema).readonly(),
+  })
+  .readonly();
+export type SessionDebitPreviewResponse = z.output<typeof SessionDebitPreviewResponseSchema>;
 
 export const SessionDetailRequestSchema = z
   .object({
@@ -3485,6 +3570,13 @@ export const endpoints = {
     request: CreateSessionRequestSchema,
     out: "json",
     response: SessionDetailResponseSchema,
+  },
+  "sessions/debit-preview": {
+    method: "GET",
+    in: "query",
+    request: SessionDebitPreviewRequestSchema,
+    out: "json",
+    response: SessionDebitPreviewResponseSchema,
   },
   "sessions/detail": {
     method: "GET",

@@ -163,6 +163,30 @@ data class ActiveStatus(
     }
 }
 
+/**
+ * Подходит ли абонемент для списания занятия группы [groupId] от [sessionDate] при сегодняшней
+ * дате организации [today]. Повторяет правило `MembershipCandidateSql` и служит перепроверкой
+ * кандидата после блокировки его строки.
+ */
+fun Membership.isDebitCandidate(groupId: GroupId, sessionDate: LocalDate, today: LocalDate): Boolean {
+    val hasSessions = sessionsRemaining.let { it == null || it > 0 }
+    if (!hasSessions || groups.none { it.id == groupId }) {
+        return false
+    }
+    return when (this) {
+        is ActiveMembership -> sessionDate in startDate..endDate
+        is InactiveMembership.OnDate -> {
+            val activateOn = activation.date
+            activateOn <= today && sessionDate in activateOn..duration.endDateFrom(activateOn)
+        }
+        is InactiveMembership.OnFirstVisit -> {
+            val deadline = activation.deadline
+            sessionDate >= issuedOn && (deadline == null || sessionDate <= deadline)
+        }
+        is ClosedMembership, is RevokedMembership -> false
+    }
+}
+
 /** Начальное состояние выдаваемого абонемента. */
 sealed interface IssueOutcome {
     /** Абонемент активируется при выдаче с датой начала [startDate]. */

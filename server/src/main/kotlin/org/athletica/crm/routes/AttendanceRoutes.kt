@@ -17,6 +17,8 @@ import org.athletica.crm.api.schemas.attendance.GroupAttendanceResponse
 import org.athletica.crm.api.schemas.attendance.JournalParticipantRequest
 import org.athletica.crm.api.schemas.attendance.MarkAttendanceRequest
 import org.athletica.crm.api.schemas.attendance.MarkRemainingAbsentRequest
+import org.athletica.crm.api.schemas.attendance.SessionDebitPreviewRequest
+import org.athletica.crm.api.schemas.attendance.SessionDebitPreviewResponse
 import org.athletica.crm.api.schemas.attendance.SessionJournalRequest
 import org.athletica.crm.api.schemas.attendance.SessionJournalResponse
 import org.athletica.crm.api.schemas.attendance.UpdateAttendanceLabelRequest
@@ -85,6 +87,12 @@ fun RouteWithContext.attendanceRoutes(
         get<SessionJournalRequest, SessionJournalResponse>("/journal") { request ->
             db.transaction {
                 views.sessionJournal.journal(request.sessionId)
+            }
+        }
+
+        get<SessionDebitPreviewRequest, SessionDebitPreviewResponse>("/debit-preview") { request ->
+            db.transaction {
+                views.sessionDebitPreview.preview(request.sessionId)
             }
         }
 

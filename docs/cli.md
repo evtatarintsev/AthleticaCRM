@@ -9,6 +9,7 @@ athletica serve
 athletica admin org find <запрос>...
 athletica admin org credit <организация> <сумма> --description=<описание>
 athletica admin org debit  <организация> <сумма> --description=<описание>
+athletica admin events retry-failed [--org <организация>] [--event <событие>]
 ```
 
 Справка доступна на каждом уровне: `athletica --help`, `athletica admin --help`,
@@ -128,3 +129,29 @@ athletica admin org debit 019e1c25-7d23-7234-9ef8-160057bc67e4 500 --description
 
 - Java 25+ (базовый образ `Dockerfile.server` — `eclipse-temurin:25`)
 - PostgreSQL с базой данных AthleticaCRM
+
+### `admin events retry-failed` — перезапуск неуспешных доменных событий
+
+Обработка доменного события (например, списание абонементов при проведении занятия)
+повторяется с нарастающей задержкой: 10 секунд, затем вдвое больше, но не реже раза в час.
+После 12 неудачных попыток (около 10 часов) событие помечается неуспешным (`failed_at`):
+оно не выполнено и больше не выбирается воркером. После устранения причины сбоя событие
+возвращается в обработку этой командой — сбрасываются `failed_at`, счётчик попыток и время
+следующей попытки.
+
+Без опций перезапускаются все неуспешные события. `--org <uuid>` ограничивает организацией,
+`--event <uuid>` — одним событием; опции можно сочетать.
+
+```bash
+athletica admin events retry-failed
+athletica admin events retry-failed --org 019e1c25-7d23-7234-9ef8-160057bc67e4
+```
+
+Вывод:
+
+```
+Возвращено в обработку событий: 3
+```
+
+Найти неуспешные события можно запросом
+`SELECT id, org_id, event_type, last_error FROM domain_events WHERE failed_at IS NOT NULL`.

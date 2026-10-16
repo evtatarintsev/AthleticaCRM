@@ -88,7 +88,7 @@ class MembershipFixture(
     }
 
     /** Филиал организации для группы. */
-    private val branchId: BranchId = BranchId.new()
+    val branchId: BranchId = BranchId.new()
 
     /** Группа организации, создаётся в [setUp]; группа абонементов по умолчанию. */
     val groupId: GroupId = GroupId.new()

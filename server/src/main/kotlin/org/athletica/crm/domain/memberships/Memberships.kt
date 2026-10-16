@@ -6,6 +6,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
@@ -50,6 +51,27 @@ interface Memberships {
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: MembershipId): Membership
+
+    /**
+     * Подбирает абонемент клиента [clientId] для списания занятия группы [groupId] от [sessionDate]
+     * при сегодняшней дате организации [today] (правило `MembershipCandidateSql`) и блокирует его
+     * строку. После блокировки кандидат перепроверяется ([isDebitCandidate]); если его перехватила
+     * параллельная транзакция, подбор повторяется до трёх раз.
+     *
+     * `null` — подходящих абонементов нет (нормальный исход). Если кандидаты были, но все попытки
+     * перехвачены, бросает [MembershipDebitConflict].
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun debitCandidate(
+        clientId: ClientId,
+        groupId: GroupId,
+        sessionDate: LocalDate,
+        today: LocalDate,
+    ): Membership?
+
+    /** Действующее списание за участие клиента [clientId] в занятии [sessionId]; `null` — нет. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun activeDebit(sessionId: SessionId, clientId: ClientId): MembershipDebit?
 
     /** Возвращает абонементы клиента, новые сверху. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

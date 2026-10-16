@@ -1,5 +1,6 @@
 package org.athletica.crm.usecases.memberships
 
+import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.delay
@@ -75,7 +76,7 @@ class MembershipScheduler(
                         context(SystemContexts.forOrg(orgId)) {
                             process(membershipId, calendar.today())
                         }
-                    }.onLeft { logger.warn("Абонемент $membershipId не обработан: $it") }
+                    }.getOrElse { throw IllegalStateException("Абонемент $membershipId не обработан: $it") }
                 }
             } catch (e: Exception) {
                 logger.error("Ошибка обработки абонемента $membershipId: ${e.message}", e)

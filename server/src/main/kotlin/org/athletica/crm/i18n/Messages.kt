@@ -118,6 +118,31 @@ object Messages {
         override val en = "Client not found"
     }
 
+    object ChatNotFound : LocalizationKey {
+        override val ru = "Чат не найден"
+        override val en = "Chat not found"
+    }
+
+    object ChatAlreadyLinked : LocalizationKey {
+        override val ru = "Чат уже привязан к клиенту"
+        override val en = "This chat is already linked to a client"
+    }
+
+    object TelegramTokenInvalid : LocalizationKey {
+        override val ru = "Telegram не принял токен бота — проверьте его в BotFather"
+        override val en = "Telegram rejected the bot token — check it in BotFather"
+    }
+
+    object TelegramUnavailable : LocalizationKey {
+        override val ru = "Telegram сейчас недоступен — попробуйте сохранить позже"
+        override val en = "Telegram is unavailable right now — try saving later"
+    }
+
+    object TelegramBotInUse : LocalizationKey {
+        override val ru = "Этот бот уже подключён к другому каналу"
+        override val en = "This bot is already connected to another channel"
+    }
+
     object DisciplineAlreadyExists : LocalizationKey {
         override val ru = "Дисциплина с таким названием уже существует"
         override val en = "Discipline with this name already exists"

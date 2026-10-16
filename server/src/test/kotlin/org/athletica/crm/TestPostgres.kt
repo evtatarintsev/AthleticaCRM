@@ -25,6 +25,6 @@ object TestPostgres {
      */
     fun truncate(): Unit =
         runBlocking {
-            db.sql("TRUNCATE users, organizations CASCADE").execute()
+            db.sql("TRUNCATE users, organizations, channel_integrations CASCADE").execute()
         }
 }

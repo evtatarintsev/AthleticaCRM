@@ -19,6 +19,7 @@ import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.fail
+import kotlin.time.Clock
 
 /** Тесты read horizon диалога ([ConversationReadStates]). */
 class ReadStateTest {
@@ -68,14 +69,14 @@ class ReadStateTest {
                     TestPostgres.db.transaction {
                         context(ctx) {
                             val conversation = conversations.forClient(clientId)
-                            val first = conversation.appendInbound(integrationId, "Первое")
+                            val first = conversation.appendInbound(integrationId, "Первое", Clock.System.now())
 
                             val before = readStates.unreadCount(conversation.id)
 
                             readStates.markRead(conversation.id, first.createdAt)
                             val afterRead = readStates.unreadCount(conversation.id)
 
-                            conversation.appendInbound(integrationId, "Второе")
+                            conversation.appendInbound(integrationId, "Второе", Clock.System.now())
                             val afterNew = readStates.unreadCount(conversation.id)
 
                             Triple(before, afterRead, afterNew)

@@ -50,6 +50,7 @@ services:
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
       YOOKASSA_TEST_MODE: ${YOOKASSA_TEST_MODE}
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL}
+      TELEGRAM_PROXIES: ${TELEGRAM_PROXIES:-}
     depends_on:
       postgres:
         condition: service_healthy

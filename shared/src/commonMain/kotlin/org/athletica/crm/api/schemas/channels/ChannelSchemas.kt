@@ -14,6 +14,8 @@ data class ChannelIntegrationSchema(
     val name: String,
     val config: ChannelConfig,
     val enabled: Boolean,
+    /** Ссылка на бота вида `https://t.me/<username>`; `null` для каналов без ссылки. */
+    val botLink: String?,
 )
 
 /** Список интеграций каналов организации. */

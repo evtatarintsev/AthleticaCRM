@@ -402,6 +402,19 @@ class DbClientListViewTest {
         }
 
     @Test
+    fun `поиск по телефону без учёта форматирования и кода 8`() =
+        runTest {
+            val orgId = insertOrg()
+            val petr = insertClient(orgId, "Пётр Иванов")
+            val anna = insertClient(orgId, "Анна Смирнова")
+            insertContact(orgId, petr, "PHONE", "8 (900) 123-45-67")
+            insertContact(orgId, anna, "EMAIL", "79001234567@example.com")
+
+            assertEquals(listOf("Пётр Иванов"), page(orgId, ClientListQuery(search = "+79001234567")).clients.map { it.name })
+            assertEquals(listOf("Пётр Иванов"), page(orgId, ClientListQuery(search = "123-45")).clients.map { it.name })
+        }
+
+    @Test
     fun `поиск комбинируется с фильтром по полу`() =
         runTest {
             val orgId = insertOrg()

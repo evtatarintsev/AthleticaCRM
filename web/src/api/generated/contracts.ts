@@ -77,16 +77,17 @@ export const ArchiveTariffPlanRequestSchema = z
   .readonly();
 export type ArchiveTariffPlanRequest = z.output<typeof ArchiveTariffPlanRequestSchema>;
 
-export const InboundReceiptIdSchema = z.uuid().brand<"InboundReceiptId">();
-export type InboundReceiptId = z.output<typeof InboundReceiptIdSchema>;
+export const ChannelIntegrationIdSchema = z.uuid().brand<"ChannelIntegrationId">();
+export type ChannelIntegrationId = z.output<typeof ChannelIntegrationIdSchema>;
 
-export const AssignInboundRequestSchema = z
+export const AssignChatRequestSchema = z
   .object({
-    receiptId: InboundReceiptIdSchema,
+    integrationId: ChannelIntegrationIdSchema,
+    address: z.string(),
     clientId: ClientIdSchema,
   })
   .readonly();
-export type AssignInboundRequest = z.output<typeof AssignInboundRequestSchema>;
+export type AssignChatRequest = z.output<typeof AssignChatRequestSchema>;
 
 export const EmployeeIdSchema = z.uuid().brand<"EmployeeId">();
 export type EmployeeId = z.output<typeof EmployeeIdSchema>;
@@ -364,6 +365,7 @@ export const ChannelConfigTelegramBotSchema = z
   .object({
     type: z.literal("telegram_bot"),
     botToken: z.string(),
+    botUsername: z.string(),
   })
   .readonly();
 export type ChannelConfigTelegramBot = z.output<typeof ChannelConfigTelegramBotSchema>;
@@ -381,8 +383,17 @@ export type ChannelConfigTwilioSms = z.output<typeof ChannelConfigTwilioSmsSchem
 export const ChannelConfigSchema = z.discriminatedUnion("type", [ChannelConfigSmscSmsSchema, ChannelConfigTelegramBotSchema, ChannelConfigTwilioSmsSchema]);
 export type ChannelConfig = z.output<typeof ChannelConfigSchema>;
 
-export const ChannelIntegrationIdSchema = z.uuid().brand<"ChannelIntegrationId">();
-export type ChannelIntegrationId = z.output<typeof ChannelIntegrationIdSchema>;
+export const ChannelConfigTelegramBotInputSchema = z
+  .object({
+    type: z.literal("telegram_bot"),
+    botToken: z.string(),
+    botUsername: z.string().optional(),
+  })
+  .readonly();
+export type ChannelConfigTelegramBotInput = z.output<typeof ChannelConfigTelegramBotInputSchema>;
+
+export const ChannelConfigInputSchema = z.discriminatedUnion("type", [ChannelConfigSmscSmsSchema, ChannelConfigTelegramBotInputSchema, ChannelConfigTwilioSmsSchema]);
+export type ChannelConfigInput = z.output<typeof ChannelConfigInputSchema>;
 
 export const ChannelIntegrationSchemaSchema = z
   .object({
@@ -390,6 +401,7 @@ export const ChannelIntegrationSchemaSchema = z
     name: z.string(),
     config: ChannelConfigSchema,
     enabled: z.boolean(),
+    botLink: z.string().nullable(),
   })
   .readonly();
 export type ChannelIntegrationSchema = z.output<typeof ChannelIntegrationSchemaSchema>;
@@ -985,7 +997,7 @@ export const CreateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
     name: z.string(),
-    config: ChannelConfigSchema,
+    config: ChannelConfigInputSchema,
   })
   .readonly();
 export type CreateChannelIntegrationRequest = z.output<typeof CreateChannelIntegrationRequestSchema>;
@@ -1888,16 +1900,8 @@ export const HallListResponseSchema = z
   .readonly();
 export type HallListResponse = z.output<typeof HallListResponseSchema>;
 
-export const InboundReceiptSchemaSchema = z
-  .object({
-    id: InboundReceiptIdSchema,
-    integrationId: ChannelIntegrationIdSchema,
-    fromAddress: z.string(),
-    body: z.string(),
-    receivedAt: z.string(),
-  })
-  .readonly();
-export type InboundReceiptSchema = z.output<typeof InboundReceiptSchemaSchema>;
+export const InboundReceiptIdSchema = z.uuid().brand<"InboundReceiptId">();
+export type InboundReceiptId = z.output<typeof InboundReceiptIdSchema>;
 
 export const InitiatePaymentRequestSchema = z
   .object({
@@ -2739,9 +2743,48 @@ export const TodaySessionsResponseSchema = z
   .readonly();
 export type TodaySessionsResponse = z.output<typeof TodaySessionsResponseSchema>;
 
+export const TriageMessageSchemaSchema = z
+  .object({
+    id: InboundReceiptIdSchema,
+    body: z.string(),
+    receivedAt: z.string(),
+  })
+  .readonly();
+export type TriageMessageSchema = z.output<typeof TriageMessageSchemaSchema>;
+
+export const TriageChatMessagesResponseSchema = z
+  .object({
+    messages: z.array(TriageMessageSchemaSchema).readonly(),
+  })
+  .readonly();
+export type TriageChatMessagesResponse = z.output<typeof TriageChatMessagesResponseSchema>;
+
+export const TriageChatRequestSchema = z
+  .object({
+    integrationId: ChannelIntegrationIdSchema,
+    address: z.string(),
+  })
+  .readonly();
+export type TriageChatRequest = z.output<typeof TriageChatRequestSchema>;
+
+export const TriageChatSchemaSchema = z
+  .object({
+    integrationId: ChannelIntegrationIdSchema,
+    channelName: z.string(),
+    address: z.string(),
+    displayName: z.string(),
+    username: z.string().nullable(),
+    phone: z.string().nullable(),
+    unresolvedCount: z.int32(),
+    lastMessageBody: z.string(),
+    lastMessageAt: z.string(),
+  })
+  .readonly();
+export type TriageChatSchema = z.output<typeof TriageChatSchemaSchema>;
+
 export const TriageListResponseSchema = z
   .object({
-    receipts: z.array(InboundReceiptSchemaSchema).readonly(),
+    chats: z.array(TriageChatSchemaSchema).readonly(),
   })
   .readonly();
 export type TriageListResponse = z.output<typeof TriageListResponseSchema>;
@@ -2791,7 +2834,7 @@ export const UpdateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
     name: z.string(),
-    config: ChannelConfigSchema,
+    config: ChannelConfigInputSchema,
     enabled: z.boolean(),
   })
   .readonly();
@@ -3537,9 +3580,16 @@ export const endpoints = {
   "messaging/triage/assign": {
     method: "POST",
     in: "body",
-    request: AssignInboundRequestSchema,
+    request: AssignChatRequestSchema,
     out: "empty",
     response: z.undefined(),
+  },
+  "messaging/triage/chat": {
+    method: "GET",
+    in: "query",
+    request: TriageChatRequestSchema,
+    out: "json",
+    response: TriageChatMessagesResponseSchema,
   },
   "messaging/triage/list": {
     method: "GET",

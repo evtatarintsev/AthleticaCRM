@@ -3,6 +3,7 @@ package org.athletica.crm.domain.clientcontacts
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toClientContactId
@@ -14,7 +15,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация репозитория контактов клиентов на PostgreSQL через R2DBC. */
 class DbClientContacts : ClientContacts {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun byClient(clientId: ClientId): List<ClientContact> =
         tr.sql(
             """
@@ -78,4 +79,24 @@ class DbClientContacts : ClientContacts {
             type = ContactType.valueOf(asString("type")),
             value = asString("value"),
         )
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun clientsByPhone(phone: PhoneDigits): List<ClientId> =
+        tr.sql(
+            """
+            SELECT DISTINCT client_id
+            FROM (
+                SELECT client_id, regexp_replace(value, '[^0-9]', '', 'g') AS digits
+                FROM client_contacts
+                WHERE org_id = :orgId AND type = 'PHONE'
+            ) phones
+            WHERE CASE
+                      WHEN length(digits) = 11 AND left(digits, 1) = '8' THEN '7' || substr(digits, 2)
+                      ELSE digits
+                  END = :phone
+            """.trimIndent(),
+        )
+            .bind("orgId", ctx.orgId)
+            .bind("phone", phone.value)
+            .list { row -> row.asUuid("client_id").toClientId() }
 }

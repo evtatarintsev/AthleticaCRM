@@ -31,7 +31,9 @@ import org.athletica.crm.read.memberships.UnpaidSessionsView
 import org.athletica.crm.read.messaging.ClientChannelsView
 import org.athletica.crm.read.messaging.DbClientChannelsView
 import org.athletica.crm.read.messaging.DbInboundTriageView
+import org.athletica.crm.read.messaging.DbTriageChatView
 import org.athletica.crm.read.messaging.InboundTriageView
+import org.athletica.crm.read.messaging.TriageChatView
 import org.athletica.crm.read.schedule.DbScheduleView
 import org.athletica.crm.read.schedule.ScheduleView
 import org.athletica.crm.read.sessions.DbSessionDebitPreviewView
@@ -81,8 +83,10 @@ data class ReadViews(
     val employeeDetail: EmployeeDetailView = DbEmployeeDetailView(),
     /** Интеграции каналов связи для раздела настроек «Каналы». */
     val channelList: ChannelListView = DbChannelListView(),
-    /** Очередь ручного разбора неразобранных входящих. */
+    /** Очередь ручного разбора: неразобранные чаты связанных каналов. */
     val inboundTriage: InboundTriageView = DbInboundTriageView(),
+    /** Сообщения одного неразобранного чата для страницы «Входящие». */
+    val triageChat: TriageChatView = DbTriageChatView(),
     /** Списания абонементов участников занятия для карточки занятия. */
     val sessionDebitPreview: SessionDebitPreviewView = DbSessionDebitPreviewView(),
     /** Неоплаченные занятия клиента в группах абонемента. */

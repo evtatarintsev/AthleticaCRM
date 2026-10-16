@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.inbound
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.InboundReceiptId
 import org.athletica.crm.core.entityids.MessageId
@@ -35,18 +35,21 @@ data class InboundReceipt(
 /** Хранилище сырых входящих (инбокс). Изолировано по организации. */
 interface InboundReceipts {
     /** Записывает входящее в статусе `UNRESOLVED` и возвращает его. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun record(integrationId: ChannelIntegrationId, fromAddress: String, body: String): InboundReceipt
 
-    /** Входящее по [id]; `null`, если не найдено или принадлежит другой организации. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun byId(id: InboundReceiptId): InboundReceipt?
+    /**
+     * Неразобранные входящие с адреса [fromAddress] интеграции [integrationId] в порядке получения.
+     * Строки блокируются до конца транзакции, чтобы параллельный разбор не перенёс их дважды.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun unresolvedFrom(integrationId: ChannelIntegrationId, fromAddress: String): List<InboundReceipt>
 
     /**
      * Помечает неразобранное входящее [id] разобранным, связывая его с порождённым сообщением [messageId].
      * `RECEIPT_ALREADY_RESOLVED`, если запись уже разобрана (в том числе параллельным запросом):
      * переход выполняется условным UPDATE, поэтому из двух одновременных разборов проходит один.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun markResolved(id: InboundReceiptId, messageId: MessageId)
 }

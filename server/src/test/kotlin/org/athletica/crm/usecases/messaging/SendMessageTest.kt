@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.MessagingFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.DeliveryStateSchema
@@ -29,7 +30,8 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asString
-import org.athletica.infra.messaging.StubChannelTransports
+import org.athletica.infra.messaging.ProviderChannelTransports
+import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -47,7 +49,7 @@ class SendMessageTest {
 
     private val contacts = DbClientContacts()
     private val bindings = DbChannelBindings()
-    private val channels = DbChannelIntegrations(StubChannelTransports(), contacts, bindings)
+    private val channels = DbChannelIntegrations(ProviderChannelTransports(telegramTestApi { error("Bot API не вызывается") }), contacts, bindings)
     private val conversations = DbConversations()
     private val deliveries = DbDeliveries()
 
@@ -209,7 +211,7 @@ class SendMessageTest {
     fun `Telegram без связки возвращает CLIENT_NOT_LINKED, даже если есть контакт-юзернейм`() =
         runTest {
             val telegramId = ChannelIntegrationId.new()
-            insertIntegration(telegramId, TELEGRAM_CONFIG, enabled = true)
+            insertIntegration(telegramId, MessagingFixture.telegramConfig(), enabled = true)
             TestPostgres.db.sql(
                 """
                 INSERT INTO client_contacts (id, org_id, client_id, type, value)
@@ -228,7 +230,7 @@ class SendMessageTest {
     fun `Telegram со связкой отправляет на адрес из связки`() =
         runTest {
             val telegramId = ChannelIntegrationId.new()
-            insertIntegration(telegramId, TELEGRAM_CONFIG, enabled = true)
+            insertIntegration(telegramId, MessagingFixture.telegramConfig(), enabled = true)
             TestPostgres.db.sql(
                 """
                 INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
@@ -286,7 +288,6 @@ class SendMessageTest {
         }
 
     private companion object {
-        const val TELEGRAM_CONFIG = """{"type":"telegram_bot","botToken":"tok"}"""
         const val SMS_CONFIG = """{"type":"twilio_sms","accountSid":"sid","authToken":"tok","from":"+10000000000"}"""
     }
 }

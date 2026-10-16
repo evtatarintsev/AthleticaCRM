@@ -33,7 +33,10 @@ enum class ClientSortColumn {
 data class ClientListQuery(
     /** Возвращать архивных клиентов вместо активных. */
     val archived: Boolean = false,
-    /** Поиск по имени (подстрока, регистронезависимо). `null` — без поиска. */
+    /**
+     * Поиск по имени (подстрока, регистронезависимо) или по телефону (цифры без учёта форматирования).
+     * `null` — без поиска.
+     */
     val search: String? = null,
     /** Фильтр по полу. `null` — без фильтра. */
     val gender: Gender? = null,

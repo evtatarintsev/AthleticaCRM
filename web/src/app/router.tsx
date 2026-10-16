@@ -50,6 +50,7 @@ import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
 import { HomePage } from "@/home/HomePage";
 import { ConversationPage } from "@/messaging/ConversationPage";
+import { InboxPage } from "@/messaging/InboxPage";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
 import { SessionErrorPage } from "./SessionErrorPage";
@@ -246,6 +247,16 @@ const customFieldsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/client-additional-attributes",
   beforeLoad: settingsPanelRedirect("client-additional-attributes"),
+});
+
+/** «Входящие»: неразобранные чаты связанных каналов. */
+const inboxRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/inbox",
+  component: function InboxRoute() {
+    const { api } = inboxRoute.useRouteContext();
+    return <InboxPage api={api} />;
+  },
 });
 
 /** Каналы связи. */
@@ -567,6 +578,7 @@ const routeTree = rootRoute.addChildren([
     branchesRoute,
     customFieldsRoute,
     channelsRoute,
+    inboxRoute,
     orgSettingsRoute,
     orgBalanceRoute,
     paymentCompleteRoute,
@@ -630,6 +642,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/branches": true,
   "/settings/client-additional-attributes": true,
   "/settings/channels": true,
+  "/inbox": true,
   "/settings/basic": true,
   "/settings/org-balance": true,
   "/settings/org-balance/complete": true,

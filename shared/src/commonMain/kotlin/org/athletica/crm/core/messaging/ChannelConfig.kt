@@ -57,7 +57,13 @@ sealed interface ChannelConfig {
     @Serializable
     @SerialName("telegram_bot")
     data class TelegramBot(
+        /** Токен бота из BotFather. */
         val botToken: String,
+        /**
+         * Имя пользователя бота без `@`. Клиент его не задаёт: при сохранении сервер подставляет
+         * значение из Bot API (`getMe`). Пустая строка — интеграция ещё не проверялась.
+         */
+        val botUsername: String = "",
     ) : ChannelConfig {
         override val supportsInbound: Boolean get() = true
         override val supportsReceipts: Boolean get() = true

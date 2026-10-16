@@ -46,6 +46,7 @@ export function ClientCardHeader({
   quickInfo,
   alerts,
   onToggleArchived,
+  onIssueSubscription,
 }: {
   readonly api: ApiClient;
   readonly client: ClientDetailResponse;
@@ -54,6 +55,8 @@ export function ClientCardHeader({
   readonly quickInfo: ReactNode;
   readonly alerts: readonly ClientAlert[];
   readonly onToggleArchived: (archived: boolean) => void;
+  /** Открывает панель выдачи абонемента. */
+  readonly onIssueSubscription: () => void;
 }) {
   const { t } = useI18n();
   const archived = client.state === "ARCHIVED";
@@ -93,11 +96,9 @@ export function ClientCardHeader({
 
       <div className="flex flex-wrap gap-2">
         {!archived && (
-          <Button size="sm" asChild>
-            <Link to="/clients/$clientId/issue-subscription" params={{ clientId }}>
-              <TicketIcon aria-hidden />
-              {t("clients.detail.issueSubscription")}
-            </Link>
+          <Button size="sm" onClick={onIssueSubscription}>
+            <TicketIcon aria-hidden />
+            {t("clients.detail.issueSubscription")}
           </Button>
         )}
         <Button size="sm" variant="outline" asChild>

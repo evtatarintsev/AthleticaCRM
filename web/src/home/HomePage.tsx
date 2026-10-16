@@ -60,7 +60,14 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
             switch (widget.type) {
               case "sessions":
                 return (
-                  <SessionsWidgetCard key={widget.id} api={api} branchId={branchId} title={title} />
+                  <SessionsWidgetCard
+                    key={widget.id}
+                    api={api}
+                    branchId={branchId}
+                    settings={dashboard}
+                    widget={widget}
+                    title={title}
+                  />
                 );
               case "debtors":
                 return (
@@ -68,6 +75,7 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
                     key={widget.id}
                     api={api}
                     branchId={branchId}
+                    settings={dashboard}
                     widget={widget}
                     title={title}
                   />
@@ -78,6 +86,7 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
                     key={widget.id}
                     api={api}
                     branchId={branchId}
+                    settings={dashboard}
                     widget={widget}
                     today={today}
                     title={title}

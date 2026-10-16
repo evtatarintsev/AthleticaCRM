@@ -1,3 +1,5 @@
+import type { QueryClient } from "@tanstack/react-query";
+import type { ApiClient } from "@/api/client";
 import {
   DashboardWidgetIdSchema,
   LocalDateSchema,
@@ -9,9 +11,11 @@ import {
   type DashboardWidgetDebtors,
   type DashboardWidgetId,
   type DateRange,
+  type DisplaySettings,
   type LocalDate,
 } from "@/api/generated/contracts";
 import type { ClientListSearch } from "@/clients/clientListSearch";
+import { displaySettingsKey } from "@/clients/clientsQueries";
 import type { PlainMessageKey } from "@/i18n/context";
 
 /** Значение количества элементов в виджете по умолчанию (паритет с KMP-клиентом). */
@@ -115,6 +119,21 @@ export function replaceWidget(
     ...settings,
     widgets: settings.widgets.map((widget) => (widget.id === updated.id ? updated : widget)),
   };
+}
+
+/** Применяет изменение [update] к актуальным настройкам главной и сохраняет его. */
+export function updateDashboardSettings(
+  api: ApiClient,
+  queryClient: QueryClient,
+  fallback: DashboardSettings,
+  update: (settings: DashboardSettings) => DashboardSettings,
+): void {
+  const cached = queryClient.getQueryData<DisplaySettings>(displaySettingsKey);
+  const dashboard = update(cached?.dashboard ?? fallback);
+  queryClient.setQueryData<DisplaySettings>(displaySettingsKey, (current) =>
+    current === undefined ? current : { ...current, dashboard },
+  );
+  void api.call("display-settings/update", { dashboard });
 }
 
 /** Скрывает виджет [id]: убирает из раскладки, пул не меняется — настройки виджета сохраняются. */

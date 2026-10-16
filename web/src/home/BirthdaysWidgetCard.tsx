@@ -1,9 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ApiClient } from "@/api/client";
-import type { BranchId, DashboardWidgetBirthdays, LocalDate } from "@/api/generated/contracts";
+import type {
+  BranchId,
+  DashboardSettings,
+  DashboardWidgetBirthdays,
+  LocalDate,
+} from "@/api/generated/contracts";
 import { useI18n } from "@/i18n/context";
 import { apiQuery } from "@/query/queries";
+import { Avatar } from "@/ui/Avatar";
 import { birthdaysRequest, birthdaysShowAllSearch, yearOf } from "./dashboardSettings";
 import { ListWidgetCard } from "./ListWidgetCard";
 
@@ -11,12 +17,14 @@ import { ListWidgetCard } from "./ListWidgetCard";
 export function BirthdaysWidgetCard({
   api,
   branchId,
+  settings,
   widget,
   today,
   title,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
+  readonly settings: DashboardSettings;
   readonly widget: DashboardWidgetBirthdays;
   readonly today: LocalDate;
   readonly title: string;
@@ -27,6 +35,9 @@ export function BirthdaysWidgetCard({
   const total = query.data?.total ?? 0;
   return (
     <ListWidgetCard
+      api={api}
+      settings={settings}
+      widget={widget}
       title={title}
       isPending={query.isPending}
       isError={query.isError}
@@ -35,13 +46,16 @@ export function BirthdaysWidgetCard({
       errorKey="home.birthdaysError"
       renderItem={(client) => (
         <div className="flex items-center justify-between gap-2 px-2">
-          <Link
-            to="/clients/$clientId"
-            params={{ clientId: client.id }}
-            className="min-w-0 truncate text-primary hover:underline"
-          >
-            {client.name}
-          </Link>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Avatar api={api} uploadId={client.avatarId} name={client.name} className="size-8" />
+            <Link
+              to="/clients/$clientId"
+              params={{ clientId: client.id }}
+              className="min-w-0 truncate font-medium hover:underline"
+            >
+              {client.name}
+            </Link>
+          </div>
           {client.birthday !== null && (
             <span className="shrink-0 text-sm text-muted-foreground">
               {t("home.birthdaysAge", { age: yearOf(today) - yearOf(client.birthday) })}

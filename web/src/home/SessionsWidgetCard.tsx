@@ -1,19 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ApiClient } from "@/api/client";
-import type { BranchId } from "@/api/generated/contracts";
+import type {
+  BranchId,
+  DashboardSettings,
+  DashboardWidgetSessions,
+} from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/i18n/context";
 import { apiQuery } from "@/query/queries";
+import { WidgetSettingsButton } from "./WidgetSettingsButton";
 
 /** Виджет главной «Занятия сегодня»: расписание на сегодня в филиале. */
 export function SessionsWidgetCard({
   api,
   branchId,
+  settings,
+  widget,
   title,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
+  readonly settings: DashboardSettings;
+  readonly widget: DashboardWidgetSessions;
   readonly title: string;
 }) {
   const { t, format } = useI18n();
@@ -21,8 +30,9 @@ export function SessionsWidgetCard({
   const sessions = query.data?.sessions;
   return (
     <div className="flex-1 rounded-lg border bg-card lg:min-w-0">
-      <div className="border-b px-4 py-3">
-        <h2 className="font-medium">{title}</h2>
+      <div className="flex items-center justify-between gap-2 border-b px-4 py-2">
+        <h2 className="min-w-0 flex-1 truncate font-medium">{title}</h2>
+        <WidgetSettingsButton api={api} settings={settings} widget={widget} />
       </div>
       <div className="p-2">
         {query.isPending && (

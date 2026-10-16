@@ -2,7 +2,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
-import type { BranchId, ClientDetailResponse, ClientId } from "@/api/generated/contracts";
+import type {
+  BranchId,
+  ClientDetailResponse,
+  ClientId,
+  LocalDate,
+  MembershipId,
+} from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
@@ -18,6 +24,7 @@ import { ClientGroupsSection } from "./ClientGroupsSection";
 import { ClientNotesSection } from "./ClientNotesSection";
 import { ClientAttendanceSection, ClientUpcomingSection } from "./ClientScheduleSections";
 import { ClientSubscriptionsSection } from "./ClientSubscriptionsSection";
+import { MembershipSheet } from "./membership/MembershipSheet";
 import {
   attendanceWith,
   clientAttendanceQuery,
@@ -52,6 +59,8 @@ export function ClientDetailPage({
   const branchId = session.currentBranch.id;
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
   const [balanceOpen, setBalanceOpen] = useState(false);
+  const [membershipId, setMembershipId] = useState<MembershipId | null>(null);
+  const [membershipOpen, setMembershipOpen] = useState(false);
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
@@ -101,13 +110,18 @@ export function ClientDetailPage({
   const data = client.data;
   const leadSourceName =
     leadSources.data?.leadSources.find((source) => source.id === data.leadSourceId)?.name ?? null;
+  const today = todayLocalDate();
   const alerts = clientAlerts({
     client: data,
     memberships: memberships.data?.memberships,
     tasks: tasks.data?.tasks,
-    today: todayLocalDate(),
+    today,
     now: new Date(),
   });
+  const openMembership = (id: MembershipId) => {
+    setMembershipId(id);
+    setMembershipOpen(true);
+  };
 
   return (
     <section className="max-w-6xl space-y-4 pb-16">
@@ -126,6 +140,8 @@ export function ClientDetailPage({
                 : undefined
             }
             memberships={memberships.data?.memberships}
+            today={today}
+            onMembershipOpen={openMembership}
             lastVisit={
               attendance.data === undefined
                 ? undefined
@@ -164,11 +180,22 @@ export function ClientDetailPage({
               branchId={branchId}
               client={data}
               currentEmployeeId={session.employeeId}
+              today={today}
               onChanged={refreshDetail}
+              onMembershipOpen={openMembership}
             />
           ))}
         </div>
       </div>
+
+      <MembershipSheet
+        membership={
+          memberships.data?.memberships.find((membership) => membership.id === membershipId) ?? null
+        }
+        open={membershipOpen}
+        today={today}
+        onOpenChange={setMembershipOpen}
+      />
 
       {canViewBalance && (
         <ClientBalanceSheet
@@ -193,14 +220,18 @@ function FeedBlock({
   branchId,
   client,
   currentEmployeeId,
+  today,
   onChanged,
+  onMembershipOpen,
 }: {
   readonly block: ClientCardBlock;
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly client: ClientDetailResponse;
   readonly currentEmployeeId: string;
+  readonly today: LocalDate;
   readonly onChanged: () => Promise<void>;
+  readonly onMembershipOpen: (id: MembershipId) => void;
 }) {
   const clientId = client.id;
   switch (block.type) {
@@ -220,6 +251,8 @@ function FeedBlock({
           branchId={branchId}
           clientId={clientId}
           limit={block.limit}
+          today={today}
+          onOpen={onMembershipOpen}
         />
       );
     case "groups":

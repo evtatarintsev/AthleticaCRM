@@ -6,10 +6,8 @@ import {
   type Money,
   type TaskListItemSchema,
 } from "@/api/generated/contracts";
-import { addDays, todayLocalDate } from "@/lib/localDate";
-
-/** За сколько дней до окончания абонемент считается заканчивающимся. */
-const ENDING_DAYS = 7;
+import { addDays } from "@/lib/localDate";
+import { isCurrentMembership, membershipView } from "../membership/membershipView";
 
 /** За сколько дней до дня рождения показывается предупреждение. */
 const BIRTHDAY_DAYS = 7;
@@ -18,26 +16,9 @@ const BIRTHDAY_DAYS = 7;
 export type ClientAlert =
   | { readonly type: "archived" }
   | { readonly type: "debt"; readonly amount: Money }
-  | { readonly type: "subscriptionEnding"; readonly name: string; readonly until: LocalDate }
   | { readonly type: "noActiveSubscription" }
   | { readonly type: "overdueTasks"; readonly count: number }
   | { readonly type: "birthday"; readonly on: LocalDate };
-
-/**
- * Действующий абонемент [membership] заканчивается: до конца срока не больше [ENDING_DAYS]
- * дней на дату [today] или осталось не больше одного занятия.
- */
-export function membershipEndingSoon(
-  membership: MembershipSchema,
-  today: LocalDate = todayLocalDate(),
-): boolean {
-  if (membership.status !== "ACTIVE") {
-    return false;
-  }
-  const byDate = membership.endDate <= addDays(today, ENDING_DAYS);
-  const bySessions = membership.sessionsTotal !== null && (membership.sessionsRemaining ?? 0) <= 1;
-  return byDate || bySessions;
-}
 
 /** Ближайший на дату [today] день рождения по дате рождения [birthday] (29 февраля — 1 марта). */
 export function nextBirthday(birthday: LocalDate, today: LocalDate): LocalDate {
@@ -73,12 +54,10 @@ export function clientAlerts(sources: ClientAlertSources): readonly ClientAlert[
     alerts.push({ type: "debt", amount: client.balance });
   }
   if (memberships !== undefined) {
-    const active = memberships.filter((membership) => membership.status === "ACTIVE");
-    const ending = active.find((membership) => membershipEndingSoon(membership, today));
-    if (ending !== undefined) {
-      alerts.push({ type: "subscriptionEnding", name: ending.name, until: ending.endDate });
-    }
-    if (active.length === 0 && client.groups.length > 0 && client.state === "ACTIVE") {
+    const hasCurrent = memberships.some((membership) =>
+      isCurrentMembership(membershipView(membership, today)),
+    );
+    if (!hasCurrent && client.groups.length > 0 && client.state === "ACTIVE") {
       alerts.push({ type: "noActiveSubscription" });
     }
   }

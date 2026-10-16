@@ -173,15 +173,6 @@ function AlertChip({ alert }: { readonly alert: ClientAlert }) {
           icon: <WalletIcon aria-hidden />,
           text: t("clientCard.alert.debt", { amount: format.money(alert.amount) }),
         };
-      case "subscriptionEnding":
-        return {
-          severity: "warning",
-          icon: <TicketIcon aria-hidden />,
-          text: t("clientCard.alert.subscriptionEnding", {
-            name: alert.name,
-            date: format.date(alert.until),
-          }),
-        };
       case "noActiveSubscription":
         return {
           severity: "warning",

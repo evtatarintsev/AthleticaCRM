@@ -2,6 +2,8 @@ import { ChevronRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ClientAttendanceItemSchema,
+  LocalDate,
+  MembershipId,
   MembershipSchema,
   Money,
   ScheduleSessionSchema,
@@ -9,19 +11,24 @@ import type {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { MembershipTerms } from "../membership/MembershipParts";
+import { isCurrentMembership, membershipView } from "../membership/membershipView";
 
 /**
- * Быстрая информация в шапке карточки: баланс, действующий абонемент, последнее посещение
+ * Быстрая информация в шапке карточки: баланс, плитки неистёкших абонементов, последнее посещение
  * и ближайшее занятие из данных сервера; статус, ответственный и скидка — заглушки до появления
  * этих полей в анкете. `undefined` во входных данных — значение ещё загружается.
- * Если задан [onBalanceClick], плитка баланса кликабельна и открывает историю баланса.
+ * Если задан [onBalanceClick], плитка баланса кликабельна и открывает историю баланса;
+ * плитка абонемента открывает его панель через [onMembershipOpen].
  */
 export function ClientCardQuickInfo({
   balance,
   memberships,
   lastVisit,
   nextSession,
+  today,
   onBalanceClick,
+  onMembershipOpen,
 }: {
   readonly balance: Money;
   readonly memberships: readonly MembershipSchema[] | undefined;
@@ -29,15 +36,19 @@ export function ClientCardQuickInfo({
   readonly lastVisit: ClientAttendanceItemSchema | null | undefined;
   /** Ближайшее занятие; `null` — занятий нет. */
   readonly nextSession: ScheduleSessionSchema | null | undefined;
+  /** Сегодняшняя дата, на которую определяется состояние абонементов. */
+  readonly today: LocalDate;
   /** Открывает историю баланса; `undefined` — плитка баланса некликабельна. */
   readonly onBalanceClick: (() => void) | undefined;
+  /** Открывает панель абонемента по его идентификатору. */
+  readonly onMembershipOpen: (id: MembershipId) => void;
 }) {
   const { t, format } = useI18n();
 
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       <BalanceTile balance={balance} onClick={onBalanceClick} />
-      <SubscriptionTile memberships={memberships} />
+      <MembershipTiles memberships={memberships} today={today} onOpen={onMembershipOpen} />
       <LastVisitTile lastVisit={lastVisit} />
       <Tile label={t("clientCard.quick.nextSession")}>
         {nextSession === undefined ? (
@@ -94,39 +105,61 @@ export function BalanceTile({
 }
 
 /**
- * Плитка действующего абонемента из [memberships]: название и остаток занятий или срок.
- * `undefined` — абонементы ещё загружаются. Ставится внутрь `<dl>`.
+ * Плитки абонементов из [memberships]: по плитке на каждый неистёкший абонемент на дату
+ * [today], по дате начала. Пока абонементы загружаются (`undefined`) — одна плитка с заглушкой,
+ * если неистёкших нет — одна некликабельная «Нет действующего». С [onOpen] плитка абонемента
+ * кликабельна и открывает его панель. Ставится внутрь `<dl>`.
  */
-export function SubscriptionTile({
+export function MembershipTiles({
   memberships,
+  today,
+  onOpen,
 }: {
   readonly memberships: readonly MembershipSchema[] | undefined;
+  readonly today: LocalDate;
+  readonly onOpen: ((id: MembershipId) => void) | undefined;
 }) {
-  const { t, format } = useI18n();
-  const active = memberships?.find((membership) => membership.status === "ACTIVE");
-  return (
-    <Tile label={t("clientCard.quick.subscription")}>
-      {memberships === undefined ? (
+  const { t } = useI18n();
+  if (memberships === undefined) {
+    return (
+      <Tile label={t("clientCard.quick.subscription")}>
         <Skeleton className="h-5 w-24" />
-      ) : active === undefined ? (
+      </Tile>
+    );
+  }
+  const current = memberships
+    .map((membership) => ({ membership, view: membershipView(membership, today) }))
+    .filter(({ view }) => isCurrentMembership(view))
+    .toSorted((a, b) => a.membership.startDate.localeCompare(b.membership.startDate));
+  if (current.length === 0) {
+    return (
+      <Tile label={t("clientCard.quick.subscription")}>
         <Muted>{t("clientCard.quick.noSubscription")}</Muted>
-      ) : (
-        <>
-          <span className="block truncate font-medium" title={active.name}>
-            {active.name}
-          </span>
-          <Sub>
-            {active.sessionsTotal === null
-              ? t("clientCard.quick.until", { date: format.date(active.endDate) })
-              : t("clients.detail.subscriptionSessions", {
-                  remaining: active.sessionsRemaining ?? 0,
-                  total: active.sessionsTotal,
-                })}
-          </Sub>
-        </>
-      )}
+      </Tile>
+    );
+  }
+  return current.map(({ membership, view }) => (
+    <Tile
+      key={membership.id}
+      label={t("clientCard.quick.subscription")}
+      muted={view.phase === "upcoming"}
+      onClick={
+        onOpen === undefined
+          ? undefined
+          : () => {
+              onOpen(membership.id);
+            }
+      }
+      actionLabel={t("clientCard.membership.open", { name: membership.name })}
+    >
+      <span className="block truncate font-medium" title={membership.name}>
+        {membership.name}
+      </span>
+      <span className="block text-xs text-muted-foreground">
+        <MembershipTerms membership={membership} view={view} />
+      </span>
     </Tile>
-  );
+  ));
 }
 
 /**
@@ -156,19 +189,22 @@ export function LastVisitTile({
 }
 
 /**
- * Плитка быстрой информации; [stub] — поле ещё не поддержано, рамка пунктиром.
+ * Плитка быстрой информации; [stub] — поле ещё не поддержано, рамка пунктиром;
+ * [muted] — значение приглушено (например, абонемент ещё не начался).
  * С [onClick] плитка кликабельна целиком: значение — кнопка с доступным именем [actionLabel],
  * зона нажатия растянута на всю плитку, справа от подписи — стрелка перехода.
  */
 function Tile({
   label,
   stub = false,
+  muted = false,
   onClick,
   actionLabel,
   children,
 }: {
   readonly label: string;
   readonly stub?: boolean;
+  readonly muted?: boolean;
   readonly onClick?: (() => void) | undefined;
   readonly actionLabel?: string;
   readonly children: ReactNode;
@@ -194,14 +230,14 @@ function Tile({
           />
         )}
       </dt>
-      <dd className="mt-0.5 min-w-0 text-sm">
+      <dd className={cn("mt-0.5 min-w-0 text-sm", muted && "text-muted-foreground")}>
         {clickable ? (
           <button
             type="button"
             aria-label={actionLabel}
             aria-haspopup="dialog"
             onClick={onClick}
-            className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-md"
+            className="block w-full min-w-0 cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-md"
           >
             {children}
           </button>

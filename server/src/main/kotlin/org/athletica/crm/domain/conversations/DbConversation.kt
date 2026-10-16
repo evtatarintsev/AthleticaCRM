@@ -3,6 +3,7 @@ package org.athletica.crm.domain.conversations
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ConversationId
 import org.athletica.crm.core.entityids.MessageId
@@ -18,12 +19,13 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 /** Диалог с клиентом: агрегирует сообщения по всем каналам. Один на клиента. */
 class DbConversation(
     override val id: ConversationId,
 ) : Conversation {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun touch() {
         tr.sql("UPDATE conversations SET last_message_at = now() WHERE id = :id AND org_id = :orgId")
             .bind("id", id)
@@ -65,10 +67,9 @@ class DbConversation(
         )
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String): InboundMessage {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String, receivedAt: Instant): InboundMessage {
         val messageId = MessageId.new()
-        val now = Clock.System.now()
         tr.sql(
             """
             INSERT INTO messages (id, org_id, conversation_id, direction, body, received_via, created_at)
@@ -81,19 +82,19 @@ class DbConversation(
             .bind("direction", MessageDirection.INBOUND.name)
             .bind("body", body)
             .bind("receivedVia", receivedVia)
-            .bind("now", now)
+            .bind("now", receivedAt)
             .execute()
 
         return InboundMessage(
             id = messageId,
             conversationId = id,
             body = body,
-            createdAt = now,
+            createdAt = receivedAt,
             receivedVia = receivedVia,
         )
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun messages(): List<Message> =
         tr.sql(
             """

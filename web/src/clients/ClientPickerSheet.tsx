@@ -46,6 +46,8 @@ interface ClientPickerSheetProps {
   readonly unavailable: ReadonlyMap<ClientId, string>;
   /** Подпись кнопки подтверждения в режиме `multiple`. */
   readonly submitLabel?: string;
+  /** Поисковый запрос, с которым панель открывается (например, присланный номер телефона). */
+  readonly initialQuery?: string;
   /**
    * Обработка выбора: `null` — успех, панель закрывается; строка — текст ошибки,
    * панель остаётся открытой с прежним выбором.
@@ -54,7 +56,7 @@ interface ClientPickerSheetProps {
 }
 
 /**
- * Панель справа для выбора клиентов организации: поиск по имени, список порциями и
+ * Панель справа для выбора клиентов организации: поиск по имени или телефону, список порциями и
  * одиночный или множественный выбор. Что значит выбор и кого выбрать нельзя, решает
  * открывший её экран — панель только собирает выбор и передаёт его в `onSubmit`.
  */
@@ -73,12 +75,15 @@ function ClientPickerContent({
   mode,
   unavailable,
   submitLabel,
+  initialQuery = "",
   onSubmit,
 }: Omit<ClientPickerSheetProps, "open" | "onOpenChange" | "title">) {
   const { t } = useI18n();
   const { close, reportGuard } = useEditSheet();
-  const [query, setQuery] = useState("");
-  const [name, setName] = useState<string | null>(null);
+  const [query, setQuery] = useState(initialQuery);
+  const [name, setName] = useState<string | null>(
+    initialQuery.trim() === "" ? null : initialQuery.trim(),
+  );
   const [selected, setSelected] = useState<ReadonlyMap<ClientId, PickedClient>>(new Map());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

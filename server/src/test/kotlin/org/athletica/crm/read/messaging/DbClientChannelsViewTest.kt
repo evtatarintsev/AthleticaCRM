@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.athletica.crm.MessagingFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.messaging.ChannelProviderSchema
 import org.athletica.crm.api.schemas.messaging.ClientChannelSchema
@@ -131,7 +132,7 @@ class DbClientChannelsViewTest {
     @Test
     fun `Telegram без связки недоступен, даже если есть контакт-юзернейм`() =
         runTest {
-            insertIntegration("Бот", TELEGRAM_CONFIG)
+            insertIntegration("Бот", MessagingFixture.telegramConfig())
             insertContact("TELEGRAM", "@client")
 
             val telegram = channels().single()
@@ -143,7 +144,7 @@ class DbClientChannelsViewTest {
     @Test
     fun `Telegram со связкой доступен без выбора контакта`() =
         runTest {
-            val telegramId = insertIntegration("Бот", TELEGRAM_CONFIG)
+            val telegramId = insertIntegration("Бот", MessagingFixture.telegramConfig())
             insertBinding(telegramId, "chat-1")
 
             val telegram = channels().single()
@@ -156,7 +157,7 @@ class DbClientChannelsViewTest {
     fun `каждый канал получает свои контакты при нескольких каналах и контактах`() =
         runTest {
             val smsId = insertIntegration("SMS", SMS_CONFIG)
-            val telegramId = insertIntegration("Бот", TELEGRAM_CONFIG)
+            val telegramId = insertIntegration("Бот", MessagingFixture.telegramConfig())
             insertContact("PHONE", "+79990001122")
             insertContact("TELEGRAM", "@client")
             insertContact("PHONE", "+79990003344")
@@ -180,6 +181,5 @@ class DbClientChannelsViewTest {
 
     private companion object {
         const val SMS_CONFIG = """{"type":"smsc_sms","login":"l","password":"p"}"""
-        const val TELEGRAM_CONFIG = """{"type":"telegram_bot","botToken":"tok"}"""
     }
 }

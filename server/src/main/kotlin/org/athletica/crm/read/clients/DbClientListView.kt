@@ -81,6 +81,19 @@ class DbClientListView : ClientListView {
             .list { row -> row.toListItem() }
     }
 
+    /**
+     * Цифры поискового запроса для поиска по телефону, приведённые как телефоны в SQL
+     * (11 цифр с ведущей `8` → ведущая `7`); `null`, если цифр меньше трёх — это не номер.
+     */
+    private fun String.phoneDigits(): String? {
+        val digits = filter { it in '0'..'9' }
+        return when {
+            digits.length < 3 -> null
+            digits.length == 11 && digits.startsWith('8') -> "7" + digits.drop(1)
+            else -> digits
+        }
+    }
+
     /** Привязывает общие для обоих запросов параметры фильтрации. */
     context(ctx: EmployeeRequestContext)
     private fun QueryBuilder.bindFilters(query: ClientListQuery): QueryBuilder {
@@ -98,6 +111,7 @@ class DbClientListView : ClientListView {
             .bind("noGroup", query.noGroup)
             .bind("groupId", query.groupId)
             .bind("search", query.search)
+            .bind("searchDigits", query.search?.phoneDigits())
             .bind("birthdayFromMd", birthdayFromMd)
             .bind("birthdayToMd", birthdayToMd)
     }
@@ -148,7 +162,22 @@ class DbClientListView : ClientListView {
               AND (:groupId::uuid IS NULL OR EXISTS (
                     SELECT 1 FROM enrollments e3
                      WHERE e3.client_id = c.id AND e3.left_at IS NULL AND e3.group_id = :groupId::uuid))
-              AND (:search::text IS NULL OR c.name ILIKE '%' || :search || '%')
+              AND (
+                :search::text IS NULL
+                OR c.name ILIKE '%' || :search || '%'
+                OR (:searchDigits::text IS NOT NULL AND EXISTS (
+                    SELECT 1
+                    FROM (
+                        SELECT regexp_replace(pc.value, '[^0-9]', '', 'g') AS digits
+                        FROM client_contacts pc
+                        WHERE pc.client_id = c.id AND pc.type = 'PHONE'
+                    ) phones
+                    WHERE CASE
+                              WHEN length(phones.digits) = 11 AND left(phones.digits, 1) = '8'
+                                  THEN '7' || substr(phones.digits, 2)
+                              ELSE phones.digits
+                          END LIKE '%' || :searchDigits || '%'))
+              )
               AND (
                 :birthdayFromMd::int IS NULL
                 OR (

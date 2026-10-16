@@ -1,7 +1,13 @@
 import { useForm } from "@tanstack/react-form";
+import { CopyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
-import type { ChannelConfig, ChannelIntegrationSchema } from "@/api/generated/contracts";
+import type {
+  ChannelConfig,
+  ChannelConfigInput,
+  ChannelIntegrationSchema,
+} from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,11 +26,14 @@ export type ChannelProvider = ChannelConfig["type"];
 /** Провайдеры в порядке показа в выпадающем списке. */
 const PROVIDERS: readonly ChannelProvider[] = ["smsc_sms", "telegram_bot", "twilio_sms"];
 
-/** Настройки канала из формы: имя, включённость и конфигурация провайдера. */
+/**
+ * Настройки канала из формы: имя, включённость и конфигурация провайдера. Для Telegram-бота
+ * имя бота не передаётся — сервер берёт его из Bot API при сохранении.
+ */
 export interface ChannelTerms {
   readonly name: string;
   readonly enabled: boolean;
-  readonly config: ChannelConfig;
+  readonly config: ChannelConfigInput;
 }
 
 /** Значения формы: провайдер-специфичные поля есть у всех провайдеров сразу, лишние не отправляются. */
@@ -46,7 +55,7 @@ function defaultConfig(provider: ChannelProvider): ChannelConfig {
     case "smsc_sms":
       return { type: "smsc_sms", login: "", password: "" };
     case "telegram_bot":
-      return { type: "telegram_bot", botToken: "" };
+      return { type: "telegram_bot", botToken: "", botUsername: "" };
     case "twilio_sms":
       return { type: "twilio_sms", accountSid: "", authToken: "", from: "" };
   }
@@ -77,7 +86,7 @@ function valuesFromConfig(
 }
 
 /** Конфигурация из значений формы [values] для провайдера `values.provider`. */
-function configFromValues(values: ChannelFormValues): ChannelConfig {
+function configFromValues(values: ChannelFormValues): ChannelConfigInput {
   switch (values.provider) {
     case "smsc_sms":
       return { type: "smsc_sms", login: values.login.trim(), password: values.password };
@@ -123,6 +132,45 @@ function channelSchema(t: I18n["t"]) {
     });
 }
 
+/** Ссылка на бота [link] с кнопкой копирования — её выкладывают на сайт и в соцсети. */
+function BotLink({ link }: { readonly link: string }) {
+  const { t } = useI18n();
+  const copy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success(t("channels.botLinkCopied"));
+    } catch {
+      toast.error(t("channels.botLinkCopyFailed"));
+    }
+  };
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium">{t("channels.botLink")}</p>
+      <div className="flex items-center gap-2">
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          className="min-w-0 flex-1 truncate text-sm text-primary underline-offset-4 hover:underline"
+        >
+          {link}
+        </a>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label={t("channels.copyBotLink")}
+          onClick={() => {
+            void copy();
+          }}
+        >
+          <CopyIcon aria-hidden />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Диалог создания или изменения канала связи (паритет с `ChannelsScreen`/`ChannelEditor`
  * KMP-клиента): провайдер выбирается только при создании, поля учётных данных зависят от
@@ -142,6 +190,7 @@ export function ChannelDialog({
   const { t } = useI18n();
   const schema = useMemo(() => channelSchema(t), [t]);
   const [failure, setFailure] = useState<string | null>(null);
+  const botLink = initial?.botLink ?? null;
   const defaultValues: ChannelFormValues = {
     name: initial?.name ?? "",
     enabled: initial?.enabled ?? true,
@@ -238,16 +287,19 @@ export function ChannelDialog({
                   </>
                 )}
                 {provider === "telegram_bot" && (
-                  <form.Field name="botToken">
-                    {(field) => (
-                      <TextField
-                        field={field}
-                        label={t("channels.field.botToken")}
-                        autoComplete="off"
-                        required
-                      />
-                    )}
-                  </form.Field>
+                  <>
+                    <form.Field name="botToken">
+                      {(field) => (
+                        <TextField
+                          field={field}
+                          label={t("channels.field.botToken")}
+                          autoComplete="off"
+                          required
+                        />
+                      )}
+                    </form.Field>
+                    {botLink !== null && <BotLink link={botLink} />}
+                  </>
                 )}
                 {provider === "twilio_sms" && (
                   <>

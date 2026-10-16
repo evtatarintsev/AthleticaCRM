@@ -7,6 +7,7 @@ import org.athletica.crm.api.schemas.channels.ChannelListResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -32,11 +33,21 @@ class DbChannelListView : ChannelListView {
         )
 
     /** Собирает элемент списка из строки выборки. */
-    private fun Row.toSchema(): ChannelIntegrationSchema =
-        ChannelIntegrationSchema(
+    private fun Row.toSchema(): ChannelIntegrationSchema {
+        val config = asString("config").toChannelConfig()
+        return ChannelIntegrationSchema(
             id = asUuid("id").toChannelIntegrationId(),
             name = asString("name"),
-            config = asString("config").toChannelConfig(),
+            config = config,
             enabled = asBoolean("enabled"),
+            botLink = config.botLink(),
         )
+    }
+
+    /** Ссылка на бота для каналов-ботов с известным именем; `null` для остальных. */
+    private fun ChannelConfig.botLink(): String? =
+        when (this) {
+            is ChannelConfig.TelegramBot -> botUsername.takeIf { it.isNotBlank() }?.let { "https://t.me/$it" }
+            is ChannelConfig.SmscSms, is ChannelConfig.TwilioSms -> null
+        }
 }

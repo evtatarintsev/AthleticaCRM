@@ -1,20 +1,21 @@
 package org.athletica.crm.routes
 
-import org.athletica.crm.api.schemas.messaging.AssignInboundRequest
+import org.athletica.crm.api.schemas.messaging.AssignChatRequest
 import org.athletica.crm.api.schemas.messaging.ClientChannelsRequest
 import org.athletica.crm.api.schemas.messaging.ClientChannelsResponse
 import org.athletica.crm.api.schemas.messaging.ConversationRequest
 import org.athletica.crm.api.schemas.messaging.ConversationResponse
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
+import org.athletica.crm.api.schemas.messaging.TriageChatMessagesResponse
+import org.athletica.crm.api.schemas.messaging.TriageChatRequest
 import org.athletica.crm.api.schemas.messaging.TriageListResponse
-import org.athletica.crm.domain.channels.ChannelBindings
 import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.conversations.Conversations
-import org.athletica.crm.domain.inbound.InboundReceipts
 import org.athletica.crm.domain.messagedelivery.Deliveries
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.messaging.assignInbound
+import org.athletica.crm.usecases.messaging.InboundStores
+import org.athletica.crm.usecases.messaging.assignChat
 import org.athletica.crm.usecases.messaging.conversationView
 import org.athletica.crm.usecases.messaging.sendMessage
 
@@ -27,8 +28,7 @@ fun RouteWithContext.messagingRoutes(
     channels: ChannelIntegrations,
     conversations: Conversations,
     deliveries: Deliveries,
-    bindings: ChannelBindings,
-    receipts: InboundReceipts,
+    inbound: InboundStores,
     views: ReadViews,
 ) {
     route("/messaging") {
@@ -56,9 +56,15 @@ fun RouteWithContext.messagingRoutes(
             }
         }
 
-        post<AssignInboundRequest, Unit>("/triage/assign") { request ->
+        get<TriageChatRequest, TriageChatMessagesResponse>("/triage/chat") { request ->
             db.transaction {
-                assignInbound(request.receiptId, request.clientId, bindings, receipts, conversations)
+                views.triageChat.messages(request.integrationId, request.address)
+            }
+        }
+
+        post<AssignChatRequest, Unit>("/triage/assign") { request ->
+            db.transaction {
+                assignChat(request.integrationId, request.address, request.clientId, inbound)
             }
         }
     }

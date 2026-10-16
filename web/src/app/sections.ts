@@ -3,6 +3,7 @@ import {
   CheckSquareIcon,
   HomeIcon,
   IdCardIcon,
+  InboxIcon,
   SettingsIcon,
   UsersIcon,
   UsersRoundIcon,
@@ -12,7 +13,7 @@ import type { ru } from "@/i18n/ru";
 
 /** Раздел приложения в основной навигации. */
 export type SectionId =
-  "home" | "schedule" | "clients" | "groups" | "employees" | "tasks" | "settings";
+  "home" | "schedule" | "clients" | "inbox" | "groups" | "employees" | "tasks" | "settings";
 
 /** Пункт основной навигации. */
 export interface Section {
@@ -31,6 +32,7 @@ export const sections: readonly Section[] = [
   { id: "home", path: "/", label: "nav.home", icon: HomeIcon },
   { id: "schedule", path: "/schedule", label: "nav.schedule", icon: CalendarDaysIcon },
   { id: "clients", path: "/clients", label: "nav.clients", icon: UsersIcon },
+  { id: "inbox", path: "/inbox", label: "nav.inbox", icon: InboxIcon },
   { id: "groups", path: "/groups", label: "nav.groups", icon: UsersRoundIcon },
   { id: "employees", path: "/employees", label: "nav.employees", icon: IdCardIcon },
   { id: "tasks", path: "/tasks", label: "nav.tasks", icon: CheckSquareIcon },

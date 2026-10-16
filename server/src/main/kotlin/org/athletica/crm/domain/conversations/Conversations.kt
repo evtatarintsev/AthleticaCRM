@@ -1,7 +1,7 @@
 package org.athletica.crm.domain.conversations
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -12,6 +12,6 @@ interface Conversations {
      * Возвращает диалог клиента [clientId], создавая его при первом обращении (get-or-create).
      * Гарантирует единственность диалога на клиента (UNIQUE org_id, client_id).
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun forClient(clientId: ClientId): Conversation
 }

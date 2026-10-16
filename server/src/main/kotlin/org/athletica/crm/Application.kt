@@ -116,6 +116,9 @@ fun Application.module() {
         launch {
             di.messageDispatcher.dispatchPending()
         }
+        launch {
+            di.telegramPolling.run()
+        }
         monitor.subscribe(ApplicationStopped) {
             cancel()
         }
@@ -195,13 +198,12 @@ fun Application.configureServer() {
                             di.clientContacts,
                         )
                         clientNotesRoutes(di.clientNotes)
-                        channelsRoutes(di.channelIntegrations, di.views)
+                        channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
                         messagingRoutes(
                             di.channelIntegrations,
                             di.conversations,
                             di.deliveries,
-                            di.channelBindings,
-                            di.inboundReceipts,
+                            di.inboundStores,
                             di.views,
                         )
                         context(di.minio) {

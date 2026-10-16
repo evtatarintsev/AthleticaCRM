@@ -1,192 +1,205 @@
 package org.athletica.crm.usecases.messaging
 
 import arrow.core.Either
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import org.athletica.crm.MessagingFixture
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.messaging.ReceiveInboundRequest
-import org.athletica.crm.api.schemas.messaging.ReceiveInboundResponse
-import org.athletica.crm.api.schemas.messaging.TriageListResponse
-import org.athletica.crm.core.Lang
-import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.entityids.ChannelBindingId
+import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.entityids.InboundReceiptId
-import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.DbChannelBindings
+import org.athletica.crm.domain.channels.DbChannelChats
+import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.conversations.DbConversations
-import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.inbound.DbInboundReceipts
 import org.athletica.crm.employeeContext
-import org.athletica.crm.read.messaging.DbInboundTriageView
-import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
-/** Тесты приёма и разбора входящих ([receiveInbound], [assignInbound]). */
+/** Тесты приёма входящих, автопривязки по номеру и ручного разбора по чату. */
 class InboundTest {
     private val orgId = OrgId.new()
-    private val userId = UserId.new()
-    private val employeeId = EmployeeId.new()
-    private val branchId = BranchId.new()
+    private val otherOrgId = OrgId.new()
     private val clientId = ClientId.new()
+    private val stores = InboundStores(DbChannelBindings(), DbInboundReceipts(), DbConversations(), DbChannelChats(), DbClientContacts())
+    private val employeeCtx = employeeContext(orgId = orgId)
     private val integrationId = ChannelIntegrationId.new()
-
-    private val bindings = DbChannelBindings()
-    private val receipts = DbInboundReceipts()
-    private val conversations = DbConversations()
-    private val triageView = DbInboundTriageView()
-
-    private val ctx =
-        employeeContext(
-            lang = Lang.RU,
-            userId = userId,
-            orgId = orgId,
-            branchId = branchId,
-            employeeId = employeeId,
-            username = "user@example.com",
-            clientIp = null,
-            currency = Currency.RUB,
-            permissions = EmployeePermission(),
-        )
 
     @Before
     fun setUp() {
         TestPostgres.truncate()
         runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
-            TestPostgres.db.sql(
-                """
-                INSERT INTO channel_integrations (id, org_id, name, config, enabled)
-                VALUES (:id, :orgId, 'Бот', :config::jsonb, true)
-                """.trimIndent(),
-            ).bind("id", integrationId).bind("orgId", orgId).bind("config", TELEGRAM_CONFIG).execute()
+            MessagingFixture.insertOrg(orgId)
+            MessagingFixture.insertOrg(otherOrgId, "Other")
+            MessagingFixture.insertClient(orgId, clientId, "Иванов Пётр")
+            MessagingFixture.insertIntegration(orgId, id = integrationId)
         }
     }
 
-    private suspend fun receive(fromAddress: String, body: String) =
+    /** Выполняет [block] в системном контексте организации, как поллер. */
+    private suspend fun <T> system(block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> =
         either {
             TestPostgres.db.transaction {
-                context(ctx) {
-                    receiveInbound(ReceiveInboundRequest(integrationId, fromAddress, body), bindings, receipts, conversations)
-                }
+                val ctx = SystemContexts.forOrg(orgId)
+                context(ctx) { block() }
             }
         }
 
-    private suspend fun assign(receiptId: InboundReceiptId) =
+    private suspend fun receive(address: String, body: String): ClientId? = assertIs<Either.Right<ClientId?>>(system { receiveInbound(integrationId, address, body, stores) }).value
+
+    private suspend fun linkByPhone(address: String, phone: String): PhoneLinkResult = assertIs<Either.Right<PhoneLinkResult>>(system { linkChatByPhone(integrationId, address, phone, stores) }).value
+
+    private suspend fun assign(address: String, client: ClientId = clientId): Either<DomainError, Unit> =
         either {
             TestPostgres.db.transaction {
-                context(ctx) {
-                    assignInbound(receiptId, clientId, bindings, receipts, conversations)
-                }
+                context(employeeCtx) { assignChat(integrationId, address, client, stores) }
             }
         }
 
-    private suspend fun linkBinding(address: String) {
-        TestPostgres.db.sql(
-            """
-            INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
-            VALUES (:id, :orgId, :integrationId, :clientId, :address)
-            """.trimIndent(),
-        )
-            .bind("id", ChannelBindingId.new()).bind("orgId", orgId).bind("integrationId", integrationId)
-            .bind("clientId", clientId).bind("address", address).execute()
-    }
+    @Test
+    fun `входящее привязанного чата попадает в беседу, непривязанного — в очередь`() =
+        runTest {
+            MessagingFixture.insertBinding(orgId, integrationId, clientId, "chat-linked")
 
-    private suspend fun inboundMessageCount(): Long =
-        TestPostgres.db.sql("SELECT count(*) AS c FROM messages WHERE org_id = :orgId AND direction = 'INBOUND'")
-            .bind("orgId", orgId).firstOrNull { row -> row.asLong("c") } ?: 0L
+            assertEquals(clientId, receive("chat-linked", "Добрый день, можно перенести занятие?"))
+            assertNull(receive("chat-new", "Привет"))
 
-    private suspend fun unresolvedCount(): Long {
-        val triage =
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        triageView.list()
-                    }
+            assertEquals(listOf("Добрый день, можно перенести занятие?"), MessagingFixture.inboundBodies(clientId))
+            assertEquals(1L, MessagingFixture.unresolvedCount(integrationId))
+        }
+
+    @Test
+    fun `привязка переносит накопленные сообщения в порядке получения`() =
+        runTest {
+            receive("chat-1", "первое")
+            receive("chat-1", "второе")
+            receive("chat-1", "третье")
+
+            assertIs<Either.Right<Unit>>(system { linkChat(integrationId, "chat-1", clientId, stores) })
+
+            assertEquals(listOf("первое", "второе", "третье"), MessagingFixture.inboundBodies(clientId))
+            assertEquals(0L, MessagingFixture.unresolvedCount(integrationId))
+        }
+
+    @Test
+    fun `однозначное совпадение номера привязывает чат`() =
+        runTest {
+            MessagingFixture.insertPhone(orgId, clientId, "+79001234567")
+            receive("chat-1", "Здравствуйте")
+
+            val result = linkByPhone("chat-1", "8 (900) 123-45-67")
+
+            assertEquals(PhoneLinkResult.Linked(clientId), result)
+            assertEquals(listOf("Здравствуйте"), MessagingFixture.inboundBodies(clientId))
+            assertEquals(clientId.toString(), MessagingFixture.boundClient(integrationId, "chat-1"))
+        }
+
+    @Test
+    fun `номер у нескольких клиентов не привязывает чат`() =
+        runTest {
+            val second = MessagingFixture.insertClient(orgId, name = "Иванова Анна")
+            MessagingFixture.insertPhone(orgId, clientId, "+7 900 123 45 67")
+            MessagingFixture.insertPhone(orgId, second, "89001234567")
+
+            assertEquals(PhoneLinkResult.NotMatched, linkByPhone("chat-1", "+79001234567"))
+            assertNull(MessagingFixture.boundClient(integrationId, "chat-1"))
+        }
+
+    @Test
+    fun `ненайденный номер не привязывает чат`() =
+        runTest {
+            MessagingFixture.insertPhone(orgId, clientId, "+79001234567")
+
+            assertEquals(PhoneLinkResult.NotMatched, linkByPhone("chat-1", "+79990000000"))
+            assertNull(MessagingFixture.boundClient(integrationId, "chat-1"))
+        }
+
+    @Test
+    fun `клиент другой организации с этим номером не подходит`() =
+        runTest {
+            val foreign = MessagingFixture.insertClient(otherOrgId)
+            MessagingFixture.insertPhone(otherOrgId, foreign, "+79001234567")
+
+            assertEquals(PhoneLinkResult.NotMatched, linkByPhone("chat-1", "+79001234567"))
+            assertNull(MessagingFixture.boundClient(integrationId, "chat-1"))
+        }
+
+    @Test
+    fun `ручная привязка переносит сообщения, а следующее идёт в беседу само`() =
+        runTest {
+            receive("chat-1", "первое")
+            receive("chat-1", "второе")
+
+            assertIs<Either.Right<Unit>>(assign("chat-1"))
+            assertEquals(0L, MessagingFixture.unresolvedCount(integrationId))
+
+            assertEquals(clientId, receive("chat-1", "третье"))
+            assertEquals(listOf("первое", "второе", "третье"), MessagingFixture.inboundBodies(clientId))
+        }
+
+    @Test
+    fun `одновременная привязка одного чата пропускает только одну`() =
+        runTest {
+            val other = MessagingFixture.insertClient(orgId, name = "Сидоров")
+            receive("chat-1", "Привет")
+
+            val results =
+                withContext(Dispatchers.IO) {
+                    listOf(clientId, other).map { client -> async { assign("chat-1", client) } }.awaitAll()
                 }
-            }
-        return assertIs<Either.Right<TriageListResponse>>(triage).value.receipts.size.toLong()
-    }
 
-    private suspend fun bindingCount(): Long =
-        TestPostgres.db.sql("SELECT count(*) AS c FROM channel_bindings WHERE integration_id = :id")
-            .bind("id", integrationId).firstOrNull { row -> row.asLong("c") } ?: 0L
-
-    @Test
-    fun `без связки входящее уходит в триаж и не создаёт сообщение`() =
-        runTest {
-            val result = receive("chat-1", "Привет")
-
-            val response = assertIs<Either.Right<ReceiveInboundResponse>>(result).value
-            assertEquals(null, response.resolvedClientId)
-            assertEquals(0L, inboundMessageCount())
-            assertEquals(1L, unresolvedCount())
+            assertEquals(1, results.count { it is Either.Right })
+            val error = assertIs<Either.Left<DomainError>>(results.single { it is Either.Left }).value
+            assertEquals("CHAT_ALREADY_LINKED", error.code)
+            val bound = MessagingFixture.boundClient(integrationId, "chat-1")
+            val winner = listOf(clientId, other).single { it.toString() == bound }
+            assertEquals(listOf("Привет"), MessagingFixture.inboundBodies(winner))
         }
 
     @Test
-    fun `существующая связка привязывает входящее к беседе автоматически`() =
+    fun `второй чат того же канала привязывается к клиенту с чатом`() =
         runTest {
-            linkBinding("chat-2")
+            MessagingFixture.insertBinding(orgId, integrationId, clientId, "chat-1")
+            receive("chat-2", "С другого телефона")
 
-            val result = receive("chat-2", "Здравствуйте")
+            assertIs<Either.Right<Unit>>(assign("chat-2"))
 
-            val response = assertIs<Either.Right<ReceiveInboundResponse>>(result).value
-            assertEquals(clientId, response.resolvedClientId)
-            assertEquals(1L, inboundMessageCount())
-            assertEquals(0L, unresolvedCount())
+            assertEquals(clientId.toString(), MessagingFixture.boundClient(integrationId, "chat-2"))
+            assertEquals(clientId.toString(), MessagingFixture.boundClient(integrationId, "chat-1"))
         }
 
     @Test
-    fun `разбор создаёт связку, а следующее сообщение с адреса резолвится само`() =
+    fun `привязка уже привязанного чата отклоняется`() =
         runTest {
-            val first = assertIs<Either.Right<ReceiveInboundResponse>>(receive("chat-3", "Первое")).value
+            MessagingFixture.insertBinding(orgId, integrationId, clientId, "chat-1")
+            val other = MessagingFixture.insertClient(orgId, name = "Сидоров")
 
-            assign(first.receiptId)
+            val error = assertIs<Either.Left<DomainError>>(assign("chat-1", other)).value
 
-            assertEquals(1L, inboundMessageCount())
-            assertEquals(0L, unresolvedCount())
-            assertEquals(1L, bindingCount())
-
-            val second = assertIs<Either.Right<ReceiveInboundResponse>>(receive("chat-3", "Второе")).value
-            assertEquals(clientId, second.resolvedClientId)
-            assertEquals(2L, inboundMessageCount())
+            assertEquals("CHAT_ALREADY_LINKED", error.code)
         }
 
     @Test
-    fun `повторная пометка разобранного входящего возвращает RECEIPT_ALREADY_RESOLVED`() =
+    fun `неизвестный чат или чужой клиент дают NOT_FOUND`() =
         runTest {
-            linkBinding("chat-4")
-            val receipt = assertIs<Either.Right<ReceiveInboundResponse>>(receive("chat-4", "Привет")).value
+            val foreign = MessagingFixture.insertClient(otherOrgId)
+            receive("chat-1", "Привет")
 
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx) { receipts.markResolved(receipt.receiptId, MessageId.new()) }
-                    }
-                }
-
-            val error = assertIs<Either.Left<DomainError>>(result).value
-            assertEquals("RECEIPT_ALREADY_RESOLVED", error.code)
+            assertEquals("NOT_FOUND", assertIs<Either.Left<DomainError>>(assign("chat-unknown")).value.code)
+            assertEquals("NOT_FOUND", assertIs<Either.Left<DomainError>>(assign("chat-1", foreign)).value.code)
         }
-
-    private companion object {
-        const val TELEGRAM_CONFIG = """{"type":"telegram_bot","botToken":"tok"}"""
-    }
 }

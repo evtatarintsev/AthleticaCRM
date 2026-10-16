@@ -5,47 +5,61 @@ import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.InboundReceiptId
 
-/**
- * Приём входящего из внешнего канала. На первой итерации вызывается вручную (стенд-ин вебхука):
- * реальные провайдеры будут парсить свой payload и вызывать этот же путь.
- * [fromAddress] — адрес отправителя в адресном пространстве канала (chat_id/телефон/…).
- */
+/** Неразобранный чат в очереди разбора: чат связанного канала, ещё не привязанный к клиенту. */
 @Serializable
-data class ReceiveInboundRequest(
+data class TriageChatSchema(
+    /** Интеграция канала, в которой идёт чат. */
     val integrationId: ChannelIntegrationId,
-    val fromAddress: String,
-    val body: String,
+    /** Отображаемое имя канала. */
+    val channelName: String,
+    /** Адрес чата в адресном пространстве канала. */
+    val address: String,
+    /** Отображаемое имя собеседника в канале; пустая строка, если неизвестно. */
+    val displayName: String,
+    /** Имя пользователя в канале без `@`; `null`, если не задано. */
+    val username: String?,
+    /** Номер телефона, присланный собеседником; `null`, если не присылал. */
+    val phone: String?,
+    /** Число неразобранных сообщений чата. */
+    val unresolvedCount: Int,
+    /** Текст последнего сообщения. */
+    val lastMessageBody: String,
+    /** Момент последнего сообщения в формате ISO-8601 (UTC). */
+    val lastMessageAt: String,
 )
 
-/** Итог приёма входящего: привязано к беседе автоматически либо отправлено на ручной разбор. */
+/** Очередь ручного разбора: неразобранные чаты, новые первыми. */
 @Serializable
-data class ReceiveInboundResponse(
-    /** Клиент, к беседе которого привязано сообщение; `null` — попало в триаж. */
-    val resolvedClientId: ClientId?,
-    /** Идентификатор записи инбокса (для триажа, когда не привязано). */
-    val receiptId: InboundReceiptId,
+data class TriageListResponse(
+    val chats: List<TriageChatSchema>,
 )
 
-/** Неразобранное входящее в очереди триажа. */
+/** Запрос сообщений неразобранного чата [address] интеграции [integrationId]. */
 @Serializable
-data class InboundReceiptSchema(
+data class TriageChatRequest(
+    val integrationId: ChannelIntegrationId,
+    val address: String,
+)
+
+/** Неразобранное сообщение чата. */
+@Serializable
+data class TriageMessageSchema(
     val id: InboundReceiptId,
-    val integrationId: ChannelIntegrationId,
-    val fromAddress: String,
     val body: String,
-    /** Момент поступления в формате ISO-8601 (UTC). */
+    /** Момент получения в формате ISO-8601 (UTC). */
     val receivedAt: String,
 )
 
-/** Очередь ручного разбора входящих. */
+/** Неразобранные сообщения одного чата в порядке получения. */
 @Serializable
-data class TriageListResponse(
-    val receipts: List<InboundReceiptSchema>,
+data class TriageChatMessagesResponse(
+    val messages: List<TriageMessageSchema>,
 )
 
-/** Ручная привязка входящего [receiptId] к клиенту [clientId] (создаёт связку и разбирает запись). */
+/** Ручная привязка чата [address] интеграции [integrationId] к клиенту [clientId]. */
 @Serializable
-data class AssignInboundRequest(
-    val receiptId: InboundReceiptId,
+data class AssignChatRequest(
+    val integrationId: ChannelIntegrationId,
+    val address: String,
     val clientId: ClientId,
 )

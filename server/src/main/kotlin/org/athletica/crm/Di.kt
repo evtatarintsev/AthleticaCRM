@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import arrow.core.getOrElse
 import io.ktor.client.engine.cio.CIO
 import io.ktor.server.application.Application
 import io.minio.MinioClient
@@ -22,9 +23,12 @@ import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.channels.AuditChannelIntegrations
 import org.athletica.crm.domain.channels.ChannelBindings
+import org.athletica.crm.domain.channels.ChannelChats
+import org.athletica.crm.domain.channels.ChannelConfigVerifier
 import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
+import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -108,14 +112,23 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.memberships.DebitReconciliation
 import org.athletica.crm.usecases.memberships.MembershipScheduler
+import org.athletica.crm.usecases.messaging.InboundStores
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
-import org.athletica.infra.messaging.StubChannelTransports
+import org.athletica.infra.messaging.ProviderChannelConfigVerifier
+import org.athletica.infra.messaging.ProviderChannelTransports
+import org.athletica.infra.messaging.telegram.TelegramBotApi
+import org.athletica.infra.messaging.telegram.TelegramPollState
+import org.athletica.infra.messaging.telegram.TelegramPoller
+import org.athletica.infra.messaging.telegram.TelegramPollingSupervisor
+import org.athletica.infra.messaging.telegram.TelegramProxy
+import org.athletica.infra.messaging.telegram.createTelegramHttpClients
 import org.athletica.infra.yookassa.YookassaApi
 import org.athletica.infra.yookassa.YookassaConfig
 import org.athletica.infra.yookassa.YookassaPaymentGateway
 import org.athletica.infra.yookassa.createYookassaHttpClient
 import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.Uuid
 
 data class Di(
     val databaseConfig: DatabaseConfig,
@@ -140,6 +153,7 @@ data class Di(
     val yookassaConfig: YookassaConfig,
     val payments: Payments,
     val paymentGateway: PaymentGateway,
+    val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
 ) {
     val users = DbUsers(passwordHasher)
     val roles = DbRoles()
@@ -172,13 +186,26 @@ data class Di(
         MembershipScheduler(database, memberships, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
     val channelBindings: ChannelBindings = DbChannelBindings()
     val inboundReceipts: InboundReceipts = DbInboundReceipts()
-    val channelTransports: ChannelTransports = StubChannelTransports()
+    val channelTransports: ChannelTransports = ProviderChannelTransports(telegramApi)
+    val channelConfigVerifier: ChannelConfigVerifier = ProviderChannelConfigVerifier(telegramApi)
     val channelIntegrations: ChannelIntegrations =
         AuditChannelIntegrations(DbChannelIntegrations(channelTransports, clientContacts, channelBindings), audit)
     val conversations = DbConversations()
+    val channelChats: ChannelChats = DbChannelChats()
+    val inboundStores = InboundStores(channelBindings, inboundReceipts, conversations, channelChats, clientContacts)
     val deliveries = DbDeliveries()
     val messageDispatcher: MessageDispatcher =
         MessageDispatcher(database, deliveries, channelIntegrations)
+    val telegramPollState = TelegramPollState(leaseFor = 60.seconds)
+    val telegramPolling: TelegramPollingSupervisor =
+        Uuid.random().toString().let { instanceId ->
+            TelegramPollingSupervisor(
+                db = database,
+                factory = { integration ->
+                    TelegramPoller(integration, telegramApi, database, telegramPollState, inboundStores, instanceId)
+                },
+            )
+        }
 
     init {
         bus.on<SessionCompleted> { orgId, event -> debitReconciliation.sessionCompleted(orgId, event) }
@@ -221,8 +248,18 @@ fun Application.di(): Di {
         yookassaConfig = ykConfig,
         payments = DbPayments(),
         paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
+        telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
     )
 }
+
+/**
+ * Прокси для запросов к Telegram Bot API из `telegram.proxies` (env `TELEGRAM_PROXIES`):
+ * URL через запятую, пустая строка — прямой доступ. Некорректная запись останавливает запуск.
+ */
+fun Application.telegramProxies(): List<TelegramProxy> =
+    TelegramProxy
+        .parseList(environment.config.property("telegram.proxies").getString())
+        .getOrElse { error(it) }
 
 /** Создаёт [YookassaConfig] из конфигурации приложения. */
 fun Application.yookassaConfig() =

@@ -2,10 +2,12 @@ package org.athletica.crm.domain.conversations
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ConversationId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Instant
 
 /** Диалог с клиентом: агрегирует сообщения по всем каналам. Один на клиента. */
 interface Conversation {
@@ -18,15 +20,15 @@ interface Conversation {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun appendOutbound(author: Author, body: String): OutboundMessage
 
-    /** Добавляет входящее сообщение от клиента, полученное по каналу [receivedVia]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String): InboundMessage
+    /** Добавляет входящее сообщение от клиента, полученное по каналу [receivedVia] в момент [receivedAt]. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String, receivedAt: Instant): InboundMessage
 
     /** Обновляет момент последнего сообщения диалога на «сейчас». */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun touch()
 
     /** Возвращает все сообщения диалога в порядке от старых к новым. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun messages(): List<Message>
 }

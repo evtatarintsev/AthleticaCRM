@@ -3,7 +3,7 @@ package org.athletica.crm.domain.inbound
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import io.r2dbc.spi.Row
-import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.InboundReceiptId
 import org.athletica.crm.core.entityids.MessageId
@@ -21,7 +21,7 @@ import kotlin.time.Clock
 
 /** Реализация инбокса входящих на PostgreSQL через R2DBC. */
 class DbInboundReceipts : InboundReceipts {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun record(integrationId: ChannelIntegrationId, fromAddress: String, body: String): InboundReceipt {
         val id = InboundReceiptId.new()
         val now = Clock.System.now()
@@ -50,20 +50,24 @@ class DbInboundReceipts : InboundReceipts {
         )
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun byId(id: InboundReceiptId): InboundReceipt? =
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun unresolvedFrom(integrationId: ChannelIntegrationId, fromAddress: String): List<InboundReceipt> =
         tr.sql(
             """
             SELECT id, integration_id, from_address, body, state, resolved_message_id, received_at
             FROM inbound_receipts
-            WHERE id = :id AND org_id = :orgId
+            WHERE integration_id = :integrationId AND from_address = :fromAddress
+              AND org_id = :orgId AND state = 'UNRESOLVED'
+            ORDER BY received_at, id
+            FOR UPDATE
             """.trimIndent(),
         )
-            .bind("id", id)
+            .bind("integrationId", integrationId)
+            .bind("fromAddress", fromAddress)
             .bind("orgId", ctx.orgId)
-            .firstOrNull { row -> row.toReceipt() }
+            .list { row -> row.toReceipt() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun markResolved(id: InboundReceiptId, messageId: MessageId) {
         val updated =
             tr.sql(

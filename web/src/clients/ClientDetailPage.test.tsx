@@ -6,12 +6,14 @@ import {
   AttachClientDocRequestSchema,
   ClientDetailResponseSchema,
   ClientNoteIdSchema,
+  CreateTaskRequestSchema,
   CustomFieldDefinitionSchema,
   DeleteClientDocRequestSchema,
   DeleteClientNoteRequestSchema,
   EditClientNoteRequestSchema,
   InstantSchema,
   ScheduleListRequestSchema,
+  TaskDetailResponseSchema,
   type ClientDetailResponse,
   type ClientNoteSchema,
   type CustomFieldDefinition,
@@ -357,5 +359,125 @@ describe("карточка клиента", () => {
 
     const schedule = ScheduleListRequestSchema.parse(api.to("schedule/list").at(-1)?.body);
     expect(schedule.groupIds).toEqual([group.id]);
+  });
+});
+
+/** Задача клиента «Алиса» в карточке задачи. */
+const aliceTask = TaskDetailResponseSchema.parse({
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000e01",
+  createdBy: session().employeeId,
+  createdByName: session().name,
+  assigneeId: null,
+  assigneeName: null,
+  clientId: alice.id,
+  clientName: alice.name,
+  title: "Позвонить Алисе",
+  description: "Уточнить расписание",
+  status: "PENDING",
+  dueDate: null,
+  dueDateEnd: null,
+  completedAt: null,
+  createdAt: "2026-01-01T00:00:00Z",
+  attachments: [],
+});
+
+/** Сервер карточки клиента с задачами клиента в памяти; создание добавляет задачу в список. */
+function tasksServer() {
+  let tasks: readonly (typeof aliceTask)[] = [aliceTask];
+  return detailServer(alice, [], passport, {
+    "tasks/list": () =>
+      json({
+        tasks: tasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          assigneeId: task.assigneeId,
+          assigneeName: task.assigneeName,
+          clientId: task.clientId,
+          clientName: task.clientName,
+          status: task.status,
+          dueDate: task.dueDate,
+          dueDateEnd: task.dueDateEnd,
+        })),
+        total: tasks.length,
+      }),
+    "tasks/detail": () => json(aliceTask),
+    "employees/list": () => json({ employees: [], total: 0 }),
+    "tasks/create": ({ body }) => {
+      const request = CreateTaskRequestSchema.parse(body);
+      const created = TaskDetailResponseSchema.parse({
+        ...aliceTask,
+        id: request.id,
+        title: request.title,
+        description: request.description,
+        clientId: request.clientId,
+      });
+      tasks = [...tasks, created];
+      return json(created);
+    },
+    "memberships/list": () => json({ memberships: [] }),
+  });
+}
+
+/** Панель создания задачи. */
+const taskCreateSheet = async () =>
+  within(await screen.findByRole("dialog", { name: ru["tasks.newTitle"] }));
+
+describe("задачи в карточке клиента", () => {
+  it("создаёт задачу для клиента в панели, не уходя со страницы", async () => {
+    const api = tasksServer();
+    const { history } = openApp(`/clients/${alice.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["tasks.create"] }));
+
+    const sheet = await taskCreateSheet();
+    expect(sheet.getByLabelText(ru["tasks.field.client"])).toHaveTextContent(alice.name);
+    expect(sheet.queryByRole("button", { name: /^Клиент/ })).toBeNull();
+    expect(sheet.queryByRole("button", { name: ru["tasks.removeClient"] })).toBeNull();
+    expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+
+    await user.type(sheet.getByLabelText(ru["tasks.field.title"]), "Отправить договор");
+    await user.click(sheet.getByRole("button", { name: ru["action.create"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["tasks.newTitle"] })).toBeNull();
+    });
+    const request = CreateTaskRequestSchema.parse(api.to("tasks/create").at(-1)?.body);
+    expect(request.clientId).toBe(alice.id);
+    expect(await screen.findByRole("button", { name: "Отправить договор" })).toBeVisible();
+    expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+    expect(history.location.search).toBe("");
+  });
+
+  it("закрывает пустую форму создания без подтверждения", async () => {
+    openApp(`/clients/${alice.id}`, tasksServer().fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["tasks.create"] }));
+    await taskCreateSheet();
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["tasks.newTitle"] })).toBeNull();
+    });
+    expect(screen.queryByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeNull();
+  });
+
+  it("открывает карточку задачи поверх карточки клиента", async () => {
+    const { history } = openApp(`/clients/${alice.id}`, tasksServer().fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: aliceTask.title }));
+
+    const sheet = within(await screen.findByRole("dialog", { name: aliceTask.title }));
+    expect(await sheet.findByText(aliceTask.description)).toBeVisible();
+    expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+    expect(history.location.search).toBe("");
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("heading", { name: alice.name })).toBeVisible();
   });
 });

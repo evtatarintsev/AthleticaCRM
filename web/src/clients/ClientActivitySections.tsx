@@ -7,6 +7,7 @@ import {
   InstantSchema,
   type BranchId,
   type ClientId,
+  type TaskId,
   type TaskListItemSchema,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
@@ -37,17 +38,24 @@ function compareTasks(a: TaskListItemSchema, b: TaskListItemSchema): number {
   return (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
 }
 
-/** Блок задач клиента: сначала незавершённые по сроку, просроченные выделены. */
+/**
+ * Блок задач клиента: сначала незавершённые по сроку, просроченные выделены.
+ * [onCreate] открывает создание задачи, [onOpen] — карточку выбранной задачи.
+ */
 export function ClientTasksSection({
   api,
   branchId,
   clientId,
   limit,
+  onCreate,
+  onOpen,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly limit: number;
+  readonly onCreate: () => void;
+  readonly onOpen: (taskId: TaskId) => void;
 }) {
   const { t, format } = useI18n();
   const [showAll, setShowAll] = useState(false);
@@ -62,15 +70,14 @@ export function ClientTasksSection({
       title={t("tasks.title")}
       count={items.length}
       actions={
-        <Button variant="ghost" size="icon-sm" asChild>
-          <Link
-            to="/tasks"
-            search={{ create: true }}
-            aria-label={t("tasks.create")}
-            title={t("tasks.create")}
-          >
-            <PlusIcon aria-hidden />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("tasks.create")}
+          title={t("tasks.create")}
+          onClick={onCreate}
+        >
+          <PlusIcon aria-hidden />
         </Button>
       }
       footer={
@@ -99,16 +106,18 @@ export function ClientTasksSection({
               Date.parse(task.dueDate) < now;
             return (
               <BlockRow key={task.id} aside={<TaskStatusBadge status={task.status} />}>
-                <Link
-                  to="/tasks"
-                  search={{ task: task.id }}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpen(task.id);
+                  }}
                   className={cn(
-                    "font-medium hover:underline",
+                    "text-left font-medium hover:underline",
                     task.status === "COMPLETED" && "text-muted-foreground line-through",
                   )}
                 >
                   {task.title}
-                </Link>
+                </button>
                 <BlockSub>
                   {task.dueDate !== null && (
                     <span className={cn(overdue && "font-medium text-destructive")}>

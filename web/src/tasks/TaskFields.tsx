@@ -9,14 +9,15 @@ import { titleSchema, type TaskForm } from "./taskFormValues";
 /**
  * Общие поля создания и редактирования задачи: заголовок, описание, клиент и сроки.
  * Клиент выбирается панелью, которую открывает [onPickClient]; сама панель рендерится
- * экраном формы среди вложенных.
+ * экраном формы среди вложенных. При [onPickClient] `null` клиент задан контекстом и
+ * показывается только для чтения.
  */
 export function TaskFields({
   form,
   onPickClient,
 }: {
   readonly form: TaskForm;
-  readonly onPickClient: () => void;
+  readonly onPickClient: (() => void) | null;
 }) {
   const { t } = useI18n();
   const schema = useMemo(() => titleSchema(t), [t]);
@@ -29,29 +30,36 @@ export function TaskFields({
         {(field) => <TextAreaField field={field} label={t("tasks.field.description")} rows={3} />}
       </form.Field>
       <form.Field name="client">
-        {(field) => (
-          <PickerField
-            label={t("tasks.field.client")}
-            value={field.state.value?.name ?? null}
-            emptyText={t("tasks.noClient")}
-            onOpen={onPickClient}
-            action={
-              field.state.value !== null && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t("tasks.removeClient")}
-                  onClick={() => {
-                    field.handleChange(null);
-                  }}
-                >
-                  <XIcon aria-hidden />
-                </Button>
-              )
-            }
-          />
-        )}
+        {(field) =>
+          onPickClient === null ? (
+            <ReadOnlyField
+              label={t("tasks.field.client")}
+              value={field.state.value?.name ?? t("tasks.noClient")}
+            />
+          ) : (
+            <PickerField
+              label={t("tasks.field.client")}
+              value={field.state.value?.name ?? null}
+              emptyText={t("tasks.noClient")}
+              onOpen={onPickClient}
+              action={
+                field.state.value !== null && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("tasks.removeClient")}
+                    onClick={() => {
+                      field.handleChange(null);
+                    }}
+                  >
+                    <XIcon aria-hidden />
+                  </Button>
+                )
+              }
+            />
+          )
+        }
       </form.Field>
       <form.Field name="dueDate">
         {(field) => (
@@ -125,6 +133,33 @@ export function PickerField({
         </button>
         {action}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Поле, значение которого задано контекстом и не меняется: подпись [label] и значение
+ * [value] в рамке тех же размеров, что у [PickerField], но без кнопки выбора.
+ */
+export function ReadOnlyField({
+  label,
+  value,
+}: {
+  readonly label: string;
+  readonly value: string;
+}) {
+  const labelId = useId();
+  return (
+    <div className="space-y-1.5">
+      <span id={labelId} className="text-sm leading-none font-medium">
+        {label}
+      </span>
+      <p
+        aria-labelledby={labelId}
+        className="flex h-9 items-center truncate rounded-md border border-input bg-muted/50 px-3 text-base md:text-sm"
+      >
+        {value}
+      </p>
     </div>
   );
 }

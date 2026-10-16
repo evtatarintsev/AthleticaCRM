@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import { TaskIdSchema, type UploadResponse } from "@/api/generated/contracts";
 import { uploadFile } from "@/api/upload";
-import { ClientPickerSheet } from "@/clients/ClientPickerSheet";
+import { ClientPickerSheet, type PickedClient } from "@/clients/ClientPickerSheet";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
@@ -24,27 +24,39 @@ type CreatePicker = "client" | "assignee" | null;
 
 /**
  * Панель создания задачи: заголовок, описание, клиент, исполнитель, сроки и вложения.
- * После создания закрывается; новая задача появляется в списке.
+ * После создания закрывается; новая задача появляется в списке. Если передан [client],
+ * задача создаётся для него: клиент показывается в форме и не меняется.
  */
 export function TaskCreateSheet({
   api,
   open,
   onOpenChange,
+  client,
 }: {
   readonly api: ApiClient;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
+  readonly client?: PickedClient;
 }) {
   const { t } = useI18n();
   return (
     <EditSheet open={open} onOpenChange={onOpenChange} title={t("tasks.newTitle")}>
-      <TaskCreateForm api={api} />
+      <TaskCreateForm api={api} client={client ?? null} />
     </EditSheet>
   );
 }
 
-/** Форма создания задачи; монтируется заново при каждом открытии панели. */
-function TaskCreateForm({ api }: { readonly api: ApiClient }) {
+/**
+ * Форма создания задачи; монтируется заново при каждом открытии панели. Заданный
+ * [client] нельзя сменить или убрать; при `null` клиент выбирается панелью.
+ */
+function TaskCreateForm({
+  api,
+  client,
+}: {
+  readonly api: ApiClient;
+  readonly client: PickedClient | null;
+}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const { close } = useEditSheet();
@@ -53,7 +65,7 @@ function TaskCreateForm({ api }: { readonly api: ApiClient }) {
   const [failure, setFailure] = useState<string | null>(null);
   const [picker, setPicker] = useState<CreatePicker>(null);
 
-  const form = useTaskForm(EMPTY_TASK_FORM, async (values) => {
+  const form = useTaskForm({ ...EMPTY_TASK_FORM, client }, async (values) => {
     setFailure(null);
     const taskId = TaskIdSchema.parse(uuidv7());
     const created = await api.call("tasks/create", {
@@ -92,21 +104,23 @@ function TaskCreateForm({ api }: { readonly api: ApiClient }) {
           }}
           nested={
             <>
-              <ClientPickerSheet
-                api={api}
-                branchId={branchId}
-                open={picker === "client"}
-                onOpenChange={(next) => {
-                  setPicker(next ? "client" : null);
-                }}
-                title={t("tasks.field.client")}
-                mode="single"
-                unavailable={new Map()}
-                onSubmit={([client]) => {
-                  form.setFieldValue("client", client ?? null);
-                  return Promise.resolve(null);
-                }}
-              />
+              {client === null && (
+                <ClientPickerSheet
+                  api={api}
+                  branchId={branchId}
+                  open={picker === "client"}
+                  onOpenChange={(next) => {
+                    setPicker(next ? "client" : null);
+                  }}
+                  title={t("tasks.field.client")}
+                  mode="single"
+                  unavailable={new Map()}
+                  onSubmit={([picked]) => {
+                    form.setFieldValue("client", picked ?? null);
+                    return Promise.resolve(null);
+                  }}
+                />
+              )}
               <form.Subscribe selector={(state) => state.values.assigneeId}>
                 {(assigneeId) => (
                   <AssigneeSheet
@@ -129,9 +143,13 @@ function TaskCreateForm({ api }: { readonly api: ApiClient }) {
           {failure !== null && <FormAlert message={failure} />}
           <TaskFields
             form={form}
-            onPickClient={() => {
-              setPicker("client");
-            }}
+            onPickClient={
+              client === null
+                ? () => {
+                    setPicker("client");
+                  }
+                : null
+            }
           />
           <form.Field name="assigneeId">
             {(field) => (

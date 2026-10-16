@@ -7,6 +7,7 @@ import type {
   ClientDetailResponse,
   ClientId,
   MembershipId,
+  TaskId,
 } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
@@ -15,6 +16,8 @@ import { todayLocalDate } from "@/lib/localDate";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { hasPermission, useSession } from "@/query/session";
+import { TaskCreateSheet } from "@/tasks/TaskCreateSheet";
+import { TaskSheet } from "@/tasks/TaskSheet";
 import { PageHeader } from "@/ui/PageHeader";
 import { ClientMessagesSection, ClientTasksSection } from "./ClientActivitySections";
 import { ClientBalanceSheet } from "./ClientBalanceSheet";
@@ -45,6 +48,7 @@ import { ClientCardProfile } from "./card/ClientCardProfile";
  * справа — лента блоков (занятия, абонементы, группы, посещения, задачи, сообщения,
  * заметки, документы) в порядке шаблона карточки. «Выдать абонемент» открывает панель выдачи;
  * плитка баланса открывает панель «Баланс», если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`.
+ * Создание и карточка задачи клиента открываются панелями поверх карточки.
  */
 export function ClientDetailPage({
   api,
@@ -62,6 +66,8 @@ export function ClientDetailPage({
   const [membershipId, setMembershipId] = useState<MembershipId | null>(null);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  const [taskCreateOpen, setTaskCreateOpen] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState<TaskId | null>(null);
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
@@ -185,6 +191,10 @@ export function ClientDetailPage({
               currentEmployeeId={session.employeeId}
               onChanged={refreshDetail}
               onMembershipOpen={openMembership}
+              onTaskCreate={() => {
+                setTaskCreateOpen(true);
+              }}
+              onTaskOpen={setOpenTaskId}
             />
           ))}
         </div>
@@ -199,6 +209,20 @@ export function ClientDetailPage({
         branchId={branchId}
         clientId={clientId}
         onOpenChange={setMembershipOpen}
+      />
+
+      <TaskCreateSheet
+        api={api}
+        open={taskCreateOpen}
+        onOpenChange={setTaskCreateOpen}
+        client={{ id: data.id, name: data.name }}
+      />
+      <TaskSheet
+        api={api}
+        taskId={openTaskId}
+        onClose={() => {
+          setOpenTaskId(null);
+        }}
       />
 
       <IssueSubscriptionSheet
@@ -224,7 +248,10 @@ export function ClientDetailPage({
   );
 }
 
-/** Блок ленты по его типу. */
+/**
+ * Блок ленты по его типу. [onTaskCreate] и [onTaskOpen] открывают панели задач
+ * поверх карточки.
+ */
 function FeedBlock({
   block,
   api,
@@ -233,6 +260,8 @@ function FeedBlock({
   currentEmployeeId,
   onChanged,
   onMembershipOpen,
+  onTaskCreate,
+  onTaskOpen,
 }: {
   readonly block: ClientCardBlock;
   readonly api: ApiClient;
@@ -241,6 +270,8 @@ function FeedBlock({
   readonly currentEmployeeId: string;
   readonly onChanged: () => Promise<void>;
   readonly onMembershipOpen: (id: MembershipId) => void;
+  readonly onTaskCreate: () => void;
+  readonly onTaskOpen: (taskId: TaskId) => void;
 }) {
   const clientId = client.id;
   switch (block.type) {
@@ -295,7 +326,14 @@ function FeedBlock({
       );
     case "tasks":
       return (
-        <ClientTasksSection api={api} branchId={branchId} clientId={clientId} limit={block.limit} />
+        <ClientTasksSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          limit={block.limit}
+          onCreate={onTaskCreate}
+          onOpen={onTaskOpen}
+        />
       );
     case "messages":
       return <ClientMessagesSection api={api} branchId={branchId} clientId={clientId} />;

@@ -184,6 +184,46 @@ describe("карточка задачи", () => {
     expect(sheet.getByText(task.description)).toBeVisible();
   });
 
+  it("системная задача: автор «Система», клиент ссылкой, исполнитель не назначен", async () => {
+    const systemTask = TaskDetailResponseSchema.parse({
+      ...task,
+      createdBy: null,
+      createdByName: null,
+      title: "Проверить клиента",
+    });
+    openApp(`/tasks?task=${task.id}`, taskServer(systemTask).fetch);
+
+    const sheet = await card("Проверить клиента");
+    expect(sheet.getByText(ru["tasks.authorSystem"])).toBeVisible();
+    expect(sheet.getByRole("link", { name: "Пётр Петров" })).toHaveAttribute(
+      "href",
+      `/clients/${clientId}`,
+    );
+    expect(
+      sheet.getByRole("button", { name: `Исполнитель ${ru["tasks.assigneeUnassigned"]}` }),
+    ).toBeVisible();
+  });
+
+  it("назначение системной задачи сохраняет автора «Система»", async () => {
+    const systemTask = TaskDetailResponseSchema.parse({
+      ...task,
+      createdBy: null,
+      createdByName: null,
+      title: "Проверить клиента",
+    });
+    const api = taskServer(systemTask);
+    openApp(`/tasks?task=${task.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await card("Проверить клиента");
+    await user.click(sheet.getByRole("button", { name: /^Исполнитель/ }));
+    const picker = within(await screen.findByRole("dialog", { name: ru["tasks.field.assignee"] }));
+    await user.click(await picker.findByRole("button", { name: anna.name }));
+
+    expect(await sheet.findByRole("button", { name: `Исполнитель ${anna.name}` })).toBeVisible();
+    expect(sheet.getByText(ru["tasks.authorSystem"])).toBeVisible();
+  });
+
   it("некорректный идентификатор в адресе не открывает панель", async () => {
     const api = taskServer(task);
     openApp("/tasks?task=not-a-uuid", api.fetch);

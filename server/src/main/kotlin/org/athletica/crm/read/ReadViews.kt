@@ -25,7 +25,9 @@ import org.athletica.crm.read.groups.GroupSessionsView
 import org.athletica.crm.read.home.DbTodayScheduleView
 import org.athletica.crm.read.home.TodayScheduleView
 import org.athletica.crm.read.memberships.DbMembershipHistoryView
+import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.read.memberships.MembershipHistoryView
+import org.athletica.crm.read.memberships.UnpaidSessionsView
 import org.athletica.crm.read.messaging.ClientChannelsView
 import org.athletica.crm.read.messaging.DbClientChannelsView
 import org.athletica.crm.read.messaging.DbInboundTriageView
@@ -83,6 +85,8 @@ data class ReadViews(
     val inboundTriage: InboundTriageView = DbInboundTriageView(),
     /** Списания абонементов участников занятия для карточки занятия. */
     val sessionDebitPreview: SessionDebitPreviewView = DbSessionDebitPreviewView(),
+    /** Неоплаченные занятия клиента в группах абонемента. */
+    val unpaidSessions: UnpaidSessionsView = DbUnpaidSessionsView(),
     /** История абонемента для панели абонемента. */
     val membershipHistory: MembershipHistoryView = DbMembershipHistoryView(),
     /** Каналы, через которые можно написать клиенту, для страницы переписки. */

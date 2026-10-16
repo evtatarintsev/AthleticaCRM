@@ -156,7 +156,24 @@ interface ActiveMembership : Membership {
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun reverse(debit: MembershipDebit, today: LocalDate): ActiveMembership
+
+    /**
+     * Гасит долг: списывает неоплаченные занятия [sessions] клиента-владельца, в том числе вне срока,
+     * и пишет каждое в историю как погашение долга. Дата начала не меняется. Занятий не больше
+     * остатка (кроме безлимита), иначе ошибка; уже списанное занятие — ошибка `ALREADY_DEBITED`.
+     * С режимом «при списании последнего» абонемент, остаток которого стал 0, закрывается датой [today].
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun repayDebt(sessions: List<DebtSession>, today: LocalDate): Membership
 }
+
+/** Неоплаченное занятие [sessionId] от [sessionDate], которое гасится с абонемента. */
+data class DebtSession(
+    /** Занятие. */
+    val sessionId: SessionId,
+    /** Дата занятия. */
+    val sessionDate: LocalDate,
+)
 
 /** Закрытый абонемент: финальное состояние, переходов нет. */
 interface ClosedMembership : Membership {

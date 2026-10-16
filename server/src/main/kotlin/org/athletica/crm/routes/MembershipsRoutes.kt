@@ -15,12 +15,16 @@ import org.athletica.crm.api.schemas.memberships.MembershipListRequest
 import org.athletica.crm.api.schemas.memberships.MembershipListResponse
 import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.api.schemas.memberships.MembershipStateSchema
+import org.athletica.crm.api.schemas.memberships.RepayDebtRequest
 import org.athletica.crm.api.schemas.memberships.RevokeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.RevokedMembershipStateSchema
+import org.athletica.crm.api.schemas.memberships.UnpaidSessionsRequest
+import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
+import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -34,6 +38,7 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.memberships.closeMembership
+import org.athletica.crm.usecases.memberships.repayDebt
 import org.athletica.crm.usecases.memberships.revokeMembership
 
 /**
@@ -41,7 +46,12 @@ import org.athletica.crm.usecases.memberships.revokeMembership
  * «Сегодня» — по часовому поясу организации из [calendar].
  */
 context(db: Database)
-fun RouteWithContext.membershipsRoutes(memberships: Memberships, calendar: OrgCalendar, views: ReadViews) {
+fun RouteWithContext.membershipsRoutes(
+    memberships: Memberships,
+    participations: Participations,
+    calendar: OrgCalendar,
+    views: ReadViews,
+) {
     route("/memberships") {
         post<IssueMembershipRequest, Unit>("/issue") { request ->
             db.transaction {
@@ -76,6 +86,16 @@ fun RouteWithContext.membershipsRoutes(memberships: Memberships, calendar: OrgCa
 
         post<CloseMembershipRequest, Unit>("/close") { request ->
             db.transaction { closeMembership(memberships, calendar, request.membershipId) }
+        }
+
+        post<UnpaidSessionsRequest, UnpaidSessionsResponse>("/unpaid-sessions") { request ->
+            db.transaction { views.unpaidSessions.byMembership(request.membershipId) }
+        }
+
+        post<RepayDebtRequest, Unit>("/repay-debt") { request ->
+            db.transaction {
+                repayDebt(memberships, participations, calendar, request.membershipId, request.sessionIds)
+            }
         }
 
         post<RevokeMembershipRequest, Unit>("/revoke") { request ->

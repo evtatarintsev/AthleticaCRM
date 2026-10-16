@@ -20,7 +20,7 @@ import kotlin.time.Instant
 internal data class DbTask(
     override val id: TaskId,
     override val orgId: OrgId,
-    override val createdBy: EmployeeId,
+    override val createdBy: EmployeeId?,
     override val assigneeId: EmployeeId?,
     override val clientId: ClientId?,
     override val title: String,
@@ -109,7 +109,10 @@ internal data class DbTask(
 
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     override fun assignTo(employee: Employee): Task {
-        requireEditable()
+        val takesForSelf = assigneeId == null && employee.id == ctx.employee.id
+        if (!takesForSelf) {
+            requireEditable()
+        }
         return copy(assigneeId = employee.id)
     }
 
@@ -140,7 +143,10 @@ internal data class DbTask(
         return copy(attachments = attachments.filterNot { it == uploadId })
     }
 
-    /** Проверяет право на редактирование задачи. Без [UserPermission.CAN_MANAGE_TASKS] разрешены только свои задачи. */
+    /**
+     * Проверяет право на редактирование задачи. Без [UserPermission.CAN_MANAGE_TASKS] разрешены
+     * только свои задачи (автор или исполнитель); неназначенную чужую задачу сначала нужно взять себе.
+     */
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     private fun requireEditable() {
         if (ctx.hasPermission(UserPermission.CAN_MANAGE_TASKS)) return

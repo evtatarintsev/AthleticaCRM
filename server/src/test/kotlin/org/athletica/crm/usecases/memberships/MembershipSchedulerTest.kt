@@ -17,6 +17,8 @@ import org.athletica.crm.domain.memberships.InactiveMembership
 import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.domain.notifications.DbNotifications
 import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
 import kotlin.test.Test
@@ -35,6 +37,8 @@ class MembershipSchedulerTest {
             notifications = DbNotifications(),
             employees = DbEmployees(DbUsers(PasswordHasher()), DbRoles()),
             calendar = DbOrgCalendar(fixture.clock),
+            unpaidSessions = DbUnpaidSessionsView(),
+            tasks = DbTasks(),
             clock = fixture.clock,
         )
 

@@ -13,6 +13,8 @@ import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.notifications.DbNotifications
 import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.usecases.memberships.DebitReconciliation
@@ -35,6 +37,8 @@ class DebitFixture(val base: MembershipFixture) {
             notifications = DbNotifications(),
             employees = DbEmployees(DbUsers(PasswordHasher()), DbRoles()),
             calendar = DbOrgCalendar(base.clock),
+            unpaidSessions = DbUnpaidSessionsView(),
+            tasks = DbTasks(),
         )
 
     /** Создаёт зал; вызывать после `base.setUp()`. */

@@ -48,6 +48,31 @@ const closed = testMembership({
   },
 });
 
+/** Три неоплаченных занятия клиента. */
+const unpaidSessions = [
+  {
+    sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000e01",
+    date: "2026-10-01",
+    startTime: "17:00:00",
+    groupId: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+    groupName: "Утренняя группа",
+  },
+  {
+    sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000e02",
+    date: "2026-10-03",
+    startTime: "17:00:00",
+    groupId: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+    groupName: "Утренняя группа",
+  },
+  {
+    sessionId: "0199a0b2-7c3e-7d2a-9f10-000000000e03",
+    date: "2026-10-05",
+    startTime: "17:00:00",
+    groupId: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+    groupName: "Утренняя группа",
+  },
+];
+
 const issuedEntry = {
   id: "0199a0b2-7c3e-7d2a-9f10-000000000c01",
   occurredAt: "2026-10-01T09:00:00Z",
@@ -75,6 +100,8 @@ function membershipsServer(initial: readonly MembershipSchema[], revokeError?: s
     "clients/notes/list": () => json({ notes: [] }),
     "memberships/list": () => json({ memberships }),
     "memberships/history": () => json({ entries }),
+    "memberships/unpaid-sessions": () => json({ sessions: unpaidSessions }),
+    "memberships/repay-debt": () => empty(),
     "memberships/close": () => {
       memberships = memberships.map((membership) =>
         membership.state.type === "active"
@@ -225,5 +252,59 @@ describe("абонементы в карточке клиента", () => {
     await user.keyboard("{Enter}");
 
     expect(await screen.findByRole("dialog", { name: "1111" })).toBeInTheDocument();
+  });
+  it("погашение части долга во вложенной панели", async () => {
+    const api = membershipsServer([ending]);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.repay.action"] }));
+    const repay = within(await screen.findByRole("dialog", { name: ru["membership.repay.title"] }));
+    const boxes = await repay.findAllByRole("checkbox");
+    expect(boxes).toHaveLength(3);
+    boxes.forEach((box) => {
+      expect(box).toBeChecked();
+    });
+    const last = boxes[2];
+    if (last === undefined) {
+      throw new Error("нет третьего занятия");
+    }
+    await user.click(last);
+    await user.click(
+      repay.getByRole("button", { name: ru["membership.repay.submit"].replace("{count}", "2") }),
+    );
+
+    await waitFor(() => {
+      expect(api.to("memberships/repay-debt")).toHaveLength(1);
+    });
+    expect(api.to("memberships/repay-debt")[0]?.body).toEqual({
+      membershipId: ending.id,
+      sessionIds: unpaidSessions.slice(0, 2).map((session) => session.sessionId),
+    });
+  });
+
+  it("больше остатка выбрать нельзя", async () => {
+    const one = testMembership({
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000a14",
+      name: "Разовый",
+      sessionsRemaining: 1,
+      state: activeState("2026-10-01", "2026-10-31"),
+    });
+    openApp(`/clients/${client.id}`, membershipsServer([one]).fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("Разовый"));
+    const sheet = within(await screen.findByRole("dialog", { name: "Разовый" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.repay.action"] }));
+    const repay = within(await screen.findByRole("dialog", { name: ru["membership.repay.title"] }));
+
+    expect(
+      await repay.findByRole("button", {
+        name: ru["membership.repay.submit"].replace("{count}", "3"),
+      }),
+    ).toBeDisabled();
+    expect(repay.getByText(ru["membership.repay.tooMany"].replace("{count}", "1"))).toBeVisible();
   });
 });

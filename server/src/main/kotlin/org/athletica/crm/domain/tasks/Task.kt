@@ -20,8 +20,8 @@ interface Task {
     /** Идентификатор организации-владельца задачи. */
     val orgId: OrgId
 
-    /** Сотрудник, создавший задачу. */
-    val createdBy: EmployeeId
+    /** Сотрудник, создавший задачу; `null` — задачу создала система. */
+    val createdBy: EmployeeId?
 
     /** Назначенный исполнитель, либо null если не назначен. */
     val assigneeId: EmployeeId?
@@ -75,7 +75,7 @@ interface Task {
 
     /**
      * Возвращает копию задачи с назначенным [employee].
-     * Требует права на редактирование.
+     * Требует права на редактирование; без него можно только взять себе задачу без исполнителя.
      */
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
     fun assignTo(employee: Employee): Task

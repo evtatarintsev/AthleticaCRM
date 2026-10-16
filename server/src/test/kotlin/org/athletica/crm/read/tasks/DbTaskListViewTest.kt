@@ -154,10 +154,11 @@ class DbTaskListViewTest {
         }
 
     @Test
-    fun `без CAN_VIEW_ALL_TASKS видно только свои задачи`() =
+    fun `без CAN_VIEW_ALL_TASKS чужая назначенная задача не видна`() =
         runTest {
             inContext(ctx) { tasks.new(TaskId.new(), "Моя задача", "", null, null, null) }
-            inContext(otherCtx) { tasks.new(TaskId.new(), "Чужая задача", "", null, null, null) }
+            val foreign = inContext(otherCtx) { tasks.new(TaskId.new(), "Чужая задача", "", null, null, null) }
+            assignTo(foreign.id, otherEmployeeId)
 
             val result = page(context = ctx)
 

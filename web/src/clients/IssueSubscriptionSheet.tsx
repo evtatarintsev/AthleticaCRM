@@ -8,8 +8,10 @@ import {
   LocalDateSchema,
   MembershipIdSchema,
   TariffPlanIdSchema,
+  type ActivationMode,
   type BranchId,
   type ClientId,
+  type CloseMode,
   type Currency,
   type DurationUnit,
   type TariffPlanSchema,
@@ -48,8 +50,13 @@ interface IssueSubscriptionFormValues {
   readonly sessions: string;
   readonly durationValue: string;
   readonly durationUnit: DurationUnit;
-  readonly startDate: string;
   readonly price: string;
+  readonly activationMode: ActivationMode;
+  /** Дата активации для режима «с даты». */
+  readonly activateOn: string;
+  /** Необязательная крайняя дата для режима «при первом посещении». */
+  readonly activationDeadline: string;
+  readonly closeMode: CloseMode;
 }
 
 /** Наибольшее значение `Int` в Kotlin: больше сервер не примет. */
@@ -69,12 +76,19 @@ function issueSubscriptionSchema(t: I18n["t"], currency: Currency) {
       sessions: z.string(),
       durationValue: z.string().refine((v) => positiveInt(v) !== null, t("error.positiveInteger")),
       durationUnit: z.enum(["DAYS", "MONTHS"]),
-      startDate: z.string().min(1, t("error.required")),
       price: z.string().refine((v) => parseMoney(v, currency) !== null, t("error.invalidAmount")),
+      activationMode: z.enum(["IMMEDIATE", "ON_DATE", "ON_FIRST_VISIT"]),
+      activateOn: z.string(),
+      activationDeadline: z.string(),
+      closeMode: z.enum(["MANUAL", "ON_LAST_SESSION", "ON_EXPIRY"]),
     })
     .refine((v) => v.unlimited || positiveInt(v.sessions) !== null, {
       path: ["sessions"],
       message: t("error.positiveInteger"),
+    })
+    .refine((v) => v.activationMode !== "ON_DATE" || v.activateOn !== "", {
+      path: ["activateOn"],
+      message: t("error.required"),
     });
 }
 
@@ -88,9 +102,17 @@ function templateKey(template: Template): string {
   }
 }
 
-/** Значения формы по шаблону [template]; дата начала — сегодня. */
+/**
+ * Значения формы по шаблону [template]: активация «сразу», закрытие «вручную»;
+ * дата для режима «с даты» по умолчанию — сегодня.
+ */
 function valuesFrom(template: Template): IssueSubscriptionFormValues {
-  const startDate = todayLocalDate();
+  const modes = {
+    activationMode: "IMMEDIATE",
+    activateOn: todayLocalDate(),
+    activationDeadline: "",
+    closeMode: "MANUAL",
+  } as const;
   switch (template.kind) {
     case "tariff":
       return {
@@ -98,8 +120,8 @@ function valuesFrom(template: Template): IssueSubscriptionFormValues {
         sessions: template.tariff.sessions?.toString() ?? "",
         durationValue: template.tariff.durationValue.toString(),
         durationUnit: template.tariff.durationUnit,
-        startDate,
         price: moneyEditText(template.tariff.price),
+        ...modes,
       };
     case "individual":
       return {
@@ -107,8 +129,8 @@ function valuesFrom(template: Template): IssueSubscriptionFormValues {
         sessions: "",
         durationValue: "1",
         durationUnit: "MONTHS",
-        startDate,
         price: "",
+        ...modes,
       };
   }
 }
@@ -236,8 +258,16 @@ function IssueSubscriptionSteps({
         sessions,
         durationValue,
         durationUnit: value.durationUnit,
-        startDate: LocalDateSchema.parse(value.startDate),
         price,
+        activationMode: value.activationMode,
+        activateOn:
+          value.activationMode === "ON_DATE" ? LocalDateSchema.parse(value.activateOn) : null,
+        activationDeadline:
+          value.activationMode === "ON_FIRST_VISIT" && value.activationDeadline !== ""
+            ? LocalDateSchema.parse(value.activationDeadline)
+            : null,
+        closeMode:
+          value.unlimited && value.closeMode === "ON_LAST_SESSION" ? "MANUAL" : value.closeMode,
       });
       if (!result.ok) {
         setFailure(apiErrorMessage(t, result.error));
@@ -400,7 +430,16 @@ function IssueSubscriptionSteps({
                   setStep("pick");
                 }}
               />
-              <form.Field name="unlimited">
+              <form.Field
+                name="unlimited"
+                listeners={{
+                  onChange: ({ value: unlimited }) => {
+                    if (unlimited && form.getFieldValue("closeMode") === "ON_LAST_SESSION") {
+                      form.setFieldValue("closeMode", "MANUAL");
+                    }
+                  },
+                }}
+              >
                 {(field) => (
                   <CheckboxField
                     field={field}
@@ -450,17 +489,76 @@ function IssueSubscriptionSteps({
                   )}
                 </form.Field>
               </div>
-              <form.Field name="startDate">
+              <form.Field name="activationMode">
                 {(field) => (
-                  <TextField
+                  <RadioGroupField
                     field={field}
-                    type="date"
-                    label={t("clients.detail.subscriptionStartDate")}
-                    autoComplete="off"
-                    required
+                    label={t("clients.issue.activationMode")}
+                    options={[
+                      { value: "IMMEDIATE", label: t("membership.activation.IMMEDIATE") },
+                      { value: "ON_DATE", label: t("membership.activation.ON_DATE") },
+                      { value: "ON_FIRST_VISIT", label: t("membership.activation.ON_FIRST_VISIT") },
+                    ]}
                   />
                 )}
               </form.Field>
+              <form.Subscribe selector={(state) => state.values.activationMode}>
+                {(activationMode) => {
+                  switch (activationMode) {
+                    case "IMMEDIATE":
+                      return null;
+                    case "ON_DATE":
+                      return (
+                        <form.Field name="activateOn">
+                          {(field) => (
+                            <TextField
+                              field={field}
+                              type="date"
+                              label={t("clients.issue.activateOn")}
+                              autoComplete="off"
+                              required
+                            />
+                          )}
+                        </form.Field>
+                      );
+                    case "ON_FIRST_VISIT":
+                      return (
+                        <form.Field name="activationDeadline">
+                          {(field) => (
+                            <TextField
+                              field={field}
+                              type="date"
+                              label={t("clients.issue.activationDeadline")}
+                              hint={t("clients.issue.activationDeadlineHint")}
+                              autoComplete="off"
+                            />
+                          )}
+                        </form.Field>
+                      );
+                  }
+                }}
+              </form.Subscribe>
+              <form.Subscribe selector={(state) => state.values.unlimited}>
+                {(unlimited) => (
+                  <form.Field name="closeMode">
+                    {(field) => (
+                      <RadioGroupField
+                        field={field}
+                        label={t("clients.issue.closeMode")}
+                        options={[
+                          { value: "MANUAL", label: t("membership.close.MANUAL") },
+                          {
+                            value: "ON_LAST_SESSION",
+                            label: t("membership.close.ON_LAST_SESSION"),
+                            disabled: unlimited,
+                          },
+                          { value: "ON_EXPIRY", label: t("membership.close.ON_EXPIRY") },
+                        ]}
+                      />
+                    )}
+                  </form.Field>
+                )}
+              </form.Subscribe>
               <form.Field name="price">
                 {(field) => (
                   <TextField

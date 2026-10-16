@@ -4,6 +4,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -50,6 +51,13 @@ data object NoneNotificationSubjectSchema : NotificationSubjectSchema
 @SerialName("group")
 data class GroupNotificationSubjectSchema(
     val id: GroupId,
+) : NotificationSubjectSchema
+
+/** Уведомление относится к клиенту [id]. */
+@Serializable
+@SerialName("client")
+data class ClientNotificationSubjectSchema(
+    val id: ClientId,
 ) : NotificationSubjectSchema
 
 /** Запрос на отметку конкретных уведомлений прочитанными. */

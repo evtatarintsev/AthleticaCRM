@@ -6,13 +6,15 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.subscription.ActivationMode
+import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
 
 /**
  * Запрос на выдачу абонемента клиенту.
  *
- * Дата окончания вычисляется на сервере из [startDate] и срока ([durationValue]/[durationUnit]).
- * Оплата и баланс на этом этапе не затрагиваются — фиксируется только сам абонемент.
+ * Дата начала и окончания определяются на сервере режимом активации и сроком
+ * ([durationValue]/[durationUnit]). Оплата и баланс на этом этапе не затрагиваются.
  */
 @Serializable
 data class IssueMembershipRequest(
@@ -30,8 +32,14 @@ data class IssueMembershipRequest(
     val durationValue: Int,
     /** Единица измерения срока действия. */
     val durationUnit: DurationUnit,
-    /** Дата начала действия. */
-    val startDate: LocalDate,
     /** Стоимость абонемента на момент выдачи (без учёта оплаты/баланса). */
     val price: Money,
+    /** Режим активации. */
+    val activationMode: ActivationMode,
+    /** Дата активации для режима [ActivationMode.ON_DATE]; для других режимов не передаётся. */
+    val activateOn: LocalDate? = null,
+    /** Крайняя дата активации для режима [ActivationMode.ON_FIRST_VISIT]; `null` — без крайней даты. */
+    val activationDeadline: LocalDate? = null,
+    /** Режим закрытия. */
+    val closeMode: CloseMode,
 )

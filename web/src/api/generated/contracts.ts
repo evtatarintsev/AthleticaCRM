@@ -3,6 +3,12 @@
 
 import { z } from "zod";
 
+export const ActivationModeSchema = z.enum(["IMMEDIATE", "ON_DATE", "ON_FIRST_VISIT"]);
+export type ActivationMode = z.output<typeof ActivationModeSchema>;
+
+export const ActivationReasonSchema = z.enum(["ON_ISSUE", "ON_DATE", "ON_DEADLINE", "FIRST_VISIT"]);
+export type ActivationReason = z.output<typeof ActivationReasonSchema>;
+
 export const ClientIdSchema = z.uuid().brand<"ClientId">();
 export type ClientId = z.output<typeof ClientIdSchema>;
 
@@ -859,6 +865,22 @@ export const ClientsDisplaySettingsInputSchema = z
   .readonly();
 export type ClientsDisplaySettingsInput = z.output<typeof ClientsDisplaySettingsInputSchema>;
 
+export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
+export type MembershipId = z.output<typeof MembershipIdSchema>;
+
+export const CloseMembershipRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+  })
+  .readonly();
+export type CloseMembershipRequest = z.output<typeof CloseMembershipRequestSchema>;
+
+export const CloseModeSchema = z.enum(["MANUAL", "ON_LAST_SESSION", "ON_EXPIRY"]);
+export type CloseMode = z.output<typeof CloseModeSchema>;
+
+export const CloseReasonSchema = z.enum(["MANUAL", "LAST_SESSION", "EXPIRY"]);
+export type CloseReason = z.output<typeof CloseReasonSchema>;
+
 export const CompleteSessionRequestSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -1593,6 +1615,9 @@ export const EmployeeListResponseSchema = z
   .readonly();
 export type EmployeeListResponse = z.output<typeof EmployeeListResponseSchema>;
 
+export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
+export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
+
 export const FieldErrorSchema = z
   .object({
     name: z.string(),
@@ -1845,9 +1870,6 @@ export const InitiatePaymentRequestSchema = z
   .readonly();
 export type InitiatePaymentRequest = z.output<typeof InitiatePaymentRequestSchema>;
 
-export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
-export type MembershipId = z.output<typeof MembershipIdSchema>;
-
 export const IssueMembershipRequestSchema = z
   .object({
     id: MembershipIdSchema,
@@ -1857,8 +1879,11 @@ export const IssueMembershipRequestSchema = z
     sessions: z.int32().nullable(),
     durationValue: z.int32(),
     durationUnit: DurationUnitSchema,
-    startDate: LocalDateSchema,
     price: MoneySchema,
+    activationMode: ActivationModeSchema,
+    activateOn: LocalDateSchema.nullable().optional(),
+    activationDeadline: LocalDateSchema.nullable().optional(),
+    closeMode: CloseModeSchema,
   })
   .readonly();
 export type IssueMembershipRequest = z.output<typeof IssueMembershipRequestSchema>;
@@ -1943,6 +1968,78 @@ export const MarkRemainingAbsentRequestSchema = z
   .readonly();
 export type MarkRemainingAbsentRequest = z.output<typeof MarkRemainingAbsentRequestSchema>;
 
+export const MembershipEventSchemaActivatedSchema = z
+  .object({
+    type: z.literal("activated"),
+    reason: ActivationReasonSchema,
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+  })
+  .readonly();
+export type MembershipEventSchemaActivated = z.output<typeof MembershipEventSchemaActivatedSchema>;
+
+export const MembershipEventSchemaCloseNotifiedSchema = z
+  .object({
+    type: z.literal("close_notified"),
+  })
+  .readonly();
+export type MembershipEventSchemaCloseNotified = z.output<typeof MembershipEventSchemaCloseNotifiedSchema>;
+
+export const MembershipEventSchemaClosedSchema = z
+  .object({
+    type: z.literal("closed"),
+    reason: CloseReasonSchema,
+    closedOn: LocalDateSchema,
+  })
+  .readonly();
+export type MembershipEventSchemaClosed = z.output<typeof MembershipEventSchemaClosedSchema>;
+
+export const MembershipEventSchemaIssuedSchema = z
+  .object({
+    type: z.literal("issued"),
+    activationMode: ActivationModeSchema,
+    activateOn: LocalDateSchema.nullable(),
+    activationDeadline: LocalDateSchema.nullable(),
+    closeMode: CloseModeSchema,
+  })
+  .readonly();
+export type MembershipEventSchemaIssued = z.output<typeof MembershipEventSchemaIssuedSchema>;
+
+export const MembershipEventSchemaRevokedSchema = z
+  .object({
+    type: z.literal("revoked"),
+  })
+  .readonly();
+export type MembershipEventSchemaRevoked = z.output<typeof MembershipEventSchemaRevokedSchema>;
+
+export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema]);
+export type MembershipEventSchema = z.output<typeof MembershipEventSchemaSchema>;
+
+export const MembershipHistoryEntrySchemaSchema = z
+  .object({
+    id: z.uuid(),
+    occurredAt: InstantSchema,
+    actorId: EmployeeIdSchema.nullable(),
+    actorName: z.string().nullable(),
+    event: MembershipEventSchemaSchema,
+  })
+  .readonly();
+export type MembershipHistoryEntrySchema = z.output<typeof MembershipHistoryEntrySchemaSchema>;
+
+export const MembershipHistoryRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+  })
+  .readonly();
+export type MembershipHistoryRequest = z.output<typeof MembershipHistoryRequestSchema>;
+
+export const MembershipHistoryResponseSchema = z
+  .object({
+    entries: z.array(MembershipHistoryEntrySchemaSchema).readonly(),
+  })
+  .readonly();
+export type MembershipHistoryResponse = z.output<typeof MembershipHistoryResponseSchema>;
+
 export const MembershipListRequestSchema = z
   .object({
     clientId: ClientIdSchema,
@@ -1950,19 +2047,67 @@ export const MembershipListRequestSchema = z
   .readonly();
 export type MembershipListRequest = z.output<typeof MembershipListRequestSchema>;
 
-export const MembershipStatusSchema = z.enum(["ACTIVE", "EXPIRED"]);
-export type MembershipStatus = z.output<typeof MembershipStatusSchema>;
+export const TermPositionSchema = z.enum(["NOT_STARTED", "IN_TERM", "EXPIRED"]);
+export type TermPosition = z.output<typeof TermPositionSchema>;
+
+export const MembershipStateSchemaActiveSchema = z
+  .object({
+    type: z.literal("active"),
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    termPosition: TermPositionSchema,
+    endingSoon: z.array(EndingSoonReasonSchema).readonly(),
+    closePending: z.boolean(),
+  })
+  .readonly();
+export type MembershipStateSchemaActive = z.output<typeof MembershipStateSchemaActiveSchema>;
+
+export const MembershipStateSchemaClosedSchema = z
+  .object({
+    type: z.literal("closed"),
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    closedOn: LocalDateSchema,
+    reason: CloseReasonSchema,
+  })
+  .readonly();
+export type MembershipStateSchemaClosed = z.output<typeof MembershipStateSchemaClosedSchema>;
+
+export const MembershipStateSchemaInactiveSchema = z
+  .object({
+    type: z.literal("inactive"),
+    activateOn: LocalDateSchema.nullable(),
+  })
+  .readonly();
+export type MembershipStateSchemaInactive = z.output<typeof MembershipStateSchemaInactiveSchema>;
+
+export const MembershipStateSchemaRevokedSchema = z
+  .object({
+    type: z.literal("revoked"),
+    startDate: LocalDateSchema.nullable(),
+    endDate: LocalDateSchema.nullable(),
+  })
+  .readonly();
+export type MembershipStateSchemaRevoked = z.output<typeof MembershipStateSchemaRevokedSchema>;
+
+export const MembershipStateSchemaSchema = z.discriminatedUnion("type", [MembershipStateSchemaActiveSchema, MembershipStateSchemaClosedSchema, MembershipStateSchemaInactiveSchema, MembershipStateSchemaRevokedSchema]);
+export type MembershipStateSchema = z.output<typeof MembershipStateSchemaSchema>;
 
 export const MembershipSchemaSchema = z
   .object({
     id: MembershipIdSchema,
     name: z.string(),
+    tariffPlanId: TariffPlanIdSchema.nullable(),
     sessionsTotal: z.int32().nullable(),
     sessionsRemaining: z.int32().nullable(),
-    startDate: LocalDateSchema,
-    endDate: LocalDateSchema,
+    durationValue: z.int32(),
+    durationUnit: DurationUnitSchema,
     price: MoneySchema,
-    status: MembershipStatusSchema,
+    activationMode: ActivationModeSchema,
+    activationDeadline: LocalDateSchema.nullable(),
+    closeMode: CloseModeSchema,
+    issuedOn: LocalDateSchema,
+    state: MembershipStateSchemaSchema,
   })
   .readonly();
 export type MembershipSchema = z.output<typeof MembershipSchemaSchema>;
@@ -1973,6 +2118,14 @@ export const MembershipListResponseSchema = z
   })
   .readonly();
 export type MembershipListResponse = z.output<typeof MembershipListResponseSchema>;
+
+export const NotificationSubjectSchemaClientSchema = z
+  .object({
+    type: z.literal("client"),
+    id: ClientIdSchema,
+  })
+  .readonly();
+export type NotificationSubjectSchemaClient = z.output<typeof NotificationSubjectSchemaClientSchema>;
 
 export const NotificationSubjectSchemaGroupSchema = z
   .object({
@@ -1989,7 +2142,7 @@ export const NotificationSubjectSchemaNoneSchema = z
   .readonly();
 export type NotificationSubjectSchemaNone = z.output<typeof NotificationSubjectSchemaNoneSchema>;
 
-export const NotificationSubjectSchemaSchema = z.discriminatedUnion("type", [NotificationSubjectSchemaGroupSchema, NotificationSubjectSchemaNoneSchema]);
+export const NotificationSubjectSchemaSchema = z.discriminatedUnion("type", [NotificationSubjectSchemaClientSchema, NotificationSubjectSchemaGroupSchema, NotificationSubjectSchemaNoneSchema]);
 export type NotificationSubjectSchema = z.output<typeof NotificationSubjectSchemaSchema>;
 
 export const NotificationItemSchema = z
@@ -2097,6 +2250,13 @@ export const RestoreClientRequestSchema = z
   })
   .readonly();
 export type RestoreClientRequest = z.output<typeof RestoreClientRequestSchema>;
+
+export const RevokeMembershipRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+  })
+  .readonly();
+export type RevokeMembershipRequest = z.output<typeof RevokeMembershipRequestSchema>;
 
 export const RoleItemSchema = z
   .object({
@@ -3166,6 +3326,20 @@ export const endpoints = {
     out: "empty",
     response: z.undefined(),
   },
+  "memberships/close": {
+    method: "POST",
+    in: "body",
+    request: CloseMembershipRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "memberships/history": {
+    method: "POST",
+    in: "body",
+    request: MembershipHistoryRequestSchema,
+    out: "json",
+    response: MembershipHistoryResponseSchema,
+  },
   "memberships/issue": {
     method: "POST",
     in: "body",
@@ -3179,6 +3353,13 @@ export const endpoints = {
     request: MembershipListRequestSchema,
     out: "json",
     response: MembershipListResponseSchema,
+  },
+  "memberships/revoke": {
+    method: "POST",
+    in: "body",
+    request: RevokeMembershipRequestSchema,
+    out: "empty",
+    response: z.undefined(),
   },
   "messaging/conversation": {
     method: "GET",

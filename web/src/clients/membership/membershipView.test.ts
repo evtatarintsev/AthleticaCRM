@@ -1,82 +1,78 @@
 import { describe, expect, it } from "vitest";
-import { LocalDateSchema, MembershipSchemaSchema } from "@/api/generated/contracts";
-import { membershipView } from "./membershipView";
+import { activeState, testMembership } from "@/test/memberships";
+import { isCurrentMembership, membershipView } from "./membershipView";
 
-const today = LocalDateSchema.parse("2026-10-15");
-
-/** Абонемент с периодом [startDate]–[endDate] и остатком [remaining] из [total] занятий. */
-function membership(
-  startDate: string,
-  endDate: string,
-  remaining: number | null,
-  total: number | null,
-) {
-  return MembershipSchemaSchema.parse({
-    id: "0199a0b2-7c3e-7d2a-9f10-000000000a01",
-    name: "1111",
-    sessionsTotal: total,
-    sessionsRemaining: remaining,
-    startDate,
-    endDate,
-    price: { minorUnits: 400000, currency: "RUB" },
-    status: "ACTIVE",
-  });
-}
-
-describe("состояние абонемента", () => {
-  it("последний день абонемента — ещё не истёк, вчерашний — истёк", () => {
-    expect(membershipView(membership("2026-10-01", "2026-10-15", 5, 8), today).phase).toBe(
-      "ending",
+describe("вид абонемента по состоянию с сервера", () => {
+  it("неактивированный — без дат, действующий", () => {
+    const view = membershipView(
+      testMembership({ state: { type: "inactive", activateOn: "2026-10-20" } }),
     );
-    expect(membershipView(membership("2026-10-01", "2026-10-14", 5, 8), today).phase).toBe(
-      "expired",
-    );
+    expect(view.phase).toBe("inactive");
+    expect(view.startDate).toBeNull();
+    expect(isCurrentMembership(view)).toBe(true);
   });
 
-  it("заканчивается по сроку ровно за 7 дней, за 8 — действует", () => {
-    const seven = membershipView(membership("2026-10-01", "2026-10-22", 12, 12), today);
-    expect(seven).toEqual({ phase: "ending", endingByDate: true, endingBySessions: false });
-    expect(membershipView(membership("2026-10-01", "2026-10-23", 12, 12), today).phase).toBe(
-      "active",
+  it("причины «заканчивается» берутся с сервера", () => {
+    const view = membershipView(
+      testMembership({
+        sessionsRemaining: 1,
+        state: activeState("2026-10-01", "2026-10-31", { endingSoon: ["BY_SESSIONS"] }),
+      }),
     );
+    expect(view.phase).toBe("ending");
+    expect(view.endingBySessions).toBe(true);
+    expect(view.endingByDate).toBe(false);
   });
 
-  it("заканчивается по занятиям при остатке 1 и 0, при 2 — действует", () => {
-    expect(membershipView(membership("2026-10-01", "2026-12-31", 1, 8), today)).toEqual({
-      phase: "ending",
-      endingByDate: false,
-      endingBySessions: true,
-    });
-    expect(membershipView(membership("2026-10-01", "2026-12-31", 0, 8), today).phase).toBe(
-      "ending",
-    );
-    expect(membershipView(membership("2026-10-01", "2026-12-31", 2, 8), today).phase).toBe(
-      "active",
-    );
+  it("без причин — активен", () => {
+    const view = membershipView(testMembership({ state: activeState("2026-10-01", "2026-10-31") }));
+    expect(view.phase).toBe("active");
   });
 
-  it("безлимит не заканчивается по занятиям", () => {
-    expect(membershipView(membership("2026-10-01", "2026-12-31", null, null), today).phase).toBe(
-      "active",
+  it("не начался", () => {
+    const view = membershipView(
+      testMembership({
+        state: activeState("2026-11-01", "2026-11-30", { termPosition: "NOT_STARTED" }),
+      }),
     );
+    expect(view.phase).toBe("upcoming");
+    expect(isCurrentMembership(view)).toBe(true);
   });
 
-  it("обе причины сразу", () => {
-    expect(membershipView(membership("2026-10-01", "2026-10-18", 1, 8), today)).toEqual({
-      phase: "ending",
-      endingByDate: true,
-      endingBySessions: true,
-    });
+  it("к закрытию — с причинами, не действующий", () => {
+    const view = membershipView(
+      testMembership({
+        sessionsRemaining: 0,
+        state: activeState("2026-09-01", "2026-09-30", {
+          termPosition: "EXPIRED",
+          closePending: true,
+        }),
+      }),
+    );
+    expect(view.phase).toBe("closePending");
+    expect(view.expired).toBe(true);
+    expect(view.exhausted).toBe(true);
+    expect(isCurrentMembership(view)).toBe(false);
   });
 
-  it("абонемент с будущей датой начала не начался, даже если скоро кончится", () => {
-    expect(membershipView(membership("2026-10-16", "2026-10-18", 1, 8), today)).toEqual({
-      phase: "upcoming",
-      endingByDate: false,
-      endingBySessions: false,
-    });
-    expect(membershipView(membership("2026-10-15", "2026-12-31", 8, 8), today).phase).toBe(
-      "active",
+  it("закрытый и отозванный — не действующие", () => {
+    const closed = membershipView(
+      testMembership({
+        state: {
+          type: "closed",
+          startDate: "2026-09-01",
+          endDate: "2026-09-30",
+          closedOn: "2026-10-01",
+          reason: "MANUAL",
+        },
+      }),
     );
+    const revoked = membershipView(
+      testMembership({ state: { type: "revoked", startDate: null, endDate: null } }),
+    );
+    expect(closed.phase).toBe("closed");
+    expect(revoked.phase).toBe("revoked");
+    expect(isCurrentMembership(closed)).toBe(false);
+    expect(isCurrentMembership(revoked)).toBe(false);
   });
 });

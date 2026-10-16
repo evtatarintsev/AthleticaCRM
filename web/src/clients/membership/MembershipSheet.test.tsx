@@ -1,16 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import {
-  ClientDetailResponseSchema,
-  MembershipSchemaSchema,
-  type MembershipSchema,
-} from "@/api/generated/contracts";
+import { ClientDetailResponseSchema, type MembershipSchema } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
-import { addDays, todayLocalDate } from "@/lib/localDate";
-import { appServer, json, openApp } from "@/test/app";
-
-const today = todayLocalDate();
+import { appServer, empty, json, openApp } from "@/test/app";
+import { activeState, testMembership } from "@/test/memberships";
 
 const client = ClientDetailResponseSchema.parse({
   id: "0199a0b2-7c3e-7d2a-9f10-000000000505",
@@ -27,38 +21,88 @@ const client = ClientDetailResponseSchema.parse({
   state: "ACTIVE",
 });
 
-/** Абонемент [name] с началом и окончанием через [startIn] и [endIn] дней от сегодня. */
-function membership(
-  id: string,
-  name: string,
-  startIn: number,
-  endIn: number,
-  remaining: number | null,
-  total: number | null,
-): MembershipSchema {
-  return MembershipSchemaSchema.parse({
-    id,
-    name,
-    sessionsTotal: total,
-    sessionsRemaining: remaining,
-    startDate: addDays(today, startIn),
-    endDate: addDays(today, endIn),
-    price: { minorUnits: 400000, currency: "RUB" },
-    status: endIn < 0 ? "EXPIRED" : "ACTIVE",
-  });
-}
+const ending = testMembership({
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000a11",
+  name: "1111",
+  sessionsTotal: 12,
+  sessionsRemaining: 12,
+  state: activeState("2026-10-01", "2026-10-20", { endingSoon: ["BY_DATE"] }),
+});
+const upcoming = testMembership({
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000a12",
+  name: "Борьба",
+  sessionsTotal: null,
+  sessionsRemaining: null,
+  state: activeState("2026-11-01", "2026-11-30", { termPosition: "NOT_STARTED" }),
+});
+const closed = testMembership({
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000a13",
+  name: "Летний",
+  sessionsRemaining: 0,
+  state: {
+    type: "closed",
+    startDate: "2026-06-01",
+    endDate: "2026-06-30",
+    closedOn: "2026-07-01",
+    reason: "LAST_SESSION",
+  },
+});
 
-const ending = membership("0199a0b2-7c3e-7d2a-9f10-000000000a11", "1111", -10, 5, 12, 12);
-const upcoming = membership("0199a0b2-7c3e-7d2a-9f10-000000000a12", "Борьба", 7, 37, null, null);
-const expired = membership("0199a0b2-7c3e-7d2a-9f10-000000000a13", "Летний", -90, -30, 0, 8);
+const issuedEntry = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000c01",
+  occurredAt: "2026-10-01T09:00:00Z",
+  actorId: "0199a0b2-7c3e-7d2a-9f10-000000000d01",
+  actorName: "Анна Админ",
+  event: {
+    type: "issued",
+    activationMode: "IMMEDIATE",
+    activateOn: null,
+    activationDeadline: null,
+    closeMode: "MANUAL",
+  },
+};
 
-/** Поддельный сервер карточки клиента с абонементами [memberships]. */
-function membershipsServer(memberships: readonly MembershipSchema[]) {
+/**
+ * Поддельный сервер карточки клиента с абонементами [initial]. `memberships/close` закрывает
+ * абонемент; `memberships/revoke` отвечает ошибкой [revokeError], если она задана.
+ */
+function membershipsServer(initial: readonly MembershipSchema[], revokeError?: string) {
+  let memberships = [...initial];
+  const entries: unknown[] = [issuedEntry];
   return appServer({
     "custom-fields/list": () => json([]),
     "clients/detail": () => json(client),
     "clients/notes/list": () => json({ notes: [] }),
     "memberships/list": () => json({ memberships }),
+    "memberships/history": () => json({ entries }),
+    "memberships/close": () => {
+      memberships = memberships.map((membership) =>
+        membership.state.type === "active"
+          ? {
+              ...membership,
+              state: {
+                type: "closed",
+                startDate: membership.state.startDate,
+                endDate: membership.state.endDate,
+                closedOn: membership.state.startDate,
+                reason: "MANUAL",
+              },
+            }
+          : membership,
+      );
+      entries.unshift({
+        id: "0199a0b2-7c3e-7d2a-9f10-000000000c02",
+        occurredAt: "2026-10-16T09:00:00Z",
+        actorId: issuedEntry.actorId,
+        actorName: issuedEntry.actorName,
+        event: { type: "closed", reason: "MANUAL", closedOn: "2026-10-16" },
+      });
+      return empty();
+    },
+    "memberships/revoke": () =>
+      revokeError === undefined
+        ? empty()
+        : json({ code: "MEMBERSHIP_HAS_DEBITS", message: revokeError, fields: null }, 400),
   });
 }
 
@@ -75,8 +119,8 @@ async function tileButton(name: string) {
 }
 
 describe("абонементы в карточке клиента", () => {
-  it("показывает плитку на каждый неистёкший абонемент и выделяет причину окончания", async () => {
-    openApp(`/clients/${client.id}`, membershipsServer([ending, upcoming, expired]).fetch);
+  it("показывает плитку на каждый действующий абонемент и выделяет причину с сервера", async () => {
+    openApp(`/clients/${client.id}`, membershipsServer([ending, upcoming, closed]).fetch);
 
     const endingTile = within(await tileButton("1111"));
     expect(endingTile.getByText("Осталось 12 из 12")).not.toHaveClass("text-amber-700");
@@ -86,12 +130,11 @@ describe("абонементы в карточке клиента", () => {
     expect(upcomingTile.getByText(/^с /)).toBeInTheDocument();
 
     expect(screen.getAllByText(ru["clientCard.quick.subscription"])).toHaveLength(2);
-    expect(screen.getByText(ru["clientCard.subscriptionUpcoming"])).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: ru["clientCard.alerts"] })).not.toBeInTheDocument();
   });
 
-  it("без неистёкших абонементов — одна некликабельная плитка", async () => {
-    openApp(`/clients/${client.id}`, membershipsServer([expired]).fetch);
+  it("без действующих абонементов — одна некликабельная плитка", async () => {
+    openApp(`/clients/${client.id}`, membershipsServer([closed]).fetch);
 
     expect(await screen.findByText(ru["clientCard.quick.noSubscription"])).toBeInTheDocument();
     expect(screen.getAllByText(ru["clientCard.quick.subscription"])).toHaveLength(1);
@@ -99,35 +142,47 @@ describe("абонементы в карточке клиента", () => {
     expect(alerts.getByText(ru["clientCard.alert.noActiveSubscription"])).toBeInTheDocument();
   });
 
-  it("плитка открывает панель абонемента, кнопки действий ничего не делают", async () => {
-    const api = membershipsServer([ending]);
-    openApp(`/clients/${client.id}`, api.fetch);
+  it("панель показывает параметры и историю с автором", async () => {
+    openApp(`/clients/${client.id}`, membershipsServer([ending]).fetch);
     const user = userEvent.setup();
 
     await user.click(await tileButton("1111"));
 
     const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
     expect(sheet.getByText(ru["clientCard.subscriptionEnding"])).toBeInTheDocument();
-    expect(sheet.getByText("Осталось 12 из 12")).toBeInTheDocument();
-    for (const action of ["renew", "freeze", "closeLabel"] as const) {
-      expect(
-        sheet.getByRole("button", { name: ru[`clientCard.membership.${action}`] }),
-      ).toBeInTheDocument();
-    }
-
-    const before = api.requests.length;
-    await user.click(sheet.getByRole("button", { name: ru["clientCard.membership.freeze"] }));
-    expect(screen.getByRole("dialog", { name: "1111" })).toBeInTheDocument();
-    expect(api.requests).toHaveLength(before);
-
-    await user.keyboard("{Escape}");
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
+    expect(sheet.getByText(ru["membership.close.MANUAL"])).toBeInTheDocument();
+    expect(await sheet.findByText("Анна Админ", { exact: false })).toBeInTheDocument();
   });
 
-  it("строка истёкшего абонемента открывает панель только с «Продлить»", async () => {
-    openApp(`/clients/${client.id}`, membershipsServer([expired]).fetch);
+  it("закрытие из панели с подтверждением", async () => {
+    const api = membershipsServer([ending]);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["clientCard.membership.closeLabel"] }));
+
+    const confirm = within(
+      await screen.findByRole("dialog", { name: ru["membership.closeConfirmTitle"] }),
+    );
+    expect(api.to("memberships/close")).toHaveLength(0);
+    await user.click(confirm.getByRole("button", { name: ru["clientCard.membership.close"] }));
+
+    await waitFor(() => {
+      expect(api.to("memberships/close")).toHaveLength(1);
+    });
+    expect(api.to("memberships/close")[0]?.body).toEqual({ membershipId: ending.id });
+    expect(await sheet.findByText(ru["membership.phase.closed"])).toBeInTheDocument();
+    expect(
+      await sheet.findByText(
+        ru["membership.history.closed"].replace("{reason}", ru["membership.closeReason.MANUAL"]),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("у закрытого абонемента действий нет", async () => {
+    openApp(`/clients/${client.id}`, membershipsServer([closed]).fetch);
     const user = userEvent.setup();
 
     await user.click(
@@ -137,16 +192,29 @@ describe("абонементы в карточке клиента", () => {
     );
 
     const sheet = within(await screen.findByRole("dialog", { name: "Летний" }));
-    expect(sheet.getByText(ru["clients.detail.subscriptionExpired"])).toBeInTheDocument();
-    expect(
-      sheet.getByRole("button", { name: ru["clientCard.membership.renew"] }),
-    ).toBeInTheDocument();
-    expect(
-      sheet.queryByRole("button", { name: ru["clientCard.membership.freeze"] }),
-    ).not.toBeInTheDocument();
+    expect(sheet.getByText(ru["membership.phase.closed"])).toBeInTheDocument();
     expect(
       sheet.queryByRole("button", { name: ru["clientCard.membership.closeLabel"] }),
     ).not.toBeInTheDocument();
+    expect(sheet.queryByRole("button", { name: ru["membership.revoke"] })).not.toBeInTheDocument();
+  });
+
+  it("отказ в отзыве показывает ошибку сервера", async () => {
+    const message = "Сначала верните списанные занятия";
+    const api = membershipsServer([ending], message);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.revoke"] }));
+    const confirm = within(
+      await screen.findByRole("dialog", { name: ru["membership.revokeConfirmTitle"] }),
+    );
+    await user.click(confirm.getByRole("button", { name: ru["membership.revoke"] }));
+
+    expect(await sheet.findByText(message)).toBeInTheDocument();
+    expect(sheet.getByText(ru["clientCard.subscriptionEnding"])).toBeInTheDocument();
   });
 
   it("плитка открывается с клавиатуры", async () => {

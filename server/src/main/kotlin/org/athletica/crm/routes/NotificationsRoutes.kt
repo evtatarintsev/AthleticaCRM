@@ -1,5 +1,6 @@
 package org.athletica.crm.routes
 
+import org.athletica.crm.api.schemas.notifications.ClientNotificationSubjectSchema
 import org.athletica.crm.api.schemas.notifications.GroupNotificationSubjectSchema
 import org.athletica.crm.api.schemas.notifications.MarkNotificationsReadRequest
 import org.athletica.crm.api.schemas.notifications.NoneNotificationSubjectSchema
@@ -64,4 +65,5 @@ private fun NotificationSubject.toSchema(): NotificationSubjectSchema =
     when (this) {
         is NotificationSubject.None -> NoneNotificationSubjectSchema
         is NotificationSubject.Group -> GroupNotificationSubjectSchema(id)
+        is NotificationSubject.Client -> ClientNotificationSubjectSchema(id)
     }

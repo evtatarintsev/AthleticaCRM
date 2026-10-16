@@ -6,7 +6,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.i18n.Messages
 
 /**
@@ -51,4 +53,23 @@ data class GroupScheduleChanged(
     override fun title(lang: Lang): String = Messages.GroupScheduleChangedTitle.localize(lang, groupName)
 
     override fun body(lang: Lang): String = Messages.GroupScheduleChangedBody.localize(lang, effectiveFrom, changedByName)
+}
+
+/** Абонемент клиента «к закрытию», а режим закрытия не закроет его сам. */
+@Serializable
+@SerialName("membership_close_pending")
+data class MembershipClosePending(
+    /** Клиент-владелец абонемента. */
+    val clientId: ClientId,
+    /** Абонемент «к закрытию». */
+    val membershipId: MembershipId,
+    /** Название абонемента на момент уведомления. */
+    val membershipName: String,
+) : NotificationContent {
+    override val subject: NotificationSubject
+        get() = NotificationSubject.Client(clientId)
+
+    override fun title(lang: Lang): String = Messages.MembershipClosePendingTitle.localize(lang, membershipName)
+
+    override fun body(lang: Lang): String = Messages.MembershipClosePendingBody.localize(lang)
 }

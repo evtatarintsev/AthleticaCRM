@@ -6,7 +6,6 @@ import type {
   BranchId,
   ClientDetailResponse,
   ClientId,
-  LocalDate,
   MembershipId,
 } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -142,7 +141,6 @@ export function ClientDetailPage({
                 : undefined
             }
             memberships={memberships.data?.memberships}
-            today={today}
             onMembershipOpen={openMembership}
             lastVisit={
               attendance.data === undefined
@@ -185,7 +183,6 @@ export function ClientDetailPage({
               branchId={branchId}
               client={data}
               currentEmployeeId={session.employeeId}
-              today={today}
               onChanged={refreshDetail}
               onMembershipOpen={openMembership}
             />
@@ -198,7 +195,9 @@ export function ClientDetailPage({
           memberships.data?.memberships.find((membership) => membership.id === membershipId) ?? null
         }
         open={membershipOpen}
-        today={today}
+        api={api}
+        branchId={branchId}
+        clientId={clientId}
         onOpenChange={setMembershipOpen}
       />
 
@@ -232,7 +231,6 @@ function FeedBlock({
   branchId,
   client,
   currentEmployeeId,
-  today,
   onChanged,
   onMembershipOpen,
 }: {
@@ -241,7 +239,6 @@ function FeedBlock({
   readonly branchId: BranchId;
   readonly client: ClientDetailResponse;
   readonly currentEmployeeId: string;
-  readonly today: LocalDate;
   readonly onChanged: () => Promise<void>;
   readonly onMembershipOpen: (id: MembershipId) => void;
 }) {
@@ -263,7 +260,6 @@ function FeedBlock({
           branchId={branchId}
           clientId={clientId}
           limit={block.limit}
-          today={today}
           onOpen={onMembershipOpen}
         />
       );

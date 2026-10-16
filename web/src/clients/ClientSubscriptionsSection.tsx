@@ -2,15 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { TicketIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
-import type {
-  BranchId,
-  ClientId,
-  LocalDate,
-  MembershipId,
-  MembershipSchema,
-} from "@/api/generated/contracts";
+import type { BranchId, ClientId, MembershipId, MembershipSchema } from "@/api/generated/contracts";
 import { useI18n } from "@/i18n/context";
-import { todayLocalDate } from "@/lib/localDate";
 import { cn } from "@/lib/utils";
 import {
   BlockRow,
@@ -21,6 +14,9 @@ import {
 } from "./card/ClientCardBlock";
 import { membershipsQuery } from "./card/clientCardQueries";
 import {
+  ClosePendingReasons,
+  EndingMark,
+  MembershipActivationNote,
   MembershipPill,
   MembershipSessions,
   MembershipSessionsBar,
@@ -31,25 +27,28 @@ import {
   type MembershipView,
 } from "./membership/membershipView";
 
-/** Абонемент вместе с его состоянием на сегодня. */
+/** Абонемент вместе с его видом по состоянию с сервера. */
 interface MembershipItem {
   readonly membership: MembershipSchema;
   readonly view: MembershipView;
 }
 
-/** Порядок абонементов: неистёкшие раньше истёкших, внутри — по дате окончания, поздние выше. */
+/**
+ * Порядок абонементов: действующие раньше остальных, внутри — по дате окончания, поздние выше;
+ * неактивированные (без даты окончания) — первыми.
+ */
 function compareMemberships(a: MembershipItem, b: MembershipItem): number {
   const currentA = isCurrentMembership(a.view);
   const currentB = isCurrentMembership(b.view);
   if (currentA !== currentB) {
     return currentA ? -1 : 1;
   }
-  return b.membership.endDate.localeCompare(a.membership.endDate);
+  return (b.view.endDate ?? "~").localeCompare(a.view.endDate ?? "~");
 }
 
 /**
- * Блок абонементов клиента: сначала неистёкшие, затем истёкшие; выдача — из шапки карточки.
- * Состояние абонементов определяется на дату [today]. С [onOpen] строка абонемента
+ * Блок абонементов клиента: сначала действующие, затем остальные; выдача — из шапки карточки.
+ * Состояние и признаки абонементов приходят с сервера. С [onOpen] строка абонемента
  * кликабельна и открывает его панель.
  */
 export function ClientSubscriptionsSection({
@@ -57,21 +56,19 @@ export function ClientSubscriptionsSection({
   branchId,
   clientId,
   limit,
-  today = todayLocalDate(),
   onOpen,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly limit: number;
-  readonly today?: LocalDate;
   readonly onOpen?: (id: MembershipId) => void;
 }) {
   const { t } = useI18n();
   const [showAll, setShowAll] = useState(false);
   const memberships = useQuery(membershipsQuery(api, branchId, clientId));
   const items = (memberships.data?.memberships ?? [])
-    .map((membership) => ({ membership, view: membershipView(membership, today) }))
+    .map((membership) => ({ membership, view: membershipView(membership) }))
     .toSorted(compareMemberships);
   const shown = showAll ? items : items.slice(0, limit);
 
@@ -158,9 +155,24 @@ function MembershipRow({
         </button>
       )}
       <BlockSub>
-        {format.date(membership.startDate)} — {format.date(membership.endDate)} ·{" "}
-        <MembershipSessions membership={membership} />
+        {view.startDate === null || view.endDate === null ? (
+          <MembershipActivationNote membership={membership} />
+        ) : (
+          <>
+            {format.date(view.startDate)} —{" "}
+            <EndingMark active={view.endingByDate}>{format.date(view.endDate)}</EndingMark>
+          </>
+        )}{" "}
+        ·{" "}
+        <EndingMark active={view.endingBySessions}>
+          <MembershipSessions membership={membership} />
+        </EndingMark>
       </BlockSub>
+      {view.phase === "closePending" && (
+        <BlockSub>
+          <ClosePendingReasons view={view} />
+        </BlockSub>
+      )}
       {current && <MembershipSessionsBar membership={membership} />}
     </BlockRow>
   );

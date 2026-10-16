@@ -442,7 +442,7 @@ class DbScheduleSyncTest {
             TestPostgres.db.sql("DELETE FROM sessions WHERE group_id = :g AND date > :d").bind("g", group).bind("d", today).execute()
             assertTrue(sessions(group).size < expected.size)
 
-            val systemContext = org.athletica.crm.core.systemContext(org.athletica.crm.core.entityids.OrgId(fixture.orgId))
+            val systemContext = org.athletica.crm.core.SystemRequestContext(orgId = org.athletica.crm.core.entityids.OrgId(fixture.orgId), currency = org.athletica.crm.core.money.Currency.RUB)
             arrow.core.raise.either {
                 val raise: arrow.core.raise.Raise<org.athletica.crm.core.errors.DomainError> = this
                 TestPostgres.db.transaction {

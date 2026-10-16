@@ -118,6 +118,8 @@ describe("выдача абонемента", () => {
     expect(request.name).toBe("Месяц");
     expect(request.sessions).toBe(8);
     expect(request.price).toEqual({ minorUnits: 480000, currency: "RUB" });
+    expect(request.activationMode).toBe("IMMEDIATE");
+    expect(request.closeMode).toBe("MANUAL");
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -244,5 +246,62 @@ describe("выдача абонемента", () => {
     await user.keyboard("{Escape}");
 
     expect(await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeVisible();
+  });
+  it("режим «с даты» отправляет дату активации, «при первом посещении» — крайнюю дату", async () => {
+    const api = issueServer();
+    const { user, dialog, panel } = await openIssue(api);
+
+    await user.click(await pick(dialog, "Месяц"));
+    expect(panel.getByRole("radio", { name: ru["membership.activation.IMMEDIATE"] })).toBeChecked();
+    await user.click(panel.getByRole("radio", { name: ru["membership.activation.ON_DATE"] }));
+    const date = panel.getByLabelText(ru["clients.issue.activateOn"]);
+    await user.clear(date);
+    await user.type(date, "2026-10-20");
+    await user.click(panel.getByRole("radio", { name: ru["membership.close.ON_EXPIRY"] }));
+    await user.click(panel.getByRole("button", { name: ru["clients.issue.submit"] }));
+
+    await waitFor(() => {
+      expect(api.to("memberships/issue")).toHaveLength(1);
+    });
+    const request = IssueMembershipRequestSchema.parse(api.to("memberships/issue").at(-1)?.body);
+    expect(request.activationMode).toBe("ON_DATE");
+    expect(request.activateOn).toBe("2026-10-20");
+    expect(request.activationDeadline).toBeNull();
+    expect(request.closeMode).toBe("ON_EXPIRY");
+  });
+
+  it("при первом посещении без крайней даты поле даты не обязательно", async () => {
+    const api = issueServer();
+    const { user, dialog, panel } = await openIssue(api);
+
+    await user.click(await pick(dialog, "Месяц"));
+    await user.click(
+      panel.getByRole("radio", { name: ru["membership.activation.ON_FIRST_VISIT"] }),
+    );
+    expect(panel.queryByLabelText(ru["clients.issue.activateOn"])).toBeNull();
+    await user.click(panel.getByRole("button", { name: ru["clients.issue.submit"] }));
+
+    await waitFor(() => {
+      expect(api.to("memberships/issue")).toHaveLength(1);
+    });
+    const request = IssueMembershipRequestSchema.parse(api.to("memberships/issue").at(-1)?.body);
+    expect(request.activationMode).toBe("ON_FIRST_VISIT");
+    expect(request.activateOn).toBeNull();
+    expect(request.activationDeadline).toBeNull();
+  });
+
+  it("безлимит отключает закрытие при списании последнего и сбрасывает его на «Вручную»", async () => {
+    const { user, dialog, panel } = await openIssue(issueServer());
+
+    await user.click(await pick(dialog, "Месяц"));
+    const onLast = panel.getByRole("radio", { name: ru["membership.close.ON_LAST_SESSION"] });
+    await user.click(onLast);
+    expect(onLast).toBeChecked();
+
+    await user.click(panel.getByLabelText(ru["clients.detail.subscriptionUnlimitedLabel"]));
+
+    expect(onLast).toBeDisabled();
+    expect(onLast).not.toBeChecked();
+    expect(panel.getByRole("radio", { name: ru["membership.close.MANUAL"] })).toBeChecked();
   });
 });

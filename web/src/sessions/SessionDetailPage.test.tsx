@@ -15,6 +15,7 @@ import {
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
 import { appServer, json, openApp } from "@/test/app";
+import { activeState, testMembership } from "@/test/memberships";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -132,16 +133,11 @@ function journalServer(initial: SessionJournalResponse, failMark = false) {
     "memberships/list": () =>
       json({
         memberships: [
-          {
+          testMembership({
             id: "0199a0b2-0000-7000-8000-800000000001",
-            name: "8 занятий",
-            sessionsTotal: 8,
             sessionsRemaining: 3,
-            startDate: "2026-09-01",
-            endDate: "2026-10-31",
-            price: { minorUnits: 400_000, currency: "RUB" },
-            status: "ACTIVE",
-          },
+            state: activeState("2026-09-01", "2026-10-31"),
+          }),
         ],
       }),
     "attendance/client": () =>

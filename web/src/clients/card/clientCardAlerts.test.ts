@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   ClientDetailResponseSchema,
   LocalDateSchema,
-  MembershipSchemaSchema,
   TaskListItemSchemaSchema,
 } from "@/api/generated/contracts";
+import { activeState, testMembership } from "@/test/memberships";
 import { clientAlerts, nextBirthday } from "./clientCardAlerts";
 
 const today = LocalDateSchema.parse("2026-10-13");
@@ -25,24 +25,23 @@ const client = ClientDetailResponseSchema.parse({
   state: "ACTIVE",
 });
 
-/** Абонемент с периодом [startDate]–[endDate] и остатком [remaining] из [total] занятий. */
-function membership(
-  endDate: string,
-  remaining: number | null,
-  total: number | null,
-  startDate = "2026-09-18",
-) {
-  return MembershipSchemaSchema.parse({
-    id: "0199a0b2-7c3e-7d2a-9f10-000000000a01",
-    name: "Безлимит",
-    sessionsTotal: total,
-    sessionsRemaining: remaining,
-    startDate,
-    endDate,
-    price: { minorUnits: 650000, currency: "RUB" },
-    status: "ACTIVE",
-  });
-}
+/** Активный безлимит в сроке. */
+const inTerm = testMembership({
+  sessionsTotal: null,
+  sessionsRemaining: null,
+  state: activeState("2026-09-18", "2026-10-18", { endingSoon: ["BY_DATE"] }),
+});
+
+/** Абонемент, который ещё не начался. */
+const notStarted = testMembership({
+  state: activeState("2026-10-20", "2026-11-30", { termPosition: "NOT_STARTED" }),
+});
+
+/** Абонемент с вышедшим сроком и без занятий — «к закрытию». */
+const closePending = testMembership({
+  sessionsRemaining: 0,
+  state: activeState("2026-09-18", "2026-10-01", { termPosition: "EXPIRED", closePending: true }),
+});
 
 const overdueTask = TaskListItemSchemaSchema.parse({
   id: "0199a0b2-7c3e-7d2a-9f10-000000000b01",
@@ -66,7 +65,7 @@ describe("предупреждения карточки клиента", () => {
   it("собирает долг, просроченные задачи и день рождения; об окончании абонемента молчит", () => {
     const alerts = clientAlerts({
       client,
-      memberships: [membership("2026-10-18", null, null)],
+      memberships: [inTerm],
       tasks: [overdueTask],
       today,
       now,
@@ -88,7 +87,7 @@ describe("предупреждения карточки клиента", () => {
   it("будущий абонемент считается действующим — предупреждения об абонементе нет", () => {
     const alerts = clientAlerts({
       client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
-      memberships: [membership("2026-11-30", 8, 8, "2026-10-20")],
+      memberships: [notStarted],
       tasks: [],
       today,
       now,
@@ -99,7 +98,7 @@ describe("предупреждения карточки клиента", () => {
   it("только истёкшие абонементы при группах — предупреждение об абонементе", () => {
     const alerts = clientAlerts({
       client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
-      memberships: [membership("2026-10-01", 0, 8)],
+      memberships: [closePending],
       tasks: [],
       today,
       now,

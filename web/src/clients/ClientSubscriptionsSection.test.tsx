@@ -9,6 +9,7 @@ import {
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
 import { appServer, empty, json, openApp } from "@/test/app";
+import { activeState, testMembership } from "@/test/memberships";
 
 const dana = ClientDetailResponseSchema.parse({
   id: "0199a0b2-7c3e-7d2a-9f10-000000000504",
@@ -25,9 +26,12 @@ const dana = ClientDetailResponseSchema.parse({
   state: "ACTIVE",
 });
 
-function subscriptionsServer(initial: ClientDetailResponse) {
+function subscriptionsServer(
+  initial: ClientDetailResponse,
+  existing: readonly MembershipSchema[] = [],
+) {
   const client = initial;
-  let memberships: MembershipSchema[] = [];
+  let memberships: MembershipSchema[] = [...existing];
   return appServer({
     "custom-fields/list": () => json([]),
     "org/settings": () => json({ name: "Лига", timezone: "Europe/Moscow", currency: "RUB" }),
@@ -39,16 +43,13 @@ function subscriptionsServer(initial: ClientDetailResponse) {
       const request = IssueMembershipRequestSchema.parse(body);
       memberships = [
         ...memberships,
-        {
+        testMembership({
           id: request.id,
           name: request.name,
           sessionsTotal: request.sessions,
           sessionsRemaining: request.sessions,
-          startDate: request.startDate,
-          endDate: request.startDate,
-          price: request.price,
-          status: "ACTIVE",
-        },
+          state: activeState("2026-10-16", "2026-11-15"),
+        }),
       ];
       return empty();
     },
@@ -93,5 +94,38 @@ describe("абонементы клиента", () => {
     });
 
     expect(await screen.findAllByText(ru["clients.detail.subscriptionIndividual"])).toHaveLength(2);
+  });
+  it("заканчивается по занятиям — подсвечен остаток, а не дата", async () => {
+    const lastSession = testMembership({
+      name: "Последнее",
+      sessionsRemaining: 1,
+      state: activeState("2026-10-01", "2026-10-31", { endingSoon: ["BY_SESSIONS"] }),
+    });
+    openApp(`/clients/${dana.id}`, subscriptionsServer(dana, [lastSession]).fetch);
+
+    const section = within(
+      (await screen.findByRole("heading", { name: ru["clients.detail.subscriptions"] })).closest(
+        "section",
+      ) ?? document.body,
+    );
+    expect(await section.findByText("Осталось 1 из 8")).toHaveClass("text-amber-700");
+    expect(section.getByText(/31/)).not.toHaveClass("text-amber-700");
+  });
+
+  it("к закрытию — пометка в строке абонемента", async () => {
+    const pending = testMembership({
+      name: "Закончился",
+      sessionsRemaining: 0,
+      state: activeState("2026-09-01", "2026-09-30", {
+        termPosition: "EXPIRED",
+        closePending: true,
+      }),
+    });
+    openApp(`/clients/${dana.id}`, subscriptionsServer(dana, [pending]).fetch);
+
+    expect(await screen.findAllByText(ru["membership.phase.closePending"])).not.toHaveLength(0);
+    expect(
+      screen.getAllByText(`${ru["membership.expired"]} · ${ru["membership.exhausted"]}`),
+    ).not.toHaveLength(0);
   });
 });

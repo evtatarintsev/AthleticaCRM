@@ -73,8 +73,10 @@ import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
 import org.athletica.crm.domain.notifications.DbNotifications
 import org.athletica.crm.domain.notifications.Notifications
+import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.org.DbOrganizations
 import org.athletica.crm.domain.org.LocMemCachedOrganizations
+import org.athletica.crm.domain.org.OrgCalendar
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.LocMemCachedOrgBalances
@@ -99,6 +101,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
 import org.athletica.infra.messaging.StubChannelIntegrationFactory
@@ -142,6 +145,7 @@ data class Di(
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
+    val orgCalendar: OrgCalendar = DbOrgCalendar()
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
     val groups: Groups = AuditGroups(DbGroups(), audit)
@@ -153,6 +157,7 @@ data class Di(
     val scheduleSync: ScheduleSync = DbScheduleSync()
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
+    val membershipScheduler: MembershipScheduler = MembershipScheduler(database, memberships, notifications, employees, orgCalendar)
     val clientContacts = DbClientContacts()
     val views = ReadViews()
     val channelBindings: ChannelBindings = DbChannelBindings()

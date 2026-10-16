@@ -149,6 +149,8 @@ export function PasswordField({
 export interface SelectOption<T extends string> {
   readonly value: T;
   readonly label: string;
+  /** Вариант недоступен для выбора (поддерживается в [RadioGroupField]). */
+  readonly disabled?: boolean;
 }
 
 /** Выпадающий список на нативном `<select>`; значение поля — одно из [options]. */
@@ -239,13 +241,14 @@ export function RadioGroupField<T extends string>({
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm has-checked:border-primary has-checked:bg-primary/10 has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50"
+            className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm has-checked:border-primary has-checked:bg-primary/10 has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 has-disabled:cursor-not-allowed has-disabled:opacity-50"
           >
             <input
               type="radio"
               name={field.name}
               value={option.value}
               checked={field.state.value === option.value}
+              disabled={option.disabled}
               onChange={() => {
                 field.handleChange(option.value);
               }}

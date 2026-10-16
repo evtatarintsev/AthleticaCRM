@@ -4,6 +4,7 @@ import type {
   ClientAttendanceItemSchema,
   ClientGroup,
   ClientId,
+  MembershipId,
   ScheduleSessionSchema,
 } from "@/api/generated/contracts";
 import { addDays, todayLocalDate } from "@/lib/localDate";
@@ -21,6 +22,15 @@ const ATTENDANCE_DAYS = 180;
 /** Запрос абонементов клиента [clientId]; общий для блока и шапки. */
 export function membershipsQuery(api: ApiClient, branchId: BranchId, clientId: ClientId) {
   return apiQuery(api, branchId, "memberships/list", { clientId });
+}
+
+/** Запрос истории абонемента [membershipId] для его панели. */
+export function membershipHistoryQuery(
+  api: ApiClient,
+  branchId: BranchId,
+  membershipId: MembershipId,
+) {
+  return apiQuery(api, branchId, "memberships/history", { membershipId });
 }
 
 /** Запрос задач клиента [clientId]; общий для блока и предупреждений шапки. */

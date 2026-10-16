@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
-import { todayLocalDate } from "@/lib/localDate";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
@@ -162,7 +161,7 @@ function LoadedClient({
     <>
       <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <BalanceTile balance={client.balance} onClick={undefined} />
-        <MembershipTiles memberships={memberships} today={todayLocalDate()} onOpen={undefined} />
+        <MembershipTiles memberships={memberships} onOpen={undefined} />
         <LastVisitTile
           lastVisit={
             attendance.data === undefined

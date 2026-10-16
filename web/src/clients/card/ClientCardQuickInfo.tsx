@@ -2,7 +2,6 @@ import { ChevronRightIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ClientAttendanceItemSchema,
-  LocalDate,
   MembershipId,
   MembershipSchema,
   Money,
@@ -15,7 +14,7 @@ import { MembershipTerms } from "../membership/MembershipParts";
 import { isCurrentMembership, membershipView } from "../membership/membershipView";
 
 /**
- * Быстрая информация в шапке карточки: баланс, плитки неистёкших абонементов, последнее посещение
+ * Быстрая информация в шапке карточки: баланс, плитки действующих абонементов, последнее посещение
  * и ближайшее занятие из данных сервера; статус, ответственный и скидка — заглушки до появления
  * этих полей в анкете. `undefined` во входных данных — значение ещё загружается.
  * Если задан [onBalanceClick], плитка баланса кликабельна и открывает историю баланса;
@@ -26,7 +25,6 @@ export function ClientCardQuickInfo({
   memberships,
   lastVisit,
   nextSession,
-  today,
   onBalanceClick,
   onMembershipOpen,
 }: {
@@ -36,8 +34,6 @@ export function ClientCardQuickInfo({
   readonly lastVisit: ClientAttendanceItemSchema | null | undefined;
   /** Ближайшее занятие; `null` — занятий нет. */
   readonly nextSession: ScheduleSessionSchema | null | undefined;
-  /** Сегодняшняя дата, на которую определяется состояние абонементов. */
-  readonly today: LocalDate;
   /** Открывает историю баланса; `undefined` — плитка баланса некликабельна. */
   readonly onBalanceClick: (() => void) | undefined;
   /** Открывает панель абонемента по его идентификатору. */
@@ -48,7 +44,7 @@ export function ClientCardQuickInfo({
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       <BalanceTile balance={balance} onClick={onBalanceClick} />
-      <MembershipTiles memberships={memberships} today={today} onOpen={onMembershipOpen} />
+      <MembershipTiles memberships={memberships} onOpen={onMembershipOpen} />
       <LastVisitTile lastVisit={lastVisit} />
       <Tile label={t("clientCard.quick.nextSession")}>
         {nextSession === undefined ? (
@@ -105,18 +101,16 @@ export function BalanceTile({
 }
 
 /**
- * Плитки абонементов из [memberships]: по плитке на каждый неистёкший абонемент на дату
- * [today], по дате начала. Пока абонементы загружаются (`undefined`) — одна плитка с заглушкой,
+ * Плитки абонементов из [memberships]: по плитке на каждый действующий абонемент (состояние
+ * с сервера), по дате начала; неактивированные — последними. Пока абонементы загружаются (`undefined`) — одна плитка с заглушкой,
  * если неистёкших нет — одна некликабельная «Нет действующего». С [onOpen] плитка абонемента
  * кликабельна и открывает его панель. Ставится внутрь `<dl>`.
  */
 export function MembershipTiles({
   memberships,
-  today,
   onOpen,
 }: {
   readonly memberships: readonly MembershipSchema[] | undefined;
-  readonly today: LocalDate;
   readonly onOpen: ((id: MembershipId) => void) | undefined;
 }) {
   const { t } = useI18n();
@@ -128,9 +122,9 @@ export function MembershipTiles({
     );
   }
   const current = memberships
-    .map((membership) => ({ membership, view: membershipView(membership, today) }))
+    .map((membership) => ({ membership, view: membershipView(membership) }))
     .filter(({ view }) => isCurrentMembership(view))
-    .toSorted((a, b) => a.membership.startDate.localeCompare(b.membership.startDate));
+    .toSorted((a, b) => (a.view.startDate ?? "~").localeCompare(b.view.startDate ?? "~"));
   if (current.length === 0) {
     return (
       <Tile label={t("clientCard.quick.subscription")}>
@@ -142,7 +136,7 @@ export function MembershipTiles({
     <Tile
       key={membership.id}
       label={t("clientCard.quick.subscription")}
-      muted={view.phase === "upcoming"}
+      muted={view.phase === "upcoming" || view.phase === "inactive"}
       onClick={
         onOpen === undefined
           ? undefined

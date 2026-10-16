@@ -55,7 +55,7 @@ export function clientAlerts(sources: ClientAlertSources): readonly ClientAlert[
   }
   if (memberships !== undefined) {
     const hasCurrent = memberships.some((membership) =>
-      isCurrentMembership(membershipView(membership, today)),
+      isCurrentMembership(membershipView(membership)),
     );
     if (!hasCurrent && client.groups.length > 0 && client.state === "ACTIVE") {
       alerts.push({ type: "noActiveSubscription" });

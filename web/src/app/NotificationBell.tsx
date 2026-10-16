@@ -210,5 +210,16 @@ function NotificationTitle({
           {title}
         </Link>
       );
+    case "client":
+      return (
+        <Link
+          to="/clients/$clientId"
+          params={{ clientId: subject.id }}
+          className="hover:underline"
+          onClick={onOpenSubject}
+        >
+          {title}
+        </Link>
+      );
   }
 }

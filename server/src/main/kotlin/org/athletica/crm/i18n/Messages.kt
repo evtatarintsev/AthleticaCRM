@@ -501,4 +501,49 @@ object Messages {
             "The new schedule takes effect on ${from.localized(Lang.EN)}. Changed by $author"
         }
     }
+
+    object MembershipNotFound : LocalizationKey {
+        override val ru = "Абонемент не найден"
+        override val en = "Membership not found"
+    }
+
+    object MembershipUnlimitedCloseOnLastSession : LocalizationKey {
+        override val ru = "Безлимитный абонемент нельзя закрывать при списании последнего занятия"
+        override val en = "An unlimited membership cannot close on its last session"
+    }
+
+    object MembershipDeadlineBeforeIssue : LocalizationKey {
+        override val ru = "Крайняя дата активации не может быть раньше даты выдачи"
+        override val en = "The activation deadline cannot be earlier than the issue date"
+    }
+
+    object MembershipActivationDateRequired : LocalizationKey {
+        override val ru = "Укажите дату активации"
+        override val en = "Specify the activation date"
+    }
+
+    object MembershipNotActive : LocalizationKey {
+        override val ru = "Действие доступно только для активного абонемента"
+        override val en = "This action is available only for an active membership"
+    }
+
+    object MembershipFinal : LocalizationKey {
+        override val ru = "Абонемент закрыт или отозван, действие недоступно"
+        override val en = "The membership is closed or revoked; the action is unavailable"
+    }
+
+    object MembershipChangedConcurrently : LocalizationKey {
+        override val ru = "Абонемент изменён параллельно, повторите действие"
+        override val en = "The membership was changed concurrently; please retry"
+    }
+
+    object MembershipClosePendingTitle : LocalizationTemplate1<String> {
+        override val ru = { membership: String -> "Абонемент «$membership» можно закрыть" }
+        override val en = { membership: String -> "Membership “$membership” can be closed" }
+    }
+
+    object MembershipClosePendingBody : LocalizationKey {
+        override val ru = "Вышел срок или закончились занятия. Закройте абонемент в карточке клиента."
+        override val en = "The term has ended or no sessions are left. Close the membership on the client card."
+    }
 }

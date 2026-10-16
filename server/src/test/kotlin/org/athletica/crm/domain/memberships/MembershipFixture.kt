@@ -13,8 +13,10 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemRequestContext
+import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.DomainError
@@ -67,12 +69,29 @@ class MembershipFixture(
             .bind("id", employeeId)
             .bind("orgId", orgId)
             .execute()
+        TestPostgres.db
+            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")
+            .bind("id", branchId)
+            .bind("orgId", orgId)
+            .execute()
+        TestPostgres.db
+            .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Дети 7–9')")
+            .bind("id", groupId)
+            .bind("orgId", orgId)
+            .bind("branchId", branchId)
+            .execute()
     }
 
     /** Ставит часы на полдень даты [date] в часовом поясе организации. */
     fun at(date: LocalDate) {
         clock.now = date.atTime(LocalTime(12, 0)).toInstant(TimeZone.of(timezone))
     }
+
+    /** Филиал организации для группы. */
+    private val branchId: BranchId = BranchId.new()
+
+    /** Группа организации, создаётся в [setUp]; группа абонементов по умолчанию. */
+    val groupId: GroupId = GroupId.new()
 
     /** Создаёт клиента организации. */
     suspend fun insertClient(): ClientId {
@@ -110,6 +129,7 @@ class MembershipFixture(
         duration: MembershipDuration = MembershipDuration(1, DurationUnit.MONTHS),
         issuedOn: LocalDate = LocalDate(2026, 10, 16),
         name: String = "8 занятий",
+        groupIds: List<GroupId> = listOf(groupId),
     ): Membership =
         tx {
             memberships.issue(
@@ -118,6 +138,7 @@ class MembershipFixture(
                 null,
                 name,
                 sessions,
+                groupIds,
                 duration,
                 Money(4_000_00, currency),
                 activation,

@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.DomainError
@@ -38,6 +39,9 @@ interface MembershipTerms {
     /** Срок действия. */
     val duration: MembershipDuration
 
+    /** Группы, в которых действует абонемент; не пусто. */
+    val groups: List<MembershipGroup>
+
     /** Стоимость на момент выдачи (без учёта оплаты/баланса). */
     val price: Money
 
@@ -66,6 +70,17 @@ sealed interface Membership : MembershipTerms {
     /** Остаток занятий; `null` — безлимит. До активации равен [sessionsTotal]. */
     val sessionsRemaining: Int?
 }
+
+/**
+ * Группа абонемента: идентификатор и название на момент чтения.
+ * Название подставляется тем же запросом, что читает абонемент (design.md, п. 10).
+ */
+data class MembershipGroup(
+    /** Идентификатор группы. */
+    val id: GroupId,
+    /** Название группы. */
+    val name: String,
+)
 
 /** Абонемент, ещё не активированный: дат начала и окончания нет. */
 sealed interface InactiveMembership : Membership {

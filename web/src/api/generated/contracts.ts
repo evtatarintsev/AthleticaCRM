@@ -1904,6 +1904,7 @@ export const IssueMembershipRequestSchema = z
     tariffPlanId: TariffPlanIdSchema.nullable(),
     name: z.string(),
     sessions: z.int32().nullable(),
+    groupIds: z.array(GroupIdSchema).readonly(),
     durationValue: z.int32(),
     durationUnit: DurationUnitSchema,
     price: MoneySchema,
@@ -2042,6 +2043,14 @@ export type MembershipEventSchemaRevoked = z.output<typeof MembershipEventSchema
 export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema]);
 export type MembershipEventSchema = z.output<typeof MembershipEventSchemaSchema>;
 
+export const MembershipGroupSchemaSchema = z
+  .object({
+    id: GroupIdSchema,
+    name: z.string(),
+  })
+  .readonly();
+export type MembershipGroupSchema = z.output<typeof MembershipGroupSchemaSchema>;
+
 export const MembershipHistoryEntrySchemaSchema = z
   .object({
     id: z.uuid(),
@@ -2134,6 +2143,7 @@ export const MembershipSchemaSchema = z
     activationDeadline: LocalDateSchema.nullable(),
     closeMode: CloseModeSchema,
     issuedOn: LocalDateSchema,
+    groups: z.array(MembershipGroupSchemaSchema).readonly(),
     state: MembershipStateSchemaSchema,
   })
   .readonly();

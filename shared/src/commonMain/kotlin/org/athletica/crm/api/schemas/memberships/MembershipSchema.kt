@@ -5,6 +5,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.money.Money
@@ -44,8 +45,19 @@ data class MembershipSchema(
     val closeMode: CloseMode,
     /** Дата выдачи в часовом поясе организации. */
     val issuedOn: LocalDate,
+    /** Группы, в которых действует абонемент. */
+    val groups: List<MembershipGroupSchema>,
     /** Сохранённое состояние и выводимые на сегодня свойства. */
     val state: MembershipStateSchema,
+)
+
+/** Группа абонемента. */
+@Serializable
+data class MembershipGroupSchema(
+    /** Идентификатор группы. */
+    val id: GroupId,
+    /** Название группы. */
+    val name: String,
 )
 
 /** Состояние абонемента (дискриминатор `type`). */

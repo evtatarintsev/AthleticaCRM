@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.memberships.CloseMembershipRequest
 import org.athletica.crm.api.schemas.memberships.ClosedMembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.InactiveMembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.IssueMembershipRequest
+import org.athletica.crm.api.schemas.memberships.MembershipGroupSchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryRequest
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
 import org.athletica.crm.api.schemas.memberships.MembershipListRequest
@@ -50,6 +51,7 @@ fun RouteWithContext.membershipsRoutes(memberships: Memberships, calendar: OrgCa
                     tariffPlanId = request.tariffPlanId,
                     name = request.name,
                     sessions = request.sessions,
+                    groupIds = request.groupIds,
                     duration = MembershipDuration(request.durationValue, request.durationUnit),
                     price = request.price,
                     activation = request.activation(),
@@ -109,6 +111,7 @@ private fun Membership.toSchema(today: LocalDate): MembershipSchema =
         activationDeadline = (activation as? Activation.OnFirstVisit)?.deadline,
         closeMode = closeMode,
         issuedOn = issuedOn,
+        groups = groups.map { MembershipGroupSchema(it.id, it.name) },
         state = stateSchema(today),
     )
 

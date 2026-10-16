@@ -198,6 +198,7 @@ class DbMembershipsTest {
                         null,
                         "Безлимит",
                         null,
+                        listOf(fixture.groupId),
                         MembershipDuration(1, org.athletica.crm.core.subscription.DurationUnit.MONTHS),
                         Money(1_000_00, Currency.RUB),
                         Activation.Immediate,
@@ -208,6 +209,56 @@ class DbMembershipsTest {
 
             assertEquals("UNLIMITED_CLOSE_ON_LAST_SESSION", assertIs<Either.Left<DomainError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
+        }
+
+    @Test
+    fun `выдача без групп отклоняется`() =
+        runTest {
+            val clientId = fixture.insertClient()
+
+            val result = runCatchingIssue(clientId, emptyList())
+
+            assertEquals("MEMBERSHIP_GROUPS_REQUIRED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
+        }
+
+    @Test
+    fun `выдача с чужой группой отклоняется и не сохраняет абонемент`() =
+        runTest {
+            val other = MembershipFixture()
+            other.setUp()
+            val clientId = fixture.insertClient()
+
+            val result = runCatchingIssue(clientId, listOf(fixture.groupId, other.groupId))
+
+            assertEquals("GROUP_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
+        }
+
+    @Test
+    fun `группы хранятся с абонементом и отдаются с названиями`() =
+        runTest {
+            val issued = fixture.issue(fixture.insertClient())
+
+            assertEquals(listOf(MembershipGroup(fixture.groupId, "Дети 7–9")), fixture.reload(issued.id).groups)
+        }
+
+    /** Пытается выдать абонемент клиенту [clientId] с группами [groupIds]. */
+    private suspend fun runCatchingIssue(clientId: org.athletica.crm.core.entityids.ClientId, groupIds: List<org.athletica.crm.core.entityids.GroupId>) =
+        fixture.attempt {
+            fixture.memberships.issue(
+                org.athletica.crm.core.entityids.MembershipId.new(),
+                clientId,
+                null,
+                "8 занятий",
+                8,
+                groupIds,
+                MembershipDuration(1, org.athletica.crm.core.subscription.DurationUnit.MONTHS),
+                Money(1_000_00, Currency.RUB),
+                Activation.Immediate,
+                CloseMode.MANUAL,
+                LocalDate(2026, 10, 16),
+            )
         }
 
     @Test

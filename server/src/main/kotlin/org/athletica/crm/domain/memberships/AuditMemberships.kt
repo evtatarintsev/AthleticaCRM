@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.DomainError
@@ -26,16 +27,17 @@ class AuditMemberships(private val delegate: Memberships, private val audit: Aud
         tariffPlanId: TariffPlanId?,
         name: String,
         sessions: Int?,
+        groupIds: List<GroupId>,
         duration: MembershipDuration,
         price: Money,
         activation: Activation,
         closeMode: CloseMode,
         issuedOn: LocalDate,
     ): Membership =
-        delegate.issue(id, clientId, tariffPlanId, name, sessions, duration, price, activation, closeMode, issuedOn).also {
+        delegate.issue(id, clientId, tariffPlanId, name, sessions, groupIds, duration, price, activation, closeMode, issuedOn).also {
             if (ctx is EmployeeRequestContext) {
                 context(ctx) {
-                    audit.logUpdate("membership", id, Json.encodeToString(MembershipAuditData(clientId, tariffPlanId, name, sessions, activation.mode, closeMode, issuedOn, price)))
+                    audit.logUpdate("membership", id, Json.encodeToString(MembershipAuditData(clientId, tariffPlanId, name, sessions, groupIds, activation.mode, closeMode, issuedOn, price)))
                 }
             }
         }
@@ -48,6 +50,7 @@ private data class MembershipAuditData(
     val tariffPlanId: TariffPlanId?,
     val name: String,
     val sessionsTotal: Int?,
+    val groupIds: List<GroupId>,
     val activationMode: ActivationMode,
     val closeMode: CloseMode,
     val issuedOn: LocalDate,

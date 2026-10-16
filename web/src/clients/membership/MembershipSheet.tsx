@@ -195,6 +195,9 @@ function MembershipParams({
   return (
     <dl className="divide-y rounded-lg border bg-card text-sm">
       <Field label={t("membership.issuedOn")}>{format.date(membership.issuedOn)}</Field>
+      <Field label={t("membership.groups")}>
+        {membership.groups.map((group) => group.name).join(", ")}
+      </Field>
       <Field label={t("clients.issue.activationMode")}>
         {t(`membership.activation.${membership.activationMode}`)}
         {view.startDate === null && (

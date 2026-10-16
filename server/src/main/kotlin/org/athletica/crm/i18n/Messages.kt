@@ -546,4 +546,14 @@ object Messages {
         override val ru = "Вышел срок или закончились занятия. Закройте абонемент в карточке клиента."
         override val en = "The term has ended or no sessions are left. Close the membership on the client card."
     }
+
+    object MembershipGroupsRequired : LocalizationKey {
+        override val ru = "Выберите хотя бы одну группу, в которой действует абонемент"
+        override val en = "Select at least one group the membership is valid in"
+    }
+
+    object MembershipGroupNotFound : LocalizationKey {
+        override val ru = "Группа абонемента не найдена"
+        override val en = "Membership group not found"
+    }
 }

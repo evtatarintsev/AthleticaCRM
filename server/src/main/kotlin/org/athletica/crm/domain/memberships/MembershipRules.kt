@@ -8,6 +8,7 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
@@ -175,10 +176,11 @@ sealed interface IssueOutcome {
 }
 
 /**
- * Правила выдачи: проверяет сочетание режима активации [activation], режима закрытия [closeMode]
- * и количества занятий [sessions] (`null` — безлимит) и определяет начальное состояние
- * при выдаче в дату [issuedOn].
+ * Правила выдачи: проверяет сочетание режима активации [activation], режима закрытия [closeMode],
+ * количества занятий [sessions] (`null` — безлимит) и групп [groupIds] и определяет начальное
+ * состояние при выдаче в дату [issuedOn].
  *
+ * - Хотя бы одна группа.
  * - «При списании последнего» недопустим для безлимита.
  * - Крайняя дата первого посещения не раньше [issuedOn].
  * - «Сразу» активирует с [issuedOn]; «с даты» не позже [issuedOn] активирует с этой даты.
@@ -188,8 +190,12 @@ fun issueOutcome(
     activation: Activation,
     closeMode: CloseMode,
     sessions: Int?,
+    groupIds: List<GroupId>,
     issuedOn: LocalDate,
 ): IssueOutcome {
+    if (groupIds.isEmpty()) {
+        raise(CommonDomainError("MEMBERSHIP_GROUPS_REQUIRED", Messages.MembershipGroupsRequired.localize()))
+    }
     if (closeMode == CloseMode.ON_LAST_SESSION && sessions == null) {
         raise(CommonDomainError("UNLIMITED_CLOSE_ON_LAST_SESSION", Messages.MembershipUnlimitedCloseOnLastSession.localize()))
     }

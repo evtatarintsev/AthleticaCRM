@@ -17,7 +17,7 @@ const dana = ClientDetailResponseSchema.parse({
   avatarId: null,
   birthday: null,
   gender: "FEMALE",
-  groups: [],
+  groups: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000901", name: "Утренняя группа" }],
   balance: { minorUnits: 0, currency: "RUB" },
   docs: [],
   leadSourceId: null,
@@ -38,6 +38,7 @@ function subscriptionsServer(
     "clients/detail": () => json(client),
     "clients/notes/list": () => json({ notes: [] }),
     "tariffs/list": () => json({ tariffs: [] }),
+    "groups/list": () => json({ groups: [], total: 0 }),
     "memberships/list": () => json({ memberships }),
     "memberships/issue": ({ body }) => {
       const request = IssueMembershipRequestSchema.parse(body);

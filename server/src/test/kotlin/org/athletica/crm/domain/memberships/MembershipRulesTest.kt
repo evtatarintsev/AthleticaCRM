@@ -3,6 +3,7 @@ package org.athletica.crm.domain.memberships
 import arrow.core.Either
 import arrow.core.raise.either
 import kotlinx.datetime.LocalDate
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.CloseMode
@@ -114,7 +115,7 @@ class MembershipRulesTest {
         assertFalse(expired.needsCloseNotification(CloseMode.ON_EXPIRY))
     }
 
-    private fun outcome(activation: Activation, closeMode: CloseMode = CloseMode.MANUAL, sessions: Int? = 8): Either<DomainError, IssueOutcome> = either { context(ctx, this) { issueOutcome(activation, closeMode, sessions, date(16, 10, 2026)) } }
+    private fun outcome(activation: Activation, closeMode: CloseMode = CloseMode.MANUAL, sessions: Int? = 8): Either<DomainError, IssueOutcome> = either { context(ctx, this) { issueOutcome(activation, closeMode, sessions, listOf(GroupId.new()), date(16, 10, 2026)) } }
 
     @Test
     fun `сразу активирует датой выдачи`() {

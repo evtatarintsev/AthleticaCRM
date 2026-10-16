@@ -6,6 +6,7 @@ import type {
   AttendanceLabelSchema,
   ClientId,
   JournalParticipantSchema,
+  ParticipantDebitStateSchema,
   ParticipationKind,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
@@ -22,11 +23,13 @@ import { ParticipantClientSheet, type ParticipantRef } from "./ParticipantClient
  * вид участия, отметка. Клик по имени открывает упрощённую карточку клиента в боковой панели,
  * не уводя с занятия; ctrl/cmd-клик и средняя кнопка — полную карточку по ссылке. В заголовке — сколько отмечено,
  * массовая отметка оставшихся и добавление разового участника.
+ * Под именем — абонемент, с которого спишется или списано занятие, или «Нет абонемента».
  * Аватаров в журнале пока нет — показываются инициалы.
  */
 export function SessionParticipantsSection({
   api,
   participants,
+  debits,
   catalog,
   editable,
   journalOpen,
@@ -38,6 +41,8 @@ export function SessionParticipantsSection({
 }: {
   readonly api: ApiClient;
   readonly participants: readonly JournalParticipantSchema[];
+  /** Списания участников с сервера; `undefined` — ещё загружаются. */
+  readonly debits: ReadonlyMap<ClientId, ParticipantDebitStateSchema> | undefined;
   /** Справочник меток посещаемости. */
   readonly catalog: readonly AttendanceLabelSchema[];
   /** Можно ли менять состав (занятие запланировано). */
@@ -129,6 +134,7 @@ export function SessionParticipantsSection({
                     )}
                   </div>
                   <ParticipationBadge kind={participant.kind} />
+                  <ParticipantDebit state={debits?.get(participant.clientId)} />
                 </div>
               </div>
               <ParticipantAttendance
@@ -168,4 +174,38 @@ function ParticipationBadge({ kind }: { readonly kind: ParticipationKind }) {
   return (
     <span className="block text-xs text-muted-foreground">{t(participationLabelKey(kind))}</span>
   );
+}
+
+/**
+ * Абонемент списания участника [state] с сервера: название и остаток, пометка активации
+ * неактивированного или предупреждение «Нет абонемента». Пока не загружено — ничего.
+ */
+function ParticipantDebit({ state }: { readonly state: ParticipantDebitStateSchema | undefined }) {
+  const { t } = useI18n();
+  if (state === undefined) {
+    return null;
+  }
+  switch (state.type) {
+    case "debited":
+    case "will_debit":
+      return (
+        <span className="block text-xs text-muted-foreground">
+          {state.membership.name} ·{" "}
+          {state.membership.sessionsRemaining === null
+            ? t("clients.detail.subscriptionUnlimited")
+            : t("sessionDetail.debit.remaining", { count: state.membership.sessionsRemaining })}
+          {state.type === "will_debit" &&
+            state.activates &&
+            ` · ${t("sessionDetail.debit.activates")}`}
+        </span>
+      );
+    case "no_membership":
+      return (
+        <span className="block text-xs font-medium text-amber-700 dark:text-amber-400">
+          {t("sessionDetail.debit.noMembership")}
+        </span>
+      );
+    case "not_debited":
+      return null;
+  }
 }

@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.events
 
 import com.github.ajalt.clikt.command.test
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.admin.AdminDi
@@ -35,6 +36,7 @@ class DomainEventWorkerTest {
     @Before
     fun setUp() {
         TestPostgres.truncate()
+        runBlocking { TestPostgres.db.sql("DELETE FROM domain_events").execute() }
         calls = 0
         failing = true
     }

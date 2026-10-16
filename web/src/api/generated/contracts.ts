@@ -395,6 +395,9 @@ export const ChannelListResponseSchema = z
   .readonly();
 export type ChannelListResponse = z.output<typeof ChannelListResponseSchema>;
 
+export const ChannelProviderSchemaSchema = z.enum(["smsc_sms", "telegram_bot", "twilio_sms"]);
+export type ChannelProviderSchema = z.output<typeof ChannelProviderSchemaSchema>;
+
 export const ScheduleGroupSchemaSchema = z
   .object({
     id: GroupIdSchema,
@@ -445,19 +448,11 @@ export const ClientBalanceHistoryResponseSchema = z
   .readonly();
 export type ClientBalanceHistoryResponse = z.output<typeof ClientBalanceHistoryResponseSchema>;
 
-export const ClientContactIdSchema = z.uuid().brand<"ClientContactId">();
-export type ClientContactId = z.output<typeof ClientContactIdSchema>;
-
 export const ContactTypeSchema = z.enum(["PHONE", "EMAIL", "TELEGRAM", "VK", "FACEBOOK"]);
 export type ContactType = z.output<typeof ContactTypeSchema>;
 
-export const ClientContactInputSchema = z
-  .object({
-    type: ContactTypeSchema,
-    value: z.string(),
-  })
-  .readonly();
-export type ClientContactInput = z.output<typeof ClientContactInputSchema>;
+export const ClientContactIdSchema = z.uuid().brand<"ClientContactId">();
+export type ClientContactId = z.output<typeof ClientContactIdSchema>;
 
 export const ClientContactSchemaSchema = z
   .object({
@@ -467,6 +462,39 @@ export const ClientContactSchemaSchema = z
   })
   .readonly();
 export type ClientContactSchema = z.output<typeof ClientContactSchemaSchema>;
+
+export const ClientChannelSchemaSchema = z
+  .object({
+    id: ChannelIntegrationIdSchema,
+    name: z.string(),
+    provider: ChannelProviderSchemaSchema,
+    available: z.boolean(),
+    contacts: z.array(ClientContactSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientChannelSchema = z.output<typeof ClientChannelSchemaSchema>;
+
+export const ClientChannelsRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type ClientChannelsRequest = z.output<typeof ClientChannelsRequestSchema>;
+
+export const ClientChannelsResponseSchema = z
+  .object({
+    channels: z.array(ClientChannelSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientChannelsResponse = z.output<typeof ClientChannelsResponseSchema>;
+
+export const ClientContactInputSchema = z
+  .object({
+    type: ContactTypeSchema,
+    value: z.string(),
+  })
+  .readonly();
+export type ClientContactInput = z.output<typeof ClientContactInputSchema>;
 
 export const ClientDetailRequestSchema = z
   .object({
@@ -918,7 +946,6 @@ export const ConversationResponseSchema = z
   .object({
     clientId: ClientIdSchema,
     messages: z.array(MessageSchemaSchema).readonly(),
-    contacts: z.array(ClientContactSchemaSchema).readonly(),
   })
   .readonly();
 export type ConversationResponse = z.output<typeof ConversationResponseSchema>;
@@ -2056,23 +2083,6 @@ export const PaymentUrlResponseSchema = z
   .readonly();
 export type PaymentUrlResponse = z.output<typeof PaymentUrlResponseSchema>;
 
-export const ReceiveInboundRequestSchema = z
-  .object({
-    integrationId: ChannelIntegrationIdSchema,
-    fromAddress: z.string(),
-    body: z.string(),
-  })
-  .readonly();
-export type ReceiveInboundRequest = z.output<typeof ReceiveInboundRequestSchema>;
-
-export const ReceiveInboundResponseSchema = z
-  .object({
-    resolvedClientId: ClientIdSchema.nullable(),
-    receiptId: InboundReceiptIdSchema,
-  })
-  .readonly();
-export type ReceiveInboundResponse = z.output<typeof ReceiveInboundResponseSchema>;
-
 export const RemoveClientFromGroupRequestSchema = z
   .object({
     clientIds: z.array(ClientIdSchema).readonly(),
@@ -3180,19 +3190,19 @@ export const endpoints = {
     out: "json",
     response: MembershipListResponseSchema,
   },
+  "messaging/channels": {
+    method: "GET",
+    in: "query",
+    request: ClientChannelsRequestSchema,
+    out: "json",
+    response: ClientChannelsResponseSchema,
+  },
   "messaging/conversation": {
     method: "GET",
     in: "query",
     request: ConversationRequestSchema,
     out: "json",
     response: ConversationResponseSchema,
-  },
-  "messaging/inbound": {
-    method: "POST",
-    in: "body",
-    request: ReceiveInboundRequestSchema,
-    out: "json",
-    response: ReceiveInboundResponseSchema,
   },
   "messaging/send": {
     method: "POST",

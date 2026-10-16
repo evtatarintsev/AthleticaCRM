@@ -2,13 +2,12 @@ package org.athletica.crm.read.channels
 
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
-import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.channels.ChannelIntegrationSchema
 import org.athletica.crm.api.schemas.channels.ChannelListResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.messaging.ChannelConfig
+import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
@@ -37,7 +36,7 @@ class DbChannelListView : ChannelListView {
         ChannelIntegrationSchema(
             id = asUuid("id").toChannelIntegrationId(),
             name = asString("name"),
-            config = Json.decodeFromString(ChannelConfig.serializer(), asString("config")),
+            config = asString("config").toChannelConfig(),
             enabled = asBoolean("enabled"),
         )
 }

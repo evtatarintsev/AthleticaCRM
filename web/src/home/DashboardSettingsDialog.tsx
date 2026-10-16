@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDownIcon, ArrowUpIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import type { ApiClient } from "@/api/client";
-import type { BirthdayWindow, DashboardSettings, DashboardWidget } from "@/api/generated/contracts";
+import type { DashboardSettings, DashboardWidget } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,26 +11,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
-import { displaySettingsKey } from "@/clients/clientsQueries";
 import { useI18n } from "@/i18n/context";
 import {
-  clampWidgetLimit,
   defaultTitleKey,
   hiddenWidgets,
   hideWidget,
   moveVisibleWidget,
   orderedVisible,
-  replaceWidget,
   showWidget,
+  updateDashboardSettings,
 } from "./dashboardSettings";
 
 /**
  * Диалог настроек главной (паритет с `DashboardSettingsDialog` KMP-клиента): видимые
- * виджеты переставляются кнопками порядка (в веб-клиенте вместо перетаскивания — тот же
- * приём, что в настройках колонок клиентов), каждый переименовывается и скрывается,
- * скрытые виджеты показываются обратно. Каждое изменение сразу сохраняется.
+ * виджеты переставляются кнопками порядка, включаются и скрываются. Названия типов
+ * фиксированы, индивидуальные настройки доступны из карточек. Каждое изменение сразу сохраняется.
  */
 export function DashboardSettingsDialog({
   api,
@@ -48,11 +43,8 @@ export function DashboardSettingsDialog({
   const visible = orderedVisible(settings);
   const hidden = hiddenWidgets(settings);
 
-  const save = (next: DashboardSettings): void => {
-    queryClient.setQueryData(displaySettingsKey, (old) =>
-      old === undefined ? old : { ...old, dashboard: next },
-    );
-    void api.call("display-settings/update", { dashboard: next });
+  const save = (update: (current: DashboardSettings) => DashboardSettings): void => {
+    updateDashboardSettings(api, queryClient, settings, update);
   };
 
   return (
@@ -71,35 +63,30 @@ export function DashboardSettingsDialog({
                 index === 0
                   ? null
                   : () => {
-                      save(moveVisibleWidget(settings, index, -1));
+                      save((current) => moveVisibleWidget(current, index, -1));
                     }
               }
               onMoveDown={
                 index === visible.length - 1
                   ? null
                   : () => {
-                      save(moveVisibleWidget(settings, index, 1));
+                      save((current) => moveVisibleWidget(current, index, 1));
                     }
               }
-              onTitleChange={(title) => {
-                save(replaceWidget(settings, { ...widget, title: title === "" ? null : title }));
-              }}
-              onHide={() => {
-                save(hideWidget(settings, widget.id));
-              }}
-              onWidgetChange={(updated) => {
-                save(replaceWidget(settings, updated));
+              onToggleVisibility={() => {
+                save((current) => hideWidget(current, widget.id));
               }}
             />
           ))}
           {hidden.length > 0 && (
             <div className="space-y-1 border-t pt-3">
+              <h3 className="px-1 text-sm font-medium">{t("home.hiddenWidgets")}</h3>
               {hidden.map((widget) => (
                 <HiddenWidgetRow
                   key={widget.id}
                   widget={widget}
                   onShow={() => {
-                    save(showWidget(settings, widget.id));
+                    save((current) => showWidget(current, widget.id));
                   }}
                 />
               ))}
@@ -117,16 +104,12 @@ function VisibleWidgetRow({
   widget,
   onMoveUp,
   onMoveDown,
-  onTitleChange,
-  onHide,
-  onWidgetChange,
+  onToggleVisibility,
 }: {
   readonly widget: DashboardWidget;
   readonly onMoveUp: (() => void) | null;
   readonly onMoveDown: (() => void) | null;
-  readonly onTitleChange: (title: string) => void;
-  readonly onHide: () => void;
-  readonly onWidgetChange: (widget: DashboardWidget) => void;
+  readonly onToggleVisibility: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -137,7 +120,7 @@ function VisibleWidgetRow({
             variant="ghost"
             size="icon-sm"
             disabled={onMoveUp === null}
-            aria-label={t("home.moveWidgetUp")}
+            aria-label={t("home.moveWidgetUp", { name: t(defaultTitleKey(widget.type)) })}
             onClick={onMoveUp ?? (() => undefined)}
           >
             <ArrowUpIcon aria-hidden />
@@ -146,37 +129,28 @@ function VisibleWidgetRow({
             variant="ghost"
             size="icon-sm"
             disabled={onMoveDown === null}
-            aria-label={t("home.moveWidgetDown")}
+            aria-label={t("home.moveWidgetDown", { name: t(defaultTitleKey(widget.type)) })}
             onClick={onMoveDown ?? (() => undefined)}
           >
             <ArrowDownIcon aria-hidden />
           </Button>
         </span>
-        <Input
-          value={widget.title ?? ""}
-          placeholder={t(defaultTitleKey(widget.type))}
-          aria-label={t("home.widgetTitle")}
-          onChange={(event) => {
-            onTitleChange(event.target.value);
-          }}
-          className="min-w-0 flex-1"
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {t(defaultTitleKey(widget.type))}
+        </span>
+        <input
+          type="checkbox"
+          checked
+          aria-label={t("home.widgetVisible", { name: t(defaultTitleKey(widget.type)) })}
+          onChange={onToggleVisibility}
+          className="size-4 shrink-0 accent-primary"
         />
-        <label className="flex shrink-0 items-center gap-1.5 text-sm">
-          <input
-            type="checkbox"
-            checked
-            aria-label={t("home.widgetVisible")}
-            onChange={onHide}
-            className="size-4 accent-primary"
-          />
-        </label>
       </div>
-      <WidgetSettingsControls widget={widget} onChange={onWidgetChange} />
     </div>
   );
 }
 
-/** Строка скрытого виджета: название по умолчанию и переключатель, включающий его обратно. */
+/** Строка скрытого виджета с фиксированным названием типа и включающим переключателем. */
 function HiddenWidgetRow({
   widget,
   onShow,
@@ -187,122 +161,14 @@ function HiddenWidgetRow({
   const { t } = useI18n();
   return (
     <div className="flex items-center gap-2 px-1 py-1 text-muted-foreground">
-      <span className="min-w-0 flex-1 truncate text-sm">
-        {widget.title !== null && widget.title.trim() !== ""
-          ? widget.title
-          : t(defaultTitleKey(widget.type))}
-      </span>
+      <span className="min-w-0 flex-1 truncate text-sm">{t(defaultTitleKey(widget.type))}</span>
       <input
         type="checkbox"
         checked={false}
-        aria-label={t("home.widgetVisible")}
+        aria-label={t("home.widgetVisible", { name: t(defaultTitleKey(widget.type)) })}
         onChange={onShow}
         className="size-4 accent-primary"
       />
-    </div>
-  );
-}
-
-/** Дополнительные настройки виджета [widget]: лимит для «Должников», окно и лимит для «Дней рождения». */
-function WidgetSettingsControls({
-  widget,
-  onChange,
-}: {
-  readonly widget: DashboardWidget;
-  readonly onChange: (widget: DashboardWidget) => void;
-}) {
-  switch (widget.type) {
-    case "sessions":
-      return null;
-    case "debtors":
-      return (
-        <LimitStepper
-          limit={widget.limit}
-          onChange={(limit) => {
-            onChange({ ...widget, limit });
-          }}
-        />
-      );
-    case "birthdays":
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          <WindowSelector
-            window={widget.window}
-            onChange={(window) => {
-              onChange({ ...widget, window });
-            }}
-          />
-          <LimitStepper
-            limit={widget.limit}
-            onChange={(limit) => {
-              onChange({ ...widget, limit });
-            }}
-          />
-        </div>
-      );
-  }
-}
-
-/** Выбор окна дней рождения для виджета «Дни рождения». */
-function WindowSelector({
-  window,
-  onChange,
-}: {
-  readonly window: BirthdayWindow;
-  readonly onChange: (window: BirthdayWindow) => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <NativeSelect
-      value={window}
-      aria-label={t("clients.filter.birthday")}
-      className="w-auto"
-      onChange={(event) => {
-        const value = event.target.value;
-        if (value === "TODAY" || value === "TOMORROW" || value === "WEEK") {
-          onChange(value);
-        }
-      }}
-    >
-      <option value="TODAY">{t("clients.filter.birthdayToday")}</option>
-      <option value="TOMORROW">{t("clients.filter.birthdayTomorrow")}</option>
-      <option value="WEEK">{t("clients.filter.birthdayWeek")}</option>
-    </NativeSelect>
-  );
-}
-
-/** Степпер лимита виджета в диапазоне `[MIN_WIDGET_LIMIT, MAX_WIDGET_LIMIT]`. */
-function LimitStepper({
-  limit,
-  onChange,
-}: {
-  readonly limit: number;
-  readonly onChange: (limit: number) => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="flex items-center gap-1 text-sm">
-      <span className="text-muted-foreground">{t("home.widgetLimit", { limit })}</span>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t("home.widgetLimitDecrease")}
-        onClick={() => {
-          onChange(clampWidgetLimit(limit - 1));
-        }}
-      >
-        <MinusIcon aria-hidden />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t("home.widgetLimitIncrease")}
-        onClick={() => {
-          onChange(clampWidgetLimit(limit + 1));
-        }}
-      >
-        <PlusIcon aria-hidden />
-      </Button>
     </div>
   );
 }

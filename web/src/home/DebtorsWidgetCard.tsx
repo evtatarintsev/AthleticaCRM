@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ApiClient } from "@/api/client";
-import type { BranchId, DashboardWidgetDebtors } from "@/api/generated/contracts";
+import type {
+  BranchId,
+  DashboardSettings,
+  DashboardWidgetDebtors,
+} from "@/api/generated/contracts";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { apiQuery } from "@/query/queries";
@@ -12,11 +16,13 @@ import { ListWidgetCard } from "./ListWidgetCard";
 export function DebtorsWidgetCard({
   api,
   branchId,
+  settings,
   widget,
   title,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
+  readonly settings: DashboardSettings;
   readonly widget: DashboardWidgetDebtors;
   readonly title: string;
 }) {
@@ -26,6 +32,9 @@ export function DebtorsWidgetCard({
   const total = query.data?.total ?? 0;
   return (
     <ListWidgetCard
+      api={api}
+      settings={settings}
+      widget={widget}
       title={title}
       isPending={query.isPending}
       isError={query.isError}

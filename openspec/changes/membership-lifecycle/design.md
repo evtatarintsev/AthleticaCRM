@@ -122,6 +122,9 @@ sealed interface Membership            id, clientId, tariffPlanId, name, session
 
 ### 10. Схема ответа
 
+Список абонементов клиента (`memberships/list`) остаётся в `MembershipsRoutes` через домен: `forClient` + `statusAt(OrgCalendar.today())` + маппинг в схему. Это осознанное исключение из правила «чтение — через `read/`»: выводимые свойства (положение относительно срока, «заканчивается», «к закрытию») — доменные правила с граничными случаями, и их единственный источник — чистая функция `statusAt`, покрытая юнит-тестами. Проекция в `read/` потребовала бы повторить эти правила в SQL и держать их синхронными, как `debitCandidate` и превью, без выигрыша: список абонементов одного клиента мал, а имена групп подставляет один запрос `forClient`. Проекциями в `read/` становятся только кросс-агрегатные чтения без доменных правил: история, превью списаний, неоплаченные занятия.
+
+
 `MembershipSchema.state` — sealed: `Inactive(activationMode, activateOn?, deadline?)`, `Active(startDate, endDate, termPosition, sessionsRemaining?, endingSoon: List<EndingSoonReason>, closePending)`, `Closed(startDate, endDate, closedOn, reason)`, `Revoked`. Плюс `closeMode`, `groups: List<GroupRef>`. `MembershipStatus` удаляется.
 
 Новые маршруты (идентификатор в теле): `memberships/history`, `memberships/close`, `memberships/revoke`, `memberships/unpaid-sessions`, `memberships/repay-debt`, `sessions/debit-preview`.

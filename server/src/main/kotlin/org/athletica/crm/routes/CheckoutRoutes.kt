@@ -7,7 +7,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.serialization.json.Json
-import org.athletica.crm.core.systemContext
+import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.domain.payment.Payments
 import org.athletica.crm.storage.Database
@@ -64,8 +64,7 @@ fun Route.checkoutRoutes(
                     // markAsPaid не требует RequestContext — поиск по глобально уникальному ключу
                     val payment = payments.markAsPaid("yookassa", externalId)
 
-                    // SystemRequestContext строится из данных платежа — orgId и currency известны
-                    val sysCtx = systemContext(payment.orgId, currency = payment.amount.currency)
+                    val sysCtx = SystemContexts.forOrg(payment.orgId)
 
                     context(sysCtx) {
                         orgBalances.current().replenish(

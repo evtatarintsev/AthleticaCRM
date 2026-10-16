@@ -25,6 +25,7 @@ import org.athletica.crm.Di
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -34,7 +35,6 @@ import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.security.JwtConfig
@@ -188,7 +188,7 @@ suspend fun RoutingCall.contextFromRequest(
         val employeeId = principal.payload.claimAsUuid(JwtConfig.CLAIM_EMPLOYEE_ID).toEmployeeId()
         val (currency, employee) =
             db.transaction {
-                context(systemContext(orgId)) {
+                context(SystemContexts.forOrg(orgId)) {
                     organizations.current().currency to employees.byId(employeeId)
                 }
             }

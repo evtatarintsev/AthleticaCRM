@@ -3,10 +3,10 @@ package org.athletica.crm.domain.payment
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
-import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.junit.Before
 import kotlin.test.Test
@@ -27,7 +27,7 @@ class OrgBalanceReplenishTest {
     fun `replenish зачисляет сумму на баланс с типом replenishment`() =
         runTest {
             val orgId = insertOrg()
-            val ctx = systemContext(OrgId(orgId), currency = Currency.RUB)
+            val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
 
             val result =
                 either {
@@ -58,7 +58,7 @@ class OrgBalanceReplenishTest {
     fun `replenish обновляет баланс организации`() =
         runTest {
             val orgId = insertOrg()
-            val ctx = systemContext(OrgId(orgId), currency = Currency.RUB)
+            val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
 
             either {
                 TestPostgres.db.transaction {
@@ -90,7 +90,7 @@ class OrgBalanceReplenishTest {
     fun `replenish с нулевой суммой возвращает ошибку`() =
         runTest {
             val orgId = insertOrg()
-            val ctx = systemContext(OrgId(orgId), currency = Currency.RUB)
+            val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
 
             val result =
                 either {
@@ -109,7 +109,7 @@ class OrgBalanceReplenishTest {
     fun `replenish с отрицательной суммой возвращает ошибку`() =
         runTest {
             val orgId = insertOrg()
-            val ctx = systemContext(OrgId(orgId), currency = Currency.RUB)
+            val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
 
             val result =
                 either {

@@ -1,54 +1,97 @@
 import type { LocalDate, MembershipSchema } from "@/api/generated/contracts";
-import { addDays } from "@/lib/localDate";
-
-/** За сколько дней до окончания абонемент считается заканчивающимся. */
-const ENDING_DAYS = 7;
-
-/** Сколько занятий и меньше должно остаться, чтобы абонемент считался заканчивающимся. */
-const ENDING_SESSIONS = 1;
 
 /**
- * Фаза абонемента для отображения: не начался, действует, заканчивается, истёк.
+ * Пометка абонемента для отображения, полученная из состояния с сервера:
+ * не активирован, не начался, активен, заканчивается, к закрытию, закрыт, отозван.
  */
-export type MembershipPhase = "upcoming" | "active" | "ending" | "expired";
+export type MembershipPhase =
+  "inactive" | "upcoming" | "active" | "ending" | "closePending" | "closed" | "revoked";
 
-/** Состояние абонемента для отображения в карточке клиента. */
+/** Абонемент в виде для карточки клиента; все признаки — с сервера, клиент их не вычисляет. */
 export interface MembershipView {
-  /** Фаза абонемента на сегодняшнюю дату. */
+  /** Пометка абонемента. */
   readonly phase: MembershipPhase;
-  /** Абонемент заканчивается по сроку; `true` только в фазе `ending`. */
+  /** Дата начала; `null` — абонемент не активировался. */
+  readonly startDate: LocalDate | null;
+  /** Дата окончания, последний день включительно; `null` — абонемент не активировался. */
+  readonly endDate: LocalDate | null;
+  /** Абонемент заканчивается по дате — подсвечивается дата окончания. */
   readonly endingByDate: boolean;
-  /** Абонемент заканчивается по остатку занятий; `true` только в фазе `ending`. */
+  /** Абонемент заканчивается по занятиям — подсвечивается остаток. */
   readonly endingBySessions: boolean;
+  /** У активного абонемента вышел срок. */
+  readonly expired: boolean;
+  /** У активного абонемента закончились занятия. */
+  readonly exhausted: boolean;
+}
+
+/** Вид абонемента [membership] по его состоянию [MembershipSchema.state] с сервера. */
+export function membershipView(membership: MembershipSchema): MembershipView {
+  const none = { endingByDate: false, endingBySessions: false, expired: false, exhausted: false };
+  const { state } = membership;
+  switch (state.type) {
+    case "inactive":
+      return { ...none, phase: "inactive", startDate: null, endDate: null };
+    case "active": {
+      const expired = state.termPosition === "EXPIRED";
+      const exhausted = membership.sessionsRemaining === 0;
+      const endingByDate = state.endingSoon.includes("BY_DATE");
+      const endingBySessions = state.endingSoon.includes("BY_SESSIONS");
+      return {
+        phase: activePhase(
+          state.termPosition,
+          state.closePending,
+          endingByDate || endingBySessions,
+        ),
+        startDate: state.startDate,
+        endDate: state.endDate,
+        endingByDate,
+        endingBySessions,
+        expired,
+        exhausted,
+      };
+    }
+    case "closed":
+      return { ...none, phase: "closed", startDate: state.startDate, endDate: state.endDate };
+    case "revoked":
+      return { ...none, phase: "revoked", startDate: state.startDate, endDate: state.endDate };
+  }
+}
+
+/** Пометка активного абонемента: «к закрытию» важнее «не начался» и «заканчивается». */
+function activePhase(
+  termPosition: "NOT_STARTED" | "IN_TERM" | "EXPIRED",
+  closePending: boolean,
+  ending: boolean,
+): MembershipPhase {
+  if (closePending) {
+    return "closePending";
+  }
+  if (termPosition === "NOT_STARTED") {
+    return "upcoming";
+  }
+  return ending ? "ending" : "active";
 }
 
 /**
- * Состояние абонемента [membership] на дату [today]: истёк, если дата окончания раньше
- * сегодняшней; не начался, если дата начала позже; заканчивается, если до окончания не больше
- * [ENDING_DAYS] дней или осталось не больше [ENDING_SESSIONS] занятий; иначе действует.
- *
- * Временно: состояние абонемента — правило домена, и сервер начнёт отдавать его сам
- * (https://github.com/evtatarintsev/AthleticaCRM/issues/162). После этого функция удаляется,
- * а отображение читает поле схемы.
+ * Абонемент в виде [view] действует: не активирован или активен и не «к закрытию».
+ * Закрытый, отозванный и «к закрытию» — нет.
  */
-export function membershipView(membership: MembershipSchema, today: LocalDate): MembershipView {
-  if (membership.endDate < today) {
-    return { phase: "expired", endingByDate: false, endingBySessions: false };
+export function isCurrentMembership(view: MembershipView): boolean {
+  switch (view.phase) {
+    case "inactive":
+    case "upcoming":
+    case "active":
+    case "ending":
+      return true;
+    case "closePending":
+    case "closed":
+    case "revoked":
+      return false;
   }
-  if (membership.startDate > today) {
-    return { phase: "upcoming", endingByDate: false, endingBySessions: false };
-  }
-  const endingByDate = membership.endDate <= addDays(today, ENDING_DAYS);
-  const endingBySessions =
-    membership.sessionsTotal !== null && (membership.sessionsRemaining ?? 0) <= ENDING_SESSIONS;
-  return {
-    phase: endingByDate || endingBySessions ? "ending" : "active",
-    endingByDate,
-    endingBySessions,
-  };
 }
 
-/** Абонемент в фазе [view] ещё в силе: действует, заканчивается или не начался. */
-export function isCurrentMembership(view: MembershipView): boolean {
-  return view.phase !== "expired";
+/** Абонемент в виде [view] ещё не финальный: с ним доступны действия. */
+export function isOpenMembership(view: MembershipView): boolean {
+  return view.phase !== "closed" && view.phase !== "revoked";
 }

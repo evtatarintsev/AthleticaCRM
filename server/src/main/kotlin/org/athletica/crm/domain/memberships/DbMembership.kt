@@ -1,54 +1,285 @@
 package org.athletica.crm.domain.memberships
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
-import org.athletica.crm.core.EmployeeRequestContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.actingEmployeeId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.subscription.ActivationReason
+import org.athletica.crm.core.subscription.CloseMode
+import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Clock
+import kotlin.time.Instant
 
-/**
- * R2DBC-реализация выданного абонемента. Все запросы фильтруются по `org_id`.
- * Валюта цены берётся из контекста организации, отдельной колонки нет.
- */
-data class DbMembership(
+/** Неизменяемые параметры абонемента, прочитанные из строки `memberships`. */
+data class StoredMembershipTerms(
     override val id: MembershipId,
     override val clientId: ClientId,
     override val tariffPlanId: TariffPlanId?,
     override val name: String,
     override val sessionsTotal: Int?,
+    override val duration: MembershipDuration,
+    override val price: Money,
+    override val closeMode: CloseMode,
+    override val issuedOn: LocalDate,
+    override val issuedBy: EmployeeId?,
+) : MembershipTerms
+
+/** Неактивированный абонемент «с даты» поверх строки `memberships`. */
+data class DbInactiveOnDate(
+    private val terms: StoredMembershipTerms,
+    override val activation: Activation.OnDate,
+    override val sessionsRemaining: Int?,
+) : InactiveMembership.OnDate,
+    MembershipTerms by terms {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun activate(startDate: LocalDate, reason: ActivationReason): ActiveMembership = activateMembership(this, terms, startDate, reason)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun revoke(): RevokedMembership = revokeMembership(this, terms, MembershipState.INACTIVE, null, null)
+}
+
+/** Неактивированный абонемент «при первом посещении» поверх строки `memberships`. */
+data class DbInactiveOnFirstVisit(
+    private val terms: StoredMembershipTerms,
+    override val activation: Activation.OnFirstVisit,
+    override val sessionsRemaining: Int?,
+) : InactiveMembership.OnFirstVisit,
+    MembershipTerms by terms {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun activate(startDate: LocalDate, reason: ActivationReason): ActiveMembership = activateMembership(this, terms, startDate, reason)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun revoke(): RevokedMembership = revokeMembership(this, terms, MembershipState.INACTIVE, null, null)
+}
+
+/** Активный абонемент поверх строки `memberships`. */
+data class DbActiveMembership(
+    private val terms: StoredMembershipTerms,
+    override val activation: Activation,
     override val sessionsRemaining: Int?,
     override val startDate: LocalDate,
     override val endDate: LocalDate,
-    override val price: Money,
-    override val issuedBy: EmployeeId?,
-) : Membership {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun save() {
-        tr.sql(
-            """
-            INSERT INTO memberships
-                (id, org_id, client_id, tariff_plan_id, name,
-                 sessions_total, sessions_remaining, start_date, end_date, price, issued_by)
-            VALUES (:id, :orgId, :clientId, :tariffPlanId, :name,
-                    :sessionsTotal, :sessionsRemaining, :startDate, :endDate, :price, :issuedBy)
-            """.trimIndent(),
+    override val closeNotifiedAt: Instant?,
+) : ActiveMembership,
+    MembershipTerms by terms {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun close(reason: CloseReason, closedOn: LocalDate): ClosedMembership {
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE memberships
+                    SET state = 'CLOSED', closed_on = :closedOn, close_reason = :reason
+                    WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'
+                    """.trimIndent(),
+                )
+                .bind("closedOn", closedOn)
+                .bind("reason", reason.name)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated)
+        recordMembershipEvent(
+            id,
+            MembershipEventKind.CLOSED,
+            buildJsonObject {
+                put("reason", reason.name)
+                put("closedOn", closedOn.toString())
+            },
         )
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .bind("clientId", clientId)
-            .bind("tariffPlanId", tariffPlanId)
-            .bind("name", name)
-            .bind("sessionsTotal", sessionsTotal)
-            .bind("sessionsRemaining", sessionsRemaining)
+        return DbClosedMembership(terms, activation, sessionsRemaining, startDate, endDate, closedOn, reason)
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun revoke(): RevokedMembership = revokeMembership(this, terms, MembershipState.ACTIVE, startDate, endDate)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun markCloseNotified(): ActiveMembership {
+        val now = Clock.System.now()
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE memberships SET close_notified_at = :now
+                    WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE' AND close_notified_at IS NULL
+                    """.trimIndent(),
+                )
+                .bind("now", now)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated)
+        recordMembershipEvent(
+            id,
+            MembershipEventKind.CLOSE_NOTIFIED,
+            buildJsonObject {
+                issuedBy?.let { put("recipientId", it.value.toString()) }
+            },
+        )
+        return copy(closeNotifiedAt = now)
+    }
+}
+
+/** Закрытый абонемент поверх строки `memberships`. */
+data class DbClosedMembership(
+    private val terms: StoredMembershipTerms,
+    override val activation: Activation,
+    override val sessionsRemaining: Int?,
+    override val startDate: LocalDate,
+    override val endDate: LocalDate,
+    override val closedOn: LocalDate,
+    override val closeReason: CloseReason,
+) : ClosedMembership,
+    MembershipTerms by terms
+
+/** Отозванный абонемент поверх строки `memberships`. */
+data class DbRevokedMembership(
+    private val terms: StoredMembershipTerms,
+    override val activation: Activation,
+    override val sessionsRemaining: Int?,
+    override val startDate: LocalDate?,
+    override val endDate: LocalDate?,
+) : RevokedMembership,
+    MembershipTerms by terms
+
+/** Сохранённое состояние абонемента — значение колонки `memberships.state`. */
+enum class MembershipState {
+    /** Неактивирован. */
+    INACTIVE,
+
+    /** Активный. */
+    ACTIVE,
+
+    /** Закрыт. */
+    CLOSED,
+
+    /** Отозван. */
+    REVOKED,
+}
+
+/** Вид записи истории абонемента — значение колонки `membership_events.kind`. */
+enum class MembershipEventKind {
+    /** Выдача. */
+    ISSUED,
+
+    /** Активация; в данных — причина и даты. */
+    ACTIVATED,
+
+    /** Отправка уведомления «к закрытию». */
+    CLOSE_NOTIFIED,
+
+    /** Закрытие; в данных — причина и дата. */
+    CLOSED,
+
+    /** Отзыв. */
+    REVOKED,
+}
+
+/** Активирует неактивированный абонемент [membership] с датой начала [startDate] по причине [reason]. */
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+private suspend fun activateMembership(
+    membership: InactiveMembership,
+    terms: StoredMembershipTerms,
+    startDate: LocalDate,
+    reason: ActivationReason,
+): ActiveMembership {
+    val endDate = terms.duration.endDateFrom(startDate)
+    val updated =
+        tr
+            .sql(
+                """
+                UPDATE memberships SET state = 'ACTIVE', start_date = :startDate, end_date = :endDate
+                WHERE id = :id AND org_id = :orgId AND state = 'INACTIVE'
+                """.trimIndent(),
+            )
             .bind("startDate", startDate)
             .bind("endDate", endDate)
-            .bind("price", price)
-            .bind("issuedBy", issuedBy)
+            .bind("id", membership.id)
+            .bind("orgId", ctx.orgId)
             .execute()
+    requireTransition(updated)
+    recordActivation(membership.id, reason, startDate, endDate)
+    return DbActiveMembership(terms, membership.activation, membership.sessionsRemaining, startDate, endDate, null)
+}
+
+/** Отзывает абонемент [membership] из состояния [from]; [startDate]/[endDate] — его даты, если были. */
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+private suspend fun revokeMembership(
+    membership: Membership,
+    terms: StoredMembershipTerms,
+    from: MembershipState,
+    startDate: LocalDate?,
+    endDate: LocalDate?,
+): RevokedMembership {
+    val updated =
+        tr
+            .sql("UPDATE memberships SET state = 'REVOKED' WHERE id = :id AND org_id = :orgId AND state = :from")
+            .bind("id", membership.id)
+            .bind("orgId", ctx.orgId)
+            .bind("from", from.name)
+            .execute()
+    requireTransition(updated)
+    recordMembershipEvent(membership.id, MembershipEventKind.REVOKED)
+    return DbRevokedMembership(terms, membership.activation, membership.sessionsRemaining, startDate, endDate)
+}
+
+/** Пишет в историю активацию абонемента [id] по причине [reason] со сроком [startDate]..[endDate]. */
+context(ctx: RequestContext, tr: Transaction)
+internal suspend fun recordActivation(
+    id: MembershipId,
+    reason: ActivationReason,
+    startDate: LocalDate,
+    endDate: LocalDate,
+) {
+    recordMembershipEvent(
+        id,
+        MembershipEventKind.ACTIVATED,
+        buildJsonObject {
+            put("reason", reason.name)
+            put("startDate", startDate.toString())
+            put("endDate", endDate.toString())
+        },
+    )
+}
+
+/**
+ * Пишет запись истории [kind] с данными [payload] абонемента [id] в текущей транзакции.
+ * Автор — сотрудник из [ctx]; для системного контекста — `NULL`.
+ */
+context(ctx: RequestContext, tr: Transaction)
+internal suspend fun recordMembershipEvent(id: MembershipId, kind: MembershipEventKind, payload: JsonObject = JsonObject(emptyMap())) {
+    tr
+        .sql(
+            """
+            INSERT INTO membership_events (org_id, membership_id, actor_id, kind, payload)
+            VALUES (:orgId, :membershipId, :actorId, :kind, :payload::jsonb)
+            """.trimIndent(),
+        )
+        .bind("orgId", ctx.orgId)
+        .bind("membershipId", id)
+        .bind("actorId", ctx.actingEmployeeId)
+        .bind("kind", kind.name)
+        .bind("payload", payload.toString())
+        .execute()
+}
+
+/** Отклоняет переход, если строка абонемента не обновлена: состояние изменилось параллельно. */
+context(ctx: RequestContext, raise: Raise<DomainError>)
+private fun requireTransition(updatedRows: Long) {
+    if (updatedRows != 1L) {
+        raise(CommonDomainError("MEMBERSHIP_CHANGED_CONCURRENTLY", Messages.MembershipChangedConcurrently.localize()))
     }
 }

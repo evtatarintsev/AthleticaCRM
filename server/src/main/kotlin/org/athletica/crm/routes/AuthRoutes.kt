@@ -25,6 +25,7 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.auth.SwitchBranchRequest
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -34,7 +35,6 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.systemContext
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logLogin
 import org.athletica.crm.domain.audit.logSignUp
@@ -156,7 +156,7 @@ private suspend fun buildBootstrapContext(
     call: RoutingCall,
 ): EmployeeRequestContext {
     val (currency, employee) =
-        context(systemContext(orgId)) {
+        context(SystemContexts.forOrg(orgId)) {
             organizations.current().currency to employees.byId(employeeId)
         }
     return EmployeeRequestContext(

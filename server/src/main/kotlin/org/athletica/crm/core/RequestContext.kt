@@ -57,13 +57,14 @@ data class EmployeeRequestContext(
 /**
  * Контекст системных фоновых операций (cron, event handlers, воркеры).
  * Не привязан к реальному пользователю или сотруднику.
+ * В рабочем коде собирается только через [SystemContexts.forOrg].
  *
  * [branchId] — целевой филиал операции; null для org-wide операций.
  */
 data class SystemRequestContext(
     override val lang: Lang = Lang.RU,
     override val orgId: OrgId,
-    override val currency: Currency = Currency.RUB,
+    override val currency: Currency,
     val branchId: BranchId? = null,
 ) : RequestContext,
     SystemActor {

@@ -27,25 +27,73 @@ export function EndingMark({
   );
 }
 
-/** Пометка фазы абонемента [phase]: «Не начался», «Активен», «Заканчивается», «Истёк». */
+/**
+ * Пометка абонемента [phase]: «Не активирован», «Не начался», «Активен», «Заканчивается»,
+ * «К закрытию», «Закрыт», «Отозван».
+ */
 export function MembershipPill({ phase }: { readonly phase: MembershipPhase }) {
   const { t } = useI18n();
   switch (phase) {
+    case "inactive":
+      return <Pill tone="blue">{t("membership.phase.inactive")}</Pill>;
     case "upcoming":
       return <Pill tone="blue">{t("clientCard.subscriptionUpcoming")}</Pill>;
     case "active":
       return <Pill tone="green">{t("clients.detail.subscriptionActive")}</Pill>;
     case "ending":
       return <Pill tone="amber">{t("clientCard.subscriptionEnding")}</Pill>;
-    case "expired":
-      return <Pill tone="gray">{t("clients.detail.subscriptionExpired")}</Pill>;
+    case "closePending":
+      return <Pill tone="amber">{t("membership.phase.closePending")}</Pill>;
+    case "closed":
+      return <Pill tone="gray">{t("membership.phase.closed")}</Pill>;
+    case "revoked":
+      return <Pill tone="gray">{t("membership.phase.revoked")}</Pill>;
   }
 }
 
 /**
- * Условия абонемента [membership] в одну строку: у начавшегося — остаток занятий
- * (или «Безлимит») и дата окончания, у не начавшегося — дата начала. Причина окончания
- * из [view] выделена цветом.
+ * Режим активации неактивированного абонемента [membership]: «Активируется {дата}»
+ * или «При первом посещении» с крайней датой, если она задана.
+ */
+export function MembershipActivationNote({
+  membership,
+}: {
+  readonly membership: MembershipSchema;
+}) {
+  const { t, format } = useI18n();
+  const { state } = membership;
+  if (state.type !== "inactive") {
+    return null;
+  }
+  if (state.activateOn !== null) {
+    return <>{t("membership.activatesOn", { date: format.date(state.activateOn) })}</>;
+  }
+  return (
+    <>
+      {membership.activationDeadline === null
+        ? t("membership.activation.ON_FIRST_VISIT")
+        : t("membership.firstVisitUntil", { date: format.date(membership.activationDeadline) })}
+    </>
+  );
+}
+
+/** Причина «к закрытию» по виду [view]: «Срок вышел» и/или «Занятия закончились». */
+export function ClosePendingReasons({ view }: { readonly view: MembershipView }) {
+  const { t } = useI18n();
+  const reasons = [
+    view.expired ? t("membership.expired") : null,
+    view.exhausted ? t("membership.exhausted") : null,
+  ].filter((reason) => reason !== null);
+  if (view.phase !== "closePending" || reasons.length === 0) {
+    return null;
+  }
+  return <span className="text-amber-700 dark:text-amber-400">{reasons.join(" · ")}</span>;
+}
+
+/**
+ * Условия абонемента [membership] в одну строку: у неактивированного — режим активации,
+ * у не начавшегося — дата начала, иначе остаток занятий (или «Безлимит») и дата окончания.
+ * Причина «заканчивается» из [view] выделена цветом.
  */
 export function MembershipTerms({
   membership,
@@ -55,8 +103,11 @@ export function MembershipTerms({
   readonly view: MembershipView;
 }) {
   const { t, format } = useI18n();
+  if (view.startDate === null || view.endDate === null) {
+    return <MembershipActivationNote membership={membership} />;
+  }
   if (view.phase === "upcoming") {
-    return <>{t("clientCard.quick.from", { date: format.date(membership.startDate) })}</>;
+    return <>{t("clientCard.quick.from", { date: format.date(view.startDate) })}</>;
   }
   return (
     <>
@@ -65,7 +116,7 @@ export function MembershipTerms({
       </EndingMark>
       {" · "}
       <EndingMark active={view.endingByDate}>
-        {t("clientCard.quick.until", { date: format.date(membership.endDate) })}
+        {t("clientCard.quick.until", { date: format.date(view.endDate) })}
       </EndingMark>
     </>
   );

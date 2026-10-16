@@ -24,6 +24,8 @@ import org.athletica.crm.read.groups.GroupListView
 import org.athletica.crm.read.groups.GroupSessionsView
 import org.athletica.crm.read.home.DbTodayScheduleView
 import org.athletica.crm.read.home.TodayScheduleView
+import org.athletica.crm.read.memberships.DbMembershipHistoryView
+import org.athletica.crm.read.memberships.MembershipHistoryView
 import org.athletica.crm.read.messaging.ClientChannelsView
 import org.athletica.crm.read.messaging.DbClientChannelsView
 import org.athletica.crm.read.messaging.DbInboundTriageView
@@ -77,6 +79,8 @@ data class ReadViews(
     val channelList: ChannelListView = DbChannelListView(),
     /** Очередь ручного разбора неразобранных входящих. */
     val inboundTriage: InboundTriageView = DbInboundTriageView(),
+    /** История абонемента для панели абонемента. */
+    val membershipHistory: MembershipHistoryView = DbMembershipHistoryView(),
     /** Каналы, через которые можно написать клиенту, для страницы переписки. */
     val clientChannels: ClientChannelsView = DbClientChannelsView(),
 )

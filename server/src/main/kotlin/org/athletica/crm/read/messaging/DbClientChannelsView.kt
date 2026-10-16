@@ -2,7 +2,6 @@ package org.athletica.crm.read.messaging
 
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
-import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.messaging.ChannelProviderSchema
 import org.athletica.crm.api.schemas.messaging.ClientChannelSchema
@@ -14,23 +13,25 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toClientContactId
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.messaging.ChannelAddressing
 import org.athletica.crm.core.messaging.ChannelConfig
+import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.asUuidOrNull
 
 /**
- * Реализация [ClientChannelsView] поверх PostgreSQL: один запрос за каналами (с признаком связки
- * клиента с каналом) и один — за контактами клиента. Доступность вычисляется по
- * [ChannelConfig.addressing]: прямому каналу нужен контакт подходящего типа, связанному — связка.
+ * Реализация [ClientChannelsView] поверх PostgreSQL: один запрос — включённые каналы организации
+ * с признаком связки клиента, соединённые с контактами клиента (строка на пару «канал × контакт»).
+ * Какие контакты годятся каналу и доступен ли он, решает правило адресации вида канала
+ * ([org.athletica.crm.core.messaging.ChannelAddressing]) — то же, что применяет отправка; в SQL оно
+ * не повторяется, иначе разошлось бы с доменом.
  */
 class DbClientChannelsView : ClientChannelsView {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun list(clientId: ClientId): ClientChannelsResponse {
-        val contacts = contacts(clientId)
-        val channels =
+        val rows =
             tr
                 .sql(
                     """
@@ -38,80 +39,67 @@ class DbClientChannelsView : ClientChannelsView {
                            EXISTS (
                                SELECT 1 FROM channel_bindings b
                                WHERE b.integration_id = ci.id AND b.client_id = :clientId AND b.org_id = :orgId
-                           ) AS linked
+                           ) AS linked,
+                           cc.id AS contact_id, cc.type AS contact_type, cc.value AS contact_value
                     FROM channel_integrations ci
+                    LEFT JOIN client_contacts cc ON cc.org_id = :orgId AND cc.client_id = :clientId
                     WHERE ci.org_id = :orgId AND ci.enabled
-                    ORDER BY ci.created_at
+                    ORDER BY ci.created_at, ci.id, cc.created_at
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
                 .bind("clientId", clientId)
-                .list { row -> row.toChannelRow() }
-        return ClientChannelsResponse(channels.map { it.toSchema(contacts) })
+                .list { row -> row.toChannelContactRow() }
+        val channels =
+            rows
+                .groupBy { it.id }
+                .values
+                .map { channelRows -> channelRows.first().toSchema(channelRows.mapNotNull { it.contact }) }
+        return ClientChannelsResponse(channels)
     }
 
-    /** Контакты клиента [clientId] в порядке добавления. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
-    private suspend fun contacts(clientId: ClientId): List<ClientContactSchema> =
-        tr
-            .sql(
-                """
-                SELECT id, type, value
-                FROM client_contacts
-                WHERE org_id = :orgId AND client_id = :clientId
-                ORDER BY created_at
-                """.trimIndent(),
-            )
-            .bind("orgId", ctx.orgId)
-            .bind("clientId", clientId)
-            .list { row ->
-                ClientContactSchema(
-                    id = row.asUuid("id").toClientContactId(),
-                    type = ContactType.valueOf(row.asString("type")),
-                    value = row.asString("value"),
-                )
-            }
-
-    /** Строка выборки канала: настройки нужны только чтобы вычислить адресацию и провайдера. */
-    private class ChannelRow(
+    /** Строка выборки: канал и один из контактов клиента (`null`, если контактов нет). */
+    private class ChannelContactRow(
         /** Идентификатор интеграции. */
         val id: ChannelIntegrationId,
         /** Отображаемое имя. */
         val name: String,
-        /** Настройки вида канала. */
+        /** Настройки вида канала: нужны только чтобы вычислить адресацию и провайдера. */
         val config: ChannelConfig,
         /** Есть ли у клиента связка с этим каналом. */
         val linked: Boolean,
+        /** Контакт клиента из соединения. */
+        val contact: ClientContactSchema?,
     ) {
         /** Схема канала для клиента с контактами [clientContacts]. */
         fun toSchema(clientContacts: List<ClientContactSchema>): ClientChannelSchema {
-            val addressable =
-                when (val addressing = config.addressing) {
-                    is ChannelAddressing.ByContact -> clientContacts.filter { it.type in addressing.contactTypes }
-                    ChannelAddressing.ByBinding -> emptyList()
-                }
-            val available =
-                when (config.addressing) {
-                    is ChannelAddressing.ByContact -> addressable.isNotEmpty()
-                    ChannelAddressing.ByBinding -> linked
-                }
+            val addressing = config.addressing
+            val addressable = clientContacts.filter { addressing.accepts(it.type) }
             return ClientChannelSchema(
                 id = id,
                 name = name,
                 provider = config.provider,
-                available = available,
+                available = addressing.reachable(hasAcceptedContact = addressable.isNotEmpty(), linked = linked),
                 contacts = addressable,
             )
         }
     }
 
-    /** Собирает строку канала из результата выборки. */
-    private fun Row.toChannelRow(): ChannelRow =
-        ChannelRow(
+    /** Собирает строку «канал × контакт» из результата выборки. */
+    private fun Row.toChannelContactRow(): ChannelContactRow =
+        ChannelContactRow(
             id = asUuid("id").toChannelIntegrationId(),
             name = asString("name"),
-            config = Json.decodeFromString(ChannelConfig.serializer(), asString("config")),
+            config = asString("config").toChannelConfig(),
             linked = asBoolean("linked"),
+            contact =
+                asUuidOrNull("contact_id")?.let { contactId ->
+                    ClientContactSchema(
+                        id = contactId.toClientContactId(),
+                        type = ContactType.valueOf(asString("contact_type")),
+                        value = asString("contact_value"),
+                    )
+                },
         )
 
     private companion object {

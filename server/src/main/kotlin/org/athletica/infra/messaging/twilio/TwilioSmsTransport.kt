@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import kotlin.uuid.Uuid
 
 /**
- * Транспорт « {}", settings.from, address, body:SMS через Twilio» с настройками [settings].
+ * Транспорт «SMS через Twilio» с настройками [settings].
  * Первая итерация — заглушка: ничего реально не отправляет, только логирует.
  */
 class TwilioSmsTransport(

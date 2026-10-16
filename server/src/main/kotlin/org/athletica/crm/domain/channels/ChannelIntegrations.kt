@@ -14,7 +14,8 @@ import org.athletica.crm.storage.Transaction
 interface ChannelIntegrations {
     /**
      * Возвращает интеграцию-отправитель по [id]; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит
-     * другой организации.
+     * другой организации. Строка интеграции блокируется от удаления до конца транзакции, чтобы
+     * параллельный [remove] не удалил канал между выбором и записью доставки.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun byId(id: ChannelIntegrationId): ChannelIntegration
@@ -33,8 +34,10 @@ interface ChannelIntegrations {
     )
 
     /**
-     * Удаляет интеграцию [id]. `CHANNEL_IN_USE`, если через неё уже отправлялись сообщения:
-     * история доставок ссылается на канал, такой канал отключают, а не удаляют.
+     * Удаляет интеграцию [id]. `CHANNEL_IN_USE`, если через неё уже шли сообщения (исходящие доставки
+     * или входящие): история ссылается на канал, такой канал отключают, а не удаляют. Строка интеграции
+     * блокируется до проверки, поэтому параллельная отправка либо завершится до неё и будет учтена,
+     * либо дождётся удаления и получит `CHANNEL_NOT_FOUND`.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun remove(id: ChannelIntegrationId)

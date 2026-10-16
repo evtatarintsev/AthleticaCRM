@@ -153,6 +153,22 @@ class DbClientChannelsViewTest {
         }
 
     @Test
+    fun `каждый канал получает свои контакты при нескольких каналах и контактах`() =
+        runTest {
+            val smsId = insertIntegration("SMS", SMS_CONFIG)
+            val telegramId = insertIntegration("Бот", TELEGRAM_CONFIG)
+            insertContact("PHONE", "+79990001122")
+            insertContact("TELEGRAM", "@client")
+            insertContact("PHONE", "+79990003344")
+
+            val channels = channels().associateBy { it.id }
+
+            assertEquals(listOf("+79990001122", "+79990003344"), channels.getValue(smsId).contacts.map { it.value })
+            assertTrue(channels.getValue(telegramId).contacts.isEmpty())
+            assertFalse(channels.getValue(telegramId).available)
+        }
+
+    @Test
     fun `выключенные и чужие каналы не попадают в список`() =
         runTest {
             insertIntegration("Выключенный", SMS_CONFIG, enabled = false)

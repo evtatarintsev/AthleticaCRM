@@ -46,7 +46,7 @@ class DbChannelIntegration(
         contactId: ClientContactId?,
         addressing: ChannelAddressing.ByContact,
     ): String {
-        val candidates = contacts.byClient(clientId).filter { it.type in addressing.contactTypes }
+        val candidates = contacts.byClient(clientId).filter { addressing.accepts(it.type) }
         val chosen =
             contactId
                 ?.let { id ->

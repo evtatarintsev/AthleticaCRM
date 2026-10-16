@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import kotlin.uuid.Uuid
 
 /**
- * Транспорт « {}", address, body:SMS через SMSC» с настройками [settings].
+ * Транспорт «SMS через SMSC» с настройками [settings].
  * Первая итерация — заглушка: ничего реально не отправляет, только логирует.
  */
 class SmscSmsTransport(

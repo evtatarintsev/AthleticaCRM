@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import kotlin.uuid.Uuid
 
 /**
- * Транспорт « {}", address, body:Telegram-бот» с настройками [settings].
+ * Транспорт «Telegram-бот» с настройками [settings].
  * Первая итерация — заглушка: ничего реально не отправляет, только логирует.
  */
 class TelegramBotTransport(

@@ -16,6 +16,7 @@ import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.entityids.InboundReceiptId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.DomainError
@@ -247,15 +248,41 @@ class SendMessageTest {
             addPhoneContact()
             assertIs<Either.Right<ConversationResponse>>(send(smsIntegrationId))
 
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx) { channels.remove(smsIntegrationId) }
-                    }
-                }
+            val error = assertIs<Either.Left<DomainError>>(remove(smsIntegrationId)).value
 
-            val error = assertIs<Either.Left<DomainError>>(result).value
             assertEquals("CHANNEL_IN_USE", error.code)
+        }
+
+    @Test
+    fun `канал только с входящими нельзя удалить`() =
+        runTest {
+            TestPostgres.db.sql(
+                """
+                INSERT INTO inbound_receipts (id, org_id, integration_id, from_address, body)
+                VALUES (:id, :orgId, :integrationId, 'chat-1', 'Привет')
+                """.trimIndent(),
+            ).bind("id", InboundReceiptId.new()).bind("orgId", orgId).bind("integrationId", smsIntegrationId).execute()
+
+            val error = assertIs<Either.Left<DomainError>>(remove(smsIntegrationId)).value
+
+            assertEquals("CHANNEL_IN_USE", error.code)
+        }
+
+    @Test
+    fun `неиспользованный канал удаляется`() =
+        runTest {
+            assertIs<Either.Right<Unit>>(remove(smsIntegrationId))
+
+            val error = assertIs<Either.Left<DomainError>>(send(smsIntegrationId)).value
+            assertEquals("CHANNEL_NOT_FOUND", error.code)
+        }
+
+    /** Удаляет канал [id] от имени сотрудника. */
+    private suspend fun remove(id: ChannelIntegrationId): Either<DomainError, Unit> =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) { channels.remove(id) }
+            }
         }
 
     private companion object {

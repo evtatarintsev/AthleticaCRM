@@ -49,7 +49,6 @@ import { useI18n } from "@/i18n/context";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
 import { HomePage } from "@/home/HomePage";
-import { ConversationPage } from "@/messaging/ConversationPage";
 import { InboxPage } from "@/messaging/InboxPage";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
@@ -464,24 +463,6 @@ const clientRoute = createRoute({
   },
 });
 
-/** Переписка с клиентом [clientId]. */
-const clientMessagesRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/clients/$clientId/messages",
-  params: {
-    parse: ({ clientId }): { clientId: ClientId } | false => {
-      const parsed = ClientIdSchema.safeParse(clientId);
-      return parsed.success ? { clientId: parsed.data } : false;
-    },
-    stringify: ({ clientId }) => ({ clientId }),
-  },
-  component: function ClientMessagesRoute() {
-    const { api } = clientMessagesRoute.useRouteContext();
-    const { clientId } = clientMessagesRoute.useParams();
-    return <ConversationPage api={api} clientId={clientId} />;
-  },
-});
-
 /** Редактирование клиента [clientId]. */
 const clientEditRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -593,7 +574,6 @@ const routeTree = rootRoute.addChildren([
     clientNewRoute,
     clientRoute,
     clientEditRoute,
-    clientMessagesRoute,
     clientVisitHistoryRoute,
     clientPaymentHistoryRoute,
     tasksRoute,

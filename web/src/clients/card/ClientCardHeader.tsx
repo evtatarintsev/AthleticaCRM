@@ -47,6 +47,7 @@ export function ClientCardHeader({
   alerts,
   onToggleArchived,
   onIssueSubscription,
+  onOpenChat,
 }: {
   readonly api: ApiClient;
   readonly client: ClientDetailResponse;
@@ -57,6 +58,8 @@ export function ClientCardHeader({
   readonly onToggleArchived: (archived: boolean) => void;
   /** Открывает панель выдачи абонемента. */
   readonly onIssueSubscription: () => void;
+  /** Открывает панель «Чат» с клиентом. */
+  readonly onOpenChat: () => void;
 }) {
   const { t } = useI18n();
   const archived = client.state === "ARCHIVED";
@@ -101,11 +104,9 @@ export function ClientCardHeader({
             {t("clients.detail.issueSubscription")}
           </Button>
         )}
-        <Button size="sm" variant="outline" asChild>
-          <Link to="/clients/$clientId/messages" params={{ clientId }}>
-            <MessageSquareIcon aria-hidden />
-            {t("messaging.open")}
-          </Link>
+        <Button size="sm" variant="outline" onClick={onOpenChat}>
+          <MessageSquareIcon aria-hidden />
+          {t("messaging.open")}
         </Button>
         {!archived && (
           <Button size="sm" variant="outline" className="max-sm:hidden" asChild>

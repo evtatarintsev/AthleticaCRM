@@ -352,56 +352,80 @@ export const ChangePasswordRequestSchema = z
   .readonly();
 export type ChangePasswordRequest = z.output<typeof ChangePasswordRequestSchema>;
 
-export const ChannelConfigSmscSmsSchema = z
+export const ChannelConfigChangeSmscSmsSchema = z
   .object({
     type: z.literal("smsc_sms"),
     login: z.string(),
-    password: z.string(),
+    password: z.string().nullable(),
   })
   .readonly();
-export type ChannelConfigSmscSms = z.output<typeof ChannelConfigSmscSmsSchema>;
+export type ChannelConfigChangeSmscSms = z.output<typeof ChannelConfigChangeSmscSmsSchema>;
 
-export const ChannelConfigTelegramBotSchema = z
+export const ChannelConfigChangeTelegramBotSchema = z
   .object({
     type: z.literal("telegram_bot"),
-    botToken: z.string(),
-    botUsername: z.string(),
+    botToken: z.string().nullable(),
   })
   .readonly();
-export type ChannelConfigTelegramBot = z.output<typeof ChannelConfigTelegramBotSchema>;
+export type ChannelConfigChangeTelegramBot = z.output<typeof ChannelConfigChangeTelegramBotSchema>;
 
-export const ChannelConfigTwilioSmsSchema = z
+export const ChannelConfigChangeTwilioSmsSchema = z
   .object({
     type: z.literal("twilio_sms"),
     accountSid: z.string(),
-    authToken: z.string(),
+    authToken: z.string().nullable(),
     from: z.string(),
   })
   .readonly();
-export type ChannelConfigTwilioSms = z.output<typeof ChannelConfigTwilioSmsSchema>;
+export type ChannelConfigChangeTwilioSms = z.output<typeof ChannelConfigChangeTwilioSmsSchema>;
 
-export const ChannelConfigSchema = z.discriminatedUnion("type", [ChannelConfigSmscSmsSchema, ChannelConfigTelegramBotSchema, ChannelConfigTwilioSmsSchema]);
-export type ChannelConfig = z.output<typeof ChannelConfigSchema>;
+export const ChannelConfigChangeSchema = z.discriminatedUnion("type", [ChannelConfigChangeSmscSmsSchema, ChannelConfigChangeTelegramBotSchema, ChannelConfigChangeTwilioSmsSchema]);
+export type ChannelConfigChange = z.output<typeof ChannelConfigChangeSchema>;
 
-export const ChannelConfigTelegramBotInputSchema = z
+export const ChannelSettingsSchemaSmscSmsSchema = z
   .object({
-    type: z.literal("telegram_bot"),
-    botToken: z.string(),
-    botUsername: z.string().optional(),
+    type: z.literal("smsc_sms"),
+    login: z.string(),
   })
   .readonly();
-export type ChannelConfigTelegramBotInput = z.output<typeof ChannelConfigTelegramBotInputSchema>;
+export type ChannelSettingsSchemaSmscSms = z.output<typeof ChannelSettingsSchemaSmscSmsSchema>;
 
-export const ChannelConfigInputSchema = z.discriminatedUnion("type", [ChannelConfigSmscSmsSchema, ChannelConfigTelegramBotInputSchema, ChannelConfigTwilioSmsSchema]);
-export type ChannelConfigInput = z.output<typeof ChannelConfigInputSchema>;
+export const ChannelSettingsSchemaTelegramBotSchema = z
+  .object({
+    type: z.literal("telegram_bot"),
+    tokenMask: z.string(),
+    botUsername: z.string(),
+  })
+  .readonly();
+export type ChannelSettingsSchemaTelegramBot = z.output<typeof ChannelSettingsSchemaTelegramBotSchema>;
+
+export const ChannelSettingsSchemaTwilioSmsSchema = z
+  .object({
+    type: z.literal("twilio_sms"),
+    accountSid: z.string(),
+    authTokenMask: z.string(),
+    from: z.string(),
+  })
+  .readonly();
+export type ChannelSettingsSchemaTwilioSms = z.output<typeof ChannelSettingsSchemaTwilioSmsSchema>;
+
+export const ChannelSettingsSchemaSchema = z.discriminatedUnion("type", [ChannelSettingsSchemaSmscSmsSchema, ChannelSettingsSchemaTelegramBotSchema, ChannelSettingsSchemaTwilioSmsSchema]);
+export type ChannelSettingsSchema = z.output<typeof ChannelSettingsSchemaSchema>;
+
+export const ChannelShareSchemaSchema = z
+  .object({
+    url: z.string(),
+  })
+  .readonly();
+export type ChannelShareSchema = z.output<typeof ChannelShareSchemaSchema>;
 
 export const ChannelIntegrationSchemaSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
     name: z.string(),
-    config: ChannelConfigSchema,
+    settings: ChannelSettingsSchemaSchema,
     enabled: z.boolean(),
-    botLink: z.string().nullable(),
+    share: ChannelShareSchemaSchema.nullable(),
   })
   .readonly();
 export type ChannelIntegrationSchema = z.output<typeof ChannelIntegrationSchemaSchema>;
@@ -993,11 +1017,41 @@ export const CreateAttendanceLabelRequestSchema = z
   .readonly();
 export type CreateAttendanceLabelRequest = z.output<typeof CreateAttendanceLabelRequestSchema>;
 
+export const NewChannelConfigSmscSmsSchema = z
+  .object({
+    type: z.literal("smsc_sms"),
+    login: z.string(),
+    password: z.string(),
+  })
+  .readonly();
+export type NewChannelConfigSmscSms = z.output<typeof NewChannelConfigSmscSmsSchema>;
+
+export const NewChannelConfigTelegramBotSchema = z
+  .object({
+    type: z.literal("telegram_bot"),
+    botToken: z.string(),
+  })
+  .readonly();
+export type NewChannelConfigTelegramBot = z.output<typeof NewChannelConfigTelegramBotSchema>;
+
+export const NewChannelConfigTwilioSmsSchema = z
+  .object({
+    type: z.literal("twilio_sms"),
+    accountSid: z.string(),
+    authToken: z.string(),
+    from: z.string(),
+  })
+  .readonly();
+export type NewChannelConfigTwilioSms = z.output<typeof NewChannelConfigTwilioSmsSchema>;
+
+export const NewChannelConfigSchema = z.discriminatedUnion("type", [NewChannelConfigSmscSmsSchema, NewChannelConfigTelegramBotSchema, NewChannelConfigTwilioSmsSchema]);
+export type NewChannelConfig = z.output<typeof NewChannelConfigSchema>;
+
 export const CreateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
     name: z.string(),
-    config: ChannelConfigInputSchema,
+    config: NewChannelConfigSchema,
   })
   .readonly();
 export type CreateChannelIntegrationRequest = z.output<typeof CreateChannelIntegrationRequestSchema>;
@@ -2533,6 +2587,14 @@ export const SessionJournalResponseSchema = z
   .readonly();
 export type SessionJournalResponse = z.output<typeof SessionJournalResponseSchema>;
 
+export const SetChannelEnabledRequestSchema = z
+  .object({
+    id: ChannelIntegrationIdSchema,
+    enabled: z.boolean(),
+  })
+  .readonly();
+export type SetChannelEnabledRequest = z.output<typeof SetChannelEnabledRequestSchema>;
+
 export const SetGroupDisciplinesRequestSchema = z
   .object({
     groupId: GroupIdSchema,
@@ -2834,8 +2896,7 @@ export const UpdateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
     name: z.string(),
-    config: ChannelConfigInputSchema,
-    enabled: z.boolean(),
+    config: ChannelConfigChangeSchema,
   })
   .readonly();
 export type UpdateChannelIntegrationRequest = z.output<typeof UpdateChannelIntegrationRequestSchema>;
@@ -3121,6 +3182,13 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: ChannelListResponseSchema,
+  },
+  "channels/set-enabled": {
+    method: "POST",
+    in: "body",
+    request: SetChannelEnabledRequestSchema,
+    out: "empty",
+    response: z.undefined(),
   },
   "channels/update": {
     method: "POST",

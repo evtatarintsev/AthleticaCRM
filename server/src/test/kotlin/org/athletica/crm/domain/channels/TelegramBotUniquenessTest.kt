@@ -64,7 +64,7 @@ class TelegramBotUniquenessTest {
                 either {
                     TestPostgres.db.transaction {
                         context(employeeContext(orgId = orgId)) {
-                            integrations.update(id, "Бот клуба", ChannelConfig.TelegramBot(botToken = "123:abc"), enabled = false)
+                            integrations.update(id, "Бот клуба", ChannelConfig.TelegramBot(botToken = "123:abc"))
                         }
                     }
                 }

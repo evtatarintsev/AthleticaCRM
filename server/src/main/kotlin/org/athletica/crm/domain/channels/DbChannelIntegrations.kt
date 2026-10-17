@@ -44,7 +44,7 @@ class DbChannelIntegrations(
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .firstOrNull { row -> row.toChannelIntegration() }
-            ?: raise(CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена"))
+            ?: raise(channelNotFound())
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
@@ -65,11 +65,18 @@ class DbChannelIntegrations(
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun config(id: ChannelIntegrationId): ChannelConfig =
+        tr.sql("SELECT config::text AS config FROM channel_integrations WHERE id = :id AND org_id = :orgId")
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .firstOrNull { row -> row.asString("config").toChannelConfig() }
+            ?: raise(channelNotFound())
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun update(
         id: ChannelIntegrationId,
         name: String,
         config: ChannelConfig,
-        enabled: Boolean,
     ) {
         ensureBotNotInUse(id, config)
         val updated =
@@ -77,7 +84,7 @@ class DbChannelIntegrations(
                 tr.sql(
                     """
                     UPDATE channel_integrations
-                    SET name = :name, config = :config::jsonb, enabled = :enabled
+                    SET name = :name, config = :config::jsonb
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
                 )
@@ -85,10 +92,20 @@ class DbChannelIntegrations(
                     .bind("orgId", ctx.orgId)
                     .bind("name", name)
                     .bind("config", config.toJson())
-                    .bind("enabled", enabled)
                     .execute()
             }
-        ensure(updated != 0L) { CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена") }
+        ensure(updated != 0L) { channelNotFound() }
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun setEnabled(id: ChannelIntegrationId, enabled: Boolean) {
+        val updated =
+            tr.sql("UPDATE channel_integrations SET enabled = :enabled WHERE id = :id AND org_id = :orgId")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("enabled", enabled)
+                .execute()
+        ensure(updated != 0L) { channelNotFound() }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -160,6 +177,9 @@ class DbChannelIntegrations(
         } catch (e: R2dbcDataIntegrityViolationException) {
             raise(botInUse())
         }
+
+    /** Ошибка «интеграция канала не найдена». */
+    private fun channelNotFound(): CommonDomainError = CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена")
 
     /** Ошибка «бот уже подключён к другой интеграции». */
     context(ctx: RequestContext)

@@ -143,6 +143,11 @@ object Messages {
         override val en = "This bot is already connected to another channel"
     }
 
+    object ChannelProviderMismatch : LocalizationKey {
+        override val ru = "Провайдера канала изменить нельзя"
+        override val en = "The channel provider cannot be changed"
+    }
+
     object DisciplineAlreadyExists : LocalizationKey {
         override val ru = "Дисциплина с таким названием уже существует"
         override val en = "Discipline with this name already exists"

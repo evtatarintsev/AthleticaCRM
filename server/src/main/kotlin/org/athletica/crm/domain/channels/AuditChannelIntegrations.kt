@@ -11,8 +11,9 @@ import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.storage.Transaction
 
 /**
- * Декоратор [ChannelIntegrations], логирующий изменения интеграций (добавление, обновление, удаление).
- * Запрос [byId] и worker-путь [senderById] делегируются без обёртки.
+ * Декоратор [ChannelIntegrations], логирующий изменения интеграций (добавление, обновление,
+ * включение и выключение, удаление).
+ * Запросы [byId], [config] и worker-путь [senderById] делегируются без обёртки.
  * В payload не попадает [ChannelConfig] — он содержит секреты провайдеров.
  */
 class AuditChannelIntegrations(
@@ -22,7 +23,7 @@ class AuditChannelIntegrations(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
         delegate.add(id, name, config)
-        audit.logUpdate("channel_integration", id, auditPayload(name, config, enabled = true))
+        audit.logUpdate("channel_integration", id, """{"name":"$name","kind":"${config::class.simpleName}","enabled":true}""")
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -30,10 +31,15 @@ class AuditChannelIntegrations(
         id: ChannelIntegrationId,
         name: String,
         config: ChannelConfig,
-        enabled: Boolean,
     ) {
-        delegate.update(id, name, config, enabled)
-        audit.logUpdate("channel_integration", id, auditPayload(name, config, enabled))
+        delegate.update(id, name, config)
+        audit.logUpdate("channel_integration", id, """{"name":"$name","kind":"${config::class.simpleName}"}""")
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun setEnabled(id: ChannelIntegrationId, enabled: Boolean) {
+        delegate.setEnabled(id, enabled)
+        audit.logUpdate("channel_integration", id, """{"enabled":$enabled}""")
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -41,6 +47,4 @@ class AuditChannelIntegrations(
         delegate.remove(id)
         audit.logDelete("channel_integration", id, "")
     }
-
-    private fun auditPayload(name: String, config: ChannelConfig, enabled: Boolean): String = """{"name":"$name","kind":"${config::class.simpleName}","enabled":$enabled}"""
 }

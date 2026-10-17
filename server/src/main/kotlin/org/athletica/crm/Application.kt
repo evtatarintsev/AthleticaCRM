@@ -236,7 +236,7 @@ fun Application.configureServer() {
                         context(di.minio) {
                             uploadRoutes()
                         }
-                        auditRoutes(di.audit)
+                        auditRoutes(di.views)
                         notificationsRoutes(di.notifications)
                         displaySettingsRoutes(di.userDisplaySettings)
                         context(di.minio) {

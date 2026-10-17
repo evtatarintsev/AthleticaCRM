@@ -3,12 +3,10 @@ package org.athletica.crm.domain.attendance
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
-import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Transaction
 import org.junit.Before
@@ -135,10 +133,4 @@ private class AuditLogStub : AuditLog {
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }
-
-    context(ctx: RequestContext, tr: Transaction)
-    override suspend fun list(filter: AuditFilter): List<AuditEvent> = events
-
-    context(ctx: RequestContext, tr: Transaction)
-    override suspend fun count(filter: AuditFilter): Long = events.size.toLong()
 }

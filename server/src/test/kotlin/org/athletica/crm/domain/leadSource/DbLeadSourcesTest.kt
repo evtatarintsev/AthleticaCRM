@@ -4,10 +4,8 @@ import arrow.core.getOrElse
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.domain.audit.AuditEvent
-import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.storage.Transaction
@@ -108,10 +106,4 @@ private class AuditLogStub : AuditLog {
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }
-
-    context(ctx: RequestContext, tr: Transaction)
-    override suspend fun list(filter: AuditFilter): List<AuditEvent> = events
-
-    context(ctx: RequestContext, tr: Transaction)
-    override suspend fun count(filter: AuditFilter): Long = events.size.toLong()
 }

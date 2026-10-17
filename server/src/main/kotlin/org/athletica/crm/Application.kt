@@ -111,6 +111,9 @@ fun Application.module() {
             di.membershipScheduler.run()
         }
         launch {
+            di.overdueJournalScheduler.run()
+        }
+        launch {
             syncSchedulesDaily(di)
         }
         launch {
@@ -214,7 +217,7 @@ fun Application.configureServer() {
                         groupsRoutes(di.groups, di.employees, di.groupSchedule, di.scheduleSync, di.notifications, di.views)
                         sessionsRoutes(di.groups, di.sessions, di.employees)
                         attendanceRoutes(di.attendanceLabels, di.sessionJournals, di.sessions, di.views)
-                        orgRoutes(di.organizations)
+                        orgRoutes(di.organizations, di.attendanceControls)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
                         homeRoutes(di.views)

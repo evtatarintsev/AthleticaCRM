@@ -26,7 +26,7 @@ export const MIN_WIDGET_LIMIT = 1;
 export const MAX_WIDGET_LIMIT = 50;
 
 /** Типы виджетов главной в порядке, в котором `default()` создаёт их в KMP-клиенте. */
-const WIDGET_TYPES = ["sessions", "debtors", "birthdays"] as const;
+const WIDGET_TYPES = ["sessions", "debtors", "birthdays", "unclosedSessions"] as const;
 
 /** Новый идентификатор виджета. */
 function newWidgetId(): DashboardWidgetId {
@@ -46,6 +46,13 @@ function defaultWidgetOf(type: DashboardWidget["type"]): DashboardWidget {
         id: newWidgetId(),
         title: null,
         window: "TODAY",
+        limit: DEFAULT_WIDGET_LIMIT,
+      };
+    case "unclosedSessions":
+      return {
+        type: "unclosedSessions",
+        id: newWidgetId(),
+        title: null,
         limit: DEFAULT_WIDGET_LIMIT,
       };
   }
@@ -101,6 +108,8 @@ export function defaultTitleKey(type: DashboardWidget["type"]): PlainMessageKey 
       return "home.debtorsTitle";
     case "birthdays":
       return "home.birthdaysTitle";
+    case "unclosedSessions":
+      return "home.unclosedSessionsTitle";
   }
 }
 

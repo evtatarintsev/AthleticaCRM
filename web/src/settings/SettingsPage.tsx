@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+  AlarmClockIcon,
   BookOpenIcon,
   Building2Icon,
   ChevronRightIcon,
@@ -30,6 +31,7 @@ import { ProfileSheet } from "@/account/ProfileSheet";
 import { SwitchBranchSheet } from "@/account/SwitchBranchSheet";
 import type { StaticAppPath } from "@/app/router";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import { AttendanceControlSheet } from "./attendanceControl/AttendanceControlSheet";
 import { ClientImportSheet } from "./import/ClientImportSheet";
 import { CustomFieldsSheet } from "./customFields/CustomFieldsSheet";
 import { branches, disciplines, halls, leadSources } from "./directories";
@@ -194,6 +196,12 @@ const SETTINGS: readonly SettingSection[] = [
         target: none,
       },
       {
+        title: "settings.itemAttendanceControl",
+        subtitle: "settings.itemAttendanceControlSubtitle",
+        icon: AlarmClockIcon,
+        target: panel("attendance-control"),
+      },
+      {
         title: "settings.itemSubscriptionTemplates",
         subtitle: "settings.itemSubscriptionTemplatesSubtitle",
         icon: TicketIcon,
@@ -247,6 +255,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   "client-additional-attributes": CustomFieldsSheet,
   "client-import": ClientImportSheet,
   tariffs: TariffsSheet,
+  "attendance-control": AttendanceControlSheet,
 };
 
 /**

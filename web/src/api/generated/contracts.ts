@@ -127,6 +127,14 @@ export const AttachTaskUploadRequestSchema = z
   .readonly();
 export type AttachTaskUploadRequest = z.output<typeof AttachTaskUploadRequestSchema>;
 
+export const AttendanceControlSettingsResponseSchema = z
+  .object({
+    overdueTaskEnabled: z.boolean(),
+    overdueTaskDelayMinutes: z.int32(),
+  })
+  .readonly();
+export type AttendanceControlSettingsResponse = z.output<typeof AttendanceControlSettingsResponseSchema>;
+
 export const AttendanceLabelIdSchema = z.uuid().brand<"AttendanceLabelId">();
 export type AttendanceLabelId = z.output<typeof AttendanceLabelIdSchema>;
 
@@ -1415,7 +1423,17 @@ export const DashboardWidgetSessionsSchema = z
   .readonly();
 export type DashboardWidgetSessions = z.output<typeof DashboardWidgetSessionsSchema>;
 
-export const DashboardWidgetSchema = z.discriminatedUnion("type", [DashboardWidgetBirthdaysSchema, DashboardWidgetDebtorsSchema, DashboardWidgetSessionsSchema]);
+export const DashboardWidgetUnclosedSessionsSchema = z
+  .object({
+    type: z.literal("unclosedSessions"),
+    id: DashboardWidgetIdSchema,
+    title: z.string().nullable(),
+    limit: z.int32(),
+  })
+  .readonly();
+export type DashboardWidgetUnclosedSessions = z.output<typeof DashboardWidgetUnclosedSessionsSchema>;
+
+export const DashboardWidgetSchema = z.discriminatedUnion("type", [DashboardWidgetBirthdaysSchema, DashboardWidgetDebtorsSchema, DashboardWidgetSessionsSchema, DashboardWidgetUnclosedSessionsSchema]);
 export type DashboardWidget = z.output<typeof DashboardWidgetSchema>;
 
 export const DashboardSettingsSchema = z
@@ -1456,7 +1474,17 @@ export const DashboardWidgetSessionsInputSchema = z
   .readonly();
 export type DashboardWidgetSessionsInput = z.output<typeof DashboardWidgetSessionsInputSchema>;
 
-export const DashboardWidgetInputSchema = z.discriminatedUnion("type", [DashboardWidgetBirthdaysInputSchema, DashboardWidgetDebtorsInputSchema, DashboardWidgetSessionsInputSchema]);
+export const DashboardWidgetUnclosedSessionsInputSchema = z
+  .object({
+    type: z.literal("unclosedSessions"),
+    id: DashboardWidgetIdSchema,
+    title: z.string().nullable().optional(),
+    limit: z.int32().optional(),
+  })
+  .readonly();
+export type DashboardWidgetUnclosedSessionsInput = z.output<typeof DashboardWidgetUnclosedSessionsInputSchema>;
+
+export const DashboardWidgetInputSchema = z.discriminatedUnion("type", [DashboardWidgetBirthdaysInputSchema, DashboardWidgetDebtorsInputSchema, DashboardWidgetSessionsInputSchema, DashboardWidgetUnclosedSessionsInputSchema]);
 export type DashboardWidgetInput = z.output<typeof DashboardWidgetInputSchema>;
 
 export const DashboardSettingsInputSchema = z
@@ -2906,6 +2934,33 @@ export const UnassignTaskRequestSchema = z
   .readonly();
 export type UnassignTaskRequest = z.output<typeof UnassignTaskRequestSchema>;
 
+export const UnclosedSessionItemSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    groupName: z.string(),
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    endTime: LocalTimeSchema,
+    hallName: z.string(),
+  })
+  .readonly();
+export type UnclosedSessionItem = z.output<typeof UnclosedSessionItemSchema>;
+
+export const UnclosedSessionsRequestSchema = z
+  .object({
+    limit: z.int32().optional(),
+  })
+  .readonly();
+export type UnclosedSessionsRequest = z.output<typeof UnclosedSessionsRequestSchema>;
+
+export const UnclosedSessionsResponseSchema = z
+  .object({
+    sessions: z.array(UnclosedSessionItemSchema).readonly(),
+    total: z.int32(),
+  })
+  .readonly();
+export type UnclosedSessionsResponse = z.output<typeof UnclosedSessionsResponseSchema>;
+
 export const UnpaidSessionSchemaSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -2930,6 +2985,14 @@ export const UnpaidSessionsResponseSchema = z
   })
   .readonly();
 export type UnpaidSessionsResponse = z.output<typeof UnpaidSessionsResponseSchema>;
+
+export const UpdateAttendanceControlSettingsRequestSchema = z
+  .object({
+    overdueTaskEnabled: z.boolean(),
+    overdueTaskDelayMinutes: z.int32(),
+  })
+  .readonly();
+export type UpdateAttendanceControlSettingsRequest = z.output<typeof UpdateAttendanceControlSettingsRequestSchema>;
 
 export const UpdateAttendanceLabelRequestSchema = z
   .object({
@@ -3595,6 +3658,13 @@ export const endpoints = {
     out: "json",
     response: TodaySessionsResponseSchema,
   },
+  "home/unclosed-sessions": {
+    method: "GET",
+    in: "query",
+    request: UnclosedSessionsRequestSchema,
+    out: "json",
+    response: UnclosedSessionsResponseSchema,
+  },
   "lead-sources/create": {
     method: "POST",
     in: "body",
@@ -3755,6 +3825,20 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: OrgBalanceDetailResponseSchema,
+  },
+  "org/attendance-control": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: AttendanceControlSettingsResponseSchema,
+  },
+  "org/attendance-control/update": {
+    method: "POST",
+    in: "body",
+    request: UpdateAttendanceControlSettingsRequestSchema,
+    out: "json",
+    response: AttendanceControlSettingsResponseSchema,
   },
   "org/settings": {
     method: "GET",

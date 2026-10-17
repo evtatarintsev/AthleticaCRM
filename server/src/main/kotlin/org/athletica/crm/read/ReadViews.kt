@@ -23,7 +23,9 @@ import org.athletica.crm.read.groups.GroupDetailView
 import org.athletica.crm.read.groups.GroupListView
 import org.athletica.crm.read.groups.GroupSessionsView
 import org.athletica.crm.read.home.DbTodayScheduleView
+import org.athletica.crm.read.home.DbUnclosedSessionsView
 import org.athletica.crm.read.home.TodayScheduleView
+import org.athletica.crm.read.home.UnclosedSessionsView
 import org.athletica.crm.read.memberships.DbMembershipHistoryView
 import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.read.memberships.MembershipHistoryView
@@ -69,6 +71,8 @@ data class ReadViews(
     val taskDetail: TaskDetailView = DbTaskDetailView(),
     /** Расписание занятий на день для главной страницы. */
     val todaySchedule: TodayScheduleView = DbTodayScheduleView(),
+    /** Прошедшие занятия с незакрытым журналом для главной страницы. */
+    val unclosedSessions: UnclosedSessionsView = DbUnclosedSessionsView(),
     /** Занятия текущего филиала за период для страницы «Расписание». */
     val schedule: ScheduleView = DbScheduleView(),
     /** Карточка занятия с журналом посещаемости. */

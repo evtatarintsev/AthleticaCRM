@@ -184,7 +184,7 @@ describe("индивидуальные настройки виджетов гл�
           .dashboard.layout.map(
             (id) => fake.display().dashboard.widgets.find((widget) => widget.id === id)?.type,
           ),
-      ).toEqual(["debtors", "sessions", "birthdays"]);
+      ).toEqual(["debtors", "sessions", "birthdays", "unclosedSessions"]);
     });
 
     await user.click(within(dialog).getByRole("checkbox", { name: "Показывать Должники" }));
@@ -195,7 +195,7 @@ describe("индивидуальные настройки виджетов гл�
           .dashboard.layout.map(
             (id) => fake.display().dashboard.widgets.find((widget) => widget.id === id)?.type,
           ),
-      ).toEqual(["sessions", "birthdays"]);
+      ).toEqual(["sessions", "birthdays", "unclosedSessions"]);
     });
     await user.click(within(dialog).getByRole("checkbox", { name: "Показывать Должники" }));
     await waitFor(() => {
@@ -205,7 +205,7 @@ describe("индивидуальные настройки виджетов гл�
           .dashboard.layout.map(
             (id) => fake.display().dashboard.widgets.find((widget) => widget.id === id)?.type,
           ),
-      ).toEqual(["sessions", "birthdays", "debtors"]);
+      ).toEqual(["sessions", "birthdays", "unclosedSessions", "debtors"]);
     });
 
     await user.keyboard("{Escape}");
@@ -216,6 +216,7 @@ describe("индивидуальные настройки виджетов гл�
       "Главная",
       "Занятия сегодня",
       "Дни рождения",
+      "Незакрытые журналы",
       "Должники",
     ]);
   });

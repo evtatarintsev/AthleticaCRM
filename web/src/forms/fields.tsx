@@ -153,16 +153,21 @@ export interface SelectOption<T extends string> {
   readonly disabled?: boolean;
 }
 
-/** Выпадающий список на нативном `<select>`; значение поля — одно из [options]. */
+/**
+ * Выпадающий список на нативном `<select>`; значение поля — одно из [options].
+ * [disabled] делает список недоступным для выбора.
+ */
 export function SelectField<T extends string>({
   field,
   label,
   hint,
   options,
   autoComplete,
+  disabled,
 }: FieldProps<T> & {
   options: readonly SelectOption<T>[];
   autoComplete?: string;
+  disabled?: boolean;
 }) {
   return (
     <FieldFrame
@@ -175,6 +180,7 @@ export function SelectField<T extends string>({
           name={field.name}
           value={field.state.value}
           autoComplete={autoComplete}
+          disabled={disabled}
           onChange={(event) => {
             const option = options.find((o) => o.value === event.target.value);
             if (option !== undefined) {

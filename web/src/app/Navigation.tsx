@@ -2,13 +2,23 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { isStaticAppPath } from "./router";
-import { sectionOf, sections, type Section } from "./sections";
+import { sectionOf, sections, type Section, type SectionId } from "./sections";
+
+/** Больше этого числа бейдж раздела показывает «99+». */
+const BADGE_LIMIT = 99;
 
 /**
  * Основная навигация по разделам; каждый пункт открывается ссылкой роутера.
  * [onNavigate] вызывается после выбора пункта, чтобы закрыть выезжающее меню.
+ * [badges] — числа у пунктов разделов (например, непрочитанное во «Входящих»); ноль не показывается.
  */
-export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
+export function Navigation({
+  onNavigate,
+  badges = {},
+}: {
+  onNavigate?: () => void;
+  badges?: Partial<Record<SectionId, number>>;
+}) {
   const { t } = useI18n();
   const current = sectionOf(useLocation({ select: (location) => location.pathname }));
   return (
@@ -19,6 +29,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
             <SectionLink
               section={section}
               current={section.id === current}
+              badge={badges[section.id] ?? 0}
               {...(onNavigate === undefined ? {} : { onNavigate })}
             />
           </li>
@@ -28,14 +39,16 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Пункт навигации раздела [section]; [current] — раздел открыт сейчас. */
+/** Пункт навигации раздела [section]; [current] — раздел открыт сейчас, [badge] — число у пункта. */
 function SectionLink({
   section,
   current,
+  badge,
   onNavigate,
 }: {
   section: Section;
   current: boolean;
+  badge: number;
   onNavigate?: () => void;
 }) {
   const { t } = useI18n();
@@ -47,7 +60,15 @@ function SectionLink({
   const content = (
     <>
       <Icon aria-hidden className="size-4 shrink-0" />
-      <span className="truncate">{t(section.label)}</span>
+      <span className="min-w-0 flex-1 truncate">{t(section.label)}</span>
+      {badge > 0 && (
+        <span
+          aria-label={t("inbox.navBadge", { count: badge })}
+          className="shrink-0 rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground"
+        >
+          {badge > BADGE_LIMIT ? `${String(BADGE_LIMIT)}+` : badge}
+        </span>
+      )}
     </>
   );
   if (!isStaticAppPath(section.path)) {

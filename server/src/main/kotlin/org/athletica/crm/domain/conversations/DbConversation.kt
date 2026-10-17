@@ -27,7 +27,13 @@ class DbConversation(
 ) : Conversation {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun touch() {
-        tr.sql("UPDATE conversations SET last_message_at = now() WHERE id = :id AND org_id = :orgId")
+        tr.sql(
+            """
+            UPDATE conversations
+            SET last_message_at = (SELECT max(created_at) FROM messages WHERE conversation_id = :id)
+            WHERE id = :id AND org_id = :orgId
+            """.trimIndent(),
+        )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .execute()

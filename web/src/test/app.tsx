@@ -117,6 +117,7 @@ export function appServer(handlers: Readonly<Record<string, FakeHandler>>) {
     "auth/me": () => json(session()),
     "auth/my-branches": () => json({ branches: [center] }),
     notifications: () => json({ notifications: [], unreadCount: 0 }),
+    "messaging/inbox/counter": () => json({ count: 0 }),
     ...handlers,
   });
 }

@@ -13,18 +13,7 @@ import org.athletica.crm.storage.asUuid
 class DbConversations : Conversations {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun forClient(clientId: ClientId): Conversation {
-        val existing =
-            tr.sql(
-                "SELECT id, client_id FROM conversations WHERE client_id = :clientId AND org_id = :orgId",
-            )
-                .bind("clientId", clientId)
-                .bind("orgId", ctx.orgId)
-                .firstOrNull { row ->
-                    DbConversation(
-                        id = row.asUuid("id").toConversationId(),
-                    )
-                }
-
+        val existing = byClient(clientId)
         if (existing != null) {
             return existing
         }
@@ -42,13 +31,17 @@ class DbConversations : Conversations {
             .bind("clientId", clientId)
             .execute()
 
-        return tr.sql("SELECT id, client_id FROM conversations WHERE client_id = :clientId AND org_id = :orgId")
+        return byClient(clientId)!!
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun byClient(clientId: ClientId): Conversation? =
+        tr.sql("SELECT id FROM conversations WHERE client_id = :clientId AND org_id = :orgId")
             .bind("clientId", clientId)
             .bind("orgId", ctx.orgId)
             .firstOrNull { row ->
                 DbConversation(
                     id = row.asUuid("id").toConversationId(),
                 )
-            }!!
-    }
+            }
 }

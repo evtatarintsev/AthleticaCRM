@@ -19,7 +19,8 @@ class DbConversationReadStates : ConversationReadStates {
             """
             INSERT INTO conversation_read_state (conversation_id, org_id, last_read_at)
             VALUES (:conversationId, :orgId, :at)
-            ON CONFLICT (conversation_id) DO UPDATE SET last_read_at = excluded.last_read_at
+            ON CONFLICT (conversation_id) DO UPDATE
+            SET last_read_at = GREATEST(conversation_read_state.last_read_at, excluded.last_read_at)
             """.trimIndent(),
         )
             .bind("conversationId", conversationId)

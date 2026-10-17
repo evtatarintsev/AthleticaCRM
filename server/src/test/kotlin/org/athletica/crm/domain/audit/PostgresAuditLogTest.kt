@@ -11,6 +11,8 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
+import org.athletica.crm.read.audit.ActivityLogQuery
+import org.athletica.crm.read.audit.DbActivityLogView
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -29,6 +31,7 @@ class PostgresAuditLogTest {
     private val userId = UserId.new()
     private val employeeId = EmployeeId.new()
     private val auditLog = PostgresAuditLog()
+    private val activityLog = DbActivityLogView()
     private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = userId, branchId = BranchId.new(), employeeId = employeeId, username = "user@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
 
     @Before
@@ -259,7 +262,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
             assertTrue(result.isEmpty())
@@ -287,7 +290,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
 
@@ -305,6 +308,96 @@ class PostgresAuditLogTest {
         }
 
     @Test
+    fun `list разрешает название субъекта только в своей организации`() =
+        runTest {
+            val entityId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", entityId)
+                .bind("orgId", orgId)
+                .bind("name", "Анна Петрова")
+                .execute()
+            val uploadId = Uuid.generateV7()
+            val documentId = Uuid.generateV7()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                    VALUES (:id, :orgId, :userId, 'audit-doc', 'passport.pdf', 'application/pdf', 1)
+                    """.trimIndent(),
+                )
+                .bind("id", uploadId)
+                .bind("orgId", orgId)
+                .bind("userId", userId)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO client_docs (id, client_id, org_id, upload_id, name) VALUES (:id, :clientId, :orgId, :uploadId, :name)")
+                .bind("id", documentId)
+                .bind("clientId", entityId)
+                .bind("orgId", orgId)
+                .bind("uploadId", uploadId)
+                .bind("name", "Паспорт")
+                .execute()
+            TestPostgres.db.transaction {
+                auditLog.log(
+                    AuditEvent(
+                        orgId = orgId,
+                        userId = userId,
+                        username = "user@example.com",
+                        actionType = AuditActionType.UPDATE,
+                        entityType = "client",
+                        entityId = entityId,
+                    ),
+                )
+                auditLog.log(
+                    AuditEvent(
+                        orgId = orgId,
+                        userId = userId,
+                        username = "user@example.com",
+                        actionType = AuditActionType.CREATE,
+                        entityType = "client_doc",
+                        entityId = documentId,
+                    ),
+                )
+            }
+
+            val events =
+                TestPostgres.db.transaction {
+                    context(ctx) { activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u)) }
+                }
+
+            assertEquals("Анна Петрова", events.first { it.entityType == "client" }.subjectTitle)
+            val document = events.first { it.entityType == "client_doc" }
+            assertEquals("Паспорт", document.subjectTitle)
+            assertEquals(entityId, document.subjectTargetId)
+        }
+
+    @Test
+    fun `users возвращает уникальных авторов только текущей организации`() =
+        runTest {
+            val otherOrgId = OrgId.new()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", otherOrgId)
+                .bind("name", "Other Org")
+                .execute()
+            TestPostgres.db.transaction {
+                auditLog.log(AuditEvent(orgId, userId, "old-name", AuditActionType.CREATE))
+                auditLog.log(AuditEvent(orgId, userId, "latest-name", AuditActionType.UPDATE))
+                auditLog.log(AuditEvent(otherOrgId, userId, "other-org-name", AuditActionType.DELETE))
+            }
+
+            val users =
+                TestPostgres.db.transaction {
+                    context(ctx) { activityLog.users() }
+                }
+
+            assertEquals(1, users.size)
+            assertEquals(userId, users.single().id)
+            assertEquals("latest-name", users.single().username)
+        }
+
+    @Test
     fun `list фильтрует по actionType`() =
         runTest {
             TestPostgres.db.transaction {
@@ -316,7 +409,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u, actionType = AuditActionType.CREATE))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.CREATE))
                     }
                 }
 
@@ -343,7 +436,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u, userId = userId))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, userId = userId))
                     }
                 }
 
@@ -363,7 +456,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u, entityType = "client"))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, entityType = "client"))
                     }
                 }
 
@@ -383,13 +476,13 @@ class PostgresAuditLogTest {
             val page1 =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 2u, offset = 0u))
+                        activityLog.list(ActivityLogQuery(limit = 2u, offset = 0u))
                     }
                 }
             val page2 =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 2u, offset = 2u))
+                        activityLog.list(ActivityLogQuery(limit = 2u, offset = 2u))
                     }
                 }
 
@@ -410,7 +503,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
 
@@ -437,7 +530,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
 
@@ -462,7 +555,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u, from = "2024-03-01T00:00:00Z"))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, from = "2024-03-01T00:00:00Z"))
                     }
                 }
 
@@ -486,7 +579,7 @@ class PostgresAuditLogTest {
             val events =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.list(AuditFilter(limit = 10u, offset = 0u, to = "2024-03-01T00:00:00Z"))
+                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, to = "2024-03-01T00:00:00Z"))
                     }
                 }
 
@@ -501,7 +594,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.count(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
             assertEquals(0L, result)
@@ -519,7 +612,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.count(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
 
@@ -537,7 +630,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.count(AuditFilter(limit = 10u, offset = 0u, actionType = AuditActionType.DELETE))
+                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.DELETE))
                     }
                 }
 
@@ -563,7 +656,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.count(AuditFilter(limit = 10u, offset = 0u, userId = userId))
+                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, userId = userId))
                     }
                 }
 
@@ -581,7 +674,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.count(AuditFilter(limit = 10u, offset = 0u, entityType = "client"))
+                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, entityType = "client"))
                     }
                 }
 
@@ -606,7 +699,7 @@ class PostgresAuditLogTest {
             val result =
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        auditLog.count(AuditFilter(limit = 10u, offset = 0u))
+                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
                     }
                 }
 
@@ -621,14 +714,14 @@ class PostgresAuditLogTest {
                 repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE)) }
             }
 
-            val filter = AuditFilter(limit = 10u, offset = 0u, actionType = AuditActionType.UPDATE)
+            val filter = ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.UPDATE)
             val count =
                 TestPostgres.db.transaction {
-                    context(ctx) { auditLog.count(filter) }
+                    context(ctx) { activityLog.count(filter) }
                 }
             val list =
                 TestPostgres.db.transaction {
-                    context(ctx) { auditLog.list(filter) }
+                    context(ctx) { activityLog.list(filter) }
                 }
 
             assertEquals(count, list.size.toLong())

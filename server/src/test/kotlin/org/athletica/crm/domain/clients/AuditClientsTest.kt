@@ -7,7 +7,6 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientDocId
@@ -21,7 +20,6 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
-import org.athletica.crm.domain.audit.AuditFilter
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -44,12 +42,6 @@ private class AuditLogStub : AuditLog {
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }
-
-    context(ctx: RequestContext, tr: Transaction)
-    override suspend fun list(filter: AuditFilter): List<AuditEvent> = events
-
-    context(ctx: RequestContext, tr: Transaction)
-    override suspend fun count(filter: AuditFilter): Long = events.size.toLong()
 }
 
 private data class ClientStub(

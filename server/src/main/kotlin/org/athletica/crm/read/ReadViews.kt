@@ -6,6 +6,8 @@ import org.athletica.crm.read.attendance.DbGroupAttendanceView
 import org.athletica.crm.read.attendance.DbSessionJournalView
 import org.athletica.crm.read.attendance.GroupAttendanceView
 import org.athletica.crm.read.attendance.SessionJournalView
+import org.athletica.crm.read.audit.ActivityLogView
+import org.athletica.crm.read.audit.DbActivityLogView
 import org.athletica.crm.read.channels.ChannelListView
 import org.athletica.crm.read.channels.DbChannelListView
 import org.athletica.crm.read.clients.ClientBalanceHistoryView
@@ -95,4 +97,6 @@ data class ReadViews(
     val membershipHistory: MembershipHistoryView = DbMembershipHistoryView(),
     /** Каналы, через которые можно написать клиенту, для страницы переписки. */
     val clientChannels: ClientChannelsView = DbClientChannelsView(),
+    /** Журнал действий с названиями субъектов для страницы настроек. */
+    val activityLog: ActivityLogView = DbActivityLogView(),
 )

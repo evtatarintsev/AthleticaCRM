@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.domain.audit.AuditActionType
 
 interface LocalizationKey {
     val ru: String
@@ -83,6 +84,92 @@ interface PluralKey {
 }
 
 object Messages {
+    /** Короткое название типа действия для описания события журнала. */
+    fun auditAction(action: AuditActionType, lang: Lang): String =
+        when (lang) {
+            Lang.RU ->
+                when (action) {
+                    AuditActionType.CREATE -> "создание"
+                    AuditActionType.UPDATE -> "изменение"
+                    AuditActionType.DELETE -> "удаление"
+                    AuditActionType.AUTH_LOGIN -> "вход в систему"
+                    AuditActionType.AUTH_LOGOUT -> "выход из системы"
+                    AuditActionType.AUTH_SIGNUP -> "регистрация"
+                    AuditActionType.MESSAGE_SEND -> "отправка сообщения"
+                    AuditActionType.EXPORT -> "экспорт данных"
+                    AuditActionType.IMPORT -> "импорт данных"
+                    AuditActionType.AUTH_CHANGE_PASSWORD -> "смена пароля"
+                    AuditActionType.BALANCE_ADJUST -> "корректировка баланса"
+                }
+            Lang.EN ->
+                when (action) {
+                    AuditActionType.CREATE -> "created"
+                    AuditActionType.UPDATE -> "updated"
+                    AuditActionType.DELETE -> "deleted"
+                    AuditActionType.AUTH_LOGIN -> "signed in"
+                    AuditActionType.AUTH_LOGOUT -> "signed out"
+                    AuditActionType.AUTH_SIGNUP -> "signed up"
+                    AuditActionType.MESSAGE_SEND -> "sent a message"
+                    AuditActionType.EXPORT -> "exported data"
+                    AuditActionType.IMPORT -> "imported data"
+                    AuditActionType.AUTH_CHANGE_PASSWORD -> "changed password"
+                    AuditActionType.BALANCE_ADJUST -> "adjusted balance for"
+                }
+        }
+
+    /** Название типа субъекта в подходящей форме для строки журнала. */
+    fun auditEntity(entityType: String?, lang: Lang): String =
+        when (lang) {
+            Lang.RU ->
+                when (entityType) {
+                    "client" -> "клиента"
+                    "client_doc" -> "документ клиента"
+                    "group" -> "группы"
+                    "employee" -> "сотрудника"
+                    "session" -> "занятия"
+                    "branch" -> "филиала"
+                    "hall" -> "зала"
+                    "discipline" -> "дисциплины"
+                    "lead_source" -> "источника лида"
+                    "subscription_tariff" -> "тарифа"
+                    "channel_integration" -> "канала связи"
+                    "enrollment" -> "участия клиента в группе"
+                    "membership" -> "абонемента"
+                    "upload" -> "файла"
+                    else -> "объекта"
+                }
+            Lang.EN ->
+                when (entityType) {
+                    "client" -> "client"
+                    "client_doc" -> "client document"
+                    "group" -> "group"
+                    "employee" -> "employee"
+                    "session" -> "session"
+                    "branch" -> "branch"
+                    "hall" -> "hall"
+                    "discipline" -> "discipline"
+                    "lead_source" -> "lead source"
+                    "subscription_tariff" -> "subscription tariff"
+                    "channel_integration" -> "channel integration"
+                    "enrollment" -> "client enrollment"
+                    "membership" -> "membership"
+                    "upload" -> "file"
+                    else -> "object"
+                }
+        }
+
+    /** Краткое описание действия в журнале с именем автора и деталей события. */
+    object AuditLogEntry : LocalizationTemplate2<String, String> {
+        override val ru = { username: String, details: String -> "$username: $details" }
+        override val en = { username: String, details: String -> "$username: $details" }
+    }
+
+    /** Отображаемое имя субъекта, который уже нельзя разрешить из текущего состояния данных. */
+    object AuditSubjectUnavailable : LocalizationKey {
+        override val ru = "Объект больше недоступен"
+        override val en = "Object is no longer available"
+    }
+
     object MissingParameterId : LocalizationKey {
         override val ru = "Параметр id обязателен"
         override val en = "Parameter id is required"

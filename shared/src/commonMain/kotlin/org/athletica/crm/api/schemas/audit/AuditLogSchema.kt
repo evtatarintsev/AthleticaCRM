@@ -23,11 +23,37 @@ data class AuditLogItem(
     val userId: Uuid?,
     val username: String,
     val actionType: String,
+    val description: String,
     val entityType: String?,
     val entityId: Uuid?,
+    val subject: AuditLogSubject?,
     val data: String?,
     val ipAddress: String?,
     val createdAt: String,
+)
+
+/** Цель записи аудита для отображения и перехода в web-клиенте. */
+@Serializable
+data class AuditLogSubject(
+    val type: String,
+    val id: Uuid,
+    val title: String,
+    val isAvailable: Boolean,
+    /** Идентификатор связанной цели для маршрутов, отличных от самой сущности. */
+    val targetId: Uuid? = null,
+)
+
+/** Участник, встречающийся в журнале текущей организации. */
+@Serializable
+data class AuditLogUser(
+    val id: UserId,
+    val username: String,
+)
+
+/** Список авторов событий аудита текущей организации. */
+@Serializable
+data class AuditLogUsersResponse(
+    val items: List<AuditLogUser>,
 )
 
 /** Ответ на запрос лога аудита с пагинацией. */

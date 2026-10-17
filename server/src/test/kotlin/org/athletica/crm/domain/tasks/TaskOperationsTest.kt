@@ -1,8 +1,12 @@
 package org.athletica.crm.domain.tasks
 
+import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
@@ -224,6 +228,46 @@ class TaskOperationsTest {
 
             assertEquals(thirdEmployeeId, loaded1.assigneeId)
             assertEquals(thirdEmployeeId, loaded2.assigneeId)
+        }
+
+    @Test
+    fun `только один конкурентный запрос может взять неназначенную задачу`() =
+        runTest {
+            val id = TaskId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { tasks.new(id, "Системная задача", "", null, null, null) }
+                }
+            }.getOrElse { fail("Setup: $it") }
+
+            val loadedByBoth = CompletableDeferred<Unit>()
+            val readyCount = java.util.concurrent.atomic.AtomicInteger(0)
+            val attempts =
+                coroutineScope {
+                    listOf(ctx, otherCtx).map { claimant ->
+                        async {
+                            claimant to either {
+                                TestPostgres.db.transaction {
+                                    context(claimant) {
+                                        val staleTask = tasks.byId(id)
+                                        val claim = context(claimant) { staleTask.assignTo(employeeStub(claimant.employee.id)) }
+                                        if (readyCount.incrementAndGet() == 2) loadedByBoth.complete(Unit)
+                                        loadedByBoth.await()
+                                        claim.save()
+                                    }
+                                }
+                            }
+                        }
+                    }.map { it.await() }
+                }
+
+            assertEquals(1, attempts.count { it.second is Either.Right })
+            assertEquals(1, attempts.count { it.second is Either.Left })
+            val savedAssignee =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { tasks.byId(id).assigneeId } }
+                }.getOrElse { fail("Load: $it") }
+            assertEquals(attempts.single { it.second is Either.Right }.first.employee.id, savedAssignee)
         }
 
     @Test

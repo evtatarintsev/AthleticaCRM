@@ -34,6 +34,8 @@ internal data class DbTask(
     private val previousStatus: TaskStatus,
     /** Вложения на момент загрузки из БД; [save] пишет только разницу с ними. */
     private val persistedAttachments: List<UploadId>,
+    /** Сохранение этой копии захватывает неназначенную задачу. */
+    private val claimingUnassigned: Boolean = false,
 ) : Task {
     context(tr: Transaction, raise: Raise<DomainError>)
     override suspend fun save() {
@@ -45,13 +47,14 @@ internal data class DbTask(
                 else -> completedAt
             }
 
-        tr.sql(
+        val update = tr.sql(
             """
             UPDATE tasks
             SET assignee_id = :assigneeId, client_id = :clientId, title = :title,
                 description = :description, status = :status, due_date = :dueDate,
                 due_date_end = :dueDateEnd, completed_at = :completedAt, updated_at = :updatedAt
             WHERE id = :id AND org_id = :orgId
+              AND (NOT :claimingUnassigned OR assignee_id IS NULL)
             """.trimIndent(),
         )
             .bind("assigneeId", assigneeId)
@@ -65,7 +68,12 @@ internal data class DbTask(
             .bind("updatedAt", now)
             .bind("id", id)
             .bind("orgId", orgId)
+            .bind("claimingUnassigned", claimingUnassigned)
             .execute()
+
+        if (claimingUnassigned && update != 1L) {
+            raise(CommonDomainError("TASK_ALREADY_ASSIGNED", "Задача $id уже назначена другому сотруднику"))
+        }
 
         val removed = persistedAttachments - attachments.toSet()
         if (removed.isNotEmpty()) {
@@ -113,7 +121,7 @@ internal data class DbTask(
         if (!takesForSelf) {
             requireEditable()
         }
-        return copy(assigneeId = employee.id)
+        return copy(assigneeId = employee.id, claimingUnassigned = takesForSelf)
     }
 
     context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)

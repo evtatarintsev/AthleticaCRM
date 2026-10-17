@@ -4,6 +4,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import org.athletica.crm.api.schemas.channels.ChannelConfigChange
+import org.athletica.crm.api.schemas.channels.ChannelSettingsSchema
+import org.athletica.crm.api.schemas.channels.NewChannelConfig
 import org.athletica.crm.api.schemas.messaging.InboundMessageSchema
 import org.athletica.crm.api.schemas.messaging.MessageSchema
 import org.athletica.crm.api.schemas.messaging.OutboundMessageSchema
@@ -44,6 +47,21 @@ val appSerializersModule =
             subclass(ChannelConfig.TwilioSms::class, ChannelConfig.TwilioSms.serializer())
             subclass(ChannelConfig.SmscSms::class, ChannelConfig.SmscSms.serializer())
             subclass(ChannelConfig.TelegramBot::class, ChannelConfig.TelegramBot.serializer())
+        }
+        polymorphic(ChannelSettingsSchema::class) {
+            subclass(ChannelSettingsSchema.TwilioSms::class, ChannelSettingsSchema.TwilioSms.serializer())
+            subclass(ChannelSettingsSchema.SmscSms::class, ChannelSettingsSchema.SmscSms.serializer())
+            subclass(ChannelSettingsSchema.TelegramBot::class, ChannelSettingsSchema.TelegramBot.serializer())
+        }
+        polymorphic(NewChannelConfig::class) {
+            subclass(NewChannelConfig.TwilioSms::class, NewChannelConfig.TwilioSms.serializer())
+            subclass(NewChannelConfig.SmscSms::class, NewChannelConfig.SmscSms.serializer())
+            subclass(NewChannelConfig.TelegramBot::class, NewChannelConfig.TelegramBot.serializer())
+        }
+        polymorphic(ChannelConfigChange::class) {
+            subclass(ChannelConfigChange.TwilioSms::class, ChannelConfigChange.TwilioSms.serializer())
+            subclass(ChannelConfigChange.SmscSms::class, ChannelConfigChange.SmscSms.serializer())
+            subclass(ChannelConfigChange.TelegramBot::class, ChannelConfigChange.TelegramBot.serializer())
         }
     }
 

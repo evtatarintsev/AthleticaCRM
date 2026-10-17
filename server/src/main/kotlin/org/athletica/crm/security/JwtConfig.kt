@@ -7,6 +7,9 @@ import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
 import java.util.Date
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Конфигурация и фабрика JWT токенов.
@@ -16,8 +19,12 @@ import java.util.Date
  */
 class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays: Long) {
     private val algorithm = Algorithm.HMAC256(secret)
-    private val accessTokenTtlMs = accessTokenTtlMinutes * 60 * 1000
-    private val refreshTokenTtlMs = refreshTokenTtlDays * 24 * 60 * 60 * 1000
+
+    /** Время жизни access токена; столько же живёт cookie с ним. */
+    val accessTokenTtl: Duration = accessTokenTtlMinutes.minutes
+
+    /** Время жизни refresh токена; столько же живёт cookie с ним. */
+    val refreshTokenTtl: Duration = refreshTokenTtlDays.days
 
     /** Верификатор для проверки подписи и claims входящих токенов. */
     val verifier: JWTVerifier =
@@ -42,7 +49,7 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .withClaim(CLAIM_EMPLOYEE_ID, user.employeeId.toString())
             .withClaim(CLAIM_USERNAME, user.username)
             .withClaim(CLAIM_TYPE, TYPE_ACCESS)
-            .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtlMs))
+            .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtl.inWholeMilliseconds))
             .sign(algorithm)
 
     /**
@@ -56,7 +63,7 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .withClaim(CLAIM_USER_ID, userId.toString())
             .withClaim(CLAIM_BRANCH_ID, branchId.toString())
             .withClaim(CLAIM_TYPE, TYPE_REFRESH)
-            .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtlMs))
+            .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtl.inWholeMilliseconds))
             .sign(algorithm)
 
     companion object {

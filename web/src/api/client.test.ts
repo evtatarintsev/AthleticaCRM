@@ -150,6 +150,30 @@ describe("createApiClient", () => {
     expect(options.onSessionExpired).toHaveBeenCalledOnce();
   });
 
+  it("сбой сети при обновлении сессии не разлогинивает", async () => {
+    const { api, options } = client((url) =>
+      url === "/api/auth/refresh-token"
+        ? Promise.reject(new TypeError("Failed to fetch"))
+        : Promise.resolve(json("expired", 401)),
+    );
+
+    const result = await api.call("halls/list");
+
+    expect(result).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(options.onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it("5xx при обновлении сессии не разлогинивает", async () => {
+    const { api, options } = client((url) =>
+      Promise.resolve(url === "/api/auth/refresh-token" ? json({}, 502) : json("expired", 401)),
+    );
+
+    const result = await api.call("halls/list");
+
+    expect(result).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(options.onSessionExpired).not.toHaveBeenCalled();
+  });
+
   it("401 на входе не обновляет сессию", async () => {
     const { api, options } = client(() => Promise.resolve(json({}, 401)));
 

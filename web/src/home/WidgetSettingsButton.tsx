@@ -127,6 +127,7 @@ export function WidgetSettingsControls({
     case "sessions":
       return null;
     case "debtors":
+    case "unclosedSessions":
       return (
         <LimitStepper
           limit={widget.limit}
@@ -165,6 +166,8 @@ function mergeWidgetSettings(current: DashboardWidget, updated: DashboardWidget)
       return current;
     case "debtors":
       return updated.type === "debtors" ? { ...current, limit: updated.limit } : current;
+    case "unclosedSessions":
+      return updated.type === "unclosedSessions" ? { ...current, limit: updated.limit } : current;
     case "birthdays":
       return updated.type === "birthdays"
         ? { ...current, window: updated.window, limit: updated.limit }

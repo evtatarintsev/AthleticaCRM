@@ -13,9 +13,11 @@ import { orderedVisible, resolveTitle, withDashboardDefaults } from "./dashboard
 import { DashboardSettingsDialog } from "./DashboardSettingsDialog";
 import { DebtorsWidgetCard } from "./DebtorsWidgetCard";
 import { SessionsWidgetCard } from "./SessionsWidgetCard";
+import { UnclosedSessionsWidgetCard } from "./UnclosedSessionsWidgetCard";
 
 /**
- * Главная веб-клиента: настраиваемые виджеты (занятия сегодня, должники, дни рождения),
+ * Главная веб-клиента: настраиваемые виджеты (занятия сегодня, должники, дни рождения,
+ * незакрытые журналы),
  * паритет с `HomeScreen` KMP-клиента. На широком экране виджеты стоят в ряд, на узком —
  * друг под другом. Настройки открываются шестерёнкой в заголовке.
  */
@@ -89,6 +91,17 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
                     settings={dashboard}
                     widget={widget}
                     today={today}
+                    title={title}
+                  />
+                );
+              case "unclosedSessions":
+                return (
+                  <UnclosedSessionsWidgetCard
+                    key={widget.id}
+                    api={api}
+                    branchId={branchId}
+                    settings={dashboard}
+                    widget={widget}
                     title={title}
                   />
                 );

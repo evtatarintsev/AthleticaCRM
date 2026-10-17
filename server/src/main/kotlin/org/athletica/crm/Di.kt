@@ -15,6 +15,8 @@ import org.athletica.crm.domain.attendance.DbParticipations
 import org.athletica.crm.domain.attendance.DbSessionJournals
 import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.attendance.SessionJournals
+import org.athletica.crm.domain.attendancecontrol.AttendanceControls
+import org.athletica.crm.domain.attendancecontrol.DbAttendanceControls
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
@@ -115,6 +117,7 @@ import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.memberships.DebitReconciliation
 import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.crm.usecases.messaging.InboundStores
+import org.athletica.crm.usecases.sessions.OverdueJournalScheduler
 import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
 import org.athletica.infra.messaging.ProviderChannelConfigVerifier
@@ -186,6 +189,8 @@ data class Di(
         DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
     val membershipScheduler: MembershipScheduler =
         MembershipScheduler(database, memberships, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
+    val attendanceControls: AttendanceControls = DbAttendanceControls()
+    val overdueJournalScheduler: OverdueJournalScheduler = OverdueJournalScheduler(database, tasks)
     val channelBindings: ChannelBindings = DbChannelBindings()
     val inboundReceipts: InboundReceipts = DbInboundReceipts()
     val channelTransports: ChannelTransports = ProviderChannelTransports(telegramApi)

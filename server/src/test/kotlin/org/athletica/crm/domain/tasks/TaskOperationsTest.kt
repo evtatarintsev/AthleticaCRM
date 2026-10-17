@@ -246,17 +246,18 @@ class TaskOperationsTest {
                 coroutineScope {
                     listOf(ctx, otherCtx).map { claimant ->
                         async {
-                            claimant to either {
-                                TestPostgres.db.transaction {
-                                    context(claimant) {
-                                        val staleTask = tasks.byId(id)
-                                        val claim = context(claimant) { staleTask.assignTo(employeeStub(claimant.employee.id)) }
-                                        if (readyCount.incrementAndGet() == 2) loadedByBoth.complete(Unit)
-                                        loadedByBoth.await()
-                                        claim.save()
+                            claimant to
+                                either {
+                                    TestPostgres.db.transaction {
+                                        context(claimant) {
+                                            val staleTask = tasks.byId(id)
+                                            val claim = context(claimant) { staleTask.assignTo(employeeStub(claimant.employee.id)) }
+                                            if (readyCount.incrementAndGet() == 2) loadedByBoth.complete(Unit)
+                                            loadedByBoth.await()
+                                            claim.save()
+                                        }
                                     }
                                 }
-                            }
                         }
                     }.map { it.await() }
                 }

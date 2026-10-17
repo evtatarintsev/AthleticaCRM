@@ -15,6 +15,7 @@ export const SettingsPanelSchema = z.enum([
   "client-additional-attributes",
   "client-import",
   "tariffs",
+  "attendance-control",
 ]);
 
 /** Панель страницы настроек. */

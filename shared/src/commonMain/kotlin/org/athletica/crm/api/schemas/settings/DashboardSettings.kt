@@ -58,6 +58,19 @@ sealed interface DashboardWidget {
             const val DEFAULT_LIMIT = 10
         }
     }
+
+    /** «Незакрытые журналы»: прошедшие занятия с незакрытым журналом; [limit] — максимум строк. */
+    @Serializable
+    @SerialName("unclosedSessions")
+    data class UnclosedSessions(
+        override val id: DashboardWidgetId,
+        override val title: String? = null,
+        val limit: Int = DEFAULT_LIMIT,
+    ) : DashboardWidget {
+        companion object {
+            const val DEFAULT_LIMIT = 10
+        }
+    }
 }
 
 /** Окно отбора именинников относительно текущей даты. */
@@ -108,6 +121,7 @@ data class DashboardSettings(
                     DashboardWidget.Sessions(DashboardWidgetId.new()),
                     DashboardWidget.Debtors(DashboardWidgetId.new()),
                     DashboardWidget.Birthdays(DashboardWidgetId.new()),
+                    DashboardWidget.UnclosedSessions(DashboardWidgetId.new()),
                 )
             return DashboardSettings(widgets = widgets, layout = widgets.map { it.id })
         }

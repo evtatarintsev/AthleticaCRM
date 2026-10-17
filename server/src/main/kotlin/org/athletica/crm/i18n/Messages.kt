@@ -635,4 +635,18 @@ object Messages {
             "Membership “$membership” was activated automatically. Unpaid sessions in its groups: $count. Repay the debt from the membership or contact the client."
         }
     }
+
+    object OverdueJournalTaskTitle : LocalizationTemplate1<String> {
+        override val ru = { group: String -> "Закрыть журнал: $group" }
+        override val en = { group: String -> "Close the journal: $group" }
+    }
+
+    object OverdueJournalTaskDescription : LocalizationTemplate2<String, String> {
+        override val ru = { group: String, time: String ->
+            "Занятие группы «$group» $time прошло, но журнал посещаемости не закрыт. Отметьте посещаемость и проведите занятие."
+        }
+        override val en = { group: String, time: String ->
+            "The “$group” session on $time is over, but its attendance journal is not closed. Mark attendance and complete the session."
+        }
+    }
 }

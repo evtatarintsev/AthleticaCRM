@@ -123,6 +123,11 @@ object Messages {
         override val en = "Chat not found"
     }
 
+    object InvalidTimestamp : LocalizationKey {
+        override val ru = "Неверный формат момента времени"
+        override val en = "Invalid timestamp format"
+    }
+
     object ChatAlreadyLinked : LocalizationKey {
         override val ru = "Чат уже привязан к клиенту"
         override val en = "This chat is already linked to a client"

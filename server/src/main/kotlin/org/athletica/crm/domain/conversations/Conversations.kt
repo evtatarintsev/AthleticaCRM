@@ -14,4 +14,8 @@ interface Conversations {
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun forClient(clientId: ClientId): Conversation
+
+    /** Возвращает диалог клиента [clientId], не создавая его; `null`, если диалога ещё нет. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun byClient(clientId: ClientId): Conversation?
 }

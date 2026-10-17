@@ -39,6 +39,8 @@ import org.athletica.crm.domain.clientnotes.DbClientNotes
 import org.athletica.crm.domain.clients.AuditClients
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.conversations.ConversationReadStates
+import org.athletica.crm.domain.conversations.DbConversationReadStates
 import org.athletica.crm.domain.conversations.DbConversations
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
@@ -191,6 +193,7 @@ data class Di(
     val channelIntegrations: ChannelIntegrations =
         AuditChannelIntegrations(DbChannelIntegrations(channelTransports, clientContacts, channelBindings), audit)
     val conversations = DbConversations()
+    val conversationReadStates: ConversationReadStates = DbConversationReadStates()
     val channelChats: ChannelChats = DbChannelChats()
     val inboundStores = InboundStores(channelBindings, inboundReceipts, conversations, channelChats, clientContacts)
     val deliveries = DbDeliveries()

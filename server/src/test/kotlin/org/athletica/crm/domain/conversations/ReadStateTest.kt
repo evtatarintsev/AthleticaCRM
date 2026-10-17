@@ -18,8 +18,10 @@ import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.fail
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 /** Тесты read horizon диалога ([ConversationReadStates]). */
 class ReadStateTest {
@@ -87,5 +89,42 @@ class ReadStateTest {
             assertEquals(1L, before)
             assertEquals(0L, afterRead)
             assertEquals(1L, afterNew)
+        }
+
+    @Test
+    fun `markRead с более ранним моментом не сдвигает указатель назад`() =
+        runTest {
+            val result =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            val conversation = conversations.forClient(clientId)
+                            val now = Clock.System.now()
+                            conversation.appendInbound(integrationId, "Первое", now - 2.minutes)
+                            readStates.markRead(conversation.id, now)
+                            readStates.markRead(conversation.id, now - 5.minutes)
+                            readStates.unreadCount(conversation.id)
+                        }
+                    }
+                }
+            assertEquals(0L, (result as? Either.Right)?.value ?: fail("Ошибка: $result"))
+        }
+
+    @Test
+    fun `byClient не создаёт диалог и возвращает null для клиента без диалога`() =
+        runTest {
+            val result =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            val missing = conversations.byClient(clientId)
+                            val created = conversations.forClient(clientId)
+                            Pair(missing, conversations.byClient(clientId)?.id == created.id)
+                        }
+                    }
+                }
+            val (missing, found) = (result as? Either.Right)?.value ?: fail("Ошибка: $result")
+            assertNull(missing)
+            assertEquals(true, found)
         }
 }

@@ -18,7 +18,7 @@ data class ConversationReadState(
 
 /** Репозиторий read horizon диалогов. Изолирован по организации. */
 interface ConversationReadStates {
-    /** Сдвигает указатель прочитанного диалога [conversationId] на момент [at]. */
+    /** Сдвигает указатель прочитанного диалога [conversationId] на момент [at]; назад указатель не сдвигается. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun markRead(conversationId: ConversationId, at: Instant)
 

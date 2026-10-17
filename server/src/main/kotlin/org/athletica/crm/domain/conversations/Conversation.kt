@@ -24,7 +24,7 @@ interface Conversation {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String, receivedAt: Instant): InboundMessage
 
-    /** Обновляет момент последнего сообщения диалога на «сейчас». */
+    /** Обновляет момент последнего сообщения диалога по самому позднему из его сообщений. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun touch()
 

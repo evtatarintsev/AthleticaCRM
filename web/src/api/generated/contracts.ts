@@ -1957,6 +1957,68 @@ export type HallListResponse = z.output<typeof HallListResponseSchema>;
 export const InboundReceiptIdSchema = z.uuid().brand<"InboundReceiptId">();
 export type InboundReceiptId = z.output<typeof InboundReceiptIdSchema>;
 
+export const InboxCounterResponseSchema = z
+  .object({
+    count: z.int32(),
+  })
+  .readonly();
+export type InboxCounterResponse = z.output<typeof InboxCounterResponseSchema>;
+
+export const InboxFilterSchemaSchema = z.enum(["ALL", "UNREAD", "UNRESOLVED"]);
+export type InboxFilterSchema = z.output<typeof InboxFilterSchemaSchema>;
+
+export const InboxMessageDirectionSchemaSchema = z.enum(["INBOUND", "OUTBOUND"]);
+export type InboxMessageDirectionSchema = z.output<typeof InboxMessageDirectionSchemaSchema>;
+
+export const InboxItemSchemaClientSchema = z
+  .object({
+    type: z.literal("client"),
+    clientId: ClientIdSchema,
+    clientName: z.string(),
+    lastMessageBody: z.string(),
+    lastMessageAt: z.string(),
+    lastMessageDirection: InboxMessageDirectionSchemaSchema,
+    unreadCount: z.int32(),
+  })
+  .readonly();
+export type InboxItemSchemaClient = z.output<typeof InboxItemSchemaClientSchema>;
+
+export const InboxItemSchemaUnresolvedSchema = z
+  .object({
+    type: z.literal("unresolved"),
+    integrationId: ChannelIntegrationIdSchema,
+    channelName: z.string(),
+    address: z.string(),
+    displayName: z.string(),
+    username: z.string().nullable(),
+    phone: z.string().nullable(),
+    unresolvedCount: z.int32(),
+    lastMessageBody: z.string(),
+    lastMessageAt: z.string(),
+  })
+  .readonly();
+export type InboxItemSchemaUnresolved = z.output<typeof InboxItemSchemaUnresolvedSchema>;
+
+export const InboxItemSchemaSchema = z.discriminatedUnion("type", [InboxItemSchemaClientSchema, InboxItemSchemaUnresolvedSchema]);
+export type InboxItemSchema = z.output<typeof InboxItemSchemaSchema>;
+
+export const InboxListRequestSchema = z
+  .object({
+    filter: InboxFilterSchemaSchema.optional(),
+    limit: z.int32().optional(),
+    offset: z.int32().optional(),
+  })
+  .readonly();
+export type InboxListRequest = z.output<typeof InboxListRequestSchema>;
+
+export const InboxListResponseSchema = z
+  .object({
+    items: z.array(InboxItemSchemaSchema).readonly(),
+    total: z.int32(),
+  })
+  .readonly();
+export type InboxListResponse = z.output<typeof InboxListResponseSchema>;
+
 export const InitiatePaymentRequestSchema = z
   .object({
     amount: z.int(),
@@ -2048,6 +2110,14 @@ export const MarkAttendanceRequestSchema = z
   })
   .readonly();
 export type MarkAttendanceRequest = z.output<typeof MarkAttendanceRequestSchema>;
+
+export const MarkConversationReadRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    upTo: z.string(),
+  })
+  .readonly();
+export type MarkConversationReadRequest = z.output<typeof MarkConversationReadRequestSchema>;
 
 export const MarkNotificationsReadRequestSchema = z
   .object({
@@ -2828,28 +2898,6 @@ export const TriageChatRequestSchema = z
   })
   .readonly();
 export type TriageChatRequest = z.output<typeof TriageChatRequestSchema>;
-
-export const TriageChatSchemaSchema = z
-  .object({
-    integrationId: ChannelIntegrationIdSchema,
-    channelName: z.string(),
-    address: z.string(),
-    displayName: z.string(),
-    username: z.string().nullable(),
-    phone: z.string().nullable(),
-    unresolvedCount: z.int32(),
-    lastMessageBody: z.string(),
-    lastMessageAt: z.string(),
-  })
-  .readonly();
-export type TriageChatSchema = z.output<typeof TriageChatSchemaSchema>;
-
-export const TriageListResponseSchema = z
-  .object({
-    chats: z.array(TriageChatSchemaSchema).readonly(),
-  })
-  .readonly();
-export type TriageListResponse = z.output<typeof TriageListResponseSchema>;
 
 export const UnassignTaskRequestSchema = z
   .object({
@@ -3638,6 +3686,27 @@ export const endpoints = {
     out: "json",
     response: ConversationResponseSchema,
   },
+  "messaging/conversation/read": {
+    method: "POST",
+    in: "body",
+    request: MarkConversationReadRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "messaging/inbox/counter": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: InboxCounterResponseSchema,
+  },
+  "messaging/inbox/list": {
+    method: "GET",
+    in: "query",
+    request: InboxListRequestSchema,
+    out: "json",
+    response: InboxListResponseSchema,
+  },
   "messaging/send": {
     method: "POST",
     in: "body",
@@ -3658,13 +3727,6 @@ export const endpoints = {
     request: TriageChatRequestSchema,
     out: "json",
     response: TriageChatMessagesResponseSchema,
-  },
-  "messaging/triage/list": {
-    method: "GET",
-    in: "none",
-    request: z.undefined(),
-    out: "json",
-    response: TriageListResponseSchema,
   },
   "notifications": {
     method: "GET",

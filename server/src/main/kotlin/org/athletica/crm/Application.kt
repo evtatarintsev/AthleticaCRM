@@ -202,6 +202,8 @@ fun Application.configureServer() {
                         messagingRoutes(
                             di.channelIntegrations,
                             di.conversations,
+                            di.conversationReadStates,
+                            di.clients,
                             di.deliveries,
                             di.inboundStores,
                             di.views,

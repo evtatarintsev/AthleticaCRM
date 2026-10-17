@@ -6,6 +6,7 @@ import type { ApiClient } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useI18n } from "@/i18n/context";
+import { useInboxCounter } from "@/messaging/inboxQueries";
 import { sessionQuery } from "@/query/queries";
 import { Logo } from "@/ui/AuthLayout";
 import { AccountMenu } from "./AccountMenu";
@@ -20,11 +21,12 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
   const { t } = useI18n();
   const { data: me } = useSuspenseQuery(sessionQuery(api));
   const [menuOpen, setMenuOpen] = useState(false);
+  const badges = { inbox: useInboxCounter(api, me.currentBranch.id) };
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-card px-3 py-4 lg:flex">
         <Brand name={me.orgInfo.name} />
-        <Navigation />
+        <Navigation badges={badges} />
       </aside>
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur lg:px-8">
@@ -45,6 +47,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
                 <Brand name={me.orgInfo.name} />
               </div>
               <Navigation
+                badges={badges}
                 onNavigate={() => {
                   setMenuOpen(false);
                 }}

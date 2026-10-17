@@ -50,6 +50,7 @@ import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
 import { HomePage } from "@/home/HomePage";
 import { InboxPage } from "@/messaging/InboxPage";
+import { InboxSearchSchema, type InboxSearch } from "@/messaging/inboxSearch";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
 import { SessionErrorPage } from "./SessionErrorPage";
@@ -248,13 +249,24 @@ const customFieldsRoute = createRoute({
   beforeLoad: settingsPanelRedirect("client-additional-attributes"),
 });
 
-/** «Входящие»: неразобранные чаты связанных каналов. */
+/** «Входящие»: беседы клиентов и неразобранные чаты связанных каналов. */
 const inboxRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/inbox",
+  validateSearch: InboxSearchSchema,
   component: function InboxRoute() {
     const { api } = inboxRoute.useRouteContext();
-    return <InboxPage api={api} />;
+    const search = inboxRoute.useSearch();
+    const navigate = inboxRoute.useNavigate();
+    return (
+      <InboxPage
+        api={api}
+        search={search}
+        onSearchChange={(next: InboxSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
   },
 });
 

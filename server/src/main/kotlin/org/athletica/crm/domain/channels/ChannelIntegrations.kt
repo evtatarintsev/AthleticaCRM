@@ -24,14 +24,30 @@ interface ChannelIntegrations {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig)
 
-    /** Обновляет интеграцию [id]; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации. */
+    /**
+     * Сохранённые настройки провайдера интеграции [id] вместе с секретами — для слияния с частичным
+     * изменением; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun config(id: ChannelIntegrationId): ChannelConfig
+
+    /**
+     * Меняет имя и настройки провайдера интеграции [id], не трогая включённость;
+     * `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun update(
         id: ChannelIntegrationId,
         name: String,
         config: ChannelConfig,
-        enabled: Boolean,
     )
+
+    /**
+     * Включает или выключает интеграцию [id] без проверки настроек у провайдера;
+     * `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun setEnabled(id: ChannelIntegrationId, enabled: Boolean)
 
     /**
      * Удаляет интеграцию [id]. `CHANNEL_IN_USE`, если через неё уже шли сообщения (исходящие доставки

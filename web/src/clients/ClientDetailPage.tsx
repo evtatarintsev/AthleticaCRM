@@ -11,6 +11,7 @@ import type {
 } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
+import { ConversationSheet } from "@/messaging/ConversationSheet";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
@@ -48,7 +49,7 @@ import { ClientCardProfile } from "./card/ClientCardProfile";
  * справа — лента блоков (занятия, абонементы, группы, посещения, задачи, сообщения,
  * заметки, документы) в порядке шаблона карточки. «Выдать абонемент» открывает панель выдачи;
  * плитка баланса открывает панель «Баланс», если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`.
- * Создание и карточка задачи клиента открываются панелями поверх карточки.
+ * Создание и карточка задачи клиента, а также «Чат» с клиентом открываются панелями поверх карточки.
  */
 export function ClientDetailPage({
   api,
@@ -68,6 +69,7 @@ export function ClientDetailPage({
   const [issueOpen, setIssueOpen] = useState(false);
   const [taskCreateOpen, setTaskCreateOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<TaskId | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
@@ -169,6 +171,9 @@ export function ClientDetailPage({
         onIssueSubscription={() => {
           setIssueOpen(true);
         }}
+        onOpenChat={() => {
+          setChatOpen(true);
+        }}
       />
 
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
@@ -195,6 +200,9 @@ export function ClientDetailPage({
                 setTaskCreateOpen(true);
               }}
               onTaskOpen={setOpenTaskId}
+              onChatOpen={() => {
+                setChatOpen(true);
+              }}
             />
           ))}
         </div>
@@ -225,6 +233,8 @@ export function ClientDetailPage({
         }}
       />
 
+      <ConversationSheet api={api} clientId={clientId} open={chatOpen} onOpenChange={setChatOpen} />
+
       <IssueSubscriptionSheet
         api={api}
         branchId={branchId}
@@ -249,8 +259,8 @@ export function ClientDetailPage({
 }
 
 /**
- * Блок ленты по его типу. [onTaskCreate] и [onTaskOpen] открывают панели задач
- * поверх карточки.
+ * Блок ленты по его типу. [onTaskCreate] и [onTaskOpen] открывают панели задач,
+ * [onChatOpen] — панель «Чат» поверх карточки.
  */
 function FeedBlock({
   block,
@@ -262,6 +272,7 @@ function FeedBlock({
   onMembershipOpen,
   onTaskCreate,
   onTaskOpen,
+  onChatOpen,
 }: {
   readonly block: ClientCardBlock;
   readonly api: ApiClient;
@@ -272,6 +283,7 @@ function FeedBlock({
   readonly onMembershipOpen: (id: MembershipId) => void;
   readonly onTaskCreate: () => void;
   readonly onTaskOpen: (taskId: TaskId) => void;
+  readonly onChatOpen: () => void;
 }) {
   const clientId = client.id;
   switch (block.type) {
@@ -336,7 +348,14 @@ function FeedBlock({
         />
       );
     case "messages":
-      return <ClientMessagesSection api={api} branchId={branchId} clientId={clientId} />;
+      return (
+        <ClientMessagesSection
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          onOpen={onChatOpen}
+        />
+      );
     case "notes":
       return (
         <ClientNotesSection

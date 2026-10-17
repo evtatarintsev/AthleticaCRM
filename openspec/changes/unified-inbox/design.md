@@ -13,15 +13,14 @@
   `ConversationReadStates` с `markRead/unreadCount` — реализованы, но ни один маршрут их не вызывает.
 - Очередь разбора — `read/messaging/DbInboundTriageView` (группировка `inbound_receipts`
   в состоянии `UNRESOLVED` по `(integration_id, from_address)`), `/messaging/triage/*`.
-- Web: `InboxPage` (только очередь + привязка), `ConversationPage` (лента + отправка по
-  `/clients/$clientId/messages`), `NotificationBell` уже опрашивает сервер через `refetchInterval`.
+- Web: `InboxPage` (только очередь + привязка), панель чата карточки `ConversationSheet` (лента + отправка, поверх карточки клиента), `NotificationBell` уже опрашивает сервер через `refetchInterval`.
 - У клиентов нет привязки к филиалу: клиентская база общая на организацию.
 
 ## Goals / Non-Goals
 
 **Goals:**
 - Один запрос на список «Входящих» со всеми полями строки, фильтром и пагинацией.
-- Переиспользовать ленту и ввод ответа между `ConversationPage` и «Входящими», а не копировать.
+- Переиспользовать ленту и ввод ответа между панелью чата карточки и «Входящими», а не копировать.
 - Включить уже спроектированную прочитанность (`conversation_read_state`), не меняя её модель.
 
 **Non-Goals:**
@@ -111,10 +110,11 @@ TanStack Query `refetchInterval`: список «Входящих» и откр�
 
 ### 6. Web: общий компонент беседы
 
-Из `ConversationPage` выделяется `ConversationThread({ api, clientId })` — лента,
-`ChannelPicker`, `AddressPicker`, ввод и отправка, отметка прочтения. `ConversationPage`
-становится обёрткой со своим заголовком; «Входящие» рендерят тот же компонент в правой панели
-плюс шапку со ссылкой на карточку.
+Из панели чата карточки выделяется `ConversationThread({ api, clientId, onGuardChange })` — лента,
+`ChannelPicker`, `AddressPicker`, ввод и отправка, отметка прочтения. `ConversationSheet`
+становится обёрткой: передаёт черновик в `EditSheet` через `onGuardChange`, чтобы закрытие
+с неотправленным текстом спрашивало подтверждение. «Входящие» рендерят тот же компонент
+в правой панели плюс шапку со ссылкой на карточку.
 
 Выбранная запись хранится в search-параметрах `/inbox` (`?client=<id>` или
 `?chat=<integrationId>:<address>`, `filter=`), декодируется zod — ссылка на беседу

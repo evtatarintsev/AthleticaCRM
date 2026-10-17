@@ -12,11 +12,14 @@ import {
   DeleteClientNoteRequestSchema,
   EditClientNoteRequestSchema,
   InstantSchema,
+  MessageSchemaSchema,
   ScheduleListRequestSchema,
+  SendMessageRequestSchema,
   TaskDetailResponseSchema,
   type ClientDetailResponse,
   type ClientNoteSchema,
   type CustomFieldDefinition,
+  type MessageSchema,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
 import { addDays, todayLocalDate } from "@/lib/localDate";
@@ -479,5 +482,137 @@ describe("задачи в карточке клиента", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(screen.getByRole("heading", { name: alice.name })).toBeVisible();
+  });
+});
+
+/** Telegram-канал клиента, доступный для отправки на его телефон. */
+const telegram = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000a01",
+  name: "Бот школы",
+  provider: "telegram_bot",
+  available: true,
+  contacts: [alice.contacts[0]],
+};
+
+/** Входящее сообщение от клиента. */
+const greeting = MessageSchemaSchema.parse({
+  type: "inbound",
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000b01",
+  body: "Добрый день, можно перенести занятие?",
+  createdAt: "2026-01-01T10:00:00Z",
+  receivedVia: telegram.id,
+});
+
+/** Сервер карточки клиента с перепиской в памяти; отправка добавляет исходящее сообщение. */
+function chatServer() {
+  let messages: readonly MessageSchema[] = [greeting];
+  return detailServer(alice, [], passport, {
+    "messaging/conversation": () => json({ clientId: alice.id, messages }),
+    "messaging/channels": () => json({ channels: [telegram] }),
+    "messaging/send": ({ body }) => {
+      const request = SendMessageRequestSchema.parse(body);
+      messages = [
+        ...messages,
+        MessageSchemaSchema.parse({
+          type: "outbound",
+          id: "0199a0b2-7c3e-7d2a-9f10-000000000b02",
+          body: request.body,
+          createdAt: "2026-01-01T10:05:00Z",
+          authorEmployeeId: null,
+          deliveries: [{ channelIntegrationId: telegram.id, state: "SENT", errorMessage: null }],
+        }),
+      ];
+      return json({ clientId: alice.id, messages });
+    },
+    "memberships/list": () => json({ memberships: [] }),
+  });
+}
+
+/** Панель «Чат». */
+const chatSheet = async () =>
+  within(await screen.findByRole("dialog", { name: ru["messaging.title"] }));
+
+/** Блок «Сообщения» карточки клиента. */
+const messagesBlock = async () =>
+  within(
+    (await screen.findByRole("heading", { name: ru["clientCard.block.messages"] })).closest(
+      "section",
+    ) ?? document.body,
+  );
+
+describe("чат в карточке клиента", () => {
+  it("открывает чат из шапки и отправляет сообщение, не уходя со страницы", async () => {
+    const api = chatServer();
+    const { history } = openApp(`/clients/${alice.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["messaging.open"] }));
+
+    const sheet = await chatSheet();
+    expect(await sheet.findByText(greeting.body)).toBeVisible();
+    const input = sheet.getByLabelText(ru["messaging.placeholder"]);
+    await waitFor(() => {
+      expect(input).toHaveFocus();
+    });
+    expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+    expect(history.location.search).toBe("");
+
+    await user.type(input, "Да, конечно{Enter}");
+
+    expect(await sheet.findByText("Да, конечно")).toBeVisible();
+    expect(input).toHaveValue("");
+    const request = SendMessageRequestSchema.parse(api.to("messaging/send").at(-1)?.body);
+    expect(request).toMatchObject({ clientId: alice.id, channelIntegrationId: telegram.id });
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect((await messagesBlock()).getByText("Да, конечно")).toBeVisible();
+    expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+  });
+
+  it("открывает чат из блока «Сообщения»", async () => {
+    openApp(`/clients/${alice.id}`, chatServer().fetch);
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", { name: ru["clientCard.openConversation"] }),
+    );
+
+    expect(await (await chatSheet()).findByText(greeting.body)).toBeVisible();
+  });
+
+  it("спрашивает подтверждение при закрытии с неотправленным текстом", async () => {
+    openApp(`/clients/${alice.id}`, chatServer().fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["messaging.open"] }));
+    const sheet = await chatSheet();
+    await user.type(await sheet.findByLabelText(ru["messaging.placeholder"]), "Черновик");
+    await user.keyboard("{Escape}");
+
+    const confirm = within(
+      await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] }),
+    );
+    await user.click(confirm.getByRole("button", { name: ru["editSheet.discardConfirm"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["messaging.title"] })).toBeNull();
+    });
+  });
+
+  it("закрывает чат без черновика без подтверждения", async () => {
+    openApp(`/clients/${alice.id}`, chatServer().fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["messaging.open"] }));
+    await (await chatSheet()).findByText(greeting.body);
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: ru["messaging.title"] })).toBeNull();
+    });
+    expect(screen.queryByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeNull();
   });
 });

@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
+import type { EditSheetGuard } from "@/ui/editSheetContext";
 import { INBOX_REFRESH_MS, invalidateInbox } from "./inboxQueries";
 
 /** Канал, выбранный по умолчанию, пока пользователь не выбрал свой: первый доступный. */
@@ -72,14 +73,17 @@ function useMarkRead(api: ApiClient, clientId: ClientId, lastShownAt: string | u
  * Переписка с клиентом [clientId]: лента сообщений по всем каналам, выбор канала и
  * адреса-получателя, отправка. Доступность каналов и адреса считает сервер
  * (`messaging/channels`). Лента перечитывается периодически; показанные сообщения
- * отмечаются прочитанными. Растягивается на высоту родителя.
+ * отмечаются прочитанными. Состояние черновика сообщается через [onGuardChange] —
+ * панель по нему спрашивает подтверждение закрытия. Растягивается на высоту родителя.
  */
 export function ConversationThread({
   api,
   clientId,
+  onGuardChange,
 }: {
   readonly api: ApiClient;
   readonly clientId: ClientId;
+  readonly onGuardChange?: (guard: EditSheetGuard) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -96,6 +100,28 @@ export function ConversationThread({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const ready = conversation.data !== undefined && channelsResult.data !== undefined;
+  const messageCount = conversation.data?.messages.length ?? 0;
+
+  useEffect(() => {
+    onGuardChange?.({ dirty: draft.trim() !== "", submitting: sending });
+  }, [onGuardChange, draft, sending]);
+
+  useEffect(() => {
+    if (ready) {
+      inputRef.current?.focus();
+    }
+  }, [ready]);
+
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (feed !== null) {
+      feed.scrollTop = feed.scrollHeight;
+    }
+  }, [ready, messageCount]);
 
   const selectedChannel =
     (selectedChannelId === null
@@ -129,88 +155,92 @@ export function ConversationThread({
   };
 
   const failed = conversation.isError || channelsResult.isError;
+  if (failed) {
+    return (
+      <div className="p-4">
+        <FormAlert message={t("messaging.loadError")} />
+      </div>
+    );
+  }
+  if (!ready) {
+    return (
+      <div className="space-y-2 p-4">
+        <Skeleton className="h-16 w-2/3" />
+        <Skeleton className="ml-auto h-16 w-2/3" />
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {failed && <FormAlert message={t("messaging.loadError")} />}
-      {!failed && (conversation.isPending || channelsResult.isPending) && (
-        <div className="space-y-2">
-          <Skeleton className="h-16 w-2/3" />
-          <Skeleton className="ml-auto h-16 w-2/3" />
-        </div>
-      )}
-      {!failed && conversation.data !== undefined && (
-        <>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-2">
-            {conversation.data.messages.length === 0 ? (
-              <p className="py-12 text-center text-muted-foreground">
-                {t("messaging.emptyThread")}
-              </p>
-            ) : (
-              conversation.data.messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))
+      <div ref={feedRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+        {conversation.data.messages.length === 0 ? (
+          <p className="py-12 text-center text-muted-foreground">{t("messaging.emptyThread")}</p>
+        ) : (
+          conversation.data.messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))
+        )}
+      </div>
+      <div className="space-y-2 border-t p-4">
+        {channels.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("messaging.addressNone")}</p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <ChannelPicker
+              channels={channels}
+              selected={selectedChannel}
+              onSelect={(channel) => {
+                setSelectedChannelId(channel.id);
+                setSelectedContactId(channel.contacts[0]?.id ?? null);
+                setSendError(null);
+              }}
+            />
+            {selectedChannel !== null && !available && (
+              <span className="text-sm text-destructive">{t("messaging.addressNone")}</span>
             )}
-          </div>
-          <div className="space-y-2 border-t pt-3">
-            {channels.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("messaging.addressNone")}</p>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <ChannelPicker
-                  channels={channels}
-                  selected={selectedChannel}
-                  onSelect={(channel) => {
-                    setSelectedChannelId(channel.id);
-                    setSelectedContactId(channel.contacts[0]?.id ?? null);
-                    setSendError(null);
-                  }}
-                />
-                {selectedChannel !== null && !available && (
-                  <span className="text-sm text-destructive">{t("messaging.addressNone")}</span>
-                )}
-                {selectedChannel !== null && available && options.length > 1 && (
-                  <AddressPicker
-                    options={options}
-                    selectedId={effectiveContactId}
-                    onSelect={(contact) => {
-                      setSelectedContactId(contact.id);
-                      setSendError(null);
-                    }}
-                  />
-                )}
-              </div>
-            )}
-            {sendError !== null && <p className="text-sm text-destructive">{sendError}</p>}
-            <div className="flex items-center gap-2">
-              <Input
-                value={draft}
-                placeholder={t("messaging.placeholder")}
-                onChange={(event) => {
-                  setDraft(event.target.value);
+            {selectedChannel !== null && available && options.length > 1 && (
+              <AddressPicker
+                options={options}
+                selectedId={effectiveContactId}
+                onSelect={(contact) => {
+                  setSelectedContactId(contact.id);
                   setSendError(null);
                 }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && canSend) {
-                    void send();
-                  }
-                }}
-                className="flex-1"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={t("messaging.send")}
-                disabled={!canSend}
-                onClick={() => {
-                  void send();
-                }}
-              >
-                <SendIcon aria-hidden />
-              </Button>
-            </div>
+            )}
           </div>
-        </>
-      )}
+        )}
+        {sendError !== null && <p className="text-sm text-destructive">{sendError}</p>}
+        <div className="flex items-center gap-2">
+          <Input
+            ref={inputRef}
+            value={draft}
+            placeholder={t("messaging.placeholder")}
+            aria-label={t("messaging.placeholder")}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setSendError(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && canSend) {
+                void send();
+              }
+            }}
+            className="flex-1"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("messaging.send")}
+            disabled={!canSend}
+            onClick={() => {
+              void send();
+            }}
+          >
+            <SendIcon aria-hidden />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

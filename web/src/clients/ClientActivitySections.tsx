@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon, ListChecksIcon, MessagesSquareIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
@@ -136,15 +135,17 @@ export function ClientTasksSection({
   );
 }
 
-/** Блок сообщений: последние сообщения переписки с клиентом и переход в переписку. */
+/** Блок сообщений: последние сообщения переписки с клиентом; [onOpen] открывает панель «Чат». */
 export function ClientMessagesSection({
   api,
   branchId,
   clientId,
+  onOpen,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
+  readonly onOpen: () => void;
 }) {
   const { t, format } = useI18n();
   const conversation = useQuery(apiQuery(api, branchId, "messaging/conversation", { clientId }));
@@ -158,11 +159,9 @@ export function ClientMessagesSection({
       title={t("clientCard.block.messages")}
       count={messages.length}
       footer={
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/clients/$clientId/messages" params={{ clientId }}>
-            {t("clientCard.openConversation")}
-            <ArrowRightIcon aria-hidden />
-          </Link>
+        <Button variant="ghost" size="sm" onClick={onOpen}>
+          {t("clientCard.openConversation")}
+          <ArrowRightIcon aria-hidden />
         </Button>
       }
     >

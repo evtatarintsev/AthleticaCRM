@@ -5,10 +5,13 @@ import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import {
   ChannelIntegrationIdSchema,
+  type ChannelIntegrationId,
   type ChannelIntegrationSchema,
+  type ChannelListResponse,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { uuidv7 } from "@/lib/uuid";
@@ -17,43 +20,77 @@ import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { PageHeader } from "@/ui/PageHeader";
-import { ChannelDialog, type ChannelTerms } from "./ChannelDialog";
+import type { ChannelSave } from "./ChannelForms";
+import { ChannelShareButton } from "./ChannelShareButton";
+import { ChannelSheet } from "./ChannelSheet";
 
-/** Что редактируется сейчас: ничего, новый канал или существующий. */
-type Editing =
-  | { readonly kind: "none" }
-  | { readonly kind: "create" }
-  | { readonly kind: "edit"; readonly channel: ChannelIntegrationSchema };
+/** Состояние панели канала: открыта ли она и какой канал в ней (`null` — новый). */
+interface SheetState {
+  readonly open: boolean;
+  readonly channel: ChannelIntegrationSchema | null;
+}
 
-/** Каналы связи (паритет с `ChannelsScreen` KMP-клиента): список, создание, изменение, удаление. */
+/**
+ * Каналы связи: список с переключателем включённости и кнопкой «Поделиться», создание и
+ * изменение в правой панели, удаление.
+ */
 export function ChannelsPage({ api }: { readonly api: ApiClient }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
   const channelsQuery = apiQuery(api, branchId, "channels/list");
   const channels = useQuery(channelsQuery);
-  const [editing, setEditing] = useState<Editing>({ kind: "none" });
+  const [sheet, setSheet] = useState<SheetState>({ open: false, channel: null });
   const [deleting, setDeleting] = useState<ChannelIntegrationSchema | null>(null);
+  const [toggling, setToggling] = useState<ReadonlySet<ChannelIntegrationId>>(new Set());
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: channelsQuery.queryKey });
 
-  const save = async (
-    terms: ChannelTerms,
-    channel: ChannelIntegrationSchema | null,
-  ): Promise<string | null> => {
+  const save = async (request: ChannelSave): Promise<string | null> => {
     const result =
-      channel === null
+      request.kind === "create"
         ? await api.call("channels/create", {
             id: ChannelIntegrationIdSchema.parse(uuidv7()),
-            name: terms.name,
-            config: terms.config,
+            name: request.name,
+            config: request.config,
           })
-        : await api.call("channels/update", { id: channel.id, ...terms });
+        : await api.call("channels/update", {
+            id: request.id,
+            name: request.name,
+            config: request.config,
+          });
     if (!result.ok) {
       return apiErrorMessage(t, result.error);
     }
     await refresh();
     return null;
+  };
+
+  const setEnabled = (id: ChannelIntegrationId, enabled: boolean) =>
+    queryClient.setQueryData<ChannelListResponse>(channelsQuery.queryKey, (data) =>
+      data === undefined
+        ? data
+        : {
+            channels: data.channels.map((channel) =>
+              channel.id === id ? { ...channel, enabled } : channel,
+            ),
+          },
+    );
+
+  const toggle = async (channel: ChannelIntegrationSchema, enabled: boolean): Promise<void> => {
+    setToggling((current) => new Set(current).add(channel.id));
+    setEnabled(channel.id, enabled);
+    const result = await api.call("channels/set-enabled", { id: channel.id, enabled });
+    if (!result.ok) {
+      setEnabled(channel.id, channel.enabled);
+      toast.error(apiErrorMessage(t, result.error));
+    }
+    setToggling((current) => {
+      const next = new Set(current);
+      next.delete(channel.id);
+      return next;
+    });
+    await refresh();
   };
 
   const remove = async (channel: ChannelIntegrationSchema): Promise<void> => {
@@ -72,7 +109,7 @@ export function ChannelsPage({ api }: { readonly api: ApiClient }) {
         actions={
           <Button
             onClick={() => {
-              setEditing({ kind: "create" });
+              setSheet({ open: true, channel: null });
             }}
           >
             <PlusIcon aria-hidden />
@@ -97,16 +134,26 @@ export function ChannelsPage({ api }: { readonly api: ApiClient }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{channel.name}</p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {t(`channels.provider.${channel.config.type}`)}
-                  {!channel.enabled && ` · ${t("channels.disabled")}`}
+                  {t(`channels.provider.${channel.settings.type}`)}
                 </p>
               </div>
+              {channel.share !== null && (
+                <ChannelShareButton name={channel.name} share={channel.share} />
+              )}
+              <Switch
+                checked={channel.enabled}
+                disabled={toggling.has(channel.id)}
+                aria-label={t("channels.toggleChannel", { name: channel.name })}
+                onCheckedChange={(enabled) => {
+                  void toggle(channel, enabled);
+                }}
+              />
               <Button
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t("channels.editChannel", { name: channel.name })}
                 onClick={() => {
-                  setEditing({ kind: "edit", channel });
+                  setSheet({ open: true, channel });
                 }}
               >
                 <PencilIcon aria-hidden />
@@ -125,16 +172,14 @@ export function ChannelsPage({ api }: { readonly api: ApiClient }) {
           ))}
         </ul>
       )}
-      {editing.kind !== "none" && (
-        <ChannelDialog
-          title={editing.kind === "create" ? t("channels.create") : t("channels.edit")}
-          initial={editing.kind === "edit" ? editing.channel : null}
-          onSave={(terms) => save(terms, editing.kind === "edit" ? editing.channel : null)}
-          onClose={() => {
-            setEditing({ kind: "none" });
-          }}
-        />
-      )}
+      <ChannelSheet
+        open={sheet.open}
+        onOpenChange={(open) => {
+          setSheet((current) => ({ ...current, open }));
+        }}
+        channel={sheet.channel}
+        onSave={save}
+      />
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => {

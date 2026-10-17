@@ -411,8 +411,8 @@ function ClientPanel({
 }) {
   const { t } = useI18n();
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card p-4">
-      <div className="mb-2 flex items-center gap-2 border-b pb-3">
+    <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card">
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <BackButton onBack={onBack} />
         <h2 className="min-w-0 flex-1 truncate font-semibold">
           {clientName ?? t("messaging.title")}

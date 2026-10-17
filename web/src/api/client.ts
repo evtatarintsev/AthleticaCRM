@@ -76,19 +76,38 @@ const WITHOUT_REFRESH: ReadonlySet<EndpointPath> = new Set<EndpointPath>([
 type Sent = { readonly ok: true; readonly response: Response } | { readonly ok: false };
 
 /**
+ * Итог обновления сессии: `rejected` — сервер отверг refresh-токен, сессии больше нет;
+ * `unavailable` — сеть или сервер недоступны, сессия может быть жива.
+ */
+type Refresh = "refreshed" | "rejected" | "unavailable";
+
+/**
+ * Итог обновления сессии по ответу [sent] на `auth/refresh-token`.
+ * Сбой сети или 5xx не разлогинивает: на мобильном после пробуждения сеть часто
+ * недоступна несколько секунд.
+ */
+function refreshOutcome(sent: Sent): Refresh {
+  if (!sent.ok || sent.response.status >= 500) {
+    return "unavailable";
+  }
+  return sent.response.ok ? "refreshed" : "rejected";
+}
+
+/**
  * Создаёт клиент API с зависимостями [options].
  *
  * - сессия живёт в HttpOnly-cookie, `credentials: "same-origin"`;
  * - на 401 сессия обновляется один раз для всех параллельных запросов, исходный запрос повторяется один раз;
+ * - разлогинивает только отказ сервера в обновлении; сбой сети при обновлении — ошибка `unavailable`;
  * - ответ декодируется схемой эндпоинта: лишние поля отбрасываются, несовпадение — ошибка `contract`.
  */
 export function createApiClient(options: ApiClientOptions): ApiClient {
-  let refreshing: Promise<boolean> | null = null;
+  let refreshing: Promise<Refresh> | null = null;
 
-  const refreshSession = (): Promise<boolean> => {
+  const refreshSession = (): Promise<Refresh> => {
     refreshing ??= send("auth/refresh-token", undefined, undefined).then((sent) => {
       refreshing = null;
-      return sent.ok && sent.response.ok;
+      return refreshOutcome(sent);
     });
     return refreshing;
   };
@@ -144,9 +163,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
     let sent = await send(path, request, params);
     if (sent.ok && sent.response.status === 401 && !WITHOUT_REFRESH.has(path)) {
-      if (!(await refreshSession())) {
-        options.onSessionExpired();
-        return failure({ kind: "unauthenticated" });
+      switch (await refreshSession()) {
+        case "refreshed":
+          break;
+        case "rejected":
+          options.onSessionExpired();
+          return failure({ kind: "unauthenticated" });
+        case "unavailable":
+          return failure({ kind: "unavailable" });
       }
       sent = await send(path, request, params);
     }

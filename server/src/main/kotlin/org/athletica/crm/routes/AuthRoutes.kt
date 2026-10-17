@@ -52,6 +52,7 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.usecases.auth.signUp
 import org.athletica.crm.usecases.auth.switchBranch
+import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
 /**
@@ -177,7 +178,7 @@ fun RouteWithContext.logout(audit: AuditLog) {
         db.transaction {
             audit.logout()
         }
-        call.response.cookies.setJwtCookies("", "")
+        call.response.cookies.clearJwtCookies()
     }
 }
 
@@ -274,31 +275,43 @@ fun DecodedJWT.userIdAndBranchClaim(): Either<CommonDomainError, Pair<UserId, Br
     }
 
 /**
- * Устанавливает HttpOnly cookies с JWT токенами.
- * При передаче пустых строк браузер удаляет соответствующие cookies (используется при logout).
- * [accessToken] — значение access токена; пустая строка сбрасывает куку.
- * [refreshToken] — значение refresh токена; пустая строка сбрасывает куку.
+ * Устанавливает HttpOnly cookies с JWT токенами [accessToken] и [refreshToken].
+ * Cookies живут столько же, сколько токены ([JwtConfig.accessTokenTtl], [JwtConfig.refreshTokenTtl]):
+ * без `Max-Age` они сессионные, и мобильные браузеры теряют их при выгрузке вкладки из памяти.
  */
+context(jwtConfig: JwtConfig)
 fun ResponseCookies.setJwtCookies(
     accessToken: String,
     refreshToken: String,
 ) {
-    append(
-        Cookie(
-            name = JwtConfig.COOKIE_ACCESS_TOKEN,
-            value = accessToken,
-            httpOnly = true,
-            path = "/",
-            extensions = mapOf("SameSite" to "Strict"),
-        ),
-    )
-    append(
-        Cookie(
-            name = JwtConfig.COOKIE_REFRESH_TOKEN,
-            value = refreshToken,
-            httpOnly = true,
-            path = "/api/auth/refresh-token",
-            extensions = mapOf("SameSite" to "Strict"),
-        ),
-    )
+    append(jwtCookie(JwtConfig.COOKIE_ACCESS_TOKEN, accessToken, jwtConfig.accessTokenTtl, "/"))
+    append(jwtCookie(JwtConfig.COOKIE_REFRESH_TOKEN, refreshToken, jwtConfig.refreshTokenTtl, REFRESH_TOKEN_COOKIE_PATH))
 }
+
+/** Удаляет cookies с JWT токенами (используется при logout). */
+fun ResponseCookies.clearJwtCookies() {
+    append(jwtCookie(JwtConfig.COOKIE_ACCESS_TOKEN, "", Duration.ZERO, "/"))
+    append(jwtCookie(JwtConfig.COOKIE_REFRESH_TOKEN, "", Duration.ZERO, REFRESH_TOKEN_COOKIE_PATH))
+}
+
+/**
+ * HttpOnly cookie [name] со значением [value], временем жизни [maxAge] и путём [path].
+ * Нулевой [maxAge] велит браузеру удалить cookie.
+ */
+private fun jwtCookie(
+    name: String,
+    value: String,
+    maxAge: Duration,
+    path: String,
+): Cookie =
+    Cookie(
+        name = name,
+        value = value,
+        maxAge = maxAge.inWholeSeconds.toInt(),
+        httpOnly = true,
+        path = path,
+        extensions = mapOf("SameSite" to "Strict"),
+    )
+
+/** Путь, на который браузер отправляет cookie с refresh токеном. */
+private const val REFRESH_TOKEN_COOKIE_PATH = "/api/auth/refresh-token"

@@ -203,14 +203,27 @@ export const AttendanceSessionSchemaSchema = z
   .readonly();
 export type AttendanceSessionSchema = z.output<typeof AttendanceSessionSchemaSchema>;
 
+export const AuditLogSubjectSchema = z
+  .object({
+    type: z.string(),
+    id: z.uuid(),
+    title: z.string(),
+    isAvailable: z.boolean(),
+    targetId: z.uuid().nullable(),
+  })
+  .readonly();
+export type AuditLogSubject = z.output<typeof AuditLogSubjectSchema>;
+
 export const AuditLogItemSchema = z
   .object({
     id: z.uuid(),
     userId: z.uuid().nullable(),
     username: z.string(),
     actionType: z.string(),
+    description: z.string(),
     entityType: z.string().nullable(),
     entityId: z.uuid().nullable(),
+    subject: AuditLogSubjectSchema.nullable(),
     data: z.string().nullable(),
     ipAddress: z.string().nullable(),
     createdAt: z.string(),
@@ -243,6 +256,21 @@ export const AuditLogListResponseSchema = z
   })
   .readonly();
 export type AuditLogListResponse = z.output<typeof AuditLogListResponseSchema>;
+
+export const AuditLogUserSchema = z
+  .object({
+    id: UserIdSchema,
+    username: z.string(),
+  })
+  .readonly();
+export type AuditLogUser = z.output<typeof AuditLogUserSchema>;
+
+export const AuditLogUsersResponseSchema = z
+  .object({
+    items: z.array(AuditLogUserSchema).readonly(),
+  })
+  .readonly();
+export type AuditLogUsersResponse = z.output<typeof AuditLogUsersResponseSchema>;
 
 export const AuthBranchesRequestSchema = z
   .object({
@@ -3174,6 +3202,13 @@ export const endpoints = {
     request: AuditLogListRequestSchema,
     out: "json",
     response: AuditLogListResponseSchema,
+  },
+  "audit/log/users": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: AuditLogUsersResponseSchema,
   },
   "auth/branches": {
     method: "POST",

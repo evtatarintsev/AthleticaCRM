@@ -63,6 +63,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
                     raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
                 }
             }
+            requireHallInGroupBranch(groupId, hallId)
             tr
                 .sql(
                     """
@@ -250,3 +251,25 @@ private fun SessionRow.toSession(
         isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
         events = events,
     )
+
+/** Проверяет, что зал [hallId] принадлежит организации и филиалу группы [groupId]; иначе ошибка `HALL_NOT_FOUND`. */
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+internal suspend fun requireHallInGroupBranch(
+    groupId: GroupId,
+    hallId: HallId,
+) {
+    tr
+        .sql(
+            """
+            SELECT 1 AS ok
+            FROM halls h
+            JOIN groups g ON g.branch_id = h.branch_id AND g.org_id = h.org_id
+            WHERE h.id = :hallId AND g.id = :groupId AND g.org_id = :orgId
+            """.trimIndent(),
+        )
+        .bind("hallId", hallId)
+        .bind("groupId", groupId)
+        .bind("orgId", ctx.orgId)
+        .firstOrNull { 1 }
+        ?: raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
+}

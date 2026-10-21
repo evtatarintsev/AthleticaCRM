@@ -1170,6 +1170,7 @@ export const CreateSessionRequestSchema = z
     startTime: LocalTimeSchema,
     endTime: LocalTimeSchema,
     hallId: HallIdSchema,
+    employeeIds: z.array(EmployeeIdSchema).readonly(),
     notes: z.string().nullable().optional(),
   })
   .readonly();

@@ -1,15 +1,18 @@
-## 1. Server contract and domain
+## 1. Сервер: контракт и домен
 
-- [ ] 1.1 Add the extension request schema and API route; verify the generated contract includes membership ID, target end date, and reason.
-- [ ] 1.2 Implement the domain operation for active memberships, reject target dates not after the current end date, and verify state/date validation with focused tests.
-- [ ] 1.3 Record old date, new date, and reason through `AuditMemberships` in the same transaction; verify the audit entry includes the acting employee and all extension details.
+- [ ] 1.1 Добавить схему запроса продления (ID абонемента, новая дата окончания, причина) и маршрут в `MembershipsRoutes`; перегенерировать web-контракты и проверить, что поля попали в `contracts.ts`.
+- [ ] 1.2 Добавить команду `extend` в `ActiveMembership`/`DbMembership`: отклонять замороженный абонемент, дату не позже текущей даты окончания и пустую после обрезки причину; `UPDATE` с условием `state = 'ACTIVE' AND freeze_start IS NULL` и `requireTransition`. Покрыть тестами проверки состояния, заморозки, даты и причины.
+- [ ] 1.3 Сбрасывать `close_notified_at`, если после продления абонемент перестаёт быть «к закрытию»; тест на продление истёкшего абонемента с отправленным уведомлением.
+- [ ] 1.4 Писать событие `EXTENDED` в `membership_events` с прежней и новой датами окончания и причиной; тест, что запись появляется при успехе и отсутствует при отказе.
+- [ ] 1.5 Обернуть продление в декораторе `AuditMemberships`: запись в системный аудит с сотрудником, прежней и новой датами и причиной в той же транзакции; тест на содержимое записи.
+- [ ] 1.6 Добавить серверные сообщения об ошибках продления в `Messages` (ru/en).
 
-## 2. Web client
+## 2. Web-клиент
 
-- [ ] 2.1 Add the extension form to the membership panel for active memberships; verify it is absent for inactive, closed, and revoked memberships.
-- [ ] 2.2 Submit the target date and reason, update the displayed membership on success, and show server errors without closing the panel; verify with focused UI tests.
-- [ ] 2.3 Add Russian and English labels and validation messages; verify both locales render the form and errors.
+- [ ] 2.1 Добавить действие «Продлить» и форму в `MembershipSheet` для активного незамороженного абонемента; проверить, что для замороженного, неактивированного, закрытого и отозванного его нет.
+- [ ] 2.2 Отправлять дату и причину, при успехе обновлять панель и плитку абонемента в карточке клиента (инвалидация запросов), при ошибке сервера показывать её, не закрывая панель; проверить UI-тестами.
+- [ ] 2.3 Добавить подписи и сообщения валидации в `ru.ts` и `en.ts`; проверить отрисовку формы и ошибок в обеих локалях.
 
-## 3. Integration
+## 3. Интеграция
 
-- [ ] 3.1 Run the relevant server and web checks and verify successful extension updates the end date and audit while preserving other membership terms.
+- [ ] 3.1 Прогнать `./gradlew build`, `./gradlew ktlintFormat`, `npm run format`, `npm run check` и проверить, что продление обновляет дату окончания, историю и аудит, не меняя прочих условий абонемента.

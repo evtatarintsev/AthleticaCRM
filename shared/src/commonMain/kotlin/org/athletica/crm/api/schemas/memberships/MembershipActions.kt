@@ -31,6 +31,17 @@ data class FreezeMembershipRequest(
     val reason: String,
 )
 
+/** Запрос на ручное продление активного незамороженного абонемента до [endDate]. */
+@Serializable
+data class ExtendMembershipRequest(
+    /** Продлеваемый абонемент. */
+    val membershipId: MembershipId,
+    /** Новая дата окончания, позже текущей. */
+    val endDate: LocalDate,
+    /** Причина продления. */
+    val reason: String,
+)
+
 /** Запрос на снятие заморозки: запланированная отменяется, действующая снимается досрочно. */
 @Serializable
 data class UnfreezeMembershipRequest(

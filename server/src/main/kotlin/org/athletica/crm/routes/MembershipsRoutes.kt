@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.memberships.ActiveMembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.CloseMembershipRequest
 import org.athletica.crm.api.schemas.memberships.ClosedMembershipStateSchema
+import org.athletica.crm.api.schemas.memberships.ExtendMembershipRequest
 import org.athletica.crm.api.schemas.memberships.FreezeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.InactiveMembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.IssueMembershipRequest
@@ -41,6 +42,7 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.memberships.closeMembership
+import org.athletica.crm.usecases.memberships.extendMembership
 import org.athletica.crm.usecases.memberships.freezeMembership
 import org.athletica.crm.usecases.memberships.repayDebt
 import org.athletica.crm.usecases.memberships.revokeMembership
@@ -110,6 +112,12 @@ fun RouteWithContext.membershipsRoutes(
         post<FreezeMembershipRequest, Unit>("/freeze") { request ->
             db.transaction {
                 freezeMembership(memberships, calendar, request.membershipId, request.startDate, request.endDate, request.reason)
+            }
+        }
+
+        post<ExtendMembershipRequest, Unit>("/extend") { request ->
+            db.transaction {
+                extendMembership(memberships, calendar, request.membershipId, request.endDate, request.reason)
             }
         }
 

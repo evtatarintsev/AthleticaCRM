@@ -275,6 +275,46 @@ data class DbActiveMembership(
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun extend(newEndDate: LocalDate, reason: String, today: LocalDate): ActiveMembership {
+        val trimmed = reason.trim()
+        if (trimmed.isEmpty()) {
+            raise(CommonDomainError("EXTENSION_REASON_REQUIRED", Messages.MembershipExtensionReasonRequired.localize()))
+        }
+        if (newEndDate <= endDate) {
+            raise(CommonDomainError("EXTENSION_NOT_LATER", Messages.MembershipExtensionNotLater.localize()))
+        }
+        if (freeze != null) {
+            raise(CommonDomainError("MEMBERSHIP_FROZEN", Messages.MembershipExtensionFrozen.localize()))
+        }
+        val extended = copy(endDate = newEndDate)
+        val notifiedAt = closeNotifiedAt?.takeIf { extended.statusAt(today).closePending }
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE memberships SET end_date = :endDate, close_notified_at = :notifiedAt
+                    WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE' AND freeze_start IS NULL
+                    """.trimIndent(),
+                )
+                .bind("endDate", newEndDate)
+                .bind("notifiedAt", notifiedAt)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated)
+        recordMembershipEvent(
+            id,
+            MembershipEventKind.EXTENDED,
+            buildJsonObject {
+                put("previousEndDate", endDate.toString())
+                put("endDate", newEndDate.toString())
+                put("reason", trimmed)
+            },
+        )
+        return extended.copy(closeNotifiedAt = notifiedAt)
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): DbActiveMembership {
         val current = freeze ?: raise(CommonDomainError("MEMBERSHIP_NOT_FROZEN", Messages.MembershipNotFrozen.localize()))
         val newEndDate = endDate.minus(DatePeriod(days = current.unusedDaysFrom(day)))
@@ -402,6 +442,9 @@ enum class MembershipEventKind {
 
     /** Снятие заморозки; в данных — основание, период и новая дата окончания абонемента. */
     UNFROZEN,
+
+    /** Ручное продление; в данных — прежняя и новая даты окончания и причина. */
+    EXTENDED,
 }
 
 /** SQL-присваивание, снимающее текущую заморозку строки `memberships`. */

@@ -14,6 +14,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipClosedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipDebitReversedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipDebitedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipEventSchema
+import org.athletica.crm.api.schemas.memberships.MembershipExtendedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipFrozenEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryEntrySchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
@@ -124,6 +125,12 @@ class DbMembershipHistoryView : MembershipHistoryView {
                     startDate = LocalDate.parse(payload.string("startDate")),
                     endDate = LocalDate.parse(payload.string("endDate")),
                     membershipEndDate = LocalDate.parse(payload.string("membershipEndDate")),
+                )
+            "EXTENDED" ->
+                MembershipExtendedEventSchema(
+                    previousEndDate = LocalDate.parse(payload.string("previousEndDate")),
+                    endDate = LocalDate.parse(payload.string("endDate")),
+                    reason = payload.string("reason"),
                 )
             else -> error("Неизвестный вид записи истории абонемента: $kind")
         }

@@ -1803,6 +1803,15 @@ export const ErrorResponseSchema = z
   .readonly();
 export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
 
+export const ExtendMembershipRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+    endDate: LocalDateSchema,
+    reason: z.string(),
+  })
+  .readonly();
+export type ExtendMembershipRequest = z.output<typeof ExtendMembershipRequestSchema>;
+
 export const FreezeMembershipRequestSchema = z
   .object({
     membershipId: MembershipIdSchema,
@@ -2257,6 +2266,16 @@ export const MembershipEventSchemaDebitedSchema = z
   .readonly();
 export type MembershipEventSchemaDebited = z.output<typeof MembershipEventSchemaDebitedSchema>;
 
+export const MembershipEventSchemaExtendedSchema = z
+  .object({
+    type: z.literal("extended"),
+    previousEndDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    reason: z.string(),
+  })
+  .readonly();
+export type MembershipEventSchemaExtended = z.output<typeof MembershipEventSchemaExtendedSchema>;
+
 export const MembershipEventSchemaFrozenSchema = z
   .object({
     type: z.literal("frozen"),
@@ -2300,7 +2319,7 @@ export const MembershipEventSchemaUnfrozenSchema = z
   .readonly();
 export type MembershipEventSchemaUnfrozen = z.output<typeof MembershipEventSchemaUnfrozenSchema>;
 
-export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaDebitReversedSchema, MembershipEventSchemaDebitedSchema, MembershipEventSchemaFrozenSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema, MembershipEventSchemaUnfrozenSchema]);
+export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaDebitReversedSchema, MembershipEventSchemaDebitedSchema, MembershipEventSchemaExtendedSchema, MembershipEventSchemaFrozenSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema, MembershipEventSchemaUnfrozenSchema]);
 export type MembershipEventSchema = z.output<typeof MembershipEventSchemaSchema>;
 
 export const MembershipFreezeSchemaSchema = z
@@ -3799,6 +3818,13 @@ export const endpoints = {
     method: "POST",
     in: "body",
     request: CloseMembershipRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "memberships/extend": {
+    method: "POST",
+    in: "body",
+    request: ExtendMembershipRequestSchema,
     out: "empty",
     response: z.undefined(),
   },

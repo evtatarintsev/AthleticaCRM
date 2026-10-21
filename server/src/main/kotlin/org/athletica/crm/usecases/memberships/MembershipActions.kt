@@ -67,6 +67,28 @@ suspend fun freezeMembership(
     }
 
 /**
+ * Продлевает активный абонемент [id] до [endDate] по причине [reason].
+ * Сохранённая, но закончившаяся заморозка сначала снимается; действующая или запланированная —
+ * ошибка, абонемент не меняется.
+ */
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+suspend fun extendMembership(
+    memberships: Memberships,
+    calendar: OrgCalendar,
+    id: MembershipId,
+    endDate: LocalDate,
+    reason: String,
+): ActiveMembership =
+    when (val membership = memberships.byId(id)) {
+        is ActiveMembership -> {
+            val today = calendar.today()
+            clearExpiredFreeze(membership, today).extend(endDate, reason, today)
+        }
+        is InactiveMembership -> raise(CommonDomainError("MEMBERSHIP_NOT_ACTIVE", Messages.MembershipNotActive.localize()))
+        is ClosedMembership, is RevokedMembership -> raise(finalMembershipError())
+    }
+
+/**
  * Снимает заморозку абонемента [id] сегодняшней датой организации:
  * запланированная отменяется целиком, действующая размораживается досрочно.
  */

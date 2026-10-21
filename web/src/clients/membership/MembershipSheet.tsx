@@ -27,6 +27,7 @@ import {
   MembershipSessionsBar,
 } from "./MembershipParts";
 import { membershipView, type MembershipView } from "./membershipView";
+import { ExtendMembershipSheet } from "./ExtendMembership";
 import { FreezeMembershipSheet } from "./FreezeMembership";
 import { RepayDebtSheet } from "./RepayDebt";
 
@@ -89,7 +90,7 @@ function actionPath(action: PendingAction) {
 
 /**
  * Содержимое панели абонемента [membership]: пометка состояния, параметры, действия,
- * доступные для состояния («Закрыть» и «Заморозить» — у активного без заморозки, «Разморозить»
+ * доступные для состояния («Закрыть», «Заморозить» и «Продлить» — у активного без заморозки, «Разморозить»
  * или «Отменить заморозку» — у активного с действующей или запланированной заморозкой,
  * «Отозвать» — у неактивированного и активного), и история от новых записей к старым.
  */
@@ -117,6 +118,9 @@ function MembershipPanel({
   const [freezing, setFreezing] = useState(false);
   const freeze = membership.state.type === "active" ? membership.state.freeze : null;
   const canFreeze = membership.state.type === "active" && freeze === null;
+  const [extending, setExtending] = useState(false);
+  const extendableEnd =
+    membership.state.type === "active" && freeze === null ? membership.state.endDate : null;
 
   const ask = (action: PendingAction) => {
     setError(null);
@@ -183,6 +187,17 @@ function MembershipPanel({
               {t("membership.freeze.action")}
             </Button>
           )}
+          {extendableEnd !== null && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setExtending(true);
+              }}
+            >
+              {t("membership.extend.action")}
+            </Button>
+          )}
           {freeze !== null && (
             <Button
               type="button"
@@ -227,6 +242,17 @@ function MembershipPanel({
         clientId={clientId}
         membership={membership}
       />
+      {extendableEnd !== null && (
+        <ExtendMembershipSheet
+          open={extending}
+          onOpenChange={setExtending}
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          membershipId={membership.id}
+          endDate={extendableEnd}
+        />
+      )}
       <ConfirmDialog
         open={confirming !== null}
         onOpenChange={(next) => {
@@ -444,6 +470,16 @@ function EventText({ event }: { readonly event: MembershipEventSchema }) {
             to: format.date(event.endDate),
             reason: event.reason,
             end: format.date(event.membershipEndDate),
+          })}
+        </>
+      );
+    case "extended":
+      return (
+        <>
+          {t("membership.history.extended", {
+            from: format.date(event.previousEndDate),
+            to: format.date(event.endDate),
+            reason: event.reason,
           })}
         </>
       );

@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 import { Fragment } from "react";
 import type { LocalDate, ScheduleSessionSchema } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/context";
 import { WEEK_DAYS } from "@/lib/localDate";
 import { cn } from "@/lib/utils";
@@ -13,13 +15,20 @@ function utcDate(date: LocalDate): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-/** Недельная сетка занятий: дни недели — колонки, часы начала — строки. */
+/**
+ * Недельная сетка занятий: дни недели — колонки, часы начала — строки. В шапке каждого дня —
+ * действие добавления занятия [onAddSession]; без занятий под шапкой строка с [emptyText].
+ */
 export function ScheduleWeekGrid({
   weekDates,
   sessions,
+  emptyText,
+  onAddSession,
 }: {
   readonly weekDates: readonly LocalDate[];
   readonly sessions: readonly ScheduleSessionSchema[];
+  readonly emptyText: string;
+  readonly onAddSession: (date: LocalDate) => void;
 }) {
   const { t, locale } = useI18n();
   const hours = occupiedHours(sessions);
@@ -41,15 +50,31 @@ export function ScheduleWeekGrid({
         <div className="border-b border-r bg-muted/40" />
         {weekDates.map((date, index) => {
           const day = WEEK_DAYS[index];
+          const label = `${day === undefined ? "" : t(`day.${day}`)} ${dayFormat.format(utcDate(date))}`;
           return (
             <div
               key={date}
-              className="border-b border-r px-2 py-2 text-center text-sm font-medium last:border-r-0"
+              className="flex items-center justify-center gap-1 border-b border-r px-2 py-1 text-sm font-medium last:border-r-0"
             >
-              {day !== undefined && t(`day.${day}`)} {dayFormat.format(utcDate(date))}
+              {label}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground"
+                aria-label={t("schedule.addSession", { day: label })}
+                onClick={() => {
+                  onAddSession(date);
+                }}
+              >
+                <PlusIcon aria-hidden />
+              </Button>
             </div>
           );
         })}
+
+        {hours.length === 0 && (
+          <p className="col-span-full py-12 text-center text-muted-foreground">{emptyText}</p>
+        )}
 
         {hours.map((hour) => (
           <Fragment key={`hour-${hour.toString()}`}>

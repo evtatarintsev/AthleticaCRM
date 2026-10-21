@@ -186,9 +186,9 @@ data class Di(
     val views = ReadViews()
     val participations: Participations = DbParticipations()
     val debitReconciliation: DebitReconciliation =
-        DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
+        DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar, views.unpaidSessions, tasks, audit)
     val membershipScheduler: MembershipScheduler =
-        MembershipScheduler(database, memberships, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
+        MembershipScheduler(database, memberships, notifications, employees, orgCalendar, views.unpaidSessions, tasks, audit)
     val attendanceControls: AttendanceControls = DbAttendanceControls()
     val overdueJournalScheduler: OverdueJournalScheduler = OverdueJournalScheduler(database, tasks)
     val channelBindings: ChannelBindings = DbChannelBindings()

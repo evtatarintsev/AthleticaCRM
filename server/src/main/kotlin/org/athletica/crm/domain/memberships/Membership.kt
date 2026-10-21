@@ -14,6 +14,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -119,6 +120,15 @@ interface ActiveMembership : Membership {
     /** Момент отправки уведомления «к закрытию» в текущем эпизоде; `null` — не отправлялось. */
     val closeNotifiedAt: Instant?
 
+    /**
+     * Сохранённая заморозка; `null` — нет. Может быть уже закончившейся, пока её не снял
+     * планировщик: текущую на дату даёт [freezeAt].
+     */
+    val freeze: MembershipFreeze?
+
+    /** Запланированная или действующая на дату [today] заморозка; закончившаяся считается отсутствующей. */
+    fun freezeAt(today: LocalDate): MembershipFreeze? = freeze?.takeIf { it.statusAt(today) != null }
+
     /** Выводимые свойства на дату [date]: чистая функция дат, остатка и [date]. */
     fun statusAt(date: LocalDate): ActiveStatus = ActiveStatus.of(startDate, endDate, sessionsRemaining, date)
 
@@ -135,6 +145,27 @@ interface ActiveMembership : Membership {
     /** Отзывает абонемент. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun revoke(): RevokedMembership
+
+    /**
+     * Замораживает абонемент на период [start]..[end] (включительно) по причине [reason] при
+     * сегодняшней дате организации [today] и сдвигает дату окончания на длину периода
+     * ([freezePeriodError] — проверки периода). Абонемент с сохранённой заморозкой, даже
+     * закончившейся, не замораживается: её сначала снимает [unfreeze]. Автор — сотрудник из контекста.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun freeze(
+        start: LocalDate,
+        end: LocalDate,
+        reason: String,
+        today: LocalDate,
+    ): ActiveMembership
+
+    /**
+     * Снимает заморозку в день [day] по основанию [reason] и уменьшает дату окончания на
+     * неиспользованные дни ([MembershipFreeze.unusedDaysFrom]). Без заморозки — ошибка.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): ActiveMembership
 
     /** Отмечает отправку уведомления «к закрытию» в текущем эпизоде и пишет её в историю. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)

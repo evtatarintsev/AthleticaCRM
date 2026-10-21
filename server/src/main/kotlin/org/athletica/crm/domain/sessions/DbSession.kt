@@ -76,11 +76,12 @@ class DbSession(
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_RESCHEDULE", "Можно перенести только запланированное занятие"))
         }
+        requireHallInGroupBranch(groupId, newHallId)
         tr
             .sql(
                 """
                 UPDATE sessions
-                SET date = :date, start_time = :startTime, end_time = :endTime, hall_id = :hallId, is_rescheduled = true
+                SET date = :date, start_time = :startTime::time, end_time = :endTime::time, hall_id = :hallId, is_rescheduled = true
                 WHERE id = :id AND org_id = :orgId
                 """.trimIndent(),
             )

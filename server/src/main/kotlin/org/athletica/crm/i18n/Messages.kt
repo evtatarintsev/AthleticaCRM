@@ -694,6 +694,41 @@ object Messages {
         override val en = "More sessions are selected than the membership has left"
     }
 
+    object MembershipFreezeReasonRequired : LocalizationKey {
+        override val ru = "Укажите причину заморозки"
+        override val en = "Specify the freeze reason"
+    }
+
+    object MembershipFreezePeriodInvalid : LocalizationKey {
+        override val ru = "Дата окончания заморозки раньше даты начала"
+        override val en = "The freeze end date is before its start date"
+    }
+
+    object MembershipFreezeInPast : LocalizationKey {
+        override val ru = "Заморозка не может начинаться в прошлом"
+        override val en = "A freeze cannot start in the past"
+    }
+
+    object MembershipFreezeAfterEnd : LocalizationKey {
+        override val ru = "Заморозка не может начинаться после окончания абонемента"
+        override val en = "A freeze cannot start after the membership ends"
+    }
+
+    object MembershipAlreadyFrozen : LocalizationKey {
+        override val ru = "У абонемента уже есть заморозка"
+        override val en = "The membership already has a freeze"
+    }
+
+    object MembershipNotFrozen : LocalizationKey {
+        override val ru = "Абонемент не заморожен"
+        override val en = "The membership is not frozen"
+    }
+
+    object AuditSystemActor : LocalizationKey {
+        override val ru = "Система"
+        override val en = "System"
+    }
+
     object SessionAlreadyDebited : LocalizationKey {
         override val ru = "Занятие уже списано"
         override val en = "The session has already been debited"

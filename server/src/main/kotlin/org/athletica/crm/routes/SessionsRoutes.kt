@@ -42,6 +42,7 @@ fun RouteWithContext.sessionsRoutes(
                     startTime = request.startTime,
                     endTime = request.endTime,
                     hallId = request.hallId,
+                    employeeIds = request.employeeIds,
                     notes = request.notes,
                 )
             }

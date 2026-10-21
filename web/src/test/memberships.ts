@@ -37,7 +37,7 @@ export function testMembership(params: TestMembership): MembershipSchema {
   });
 }
 
-/** Состояние «Активный» с выводимыми свойствами; по умолчанию «в сроке» без признаков. */
+/** Состояние «Активный» с выводимыми свойствами; по умолчанию «в сроке» без признаков и заморозки. */
 export function activeState(
   startDate: string,
   endDate: string,
@@ -45,6 +45,12 @@ export function activeState(
     readonly termPosition?: "NOT_STARTED" | "IN_TERM" | "EXPIRED";
     readonly endingSoon?: readonly ("BY_DATE" | "BY_SESSIONS")[];
     readonly closePending?: boolean;
+    readonly freeze?: {
+      readonly startDate: string;
+      readonly endDate: string;
+      readonly reason: string;
+      readonly status: "SCHEDULED" | "ACTIVE";
+    };
   } = {},
 ): MembershipStateSchema {
   return {
@@ -54,5 +60,15 @@ export function activeState(
     termPosition: props.termPosition ?? "IN_TERM",
     endingSoon: props.endingSoon ?? [],
     closePending: props.closePending ?? false,
+    freeze:
+      props.freeze === undefined
+        ? null
+        : {
+            startDate: LocalDateSchema.parse(props.freeze.startDate),
+            endDate: LocalDateSchema.parse(props.freeze.endDate),
+            reason: props.freeze.reason,
+            frozenBy: null,
+            status: props.freeze.status,
+          },
   };
 }

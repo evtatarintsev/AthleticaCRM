@@ -225,7 +225,7 @@ fun Application.configureServer() {
                         disciplinesRoutes(di.disciplines)
                         sportCatalogRoutes()
                         tariffsRoutes(di.tariffPlans)
-                        membershipsRoutes(di.memberships, di.participations, di.orgCalendar, di.views)
+                        membershipsRoutes(di.memberships, di.participations, di.orgCalendar, di.views, di.audit)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles, di.views)

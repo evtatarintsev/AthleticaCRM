@@ -16,6 +16,7 @@ import { membershipsQuery } from "./card/clientCardQueries";
 import {
   ClosePendingReasons,
   EndingMark,
+  FreezeNote,
   MembershipActivationNote,
   MembershipPill,
   MembershipSessions,
@@ -171,6 +172,11 @@ function MembershipRow({
       {view.phase === "closePending" && (
         <BlockSub>
           <ClosePendingReasons view={view} />
+        </BlockSub>
+      )}
+      {membership.state.type === "active" && membership.state.freeze !== null && (
+        <BlockSub>
+          <FreezeNote membership={membership} />
         </BlockSub>
       )}
       {current && <MembershipSessionsBar membership={membership} />}

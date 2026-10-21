@@ -152,7 +152,7 @@ class DbMemberships : Memberships {
                         """
                         $SELECT_MEMBERSHIP m
                         WHERE ${MembershipCandidateSql.condition(":clientId", ":groupId", ":sessionDate", ":today")}
-                        ORDER BY ${MembershipCandidateSql.ORDER}
+                        ORDER BY ${MembershipCandidateSql.order(":sessionDate", ":today")}
                         LIMIT 1
                         FOR UPDATE OF m
                         """.trimIndent(),
@@ -246,6 +246,15 @@ class DbMemberships : Memberships {
                     startDate = asLocalDate("start_date"),
                     endDate = asLocalDate("end_date"),
                     closeNotifiedAt = asInstantOrNull("close_notified_at"),
+                    freeze =
+                        asLocalDateOrNull("freeze_start")?.let {
+                            MembershipFreeze(
+                                start = it,
+                                end = asLocalDate("freeze_end"),
+                                reason = asString("freeze_reason"),
+                                frozenBy = asUuidOrNull("freeze_by")?.toEmployeeId(),
+                            )
+                        },
                 )
             MembershipState.CLOSED ->
                 DbClosedMembership(
@@ -288,7 +297,7 @@ class DbMemberships : Memberships {
             SELECT id, client_id, tariff_plan_id, name, sessions_total, sessions_remaining,
                    start_date, end_date, price, issued_by, state, activation_mode, activate_on,
                    activation_deadline, duration_value, duration_unit, close_mode, issued_on,
-                   close_notified_at, closed_on, close_reason,
+                   close_notified_at, closed_on, close_reason, freeze_start, freeze_end, freeze_reason, freeze_by,
                    (SELECT COALESCE(json_agg(json_build_object('id', g.id, 'name', g.name) ORDER BY g.name, g.id), '[]')::text
                     FROM membership_groups mg JOIN groups g ON g.id = mg.group_id
                     WHERE mg.membership_id = m.id) AS groups

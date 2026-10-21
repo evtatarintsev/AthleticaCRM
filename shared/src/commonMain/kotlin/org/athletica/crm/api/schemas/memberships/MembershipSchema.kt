@@ -5,6 +5,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
@@ -14,6 +15,7 @@ import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.core.subscription.EndingSoonReason
+import org.athletica.crm.core.subscription.FreezeStatus
 import org.athletica.crm.core.subscription.TermPosition
 
 /**
@@ -88,7 +90,24 @@ data class ActiveMembershipStateSchema(
     val endingSoon: List<EndingSoonReason>,
     /** Признак «к закрытию»: срок вышел или занятия закончились. */
     val closePending: Boolean,
+    /** Запланированная или действующая заморозка; `null` — нет. Дата окончания уже сдвинута на её длину. */
+    val freeze: MembershipFreezeSchema?,
 ) : MembershipStateSchema
+
+/** Текущая заморозка абонемента. */
+@Serializable
+data class MembershipFreezeSchema(
+    /** Первый день заморозки. */
+    val startDate: LocalDate,
+    /** Последний день заморозки включительно. */
+    val endDate: LocalDate,
+    /** Причина заморозки. */
+    val reason: String,
+    /** Сотрудник, оформивший заморозку; `null`, если он удалён. */
+    val frozenBy: EmployeeId?,
+    /** Состояние на сегодня в часовом поясе организации. */
+    val status: FreezeStatus,
+)
 
 /** Закрытый абонемент. */
 @Serializable

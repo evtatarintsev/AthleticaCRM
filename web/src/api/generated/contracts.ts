@@ -1170,6 +1170,7 @@ export const CreateSessionRequestSchema = z
     startTime: LocalTimeSchema,
     endTime: LocalTimeSchema,
     hallId: HallIdSchema,
+    employeeIds: z.array(EmployeeIdSchema).readonly(),
     notes: z.string().nullable().optional(),
   })
   .readonly();
@@ -1526,6 +1527,14 @@ export type DashboardSettingsInput = z.output<typeof DashboardSettingsInputSchem
 export const DayOfWeekSchema = z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]);
 export type DayOfWeek = z.output<typeof DayOfWeekSchema>;
 
+export const DebitFreezeSchemaSchema = z
+  .object({
+    endDate: LocalDateSchema,
+    reason: z.string(),
+  })
+  .readonly();
+export type DebitFreezeSchema = z.output<typeof DebitFreezeSchemaSchema>;
+
 export const DebitMembershipSchemaSchema = z
   .object({
     id: MembershipIdSchema,
@@ -1793,6 +1802,19 @@ export const ErrorResponseSchema = z
   })
   .readonly();
 export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
+
+export const FreezeMembershipRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    reason: z.string(),
+  })
+  .readonly();
+export type FreezeMembershipRequest = z.output<typeof FreezeMembershipRequestSchema>;
+
+export const FreezeStatusSchema = z.enum(["SCHEDULED", "ACTIVE"]);
+export type FreezeStatus = z.output<typeof FreezeStatusSchema>;
 
 export const GroupAttendanceRequestSchema = z
   .object({
@@ -2235,6 +2257,17 @@ export const MembershipEventSchemaDebitedSchema = z
   .readonly();
 export type MembershipEventSchemaDebited = z.output<typeof MembershipEventSchemaDebitedSchema>;
 
+export const MembershipEventSchemaFrozenSchema = z
+  .object({
+    type: z.literal("frozen"),
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    reason: z.string(),
+    membershipEndDate: LocalDateSchema,
+  })
+  .readonly();
+export type MembershipEventSchemaFrozen = z.output<typeof MembershipEventSchemaFrozenSchema>;
+
 export const MembershipEventSchemaIssuedSchema = z
   .object({
     type: z.literal("issued"),
@@ -2253,8 +2286,33 @@ export const MembershipEventSchemaRevokedSchema = z
   .readonly();
 export type MembershipEventSchemaRevoked = z.output<typeof MembershipEventSchemaRevokedSchema>;
 
-export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaDebitReversedSchema, MembershipEventSchemaDebitedSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema]);
+export const UnfreezeReasonSchema = z.enum(["CANCELLED", "MANUAL", "VISIT", "EXPIRED"]);
+export type UnfreezeReason = z.output<typeof UnfreezeReasonSchema>;
+
+export const MembershipEventSchemaUnfrozenSchema = z
+  .object({
+    type: z.literal("unfrozen"),
+    reason: UnfreezeReasonSchema,
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    membershipEndDate: LocalDateSchema,
+  })
+  .readonly();
+export type MembershipEventSchemaUnfrozen = z.output<typeof MembershipEventSchemaUnfrozenSchema>;
+
+export const MembershipEventSchemaSchema = z.discriminatedUnion("type", [MembershipEventSchemaActivatedSchema, MembershipEventSchemaCloseNotifiedSchema, MembershipEventSchemaClosedSchema, MembershipEventSchemaDebitReversedSchema, MembershipEventSchemaDebitedSchema, MembershipEventSchemaFrozenSchema, MembershipEventSchemaIssuedSchema, MembershipEventSchemaRevokedSchema, MembershipEventSchemaUnfrozenSchema]);
 export type MembershipEventSchema = z.output<typeof MembershipEventSchemaSchema>;
+
+export const MembershipFreezeSchemaSchema = z
+  .object({
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    reason: z.string(),
+    frozenBy: EmployeeIdSchema.nullable(),
+    status: FreezeStatusSchema,
+  })
+  .readonly();
+export type MembershipFreezeSchema = z.output<typeof MembershipFreezeSchemaSchema>;
 
 export const MembershipGroupSchemaSchema = z
   .object({
@@ -2307,6 +2365,7 @@ export const MembershipStateSchemaActiveSchema = z
     termPosition: TermPositionSchema,
     endingSoon: z.array(EndingSoonReasonSchema).readonly(),
     closePending: z.boolean(),
+    freeze: MembershipFreezeSchemaSchema.nullable(),
   })
   .readonly();
 export type MembershipStateSchemaActive = z.output<typeof MembershipStateSchemaActiveSchema>;
@@ -2478,6 +2537,7 @@ export const ParticipantDebitStateSchemaWillDebitSchema = z
     type: z.literal("will_debit"),
     membership: DebitMembershipSchemaSchema,
     activates: z.boolean(),
+    freeze: DebitFreezeSchemaSchema.nullable(),
   })
   .readonly();
 export type ParticipantDebitStateSchemaWillDebit = z.output<typeof ParticipantDebitStateSchemaWillDebitSchema>;
@@ -2988,6 +3048,13 @@ export const UnclosedSessionsResponseSchema = z
   })
   .readonly();
 export type UnclosedSessionsResponse = z.output<typeof UnclosedSessionsResponseSchema>;
+
+export const UnfreezeMembershipRequestSchema = z
+  .object({
+    membershipId: MembershipIdSchema,
+  })
+  .readonly();
+export type UnfreezeMembershipRequest = z.output<typeof UnfreezeMembershipRequestSchema>;
 
 export const UnpaidSessionSchemaSchema = z
   .object({
@@ -3735,6 +3802,13 @@ export const endpoints = {
     out: "empty",
     response: z.undefined(),
   },
+  "memberships/freeze": {
+    method: "POST",
+    in: "body",
+    request: FreezeMembershipRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "memberships/history": {
     method: "POST",
     in: "body",
@@ -3767,6 +3841,13 @@ export const endpoints = {
     method: "POST",
     in: "body",
     request: RevokeMembershipRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "memberships/unfreeze": {
+    method: "POST",
+    in: "body",
+    request: UnfreezeMembershipRequestSchema,
     out: "empty",
     response: z.undefined(),
   },

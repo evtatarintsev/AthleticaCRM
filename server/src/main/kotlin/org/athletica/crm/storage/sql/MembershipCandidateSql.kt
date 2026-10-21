@@ -11,7 +11,8 @@ package org.athletica.crm.storage.sql
  *    в сроке, считая от даты активации;
  * 3. неактивированный «при первом посещении», дата занятия не раньше выдачи и не позже крайней даты.
  *
- * Внутри ступени — по более ранней дате окончания, затем выданный раньше.
+ * Внутри ступени активных абонемент с заморозкой, действующей на дату занятия, идёт последним;
+ * дальше — по более ранней дате окончания, затем выданный раньше.
  * Скоуп по организации — параметр `:orgId`, его привязывает вызывающий.
  */
 object MembershipCandidateSql {
@@ -57,10 +58,18 @@ object MembershipCandidateSql {
         )
         """
 
-    /** Порядок подбора: ступень, затем более ранняя дата окончания, затем выданный раньше. */
-    const val ORDER =
+    /**
+     * Порядок подбора за занятие от [sessionDate] при сегодняшней дате [today] (SQL-выражения, как
+     * в [condition]): ступень, замороженный на дату занятия последним, более ранняя дата окончания,
+     * выданный раньше. Закончившаяся (`freeze_end < today`) заморозка не учитывается.
+     */
+    fun order(
+        sessionDate: String,
+        today: String,
+    ): String =
         """
         CASE WHEN m.state = 'ACTIVE' THEN 1 WHEN m.activation_mode = 'ON_DATE' THEN 2 ELSE 3 END,
+        CASE WHEN m.freeze_end >= $today AND $sessionDate BETWEEN m.freeze_start AND m.freeze_end THEN 1 ELSE 0 END,
         CASE WHEN m.state = 'ACTIVE' THEN m.end_date WHEN m.activation_mode = 'ON_DATE' THEN $ON_DATE_END END NULLS LAST,
         m.created_at,
         m.id

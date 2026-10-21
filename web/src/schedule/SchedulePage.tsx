@@ -10,6 +10,7 @@ import { addDays, weekDates as weekDatesOf } from "@/lib/localDate";
 import { useSession } from "@/query/session";
 import { MultiSelectPicker } from "@/ui/MultiSelectPicker";
 import { PageHeader } from "@/ui/PageHeader";
+import { CreateSessionSheet } from "./CreateSessionSheet";
 import { ScheduleWeekGrid } from "./ScheduleWeekGrid";
 import {
   useScheduleDisciplines,
@@ -55,6 +56,7 @@ export function SchedulePage({
   const groups = useScheduleGroups(api, branchId, filters.groupIds.length > 0);
 
   const [picker, setPicker] = useState<"disciplines" | "halls" | "employees" | null>(null);
+  const [createDate, setCreateDate] = useState<LocalDate | null>(null);
 
   const setFilters = (next: ScheduleFilters) => {
     onSearchChange(scheduleSearchOf(weekStart, next));
@@ -161,12 +163,21 @@ export function SchedulePage({
           </Button>
         </div>
       )}
-      {schedule.data !== undefined && sessions.length === 0 && (
-        <p className="py-12 text-center text-muted-foreground">
-          {t(filtered ? "schedule.emptyFiltered" : "schedule.empty")}
-        </p>
+      {schedule.data !== undefined && (
+        <ScheduleWeekGrid
+          weekDates={weekDates}
+          sessions={sessions}
+          emptyText={t(filtered ? "schedule.emptyFiltered" : "schedule.empty")}
+          onAddSession={setCreateDate}
+        />
       )}
-      {sessions.length > 0 && <ScheduleWeekGrid weekDates={weekDates} sessions={sessions} />}
+      <CreateSessionSheet
+        api={api}
+        date={createDate}
+        onClose={() => {
+          setCreateDate(null);
+        }}
+      />
 
       <MultiSelectPicker
         open={picker === "disciplines"}

@@ -10,7 +10,7 @@ import type {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { MembershipTerms } from "../membership/MembershipParts";
+import { FreezeNote, MembershipTerms } from "../membership/MembershipParts";
 import { isCurrentMembership, membershipView } from "../membership/membershipView";
 
 /**
@@ -151,6 +151,9 @@ export function MembershipTiles({
       </span>
       <span className="block text-xs text-muted-foreground">
         <MembershipTerms membership={membership} view={view} />
+      </span>
+      <span className="block text-xs text-sky-700 dark:text-sky-400">
+        <FreezeNote membership={membership} />
       </span>
     </Tile>
   ));

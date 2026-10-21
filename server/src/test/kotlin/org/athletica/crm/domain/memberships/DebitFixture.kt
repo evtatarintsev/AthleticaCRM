@@ -8,7 +8,6 @@ import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toMembershipId
 import org.athletica.crm.domain.attendance.DbParticipations
-import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
@@ -40,7 +39,6 @@ class DebitFixture(val base: MembershipFixture) {
             calendar = DbOrgCalendar(base.clock),
             unpaidSessions = DbUnpaidSessionsView(),
             tasks = DbTasks(),
-            audit = PostgresAuditLog(),
         )
 
     /** Создаёт зал; вызывать после `base.setUp()`. */

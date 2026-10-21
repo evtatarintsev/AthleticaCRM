@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
   ClientDetailResponseSchema,
+  ExtendMembershipRequestSchema,
   FreezeMembershipRequestSchema,
   type MembershipSchema,
 } from "@/api/generated/contracts";
@@ -94,9 +95,14 @@ const issuedEntry = {
 /**
  * Поддельный сервер карточки клиента с абонементами [initial]. `memberships/close` закрывает
  * абонемент; `memberships/revoke` отвечает ошибкой [revokeError], если она задана;
- * `memberships/freeze` ставит действующую заморозку, `memberships/unfreeze` её снимает.
+ * `memberships/freeze` ставит действующую заморозку, `memberships/unfreeze` её снимает;
+ * `memberships/extend` переносит дату окончания или отвечает ошибкой [extendError], если она задана.
  */
-function membershipsServer(initial: readonly MembershipSchema[], revokeError?: string) {
+function membershipsServer(
+  initial: readonly MembershipSchema[],
+  revokeError?: string,
+  extendError?: string,
+) {
   let memberships = [...initial];
   const entries: unknown[] = [issuedEntry];
   return appServer({
@@ -140,6 +146,21 @@ function membershipsServer(initial: readonly MembershipSchema[], revokeError?: s
               state: activeState(membership.state.startDate, membership.state.endDate, {
                 freeze: { ...request, status: "ACTIVE" },
               }),
+            }
+          : membership,
+      );
+      return empty();
+    },
+    "memberships/extend": ({ body }) => {
+      if (extendError !== undefined) {
+        return json({ code: "EXTENSION_NOT_LATER", message: extendError, fields: null }, 400);
+      }
+      const request = ExtendMembershipRequestSchema.parse(body);
+      memberships = memberships.map((membership) =>
+        membership.id === request.membershipId && membership.state.type === "active"
+          ? {
+              ...membership,
+              state: activeState(membership.state.startDate, request.endDate),
             }
           : membership,
       );
@@ -251,6 +272,59 @@ describe("абонементы в карточке клиента", () => {
       sheet.queryByRole("button", { name: ru["clientCard.membership.closeLabel"] }),
     ).not.toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: ru["membership.revoke"] })).not.toBeInTheDocument();
+    expect(
+      sheet.queryByRole("button", { name: ru["membership.extend.action"] }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("продление из панели обновляет дату окончания в панели и плитке", async () => {
+    const api = membershipsServer([ending]);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.extend.action"] }));
+    const form = within(await screen.findByRole("dialog", { name: ru["membership.extend.title"] }));
+    const submit = form.getByRole("button", { name: ru["membership.extend.action"] });
+    await user.type(form.getByLabelText(ru["membership.extend.end"]), "2099-12-31");
+    await user.type(form.getByLabelText(ru["membership.extend.reason"]), "   ");
+    expect(submit).toBeDisabled();
+    await user.type(form.getByLabelText(ru["membership.extend.reason"]), "перенос сборов");
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(api.to("memberships/extend")).toHaveLength(1);
+    });
+    expect(api.to("memberships/extend")[0]?.body).toEqual({
+      membershipId: ending.id,
+      endDate: "2099-12-31",
+      reason: "перенос сборов",
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: ru["membership.extend.title"] }),
+      ).not.toBeInTheDocument();
+    });
+    expect(await sheet.findByText(/2099/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2099/).length).toBeGreaterThan(1);
+  });
+
+  it("отказ в продлении оставляет форму открытой и показывает ошибку", async () => {
+    const message = "Новая дата окончания должна быть позже текущей";
+    openApp(`/clients/${client.id}`, membershipsServer([ending], undefined, message).fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.extend.action"] }));
+    const form = within(await screen.findByRole("dialog", { name: ru["membership.extend.title"] }));
+    await user.type(form.getByLabelText(ru["membership.extend.end"]), "2099-12-31");
+    await user.type(form.getByLabelText(ru["membership.extend.reason"]), "перенос сборов");
+    await user.click(form.getByRole("button", { name: ru["membership.extend.action"] }));
+
+    expect(await form.findByText(message)).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: ru["membership.extend.title"] })).toBeInTheDocument();
   });
 
   it("отказ в отзыве показывает ошибку сервера", async () => {
@@ -342,6 +416,9 @@ describe("абонементы в карточке клиента", () => {
     expect(sheet.getByText(/болезнь/)).toBeInTheDocument();
     expect(
       sheet.queryByRole("button", { name: ru["membership.freeze.action"] }),
+    ).not.toBeInTheDocument();
+    expect(
+      sheet.queryByRole("button", { name: ru["membership.extend.action"] }),
     ).not.toBeInTheDocument();
     await user.click(sheet.getByRole("button", { name: ru["membership.unfreeze"] }));
     const confirm = within(

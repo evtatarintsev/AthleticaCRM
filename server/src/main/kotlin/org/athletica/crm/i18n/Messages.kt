@@ -724,6 +724,21 @@ object Messages {
         override val en = "The membership is not frozen"
     }
 
+    object MembershipExtensionReasonRequired : LocalizationKey {
+        override val ru = "Укажите причину продления"
+        override val en = "Specify the extension reason"
+    }
+
+    object MembershipExtensionNotLater : LocalizationKey {
+        override val ru = "Новая дата окончания должна быть позже текущей"
+        override val en = "The new end date must be later than the current one"
+    }
+
+    object MembershipExtensionFrozen : LocalizationKey {
+        override val ru = "Замороженный абонемент нельзя продлить"
+        override val en = "A frozen membership cannot be extended"
+    }
+
     object AuditSystemActor : LocalizationKey {
         override val ru = "Система"
         override val en = "System"

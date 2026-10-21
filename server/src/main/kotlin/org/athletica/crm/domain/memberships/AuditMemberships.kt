@@ -24,7 +24,8 @@ import org.athletica.crm.storage.Transaction
 
 /**
  * Декоратор [Memberships], логирующий в журнал аудита выдачу абонемента сотрудником, а также
- * оформление и снятие заморозки: активные абонементы, которые он возвращает, обёрнуты [AuditActiveMembership].
+ * оформление и снятие заморозки и ручное продление: активные абонементы, которые он возвращает,
+ * обёрнуты [AuditActiveMembership].
  */
 class AuditMemberships(private val delegate: Memberships, private val audit: AuditLog) : Memberships by delegate {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -60,7 +61,7 @@ class AuditMemberships(private val delegate: Memberships, private val audit: Aud
         today: LocalDate,
     ): Membership? = delegate.debitCandidate(clientId, groupId, sessionDate, today)?.let { audited(it) }
 
-    /** Оборачивает активный абонемент [membership] аудитом заморозки; остальные состояния — без изменений. */
+    /** Оборачивает активный абонемент [membership] аудитом изменений; остальные состояния — без изменений. */
     private fun audited(membership: Membership): Membership =
         if (membership is ActiveMembership) {
             AuditActiveMembership(membership, audit)
@@ -70,8 +71,8 @@ class AuditMemberships(private val delegate: Memberships, private val audit: Aud
 }
 
 /**
- * Декоратор [ActiveMembership], пишущий в журнал аудита оформление и снятие заморозки в той же
- * транзакции. Автор — сотрудник из контекста, для системного контекста — «Система».
+ * Декоратор [ActiveMembership], пишущий в журнал аудита оформление и снятие заморозки и ручное
+ * продление в той же транзакции. Автор — сотрудник из контекста, для системного контекста — «Система».
  */
 private class AuditActiveMembership(private val delegate: ActiveMembership, private val audit: AuditLog) : ActiveMembership by delegate {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -93,6 +94,14 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
         }
     }
 
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun extend(newEndDate: LocalDate, reason: String, today: LocalDate): ActiveMembership {
+        val previousEndDate = delegate.endDate
+        return AuditActiveMembership(delegate.extend(newEndDate, reason, today), audit).also {
+            logChange(Json.encodeToString(ExtensionAuditData(action = "EXTENDED", previousEndDate = previousEndDate, endDate = it.endDate, reason = reason.trim())))
+        }
+    }
+
     /**
      * Пишет в аудит оформление ([unfreezeReason] `null`) или снятие заморозки [freeze]
      * с новой датой окончания [membershipEndDate].
@@ -102,7 +111,22 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
         freeze: MembershipFreeze,
         unfreezeReason: UnfreezeReason?,
         membershipEndDate: LocalDate,
-    ) {
+    ) = logChange(
+        Json.encodeToString(
+            FreezeAuditData(
+                action = if (unfreezeReason == null) "FROZEN" else "UNFROZEN",
+                unfreezeReason = unfreezeReason,
+                freezeStart = freeze.start,
+                freezeEnd = freeze.end,
+                freezeReason = freeze.reason,
+                membershipEndDate = membershipEndDate,
+            ),
+        ),
+    )
+
+    /** Пишет в аудит изменение абонемента с данными [data]. */
+    context(ctx: RequestContext, tr: Transaction)
+    private suspend fun logChange(data: String) {
         val employee = ctx as? EmployeeRequestContext
         audit.log(
             AuditEvent(
@@ -112,17 +136,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
                 actionType = AuditActionType.UPDATE,
                 entityType = "membership",
                 entityId = id.value,
-                data =
-                    Json.encodeToString(
-                        FreezeAuditData(
-                            action = if (unfreezeReason == null) "FROZEN" else "UNFROZEN",
-                            unfreezeReason = unfreezeReason,
-                            freezeStart = freeze.start,
-                            freezeEnd = freeze.end,
-                            freezeReason = freeze.reason,
-                            membershipEndDate = membershipEndDate,
-                        ),
-                    ),
+                data = data,
                 ipAddress = employee?.clientIp,
             ),
         )
@@ -144,6 +158,19 @@ private data class FreezeAuditData(
     val freezeReason: String,
     /** Дата окончания абонемента после изменения. */
     val membershipEndDate: LocalDate,
+)
+
+/** Данные записи аудита о ручном продлении абонемента. */
+@Serializable
+private data class ExtensionAuditData(
+    /** Вид изменения, всегда `EXTENDED`. */
+    val action: String,
+    /** Дата окончания до продления. */
+    val previousEndDate: LocalDate,
+    /** Дата окончания после продления. */
+    val endDate: LocalDate,
+    /** Причина продления. */
+    val reason: String,
 )
 
 /** Снимок выдачи абонемента для журнала аудита (доменная сущность не сериализуется напрямую). */

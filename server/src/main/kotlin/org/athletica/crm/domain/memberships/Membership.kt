@@ -167,6 +167,15 @@ interface ActiveMembership : Membership {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): ActiveMembership
 
+    /**
+     * Продлевает абонемент до [newEndDate] по причине [reason] (сохраняется без пробелов по краям)
+     * и пишет продление в историю. Новая дата должна быть позже текущей даты окончания, причина —
+     * непустой; абонемент с сохранённой заморозкой не продлевается. Если на дату [today] абонемент
+     * перестаёт быть «к закрытию», эпизод уведомления закрывается. Автор — сотрудник из контекста.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun extend(newEndDate: LocalDate, reason: String, today: LocalDate): ActiveMembership
+
     /** Отмечает отправку уведомления «к закрытию» в текущем эпизоде и пишет её в историю. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun markCloseNotified(): ActiveMembership

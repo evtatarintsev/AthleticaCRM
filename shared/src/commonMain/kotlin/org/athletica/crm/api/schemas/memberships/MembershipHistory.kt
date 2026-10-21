@@ -133,6 +133,18 @@ data class MembershipFrozenEventSchema(
     val membershipEndDate: LocalDate,
 ) : MembershipEventSchema
 
+/** Ручное продление абонемента. */
+@Serializable
+@SerialName("extended")
+data class MembershipExtendedEventSchema(
+    /** Дата окончания до продления. */
+    val previousEndDate: LocalDate,
+    /** Дата окончания после продления. */
+    val endDate: LocalDate,
+    /** Причина продления. */
+    val reason: String,
+) : MembershipEventSchema
+
 /** Снятие заморозки абонемента. */
 @Serializable
 @SerialName("unfrozen")

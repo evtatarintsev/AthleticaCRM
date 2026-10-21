@@ -28,7 +28,6 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.domain.attendance.Participations
-import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -57,7 +56,6 @@ fun RouteWithContext.membershipsRoutes(
     participations: Participations,
     calendar: OrgCalendar,
     views: ReadViews,
-    audit: AuditLog,
 ) {
     route("/memberships") {
         post<IssueMembershipRequest, Unit>("/issue") { request ->
@@ -111,12 +109,12 @@ fun RouteWithContext.membershipsRoutes(
 
         post<FreezeMembershipRequest, Unit>("/freeze") { request ->
             db.transaction {
-                freezeMembership(memberships, calendar, audit, request.membershipId, request.startDate, request.endDate, request.reason)
+                freezeMembership(memberships, calendar, request.membershipId, request.startDate, request.endDate, request.reason)
             }
         }
 
         post<UnfreezeMembershipRequest, Unit>("/unfreeze") { request ->
-            db.transaction { unfreezeMembership(memberships, calendar, audit, request.membershipId) }
+            db.transaction { unfreezeMembership(memberships, calendar, request.membershipId) }
         }
     }
 }

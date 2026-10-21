@@ -12,7 +12,6 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.FreezeStatus
 import org.athletica.crm.core.subscription.UnfreezeReason
-import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
@@ -39,7 +38,6 @@ class MembershipFreezeTest {
     private val fixture = MembershipFixture()
     private val debits = DebitFixture(fixture)
     private val calendar = DbOrgCalendar(fixture.clock)
-    private val audit = PostgresAuditLog()
     private val scheduler =
         MembershipScheduler(
             db = TestPostgres.db,
@@ -49,7 +47,6 @@ class MembershipFreezeTest {
             calendar = calendar,
             unpaidSessions = DbUnpaidSessionsView(),
             tasks = DbTasks(),
-            audit = audit,
             clock = fixture.clock,
         )
 
@@ -59,10 +56,6 @@ class MembershipFreezeTest {
         runBlocking {
             fixture.setUp()
             debits.setUp()
-            TestPostgres.db
-                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, 'admin', 'hash')")
-                .bind("id", fixture.ctx.userId)
-                .execute()
         }
     }
 
@@ -79,9 +72,9 @@ class MembershipFreezeTest {
         start: LocalDate,
         end: LocalDate,
         reason: String = "отпуск",
-    ) = fixture.attempt { freezeMembership(fixture.memberships, calendar, audit, id, start, end, reason) }
+    ) = fixture.attempt { freezeMembership(fixture.memberships, calendar, id, start, end, reason) }
 
-    private suspend fun unfreeze(id: MembershipId) = fixture.tx { unfreezeMembership(fixture.memberships, calendar, audit, id) }
+    private suspend fun unfreeze(id: MembershipId) = fixture.tx { unfreezeMembership(fixture.memberships, calendar, id) }
 
     private suspend fun active(id: MembershipId) = assertIs<ActiveMembership>(fixture.reload(id))
 
@@ -144,7 +137,7 @@ class MembershipFreezeTest {
             val inactive = fixture.issue(fixture.insertClient(), Activation.OnFirstVisit(null), issuedOn = date(1)).id
             assertEquals("MEMBERSHIP_NOT_ACTIVE", errorCode(inactive, date(10), date(12)))
             assertEquals(date(3, 12), active(id).endDate)
-            assertEquals(1, auditRows(id).size)
+            assertEquals(1, auditRows(id).count { it.second.contains("\"FROZEN\"") })
         }
 
     @Test
@@ -204,7 +197,7 @@ class MembershipFreezeTest {
         runTest {
             val id = november(fixture.insertClient())
 
-            val result = fixture.attempt { unfreezeMembership(fixture.memberships, calendar, audit, id) }
+            val result = fixture.attempt { unfreezeMembership(fixture.memberships, calendar, id) }
 
             assertEquals("MEMBERSHIP_NOT_FROZEN", assertIs<CommonDomainError>(result.leftOrNull()).code)
         }

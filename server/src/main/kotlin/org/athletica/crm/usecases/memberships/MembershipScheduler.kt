@@ -15,7 +15,6 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
-import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -54,7 +53,6 @@ class MembershipScheduler(
     private val calendar: OrgCalendar,
     private val unpaidSessions: UnpaidSessionsView,
     private val tasks: Tasks,
-    private val audit: AuditLog,
     private val clock: Clock = Clock.System,
     private val interval: Duration = 15.minutes,
 ) {
@@ -113,7 +111,7 @@ class MembershipScheduler(
                 }
             }
             is ActiveMembership -> {
-                val active = clearExpiredFreeze(audit, membership, today)
+                val active = clearExpiredFreeze(membership, today)
                 if (active.closeMode == CloseMode.ON_EXPIRY && active.endDate < today) {
                     active.close(CloseReason.EXPIRY, today)
                 } else {

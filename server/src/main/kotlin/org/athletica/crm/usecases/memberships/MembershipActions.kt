@@ -10,7 +10,6 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.FreezeStatus
 import org.athletica.crm.core.subscription.UnfreezeReason
-import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
 import org.athletica.crm.domain.memberships.InactiveMembership
@@ -46,14 +45,13 @@ suspend fun revokeMembership(memberships: Memberships, id: MembershipId): Revoke
     }
 
 /**
- * Замораживает активный абонемент [id] на период [start]..[end] по причине [reason] и пишет
- * заморозку в аудит [audit]. Сохранённая, но закончившаяся заморозка сначала снимается.
+ * Замораживает активный абонемент [id] на период [start]..[end] по причине [reason].
+ * Сохранённая, но закончившаяся заморозка сначала снимается.
  */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun freezeMembership(
     memberships: Memberships,
     calendar: OrgCalendar,
-    audit: AuditLog,
     id: MembershipId,
     start: LocalDate,
     end: LocalDate,
@@ -62,22 +60,20 @@ suspend fun freezeMembership(
     when (val membership = memberships.byId(id)) {
         is ActiveMembership -> {
             val today = calendar.today()
-            val frozen = clearExpiredFreeze(audit, membership, today).freeze(start, end, reason, today)
-            frozen.also { audit.logFreezeChange(it.id, requireNotNull(it.freeze), null, it.endDate) }
+            clearExpiredFreeze(membership, today).freeze(start, end, reason, today)
         }
         is InactiveMembership -> raise(CommonDomainError("MEMBERSHIP_NOT_ACTIVE", Messages.MembershipNotActive.localize()))
         is ClosedMembership, is RevokedMembership -> raise(finalMembershipError())
     }
 
 /**
- * Снимает заморозку абонемента [id] сегодняшней датой организации и пишет снятие в аудит [audit]:
+ * Снимает заморозку абонемента [id] сегодняшней датой организации:
  * запланированная отменяется целиком, действующая размораживается досрочно.
  */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
 suspend fun unfreezeMembership(
     memberships: Memberships,
     calendar: OrgCalendar,
-    audit: AuditLog,
     id: MembershipId,
 ): ActiveMembership =
     when (val membership = memberships.byId(id)) {
@@ -85,11 +81,24 @@ suspend fun unfreezeMembership(
             val today = calendar.today()
             val freeze = membership.freezeAt(today) ?: raise(CommonDomainError("MEMBERSHIP_NOT_FROZEN", Messages.MembershipNotFrozen.localize()))
             val reason = if (freeze.statusAt(today) == FreezeStatus.SCHEDULED) UnfreezeReason.CANCELLED else UnfreezeReason.MANUAL
-            membership.unfreeze(today, reason).also { audit.logFreezeChange(it.id, freeze, reason, it.endDate) }
+            membership.unfreeze(today, reason)
         }
         is InactiveMembership -> raise(CommonDomainError("MEMBERSHIP_NOT_ACTIVE", Messages.MembershipNotActive.localize()))
         is ClosedMembership, is RevokedMembership -> raise(finalMembershipError())
     }
+
+/**
+ * Снимает с абонемента [membership] закончившуюся к [today] заморозку, если она ещё сохранена;
+ * иначе возвращает абонемент без изменений.
+ */
+context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+suspend fun clearExpiredFreeze(membership: ActiveMembership, today: LocalDate): ActiveMembership {
+    val freeze = membership.freeze
+    if (freeze == null || freeze.statusAt(today) != null) {
+        return membership
+    }
+    return membership.unfreeze(today, UnfreezeReason.EXPIRED)
+}
 
 /** Ошибка действия над абонементом в финальном состоянии. */
 context(ctx: RequestContext)

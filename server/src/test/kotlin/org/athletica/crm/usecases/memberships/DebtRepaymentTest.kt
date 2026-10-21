@@ -13,7 +13,6 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendance.DbParticipations
-import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
@@ -244,7 +243,6 @@ class DebtRepaymentTest {
                     calendar,
                     unpaid,
                     failingTasks,
-                    PostgresAuditLog(),
                 )
             val session = debits.session(date(10))
             debits.mark(session, client, "present")
@@ -264,7 +262,6 @@ class DebtRepaymentTest {
             calendar = calendar,
             unpaidSessions = unpaid,
             tasks = DbTasks(),
-            audit = PostgresAuditLog(),
             clock = fixture.clock,
         )
 }

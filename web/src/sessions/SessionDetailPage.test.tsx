@@ -220,7 +220,8 @@ const eightSessions = (remaining: number) => ({
 
 /**
  * Превью списаний поддельного сервера: у участника «1» есть абонемент (до проведения — спишется,
- * остаток 4; после — списан, остаток 3), у остальных абонемента нет.
+ * остаток 4; после — списан, остаток 3), у участника «3» до проведения абонемент заморожен
+ * до 23.10, у остальных абонемента нет.
  */
 function debitPreview(journal: SessionJournalResponse) {
   const completed = journal.status === "COMPLETED";
@@ -230,10 +231,17 @@ function debitPreview(journal: SessionJournalResponse) {
       debit: p.clientId.endsWith("1")
         ? completed
           ? { type: "debited", membership: eightSessions(3) }
-          : { type: "will_debit", membership: eightSessions(4), activates: false }
-        : completed && p.presence !== "PRESENT"
-          ? { type: "not_debited" }
-          : { type: "no_membership" },
+          : { type: "will_debit", membership: eightSessions(4), activates: false, freeze: null }
+        : p.clientId.endsWith("3") && !completed
+          ? {
+              type: "will_debit",
+              membership: eightSessions(5),
+              activates: false,
+              freeze: { endDate: "2026-10-23", reason: "отпуск" },
+            }
+          : completed && p.presence !== "PRESENT"
+            ? { type: "not_debited" }
+            : { type: "no_membership" },
     })),
   };
 }
@@ -480,6 +488,17 @@ describe("карточка занятия", () => {
     expect(
       await within(row("Борис")).findByText(ru["sessionDetail.debit.noMembership"]),
     ).toBeVisible();
+  });
+
+  it("показывает заморозку абонемента вместо остатка", async () => {
+    const server = journalServer(journalOf([participant("3", "Вера")]));
+    openApp(`/sessions/${sessionId}`, server.fetch);
+
+    const frozen = await within(await screen.findByRole("listitem", { name: "Вера" })).findByText(
+      /8 занятий · Заморозка до .*\(отпуск\)/,
+    );
+    expect(frozen).toBeVisible();
+    expect(within(row("Вера")).queryByText(/осталось/)).not.toBeInTheDocument();
   });
 
   it("после проведения показывает фактическое списание", async () => {

@@ -1,5 +1,6 @@
 package org.athletica.crm.api.schemas.attendance
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -66,7 +67,18 @@ data class WillDebitParticipantDebitSchema(
     val membership: DebitMembershipSchema,
     /** Абонемент не активирован и активируется этим занятием. */
     val activates: Boolean,
+    /** Заморозка абонемента, в период которой попадает занятие; `null` — нет. Посещение её снимет. */
+    val freeze: DebitFreezeSchema?,
 ) : ParticipantDebitStateSchema
+
+/** Заморозка абонемента списания для карточки занятия. */
+@Serializable
+data class DebitFreezeSchema(
+    /** Последний день заморозки включительно. */
+    val endDate: LocalDate,
+    /** Причина заморозки. */
+    val reason: String,
+)
 
 /** Подходящего абонемента нет: при проведении занятие станет неоплаченным (или уже стало). */
 @Serializable

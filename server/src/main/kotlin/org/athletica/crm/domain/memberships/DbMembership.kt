@@ -3,7 +3,10 @@ package org.athletica.crm.domain.memberships
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -20,6 +23,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
@@ -76,6 +80,7 @@ data class DbActiveMembership(
     override val startDate: LocalDate,
     override val endDate: LocalDate,
     override val closeNotifiedAt: Instant?,
+    override val freeze: MembershipFreeze?,
 ) : ActiveMembership,
     MembershipTerms by terms {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -85,7 +90,7 @@ data class DbActiveMembership(
                 .sql(
                     """
                     UPDATE memberships
-                    SET state = 'CLOSED', closed_on = :closedOn, close_reason = :reason
+                    SET state = 'CLOSED', closed_on = :closedOn, close_reason = :reason, $CLEAR_FREEZE
                     WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'
                     """.trimIndent(),
                 )
@@ -225,6 +230,81 @@ data class DbActiveMembership(
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun freeze(
+        start: LocalDate,
+        end: LocalDate,
+        reason: String,
+        today: LocalDate,
+    ): ActiveMembership {
+        freezePeriodError(start, end, reason, endDate, today)?.let { raise(it) }
+        if (freeze != null) {
+            raise(CommonDomainError("MEMBERSHIP_ALREADY_FROZEN", Messages.MembershipAlreadyFrozen.localize()))
+        }
+        val frozen = MembershipFreeze(start, end, reason.trim(), ctx.actingEmployeeId)
+        val newEndDate = endDate.plus(DatePeriod(days = frozen.days))
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE memberships
+                    SET end_date = :endDate, freeze_start = :start, freeze_end = :end,
+                        freeze_reason = :reason, freeze_by = :frozenBy
+                    WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE' AND freeze_start IS NULL
+                    """.trimIndent(),
+                )
+                .bind("endDate", newEndDate)
+                .bind("start", frozen.start)
+                .bind("end", frozen.end)
+                .bind("reason", frozen.reason)
+                .bind("frozenBy", frozen.frozenBy)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated)
+        recordMembershipEvent(
+            id,
+            MembershipEventKind.FROZEN,
+            buildJsonObject {
+                put("startDate", frozen.start.toString())
+                put("endDate", frozen.end.toString())
+                put("reason", frozen.reason)
+                put("membershipEndDate", newEndDate.toString())
+            },
+        )
+        return copy(endDate = newEndDate, freeze = frozen)
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): DbActiveMembership {
+        val current = freeze ?: raise(CommonDomainError("MEMBERSHIP_NOT_FROZEN", Messages.MembershipNotFrozen.localize()))
+        val newEndDate = endDate.minus(DatePeriod(days = current.unusedDaysFrom(day)))
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE memberships SET end_date = :endDate, $CLEAR_FREEZE
+                    WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE' AND freeze_start IS NOT NULL
+                    """.trimIndent(),
+                )
+                .bind("endDate", newEndDate)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated)
+        recordMembershipEvent(
+            id,
+            MembershipEventKind.UNFROZEN,
+            buildJsonObject {
+                put("reason", reason.name)
+                put("startDate", current.start.toString())
+                put("endDate", current.end.toString())
+                put("membershipEndDate", newEndDate.toString())
+            },
+        )
+        return copy(endDate = newEndDate, freeze = null)
+    }
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun markCloseNotified(): ActiveMembership {
         val now = Clock.System.now()
         val updated =
@@ -316,7 +396,16 @@ enum class MembershipEventKind {
 
     /** Возврат занятия; в данных — занятие и его дата. */
     DEBIT_REVERSED,
+
+    /** Заморозка; в данных — период, причина и новая дата окончания абонемента. */
+    FROZEN,
+
+    /** Снятие заморозки; в данных — основание, период и новая дата окончания абонемента. */
+    UNFROZEN,
 }
+
+/** SQL-присваивание, снимающее текущую заморозку строки `memberships`. */
+private const val CLEAR_FREEZE = "freeze_start = NULL, freeze_end = NULL, freeze_reason = NULL, freeze_by = NULL"
 
 /**
  * Возвращает занятие списания [debit] на абонемент [membership]: отменяет списание,
@@ -384,7 +473,7 @@ private suspend fun activateMembership(
             .execute()
     requireTransition(updated)
     recordActivation(membership.id, reason, startDate, endDate)
-    return DbActiveMembership(terms, membership.activation, membership.sessionsRemaining, startDate, endDate, null)
+    return DbActiveMembership(terms, membership.activation, membership.sessionsRemaining, startDate, endDate, null, null)
 }
 
 /** Отзывает абонемент [membership] из состояния [from]; [startDate]/[endDate] — его даты, если были. */
@@ -398,7 +487,7 @@ private suspend fun revokeMembership(
 ): RevokedMembership {
     val updated =
         tr
-            .sql("UPDATE memberships SET state = 'REVOKED' WHERE id = :id AND org_id = :orgId AND state = :from")
+            .sql("UPDATE memberships SET state = 'REVOKED', $CLEAR_FREEZE WHERE id = :id AND org_id = :orgId AND state = :from")
             .bind("id", membership.id)
             .bind("orgId", ctx.orgId)
             .bind("from", from.name)

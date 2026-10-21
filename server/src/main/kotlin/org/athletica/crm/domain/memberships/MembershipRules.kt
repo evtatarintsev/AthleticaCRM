@@ -8,6 +8,7 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
@@ -15,6 +16,7 @@ import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.core.subscription.EndingSoonReason
+import org.athletica.crm.core.subscription.FreezeStatus
 import org.athletica.crm.core.subscription.TermPosition
 import org.athletica.crm.i18n.Messages
 
@@ -162,6 +164,62 @@ data class ActiveStatus(
         }
     }
 }
+
+/**
+ * Текущая заморозка активного абонемента: период [start]..[end] включительно. Дата окончания
+ * абонемента сдвигается на [days] при оформлении, поэтому всегда позже [end].
+ */
+data class MembershipFreeze(
+    /** Первый день заморозки. */
+    val start: LocalDate,
+    /** Последний день заморозки включительно. */
+    val end: LocalDate,
+    /** Причина заморозки. */
+    val reason: String,
+    /** Сотрудник, оформивший заморозку; `null`, если он удалён. */
+    val frozenBy: EmployeeId?,
+) {
+    /** Длина периода в днях включительно. */
+    val days: Int
+        get() = start.daysUntil(end) + 1
+
+    /** Состояние на дату [today]; `null` — заморозка закончилась. */
+    fun statusAt(today: LocalDate): FreezeStatus? =
+        when {
+            today > end -> null
+            today < start -> FreezeStatus.SCHEDULED
+            else -> FreezeStatus.ACTIVE
+        }
+
+    /** Попадает ли дата [date] в период заморозки. */
+    fun covers(date: LocalDate): Boolean = date in start..end
+
+    /**
+     * Неиспользованные дни при снятии заморозки в день [day]: с [day] (но не раньше [start]) по [end]
+     * включительно, сам [day] уже не заморожен; 0, если [day] позже [end].
+     */
+    fun unusedDaysFrom(day: LocalDate): Int = maxOf(0, maxOf(day, start).daysUntil(end) + 1)
+}
+
+/**
+ * Ошибка периода заморозки [start]..[end] с причиной [reason] для абонемента с датой окончания
+ * [endDate] при сегодняшней дате организации [today]; `null` — период допустим.
+ */
+context(ctx: RequestContext)
+fun freezePeriodError(
+    start: LocalDate,
+    end: LocalDate,
+    reason: String,
+    endDate: LocalDate,
+    today: LocalDate,
+): DomainError? =
+    when {
+        reason.isBlank() -> CommonDomainError("FREEZE_REASON_REQUIRED", Messages.MembershipFreezeReasonRequired.localize())
+        end < start -> CommonDomainError("FREEZE_PERIOD_INVALID", Messages.MembershipFreezePeriodInvalid.localize())
+        start < today -> CommonDomainError("FREEZE_IN_PAST", Messages.MembershipFreezeInPast.localize())
+        start > endDate -> CommonDomainError("FREEZE_AFTER_END", Messages.MembershipFreezeAfterEnd.localize())
+        else -> null
+    }
 
 /**
  * Подходит ли абонемент для списания занятия группы [groupId] от [sessionDate] при сегодняшней

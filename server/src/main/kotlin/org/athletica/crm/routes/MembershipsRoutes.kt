@@ -6,8 +6,10 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.memberships.ActiveMembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.CloseMembershipRequest
 import org.athletica.crm.api.schemas.memberships.ClosedMembershipStateSchema
+import org.athletica.crm.api.schemas.memberships.FreezeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.InactiveMembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.IssueMembershipRequest
+import org.athletica.crm.api.schemas.memberships.MembershipFreezeSchema
 import org.athletica.crm.api.schemas.memberships.MembershipGroupSchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryRequest
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
@@ -18,6 +20,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.RepayDebtRequest
 import org.athletica.crm.api.schemas.memberships.RevokeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.RevokedMembershipStateSchema
+import org.athletica.crm.api.schemas.memberships.UnfreezeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
@@ -25,6 +28,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.domain.attendance.Participations
+import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -38,8 +42,10 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.memberships.closeMembership
+import org.athletica.crm.usecases.memberships.freezeMembership
 import org.athletica.crm.usecases.memberships.repayDebt
 import org.athletica.crm.usecases.memberships.revokeMembership
+import org.athletica.crm.usecases.memberships.unfreezeMembership
 
 /**
  * Маршруты выданных абонементов (требуют JWT-авторизации).
@@ -51,6 +57,7 @@ fun RouteWithContext.membershipsRoutes(
     participations: Participations,
     calendar: OrgCalendar,
     views: ReadViews,
+    audit: AuditLog,
 ) {
     route("/memberships") {
         post<IssueMembershipRequest, Unit>("/issue") { request ->
@@ -101,6 +108,16 @@ fun RouteWithContext.membershipsRoutes(
         post<RevokeMembershipRequest, Unit>("/revoke") { request ->
             db.transaction { revokeMembership(memberships, request.membershipId) }
         }
+
+        post<FreezeMembershipRequest, Unit>("/freeze") { request ->
+            db.transaction {
+                freezeMembership(memberships, calendar, audit, request.membershipId, request.startDate, request.endDate, request.reason)
+            }
+        }
+
+        post<UnfreezeMembershipRequest, Unit>("/unfreeze") { request ->
+            db.transaction { unfreezeMembership(memberships, calendar, audit, request.membershipId) }
+        }
     }
 }
 
@@ -147,6 +164,10 @@ private fun Membership.stateSchema(today: LocalDate): MembershipStateSchema =
                 termPosition = status.termPosition,
                 endingSoon = status.endingSoon.sorted(),
                 closePending = status.closePending,
+                freeze =
+                    freezeAt(today)?.let {
+                        MembershipFreezeSchema(it.start, it.end, it.reason, it.frozenBy, requireNotNull(it.statusAt(today)))
+                    },
             )
         }
         is ClosedMembership -> ClosedMembershipStateSchema(startDate, endDate, closedOn, closeReason)

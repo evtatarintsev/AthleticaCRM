@@ -14,10 +14,12 @@ import org.athletica.crm.api.schemas.memberships.MembershipClosedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipDebitReversedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipDebitedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipEventSchema
+import org.athletica.crm.api.schemas.memberships.MembershipFrozenEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryEntrySchema
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
 import org.athletica.crm.api.schemas.memberships.MembershipIssuedEventSchema
 import org.athletica.crm.api.schemas.memberships.MembershipRevokedEventSchema
+import org.athletica.crm.api.schemas.memberships.MembershipUnfrozenEventSchema
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.toEmployeeId
@@ -28,6 +30,7 @@ import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -107,6 +110,20 @@ class DbMembershipHistoryView : MembershipHistoryView {
                 MembershipDebitReversedEventSchema(
                     sessionId = Uuid.parse(payload.string("sessionId")).toSessionId(),
                     sessionDate = LocalDate.parse(payload.string("sessionDate")),
+                )
+            "FROZEN" ->
+                MembershipFrozenEventSchema(
+                    startDate = LocalDate.parse(payload.string("startDate")),
+                    endDate = LocalDate.parse(payload.string("endDate")),
+                    reason = payload.string("reason"),
+                    membershipEndDate = LocalDate.parse(payload.string("membershipEndDate")),
+                )
+            "UNFROZEN" ->
+                MembershipUnfrozenEventSchema(
+                    reason = UnfreezeReason.valueOf(payload.string("reason")),
+                    startDate = LocalDate.parse(payload.string("startDate")),
+                    endDate = LocalDate.parse(payload.string("endDate")),
+                    membershipEndDate = LocalDate.parse(payload.string("membershipEndDate")),
                 )
             else -> error("Неизвестный вид записи истории абонемента: $kind")
         }

@@ -15,6 +15,7 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -35,7 +36,8 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * Фоновая обработка абонементов по местной дате организации: активация «с даты» и по крайней
- * дате первого посещения, закрытие по сроку ([CloseMode.ON_EXPIRY]) и уведомления «к закрытию».
+ * дате первого посещения, снятие закончившейся заморозки, закрытие по сроку ([CloseMode.ON_EXPIRY])
+ * и уведомления «к закрытию».
  *
  * Один SQL выбирает абонементы, которым что-то положено; каждый обрабатывается в своей транзакции
  * в системном контексте организации, а правило перепроверяется по свежему состоянию — повторный
@@ -52,6 +54,7 @@ class MembershipScheduler(
     private val calendar: OrgCalendar,
     private val unpaidSessions: UnpaidSessionsView,
     private val tasks: Tasks,
+    private val audit: AuditLog,
     private val clock: Clock = Clock.System,
     private val interval: Duration = 15.minutes,
 ) {
@@ -90,7 +93,8 @@ class MembershipScheduler(
 
     /**
      * Применяет к абонементу [id] положенное на дату [today] действие по его текущему состоянию:
-     * активацию (с задачей «Проверить клиента» при долгах), закрытие по сроку или уведомление
+     * активацию (с задачей «Проверить клиента» при долгах), снятие закончившейся заморозки,
+     * закрытие по сроку или уведомление
      * «к закрытию».
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
@@ -108,12 +112,14 @@ class MembershipScheduler(
                     createCheckClientTaskIfDebts(unpaidSessions, tasks, active)
                 }
             }
-            is ActiveMembership ->
-                if (membership.closeMode == CloseMode.ON_EXPIRY && membership.endDate < today) {
-                    membership.close(CloseReason.EXPIRY, today)
+            is ActiveMembership -> {
+                val active = clearExpiredFreeze(audit, membership, today)
+                if (active.closeMode == CloseMode.ON_EXPIRY && active.endDate < today) {
+                    active.close(CloseReason.EXPIRY, today)
                 } else {
-                    notifyClosePendingIfDue(notifications, employees, membership, today)
+                    notifyClosePendingIfDue(notifications, employees, active, today)
                 }
+            }
             is ClosedMembership, is RevokedMembership -> Unit
         }
     }
@@ -133,6 +139,7 @@ class MembershipScheduler(
                 SELECT org_id, id FROM local
                 WHERE (state = 'INACTIVE' AND activation_mode = 'ON_DATE' AND activate_on <= today)
                    OR (state = 'INACTIVE' AND activation_mode = 'ON_FIRST_VISIT' AND activation_deadline <= today)
+                   OR (state = 'ACTIVE' AND freeze_end < today)
                    OR (state = 'ACTIVE' AND close_mode = 'ON_EXPIRY' AND end_date < today)
                    OR (state = 'ACTIVE' AND close_notified_at IS NULL
                        AND EXISTS (SELECT 1 FROM employees e WHERE e.id = issued_by AND e.is_active)

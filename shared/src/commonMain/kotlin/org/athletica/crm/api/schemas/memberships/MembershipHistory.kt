@@ -12,6 +12,7 @@ import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.core.subscription.UnfreezeReason
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
@@ -116,4 +117,32 @@ data class MembershipDebitReversedEventSchema(
     val sessionId: SessionId,
     /** Дата занятия. */
     val sessionDate: LocalDate,
+) : MembershipEventSchema
+
+/** Заморозка абонемента. */
+@Serializable
+@SerialName("frozen")
+data class MembershipFrozenEventSchema(
+    /** Первый день заморозки. */
+    val startDate: LocalDate,
+    /** Последний день заморозки включительно. */
+    val endDate: LocalDate,
+    /** Причина заморозки. */
+    val reason: String,
+    /** Дата окончания абонемента после сдвига на длину заморозки. */
+    val membershipEndDate: LocalDate,
+) : MembershipEventSchema
+
+/** Снятие заморозки абонемента. */
+@Serializable
+@SerialName("unfrozen")
+data class MembershipUnfrozenEventSchema(
+    /** Основание снятия. */
+    val reason: UnfreezeReason,
+    /** Первый день снятой заморозки. */
+    val startDate: LocalDate,
+    /** Последний день снятой заморозки. */
+    val endDate: LocalDate,
+    /** Дата окончания абонемента после возврата неиспользованных дней. */
+    val membershipEndDate: LocalDate,
 ) : MembershipEventSchema

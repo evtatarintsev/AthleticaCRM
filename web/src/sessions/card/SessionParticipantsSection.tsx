@@ -178,27 +178,30 @@ function ParticipationBadge({ kind }: { readonly kind: ParticipationKind }) {
 
 /**
  * Абонемент списания участника [state] с сервера: название и остаток, пометка активации
- * неактивированного или предупреждение «Нет абонемента». Пока не загружено — ничего.
+ * неактивированного, заморозка, в период которой попадает занятие, или предупреждение
+ * «Нет абонемента». Пока не загружено — ничего.
  */
 function ParticipantDebit({ state }: { readonly state: ParticipantDebitStateSchema | undefined }) {
-  const { t } = useI18n();
+  const { t, format } = useI18n();
   if (state === undefined) {
     return null;
   }
   switch (state.type) {
-    case "debited":
     case "will_debit":
-      return (
-        <span className="block text-xs text-muted-foreground">
-          {state.membership.name} ·{" "}
-          {state.membership.sessionsRemaining === null
-            ? t("clients.detail.subscriptionUnlimited")
-            : t("sessionDetail.debit.remaining", { count: state.membership.sessionsRemaining })}
-          {state.type === "will_debit" &&
-            state.activates &&
-            ` · ${t("sessionDetail.debit.activates")}`}
-        </span>
-      );
+      if (state.freeze !== null) {
+        return (
+          <span className="block text-xs text-sky-700 dark:text-sky-400">
+            {state.membership.name} ·{" "}
+            {t("sessionDetail.debit.frozen", {
+              date: format.date(state.freeze.endDate),
+              reason: state.freeze.reason,
+            })}
+          </span>
+        );
+      }
+      return <DebitMembership state={state} />;
+    case "debited":
+      return <DebitMembership state={state} />;
     case "no_membership":
       return (
         <span className="block text-xs font-medium text-amber-700 dark:text-amber-400">
@@ -208,4 +211,22 @@ function ParticipantDebit({ state }: { readonly state: ParticipantDebitStateSche
     case "not_debited":
       return null;
   }
+}
+
+/** Абонемент списания [state]: название и остаток, пометка активации неактивированного. */
+function DebitMembership({
+  state,
+}: {
+  readonly state: Extract<ParticipantDebitStateSchema, { type: "debited" | "will_debit" }>;
+}) {
+  const { t } = useI18n();
+  return (
+    <span className="block text-xs text-muted-foreground">
+      {state.membership.name} ·{" "}
+      {state.membership.sessionsRemaining === null
+        ? t("clients.detail.subscriptionUnlimited")
+        : t("sessionDetail.debit.remaining", { count: state.membership.sessionsRemaining })}
+      {state.type === "will_debit" && state.activates && ` · ${t("sessionDetail.debit.activates")}`}
+    </span>
+  );
 }

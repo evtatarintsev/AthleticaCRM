@@ -154,3 +154,23 @@ export function MembershipSessionsBar({ membership }: { readonly membership: Mem
     </div>
   );
 }
+
+/**
+ * Заморозка абонемента [membership] с сервера: «Заморожен до {дата}» для действующей,
+ * «Заморозка с {дата}» для запланированной; без заморозки — ничего.
+ */
+export function FreezeNote({ membership }: { readonly membership: MembershipSchema }) {
+  const { t, format } = useI18n();
+  const { state } = membership;
+  if (state.type !== "active" || state.freeze === null) {
+    return null;
+  }
+  switch (state.freeze.status) {
+    case "ACTIVE":
+      return <>{t("membership.freeze.activeUntil", { date: format.date(state.freeze.endDate) })}</>;
+    case "SCHEDULED":
+      return (
+        <>{t("membership.freeze.scheduledFrom", { date: format.date(state.freeze.startDate) })}</>
+      );
+  }
+}

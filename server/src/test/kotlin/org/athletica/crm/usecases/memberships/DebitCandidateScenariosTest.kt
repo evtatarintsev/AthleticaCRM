@@ -7,10 +7,13 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.attendance.DebitFreezeSchema
 import org.athletica.crm.api.schemas.attendance.NoMembershipParticipantDebitSchema
 import org.athletica.crm.api.schemas.attendance.WillDebitParticipantDebitSchema
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.DebitFixture
@@ -20,6 +23,8 @@ import org.athletica.crm.read.sessions.DbSessionDebitPreviewView
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.time.Clock
 
 /**
@@ -124,7 +129,60 @@ class DebitCandidateScenariosTest {
                 fixture.issue(client, name = "Взрослые", issuedOn = today, groupIds = listOf(other))
                 today
             },
+            Scenario("незамороженный приоритетнее замороженного на дату занятия", "Обычный") { client ->
+                val frozen = fixture.issue(client, name = "Замороженный", issuedOn = today)
+                val plain = fixture.issue(client, name = "Обычный", issuedOn = today)
+                debits.setTerm(frozen.id, days(-5), days(9))
+                debits.setTerm(plain.id, days(-5), days(40))
+                freeze(frozen.id, today, days(3))
+                days(1)
+            },
+            Scenario("заморозка вне даты занятия не меняет порядок", "Замороженный") { client ->
+                val frozen = fixture.issue(client, name = "Замороженный", issuedOn = today)
+                val plain = fixture.issue(client, name = "Обычный", issuedOn = today)
+                debits.setTerm(frozen.id, days(-5), days(9))
+                debits.setTerm(plain.id, days(-5), days(40))
+                freeze(frozen.id, days(2), days(3))
+                today
+            },
+            Scenario("замороженный — единственный кандидат", "Замороженный") { client ->
+                val frozen = fixture.issue(client, name = "Замороженный", issuedOn = today)
+                freeze(frozen.id, today, days(3))
+                days(1)
+            },
         )
+
+    /** Ставит абонементу [id] заморозку [start]..[end] напрямую в БД. */
+    private suspend fun freeze(id: MembershipId, start: LocalDate, end: LocalDate) {
+        TestPostgres.db
+            .sql("UPDATE memberships SET freeze_start = :s, freeze_end = :e, freeze_reason = 'отпуск' WHERE id = :id")
+            .bind("s", start)
+            .bind("e", end)
+            .bind("id", id)
+            .execute()
+    }
+
+    @Test
+    fun `превью отдаёт заморозку, если занятие в её периоде`() =
+        runTest {
+            val client = fixture.insertClient()
+            val membership = fixture.issue(client, name = "Замороженный", issuedOn = today)
+            freeze(membership.id, today, days(3))
+            val inside = debits.session(days(1), status = "scheduled")
+            val after = debits.session(days(5), status = "scheduled")
+            debits.mark(inside, client, null)
+            debits.mark(after, client, null)
+
+            val freezeOf = { session: SessionId ->
+                runBlocking {
+                    val state = fixture.tx { context(fixture.ctx) { preview.preview(session) } }.participants.single().debit
+                    assertIs<WillDebitParticipantDebitSchema>(state).freeze
+                }
+            }
+
+            assertEquals(DebitFreezeSchema(days(3), "отпуск"), freezeOf(inside))
+            assertNull(freezeOf(after))
+        }
 
     @Test
     fun `сценарии подбора на списании`() =

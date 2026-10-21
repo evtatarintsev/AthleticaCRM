@@ -20,12 +20,14 @@ import { membershipHistoryQuery, membershipsQuery } from "../card/clientCardQuer
 import {
   ClosePendingReasons,
   EndingMark,
+  FreezeNote,
   MembershipActivationNote,
   MembershipPill,
   MembershipSessions,
   MembershipSessionsBar,
 } from "./MembershipParts";
 import { membershipView, type MembershipView } from "./membershipView";
+import { FreezeMembershipSheet } from "./FreezeMembership";
 import { RepayDebtSheet } from "./RepayDebt";
 
 /**
@@ -70,12 +72,26 @@ export function MembershipSheet({
 }
 
 /** Действие с подтверждением в панели абонемента. */
-type PendingAction = "close" | "revoke";
+type PendingAction = "close" | "revoke" | "unfreeze" | "cancelFreeze";
+
+/** Маршрут API действия [action]. */
+function actionPath(action: PendingAction) {
+  switch (action) {
+    case "close":
+      return "memberships/close" as const;
+    case "revoke":
+      return "memberships/revoke" as const;
+    case "unfreeze":
+    case "cancelFreeze":
+      return "memberships/unfreeze" as const;
+  }
+}
 
 /**
  * Содержимое панели абонемента [membership]: пометка состояния, параметры, действия,
- * доступные для состояния («Закрыть» — у активного, «Отозвать» — у неактивированного и активного),
- * и история от новых записей к старым.
+ * доступные для состояния («Закрыть» и «Заморозить» — у активного без заморозки, «Разморозить»
+ * или «Отменить заморозку» — у активного с действующей или запланированной заморозкой,
+ * «Отозвать» — у неактивированного и активного), и история от новых записей к старым.
  */
 function MembershipPanel({
   membership,
@@ -98,6 +114,9 @@ function MembershipPanel({
   const canClose = membership.state.type === "active";
   const canRevoke = membership.state.type === "active" || membership.state.type === "inactive";
   const [repaying, setRepaying] = useState(false);
+  const [freezing, setFreezing] = useState(false);
+  const freeze = membership.state.type === "active" ? membership.state.freeze : null;
+  const canFreeze = membership.state.type === "active" && freeze === null;
 
   const ask = (action: PendingAction) => {
     setError(null);
@@ -106,9 +125,7 @@ function MembershipPanel({
   };
 
   const perform = async (action: PendingAction) => {
-    const result = await api.call(action === "close" ? "memberships/close" : "memberships/revoke", {
-      membershipId: membership.id,
-    });
+    const result = await api.call(actionPath(action), { membershipId: membership.id });
     if (!result.ok) {
       setError(apiErrorMessage(t, result.error));
     }
@@ -155,6 +172,30 @@ function MembershipPanel({
               {t("membership.repay.action")}
             </Button>
           )}
+          {canFreeze && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFreezing(true);
+              }}
+            >
+              {t("membership.freeze.action")}
+            </Button>
+          )}
+          {freeze !== null && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                ask(freeze.status === "SCHEDULED" ? "cancelFreeze" : "unfreeze");
+              }}
+            >
+              {freeze.status === "SCHEDULED"
+                ? t("membership.cancelFreeze")
+                : t("membership.unfreeze")}
+            </Button>
+          )}
           {canRevoke && (
             <Button
               type="button"
@@ -178,6 +219,14 @@ function MembershipPanel({
         membershipId={membership.id}
         remaining={membership.sessionsRemaining}
       />
+      <FreezeMembershipSheet
+        open={freezing}
+        onOpenChange={setFreezing}
+        api={api}
+        branchId={branchId}
+        clientId={clientId}
+        membership={membership}
+      />
       <ConfirmDialog
         open={confirming !== null}
         onOpenChange={(next) => {
@@ -185,23 +234,41 @@ function MembershipPanel({
             setConfirming(null);
           }
         }}
-        title={
-          shownAction === "close"
-            ? t("membership.closeConfirmTitle")
-            : t("membership.revokeConfirmTitle")
-        }
-        description={
-          shownAction === "close"
-            ? t("membership.closeConfirmText")
-            : t("membership.revokeConfirmText")
-        }
-        confirmLabel={
-          shownAction === "close" ? t("clientCard.membership.close") : t("membership.revoke")
-        }
+        {...confirmTexts(t, shownAction)}
         onConfirm={() => perform(shownAction)}
       />
     </EditSheetBody>
   );
+}
+
+/** Заголовок, текст и кнопка подтверждения действия [action]. */
+function confirmTexts(t: ReturnType<typeof useI18n>["t"], action: PendingAction) {
+  switch (action) {
+    case "close":
+      return {
+        title: t("membership.closeConfirmTitle"),
+        description: t("membership.closeConfirmText"),
+        confirmLabel: t("clientCard.membership.close"),
+      };
+    case "revoke":
+      return {
+        title: t("membership.revokeConfirmTitle"),
+        description: t("membership.revokeConfirmText"),
+        confirmLabel: t("membership.revoke"),
+      };
+    case "unfreeze":
+      return {
+        title: t("membership.unfreezeConfirmTitle"),
+        description: t("membership.unfreezeConfirmText"),
+        confirmLabel: t("membership.unfreeze"),
+      };
+    case "cancelFreeze":
+      return {
+        title: t("membership.cancelFreezeConfirmTitle"),
+        description: t("membership.cancelFreezeConfirmText"),
+        confirmLabel: t("membership.cancelFreeze"),
+      };
+  }
 }
 
 /** Параметры абонемента [membership]: режимы, даты, занятия, стоимость; [view] — его вид. */
@@ -243,9 +310,26 @@ function MembershipParams({
           <>
             {format.date(view.startDate)} —{" "}
             <EndingMark active={view.endingByDate}>{format.date(view.endDate)}</EndingMark>
+            {state.type === "active" && state.freeze !== null && (
+              <span className="text-muted-foreground"> · {t("membership.freeze.extended")}</span>
+            )}
           </>
         )}
       </Field>
+      {state.type === "active" && state.freeze !== null && (
+        <Field label={t("membership.freeze.field")}>
+          <span className="block text-sky-700 dark:text-sky-400">
+            <FreezeNote membership={membership} />
+          </span>
+          <span className="block text-muted-foreground">
+            {t("membership.freeze.period", {
+              from: format.date(state.freeze.startDate),
+              to: format.date(state.freeze.endDate),
+              reason: state.freeze.reason,
+            })}
+          </span>
+        </Field>
+      )}
       {state.type === "closed" && (
         <Field label={t("membership.closedOn")}>
           {format.date(state.closedOn)} · {t(`membership.closeReason.${state.reason}`)}
@@ -352,6 +436,28 @@ function EventText({ event }: { readonly event: MembershipEventSchema }) {
       );
     case "debit_reversed":
       return <>{t("membership.history.debitReversed", { date: format.date(event.sessionDate) })}</>;
+    case "frozen":
+      return (
+        <>
+          {t("membership.history.frozen", {
+            from: format.date(event.startDate),
+            to: format.date(event.endDate),
+            reason: event.reason,
+            end: format.date(event.membershipEndDate),
+          })}
+        </>
+      );
+    case "unfrozen":
+      return (
+        <>
+          {t("membership.history.unfrozen", {
+            from: format.date(event.startDate),
+            to: format.date(event.endDate),
+            reason: t(`membership.unfreezeReason.${event.reason}`),
+            end: format.date(event.membershipEndDate),
+          })}
+        </>
+      );
   }
 }
 

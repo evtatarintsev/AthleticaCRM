@@ -1,7 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { ClientDetailResponseSchema, type MembershipSchema } from "@/api/generated/contracts";
+import {
+  ClientDetailResponseSchema,
+  FreezeMembershipRequestSchema,
+  type MembershipSchema,
+} from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
 import { appServer, empty, json, openApp } from "@/test/app";
 import { activeState, testMembership } from "@/test/memberships";
@@ -89,7 +93,8 @@ const issuedEntry = {
 
 /**
  * Поддельный сервер карточки клиента с абонементами [initial]. `memberships/close` закрывает
- * абонемент; `memberships/revoke` отвечает ошибкой [revokeError], если она задана.
+ * абонемент; `memberships/revoke` отвечает ошибкой [revokeError], если она задана;
+ * `memberships/freeze` ставит действующую заморозку, `memberships/unfreeze` её снимает.
  */
 function membershipsServer(initial: readonly MembershipSchema[], revokeError?: string) {
   let memberships = [...initial];
@@ -124,6 +129,28 @@ function membershipsServer(initial: readonly MembershipSchema[], revokeError?: s
         actorName: issuedEntry.actorName,
         event: { type: "closed", reason: "MANUAL", closedOn: "2026-10-16" },
       });
+      return empty();
+    },
+    "memberships/freeze": ({ body }) => {
+      const request = FreezeMembershipRequestSchema.parse(body);
+      memberships = memberships.map((membership) =>
+        membership.id === request.membershipId && membership.state.type === "active"
+          ? {
+              ...membership,
+              state: activeState(membership.state.startDate, membership.state.endDate, {
+                freeze: { ...request, status: "ACTIVE" },
+              }),
+            }
+          : membership,
+      );
+      return empty();
+    },
+    "memberships/unfreeze": () => {
+      memberships = memberships.map((membership) =>
+        membership.state.type === "active"
+          ? { ...membership, state: { ...membership.state, freeze: null } }
+          : membership,
+      );
       return empty();
     },
     "memberships/revoke": () =>
@@ -242,6 +269,124 @@ describe("абонементы в карточке клиента", () => {
 
     expect(await sheet.findByText(message)).toBeInTheDocument();
     expect(sheet.getByText(ru["clientCard.subscriptionEnding"])).toBeInTheDocument();
+  });
+
+  it("заморозка из панели показывает период и причину", async () => {
+    const api = membershipsServer([ending]);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.freeze.action"] }));
+    const form = within(await screen.findByRole("dialog", { name: ru["membership.freeze.title"] }));
+    expect(form.queryByRole("status")).not.toBeInTheDocument();
+    await user.type(form.getByLabelText(ru["membership.freeze.end"]), "2099-12-31");
+    await user.type(form.getByLabelText(ru["membership.freeze.reason"]), "отпуск");
+    await user.click(form.getByRole("button", { name: ru["membership.freeze.action"] }));
+
+    await waitFor(() => {
+      expect(api.to("memberships/freeze")).toHaveLength(1);
+    });
+    expect(api.to("memberships/freeze")[0]?.body).toMatchObject({
+      membershipId: ending.id,
+      endDate: "2099-12-31",
+      reason: "отпуск",
+    });
+    expect(await sheet.findByText(/Заморожен до/)).toBeInTheDocument();
+    expect(sheet.getByText(/отпуск/)).toBeInTheDocument();
+    expect(
+      sheet.queryByRole("button", { name: ru["membership.freeze.action"] }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("форма заморозки предупреждает о другом абонементе в ту же группу", async () => {
+    const other = testMembership({
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000a14",
+      name: "Второй",
+      state: activeState("2026-10-01", "2026-10-31"),
+    });
+    openApp(`/clients/${client.id}`, membershipsServer([ending, other]).fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("1111"));
+    const sheet = within(await screen.findByRole("dialog", { name: "1111" }));
+    await user.click(sheet.getByRole("button", { name: ru["membership.freeze.action"] }));
+    const form = within(await screen.findByRole("dialog", { name: ru["membership.freeze.title"] }));
+
+    expect(form.getByRole("status")).toHaveTextContent(/Второй/);
+  });
+
+  it("действующую заморозку можно снять с подтверждением, плитка и строка её показывают", async () => {
+    const frozen = testMembership({
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000a15",
+      name: "Замороженный",
+      state: activeState("2026-10-01", "2026-11-14", {
+        freeze: {
+          startDate: "2026-10-10",
+          endDate: "2026-10-23",
+          reason: "болезнь",
+          status: "ACTIVE",
+        },
+      }),
+    });
+    const api = membershipsServer([frozen]);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const tile = await tileButton("Замороженный");
+    expect(within(tile).getByText(/Заморожен до/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Заморожен до/).length).toBeGreaterThan(1);
+    await user.click(tile);
+    const sheet = within(await screen.findByRole("dialog", { name: "Замороженный" }));
+    expect(sheet.getByText(/болезнь/)).toBeInTheDocument();
+    expect(
+      sheet.queryByRole("button", { name: ru["membership.freeze.action"] }),
+    ).not.toBeInTheDocument();
+    await user.click(sheet.getByRole("button", { name: ru["membership.unfreeze"] }));
+    const confirm = within(
+      await screen.findByRole("dialog", { name: ru["membership.unfreezeConfirmTitle"] }),
+    );
+    await user.click(confirm.getByRole("button", { name: ru["membership.unfreeze"] }));
+
+    await waitFor(() => {
+      expect(api.to("memberships/unfreeze")).toHaveLength(1);
+    });
+    expect(api.to("memberships/unfreeze")[0]?.body).toEqual({ membershipId: frozen.id });
+    expect(
+      await sheet.findByRole("button", { name: ru["membership.freeze.action"] }),
+    ).toBeInTheDocument();
+  });
+
+  it("запланированную заморозку можно отменить", async () => {
+    const scheduled = testMembership({
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000a16",
+      name: "С заморозкой",
+      state: activeState("2026-10-01", "2026-11-14", {
+        freeze: {
+          startDate: "2099-01-10",
+          endDate: "2099-01-23",
+          reason: "отпуск",
+          status: "SCHEDULED",
+        },
+      }),
+    });
+    const api = membershipsServer([scheduled]);
+    openApp(`/clients/${client.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await tileButton("С заморозкой"));
+    const sheet = within(await screen.findByRole("dialog", { name: "С заморозкой" }));
+    expect(sheet.getAllByText(/Заморозка с/).length).toBeGreaterThan(0);
+    await user.click(sheet.getByRole("button", { name: ru["membership.cancelFreeze"] }));
+    const confirm = within(
+      await screen.findByRole("dialog", { name: ru["membership.cancelFreezeConfirmTitle"] }),
+    );
+    await user.click(confirm.getByRole("button", { name: ru["membership.cancelFreeze"] }));
+
+    await waitFor(() => {
+      expect(api.to("memberships/unfreeze")).toHaveLength(1);
+    });
   });
 
   it("плитка открывается с клавиатуры", async () => {

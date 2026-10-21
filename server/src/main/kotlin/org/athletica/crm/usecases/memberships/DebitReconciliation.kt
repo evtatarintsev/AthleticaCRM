@@ -15,7 +15,6 @@ import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.domain.attendance.Participation
 import org.athletica.crm.domain.attendance.Participations
-import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.events.AttendanceChanged
 import org.athletica.crm.domain.events.AttendanceMarked
@@ -55,7 +54,6 @@ class DebitReconciliation(
     private val calendar: OrgCalendar,
     private val unpaidSessions: UnpaidSessionsView,
     private val tasks: Tasks,
-    private val audit: AuditLog,
 ) {
     /** Сверяет списания всех участников проведённого занятия [event] организации [orgId]. */
     suspend fun sessionCompleted(orgId: OrgId, event: SessionCompleted) {
@@ -106,7 +104,7 @@ class DebitReconciliation(
      * Списывает занятие [participation] группы [groupId] с подобранного абонемента, активируя
      * неактивированный: «с даты» — датой активации, «при первом посещении» — датой занятия.
      * Если дата занятия попадает в период текущей заморозки, заморозка сначала снимается с возвратом
-     * неиспользованных дней и записью в аудит.
+     * неиспользованных дней.
      * Если абонемент стал «к закрытию», сразу уведомляет выдавшего. Если списание активировало
      * абонемент, в той же транзакции проверяет долги клиента и при их наличии создаёт задачу
      * «Проверить клиента»: активация → списание → проверка долгов → задача.
@@ -142,9 +140,7 @@ class DebitReconciliation(
         if (freeze == null || !freeze.covers(sessionDate)) {
             return membership
         }
-        return membership.unfreeze(sessionDate, UnfreezeReason.VISIT).also {
-            audit.logFreezeChange(it.id, freeze, UnfreezeReason.VISIT, it.endDate)
-        }
+        return membership.unfreeze(sessionDate, UnfreezeReason.VISIT)
     }
 
     /** Возвращает занятие списания [debit] на его абонемент — активный или закрытый. */

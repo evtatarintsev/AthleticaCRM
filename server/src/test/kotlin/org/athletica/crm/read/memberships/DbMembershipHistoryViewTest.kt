@@ -10,7 +10,6 @@ import org.athletica.crm.api.schemas.memberships.MembershipIssuedEventSchema
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
-import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
@@ -42,7 +41,6 @@ class DbMembershipHistoryViewTest {
             calendar = DbOrgCalendar(fixture.clock),
             unpaidSessions = DbUnpaidSessionsView(),
             tasks = DbTasks(),
-            audit = PostgresAuditLog(),
             clock = fixture.clock,
         )
 

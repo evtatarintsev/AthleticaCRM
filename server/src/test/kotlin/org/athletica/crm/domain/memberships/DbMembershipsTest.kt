@@ -4,6 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.errors.DomainError
@@ -12,6 +13,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
+import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.revokeMembership
@@ -271,5 +273,28 @@ class DbMembershipsTest {
             other.issue(other.insertClient(), name = "Чужой")
 
             assertEquals(listOf("Свой"), fixture.tx { fixture.memberships.forClient(clientId) }.map { it.name })
+        }
+
+    @Test
+    fun `декоратор пишет в аудит заморозку от сотрудника и разморозку от системы`() =
+        runTest {
+            val id = fixture.issue(fixture.insertClient()).id
+            val day = LocalDate(2026, 10, 20)
+            fixture.tx { assertIs<ActiveMembership>(fixture.memberships.byId(id)).freeze(day, LocalDate(2026, 10, 29), "болезнь", LocalDate(2026, 10, 16)) }
+            fixture.tx(fixture.system) { assertIs<ActiveMembership>(fixture.memberships.byId(id)).unfreeze(day, UnfreezeReason.EXPIRED) }
+
+            val rows =
+                TestPostgres.db
+                    .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id AND data::text LIKE '%freezeStart%' ORDER BY created_at, id")
+                    .bind("id", id)
+                    .list { it.get("username", String::class.java)!! to Json.parseToJsonElement(it.get("data", String::class.java)!!) }
+            val frozen =
+                """{"action":"FROZEN","unfreezeReason":null,"freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-25"}"""
+            val unfrozen =
+                """{"action":"UNFROZEN","unfreezeReason":"EXPIRED","freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-15"}"""
+            assertEquals(
+                listOf(fixture.ctx.username to Json.parseToJsonElement(frozen), "Система" to Json.parseToJsonElement(unfrozen)),
+                rows,
+            )
         }
 }

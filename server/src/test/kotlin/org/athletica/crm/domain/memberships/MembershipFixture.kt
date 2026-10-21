@@ -24,6 +24,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
+import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import kotlin.test.fail
@@ -50,14 +51,19 @@ class MembershipFixture(
     /** Системный контекст организации. */
     val system: SystemRequestContext = SystemRequestContext(orgId = orgId, currency = currency)
 
-    /** Хранилище абонементов. */
-    val memberships = DbMemberships()
+    /** Хранилище абонементов с аудитом, как в приложении. */
+    val memberships: Memberships = AuditMemberships(DbMemberships(), PostgresAuditLog())
 
     /** Подменяемые часы: «сейчас» задаётся через [at]. */
     val clock = MutableClock(Instant.parse("2026-10-16T09:00:00Z"))
 
-    /** Создаёт организацию и выдающего сотрудника. */
+    /** Создаёт организацию, выдающего сотрудника и его пользователя (на него ссылается аудит). */
     suspend fun setUp() {
+        TestPostgres.db
+            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, 'hash')")
+            .bind("id", ctx.userId)
+            .bind("login", ctx.userId.toString())
+            .execute()
         TestPostgres.db
             .sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:id, 'Org', :tz, :currency)")
             .bind("id", orgId)

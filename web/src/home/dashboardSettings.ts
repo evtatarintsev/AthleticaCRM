@@ -93,10 +93,16 @@ export function orderedVisible(settings: DashboardSettings): readonly DashboardW
   });
 }
 
-/** Скрытые виджеты [settings]: есть в пуле, но не в раскладке. */
-export function hiddenWidgets(settings: DashboardSettings): readonly DashboardWidget[] {
+/** Сохраняет скрытые слоты, расставляя видимые экземпляры по старой раскладке. */
+export function normalizeDashboardOrder(settings: DashboardSettings): DashboardSettings {
   const visible = new Set<DashboardWidgetId>(settings.layout);
-  return settings.widgets.filter((widget) => !visible.has(widget.id));
+  const ordered = orderedVisible(settings)[Symbol.iterator]();
+  return {
+    ...settings,
+    widgets: settings.widgets.map((widget) =>
+      visible.has(widget.id) ? (ordered.next().value ?? widget) : widget,
+    ),
+  };
 }
 
 /** Ключ локализованного заголовка по умолчанию для типа виджета [type]. */
@@ -138,7 +144,15 @@ export function updateDashboardSettings(
   update: (settings: DashboardSettings) => DashboardSettings,
 ): void {
   const cached = queryClient.getQueryData<DisplaySettings>(displaySettingsKey);
-  const dashboard = update(cached?.dashboard ?? fallback);
+  // Добавленные при отображении дефолтные виджеты ещё могут отсутствовать в кэше.
+  const current =
+    cached !== undefined &&
+    fallback.widgets.every((widget) =>
+      cached.dashboard.widgets.some((candidate) => candidate.id === widget.id),
+    )
+      ? cached.dashboard
+      : fallback;
+  const dashboard = update(normalizeDashboardOrder(current));
   queryClient.setQueryData<DisplaySettings>(displaySettingsKey, (current) =>
     current === undefined ? current : { ...current, dashboard },
   );
@@ -150,31 +164,40 @@ export function hideWidget(settings: DashboardSettings, id: DashboardWidgetId): 
   return { ...settings, layout: settings.layout.filter((candidate) => candidate !== id) };
 }
 
-/** Показывает виджет [id]: добавляет в конец раскладки, если его там ещё нет. */
+/** Показывает виджет [id] на его месте в общем порядке. */
 export function showWidget(settings: DashboardSettings, id: DashboardWidgetId): DashboardSettings {
   if (settings.layout.includes(id)) {
     return settings;
   }
-  return { ...settings, layout: [...settings.layout, id] };
+  const visible = new Set([...settings.layout, id]);
+  return {
+    ...settings,
+    layout: settings.widgets.filter((widget) => visible.has(widget.id)).map((widget) => widget.id),
+  };
 }
 
-/** Переставляет видимый виджет с позиции [index] на [index + shift] в раскладке. */
-export function moveVisibleWidget(
+/** Переставляет экземпляр в общем порядке, сохраняя включённость всех виджетов. */
+export function moveWidget(
   settings: DashboardSettings,
   index: number,
-  shift: -1 | 1,
+  shift: number,
 ): DashboardSettings {
   const target = index + shift;
-  if (target < 0 || target >= settings.layout.length) {
+  if (index < 0 || target < 0 || target >= settings.widgets.length) {
     return settings;
   }
-  const layout = [...settings.layout];
-  const moved = layout.splice(index, 1)[0];
+  const widgets = [...settings.widgets];
+  const moved = widgets.splice(index, 1)[0];
   if (moved === undefined) {
     return settings;
   }
-  layout.splice(target, 0, moved);
-  return { ...settings, layout };
+  widgets.splice(target, 0, moved);
+  const visible = new Set(settings.layout);
+  return {
+    ...settings,
+    widgets,
+    layout: widgets.filter((widget) => visible.has(widget.id)).map((widget) => widget.id),
+  };
 }
 
 /** Значение лимита, ограниченное диапазоном `[MIN_WIDGET_LIMIT, MAX_WIDGET_LIMIT]`. */

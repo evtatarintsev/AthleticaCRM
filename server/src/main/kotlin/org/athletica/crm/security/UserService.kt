@@ -18,27 +18,14 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asUuid
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 
 /**
- * Данные пользователя без привязки к филиалу. Используется до выбора филиала.
- * [password] — хэш пароля для верификации.
- */
-data class VerifiedUser(
-    val id: UserId,
-    val orgId: OrgId,
-    val employeeId: EmployeeId,
-    val username: String,
-    val password: String,
-) {
-    /** Создаёт [User] с указанным [branchId]. */
-    fun withBranch(branchId: BranchId) = User(id, orgId, branchId, employeeId, username, password)
-}
-
-/**
- * Данные пользователя системы с выбранным филиалом.
- * [id] — уникальный идентификатор, [orgId] — организация пользователя, [username] — имя для входа, [password] — хэш пароля.
+ * Данные пользователя системы.
+ * [id] — уникальный идентификатор, [orgId] — организация пользователя, [username] — имя для входа, [password] — хэш пароля,
+ * [branchId] — выбранный филиал либо [BranchId.notSelected], если филиал ещё не выбран.
  */
 data class User(
     override val id: UserId,
@@ -69,19 +56,15 @@ suspend fun userById(id: UserId, branchId: BranchId): User =
         """.trimIndent(),
     )
         .bind("id", id)
-        .firstOrNull { it.toVerifiedUser().withBranch(branchId) }
+        .firstOrNull { it.toUser(branchId) }
         ?: raise(UserNotFound("User with id='$id' not found"))
 
-/** Делегирует вызов [userById] для данного [UserId] с указанным [branchId]. */
-context(tr: Transaction, raise: Raise<UserNotFound>)
-suspend fun UserId.mapUserById(branchId: BranchId) = userById(this, branchId)
-
 /**
- * Верифицирует учётные данные и возвращает пользователя без привязки к филиалу.
- * Используется когда [branchId] ещё неизвестен (например, для получения списка доступных филиалов).
+ * Верифицирует учётные данные и возвращает пользователя с [BranchId.notSelected].
+ * Используется когда филиал ещё неизвестен (например, для получения списка доступных филиалов).
  */
 context(db: Database, passwordHasher: PasswordHasher)
-suspend fun verifyCredentials(username: String, password: String): Either<UserNotFound, VerifiedUser> {
+suspend fun verifyCredentials(username: String, password: String): Either<UserNotFound, User> {
     val user =
         db
             .sql(
@@ -93,7 +76,7 @@ suspend fun verifyCredentials(username: String, password: String): Either<UserNo
                 """.trimIndent(),
             )
             .bind("username", username)
-            .firstOrNull { it.toVerifiedUser() }
+            .firstOrNull { it.toUser(BranchId.notSelected()) }
     if (user == null) {
         return UserNotFound("User with given credentials not found").left()
     }
@@ -111,11 +94,12 @@ suspend fun verifyCredentials(username: String, password: String): Either<UserNo
  * Возвращает пользователя если [username] найден и [password] верен, либо [UserNotFound].
  */
 context(db: Database, passwordHasher: PasswordHasher)
-suspend fun findByCredentials(username: String, password: String, branchId: BranchId): Either<UserNotFound, User> = verifyCredentials(username, password).map { it.withBranch(branchId) }
+suspend fun findByCredentials(username: String, password: String, branchId: BranchId): Either<UserNotFound, User> = verifyCredentials(username, password).map { it.copy(branchId = branchId) }
 
-private fun Row.toVerifiedUser() =
-    VerifiedUser(
-        id = get("id", UUID::class.java)!!.toKotlinUuid().toUserId(),
+private fun Row.toUser(branchId: BranchId) =
+    User(
+        id = asUuid("id").toUserId(),
+        branchId = branchId,
         orgId = get("org_id", UUID::class.java)!!.toKotlinUuid().toOrgId(),
         employeeId = get("employee_id", UUID::class.java)!!.toKotlinUuid().toEmployeeId(),
         username = get("login", String::class.java)!!,

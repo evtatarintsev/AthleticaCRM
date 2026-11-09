@@ -79,7 +79,7 @@ class UserServiceTest {
             insertUser("user2", "secret123")
             context(TestPostgres.db, hasher) {
                 val result = verifyCredentials("user2", "secret123")
-                val user = assertIs<Either.Right<VerifiedUser>>(result).value
+                val user = assertIs<Either.Right<User>>(result).value
                 assertEquals("user2", user.username)
             }
         }

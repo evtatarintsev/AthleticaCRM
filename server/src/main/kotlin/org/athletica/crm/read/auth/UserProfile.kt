@@ -1,11 +1,9 @@
-package org.athletica.crm.usecases.auth
+package org.athletica.crm.read.auth
 
 import arrow.core.Either
 import arrow.core.left
-import arrow.core.raise.either
 import arrow.core.right
 import io.r2dbc.spi.Row
-import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -29,18 +27,18 @@ import kotlin.uuid.toKotlinUuid
 /**
  * Возвращает профиль текущего авторизованного пользователя.
  * Использует [ctx] для получения идентификатора пользователя из JWT.
- * Возвращает [User] или [CommonDomainError], если пользователь не найден.
+ * Возвращает [UserProfile] или [UserNotFound].
  */
 context(db: Database, ctx: EmployeeRequestContext)
 suspend fun profile(): Either<DomainError, UserProfile> =
     db
         .sql(
             """
-            SELECT u.id, u.login, u.password_hash, e.id as employee_id, e.org_id, e.name, e.avatar_id,
+            SELECT u.id, u.login, e.id as employee_id, e.org_id, e.name, e.avatar_id,
                    b.id as branch_id, b.name as branch_name
             FROM users u
             JOIN employees e ON e.user_id = u.id AND e.org_id = :orgId
-            JOIN branches b ON b.id = :branchId
+            JOIN branches b ON b.id = :branchId AND b.org_id = e.org_id
             WHERE u.id = :id AND e.is_active = true
             """.trimIndent(),
         )
@@ -49,28 +47,6 @@ suspend fun profile(): Either<DomainError, UserProfile> =
         .bind("branchId", ctx.branchId)
         .firstOrNull { it.toUserProfile() }
         ?.right() ?: UserNotFound("User with id='${ctx.userId}' not found").left()
-
-/**
- * Обновляет имя и аватар текущего авторизованного сотрудника.
- * Изменения применяются к записи [employees] организации из [ctx].
- * Возвращает обновлённый [UserProfile] или ошибку если сотрудник не найден.
- */
-context(db: Database, ctx: EmployeeRequestContext)
-suspend fun updateMe(request: UpdateMeRequest): Either<DomainError, UserProfile> =
-    either {
-        val updatedRows =
-            db
-                .sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
-                .bind("name", request.name)
-                .bind("avatarId", request.avatarId)
-                .bind("userId", ctx.userId)
-                .bind("orgId", ctx.orgId)
-                .execute()
-
-        if (updatedRows == 0L) raise(UserNotFound("Employee not found for user='${ctx.userId}'"))
-
-        profile().bind()
-    }
 
 data class UserProfile(
     val id: UserId,

@@ -29,6 +29,7 @@ import org.athletica.crm.domain.conversations.DbConversations
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
 import org.athletica.crm.employeeContext
+import org.athletica.crm.read.messaging.DbConversationView
 import org.athletica.crm.storage.asString
 import org.athletica.infra.messaging.ProviderChannelTransports
 import org.athletica.infra.messaging.telegram.telegramTestApi
@@ -131,9 +132,23 @@ class SendMessageTest {
                     conversations,
                     deliveries,
                 )
+                DbConversationView().messages(clientId)
             }
         }
     }
+
+    @Test
+    fun `чтение пустой ленты не создаёт диалог`() =
+        runTest {
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        assertEquals(ConversationResponse(clientId, emptyList()), DbConversationView().messages(clientId))
+                        assertEquals(null, conversations.byClient(clientId))
+                    }
+                }
+            }.let { assertIs<Either.Right<Unit>>(it) }
+        }
 
     @Test
     fun `успех создаёт сообщение и доставку в статусе PENDING`() =

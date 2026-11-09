@@ -1,4 +1,4 @@
-package org.athletica.crm.usecases.clients.import
+package org.athletica.crm.read.clients.import
 
 import arrow.core.Either
 import arrow.core.raise.either
@@ -9,6 +9,7 @@ import org.athletica.crm.api.schemas.clients.import.ClientImportParseResponse.Co
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.read.uploads.uploadById
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 
@@ -24,7 +25,9 @@ private const val MAX_CSV_SIZE_BYTES = 10L * 1024 * 1024
 context(db: Database, minio: MinioService, ctx: EmployeeRequestContext)
 suspend fun importClientsParse(request: ClientImportParseRequest): Either<DomainError, ClientImportParseResponse> =
     either {
-        val upload = db.transaction { uploadRecordById(request.uploadId) }
+        val upload =
+            db.transaction { uploadById(request.uploadId) }
+                ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", "Файл не найден"))
 
         if (upload.sizeBytes > MAX_CSV_SIZE_BYTES) {
             raise(CommonDomainError("FILE_TOO_BIG", "Файл превышает 10 МБ"))

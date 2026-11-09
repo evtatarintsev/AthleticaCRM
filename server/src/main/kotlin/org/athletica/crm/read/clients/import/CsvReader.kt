@@ -1,4 +1,4 @@
-package org.athletica.crm.usecases.clients.import
+package org.athletica.crm.read.clients.import
 
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser

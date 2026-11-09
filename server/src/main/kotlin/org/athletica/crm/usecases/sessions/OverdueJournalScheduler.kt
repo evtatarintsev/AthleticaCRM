@@ -4,17 +4,10 @@ import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.delay
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
-import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.entityids.toOrgId
-import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendancecontrol.AttendanceControl
@@ -22,12 +15,10 @@ import org.athletica.crm.domain.attendancecontrol.JournalCloseDelay
 import org.athletica.crm.domain.tasks.Tasks
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.i18n.localized
+import org.athletica.crm.read.sessions.DueSession
+import org.athletica.crm.read.sessions.dueJournalSessions
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
-import org.athletica.crm.storage.asLocalDate
-import org.athletica.crm.storage.asLocalTime
-import org.athletica.crm.storage.asStringOrNull
-import org.athletica.crm.storage.asUuid
 import org.slf4j.LoggerFactory
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -70,7 +61,21 @@ class OverdueJournalScheduler(
 
     /** Один проход: создаёт задачи по всем занятиям, срок задачи которых наступил. */
     suspend fun processDue() {
-        val due = db.transaction { dueSessions() }
+        val due =
+            db.transaction {
+                val now = clock.now()
+                val fromDate =
+                    (now - JournalCloseDelay.MAX_MINUTES.minutes - LOOKBACK - 2.days)
+                        .toLocalDateTime(TimeZone.UTC)
+                        .date
+                dueJournalSessions(
+                    now,
+                    fromDate,
+                    LOOKBACK,
+                    JournalCloseDelay.DEFAULT.minutes,
+                    AttendanceControl.DEFAULT_OVERDUE_TASK_ENABLED,
+                )
+            }
         due.forEach { session ->
             try {
                 db.transaction {
@@ -118,70 +123,6 @@ class OverdueJournalScheduler(
             dueDateEnd = null,
         )
     }
-
-    /** Занятия всех организаций, срок задачи по которым наступил за последние [LOOKBACK]. */
-    context(tr: Transaction)
-    private suspend fun dueSessions(): List<DueSession> {
-        val now = clock.now()
-        val fromDate =
-            (now - JournalCloseDelay.MAX_MINUTES.minutes - LOOKBACK - 2.days)
-                .toLocalDateTime(TimeZone.UTC)
-                .date
-        return tr
-            .sql(
-                """
-                WITH candidates AS (
-                    SELECT s.id, s.org_id, s.date, s.start_time, s.end_time, g.name AS group_name,
-                           ((s.date + s.end_time) AT TIME ZONE o.timezone)
-                               + make_interval(mins => COALESCE(acs.overdue_task_delay_minutes, :defaultDelay)) AS deadline
-                    FROM sessions s
-                    JOIN organizations o ON o.id = s.org_id
-                    LEFT JOIN groups g ON g.id = s.group_id
-                    LEFT JOIN attendance_control_settings acs ON acs.org_id = s.org_id
-                    WHERE s.status = 'scheduled'
-                      AND s.date >= :fromDate
-                      AND COALESCE(acs.overdue_task_enabled, :defaultEnabled)
-                      AND NOT EXISTS (SELECT 1 FROM session_overdue_tasks t WHERE t.session_id = s.id)
-                )
-                SELECT id, org_id, date, start_time, end_time, group_name
-                FROM candidates
-                WHERE deadline <= CAST(:now AS timestamptz)
-                  AND deadline > CAST(:now AS timestamptz) - make_interval(secs => :lookbackSeconds)
-                ORDER BY org_id, deadline, id
-                """.trimIndent(),
-            )
-            .bind("defaultDelay", JournalCloseDelay.DEFAULT.minutes)
-            .bind("defaultEnabled", AttendanceControl.DEFAULT_OVERDUE_TASK_ENABLED)
-            .bind("fromDate", fromDate.toJavaLocalDate())
-            .bind("now", now)
-            .bind("lookbackSeconds", LOOKBACK.inWholeSeconds.toDouble())
-            .list { row ->
-                DueSession(
-                    id = row.asUuid("id").toSessionId(),
-                    orgId = row.asUuid("org_id").toOrgId(),
-                    date = row.asLocalDate("date"),
-                    startTime = row.asLocalTime("start_time"),
-                    endTime = row.asLocalTime("end_time"),
-                    groupName = row.asStringOrNull("group_name") ?: "",
-                )
-            }
-    }
-
-    /** Занятие, по которому пора создать задачу, с данными для её текста. */
-    private data class DueSession(
-        /** Идентификатор занятия. */
-        val id: SessionId,
-        /** Организация занятия. */
-        val orgId: OrgId,
-        /** Дата занятия. */
-        val date: LocalDate,
-        /** Время начала. */
-        val startTime: LocalTime,
-        /** Время окончания. */
-        val endTime: LocalTime,
-        /** Название группы. */
-        val groupName: String,
-    )
 
     private companion object {
         /** Насколько давно может наступить срок задачи, чтобы она ещё создавалась. */

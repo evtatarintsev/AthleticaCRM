@@ -14,9 +14,9 @@ import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
+import org.athletica.crm.read.auth.UserProfile
+import org.athletica.crm.read.auth.profile
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.usecases.auth.UserProfile
-import org.athletica.crm.usecases.auth.profile
 import org.athletica.crm.usecases.auth.updateMe
 import org.junit.Before
 import kotlin.test.Test

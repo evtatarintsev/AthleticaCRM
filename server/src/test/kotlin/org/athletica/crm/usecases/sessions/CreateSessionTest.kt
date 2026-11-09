@@ -14,8 +14,8 @@ import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.events.DomainEventBus
-import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.sessions.DbSessions
+import org.athletica.crm.read.sessions.DbSessionDetailView
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.security.PasswordHasher
 import org.junit.Before
@@ -30,7 +30,6 @@ import kotlin.uuid.Uuid
  * явный состав тренеров без признака замены и принадлежность зала филиалу группы.
  */
 class CreateSessionTest {
-    private val groups = DbGroups()
     private val sessions = DbSessions(DomainEventBus())
     private val employees = DbEmployees(DbUsers(PasswordHasher()), DbRoles())
     private val fixture = ScheduleFixture()
@@ -49,7 +48,6 @@ class CreateSessionTest {
         id: SessionId = SessionId.new(),
     ) = fixture.runInContext {
         createSession(
-            groups = groups,
             sessions = sessions,
             employees = employees,
             id = id,
@@ -121,10 +119,11 @@ class CreateSessionTest {
 
             assertIs<Either.Right<*>>(create(group, hall, listOf(otherTrainer), id))
 
-            val session = fixture.inContext { sessions.byId(id) }
-            assertEquals(listOf(otherTrainer), session.employeeIds)
-            assertFalse(session.isEmployeeAssignmentOverridden)
-            assertEquals(null, session.originSlotId)
+            val detail = fixture.inContext { DbSessionDetailView().detail(id) }
+            assertEquals(group, detail.groupId)
+            assertEquals(listOf(otherTrainer), detail.employeeIds)
+            assertFalse(detail.isEmployeeAssignmentOverridden)
+            assertEquals(true, detail.isManual)
         }
 
     @Test

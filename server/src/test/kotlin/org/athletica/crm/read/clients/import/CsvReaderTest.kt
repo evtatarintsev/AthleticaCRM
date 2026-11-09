@@ -1,4 +1,4 @@
-package org.athletica.crm.usecases.clients.import
+package org.athletica.crm.read.clients.import
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -9,31 +9,29 @@ import org.athletica.crm.api.schemas.sessions.SetSessionEmployeesRequest
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.domain.employees.Employees
-import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.sessions.createSession
 import org.athletica.crm.usecases.sessions.rescheduleSession
-import org.athletica.crm.usecases.sessions.sessionDetail
 import kotlin.uuid.Uuid
 
 context(db: Database)
 fun RouteWithContext.sessionsRoutes(
-    groups: Groups,
     sessions: Sessions,
     employees: Employees,
+    views: ReadViews,
 ) {
     route("/sessions") {
         get<SessionDetailRequest, SessionDetailResponse>("/detail") { request ->
             db.transaction {
-                sessionDetail(sessions, groups, request.id)
+                views.sessionDetail.detail(request.id)
             }
         }
 
         post<CreateSessionRequest, SessionDetailResponse>("/create") { request ->
             db.transaction {
                 createSession(
-                    groups = groups,
                     sessions = sessions,
                     employees = employees,
                     id = request.id,
@@ -45,6 +43,7 @@ fun RouteWithContext.sessionsRoutes(
                     employeeIds = request.employeeIds,
                     notes = request.notes,
                 )
+                views.sessionDetail.detail(request.id)
             }
         }
 
@@ -58,7 +57,8 @@ fun RouteWithContext.sessionsRoutes(
         post<RescheduleSessionRequest, SessionDetailResponse>("/{id}/reschedule") { request, call ->
             val id = call.pathSessionId()
             db.transaction {
-                rescheduleSession(sessions, groups, id, request.newDate, request.newStartTime, request.newEndTime, request.newHallId)
+                rescheduleSession(sessions, id, request.newDate, request.newStartTime, request.newEndTime, request.newHallId)
+                views.sessionDetail.detail(id)
             }
         }
 
@@ -66,7 +66,7 @@ fun RouteWithContext.sessionsRoutes(
             db.transaction {
                 val session = sessions.byId(request.sessionId)
                 session.setEmployees(employees.byIds(request.employeeIds))
-                sessionDetail(sessions, groups, request.sessionId)
+                views.sessionDetail.detail(request.sessionId)
             }
         }
     }

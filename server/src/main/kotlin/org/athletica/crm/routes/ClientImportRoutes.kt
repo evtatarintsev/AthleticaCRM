@@ -8,10 +8,10 @@ import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.leadSource.LeadSources
+import org.athletica.crm.read.clients.import.importClientsParse
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.clients.import.importClientsCommit
-import org.athletica.crm.usecases.clients.import.importClientsParse
 
 /**
  * Регистрирует маршруты импорта клиентов из CSV.

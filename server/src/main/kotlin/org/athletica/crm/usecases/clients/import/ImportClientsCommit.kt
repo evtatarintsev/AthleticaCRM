@@ -29,6 +29,8 @@ import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.leadSource.LeadSource
 import org.athletica.crm.domain.leadSource.LeadSourceDescription
 import org.athletica.crm.domain.leadSource.LeadSources
+import org.athletica.crm.read.clients.import.CsvReader
+import org.athletica.crm.read.uploads.uploadById
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.storage.Transaction
@@ -52,7 +54,9 @@ suspend fun importClientsCommit(
     definitions: CustomFieldDefinitions,
 ): Either<DomainError, ClientImportCommitResponse> =
     either {
-        val upload = db.transaction { uploadRecordById(request.uploadId) }
+        val upload =
+            db.transaction { uploadById(request.uploadId) }
+                ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", "Файл не найден"))
 
         if (upload.sizeBytes > MAX_CSV_SIZE_BYTES) {
             raise(CommonDomainError("FILE_TOO_BIG", "Файл превышает 10 МБ"))

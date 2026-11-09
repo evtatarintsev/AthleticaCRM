@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.UpdateMeRequest
@@ -17,7 +18,6 @@ import org.athletica.crm.employeeContext
 import org.athletica.crm.read.auth.UserProfile
 import org.athletica.crm.read.auth.profile
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.usecases.auth.updateMe
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -82,7 +82,7 @@ class ProfileTest {
     fun `profile returns user for authenticated user`() =
         runTest {
             val (userId, orgId, employeeId) = insertUser("user@example.com")
-            context(TestPostgres.db, requestContext(userId, orgId, employeeId), ChangePasswordTest()) {
+            context(TestPostgres.db, requestContext(userId, orgId, employeeId)) {
                 val result = profile()
                 val user = assertIs<Either.Right<UserProfile>>(result).value
                 assertEquals("user@example.com", user.username)
@@ -121,8 +121,11 @@ class ProfileTest {
                 .execute()
 
             context(TestPostgres.db, requestContext(userId, orgId, employeeId)) {
-                val updated = assertIs<Either.Right<UserProfile>>(updateMe(UpdateMeRequest("New Name", uploadId))).value
-                assertEquals(uploadId, updated.avatarId)
+                val result =
+                    either {
+                        TestPostgres.db.transaction { TestPostgres.auth.updateMe(UpdateMeRequest("New Name", uploadId)) }
+                    }
+                assertIs<Either.Right<Unit>>(result)
 
                 val reloaded = assertIs<Either.Right<UserProfile>>(profile()).value
                 assertEquals(uploadId, reloaded.avatarId)

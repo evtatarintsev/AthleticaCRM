@@ -1,6 +1,14 @@
 package org.athletica.crm
 
 import kotlinx.coroutines.runBlocking
+import org.athletica.crm.domain.auth.DbAuth
+import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.branch.DbBranches
+import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.employees.DbRoles
+import org.athletica.crm.domain.org.DbOrganizations
+import org.athletica.crm.domain.settings.DbUserDisplaySettings
+import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.testcontainers.containers.PostgreSQLContainer
 
@@ -17,6 +25,11 @@ object TestPostgres {
     val dbConfig = DatabaseConfig(container.jdbcUrl, container.username, container.password)
     val db: Database =
         createDatabase(dbConfig)
+
+    val auth =
+        PasswordHasher().let { hasher ->
+            DbAuth(hasher, DbEmployees(DbUsers(hasher), DbRoles()), DbOrganizations(), DbBranches(), DbUserDisplaySettings())
+        }
 
     /**
      * Очищает все таблицы приложения перед каждым тестом.

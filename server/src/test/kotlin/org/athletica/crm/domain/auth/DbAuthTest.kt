@@ -1,19 +1,23 @@
-package org.athletica.crm.security
+package org.athletica.crm.domain.auth
 
 import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.security.verifyCredentials
+import org.athletica.crm.domain.branch.Branch
+import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.security.UserNotFound
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class UserServiceTest {
+class DbAuthTest {
     private val hasher = PasswordHasher()
 
     @Before
@@ -55,9 +59,9 @@ class UserServiceTest {
             val id = insertUser("user1", "pass")
             val result =
                 either {
-                    TestPostgres.db.transaction { userById(id, BranchId.new()) }
+                    TestPostgres.db.transaction { TestPostgres.auth.userById(id, BranchId.new()) }
                 }
-            val user = assertIs<Either.Right<User>>(result).value
+            val user = assertIs<Either.Right<AuthenticatedUser>>(result).value
             assertEquals("user1", user.username)
         }
 
@@ -67,37 +71,34 @@ class UserServiceTest {
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        userById(UserId.new(), BranchId.new())
+                        TestPostgres.auth.userById(UserId.new(), BranchId.new())
                     }
                 }
             assertIs<Either.Left<UserNotFound>>(result)
         }
 
+    private suspend fun availableBranches(username: String, password: String) =
+        either {
+            TestPostgres.db.transaction { TestPostgres.auth.availableBranches(username, password, Lang.RU, clientIp = null) }
+        }
+
     @Test
-    fun `verifyCredentials returns user for correct credentials`() =
+    fun `availableBranches accepts correct credentials`() =
         runTest {
             insertUser("user2", "secret123")
-            context(TestPostgres.db, hasher) {
-                val result = verifyCredentials("user2", "secret123")
-                val user = assertIs<Either.Right<User>>(result).value
-                assertEquals("user2", user.username)
-            }
+            assertIs<Either.Right<List<Branch>>>(availableBranches("user2", "secret123"))
         }
 
     @Test
-    fun `verifyCredentials returns UserNotFound for wrong password`() =
+    fun `availableBranches returns UserNotFound for wrong password`() =
         runTest {
             insertUser("user3", "correct_password")
-            context(TestPostgres.db, hasher) {
-                assertIs<Either.Left<UserNotFound>>(verifyCredentials("user3", "wrong_password"))
-            }
+            assertIs<Either.Left<UserNotFound>>(availableBranches("user3", "wrong_password"))
         }
 
     @Test
-    fun `verifyCredentials returns UserNotFound for non-existent user`() =
+    fun `availableBranches returns UserNotFound for non-existent user`() =
         runTest {
-            context(TestPostgres.db, hasher) {
-                assertIs<Either.Left<UserNotFound>>(verifyCredentials("ghost_user", "any_password"))
-            }
+            assertIs<Either.Left<UserNotFound>>(availableBranches("ghost_user", "any_password"))
         }
 }

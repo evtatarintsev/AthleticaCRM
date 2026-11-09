@@ -1,6 +1,7 @@
 package org.athletica.crm.attendance
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -26,9 +27,11 @@ import org.athletica.crm.api.schemas.attendance.GroupAttendanceResponse
 import org.athletica.crm.api.schemas.attendance.SessionJournalResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.core.attendance.ParticipationKind
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
@@ -36,12 +39,8 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.sessions.SessionStatus
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
-import org.athletica.crm.usecases.auth.signUp
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,7 +53,7 @@ import kotlin.test.assertTrue
  */
 class AttendanceRoutesTest {
     private lateinit var di: Di
-    private lateinit var user: User
+    private lateinit var user: AuthenticatedUser
     private lateinit var token: String
     private val json = Json { ignoreUnknownKeys = true }
     private val yesterday = java.time.LocalDate.now(java.time.ZoneOffset.UTC).minusDays(1).toKotlinLocalDate()
@@ -71,9 +70,9 @@ class AttendanceRoutesTest {
     /** Регистрирует организацию; её владелец — автор запросов. */
     private suspend fun signUpOwner() {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
                             companyName = "Acme",
                             userName = "John",
@@ -82,10 +81,12 @@ class AttendanceRoutesTest {
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        user = assertIs<Either.Right<User>>(result).value
+        user = assertIs<Either.Right<AuthenticatedUser>>(result).value
         token = testJwtConfig.makeAccessToken(user)
     }
 

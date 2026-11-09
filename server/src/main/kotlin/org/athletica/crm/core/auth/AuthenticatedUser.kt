@@ -5,7 +5,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 
-/** Аутентифицированный пользователь системы. Реализуется разными доменными моделями (security, usecases). */
+/** Аутентифицированный пользователь системы. */
 interface AuthenticatedUser {
     val id: UserId
     val orgId: OrgId

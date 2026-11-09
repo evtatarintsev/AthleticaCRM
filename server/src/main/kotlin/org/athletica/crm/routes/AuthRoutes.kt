@@ -24,8 +24,6 @@ import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.auth.SwitchBranchRequest
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
-import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
@@ -33,43 +31,21 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.domain.audit.AuditLog
-import org.athletica.crm.domain.audit.logLogin
-import org.athletica.crm.domain.audit.logSignUp
-import org.athletica.crm.domain.audit.logout
+import org.athletica.crm.domain.auth.Auth
 import org.athletica.crm.domain.branch.Branches
-import org.athletica.crm.domain.employees.Employees
-import org.athletica.crm.domain.org.Organizations
-import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.security.JwtConfig
-import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.User
-import org.athletica.crm.security.findByCredentials
-import org.athletica.crm.security.userById
-import org.athletica.crm.security.verifyCredentials
 import org.athletica.crm.storage.Database
-import org.athletica.crm.storage.Transaction
-import org.athletica.crm.usecases.auth.signUp
-import org.athletica.crm.usecases.auth.switchBranch
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
-/**
- * Регистрирует маршруты аутентификации:
- * POST /auth/branches, POST /auth/login, POST /auth/logout, POST /auth/refresh-token, GET /auth/me.
- * [jwtConfig] — конфигурация JWT для создания и верификации токенов.
- * Требует контекстных параметров [Database], [PasswordHasher], [Branches], [Employees], [Organizations] и [AuditLog].
- */
-context(db: Database, employees: Employees, organizations: Organizations, passwordHasher: PasswordHasher, jwtConfig: JwtConfig, audit: AuditLog, branches: Branches, userSettings: UserDisplaySettings)
-fun Route.authRoutes() {
+context(db: Database, jwtConfig: JwtConfig)
+fun Route.authRoutes(auth: Auth) {
     post("/auth/branches") {
         val request = call.receive<AuthBranchesRequest>()
         either {
-            val user = verifyCredentials(request.username, request.password).bind()
             db.transaction {
-                context(user.bootstrapContext(call)) {
-                    AuthBranchesResponse(branches.list().map { BranchDetailResponse(it.id, it.name) })
-                }
+                val available = auth.availableBranches(request.username, request.password, call.langFromRequest(), call.clientIp())
+                AuthBranchesResponse(available.map { BranchDetailResponse(it.id, it.name) })
             }
         }.fold(
             { call.respond(HttpStatusCode.BadRequest, ErrorResponse(code = it.code, message = it.message)) },
@@ -80,14 +56,8 @@ fun Route.authRoutes() {
     post("/auth/sign-up") {
         call.eitherToAuthResponse {
             val request = call.receive<SignUpRequest>()
-            val lang = call.langFromRequest()
             db.transaction {
-                signUp(request, lang).bind()
-                    .also {
-                        audit.logSignUp(
-                            it.orgId, it.id, it.username, call.clientIp(),
-                        )
-                    }
+                auth.signup(request, call.langFromRequest(), call.clientIp())
             }
         }
     }.contract(postContract<SignUpRequest, LoginResponse>())
@@ -95,16 +65,9 @@ fun Route.authRoutes() {
     post("/auth/login") {
         call.eitherToAuthResponse {
             val request = call.receive<LoginRequest>()
-            val user = findByCredentials(request.username, request.password, request.branchId).bind()
             db.transaction {
-                context(user.bootstrapContext(call)) {
-                    if (branches.list().none { it.id == request.branchId }) {
-                        raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
-                    }
-                }
-                audit.logLogin(user.orgId, user.id, user.username, call.clientIp())
+                auth.login(request.username, request.password, request.branchId, call.langFromRequest(), call.clientIp())
             }
-            user
         }
     }.contract(postContract<LoginRequest, LoginResponse>())
 
@@ -115,41 +78,17 @@ fun Route.authRoutes() {
                     .refreshToken().bind()
                     .verifiedJwtToken(jwtConfig).bind()
                     .userIdAndBranchClaim().bind()
-                    .let { (userId, branchId) -> userById(userId, branchId) }
+                    .let { (userId, branchId) -> auth.userById(userId, branchId) }
             }
         }
     }.contract(postContract<Unit, LoginResponse>())
 }
 
-/**
- * Собирает [EmployeeRequestContext] для bootstrap-эндпоинтов `/auth/branches` и `/auth/login`,
- * где полный контекст ещё не доступен из JWT-токена.
- * Подтягивает permissions и availableBranches из агрегата `Employee`, currency — из организации.
- * Филиал берётся из пользователя: для `/auth/login` — выбранный, для `/auth/branches` — [BranchId.notSelected].
- */
-context(tr: Transaction, employees: Employees, organizations: Organizations, raise: Raise<DomainError>)
-private suspend fun User.bootstrapContext(call: RoutingCall): EmployeeRequestContext {
-    val (currency, employee) =
-        context(SystemContexts.forOrg(orgId)) {
-            organizations.current().currency to employees.byId(employeeId)
-        }
-    return EmployeeRequestContext(
-        lang = call.langFromRequest(),
-        orgId = orgId,
-        currency = currency,
-        userId = id,
-        branchId = branchId,
-        username = username,
-        clientIp = call.clientIp(),
-        employee = employee,
-    )
-}
-
 context(db: Database)
-fun RouteWithContext.logout(audit: AuditLog) {
+fun RouteWithContext.logout(auth: Auth) {
     post<Unit, Unit>("/auth/logout") { _, call ->
         db.transaction {
-            audit.logout()
+            auth.logout()
         }
         call.response.cookies.clearJwtCookies()
     }
@@ -174,11 +113,11 @@ fun RouteWithContext.myBranchesRoute() {
  * и выпускает новые JWT-токены с обновлённым [branchId].
  */
 context(db: Database, jwtConfig: JwtConfig)
-fun RouteWithContext.switchBranchRoute() {
+fun RouteWithContext.switchBranchRoute(auth: Auth) {
     post<SwitchBranchRequest, LoginResponse>("/auth/switch-branch") { request, call ->
         val user =
             db.transaction {
-                switchBranch(request.branchId)
+                auth.switchBranch(request.branchId)
             }
         val newAccessToken = jwtConfig.makeAccessToken(user)
         val newRefreshToken = jwtConfig.makeRefreshToken(user.id, user.branchId)

@@ -19,6 +19,9 @@ import org.athletica.crm.domain.attendancecontrol.AttendanceControls
 import org.athletica.crm.domain.attendancecontrol.DbAttendanceControls
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.auth.AuditAuth
+import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.DbAuth
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
@@ -167,6 +170,7 @@ data class Di(
             EmailEmployees(DbEmployees(users, roles), orgEmails),
             audit,
         )
+    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)

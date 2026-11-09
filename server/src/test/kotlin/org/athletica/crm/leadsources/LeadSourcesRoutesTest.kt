@@ -1,6 +1,7 @@
 package org.athletica.crm.leadsources
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -22,14 +23,12 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.leadSources.LeadSourceDetailResponse
 import org.athletica.crm.api.schemas.leadSources.LeadSourceListResponse
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
-import org.athletica.crm.usecases.auth.signUp
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,9 +49,9 @@ class LeadSourcesRoutesTest {
     /** Регистрирует организацию; её владелец — автор запросов. */
     private suspend fun signUpOwner() {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
                             companyName = "Acme",
                             userName = "John",
@@ -61,10 +60,12 @@ class LeadSourcesRoutesTest {
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        token = testJwtConfig.makeAccessToken(assertIs<Either.Right<User>>(result).value)
+        token = testJwtConfig.makeAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
     }
 
     private suspend fun ApplicationTestBuilder.post(path: String, body: String): HttpResponse =

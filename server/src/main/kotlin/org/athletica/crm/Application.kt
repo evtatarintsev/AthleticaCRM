@@ -179,14 +179,14 @@ fun Application.configureServer() {
             checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
 
             route("/api") {
-                context(di.employees, di.organizations, di.jwtConfig, di.passwordHasher, di.branches, di.userDisplaySettings) {
-                    authRoutes()
+                context(di.jwtConfig) {
+                    authRoutes(di.auth)
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
-                        logout(di.audit)
+                        logout(di.auth)
                         context(di.jwtConfig) {
-                            switchBranchRoute()
+                            switchBranchRoute(di.auth)
                         }
                         context(di.branches) {
                             myBranchesRoute()

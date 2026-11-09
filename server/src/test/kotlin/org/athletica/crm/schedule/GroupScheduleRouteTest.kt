@@ -1,6 +1,7 @@
 package org.athletica.crm.schedule
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -19,6 +20,8 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
@@ -26,14 +29,11 @@ import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.notifications.GroupScheduleChanged
 import org.athletica.crm.domain.notifications.NotificationContent
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,7 +48,7 @@ import kotlin.test.assertTrue
 class GroupScheduleRouteTest {
     private lateinit var di: Di
     private lateinit var token: String
-    private lateinit var user: User
+    private lateinit var user: AuthenticatedUser
     private var hallId: HallId = HallId.new()
     private val today = java.time.LocalDate.now().toKotlinLocalDate()
     private val json = Json { ignoreUnknownKeys = true }
@@ -62,9 +62,9 @@ class GroupScheduleRouteTest {
     /** Регистрирует организацию, запоминает токен сотрудника и создаёт зал в его филиале. */
     private suspend fun signUpWithHall() {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    org.athletica.crm.usecases.auth.signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
                             companyName = "Acme",
                             userName = "John",
@@ -73,10 +73,12 @@ class GroupScheduleRouteTest {
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        user = assertIs<Either.Right<User>>(result).value
+        user = assertIs<Either.Right<AuthenticatedUser>>(result).value
         token = testJwtConfig.makeAccessToken(user)
         hallId = HallId.new()
         TestPostgres.db

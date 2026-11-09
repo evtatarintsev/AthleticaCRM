@@ -67,66 +67,6 @@ data class AuditEvent(
 }
 
 /**
- * Логирует успешный вход пользователя с идентификатором [userId] из организации [orgId].
- * [clientIp] — IP-адрес клиента; null если определить не удалось.
- */
-context(tr: Transaction)
-suspend fun AuditLog.logLogin(
-    orgId: OrgId,
-    userId: UserId,
-    username: String,
-    clientIp: String?,
-) {
-    log(
-        AuditEvent(
-            orgId = orgId,
-            userId = userId,
-            username = username,
-            actionType = AuditActionType.AUTH_LOGIN,
-            entityType = null,
-            entityId = null,
-            ipAddress = clientIp,
-        ),
-    )
-}
-
-/**
- * Логирует регистрацию нового пользователя с идентификатором [userId] в организации [orgId].
- * [clientIp] — IP-адрес клиента; null если определить не удалось.
- */
-context(tr: Transaction)
-suspend fun AuditLog.logSignUp(
-    orgId: OrgId,
-    userId: UserId,
-    username: String,
-    clientIp: String?,
-) {
-    log(
-        AuditEvent(
-            orgId = orgId,
-            userId = userId,
-            username = username,
-            actionType = AuditActionType.AUTH_SIGNUP,
-            entityType = null,
-            entityId = null,
-            ipAddress = clientIp,
-        ),
-    )
-}
-
-context(ctx: EmployeeRequestContext, tr: Transaction)
-suspend fun AuditLog.logout() =
-    log(
-        AuditEvent(
-            orgId = ctx.orgId,
-            userId = ctx.userId,
-            username = ctx.username,
-            actionType = AuditActionType.AUTH_LOGOUT,
-            ipAddress = ctx.clientIp,
-        ),
-    )
-
-/**
  * Логирует создание сущности типа [entityType] с идентификатором [entityId].
  * [data] — JSON-снапшот созданной сущности на момент события.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].

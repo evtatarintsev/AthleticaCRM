@@ -1,6 +1,7 @@
 package org.athletica.crm
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -18,13 +19,11 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.usecases.auth.User
-import org.athletica.crm.usecases.auth.signUp
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -43,11 +42,11 @@ class AuthMePermissionsTest {
     }
 
     /** Регистрирует организацию и возвращает её владельца. */
-    private suspend fun signUpOwner(): User {
+    private suspend fun signUpOwner(): AuthenticatedUser {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
                             companyName = "Acme",
                             userName = "John",
@@ -56,10 +55,12 @@ class AuthMePermissionsTest {
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        return assertIs<Either.Right<User>>(result).value
+        return assertIs<Either.Right<AuthenticatedUser>>(result).value
     }
 
     /** Отправляет POST-запрос [body] на [path] от имени владельца токена [token]. */

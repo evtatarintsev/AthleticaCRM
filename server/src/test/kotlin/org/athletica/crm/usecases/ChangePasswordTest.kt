@@ -17,7 +17,6 @@ import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
-import org.athletica.crm.security.verifyCredentials
 import org.athletica.crm.usecases.auth.changePassword
 import org.junit.Before
 import kotlin.test.Test
@@ -91,6 +90,11 @@ class ChangePasswordTest {
             }
         }
 
+    private suspend fun availableBranches(login: String, password: String) =
+        either {
+            TestPostgres.db.transaction { TestPostgres.auth.availableBranches(login, password, Lang.RU, clientIp = null) }
+        }
+
     // ── успешная смена ────────────────────────────────────────────────────────
 
     @Test
@@ -107,9 +111,7 @@ class ChangePasswordTest {
             val login = "user@example.com"
             val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
             runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
-            context(TestPostgres.db, hasher) {
-                assertIs<Either.Right<*>>(verifyCredentials(login, "newPass456"))
-            }
+            assertIs<Either.Right<*>>(availableBranches(login, "newPass456"))
         }
 
     @Test
@@ -118,9 +120,7 @@ class ChangePasswordTest {
             val login = "user@example.com"
             val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
             runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456"))
-            context(TestPostgres.db, hasher) {
-                assertIs<Either.Left<*>>(verifyCredentials(login, "oldPass123"))
-            }
+            assertIs<Either.Left<*>>(availableBranches(login, "oldPass123"))
         }
 
     // ── ошибки ────────────────────────────────────────────────────────────────
@@ -147,8 +147,6 @@ class ChangePasswordTest {
             val login = "user@example.com"
             val (userId, orgId, employeeId) = insertUser(login, "oldPass123")
             runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("wrongPass", "newPass456"))
-            context(TestPostgres.db, hasher) {
-                assertIs<Either.Right<*>>(verifyCredentials(login, "oldPass123"))
-            }
+            assertIs<Either.Right<*>>(availableBranches(login, "oldPass123"))
         }
 }

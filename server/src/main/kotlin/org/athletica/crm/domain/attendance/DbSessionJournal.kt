@@ -56,9 +56,7 @@ class DbSessionJournal(
     override suspend fun markRemainingAbsent(labelId: AttendanceLabelId) {
         ensureNotCancelled()
         val absent =
-            AttendanceMark.Absent
-                .from(setOf(labelId))
-                .fold({ raise(it) }, { it })
+            AttendanceMark.Absent.from(setOf(labelId))
         ensureLabelsAssignable(absent, AttendanceMark.Unmarked)
         participants
             .filter { it.mark is AttendanceMark.Unmarked }

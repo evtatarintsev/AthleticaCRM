@@ -1,15 +1,14 @@
 package org.athletica.crm.core.customfields
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 
 /**
  * Набор значений кастомных полей, всегда соответствующий определениям.
  * Объект не может находиться в невалидном состоянии: мутации возможны
- * только через [with], который возвращает ошибку при нарушении инварианта.
+ * только через [with], который поднимает ошибку при нарушении инварианта.
  */
 class CustomFieldValues private constructor(
     /** Определения полей, против которых валидируются значения. */
@@ -24,24 +23,23 @@ class CustomFieldValues private constructor(
 
     /**
      * Обновить или добавить одно значение.
-     * Возвращает ошибку, если [value] ссылается на несуществующее поле или тип не совпадает.
+     * Поднимает ошибку, если [value] ссылается на несуществующее поле или тип не совпадает.
      */
-    fun with(value: CustomFieldValue): Either<DomainError, CustomFieldValues> = with(listOf(value))
+    context(raise: Raise<DomainError>)
+    fun with(value: CustomFieldValue): CustomFieldValues = with(listOf(value))
 
     /**
      * Массовое обновление значений.
-     * Возвращает ошибку при первом несоответствии ключа или типа определению.
+     * Поднимает ошибку при первом несоответствии ключа или типа определению.
      */
-    fun with(values: List<CustomFieldValue>): Either<DomainError, CustomFieldValues> {
-        for (v in values) {
+    context(raise: Raise<DomainError>)
+    fun with(values: List<CustomFieldValue>): CustomFieldValues {
+        values.forEach { v ->
             val def =
                 definitions.find { it.fieldKey == v.fieldKey }
-                    ?: return CommonDomainError("UNKNOWN_CUSTOM_FIELD", "Неизвестное поле: ${v.fieldKey}").left()
+                    ?: raise(CommonDomainError("UNKNOWN_CUSTOM_FIELD", "Неизвестное поле: ${v.fieldKey}"))
             if (!v.matchesType(def)) {
-                return CommonDomainError(
-                    "CUSTOM_FIELD_TYPE_MISMATCH",
-                    "Неверный тип для поля ${v.fieldKey}",
-                ).left()
+                raise(CommonDomainError("CUSTOM_FIELD_TYPE_MISMATCH", "Неверный тип для поля ${v.fieldKey}"))
             }
         }
         val merged =
@@ -52,7 +50,7 @@ class CustomFieldValues private constructor(
                     acc + v
                 }
             }
-        return CustomFieldValues(definitions, merged).right()
+        return CustomFieldValues(definitions, merged)
     }
 
     /** Текущий список значений. Все значения гарантированно соответствуют определениям. */

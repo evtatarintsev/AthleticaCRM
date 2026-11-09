@@ -97,7 +97,7 @@ fun RouteWithContext.attendanceRoutes(
         }
 
         post<MarkAttendanceRequest, SessionJournalResponse>("/journal/mark") { request ->
-            val mark = AttendanceMark.from(request.presence, request.labelIds).fold({ raise(it) }, { it })
+            val mark = AttendanceMark.from(request.presence, request.labelIds)
             db.transaction {
                 journals.byId(request.sessionId).mark(request.clientId, mark)
                 views.sessionJournal.journal(request.sessionId)

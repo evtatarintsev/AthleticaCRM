@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import arrow.core.raise.context.either
 import kotlinx.serialization.encodeToString
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.toFieldKey
@@ -12,7 +13,7 @@ class ServerJsonTest {
     fun `поле со значением по умолчанию попадает в ответ`() {
         val definition: CustomFieldDefinition =
             CustomFieldDefinition.Text(
-                fieldKey = "nickname".toFieldKey().getOrNull() ?: error("ключ должен быть валидным"),
+                fieldKey = either { "nickname".toFieldKey() }.getOrNull() ?: error("ключ должен быть валидным"),
                 label = "Прозвище",
             )
 

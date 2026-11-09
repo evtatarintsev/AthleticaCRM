@@ -45,7 +45,7 @@ class DbAttendanceControlsTest {
             val raise: Raise<DomainError> = this
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = fixture.orgId), this, raise) {
-                    val delay = JournalCloseDelay.from(minutes).getOrElse { fail("Unexpected error: $it") }
+                    val delay = either { JournalCloseDelay.from(minutes) }.getOrElse { fail("Unexpected error: $it") }
                     repository.current().withNew(enabled, delay).save()
                 }
             }
@@ -75,9 +75,9 @@ class DbAttendanceControlsTest {
     @Test
     fun `окно вне диапазона отклоняется`() {
         listOf(5, 14, 10081).forEach {
-            val error = assertIs<Either.Left<DomainError>>(JournalCloseDelay.from(it)).value
+            val error = assertIs<Either.Left<DomainError>>(either { JournalCloseDelay.from(it) }).value
             assertEquals("INVALID_JOURNAL_CLOSE_DELAY", assertIs<CommonDomainError>(error).code)
         }
-        listOf(15, 10080).forEach { assertIs<Either.Right<JournalCloseDelay>>(JournalCloseDelay.from(it)) }
+        listOf(15, 10080).forEach { assertIs<Either.Right<JournalCloseDelay>>(either { JournalCloseDelay.from(it) }) }
     }
 }

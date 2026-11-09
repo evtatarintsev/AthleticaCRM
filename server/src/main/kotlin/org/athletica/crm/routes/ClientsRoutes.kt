@@ -107,7 +107,7 @@ fun RouteWithContext.clientsRoutes(
     post<CreateClientRequest, ClientDetailResponse>("/clients/create") { request ->
         db.transaction {
             val defs = definitions.all(CLIENT_ENTITY_TYPE)
-            val customFields = CustomFieldValues(defs).with(request.customFields).bind()
+            val customFields = CustomFieldValues(defs).with(request.customFields)
             val client =
                 clients
                     .new(
@@ -128,7 +128,7 @@ fun RouteWithContext.clientsRoutes(
     post<EditClientRequest, ClientDetailResponse>("/clients/edit") { request ->
         db.transaction {
             val defs = definitions.all(CLIENT_ENTITY_TYPE)
-            val customFields = CustomFieldValues(defs).with(request.customFields).bind()
+            val customFields = CustomFieldValues(defs).with(request.customFields)
             val client =
                 clients
                     .byId(request.id)

@@ -1,8 +1,7 @@
 package org.athletica.crm.domain.attendance
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.errors.CommonDomainError
@@ -41,13 +40,14 @@ sealed interface AttendanceMark {
         override val presence: AttendancePresence = AttendancePresence.ABSENT
 
         companion object {
-            /** Отсутствие с метками [labelIds]; ошибка `ATTENDANCE_ABSENCE_REQUIRES_LABEL` для пустого набора. */
-            fun from(labelIds: Set<AttendanceLabelId>): Either<DomainError, Absent> =
+            /** Отсутствие с метками [labelIds]; для пустого набора поднимает ошибку `ATTENDANCE_ABSENCE_REQUIRES_LABEL`. */
+            context(raise: Raise<DomainError>)
+            fun from(labelIds: Set<AttendanceLabelId>): Absent {
                 if (labelIds.isEmpty()) {
-                    CommonDomainError("ATTENDANCE_ABSENCE_REQUIRES_LABEL", ABSENCE_REQUIRES_LABEL_MESSAGE).left()
-                } else {
-                    Absent(labelIds).right()
+                    raise(CommonDomainError("ATTENDANCE_ABSENCE_REQUIRES_LABEL", ABSENCE_REQUIRES_LABEL_MESSAGE))
                 }
+                return Absent(labelIds)
+            }
         }
     }
 
@@ -57,21 +57,21 @@ sealed interface AttendanceMark {
 
         /**
          * Отметка из присутствия [presence] и меток [labelIds].
-         * Ошибка `ATTENDANCE_ABSENCE_REQUIRES_LABEL` для отсутствия без меток и
+         * Поднимает ошибку `ATTENDANCE_ABSENCE_REQUIRES_LABEL` для отсутствия без меток и
          * `ATTENDANCE_LABELS_WITHOUT_PRESENCE` для меток у неотмеченного участника.
          */
-        fun from(presence: AttendancePresence?, labelIds: Collection<AttendanceLabelId>): Either<DomainError, AttendanceMark> =
+        context(raise: Raise<DomainError>)
+        fun from(presence: AttendancePresence?, labelIds: Collection<AttendanceLabelId>): AttendanceMark =
             when (presence) {
                 null -> {
-                    if (labelIds.isEmpty()) {
-                        Unmarked.right()
-                    } else {
-                        CommonDomainError("ATTENDANCE_LABELS_WITHOUT_PRESENCE", LABELS_WITHOUT_PRESENCE_MESSAGE).left()
+                    if (labelIds.isNotEmpty()) {
+                        raise(CommonDomainError("ATTENDANCE_LABELS_WITHOUT_PRESENCE", LABELS_WITHOUT_PRESENCE_MESSAGE))
                     }
+                    Unmarked
                 }
 
                 AttendancePresence.PRESENT -> {
-                    Present(labelIds.toSet()).right()
+                    Present(labelIds.toSet())
                 }
 
                 AttendancePresence.ABSENT -> {

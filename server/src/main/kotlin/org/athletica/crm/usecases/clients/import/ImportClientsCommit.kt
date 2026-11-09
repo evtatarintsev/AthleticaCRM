@@ -354,7 +354,7 @@ private fun collectCustomFields(
                 }
             buildCustomFieldValue(def, raw, errors)
         }
-    val container = CustomFieldValues(defs.values.toList()).with(values)
+    val container = either { CustomFieldValues(defs.values.toList()).with(values) }
     return container.fold(
         ifLeft = { err ->
             errors += err.message

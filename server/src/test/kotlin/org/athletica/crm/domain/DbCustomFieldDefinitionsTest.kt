@@ -392,5 +392,5 @@ class DbCustomFieldDefinitionsTest {
             assertTrue(result.isSortable)
         }
 
-    private fun key(value: String): CustomFieldKey = value.toFieldKey().getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
+    private fun key(value: String): CustomFieldKey = either { value.toFieldKey() }.getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
 }

@@ -59,7 +59,7 @@ class DbClientNotesTest {
     private val otherCtx = ctx(id = otherEmployeeId)
     private val otherOrgCtx = ctx(id = otherOrgEmployeeId, org = otherOrgId)
 
-    private fun text(value: String): ClientNoteText = ClientNoteText.from(value).getOrElse { fail("Invalid test text: $value") }
+    private fun text(value: String): ClientNoteText = either { ClientNoteText.from(value) }.getOrElse { fail("Invalid test text: $value") }
 
     @Before
     fun setUp() {

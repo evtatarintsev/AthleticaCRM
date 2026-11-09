@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -231,6 +232,6 @@ private fun io.r2dbc.spi.Row.toSlot(): ScheduleSlot {
         startAt = asLocalTime("start_time"),
         endAt = asLocalTime("end_time"),
         hallId = asUuid("hall_id").toHallId(),
-        validity = Validity.of(from, to).getOrNull()!!,
+        validity = either { Validity.of(from, to) }.getOrNull()!!,
     )
 }

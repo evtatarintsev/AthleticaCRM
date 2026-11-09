@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.attendance
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.core.attendance.ParticipationKind
@@ -73,7 +74,7 @@ object SessionRoster {
 
     /** Отметка, сохранённая в БД; нарушение инварианта в данных — ошибка программы, а не домена. */
     private fun markOf(presence: AttendancePresence?, labelIds: List<AttendanceLabelId>): AttendanceMark =
-        AttendanceMark.from(presence, labelIds).getOrElse {
+        either { AttendanceMark.from(presence, labelIds) }.getOrElse {
             throw IllegalStateException("Некорректная отметка в журнале: $presence $labelIds — ${it.message}")
         }
 }

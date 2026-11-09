@@ -9,8 +9,8 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
@@ -19,7 +19,7 @@ import org.athletica.crm.storage.Transaction
  * Создаёт разовое занятие вне расписания группы [groupId] с тренерами [employeeIds].
  * Состав тренеров берётся из запроса как есть и не считается ручной заменой состава.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun createSession(
     sessions: Sessions,
     employees: Employees,

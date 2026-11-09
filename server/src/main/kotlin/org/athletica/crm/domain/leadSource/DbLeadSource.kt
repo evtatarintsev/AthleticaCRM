@@ -5,8 +5,8 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.LeadSourceId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 
@@ -16,7 +16,7 @@ data class DbLeadSource(
     override val name: String,
     override val description: LeadSourceDescription,
 ) : LeadSource {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         try {
             tr.sql(
@@ -37,7 +37,7 @@ data class DbLeadSource(
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun delete() {
         tr.sql("DELETE FROM lead_sources WHERE id = :id AND org_id = :orgId")
             .bind("id", id)

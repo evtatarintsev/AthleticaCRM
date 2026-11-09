@@ -15,7 +15,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
@@ -393,7 +393,7 @@ class DbTasksTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("TASK_NOT_FOUND", result.value.code)
         }
 
@@ -437,7 +437,7 @@ class DbTasksTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("TASK_NOT_FOUND", result.value.code)
         }
 
@@ -495,7 +495,7 @@ class DbTasksTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("PERMISSION_DENIED", result.value.code)
         }
 

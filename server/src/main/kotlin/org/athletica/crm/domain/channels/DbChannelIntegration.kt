@@ -6,8 +6,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelAddressing
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.storage.Transaction
@@ -26,7 +26,7 @@ class DbChannelIntegration(
     private val contacts: ClientContacts,
     private val bindings: ChannelBindings,
 ) : ChannelIntegration {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun recipientAddress(clientId: ClientId, contactId: ClientContactId?): String =
         when (addressing) {
             is ChannelAddressing.ByContact -> contactAddress(clientId, contactId, addressing)
@@ -40,7 +40,7 @@ class DbChannelIntegration(
      * `CONTACT_NOT_FOUND` — выбранный контакт не найден или не подходит; `CLIENT_HAS_NO_CONTACT` —
      * подходящих контактов нет.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun contactAddress(
         clientId: ClientId,
         contactId: ClientContactId?,
@@ -59,7 +59,7 @@ class DbChannelIntegration(
     }
 
     /** Адрес связанного канала из связки клиента [clientId]; `CLIENT_NOT_LINKED`, если связки нет. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun bindingAddress(clientId: ClientId): String =
         bindings.addressFor(id, clientId)
             ?: raise(CommonDomainError("CLIENT_NOT_LINKED", "Клиент не привязан к этому каналу"))

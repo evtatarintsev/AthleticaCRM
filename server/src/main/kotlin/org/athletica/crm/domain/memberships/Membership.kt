@@ -9,7 +9,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
@@ -91,11 +91,11 @@ sealed interface InactiveMembership : Membership {
      * Активирует абонемент с датой начала [startDate] по причине [reason].
      * Дата окончания вычисляется из [startDate] и срока.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activate(startDate: LocalDate, reason: ActivationReason): ActiveMembership
 
     /** Отзывает абонемент. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun revoke(): RevokedMembership
 
     /** Неактивированный абонемент, который активируется в дату [activation].date. */
@@ -139,11 +139,11 @@ interface ActiveMembership : Membership {
     fun closeNotificationDueAt(date: LocalDate): Boolean = closeNotifiedAt == null && statusAt(date).needsCloseNotification(closeMode)
 
     /** Закрывает абонемент датой [closedOn] по причине [reason]. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun close(reason: CloseReason, closedOn: LocalDate): ClosedMembership
 
     /** Отзывает абонемент. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun revoke(): RevokedMembership
 
     /**
@@ -152,7 +152,7 @@ interface ActiveMembership : Membership {
      * ([freezePeriodError] — проверки периода). Абонемент с сохранённой заморозкой, даже
      * закончившейся, не замораживается: её сначала снимает [unfreeze]. Автор — сотрудник из контекста.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun freeze(
         start: LocalDate,
         end: LocalDate,
@@ -164,7 +164,7 @@ interface ActiveMembership : Membership {
      * Снимает заморозку в день [day] по основанию [reason] и уменьшает дату окончания на
      * неиспользованные дни ([MembershipFreeze.unusedDaysFrom]). Без заморозки — ошибка.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): ActiveMembership
 
     /**
@@ -173,11 +173,11 @@ interface ActiveMembership : Membership {
      * непустой; абонемент с сохранённой заморозкой не продлевается. Если на дату [today] абонемент
      * перестаёт быть «к закрытию», эпизод уведомления закрывается. Автор — сотрудник из контекста.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun extend(newEndDate: LocalDate, reason: String, today: LocalDate): ActiveMembership
 
     /** Отмечает отправку уведомления «к закрытию» в текущем эпизоде и пишет её в историю. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun markCloseNotified(): ActiveMembership
 
     /**
@@ -186,7 +186,7 @@ interface ActiveMembership : Membership {
      * параллельная транзакция успела обнулить остаток, бросает [MembershipDebitConflict].
      * С режимом «при списании последнего» абонемент, остаток которого стал 0, закрывается датой [today].
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun debit(sessionId: SessionId, sessionDate: LocalDate, today: LocalDate): Membership
 
     /**
@@ -194,7 +194,7 @@ interface ActiveMembership : Membership {
      * на дату [today] больше не «к закрытию», эпизод уведомления закрывается: следующее «к закрытию»
      * снова уведомит выдавшего.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverse(debit: MembershipDebit, today: LocalDate): ActiveMembership
 
     /**
@@ -203,7 +203,7 @@ interface ActiveMembership : Membership {
      * остатка (кроме безлимита), иначе ошибка; уже списанное занятие — ошибка `ALREADY_DEBITED`.
      * С режимом «при списании последнего» абонемент, остаток которого стал 0, закрывается датой [today].
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun repayDebt(sessions: List<DebtSession>, today: LocalDate): Membership
 }
 
@@ -233,7 +233,7 @@ interface ClosedMembership : Membership {
      * Возвращает занятие действующего списания [debit] на закрытый абонемент: корректировка
      * допустима, остаток растёт, состояние остаётся «Закрыт».
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverse(debit: MembershipDebit): ClosedMembership
 }
 

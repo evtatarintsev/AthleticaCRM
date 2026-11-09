@@ -11,8 +11,8 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.PostgresAuditLog
@@ -82,7 +82,7 @@ class ChangePasswordTest {
         orgId: OrgId,
         employeeId: EmployeeId,
         request: ChangePasswordRequest,
-    ): Either<DomainError, Unit> =
+    ): Either<AppError, Unit> =
         either {
             TestPostgres.db.transaction {
                 context(ctx(userId, orgId, employeeId)) {
@@ -132,7 +132,7 @@ class ChangePasswordTest {
             val second = async { runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass789")) }
             val results = listOf(first.await(), second.await())
             assertIs<Either.Right<Unit>>(results.single { it.isRight() })
-            assertEquals("WRONG_PASSWORD", assertIs<Either.Left<DomainError>>(results.single { it.isLeft() }).value.code)
+            assertEquals("WRONG_PASSWORD", assertIs<Either.Left<AppError>>(results.single { it.isLeft() }).value.code)
 
             val count =
                 TestPostgres.db
@@ -158,7 +158,7 @@ class ChangePasswordTest {
     fun `changePassword returns error when user does not exist`() =
         runTest {
             val result = runChangePassword(UserId.new(), OrgId.new(), EmployeeId.new(), ChangePasswordRequest("oldPass123", "newPass456"))
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
         }
 
     @Test

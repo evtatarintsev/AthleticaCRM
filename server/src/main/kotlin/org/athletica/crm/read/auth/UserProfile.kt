@@ -14,7 +14,7 @@ import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.security.UserNotFound
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
@@ -28,7 +28,7 @@ import kotlin.uuid.toKotlinUuid
  * Использует [ctx] для получения идентификатора пользователя из JWT.
  * Возвращает [UserProfile]; если пользователь не найден — поднимает [UserNotFound].
  */
-context(db: Database, ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+context(db: Database, ctx: EmployeeRequestContext, raise: Raise<AppError>)
 suspend fun profile(): UserProfile =
     db
         .sql(

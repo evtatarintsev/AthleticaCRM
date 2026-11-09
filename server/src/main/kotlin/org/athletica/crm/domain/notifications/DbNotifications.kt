@@ -6,7 +6,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.NotificationId
 import org.athletica.crm.core.entityids.toNotificationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asInstant
@@ -18,7 +18,7 @@ import org.athletica.crm.storage.asUuid
 class DbNotifications : Notifications {
     override fun new(content: NotificationContent, recipients: List<EmployeeId>): Notification = DbNotification(NotificationId.new(), content, recipients = recipients)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun of(isRead: Boolean?): List<Notification> {
         val isReadFilter = if (isRead != null) "AND nr.is_read = :isRead" else ""
 
@@ -46,7 +46,7 @@ class DbNotifications : Notifications {
             }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unreadCount(): Int =
         tr
             .sql(
@@ -62,7 +62,7 @@ class DbNotifications : Notifications {
             .firstOrNull { row -> row.asLong("cnt") }
             ?.toInt() ?: 0
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun markAsRead(ids: List<NotificationId>) {
         if (ids.isEmpty()) {
             return
@@ -87,7 +87,7 @@ class DbNotifications : Notifications {
             .execute()
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun markAllAsRead() {
         tr
             .sql(

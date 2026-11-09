@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.MembershipId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -18,6 +18,6 @@ interface UnpaidSessionsView {
      * Неоплаченные занятия клиента абонемента [membershipId] в его группах, от старых к новым.
      * Ошибка, если абонемент не найден в организации.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byMembership(membershipId: MembershipId): UnpaidSessionsResponse
 }

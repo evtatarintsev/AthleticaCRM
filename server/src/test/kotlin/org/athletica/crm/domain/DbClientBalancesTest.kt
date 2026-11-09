@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clientbalance.DbClientBalances
@@ -282,7 +282,7 @@ class DbClientBalancesTest {
                     }
                 }
 
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
             assertEquals("BALANCE_AMOUNT_ZERO", result.value.code)
         }
 
@@ -300,7 +300,7 @@ class DbClientBalancesTest {
                     }
                 }
 
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
             assertEquals("BALANCE_NOTE_REQUIRED", result.value.code)
         }
 
@@ -318,7 +318,7 @@ class DbClientBalancesTest {
                     }
                 }
 
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
             assertEquals("BALANCE_NOTE_REQUIRED", result.value.code)
         }
 }

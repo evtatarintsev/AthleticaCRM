@@ -10,7 +10,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.channels.ChannelChat
 import org.athletica.crm.i18n.BotMessages
 import org.athletica.crm.storage.Database
@@ -135,7 +135,7 @@ class TelegramPoller(
      * Обрабатывает пачку [updates] в транзакции записи и сдвигает offset. `null` — аренду перехватили,
      * ничего не записано. Возвращает служебные ответы бота.
      */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun processed(updates: List<TgUpdate>): List<BotReply>? {
         if (!state.holds(integration.id, owner)) {
             return null
@@ -147,7 +147,7 @@ class TelegramPoller(
     }
 
     /** Записывает событие [event] и возвращает служебные ответы на него. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun replies(event: InboundEvent): List<BotReply> =
         when (event) {
             InboundEvent.Ignored -> emptyList()
@@ -180,11 +180,11 @@ class TelegramPoller(
         }
 
     /** Создаёт или обновляет чат собеседника [sender]; [phone] — его собственный номер, если прислан. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun chat(sender: TelegramSender, phone: String? = null): ChannelChat = stores.chats.upsert(integration.id, sender.address, sender.displayName, sender.username, phone)
 
     /** Приветствие с кнопкой «Поделиться номером», пока у чата нет ни номера, ни связки. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun welcomeIfNeeded(chat: ChannelChat): List<BotReply> =
         if (needsPhone(chat)) {
             listOf(BotReply(chat.address, BotMessages.Welcome.localize(), shareContact()))
@@ -193,7 +193,7 @@ class TelegramPoller(
         }
 
     /** Нужно ли просить номер: чат его не присылал и не привязан к клиенту. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun needsPhone(chat: ChannelChat): Boolean = chat.phone == null && stores.bindings.clientFor(integration.id, chat.address) == null
 
     /** Клавиатура с кнопкой запроса контакта. */

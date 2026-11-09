@@ -14,7 +14,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
@@ -95,10 +95,10 @@ class DbTaskListViewTest {
     /** Выполняет [block] в транзакции под контекстом [context], разворачивая ошибку в падение теста. */
     private suspend fun <T> inContext(
         context: EmployeeRequestContext,
-        block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T,
+        block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T,
     ): T =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(context, this, raise) { block() }
             }

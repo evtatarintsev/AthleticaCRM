@@ -8,14 +8,14 @@ import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toClientContactId
 import org.athletica.crm.core.entityids.toClientId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /** Реализация репозитория контактов клиентов на PostgreSQL через R2DBC. */
 class DbClientContacts : ClientContacts {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byClient(clientId: ClientId): List<ClientContact> =
         tr.sql(
             """
@@ -29,7 +29,7 @@ class DbClientContacts : ClientContacts {
             .bind("orgId", ctx.orgId)
             .list { row -> row.toClientContact() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byClients(clientIds: List<ClientId>): Map<ClientId, List<ClientContact>> {
         if (clientIds.isEmpty()) {
             return emptyMap()
@@ -49,7 +49,7 @@ class DbClientContacts : ClientContacts {
             .groupBy { it.clientId }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun replace(clientId: ClientId, contacts: List<ClientContact>) {
         tr.sql("DELETE FROM client_contacts WHERE client_id = :clientId AND org_id = :orgId")
             .bind("clientId", clientId)
@@ -80,7 +80,7 @@ class DbClientContacts : ClientContacts {
             value = asString("value"),
         )
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun clientsByPhone(phone: PhoneDigits): List<ClientId> =
         tr.sql(
             """

@@ -8,7 +8,7 @@ import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -18,7 +18,7 @@ import org.athletica.crm.storage.Transaction
  */
 interface ScheduleView {
     /** Возвращает занятия периода и фильтров из [query], отсортированные по дате и времени начала. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: ScheduleQuery): ScheduleListResponse
 }
 

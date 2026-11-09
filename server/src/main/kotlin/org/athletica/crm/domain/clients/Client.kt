@@ -11,7 +11,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -57,11 +57,11 @@ sealed interface Client {
  */
 interface ActiveClient : Client {
     /** Сохраняет изменённые поля и документы клиента в БД. */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
     /** Переводит клиента в архив. После этого клиент становится [ArchivedClient]. */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun archive()
 
     /** Возвращает копию с прикреплённым документом [doc] (без записи в БД). */
@@ -69,11 +69,11 @@ interface ActiveClient : Client {
     fun attachDoc(doc: ClientDoc): ActiveClient
 
     /** Возвращает копию без документа [docId] (без записи в БД). */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun deleteDoc(docId: ClientDocId): ActiveClient
 
     /** Возвращает копию с новыми значениями полей (без записи в БД). */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun withNew(
         newName: String,
         newAvatarId: UploadId?,
@@ -90,7 +90,7 @@ interface ActiveClient : Client {
  */
 interface ArchivedClient : Client {
     /** Восстанавливает клиента из архива. После этого клиент становится [ActiveClient]. */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun restore()
 }
 

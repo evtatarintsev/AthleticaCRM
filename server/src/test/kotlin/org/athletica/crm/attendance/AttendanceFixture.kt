@@ -17,7 +17,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.SlotId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.attendance.DbAttendanceLabels
 import org.athletica.crm.domain.attendance.DbSessionJournals
 import org.athletica.crm.domain.attendance.SessionJournal
@@ -136,13 +136,13 @@ class AttendanceFixture {
     suspend fun journal(sessionId: SessionId): SessionJournal = inContext { journals.byId(sessionId) }
 
     /** Выполняет [block] в транзакции; ошибка домена роняет тест. */
-    suspend fun <T> inContext(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): T = schedule.inContext(block)
+    suspend fun <T> inContext(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): T = schedule.inContext(block)
 
     /** Выполняет [block] в транзакции, возвращая ошибку домена значением. */
-    suspend fun <T> runInContext(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> = schedule.runInContext(block)
+    suspend fun <T> runInContext(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> = schedule.runInContext(block)
 
     /** Код ошибки домена из [result]; успех роняет тест. */
-    fun <T> errorCode(result: Either<DomainError, T>): String =
+    fun <T> errorCode(result: Either<AppError, T>): String =
         when (result) {
             is Either.Left -> result.value.code
             is Either.Right -> error("ожидалась ошибка, получено ${result.value}")

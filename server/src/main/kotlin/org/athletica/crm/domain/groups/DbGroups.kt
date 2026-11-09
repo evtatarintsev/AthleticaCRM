@@ -12,8 +12,8 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [Groups] с доступом к PostgreSQL через R2DBC. */
 class DbGroups : Groups {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: GroupId,
         name: String,
@@ -76,7 +76,7 @@ class DbGroups : Groups {
         return DbGroup(id, ctx.branchId, name, disciplineIds, employees.map { it.id })
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(): List<Group> {
         val branchId = ctx.branchIdOrNull
         val branchFilter = if (branchId != null) "AND g.branch_id = :branchId" else ""
@@ -145,7 +145,7 @@ class DbGroups : Groups {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: GroupId): Group {
         val (branchId, name) =
             tr

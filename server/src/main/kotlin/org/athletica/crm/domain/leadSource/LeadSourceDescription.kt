@@ -4,8 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 
 /**
@@ -28,7 +28,7 @@ value class LeadSourceDescription private constructor(val value: String) {
          * Пояснение из [raw] без пробелов по краям.
          * Поднимает ошибку `LEAD_SOURCE_DESCRIPTION_TOO_LONG` с сообщением на языке [lang], если оно длиннее [MAX_LENGTH].
          */
-        context(raise: Raise<DomainError>)
+        context(raise: Raise<AppError>)
         fun from(raw: String, lang: Lang): LeadSourceDescription {
             val trimmed = raw.trim()
             if (trimmed.length > MAX_LENGTH) {
@@ -43,7 +43,7 @@ value class LeadSourceDescription private constructor(val value: String) {
         }
 
         /** Пояснение из [raw], как [from] с языком текущего запроса. */
-        context(ctx: RequestContext, raise: Raise<DomainError>)
+        context(ctx: RequestContext, raise: Raise<AppError>)
         fun from(raw: String): LeadSourceDescription = from(raw, ctx.lang)
 
         /** Пояснение из колонки БД [value]: туда оно попадает только через [from], поэтому повторно не проверяется. */

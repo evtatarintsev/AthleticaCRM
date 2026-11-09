@@ -5,8 +5,8 @@ import arrow.core.raise.context.ensure
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -21,7 +21,7 @@ class DbClientBalance(
     override val clientId: ClientId,
     override val totalAmount: Money,
 ) : ClientBalance {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun adjust(amount: Money, note: String): ClientBalance {
         ensure(amount.currency == ctx.currency) {
             CommonDomainError("BALANCE_CURRENCY_MISMATCH", Messages.BalanceCurrencyMismatch.localize())
@@ -61,7 +61,7 @@ class DbClientBalance(
         return DbClientBalance(clientId, balanceAfter)
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun history(): List<ClientBalanceEntry> =
         tr
             .sql(

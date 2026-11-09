@@ -5,7 +5,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.DeliveryId
 import org.athletica.crm.core.entityids.MessageId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -27,7 +27,7 @@ data class PendingDelivery(
  */
 interface Deliveries {
     /** Создаёт доставку сообщения [messageId] в интеграцию [channelIntegrationId] в статусе `PENDING`. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun create(
         messageId: MessageId,
         channelIntegrationId: ChannelIntegrationId,
@@ -35,7 +35,7 @@ interface Deliveries {
     ): Delivery
 
     /** Возвращает доставки сообщения [messageId] в порядке создания. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byMessage(messageId: MessageId): List<Delivery>
 
     /**

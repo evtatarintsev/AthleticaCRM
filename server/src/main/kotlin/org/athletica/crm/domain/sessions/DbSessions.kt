@@ -18,8 +18,8 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.entityids.toSlotId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.events.DomainEvents
 import org.athletica.crm.i18n.Messages
@@ -38,7 +38,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * [events] передаётся занятиям для публикации событий о проведении и отмене.
  */
 class DbSessions(private val events: DomainEvents) : Sessions {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: SessionId,
         groupId: GroupId,
@@ -98,7 +98,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
             null
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(
         groupId: GroupId,
         from: LocalDate,
@@ -131,7 +131,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun listAll(
         from: LocalDate,
         to: LocalDate,
@@ -162,12 +162,12 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: SessionId): Session =
         byIdOrNull(id)
             ?: raise(CommonDomainError("SESSION_NOT_FOUND", "Занятие не найдено"))
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun byIdOrNull(id: SessionId): Session? =
         tr
             .sql(
@@ -186,7 +186,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
                 row.toSession(employeeIdsBySession[id] ?: emptyList(), events)
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun loadEmployeeIds(sessionIds: List<SessionId>): Map<SessionId, List<EmployeeId>> =
         tr
             .sql(
@@ -253,7 +253,7 @@ private fun SessionRow.toSession(
     )
 
 /** Проверяет, что зал [hallId] принадлежит организации и филиалу группы [groupId]; иначе ошибка `HALL_NOT_FOUND`. */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 internal suspend fun requireHallInGroupBranch(
     groupId: GroupId,
     hallId: HallId,

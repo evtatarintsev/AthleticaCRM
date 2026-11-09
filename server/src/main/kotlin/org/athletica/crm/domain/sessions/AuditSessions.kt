@@ -11,7 +11,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.domain.employees.Employee
@@ -35,7 +35,7 @@ private data class NewSessionSnapshot(
  * [ScheduleSync] множественным запросом, минуя репозиторий.
  */
 class AuditSessions(private val delegate: Sessions, private val audit: AuditLog) : Sessions by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: SessionId,
         groupId: GroupId,
@@ -59,6 +59,6 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
         return session?.let { AuditSession(it, audit) }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: SessionId): Session = AuditSession(delegate.byId(id), audit)
 }

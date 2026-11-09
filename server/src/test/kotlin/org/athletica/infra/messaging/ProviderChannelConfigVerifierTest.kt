@@ -5,7 +5,7 @@ import arrow.core.raise.context.either
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.employeeContext
 import org.athletica.infra.messaging.telegram.respondJson
@@ -17,7 +17,7 @@ import kotlin.test.assertIs
 
 /** Тесты проверки токена бота при сохранении интеграции [ProviderChannelConfigVerifier]. */
 class ProviderChannelConfigVerifierTest {
-    private suspend fun verify(verifier: ProviderChannelConfigVerifier, config: ChannelConfig): Either<DomainError, ChannelConfig> = either { context(employeeContext(orgId = OrgId.new())) { verifier.verified(config) } }
+    private suspend fun verify(verifier: ProviderChannelConfigVerifier, config: ChannelConfig): Either<AppError, ChannelConfig> = either { context(employeeContext(orgId = OrgId.new())) { verifier.verified(config) } }
 
     @Test
     fun `корректный токен — конфиг с именем бота из getMe`() =
@@ -42,7 +42,7 @@ class ProviderChannelConfigVerifierTest {
 
             val result = verify(verifier, ChannelConfig.TelegramBot(botToken = "1:bad"))
 
-            assertEquals("TELEGRAM_TOKEN_INVALID", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TELEGRAM_TOKEN_INVALID", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -52,7 +52,7 @@ class ProviderChannelConfigVerifierTest {
 
             val result = verify(verifier, ChannelConfig.TelegramBot(botToken = "1:token"))
 
-            assertEquals("TELEGRAM_UNAVAILABLE", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TELEGRAM_UNAVAILABLE", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test

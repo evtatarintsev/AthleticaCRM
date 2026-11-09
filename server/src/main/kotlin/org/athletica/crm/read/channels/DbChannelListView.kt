@@ -8,7 +8,7 @@ import org.athletica.crm.api.schemas.channels.ChannelSettingsSchema
 import org.athletica.crm.api.schemas.channels.ChannelShareSchema
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toChannelIntegrationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.storage.Transaction
@@ -18,7 +18,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [ChannelListView] поверх PostgreSQL. */
 class DbChannelListView : ChannelListView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(): ChannelListResponse =
         ChannelListResponse(
             tr

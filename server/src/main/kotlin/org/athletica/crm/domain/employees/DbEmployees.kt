@@ -13,8 +13,8 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.Users
@@ -34,7 +34,7 @@ private data class PermissionOverrides(
 )
 
 class DbEmployees(private val users: Users, private val roles: Roles) : Employees {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,
@@ -105,12 +105,12 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: EmployeeId): Employee =
         byIds(listOf(id)).singleOrNull()
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<EmployeeId>): List<Employee> {
         val distinctIds = ids.distinct()
         if (distinctIds.isEmpty()) {
@@ -198,7 +198,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> =
         tr
             .sql(
@@ -236,7 +236,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
             .groupBy({ it.first }, { it.second })
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun rolesByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<EmployeeRole>> {
         val rolesById = roles.list().associateBy { it.id }
         return tr

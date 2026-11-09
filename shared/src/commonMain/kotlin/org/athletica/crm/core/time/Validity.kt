@@ -11,8 +11,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 
 /**
  * Период действия правила: полуоткрытый интервал дат `[from, to)`.
@@ -36,7 +36,7 @@ data class Validity private constructor(
      * Период, закрытый датой [date]: правило перестаёт действовать с неё.
      * Поднимает ошибку `INVALID_VALIDITY`, если [date] не позже [from].
      */
-    context(raise: Raise<DomainError>)
+    context(raise: Raise<AppError>)
     fun closedAt(date: LocalDate): Validity = of(from, date)
 
     override fun toString(): String = "[$from, ${to ?: "∞"})"
@@ -49,7 +49,7 @@ data class Validity private constructor(
          * Создаёт период `[from, to)`.
          * Поднимает [CommonDomainError] с кодом `INVALID_VALIDITY`, если [to] не позже [from].
          */
-        context(raise: Raise<DomainError>)
+        context(raise: Raise<AppError>)
         fun of(from: LocalDate, to: LocalDate? = null): Validity {
             if (to != null && to <= from) {
                 raise(CommonDomainError("INVALID_VALIDITY", INVALID_VALIDITY_MESSAGE))

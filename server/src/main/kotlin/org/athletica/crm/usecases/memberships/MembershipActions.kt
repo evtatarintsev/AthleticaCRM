@@ -5,8 +5,8 @@ import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.FreezeStatus
 import org.athletica.crm.core.subscription.UnfreezeReason
@@ -24,7 +24,7 @@ import org.athletica.crm.storage.Transaction
  * Закрывает абонемент [id] вручную сегодняшней датой организации из [calendar].
  * Закрыть можно только активный абонемент; иначе — ошибка, абонемент не меняется.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun closeMembership(memberships: Memberships, calendar: OrgCalendar, id: MembershipId): ClosedMembership =
     when (val membership = memberships.byId(id)) {
         is ActiveMembership -> membership.close(CloseReason.MANUAL, calendar.today())
@@ -36,7 +36,7 @@ suspend fun closeMembership(memberships: Memberships, calendar: OrgCalendar, id:
  * Отзывает абонемент [id]. Отозвать можно неактивированный или активный абонемент;
  * закрытый и отозванный — финальные, для них ошибка.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun revokeMembership(memberships: Memberships, id: MembershipId): RevokedMembership =
     when (val membership: Membership = memberships.byId(id)) {
         is InactiveMembership -> membership.revoke()
@@ -48,7 +48,7 @@ suspend fun revokeMembership(memberships: Memberships, id: MembershipId): Revoke
  * Замораживает активный абонемент [id] на период [start]..[end] по причине [reason].
  * Сохранённая, но закончившаяся заморозка сначала снимается.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun freezeMembership(
     memberships: Memberships,
     calendar: OrgCalendar,
@@ -71,7 +71,7 @@ suspend fun freezeMembership(
  * Сохранённая, но закончившаяся заморозка сначала снимается; действующая или запланированная —
  * ошибка, абонемент не меняется.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun extendMembership(
     memberships: Memberships,
     calendar: OrgCalendar,
@@ -92,7 +92,7 @@ suspend fun extendMembership(
  * Снимает заморозку абонемента [id] сегодняшней датой организации:
  * запланированная отменяется целиком, действующая размораживается досрочно.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun unfreezeMembership(
     memberships: Memberships,
     calendar: OrgCalendar,
@@ -113,7 +113,7 @@ suspend fun unfreezeMembership(
  * Снимает с абонемента [membership] закончившуюся к [today] заморозку, если она ещё сохранена;
  * иначе возвращает абонемент без изменений.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun clearExpiredFreeze(membership: ActiveMembership, today: LocalDate): ActiveMembership {
     val freeze = membership.freeze
     if (freeze == null || freeze.statusAt(today) != null) {

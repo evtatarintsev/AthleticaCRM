@@ -7,8 +7,8 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
@@ -37,7 +37,7 @@ internal data class DbTask(
     /** Сохранение этой копии захватывает неназначенную задачу. */
     private val claimingUnassigned: Boolean = false,
 ) : Task {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         val now = Clock.System.now()
         val newCompletedAt =
@@ -98,7 +98,7 @@ internal data class DbTask(
         }
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
         newTitle: String,
         newDescription: String,
@@ -116,7 +116,7 @@ internal data class DbTask(
         )
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun assignTo(employee: Employee): Task {
         val takesForSelf = assigneeId == null && employee.id == ctx.employee.id
         if (!takesForSelf) {
@@ -125,19 +125,19 @@ internal data class DbTask(
         return copy(assigneeId = employee.id, claimingUnassigned = takesForSelf)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun unassign(): Task {
         requireEditable()
         return copy(assigneeId = null)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun status(newStatus: TaskStatus): Task {
         requireEditable()
         return copy(status = newStatus)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun attach(uploadId: UploadId): Task {
         requireEditable()
         if (uploadId in attachments) {
@@ -146,7 +146,7 @@ internal data class DbTask(
         return copy(attachments = attachments + uploadId)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun detach(uploadId: UploadId): Task {
         requireEditable()
         return copy(attachments = attachments.filterNot { it == uploadId })
@@ -156,7 +156,7 @@ internal data class DbTask(
      * Проверяет право на редактирование задачи. Без [UserPermission.CAN_MANAGE_TASKS] разрешены
      * только свои задачи (автор или исполнитель); неназначенную чужую задачу сначала нужно взять себе.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private fun requireEditable() {
         if (ctx.hasPermission(UserPermission.CAN_MANAGE_TASKS)) return
         if (createdBy == ctx.employee.id || assigneeId == ctx.employee.id) return

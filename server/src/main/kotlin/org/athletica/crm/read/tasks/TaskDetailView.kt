@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.read.uploads.UploadRow
@@ -57,6 +57,6 @@ data class TaskDetailRow(
  */
 interface TaskDetailView {
     /** Возвращает карточку задачи [id]; ошибка, если задача не найдена в организации. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: TaskId): TaskDetailRow
 }

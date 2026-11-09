@@ -12,8 +12,8 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toClientNoteId
 import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInstantOrNull
@@ -23,7 +23,7 @@ import kotlin.time.Clock
 
 /** Реализация репозитория заметок о клиентах на основе PostgreSQL через R2DBC. */
 class DbClientNotes : ClientNotes {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: ClientNoteId): ClientNote {
         val note =
             tr.sql(
@@ -41,7 +41,7 @@ class DbClientNotes : ClientNotes {
             ?: raise(CommonDomainError("CLIENT_NOTE_NOT_FOUND", "Заметка не найдена"))
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(clientId: ClientId): List<ClientNote> =
         tr.sql(
             """
@@ -55,7 +55,7 @@ class DbClientNotes : ClientNotes {
             .bind("orgId", ctx.orgId)
             .list { row -> row.toDbClientNote() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun add(clientId: ClientId, text: ClientNoteText): ClientNote {
         val now = Clock.System.now()
         val id = ClientNoteId.new()
@@ -84,7 +84,7 @@ class DbClientNotes : ClientNotes {
         )
     }
 
-    context(raise: Raise<DomainError>)
+    context(raise: Raise<AppError>)
     private fun io.r2dbc.spi.Row.toDbClientNote(): DbClientNote {
         val rawText = asString("text")
         val parsedText =

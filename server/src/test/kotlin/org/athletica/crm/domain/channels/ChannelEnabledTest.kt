@@ -8,7 +8,7 @@ import org.athletica.crm.MessagingFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asBoolean
@@ -35,7 +35,7 @@ class ChannelEnabledTest {
         }
     }
 
-    private suspend fun setEnabled(org: OrgId, id: ChannelIntegrationId, enabled: Boolean): Either<DomainError, Unit> =
+    private suspend fun setEnabled(org: OrgId, id: ChannelIntegrationId, enabled: Boolean): Either<AppError, Unit> =
         either {
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = org)) {
@@ -68,7 +68,7 @@ class ChannelEnabledTest {
 
             val result = setEnabled(orgId, id, enabled = false)
 
-            assertEquals("CHANNEL_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CHANNEL_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(true, enabled(id))
         }
 }

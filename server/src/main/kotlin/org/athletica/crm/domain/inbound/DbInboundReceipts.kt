@@ -10,8 +10,8 @@ import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toInboundReceiptId
 import org.athletica.crm.core.entityids.toMessageId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asString
@@ -21,7 +21,7 @@ import kotlin.time.Clock
 
 /** Реализация инбокса входящих на PostgreSQL через R2DBC. */
 class DbInboundReceipts : InboundReceipts {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun record(integrationId: ChannelIntegrationId, fromAddress: String, body: String): InboundReceipt {
         val id = InboundReceiptId.new()
         val now = Clock.System.now()
@@ -50,7 +50,7 @@ class DbInboundReceipts : InboundReceipts {
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unresolvedFrom(integrationId: ChannelIntegrationId, fromAddress: String): List<InboundReceipt> =
         tr.sql(
             """
@@ -67,7 +67,7 @@ class DbInboundReceipts : InboundReceipts {
             .bind("orgId", ctx.orgId)
             .list { row -> row.toReceipt() }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun markResolved(id: InboundReceiptId, messageId: MessageId) {
         val updated =
             tr.sql(

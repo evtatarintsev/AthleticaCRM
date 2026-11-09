@@ -14,8 +14,8 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -26,7 +26,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [SessionJournalView] одним SQL: состав и тренеры собираются JSONB-агрегатами. */
 class DbSessionJournalView : SessionJournalView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun journal(sessionId: SessionId): SessionJournalResponse =
         tr
             .sql(

@@ -5,8 +5,8 @@ import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.HallId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 
@@ -15,7 +15,7 @@ data class DbHall(
     override val id: HallId,
     override val name: String,
 ) : Hall {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         try {
             tr.sql(
@@ -36,7 +36,7 @@ data class DbHall(
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun delete() {
         val usedInSchedule =
             tr.sql("SELECT 1 FROM schedule_slots WHERE hall_id = :id AND org_id = :orgId LIMIT 1")

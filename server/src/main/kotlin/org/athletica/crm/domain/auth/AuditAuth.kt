@@ -6,14 +6,14 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Transaction
 
 class AuditAuth(private val delegate: Auth, private val audit: AuditLog) : Auth by delegate {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun login(
         username: String,
         password: String,
@@ -32,7 +32,7 @@ class AuditAuth(private val delegate: Auth, private val audit: AuditLog) : Auth 
         )
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?) =
         delegate.signup(request, lang, clientIp).also { user ->
             audit.log(
@@ -46,13 +46,13 @@ class AuditAuth(private val delegate: Auth, private val audit: AuditLog) : Auth 
             )
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun logout() {
         delegate.logout()
         audit.log(AuditEvent(ctx, AuditActionType.AUTH_LOGOUT))
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun changePassword(request: ChangePasswordRequest) {
         delegate.changePassword(request)
         audit.log(AuditEvent(ctx, AuditActionType.AUTH_CHANGE_PASSWORD))

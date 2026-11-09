@@ -11,8 +11,8 @@ import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
@@ -25,7 +25,7 @@ data class AuditActiveClient(
     private val audit: AuditLog,
     private val auditEvents: List<AuditEvent> = emptyList(),
 ) : ActiveClient by client {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         client.save()
         auditEvents.forEach {
@@ -33,7 +33,7 @@ data class AuditActiveClient(
         }
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun archive() = client.archive()
 
     context(ctx: EmployeeRequestContext)
@@ -49,7 +49,7 @@ data class AuditActiveClient(
         return AuditActiveClient(client.attachDoc(doc), audit, auditEvents + auditEvent)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId): ActiveClient {
         val docToDelete = client.docs.firstOrNull { it.id == docId }
         if (docToDelete == null) {
@@ -66,7 +66,7 @@ data class AuditActiveClient(
         return AuditActiveClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
         newName: String,
         newAvatarId: UploadId?,
@@ -132,7 +132,7 @@ data class AuditArchivedClient(
     private val audit: AuditLog,
     private val auditEvents: List<AuditEvent> = emptyList(),
 ) : ArchivedClient by client {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun restore() {
         client.restore()
     }

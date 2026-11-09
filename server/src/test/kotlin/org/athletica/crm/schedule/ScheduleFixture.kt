@@ -18,7 +18,7 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -215,15 +215,15 @@ class ScheduleFixture {
         )
 
     /** Выполняет [block] в транзакции с контекстом сотрудника; ошибка домена роняет тест. */
-    suspend fun <T> inContext(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): T = runInContext(block).getOrElse { error(it.toString()) }
+    suspend fun <T> inContext(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): T = runInContext(block).getOrElse { error(it.toString()) }
 
     /** Выполняет [block] в транзакции с контекстом сотрудника, возвращая результат вместе с ошибкой домена. */
     suspend fun <T> runInContext(
-        block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T,
-    ): arrow.core.Either<DomainError, T> {
+        block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T,
+    ): arrow.core.Either<AppError, T> {
         val context = ctx()
         return either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(context, this, raise) { block() }
             }

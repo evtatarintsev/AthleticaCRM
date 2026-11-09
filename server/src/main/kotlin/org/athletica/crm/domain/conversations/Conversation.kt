@@ -5,7 +5,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ConversationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
@@ -17,18 +17,18 @@ interface Conversation {
      * Добавляет исходящее сообщение от [author] с текстом [body]. Только контент —
      * постановка доставок в каналы выполняется отдельно (агрегат `Delivery`). Возвращает сообщение.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun appendOutbound(author: Author, body: String): OutboundMessage
 
     /** Добавляет входящее сообщение от клиента, полученное по каналу [receivedVia] в момент [receivedAt]. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String, receivedAt: Instant): InboundMessage
 
     /** Обновляет момент последнего сообщения диалога по самому позднему из его сообщений. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun touch()
 
     /** Возвращает все сообщения диалога в порядке от старых к новым. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun messages(): List<Message>
 }

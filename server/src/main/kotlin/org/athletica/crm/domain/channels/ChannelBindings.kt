@@ -5,7 +5,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelBindingId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -31,21 +31,21 @@ interface ChannelBindings {
      * `NOT_FOUND`, если клиента нет в организации; `CHAT_ALREADY_LINKED`, если адрес уже привязан,
      * в том числе параллельным запросом: перепривязки нет, спор разрешает уникальный индекс.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun link(integrationId: ChannelIntegrationId, clientId: ClientId, address: String): ChannelBinding
 
     /** Клиент, привязанный к адресу [address] интеграции [integrationId]; `null`, если связки нет. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun clientFor(integrationId: ChannelIntegrationId, address: String): ClientId?
 
     /**
      * Адрес клиента [clientId] в интеграции [integrationId]; `null`, если клиент не привязан.
      * Из нескольких адресов выбирается тот, с которого клиент писал последним.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun addressFor(integrationId: ChannelIntegrationId, clientId: ClientId): String?
 
     /** Отмечает, что с адреса [address] интеграции [integrationId] только что пришло входящее. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun touchInbound(integrationId: ChannelIntegrationId, address: String)
 }

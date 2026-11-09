@@ -20,7 +20,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -161,10 +161,10 @@ class DbGroupListViewTest {
             permissions = EmployeePermission(),
         )
 
-    private suspend fun <T> inContext(orgId: Uuid, block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): T {
+    private suspend fun <T> inContext(orgId: Uuid, block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): T {
         val context = ctx(orgId)
         return either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(context, this, raise) { block() }
             }

@@ -12,7 +12,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.toEmployeeId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clientnotes.ClientNote
 import org.athletica.crm.domain.clientnotes.ClientNotes
 import org.athletica.crm.storage.Database
@@ -58,7 +58,7 @@ fun RouteWithContext.clientNotesRoutes(notes: ClientNotes) {
  * Загружает актуальный список заметок клиента и обогащает их именами авторов.
  * Имя сотрудника собирается на слое routes/projection, в домене хранится только идентификатор.
  */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun listResponseFor(
     notes: ClientNotes,
     clientId: ClientId,

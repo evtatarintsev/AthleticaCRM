@@ -4,8 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.toCurrency
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
@@ -22,7 +22,7 @@ object SystemContexts {
      * Собирает системный контекст организации [orgId] с валютой из БД.
      * [branchId] — целевой филиал операции; `null` для операций на всю организацию.
      */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun forOrg(orgId: OrgId, branchId: BranchId? = null): SystemRequestContext {
         val currency =
             tr

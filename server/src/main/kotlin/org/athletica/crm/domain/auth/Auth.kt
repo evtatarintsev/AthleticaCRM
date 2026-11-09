@@ -9,12 +9,12 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.branch.Branch
 import org.athletica.crm.storage.Transaction
 
 interface Auth {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun login(
         username: String,
         password: String,
@@ -23,19 +23,19 @@ interface Auth {
         clientIp: String?,
     ): AuthenticatedUser
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun logout()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun updateMe(request: UpdateMeRequest)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun changePassword(request: ChangePasswordRequest)
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun availableBranches(
         username: String,
         password: String,
@@ -43,9 +43,9 @@ interface Auth {
         clientIp: String?,
     ): List<Branch>
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun userById(id: UserId, branchId: BranchId): AuthenticatedUser
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun switchBranch(branchId: BranchId): AuthenticatedUser
 }

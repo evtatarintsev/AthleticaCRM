@@ -4,8 +4,8 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.context.either
 import org.athletica.crm.api.appJson
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -17,7 +17,7 @@ class CustomFieldsTest {
     fun `with возвращает UNKNOWN_CUSTOM_FIELD для неизвестного ключа`() {
         val cv = CustomFieldValues(listOf(CustomFieldDefinition.Text(fieldKey = key("name"), label = "name")))
         val result = either { cv.with(CustomFieldValue.Text(fieldKey = key("ghost"), value = "x")) }
-        val left = assertIs<Either.Left<DomainError>>(result)
+        val left = assertIs<Either.Left<AppError>>(result)
         assertEquals("UNKNOWN_CUSTOM_FIELD", (left.value as CommonDomainError).code)
     }
 
@@ -25,7 +25,7 @@ class CustomFieldsTest {
     fun `with возвращает CUSTOM_FIELD_TYPE_MISMATCH при несовпадении типа`() {
         val cv = CustomFieldValues(listOf(CustomFieldDefinition.Number(fieldKey = key("age"), label = "age")))
         val result = either { cv.with(CustomFieldValue.Text(fieldKey = key("age"), value = "not a number")) }
-        val left = assertIs<Either.Left<DomainError>>(result)
+        val left = assertIs<Either.Left<AppError>>(result)
         assertEquals("CUSTOM_FIELD_TYPE_MISMATCH", (left.value as CommonDomainError).code)
     }
 

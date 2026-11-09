@@ -23,8 +23,8 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toMembershipId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.entityids.toTariffPlanId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
@@ -49,7 +49,7 @@ import kotlin.uuid.Uuid
  * Валюта цены берётся из контекста организации, отдельной колонки нет.
  */
 class DbMemberships : Memberships {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun issue(
         id: MembershipId,
         clientId: ClientId,
@@ -129,7 +129,7 @@ class DbMemberships : Memberships {
         return byId(id)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: MembershipId): Membership =
         tr
             .sql("$SELECT_MEMBERSHIP m WHERE m.id = :id AND m.org_id = :orgId FOR UPDATE OF m")
@@ -138,7 +138,7 @@ class DbMemberships : Memberships {
             .firstOrNull { it.toMembership() }
             ?: raise(CommonDomainError("MEMBERSHIP_NOT_FOUND", Messages.MembershipNotFound.localize()))
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun debitCandidate(
         clientId: ClientId,
         groupId: GroupId,
@@ -173,7 +173,7 @@ class DbMemberships : Memberships {
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activeDebit(sessionId: SessionId, clientId: ClientId): MembershipDebit? =
         tr
             .sql(
@@ -199,7 +199,7 @@ class DbMemberships : Memberships {
                 )
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun forClient(clientId: ClientId): List<Membership> =
         tr
             .sql("$SELECT_MEMBERSHIP m WHERE m.client_id = :clientId AND m.org_id = :orgId ORDER BY m.created_at DESC, m.id DESC")

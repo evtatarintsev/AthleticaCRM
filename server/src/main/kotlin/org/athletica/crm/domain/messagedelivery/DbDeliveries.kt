@@ -9,7 +9,7 @@ import org.athletica.crm.core.entityids.MessageId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toDeliveryId
 import org.athletica.crm.core.entityids.toMessageId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInt
@@ -20,7 +20,7 @@ import kotlin.time.Clock
 
 /** Реализация репозитория доставок на PostgreSQL через R2DBC. */
 class DbDeliveries : Deliveries {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun create(
         messageId: MessageId,
         channelIntegrationId: ChannelIntegrationId,
@@ -56,7 +56,7 @@ class DbDeliveries : Deliveries {
         )
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byMessage(messageId: MessageId): List<Delivery> =
         tr.sql(
             """

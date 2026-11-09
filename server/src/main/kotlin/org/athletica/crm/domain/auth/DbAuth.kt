@@ -20,6 +20,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.attendance.DefaultAttendanceLabels
@@ -42,7 +43,7 @@ class DbAuth(
     private val branches: Branches,
     private val userSettings: UserDisplaySettings,
 ) : Auth {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun login(
         username: String,
         password: String,
@@ -59,7 +60,7 @@ class DbAuth(
         return user
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun availableBranches(
         username: String,
         password: String,
@@ -69,7 +70,7 @@ class DbAuth(
         branches.list()
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun userById(id: UserId, branchId: BranchId): AuthenticatedUser =
         tr.sql(
             """
@@ -83,7 +84,7 @@ class DbAuth(
             .firstOrNull { it.toAuthUser(branchId) }
             ?: raise(UserNotFound("User with id='$id' not found"))
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun switchBranch(branchId: BranchId): AuthenticatedUser {
         if (!ctx.employee.availableBranches.contains(branchId)) {
             raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
@@ -91,12 +92,12 @@ class DbAuth(
         return userById(ctx.userId, branchId)
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun logout() {
         // JWT не хранится на сервере. Cookie очищается в HTTP-маршруте.
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun updateMe(request: UpdateMeRequest) {
         val updatedRows =
             tr.sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
@@ -109,7 +110,7 @@ class DbAuth(
         if (updatedRows == 0L) raise(UserNotFound("Employee not found for user='${ctx.userId}'"))
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun changePassword(request: ChangePasswordRequest) {
         // Повторная смена пароля должна проверить хэш, сохранённый предыдущей транзакцией.
         val passwordHash =
@@ -129,7 +130,7 @@ class DbAuth(
     }
 
     /** Регистрирует организацию и владельца, создаёт локализованные настройки по умолчанию. */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser {
         val orgId = OrgId.new()
         val userId = UserId.new()
@@ -183,7 +184,7 @@ class DbAuth(
         return AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun verifyCredentials(username: String, password: String, branchId: BranchId): AuthUser {
         val (user, hash) =
             tr.sql(
@@ -204,7 +205,7 @@ class DbAuth(
         return user
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun AuthUser.bootstrapContext(lang: Lang, clientIp: String?): EmployeeRequestContext {
         val (currency, employee) =
             context(SystemContexts.forOrg(orgId)) {

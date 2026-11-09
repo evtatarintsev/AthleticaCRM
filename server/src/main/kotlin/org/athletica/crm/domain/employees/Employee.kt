@@ -7,7 +7,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserActor
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.storage.Transaction
@@ -36,7 +36,7 @@ interface Employee : UserActor {
     context(ctx: EmployeeRequestContext, tr: Transaction)
     suspend fun save()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun invite(email: EmailAddress, password: String)
 
     context(ctx: EmployeeRequestContext)

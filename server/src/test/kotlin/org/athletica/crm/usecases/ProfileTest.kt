@@ -11,7 +11,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -99,7 +99,7 @@ class ProfileTest {
         runTest {
             val ctx = requestContext(UserId.new(), OrgId.new(), EmployeeId.new())
             context(TestPostgres.db, ctx) {
-                assertIs<Either.Left<DomainError>>(either { profile() })
+                assertIs<Either.Left<AppError>>(either { profile() })
             }
         }
 

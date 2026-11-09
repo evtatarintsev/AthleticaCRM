@@ -7,8 +7,8 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.groups.GroupSessionSchema
 import org.athletica.crm.api.schemas.groups.GroupSessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.SessionSql
 import org.athletica.crm.storage.Transaction
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.asStringOrNull
  * по часовому поясу организации.
  */
 class DbGroupSessionsView : GroupSessionsView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(query: GroupSessionsQuery): GroupSessionsResponse =
         tr
             .sql(SQL)

@@ -2,7 +2,7 @@ package org.athletica.crm.usecases.memberships
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.memberships.Membership
 import org.athletica.crm.domain.tasks.Tasks
@@ -17,7 +17,7 @@ import org.athletica.crm.storage.Transaction
  * один раз на активацию, в её транзакции: при активации списанием — после списания, поэтому
  * активировавшее занятие в счёт не попадает.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun createCheckClientTaskIfDebts(unpaidSessions: UnpaidSessionsView, tasks: Tasks, membership: Membership) {
     val count = unpaidSessions.byMembership(membership.id).sessions.size
     if (count == 0) {

@@ -12,8 +12,8 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEnrollmentId
 import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [Enrollments] с доступом к PostgreSQL через R2DBC. */
 class DbEnrollments : Enrollments {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun add(groupId: GroupId, clientIds: List<ClientId>) {
         verifyGroupOwnership(groupId)
 
@@ -45,7 +45,7 @@ class DbEnrollments : Enrollments {
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun remove(groupId: GroupId, clientIds: List<ClientId>) {
         verifyGroupOwnership(groupId)
 
@@ -64,7 +64,7 @@ class DbEnrollments : Enrollments {
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activeIn(
         groupId: GroupId,
         from: LocalDate,
@@ -95,7 +95,7 @@ class DbEnrollments : Enrollments {
             }
 
     /** Проверяет, что группа [groupId] принадлежит организации из контекста. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun verifyGroupOwnership(groupId: GroupId) {
         tr
             .sql("SELECT id FROM groups WHERE id = :groupId AND org_id = :orgId")

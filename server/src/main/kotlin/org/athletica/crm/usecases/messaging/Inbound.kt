@@ -6,8 +6,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.channels.ChannelBindings
 import org.athletica.crm.domain.channels.ChannelChats
 import org.athletica.crm.domain.clientcontacts.ClientContacts
@@ -49,7 +49,7 @@ sealed interface PhoneLinkResult {
  * помечается разобранной, а связка — последней активной. Не привязан — запись остаётся в очереди разбора.
  * Выполняется без сотрудника (системный контекст организации). Возвращает клиента или `null`.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun receiveInbound(
     integrationId: ChannelIntegrationId,
     fromAddress: String,
@@ -72,7 +72,7 @@ suspend fun receiveInbound(
  * разобранными. Общая часть ручного разбора и автопривязки по номеру.
  * `CHAT_ALREADY_LINKED`, если чат уже привязан; `NOT_FOUND`, если клиента нет в организации.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun linkChat(
     integrationId: ChannelIntegrationId,
     address: String,
@@ -98,7 +98,7 @@ suspend fun linkChat(
  * для ручного разбора; если он без учёта форматирования совпал ровно с одним клиентом организации и
  * чат ещё не привязан — чат привязывается к этому клиенту вместе с накопленными сообщениями.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun linkChatByPhone(
     integrationId: ChannelIntegrationId,
     address: String,
@@ -119,7 +119,7 @@ suspend fun linkChatByPhone(
  * `NOT_FOUND`, если чата или клиента нет в организации; `CHAT_ALREADY_LINKED`, если чат уже привязан,
  * в том числе параллельным запросом.
  */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun assignChat(
     integrationId: ChannelIntegrationId,
     address: String,

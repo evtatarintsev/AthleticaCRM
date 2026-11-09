@@ -6,8 +6,8 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.i18n.Messages
@@ -19,7 +19,7 @@ import org.athletica.crm.storage.Transaction
  * Загружает файл в MinIO и сохраняет метаданные в таблице uploads.
  * Возвращает [UploadResponse] с presigned URL для доступа к файлу.
  */
-context(db: Database, minioService: MinioService, ctx: EmployeeRequestContext, audit: AuditLog, raise: Raise<DomainError>)
+context(db: Database, minioService: MinioService, ctx: EmployeeRequestContext, audit: AuditLog, raise: Raise<AppError>)
 suspend fun uploadFile(
     bytes: ByteArray,
     originalName: String,

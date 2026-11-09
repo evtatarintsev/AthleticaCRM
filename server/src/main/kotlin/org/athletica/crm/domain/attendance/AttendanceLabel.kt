@@ -5,7 +5,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.core.entityids.AttendanceLabelId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -48,6 +48,6 @@ interface AttendanceLabel {
      * Ошибка `ATTENDANCE_LABEL_ALREADY_EXISTS`, если название занято в организации,
      * и `ATTENDANCE_LABEL_NAME_BLANK` для пустого названия.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 }

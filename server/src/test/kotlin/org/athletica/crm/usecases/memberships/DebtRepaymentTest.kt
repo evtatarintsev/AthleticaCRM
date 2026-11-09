@@ -10,7 +10,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendance.DbParticipations
 import org.athletica.crm.domain.auth.DbUsers
@@ -124,7 +124,7 @@ class DebtRepaymentTest {
 
             val result = repay(issued.id, sessions)
 
-            assertEquals("DEBT_EXCEEDS_REMAINING", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("DEBT_EXCEEDS_REMAINING", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(2, unpaidOf(issued.id).size)
             assertEquals(1, fixture.reload(issued.id).sessionsRemaining)
         }
@@ -139,7 +139,7 @@ class DebtRepaymentTest {
 
             val result = repay(issued.id, listOf(session))
 
-            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -153,7 +153,7 @@ class DebtRepaymentTest {
 
             val result = repay(second.id, listOf(session))
 
-            assertEquals("ALREADY_DEBITED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("ALREADY_DEBITED", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(8, fixture.reload(second.id).sessionsRemaining)
         }
 
@@ -223,7 +223,7 @@ class DebtRepaymentTest {
             fixture.at(date(10))
             val failingTasks =
                 object : Tasks by DbTasks() {
-                    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+                    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
                     override suspend fun new(
                         id: TaskId,
                         title: String,

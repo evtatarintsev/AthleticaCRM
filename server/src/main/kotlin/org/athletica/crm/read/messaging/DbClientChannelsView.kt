@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toClientContactId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.storage.Transaction
@@ -29,7 +29,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * не повторяется, иначе разошлось бы с доменом.
  */
 class DbClientChannelsView : ClientChannelsView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(clientId: ClientId): ClientChannelsResponse {
         val rows =
             tr

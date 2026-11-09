@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toMessageId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.MessageDirection
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -21,7 +21,7 @@ import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
 class DbConversationView : ConversationView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun messages(clientId: ClientId): ConversationResponse =
         ConversationResponse(
             clientId = clientId,

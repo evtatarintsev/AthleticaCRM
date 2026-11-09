@@ -8,7 +8,7 @@ import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -33,7 +33,7 @@ class SignUpTest {
     private suspend fun signup(
         request: SignUpRequest,
         lang: Lang = Lang.RU,
-    ): Either<DomainError, AuthenticatedUser> =
+    ): Either<AppError, AuthenticatedUser> =
         either {
             TestPostgres.db.transaction { TestPostgres.auth.signup(request, lang, clientIp = null) }
         }

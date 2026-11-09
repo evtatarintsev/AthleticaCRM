@@ -2,7 +2,6 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
@@ -12,7 +11,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -30,7 +29,7 @@ internal data class DbActiveClient(
     override val customFields: List<CustomFieldValue>,
     private val orgId: OrgId,
 ) : ActiveClient {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         tr.sql(
             """
@@ -71,7 +70,7 @@ internal data class DbActiveClient(
         }
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun archive() {
         tr.sql("UPDATE clients SET state = 'ARCHIVED' WHERE id = :id AND org_id = :orgId")
             .bind("id", id)
@@ -82,10 +81,10 @@ internal data class DbActiveClient(
     context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc) = copy(docs = docs + doc)
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId) = copy(docs = docs.filterNot { it.id == docId })
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
         newName: String,
         newAvatarId: UploadId?,
@@ -118,7 +117,7 @@ internal data class DbArchivedClient(
     override val customFields: List<CustomFieldValue>,
     private val orgId: OrgId,
 ) : ArchivedClient {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun restore() {
         tr.sql("UPDATE clients SET state = 'ACTIVE' WHERE id = :id AND org_id = :orgId")
             .bind("id", id)

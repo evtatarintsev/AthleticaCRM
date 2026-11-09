@@ -7,7 +7,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.ClientNoteId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
@@ -39,14 +39,14 @@ interface ClientNote {
      * Сохраняет актуальное состояние заметки в БД, обновляя текст и [updatedAt].
      * Используется после [withText].
      */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
     /**
      * Помечает заметку как удалённую (soft-delete).
      * Требует, чтобы текущий сотрудник был автором заметки, иначе возвращает `PERMISSION_DENIED`.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun delete()
 
     /**
@@ -54,6 +54,6 @@ interface ClientNote {
      * Требует, чтобы текущий сотрудник был автором заметки, иначе возвращает `PERMISSION_DENIED`.
      * Изменения применяются к БД через [save].
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun withText(newText: ClientNoteText): ClientNote
 }

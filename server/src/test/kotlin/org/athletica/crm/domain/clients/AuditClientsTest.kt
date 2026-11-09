@@ -16,7 +16,7 @@ import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
@@ -55,21 +55,21 @@ private data class ClientStub(
     override val leadSourceId: LeadSourceId? = null,
     override val customFields: List<CustomFieldValue> = emptyList(),
 ) : ActiveClient {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun archive() {
     }
 
     context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc) = copy(docs = docs + doc)
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId) = copy(docs = docs.filterNot { it.id == docId })
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
         newName: String,
         newAvatarId: UploadId?,
@@ -90,10 +90,10 @@ private data class ClientStub(
 private class ClientsStub(clients: List<ClientStub>) : Clients {
     val clients: MutableList<ClientStub> = clients.toMutableList()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: ClientId): ActiveClient = clients.first { it.id == id }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: ClientId,
         name: String,

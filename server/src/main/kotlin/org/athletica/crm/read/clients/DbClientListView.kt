@@ -12,7 +12,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDateOrNull
@@ -28,7 +28,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * (агрегированные в JSONB), и отдельным запросом считает общее число совпадений.
  */
 class DbClientListView : ClientListView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun page(query: ClientListQuery): ClientListResponse {
         val total = countMatching(query)
         if (total == 0) {

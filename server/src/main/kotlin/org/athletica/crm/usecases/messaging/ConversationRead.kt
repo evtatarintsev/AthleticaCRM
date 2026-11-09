@@ -3,7 +3,7 @@ package org.athletica.crm.usecases.messaging
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.conversations.ConversationReadStates
 import org.athletica.crm.domain.conversations.Conversations
@@ -15,7 +15,7 @@ import kotlin.time.Instant
  * которое сотрудник увидел. Прочитанность общая для организации; горизонт только растёт.
  * Если беседы у клиента ещё нет, ничего не делает. `CLIENT_NOT_FOUND`, если клиента нет в организации.
  */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun markConversationRead(
     clientId: ClientId,
     upTo: Instant,

@@ -2,6 +2,7 @@ package org.athletica.crm.domain.payment
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.storage.Transaction
@@ -13,7 +14,7 @@ interface Payments {
      * Требует [EmployeeRequestContext]: платёж инициируется только аутентифицированным сотрудником.
      * [ctx.employee.id] автоматически используется как [Payment.createdBy].
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun create(
         gatewayName: String,
         externalPaymentId: String,
@@ -28,7 +29,7 @@ interface Payments {
      * Если транзакция не найдена или уже не в статусе PENDING — бросает [PaymentAlreadyProcessed].
      * Не требует [org.athletica.crm.core.RequestContext]: не фильтрует по org_id.
      */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markAsPaid(gatewayName: String, externalPaymentId: String): Payment
 }
 

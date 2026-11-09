@@ -16,8 +16,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toMembershipId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDateOrNull
@@ -34,7 +34,7 @@ import org.athletica.crm.storage.sql.MembershipCandidateSql
  * занятие попадает в её период.
  */
 class DbSessionDebitPreviewView : SessionDebitPreviewView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun preview(sessionId: SessionId): SessionDebitPreviewResponse {
         tr
             .sql("SELECT 1 FROM sessions WHERE id = :sessionId AND org_id = :orgId")

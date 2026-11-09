@@ -6,8 +6,8 @@ import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.toTariffPlanId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.storage.Transaction
@@ -21,7 +21,7 @@ import org.athletica.crm.storage.asUuid
  * Валюта цены берётся из контекста организации, отдельной колонки нет.
  */
 class DbTariffPlans : TariffPlans {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(includeArchived: Boolean): List<TariffPlan> =
         tr.sql(
             """
@@ -35,7 +35,7 @@ class DbTariffPlans : TariffPlans {
             .bind("includeArchived", includeArchived)
             .list { it.toTariffPlan() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: TariffPlanId,
         name: String,
@@ -45,12 +45,12 @@ class DbTariffPlans : TariffPlans {
         price: Money,
     ): TariffPlan = DbTariffPlan(id, name, sessions, durationValue, durationUnit, price, archived = false)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: TariffPlanId): TariffPlan =
         byIds(listOf(id)).singleOrNull()
             ?: raise(CommonDomainError("TARIFF_NOT_FOUND", "Тарифный план не найден"))
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<TariffPlanId>): List<TariffPlan> {
         val distinctIds = ids.distinct()
         if (distinctIds.isEmpty()) {

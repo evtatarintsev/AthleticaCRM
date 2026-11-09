@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -113,7 +113,7 @@ class DbDisciplinesTest {
                 either {
                     TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), "Хоккей").save() } }
                 }
-            assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -146,7 +146,7 @@ class DbDisciplinesTest {
                 either {
                     TestPostgres.db.transaction { context(ctx) { disciplines.byId(DisciplineId.new()).withNew("Что угодно").save() } }
                 }
-            assertEquals("DISCIPLINE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("DISCIPLINE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -166,7 +166,7 @@ class DbDisciplinesTest {
                 either {
                     TestPostgres.db.transaction { context(ctx) { disciplines.byId(id).withNew("Прыжки").save() } }
                 }
-            assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -181,7 +181,7 @@ class DbDisciplinesTest {
                 either {
                     TestPostgres.db.transaction { context(otherCtx) { disciplines.byId(id).withNew("Другое").save() } }
                 }
-            assertIs<Either.Left<DomainError>>(updateResult)
+            assertIs<Either.Left<AppError>>(updateResult)
 
             either {
                 val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
@@ -254,7 +254,7 @@ class DbDisciplinesTest {
                 either {
                     TestPostgres.db.transaction { context(otherCtx) { disciplines.byIds(listOf(id)).forEach { it.delete() } } }
                 }
-            assertIs<Either.Left<DomainError>>(deleteResult)
+            assertIs<Either.Left<AppError>>(deleteResult)
 
             either {
                 val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }

@@ -7,8 +7,8 @@ import kotlinx.datetime.daysUntil
 import org.athletica.crm.api.schemas.schedule.ScheduleListRequest
 import org.athletica.crm.api.schemas.schedule.ScheduleListResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.schedule.ScheduleQuery
@@ -37,7 +37,7 @@ fun RouteWithContext.scheduleRoutes(views: ReadViews) {
  * Преобразует запрос расписания в параметры выборки: проверяет границы периода
  * и превращает пустые списки фильтров в `null`.
  */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 internal fun ScheduleListRequest.toQuery(): ScheduleQuery {
     checkSchedulePeriod(from, to)
     return ScheduleQuery(
@@ -54,7 +54,7 @@ internal fun ScheduleListRequest.toQuery(): ScheduleQuery {
  * Проверяет период занятий с [from] по [to] включительно: начало не позже окончания
  * и длина не больше [MAX_SCHEDULE_PERIOD_DAYS].
  */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 internal fun checkSchedulePeriod(
     from: LocalDate,
     to: LocalDate,

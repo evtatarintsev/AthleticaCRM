@@ -12,8 +12,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 
 /**
  * Валюта, в которой ведутся денежные операции организации.
@@ -51,7 +51,7 @@ enum class Currency(
          * Возвращает [CommonDomainError] с кодом `UNKNOWN_CURRENCY`, если код
          * не соответствует ни одной поддерживаемой валюте.
          */
-        context(raise: Raise<DomainError>)
+        context(raise: Raise<AppError>)
         fun from(code: String): Currency {
             val normalized = code.uppercase()
             val currency = BY_CODE[normalized]
@@ -83,5 +83,5 @@ enum class Currency(
 }
 
 /** Удобный синоним для [Currency.from]. */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun String.toCurrency(): Currency = Currency.from(this)

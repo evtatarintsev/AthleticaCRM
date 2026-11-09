@@ -12,8 +12,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import kotlin.jvm.JvmInline
 
 /**
@@ -36,7 +36,7 @@ value class CustomFieldKey private constructor(val value: String) {
          * Парсит [value] в [CustomFieldKey].
          * Поднимает [CommonDomainError] с кодом `INVALID_FIELD_KEY`, если строка нарушает инвариант.
          */
-        context(raise: Raise<DomainError>)
+        context(raise: Raise<AppError>)
         fun from(value: String): CustomFieldKey {
             if (!value.matches(REGEX)) {
                 raise(CommonDomainError("INVALID_FIELD_KEY", INVALID_FIELD_KEY_MESSAGE))
@@ -68,5 +68,5 @@ value class CustomFieldKey private constructor(val value: String) {
 }
 
 /** Удобный синоним для [CustomFieldKey.from]. */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun String.toFieldKey(): CustomFieldKey = CustomFieldKey.from(this)

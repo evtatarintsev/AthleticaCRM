@@ -28,8 +28,6 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUserId
@@ -45,6 +43,7 @@ import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.settings.UserDisplaySettings
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.security.User
 import org.athletica.crm.security.findByCredentials
 import org.athletica.crm.security.userById
 import org.athletica.crm.security.verifyCredentials
@@ -68,16 +67,7 @@ fun Route.authRoutes() {
         either {
             val user = verifyCredentials(request.username, request.password).bind()
             db.transaction {
-                val ctx =
-                    buildBootstrapContext(
-                        userId = user.id,
-                        orgId = user.orgId,
-                        employeeId = user.employeeId,
-                        username = user.username,
-                        branchId = BranchId.notSelected(),
-                        call = call,
-                    )
-                context(ctx) {
+                context(user.bootstrapContext(call)) {
                     AuthBranchesResponse(branches.list().map { BranchDetailResponse(it.id, it.name) })
                 }
             }
@@ -107,16 +97,7 @@ fun Route.authRoutes() {
             val request = call.receive<LoginRequest>()
             val user = findByCredentials(request.username, request.password, request.branchId).bind()
             db.transaction {
-                val ctx =
-                    buildBootstrapContext(
-                        userId = user.id,
-                        orgId = user.orgId,
-                        employeeId = user.employeeId,
-                        username = user.username,
-                        branchId = request.branchId,
-                        call = call,
-                    )
-                context(ctx) {
+                context(user.bootstrapContext(call)) {
                     if (branches.list().none { it.id == request.branchId }) {
                         raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
                     }
@@ -144,18 +125,10 @@ fun Route.authRoutes() {
  * Собирает [EmployeeRequestContext] для bootstrap-эндпоинтов `/auth/branches` и `/auth/login`,
  * где полный контекст ещё не доступен из JWT-токена.
  * Подтягивает permissions и availableBranches из агрегата `Employee`, currency — из организации.
- * Передаётся [branchId] — для `/auth/login` это выбранный филиал;
- * для `/auth/branches` следует использовать [BranchId.notSelected], так как филиал ещё не выбран.
+ * Филиал берётся из пользователя: для `/auth/login` — выбранный, для `/auth/branches` — [BranchId.notSelected].
  */
 context(tr: Transaction, employees: Employees, organizations: Organizations, raise: Raise<DomainError>)
-private suspend fun buildBootstrapContext(
-    userId: UserId,
-    orgId: OrgId,
-    employeeId: EmployeeId,
-    username: String,
-    branchId: BranchId,
-    call: RoutingCall,
-): EmployeeRequestContext {
+private suspend fun User.bootstrapContext(call: RoutingCall): EmployeeRequestContext {
     val (currency, employee) =
         context(SystemContexts.forOrg(orgId)) {
             organizations.current().currency to employees.byId(employeeId)
@@ -164,7 +137,7 @@ private suspend fun buildBootstrapContext(
         lang = call.langFromRequest(),
         orgId = orgId,
         currency = currency,
-        userId = userId,
+        userId = id,
         branchId = branchId,
         username = username,
         clientIp = call.clientIp(),

@@ -11,10 +11,10 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.OrgBalances
+import org.athletica.crm.read.auth.profile
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.auth.changePassword
-import org.athletica.crm.usecases.auth.profile
 import org.athletica.crm.usecases.auth.updateMe
 
 /**

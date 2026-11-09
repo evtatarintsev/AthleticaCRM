@@ -33,7 +33,9 @@ import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.read.memberships.MembershipHistoryView
 import org.athletica.crm.read.memberships.UnpaidSessionsView
 import org.athletica.crm.read.messaging.ClientChannelsView
+import org.athletica.crm.read.messaging.ConversationView
 import org.athletica.crm.read.messaging.DbClientChannelsView
+import org.athletica.crm.read.messaging.DbConversationView
 import org.athletica.crm.read.messaging.DbInboxView
 import org.athletica.crm.read.messaging.DbTriageChatView
 import org.athletica.crm.read.messaging.InboxView
@@ -41,7 +43,9 @@ import org.athletica.crm.read.messaging.TriageChatView
 import org.athletica.crm.read.schedule.DbScheduleView
 import org.athletica.crm.read.schedule.ScheduleView
 import org.athletica.crm.read.sessions.DbSessionDebitPreviewView
+import org.athletica.crm.read.sessions.DbSessionDetailView
 import org.athletica.crm.read.sessions.SessionDebitPreviewView
+import org.athletica.crm.read.sessions.SessionDetailView
 import org.athletica.crm.read.tasks.DbTaskDetailView
 import org.athletica.crm.read.tasks.DbTaskListView
 import org.athletica.crm.read.tasks.TaskDetailView
@@ -103,4 +107,8 @@ data class ReadViews(
     val clientChannels: ClientChannelsView = DbClientChannelsView(),
     /** Журнал действий с названиями субъектов для страницы настроек. */
     val activityLog: ActivityLogView = DbActivityLogView(),
+    /** Карточка занятия с названием группы и составом тренеров. */
+    val sessionDetail: SessionDetailView = DbSessionDetailView(),
+    /** Лента диалога с клиентом по всем каналам. */
+    val conversation: ConversationView = DbConversationView(),
 )

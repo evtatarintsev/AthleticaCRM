@@ -2,6 +2,7 @@ package org.athletica.crm.domain.clientnotes
 
 import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.clientnotes.ClientNoteText
@@ -87,7 +88,7 @@ class DbClientNotes : ClientNotes {
     private fun io.r2dbc.spi.Row.toDbClientNote(): DbClientNote {
         val rawText = asString("text")
         val parsedText =
-            ClientNoteText.from(rawText).getOrElse {
+            either { ClientNoteText.from(rawText) }.getOrElse {
                 raise(CommonDomainError("CLIENT_NOTE_TEXT_CORRUPTED", "Невалидный текст заметки в БД"))
             }
         return DbClientNote(

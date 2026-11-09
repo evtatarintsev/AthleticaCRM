@@ -1,10 +1,8 @@
 package org.athletica.crm.routes
 
-import arrow.core.Either
-import arrow.core.left
 import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import arrow.core.raise.either
-import arrow.core.right
 import com.auth0.jwt.interfaces.DecodedJWT
 import io.ktor.http.Cookie
 import io.ktor.http.HttpStatusCode
@@ -75,9 +73,9 @@ fun Route.authRoutes(auth: Auth) {
         call.eitherToAuthResponse {
             db.transaction {
                 call.request
-                    .refreshToken().bind()
-                    .verifiedJwtToken(jwtConfig).bind()
-                    .userIdAndBranchClaim().bind()
+                    .refreshToken()
+                    .verifiedJwtToken(jwtConfig)
+                    .userIdAndBranchClaim()
                     .let { (userId, branchId) -> auth.userById(userId, branchId) }
             }
         }
@@ -149,42 +147,37 @@ suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<DomainError>.()
 
 /**
  * Верифицирует JWT-токен с помощью [jwtConfig].
- * Возвращает декодированный токен или ошибку, если подпись невалидна либо токен истёк.
+ * Возвращает декодированный токен; если подпись невалидна либо токен истёк — поднимает ошибку.
  */
-fun String.verifiedJwtToken(jwtConfig: JwtConfig): Either<CommonDomainError, DecodedJWT> =
+context(raise: Raise<DomainError>)
+fun String.verifiedJwtToken(jwtConfig: JwtConfig): DecodedJWT =
     runCatching { jwtConfig.verifier.verify(this) }
-        .getOrNull()
-        ?.right() ?: CommonDomainError("", "").left()
+        .getOrNull() ?: raise(CommonDomainError("", ""))
 
 /**
  * Извлекает refresh-токен из запроса.
  * Сначала ищет в заголовке `X-Refresh-Token`, затем в cookie [JwtConfig.COOKIE_REFRESH_TOKEN].
- * Возвращает токен или ошибку, если он отсутствует.
+ * Возвращает токен; если он отсутствует — поднимает ошибку.
  */
-fun ApplicationRequest.refreshToken(): Either<CommonDomainError, String> =
-    either {
-        val token =
-            call.request.header("X-Refresh-Token")
-                ?: call.request.cookies[JwtConfig.COOKIE_REFRESH_TOKEN]
-        if (token == null) {
-            raise(CommonDomainError("", ""))
-        }
-        token
-    }
+context(raise: Raise<DomainError>)
+fun ApplicationRequest.refreshToken(): String =
+    call.request.header("X-Refresh-Token")
+        ?: call.request.cookies[JwtConfig.COOKIE_REFRESH_TOKEN]
+        ?: raise(CommonDomainError("", ""))
 
 /**
  * Извлекает идентификатор пользователя и филиал из claim-ов токена.
- * Проверяет, что тип токена — [JwtConfig.TYPE_REFRESH], иначе возвращает ошибку.
+ * Проверяет, что тип токена — [JwtConfig.TYPE_REFRESH], иначе поднимает ошибку.
  */
-fun DecodedJWT.userIdAndBranchClaim(): Either<CommonDomainError, Pair<UserId, BranchId>> =
-    either {
-        if (getClaim(JwtConfig.CLAIM_TYPE).asString() != JwtConfig.TYPE_REFRESH) {
-            raise(CommonDomainError("", ""))
-        }
-        val userId = Uuid.parse(getClaim(JwtConfig.CLAIM_USER_ID).asString()).toUserId()
-        val branchId = Uuid.parse(getClaim(JwtConfig.CLAIM_BRANCH_ID).asString()).toBranchId()
-        userId to branchId
+context(raise: Raise<DomainError>)
+fun DecodedJWT.userIdAndBranchClaim(): Pair<UserId, BranchId> {
+    if (getClaim(JwtConfig.CLAIM_TYPE).asString() != JwtConfig.TYPE_REFRESH) {
+        raise(CommonDomainError("", ""))
     }
+    val userId = Uuid.parse(getClaim(JwtConfig.CLAIM_USER_ID).asString()).toUserId()
+    val branchId = Uuid.parse(getClaim(JwtConfig.CLAIM_BRANCH_ID).asString()).toBranchId()
+    return userId to branchId
+}
 
 /**
  * Устанавливает HttpOnly cookies с JWT токенами [accessToken] и [refreshToken].

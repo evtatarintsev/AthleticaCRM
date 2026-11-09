@@ -22,14 +22,14 @@ fun RouteWithContext.leadSourcesRoutes(leadSources: LeadSources) {
         }
 
         post<CreateLeadSourceRequest, Unit>("/create") { request ->
-            val description = LeadSourceDescription.from(request.description).bind()
+            val description = LeadSourceDescription.from(request.description)
             db.transaction {
                 leadSources.new(request.id, request.name, description).save()
             }
         }
 
         post<UpdateLeadSourceRequest, Unit>("/update") { request ->
-            val description = LeadSourceDescription.from(request.description).bind()
+            val description = LeadSourceDescription.from(request.description)
             db.transaction {
                 leadSources.byId(request.id).withNew(name = request.name, description = description).save()
             }

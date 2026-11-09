@@ -44,7 +44,7 @@ fun RouteWithContext.orgRoutes(
         }
 
         post<UpdateAttendanceControlSettingsRequest, AttendanceControlSettingsResponse>("/attendance-control/update") { request ->
-            val delay = JournalCloseDelay.from(request.overdueTaskDelayMinutes).bind()
+            val delay = JournalCloseDelay.from(request.overdueTaskDelayMinutes)
             db.transaction {
                 attendanceControls
                     .current()

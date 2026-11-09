@@ -119,7 +119,7 @@ class ImportClientsCommitTest {
                     balances = DbClientBalances(),
                     leadSources = DbLeadSources(),
                     definitions = DbCustomFieldDefinitions(),
-                ).bind()
+                )
             }
         }
 

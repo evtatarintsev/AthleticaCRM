@@ -83,7 +83,7 @@ class ProfileTest {
         runTest {
             val (userId, orgId, employeeId) = insertUser("user@example.com")
             context(TestPostgres.db, requestContext(userId, orgId, employeeId)) {
-                val result = profile()
+                val result = either { profile() }
                 val user = assertIs<Either.Right<UserProfile>>(result).value
                 assertEquals("user@example.com", user.username)
                 assertEquals("user@example.com", user.name)
@@ -99,7 +99,7 @@ class ProfileTest {
         runTest {
             val ctx = requestContext(UserId.new(), OrgId.new(), EmployeeId.new())
             context(TestPostgres.db, ctx) {
-                assertIs<Either.Left<DomainError>>(profile())
+                assertIs<Either.Left<DomainError>>(either { profile() })
             }
         }
 
@@ -127,7 +127,7 @@ class ProfileTest {
                     }
                 assertIs<Either.Right<Unit>>(result)
 
-                val reloaded = assertIs<Either.Right<UserProfile>>(profile()).value
+                val reloaded = assertIs<Either.Right<UserProfile>>(either { profile() }).value
                 assertEquals(uploadId, reloaded.avatarId)
                 assertEquals("New Name", reloaded.name)
             }

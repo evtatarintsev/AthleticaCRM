@@ -1,6 +1,7 @@
 package org.athletica.crm.read.attendance
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
@@ -38,7 +39,7 @@ class DbClientAttendanceViewTest {
             val outside = fixture.insertSession(date = fixture.today.plusDays(-40))
             fixture.inContext {
                 fixture.journals.byId(first).mark(anna, AttendanceMark.Present(setOf(late)))
-                fixture.journals.byId(second).mark(anna, AttendanceMark.Absent.from(setOf(sick)).getOrElse { error(it) })
+                fixture.journals.byId(second).mark(anna, either { AttendanceMark.Absent.from(setOf(sick)) }.getOrElse { error(it) })
                 fixture.journals.byId(cancelled).mark(anna, AttendanceMark.Present())
                 fixture.journals.byId(outside).mark(anna, AttendanceMark.Present())
                 listOf(first, second, outside).forEach { fixture.sessions.byId(it).complete() }

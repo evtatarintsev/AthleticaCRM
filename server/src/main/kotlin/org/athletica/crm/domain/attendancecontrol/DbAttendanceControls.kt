@@ -2,6 +2,7 @@ package org.athletica.crm.domain.attendancecontrol
 
 import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
@@ -26,7 +27,7 @@ class DbAttendanceControls : AttendanceControls {
                 DbAttendanceControl(
                     overdueTaskEnabled = row.asBoolean("overdue_task_enabled"),
                     overdueTaskDelay =
-                        JournalCloseDelay.from(minutes).getOrElse {
+                        either { JournalCloseDelay.from(minutes) }.getOrElse {
                             error("Недопустимое окно закрытия журнала в БД: $minutes")
                         },
                 )

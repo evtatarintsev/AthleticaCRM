@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.attendance
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
@@ -37,7 +38,7 @@ class DbSessionJournalTest {
         TestPostgres.truncate()
     }
 
-    private fun absent(labels: Set<AttendanceLabelId>) = AttendanceMark.Absent.from(labels).getOrElse { error(it) }
+    private fun absent(labels: Set<AttendanceLabelId>) = either { AttendanceMark.Absent.from(labels) }.getOrElse { error(it) }
 
     private suspend fun mark(sessionId: SessionId, clientId: ClientId, mark: AttendanceMark) = fixture.inContext { fixture.journals.byId(sessionId).mark(clientId, mark) }
 

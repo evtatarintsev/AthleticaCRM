@@ -312,8 +312,10 @@ private val managerContext =
 **Parse, Don't Validate** (Alexis King) и **Make Illegal States Unrepresentable** (Yaron Minsky).
 
 Реализация в Kotlin: `value class` с приватным основным конструктором и фабричным методом
-в `companion object`, возвращающим `Either<DomainError, T>`. Дополнительно — `String.toX()`-расширение
+в `companion object` с `context(raise: Raise<DomainError>)`, как и остальной код. Дополнительно — `String.toX()`-расширение
 для удобства и кастомный `KSerializer`, чтобы инвариант проверялся уже на десериализации.
+Там, где ошибку нужно разобрать на месте (сериализатор, чтение из БД, тесты), вызов оборачивается
+в `either { ... }`.
 
 **Пример** — `CustomFieldKey` (`shared/src/commonMain/kotlin/org/athletica/crm/core/customfields/CustomFieldKey.kt`):
 ```kotlin
@@ -322,13 +324,22 @@ private val managerContext =
 value class CustomFieldKey private constructor(val value: String) {
     companion object {
         private val REGEX = Regex("[a-z_]+")
-        fun from(value: String): Either<DomainError, CustomFieldKey> =
-            if (value.matches(REGEX)) CustomFieldKey(value).right()
-            else CommonDomainError("INVALID_FIELD_KEY", "...").left()
+        context(raise: Raise<DomainError>)
+        fun from(value: String): CustomFieldKey {
+            if (!value.matches(REGEX)) {
+                raise(CommonDomainError("INVALID_FIELD_KEY", "..."))
+            }
+            return CustomFieldKey(value)
+        }
     }
-    object Serializer : KSerializer<CustomFieldKey> { /* десериализация через from() */ }
+    object Serializer : KSerializer<CustomFieldKey> {
+        override fun deserialize(decoder: Decoder): CustomFieldKey =
+            either { from(decoder.decodeString()) }.getOrElse { throw SerializationException(it.message) }
+        // ...
+    }
 }
-fun String.toFieldKey(): Either<DomainError, CustomFieldKey> = CustomFieldKey.from(this)
+context(raise: Raise<DomainError>)
+fun String.toFieldKey(): CustomFieldKey = CustomFieldKey.from(this)
 ```
 
 Когда применять: любые «string-обёртки» с непустым множеством запрещённых значений

@@ -1,8 +1,7 @@
 package org.athletica.crm.read.auth
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
@@ -27,10 +26,10 @@ import kotlin.uuid.toKotlinUuid
 /**
  * Возвращает профиль текущего авторизованного пользователя.
  * Использует [ctx] для получения идентификатора пользователя из JWT.
- * Возвращает [UserProfile] или [UserNotFound].
+ * Возвращает [UserProfile]; если пользователь не найден — поднимает [UserNotFound].
  */
-context(db: Database, ctx: EmployeeRequestContext)
-suspend fun profile(): Either<DomainError, UserProfile> =
+context(db: Database, ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+suspend fun profile(): UserProfile =
     db
         .sql(
             """
@@ -46,7 +45,7 @@ suspend fun profile(): Either<DomainError, UserProfile> =
         .bind("orgId", ctx.orgId)
         .bind("branchId", ctx.branchId)
         .firstOrNull { it.toUserProfile() }
-        ?.right() ?: UserNotFound("User with id='${ctx.userId}' not found").left()
+        ?: raise(UserNotFound("User with id='${ctx.userId}' not found"))
 
 data class UserProfile(
     val id: UserId,

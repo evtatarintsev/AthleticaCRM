@@ -1,6 +1,7 @@
 package org.athletica.crm.core.customfields
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import kotlinx.serialization.SerializationException
 import org.athletica.crm.api.appJson
 import org.athletica.crm.core.errors.CommonDomainError
@@ -14,63 +15,63 @@ class CustomFieldKeyTest {
 
     @Test
     fun `from принимает строчные латинские буквы`() {
-        val result = CustomFieldKey.from("first_name")
+        val result = either { CustomFieldKey.from("first_name") }
         assertEquals("first_name", assertIs<Either.Right<CustomFieldKey>>(result).value.value)
     }
 
     @Test
     fun `from принимает одиночный символ`() {
-        val result = CustomFieldKey.from("a")
+        val result = either { CustomFieldKey.from("a") }
         assertEquals("a", assertIs<Either.Right<CustomFieldKey>>(result).value.value)
     }
 
     @Test
     fun `from принимает только подчёркивания`() {
-        val result = CustomFieldKey.from("___")
+        val result = either { CustomFieldKey.from("___") }
         assertEquals("___", assertIs<Either.Right<CustomFieldKey>>(result).value.value)
     }
 
     @Test
     fun `from отвергает заглавные буквы`() {
-        val result = CustomFieldKey.from("FirstName")
+        val result = either { CustomFieldKey.from("FirstName") }
         val left = assertIs<Either.Left<CommonDomainError>>(result).value
         assertEquals("INVALID_FIELD_KEY", left.code)
     }
 
     @Test
     fun `from отвергает цифры`() {
-        val result = CustomFieldKey.from("field1")
+        val result = either { CustomFieldKey.from("field1") }
         assertIs<Either.Left<CommonDomainError>>(result)
     }
 
     @Test
     fun `from отвергает дефис`() {
-        val result = CustomFieldKey.from("with-dash")
+        val result = either { CustomFieldKey.from("with-dash") }
         assertIs<Either.Left<CommonDomainError>>(result)
     }
 
     @Test
     fun `from отвергает пустую строку`() {
-        val result = CustomFieldKey.from("")
+        val result = either { CustomFieldKey.from("") }
         assertIs<Either.Left<CommonDomainError>>(result)
     }
 
     @Test
     fun `from отвергает пробелы`() {
-        val result = CustomFieldKey.from("first name")
+        val result = either { CustomFieldKey.from("first name") }
         assertIs<Either.Left<CommonDomainError>>(result)
     }
 
     @Test
     fun `String toFieldKey эквивалентен from`() {
-        val viaExtension = "first_name".toFieldKey()
-        val viaCompanion = CustomFieldKey.from("first_name")
+        val viaExtension = either { "first_name".toFieldKey() }
+        val viaCompanion = either { CustomFieldKey.from("first_name") }
         assertEquals(viaCompanion, viaExtension)
     }
 
     @Test
     fun `toString возвращает значение ключа`() {
-        val k = assertIs<Either.Right<CustomFieldKey>>(CustomFieldKey.from("custom_key")).value
+        val k = assertIs<Either.Right<CustomFieldKey>>(either { CustomFieldKey.from("custom_key") }).value
         assertEquals("custom_key", k.toString())
     }
 
@@ -78,7 +79,7 @@ class CustomFieldKeyTest {
 
     @Test
     fun `сериализуется как обычная JSON-строка`() {
-        val k = assertIs<Either.Right<CustomFieldKey>>(CustomFieldKey.from("first_name")).value
+        val k = assertIs<Either.Right<CustomFieldKey>>(either { CustomFieldKey.from("first_name") }).value
         val encoded = appJson.encodeToString(CustomFieldKey.serializer(), k)
         assertEquals("\"first_name\"", encoded)
     }
@@ -105,7 +106,7 @@ class CustomFieldKeyTest {
 
     @Test
     fun `round-trip через сериализацию сохраняет значение`() {
-        val original = assertIs<Either.Right<CustomFieldKey>>(CustomFieldKey.from("abc_def")).value
+        val original = assertIs<Either.Right<CustomFieldKey>>(either { CustomFieldKey.from("abc_def") }).value
         val encoded = appJson.encodeToString(CustomFieldKey.serializer(), original)
         val decoded = appJson.decodeFromString(CustomFieldKey.serializer(), encoded)
         assertEquals(original, decoded)

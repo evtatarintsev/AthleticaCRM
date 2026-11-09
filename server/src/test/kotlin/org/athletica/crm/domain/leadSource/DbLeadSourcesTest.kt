@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.leadSource
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
@@ -26,7 +27,7 @@ class DbLeadSourcesTest {
     }
 
     /** Пояснение из [raw]; ошибка роняет тест. */
-    private fun description(raw: String): LeadSourceDescription = LeadSourceDescription.from(raw, Lang.RU).getOrElse { error(it.toString()) }
+    private fun description(raw: String): LeadSourceDescription = either { LeadSourceDescription.from(raw, Lang.RU) }.getOrElse { error(it.toString()) }
 
     private suspend fun create(name: String, description: String): LeadSourceId {
         val id = LeadSourceId.new()

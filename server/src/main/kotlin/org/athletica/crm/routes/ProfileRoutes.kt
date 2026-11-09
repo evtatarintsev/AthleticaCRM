@@ -23,7 +23,7 @@ import org.athletica.crm.storage.Database
 context(db: Database)
 fun RouteWithContext.profileRoutes(auth: Auth, organizations: Organizations, orgBalances: OrgBalances) {
     get<Unit, AuthMeResponse>("/auth/me") {
-        val user = profile().bind()
+        val user = profile()
         val info =
             db.transaction {
                 parZip(

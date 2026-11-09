@@ -1,8 +1,7 @@
 package org.athletica.crm.domain.attendancecontrol
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import kotlin.time.Duration
@@ -31,15 +30,18 @@ value class JournalCloseDelay private constructor(
         /** Окно по умолчанию — 2 часа. */
         val DEFAULT = JournalCloseDelay(120)
 
-        /** Окно длиной [minutes] минут или ошибка `INVALID_JOURNAL_CLOSE_DELAY` вне допустимого диапазона. */
-        fun from(minutes: Int): Either<DomainError, JournalCloseDelay> =
-            if (minutes in MIN_MINUTES..MAX_MINUTES) {
-                JournalCloseDelay(minutes).right()
-            } else {
-                CommonDomainError(
-                    "INVALID_JOURNAL_CLOSE_DELAY",
-                    "Время на закрытие журнала должно быть от $MIN_MINUTES минут до $MAX_MINUTES минут",
-                ).left()
+        /** Окно длиной [minutes] минут; вне допустимого диапазона поднимает ошибку `INVALID_JOURNAL_CLOSE_DELAY`. */
+        context(raise: Raise<DomainError>)
+        fun from(minutes: Int): JournalCloseDelay {
+            if (minutes !in MIN_MINUTES..MAX_MINUTES) {
+                raise(
+                    CommonDomainError(
+                        "INVALID_JOURNAL_CLOSE_DELAY",
+                        "Время на закрытие журнала должно быть от $MIN_MINUTES минут до $MAX_MINUTES минут",
+                    ),
+                )
             }
+            return JournalCloseDelay(minutes)
+        }
     }
 }

@@ -1,6 +1,7 @@
 package org.athletica.crm.read.attendance
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
@@ -42,7 +43,7 @@ class DbSessionJournalViewTest {
             fixture.inContext {
                 val journal = fixture.journals.byId(session)
                 journal.addOneTime(guest)
-                journal.mark(boris, AttendanceMark.Absent.from(setOf(sick)).getOrElse { error(it) })
+                journal.mark(boris, either { AttendanceMark.Absent.from(setOf(sick)) }.getOrElse { error(it) })
             }
             TestPostgres.db.sql("UPDATE attendance_labels SET archived_at = now() WHERE id = :id").bind("id", sick).execute()
 

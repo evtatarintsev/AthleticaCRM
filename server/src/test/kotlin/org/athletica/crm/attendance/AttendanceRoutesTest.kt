@@ -37,6 +37,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.testDi
@@ -91,57 +92,59 @@ class AttendanceRoutesTest {
     }
 
     /** Группа «Йога» с занятием вчера и постоянными участниками [names]; возвращает занятие и клиентов. */
-    private suspend fun sessionWith(vararg names: String): Pair<SessionId, List<ClientId>> {
-        val hallId = HallId.new()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Большой зал')")
-            .bind("id", hallId)
-            .bind("orgId", user.orgId)
-            .bind("branchId", user.branchId)
-            .execute()
-        val groupId = GroupId.new()
-        TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Йога')")
-            .bind("id", groupId)
-            .bind("orgId", user.orgId)
-            .bind("branchId", user.branchId)
-            .execute()
-        val clients = names.map { insertClient(it) }
-        clients.forEach { clientId ->
+    private suspend fun sessionWith(vararg names: String): Pair<SessionId, List<ClientId>> =
+        orThrow {
+            val hallId = HallId.new()
             TestPostgres.db
-                .sql("INSERT INTO enrollments (group_id, client_id, enrolled_at) VALUES (:g, :c, now() - interval '30 days')")
-                .bind("g", groupId)
-                .bind("c", clientId)
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Большой зал')")
+                .bind("id", hallId)
+                .bind("orgId", user.orgId)
+                .bind("branchId", user.branchId)
                 .execute()
+            val groupId = GroupId.new()
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Йога')")
+                .bind("id", groupId)
+                .bind("orgId", user.orgId)
+                .bind("branchId", user.branchId)
+                .execute()
+            val clients = names.map { insertClient(it) }
+            clients.forEach { clientId ->
+                TestPostgres.db
+                    .sql("INSERT INTO enrollments (group_id, client_id, enrolled_at) VALUES (:g, :c, now() - interval '30 days')")
+                    .bind("g", groupId)
+                    .bind("c", clientId)
+                    .execute()
+            }
+            val sessionId = SessionId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO sessions (id, org_id, group_id, date, start_time, end_time, hall_id)
+                    VALUES (:id, :orgId, :groupId, :date, '10:00'::time, '11:00'::time, :hallId)
+                    """.trimIndent(),
+                )
+                .bind("id", sessionId)
+                .bind("orgId", user.orgId)
+                .bind("groupId", groupId)
+                .bind("date", yesterday)
+                .bind("hallId", hallId)
+                .execute()
+            groupIdOf[sessionId] = groupId
+            return sessionId to clients
         }
-        val sessionId = SessionId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO sessions (id, org_id, group_id, date, start_time, end_time, hall_id)
-                VALUES (:id, :orgId, :groupId, :date, '10:00'::time, '11:00'::time, :hallId)
-                """.trimIndent(),
-            )
-            .bind("id", sessionId)
-            .bind("orgId", user.orgId)
-            .bind("groupId", groupId)
-            .bind("date", yesterday)
-            .bind("hallId", hallId)
-            .execute()
-        groupIdOf[sessionId] = groupId
-        return sessionId to clients
-    }
 
-    private suspend fun insertClient(name: String): ClientId {
-        val id = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", id)
-            .bind("orgId", user.orgId)
-            .bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertClient(name: String): ClientId =
+        orThrow {
+            val id = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", id)
+                .bind("orgId", user.orgId)
+                .bind("name", name)
+                .execute()
+            return id
+        }
 
     private suspend fun ApplicationTestBuilder.post(path: String, body: String): HttpResponse =
         client.post("/api/$path") {

@@ -2,7 +2,6 @@ package org.athletica.crm.domain.hall
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.AppError
@@ -17,23 +16,20 @@ data class DbHall(
 ) : Hall {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
-        try {
-            tr.sql(
-                """
-                INSERT INTO halls (id, org_id, branch_id, name)
-                VALUES (:id, :orgId, :branchId, :name)
-                ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
-                WHERE halls.org_id = :orgId AND halls.branch_id = :branchId
-                """.trimIndent(),
-            )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("branchId", ctx.branchId)
-                .bind("name", name)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("HALL_ALREADY_EXISTS", Messages.HallAlreadyExists.localize()))
-        }
+        tr.sql(
+            """
+            INSERT INTO halls (id, org_id, branch_id, name)
+            VALUES (:id, :orgId, :branchId, :name)
+            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+            WHERE halls.org_id = :orgId AND halls.branch_id = :branchId
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("branchId", ctx.branchId)
+            .bind("name", name)
+            .onViolation("halls_org_branch_name_unique") { CommonDomainError("HALL_ALREADY_EXISTS", Messages.HallAlreadyExists.localize()) }
+            .execute()
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

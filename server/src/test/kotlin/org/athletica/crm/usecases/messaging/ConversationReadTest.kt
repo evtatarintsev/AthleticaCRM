@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.conversations.DbConversationReadStates
 import org.athletica.crm.domain.conversations.DbConversations
@@ -76,9 +77,11 @@ class ConversationReadTest {
         ).value
 
     private suspend fun conversationCount(): Long =
-        TestPostgres.db.sql("SELECT count(*) AS n FROM conversations WHERE org_id = :orgId")
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asLong("n") } ?: 0L
+        orThrow {
+            TestPostgres.db.sql("SELECT count(*) AS n FROM conversations WHERE org_id = :orgId")
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asLong("n") } ?: 0L
+        }
 
     @Test
     fun `отметка до показанного сообщения обнуляет непрочитанное`() =

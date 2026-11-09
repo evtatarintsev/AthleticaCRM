@@ -17,6 +17,7 @@ import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.conversations.Author
 import org.athletica.crm.domain.conversations.DbConversationReadStates
@@ -109,13 +110,15 @@ class DbInboxViewTest {
         body: String,
         at: Instant,
     ) {
-        either {
-            TestPostgres.db.transaction {
-                context(SystemContexts.forOrg(org)) { receipts.record(integration, address, body) }
+        orThrow {
+            either {
+                TestPostgres.db.transaction {
+                    context(SystemContexts.forOrg(org)) { receipts.record(integration, address, body) }
+                }
             }
+            TestPostgres.db.sql("UPDATE inbound_receipts SET received_at = :at WHERE from_address = :address AND body = :body")
+                .bind("at", at).bind("address", address).bind("body", body).execute()
         }
-        TestPostgres.db.sql("UPDATE inbound_receipts SET received_at = :at WHERE from_address = :address AND body = :body")
-            .bind("at", at).bind("address", address).bind("body", body).execute()
     }
 
     private suspend fun list(
@@ -140,14 +143,16 @@ class DbInboxViewTest {
 
     @Test
     fun `беседы и неразобранные чаты сортируются вместе, свежие первыми`() =
-        runTest {
-            inbound(ivanov, "Привет", now - 5.minutes)
-            unresolved(orgId, integrationId, "100", "Кто это?", now)
-            outbound(petrov, "Ждём вас")
-            TestPostgres.db.sql("UPDATE conversations SET last_message_at = :at WHERE client_id = :clientId")
-                .bind("at", now - 10.minutes).bind("clientId", petrov).execute()
+        orThrow {
+            runTest {
+                inbound(ivanov, "Привет", now - 5.minutes)
+                unresolved(orgId, integrationId, "100", "Кто это?", now)
+                outbound(petrov, "Ждём вас")
+                TestPostgres.db.sql("UPDATE conversations SET last_message_at = :at WHERE client_id = :clientId")
+                    .bind("at", now - 10.minutes).bind("clientId", petrov).execute()
 
-            assertEquals(listOf("chat:100", "Иванов", "Петров"), list().items.map { it.label() })
+                assertEquals(listOf("chat:100", "Иванов", "Петров"), list().items.map { it.label() })
+            }
         }
 
     @Test

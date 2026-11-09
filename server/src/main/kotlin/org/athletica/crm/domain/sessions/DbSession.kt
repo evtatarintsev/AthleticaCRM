@@ -136,7 +136,7 @@ class DbSession(
     }
 
     /** Наступило ли время начала занятия в часовом поясе организации. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun hasStarted(): Boolean =
         tr
             .sql(

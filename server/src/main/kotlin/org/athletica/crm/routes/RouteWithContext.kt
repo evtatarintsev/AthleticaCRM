@@ -36,6 +36,7 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.security.JwtConfig
@@ -121,12 +122,6 @@ class RouteWithContext(val di: Di, val router: Route) {
             }
         }
 }
-
-/**
- * Исключение-обёртка для [error], не являющейся [DomainError]: такую ошибку клиенту объяснить нечем,
- * поэтому она уходит в `StatusPages` и превращается в HTTP 500 с записью в лог.
- */
-class UnhandledAppError(val error: AppError) : RuntimeException("${error.code}: ${error.message}")
 
 /**
  * Отвечает клиенту на ошибку [error]: [DomainError] — HTTP 400 с её кодом и сообщением,

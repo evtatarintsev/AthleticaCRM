@@ -2,7 +2,6 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
@@ -50,27 +49,21 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 is EmployeeBranchAccess.Selected -> false to availableBranches.ids
             }
 
-        try {
-            tr.sql(
-                """
-                INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active, all_branches_access)
-                VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false, :allBranchesAccess)
-                """.trimIndent(),
-            )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("name", name)
-                .bind("avatarId", avatarId)
-                .bind("phoneNo", phoneNo)
-                .bind("email", email)
-                .bind("allBranchesAccess", allBranchesAccess)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            if (e.message?.contains("employees_pkey") == true) {
-                raise(CommonDomainError("EMPLOYEE_ALREADY_EXISTS", Messages.EmployeeAlreadyExists.localize()))
-            }
-            throw e
-        }
+        tr.sql(
+            """
+            INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active, all_branches_access)
+            VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false, :allBranchesAccess)
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", name)
+            .bind("avatarId", avatarId)
+            .bind("phoneNo", phoneNo)
+            .bind("email", email)
+            .bind("allBranchesAccess", allBranchesAccess)
+            .onViolation("employees_pkey") { CommonDomainError("EMPLOYEE_ALREADY_EXISTS", Messages.EmployeeAlreadyExists.localize()) }
+            .execute()
         for (role in permissions.roles) {
             tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                 .bind("employeeId", id)
@@ -166,7 +159,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             EmployeeBranchAccess.Selected(branchIds ?: emptyList())
         }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun permissionsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, PermissionOverrides> {
         data class Row(val employeeId: EmployeeId, val permission: UserPermission, val isGranted: Boolean)
 
@@ -220,7 +213,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             .bind("branchId", branchId)
             .list { row -> row.asUuid("id").toEmployeeId() }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun branchIdsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<BranchId>> =
         tr
             .sql(

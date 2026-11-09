@@ -15,6 +15,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
@@ -61,35 +62,40 @@ class DbTaskListViewTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+            }
         }
     }
 
-    private suspend fun insertClient(name: String): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", clientId).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return clientId
-    }
+    private suspend fun insertClient(name: String): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return clientId
+        }
 
     /** Назначает исполнителя напрямую в БД: проекции агрегат `Employee` не требуется. */
     private suspend fun assignTo(taskId: TaskId, assigneeId: EmployeeId) {
-        TestPostgres.db
-            .sql("UPDATE tasks SET assignee_id = :assigneeId WHERE id = :id")
-            .bind("assigneeId", assigneeId)
-            .bind("id", taskId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("UPDATE tasks SET assignee_id = :assigneeId WHERE id = :id")
+                .bind("assigneeId", assigneeId)
+                .bind("id", taskId)
+                .execute()
+        }
     }
 
     /** Выполняет [block] в транзакции под контекстом [context], разворачивая ошибку в падение теста. */

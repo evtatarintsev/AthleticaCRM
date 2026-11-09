@@ -15,6 +15,7 @@ import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.domain.sessions.DbScheduleSync
@@ -52,32 +53,36 @@ class DbScheduleSyncTest {
 
     /** Занятия группы, упорядоченные по дате. */
     private suspend fun sessions(groupId: GroupId): List<SessionRow> =
-        TestPostgres.db
-            .sql(
-                """
-                SELECT id, date, start_time, end_time, hall_id, status, origin_slot_id
-                FROM sessions WHERE group_id = :groupId ORDER BY date, start_time
-                """.trimIndent(),
-            )
-            .bind("groupId", groupId)
-            .list { row ->
-                SessionRow(
-                    id = row.asUuid("id").toSessionId(),
-                    date = row.asLocalDate("date"),
-                    startTime = row.asLocalTime("start_time"),
-                    endTime = row.asLocalTime("end_time"),
-                    hallId = row.asUuid("hall_id").toHallId(),
-                    status = row.asString("status"),
-                    originSlotId = row.asUuidOrNull("origin_slot_id"),
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    SELECT id, date, start_time, end_time, hall_id, status, origin_slot_id
+                    FROM sessions WHERE group_id = :groupId ORDER BY date, start_time
+                    """.trimIndent(),
                 )
-            }
+                .bind("groupId", groupId)
+                .list { row ->
+                    SessionRow(
+                        id = row.asUuid("id").toSessionId(),
+                        date = row.asLocalDate("date"),
+                        startTime = row.asLocalTime("start_time"),
+                        endTime = row.asLocalTime("end_time"),
+                        hallId = row.asUuid("hall_id").toHallId(),
+                        status = row.asString("status"),
+                        originSlotId = row.asUuidOrNull("origin_slot_id"),
+                    )
+                }
+        }
 
     /** Тренеры занятия [sessionId]. */
     private suspend fun employeesOf(sessionId: SessionId): List<EmployeeId> =
-        TestPostgres.db
-            .sql("SELECT employee_id FROM session_employees WHERE session_id = :id ORDER BY employee_id")
-            .bind("id", sessionId)
-            .list { it.asUuid("employee_id").toEmployeeId() }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT employee_id FROM session_employees WHERE session_id = :id ORDER BY employee_id")
+                .bind("id", sessionId)
+                .list { it.asUuid("employee_id").toEmployeeId() }
+        }
 
     private fun mondayAt10(hall: HallId, endAt: LocalTime = LocalTime(11, 0)) = NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), endAt, hall)
 
@@ -141,27 +146,29 @@ class DbScheduleSyncTest {
 
     @Test
     fun `смена зала и времени окончания обновляет нетронутые занятия, не меняя их дат`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hallA = fixture.insertHall("A")
-            val hallB = fixture.insertHall("B")
-            val slot = fixture.insertSlot(group, hallA, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), nextMonday)
-            sync()
-            val before = sessions(group)
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hallA = fixture.insertHall("A")
+                val hallB = fixture.insertHall("B")
+                val slot = fixture.insertSlot(group, hallA, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), nextMonday)
+                sync()
+                val before = sessions(group)
 
-            TestPostgres.db
-                .sql("UPDATE schedule_slots SET hall_id = :hall, end_time = '12:00'::time WHERE id = :id")
-                .bind("hall", hallB)
-                .bind("id", slot)
-                .execute()
-            sync()
+                TestPostgres.db
+                    .sql("UPDATE schedule_slots SET hall_id = :hall, end_time = '12:00'::time WHERE id = :id")
+                    .bind("hall", hallB)
+                    .bind("id", slot)
+                    .execute()
+                sync()
 
-            val after = sessions(group)
-            assertEquals(before.map { it.id }, after.map { it.id })
-            assertEquals(before.map { it.date }, after.map { it.date })
-            assertTrue(after.all { it.hallId == hallB })
-            assertTrue(after.all { it.endTime == LocalTime(12, 0) })
+                val after = sessions(group)
+                assertEquals(before.map { it.id }, after.map { it.id })
+                assertEquals(before.map { it.date }, after.map { it.date })
+                assertTrue(after.all { it.hallId == hallB })
+                assertTrue(after.all { it.endTime == LocalTime(12, 0) })
+            }
         }
 
     @Test
@@ -200,121 +207,131 @@ class DbScheduleSyncTest {
 
     @Test
     fun `смена тренеров группы меняет будущие занятия и не трогает прошедшие`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            val oldCoach = fixture.insertEmployee("Старый")
-            val newCoach = fixture.insertEmployee("Новый")
-            fixture.linkGroupEmployee(group, oldCoach)
-            val pastSlot =
-                fixture.insertSlot(group, hall, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), today.plusDays(-60), today.plusDays(-30))
-            val past =
-                fixture.insertSession(
-                    group,
-                    hall,
-                    today.plusDays(-35),
-                    LocalTime(10, 0),
-                    LocalTime(11, 0),
-                    originSlotId = pastSlot,
-                )
-            fixture.linkSessionEmployee(past, oldCoach)
-            setSchedule(group, today, listOf(mondayAt10(hall)))
-            sync()
-            val future = sessions(group).first { it.date >= today }
-            assertEquals(listOf(oldCoach), employeesOf(future.id))
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                val oldCoach = fixture.insertEmployee("Старый")
+                val newCoach = fixture.insertEmployee("Новый")
+                fixture.linkGroupEmployee(group, oldCoach)
+                val pastSlot =
+                    fixture.insertSlot(group, hall, DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), today.plusDays(-60), today.plusDays(-30))
+                val past =
+                    fixture.insertSession(
+                        group,
+                        hall,
+                        today.plusDays(-35),
+                        LocalTime(10, 0),
+                        LocalTime(11, 0),
+                        originSlotId = pastSlot,
+                    )
+                fixture.linkSessionEmployee(past, oldCoach)
+                setSchedule(group, today, listOf(mondayAt10(hall)))
+                sync()
+                val future = sessions(group).first { it.date >= today }
+                assertEquals(listOf(oldCoach), employeesOf(future.id))
 
-            TestPostgres.db.sql("DELETE FROM group_employees WHERE group_id = :g").bind("g", group).execute()
-            fixture.linkGroupEmployee(group, newCoach)
-            sync()
+                TestPostgres.db.sql("DELETE FROM group_employees WHERE group_id = :g").bind("g", group).execute()
+                fixture.linkGroupEmployee(group, newCoach)
+                sync()
 
-            assertEquals(listOf(newCoach), employeesOf(future.id))
-            assertEquals(listOf(oldCoach), employeesOf(past))
+                assertEquals(listOf(newCoach), employeesOf(future.id))
+                assertEquals(listOf(oldCoach), employeesOf(past))
+            }
         }
 
     @Test
     fun `отменённое занятие переживает смену расписания и не воскресает`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            setSchedule(group, today, listOf(mondayAt10(hall)))
-            sync()
-            val target = sessions(group).first { it.date >= today }
-            TestPostgres.db.sql("UPDATE sessions SET status = 'cancelled' WHERE id = :id").bind("id", target.id).execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                setSchedule(group, today, listOf(mondayAt10(hall)))
+                sync()
+                val target = sessions(group).first { it.date >= today }
+                TestPostgres.db.sql("UPDATE sessions SET status = 'cancelled' WHERE id = :id").bind("id", target.id).execute()
 
-            sync()
-            setSchedule(group, today, emptyList())
-            sync()
+                sync()
+                setSchedule(group, today, emptyList())
+                sync()
 
-            val remaining = sessions(group)
-            assertEquals(listOf(target.id), remaining.map { it.id })
-            assertEquals("cancelled", remaining.single().status)
+                val remaining = sessions(group)
+                assertEquals(listOf(target.id), remaining.map { it.id })
+                assertEquals("cancelled", remaining.single().status)
+            }
         }
 
     @Test
     fun `перенесённое занятие сохраняется на назначенной дате`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            setSchedule(group, today, listOf(mondayAt10(hall)))
-            sync()
-            val target = sessions(group).first { it.date >= today }
-            val movedTo = target.date.plusDays(2)
-            TestPostgres.db
-                .sql("UPDATE sessions SET is_rescheduled = true, date = :date WHERE id = :id")
-                .bind("date", movedTo)
-                .bind("id", target.id)
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                setSchedule(group, today, listOf(mondayAt10(hall)))
+                sync()
+                val target = sessions(group).first { it.date >= today }
+                val movedTo = target.date.plusDays(2)
+                TestPostgres.db
+                    .sql("UPDATE sessions SET is_rescheduled = true, date = :date WHERE id = :id")
+                    .bind("date", movedTo)
+                    .bind("id", target.id)
+                    .execute()
 
-            setSchedule(group, today, emptyList())
-            sync()
+                setSchedule(group, today, emptyList())
+                sync()
 
-            val remaining = sessions(group).single()
-            assertEquals(target.id, remaining.id)
-            assertEquals(movedTo, remaining.date)
+                val remaining = sessions(group).single()
+                assertEquals(target.id, remaining.id)
+                assertEquals(movedTo, remaining.date)
+            }
         }
 
     @Test
     fun `занятие с переопределёнными тренерами не перезаписывается`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            val groupCoach = fixture.insertEmployee("Групповой")
-            val ownCoach = fixture.insertEmployee("Свой")
-            fixture.linkGroupEmployee(group, groupCoach)
-            setSchedule(group, today, listOf(mondayAt10(hall)))
-            sync()
-            val target = sessions(group).first { it.date >= today }
-            TestPostgres.db.sql("DELETE FROM session_employees WHERE session_id = :id").bind("id", target.id).execute()
-            fixture.linkSessionEmployee(target.id, ownCoach)
-            TestPostgres.db
-                .sql("UPDATE sessions SET is_employee_assignment_overridden = true WHERE id = :id")
-                .bind("id", target.id)
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                val groupCoach = fixture.insertEmployee("Групповой")
+                val ownCoach = fixture.insertEmployee("Свой")
+                fixture.linkGroupEmployee(group, groupCoach)
+                setSchedule(group, today, listOf(mondayAt10(hall)))
+                sync()
+                val target = sessions(group).first { it.date >= today }
+                TestPostgres.db.sql("DELETE FROM session_employees WHERE session_id = :id").bind("id", target.id).execute()
+                fixture.linkSessionEmployee(target.id, ownCoach)
+                TestPostgres.db
+                    .sql("UPDATE sessions SET is_employee_assignment_overridden = true WHERE id = :id")
+                    .bind("id", target.id)
+                    .execute()
 
-            sync()
+                sync()
 
-            assertEquals(listOf(ownCoach), employeesOf(target.id))
+                assertEquals(listOf(ownCoach), employeesOf(target.id))
+            }
         }
 
     @Test
     fun `занятие с заметкой переживает смену расписания`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            setSchedule(group, today, listOf(mondayAt10(hall)))
-            sync()
-            val target = sessions(group).first { it.date >= today }
-            TestPostgres.db.sql("UPDATE sessions SET notes = 'важно' WHERE id = :id").bind("id", target.id).execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                setSchedule(group, today, listOf(mondayAt10(hall)))
+                sync()
+                val target = sessions(group).first { it.date >= today }
+                TestPostgres.db.sql("UPDATE sessions SET notes = 'важно' WHERE id = :id").bind("id", target.id).execute()
 
-            setSchedule(group, today, emptyList())
-            sync()
+                setSchedule(group, today, emptyList())
+                sync()
 
-            assertEquals(listOf(target.id), sessions(group).map { it.id })
+                assertEquals(listOf(target.id), sessions(group).map { it.id })
+            }
         }
 
     @Test
@@ -411,47 +428,51 @@ class DbScheduleSyncTest {
 
     @Test
     fun `удаление ещё не вступившей в силу версии с ручной правкой проходит`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hallA = fixture.insertHall("A")
-            val hallB = fixture.insertHall("B")
-            setSchedule(group, today, listOf(mondayAt10(hallA)))
-            val planned = nextMonday.plusDays(14)
-            setSchedule(group, planned, listOf(mondayAt10(hallB)))
-            sync()
-            val plannedSlot: SlotId = fixture.inContext { schedule.slotsOn(group, planned) }.single().id
-            val edited = sessions(group).first { it.originSlotId == plannedSlot.value }
-            TestPostgres.db.sql("UPDATE sessions SET notes = 'правка' WHERE id = :id").bind("id", edited.id).execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hallA = fixture.insertHall("A")
+                val hallB = fixture.insertHall("B")
+                setSchedule(group, today, listOf(mondayAt10(hallA)))
+                val planned = nextMonday.plusDays(14)
+                setSchedule(group, planned, listOf(mondayAt10(hallB)))
+                sync()
+                val plannedSlot: SlotId = fixture.inContext { schedule.slotsOn(group, planned) }.single().id
+                val edited = sessions(group).first { it.originSlotId == plannedSlot.value }
+                TestPostgres.db.sql("UPDATE sessions SET notes = 'правка' WHERE id = :id").bind("id", edited.id).execute()
 
-            setSchedule(group, today.plusDays(1), listOf(mondayAt10(hallA)))
-            sync()
+                setSchedule(group, today.plusDays(1), listOf(mondayAt10(hallA)))
+                sync()
 
-            val survivor = sessions(group).single { it.id == edited.id }
-            assertEquals(null, survivor.originSlotId)
+                val survivor = sessions(group).single { it.id == edited.id }
+                assertEquals(null, survivor.originSlotId)
+            }
         }
 
     @Test
     fun `сверка системным контекстом восполняет рассогласование`() =
-        runTest {
-            fixture.setUp()
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            setSchedule(group, today, listOf(mondayAt10(hall)))
-            sync()
-            val expected = sessions(group).map { it.date }
-            TestPostgres.db.sql("DELETE FROM sessions WHERE group_id = :g AND date > :d").bind("g", group).bind("d", today).execute()
-            assertTrue(sessions(group).size < expected.size)
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                setSchedule(group, today, listOf(mondayAt10(hall)))
+                sync()
+                val expected = sessions(group).map { it.date }
+                TestPostgres.db.sql("DELETE FROM sessions WHERE group_id = :g AND date > :d").bind("g", group).bind("d", today).execute()
+                assertTrue(sessions(group).size < expected.size)
 
-            val systemContext = org.athletica.crm.core.SystemRequestContext(orgId = org.athletica.crm.core.entityids.OrgId(fixture.orgId), currency = org.athletica.crm.core.money.Currency.RUB)
-            arrow.core.raise.either {
-                val raise: arrow.core.raise.Raise<AppError> = this
-                TestPostgres.db.transaction {
-                    context(systemContext, this, raise) { sync.sync() }
+                val systemContext = org.athletica.crm.core.SystemRequestContext(orgId = org.athletica.crm.core.entityids.OrgId(fixture.orgId), currency = org.athletica.crm.core.money.Currency.RUB)
+                arrow.core.raise.either {
+                    val raise: arrow.core.raise.Raise<AppError> = this
+                    TestPostgres.db.transaction {
+                        context(systemContext, this, raise) { sync.sync() }
+                    }
                 }
-            }
 
-            assertEquals(expected, sessions(group).map { it.date })
+                assertEquals(expected, sessions(group).map { it.date })
+            }
         }
 }
 

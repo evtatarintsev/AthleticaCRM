@@ -11,6 +11,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
@@ -216,22 +217,24 @@ class DebitReconciliationTest {
 
     @Test
     fun `занятие чужой группы не списывается`() =
-        runTest {
-            val client = fixture.insertClient()
-            fixture.issue(client)
-            val otherGroup = GroupId.new()
-            TestPostgres.db
-                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Взрослые')")
-                .bind("id", otherGroup)
-                .bind("orgId", fixture.orgId)
-                .bind("branchId", fixture.branchId)
-                .execute()
-            val session = debits.session(date(16), groupId = otherGroup)
-            debits.mark(session, client, "present")
+        orThrow {
+            runTest {
+                val client = fixture.insertClient()
+                fixture.issue(client)
+                val otherGroup = GroupId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Взрослые')")
+                    .bind("id", otherGroup)
+                    .bind("orgId", fixture.orgId)
+                    .bind("branchId", fixture.branchId)
+                    .execute()
+                val session = debits.session(date(16), groupId = otherGroup)
+                debits.mark(session, client, "present")
 
-            debits.reconcile(session, client)
+                debits.reconcile(session, client)
 
-            assertNull(debits.debitedFrom(session, client))
+                assertNull(debits.debitedFrom(session, client))
+            }
         }
 
     @Test

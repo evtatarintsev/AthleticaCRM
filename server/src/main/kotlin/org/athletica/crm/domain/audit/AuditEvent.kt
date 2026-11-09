@@ -1,9 +1,11 @@
 package org.athletica.crm.domain.audit
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EntityId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.uuid.Uuid
 
@@ -71,7 +73,7 @@ data class AuditEvent(
  * [data] — JSON-снапшот созданной сущности на момент события.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String) {
     log(
         AuditEvent(
@@ -87,7 +89,7 @@ suspend fun AuditLog.logCreate(entityType: String, entityId: Uuid, data: String)
     )
 }
 
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logCreate(entityType: String, entityId: EntityId, data: String) = logCreate(entityType, entityId.value, data)
 
 /**
@@ -95,7 +97,7 @@ suspend fun AuditLog.logCreate(entityType: String, entityId: EntityId, data: Str
  * [data] — JSON-снапшот сущности после изменения.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String) {
     log(
         AuditEvent(
@@ -111,7 +113,7 @@ suspend fun AuditLog.logUpdate(entityType: String, entityId: Uuid, data: String)
     )
 }
 
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logUpdate(entityType: String, entityId: EntityId, data: String) = logUpdate(entityType, entityId.value, data)
 
 /**
@@ -119,7 +121,7 @@ suspend fun AuditLog.logUpdate(entityType: String, entityId: EntityId, data: Str
  * [data] — JSON-снапшот сущности после изменения.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].
  */
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String) {
     log(
         AuditEvent(
@@ -135,5 +137,5 @@ suspend fun AuditLog.logDelete(entityType: String, entityId: Uuid, data: String)
     )
 }
 
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logDelete(entityType: String, entityId: EntityId, data: String) = logDelete(entityType, entityId.value, data)

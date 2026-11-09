@@ -389,9 +389,13 @@ Domain ничего не знает про схемы запросов и отв
 Признаки нарушения: импорт из `org.athletica.crm.api.schemas.*` внутри `domain/*`,
 `@Serializable` на доменной сущности, поля-объекты соседних агрегатов в data class-ах.
 
-### Foreign Key Constraints
-- Database enforces FK constraints; R2DBC surfaces FK violations as exceptions
-- Tests catch FK exceptions with `runCatching` if needed (see AddClientsToGroupTest)
+### Нарушения ограничений БД
+- `execute`/`list`/`firstOrNull` требуют `Raise<AppError>`; нарушение ограничения (unique, FK, check)
+  поднимается как `ConstraintViolation(constraint)` (`storage/DbError.kt`) — HTTP 500, если не перемаплено.
+- Ожидаемое нарушение переводится в доменную ошибку по имени ограничения прямо в запросе:
+  `.onViolation("uq_groups_org_name") { CommonDomainError(...) }`. `catch` исключений драйвера в `domain/` не нужен.
+- Прочие ошибки драйвера (соединение, синтаксис SQL) остаются исключениями.
+- Код вне HTTP-запроса (фоновые задачи, CLI, тестовые фикстуры) оборачивает обращения к БД в `orThrow { }`.
 
 ## Dependency Injection (Manual)
 

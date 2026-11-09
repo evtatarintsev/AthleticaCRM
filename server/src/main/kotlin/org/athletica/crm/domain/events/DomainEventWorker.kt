@@ -1,7 +1,10 @@
 package org.athletica.crm.domain.events
 
+import arrow.core.raise.Raise
 import kotlinx.coroutines.delay
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInt
@@ -47,19 +50,19 @@ class DomainEventWorker(
 
     /** Обрабатывает одну пачку событий, чья очередная попытка наступила. */
     suspend fun processBatch() {
-        val records = db.transaction { fetchPending() }
+        val records = db.transaction { orThrow { fetchPending() } }
         records.forEach { record ->
             try {
                 bus.dispatch(record)
-                db.transaction { markProcessed(record.id) }
+                db.transaction { orThrow { markProcessed(record.id) } }
             } catch (e: Exception) {
                 logger.error("Ошибка обработки события ${record.id} (${record.eventType}): ${e.message}")
-                db.transaction { registerFailure(record, e.message ?: "unknown error") }
+                db.transaction { orThrow { registerFailure(record, e.message ?: "unknown error") } }
             }
         }
     }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun fetchPending(batchSize: Int = 10): List<DomainEventRecord> =
         tr
             .sql(
@@ -83,7 +86,7 @@ class DomainEventWorker(
                 )
             }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun markProcessed(id: Uuid) {
         tr
             .sql("UPDATE domain_events SET processed_at = now() WHERE id = :id")
@@ -95,7 +98,7 @@ class DomainEventWorker(
      * Учитывает неудачную попытку обработки [record] с ошибкой [error]: назначает следующую попытку
      * через [retryDelay] или, если попыток стало [MAX_ATTEMPTS], помечает событие неуспешным.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun registerFailure(
         record: DomainEventRecord,
         error: String,

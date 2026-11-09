@@ -143,7 +143,7 @@ class DbGroupSchedule : GroupSchedule {
             .list { row -> row.asUuid("id").toSlotId() }
 
     /** Снимает ограничение периода сверху: версия действует бессрочно. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun extendForever(slot: ScheduleSlot) {
         if (slot.validity.to == null) {
             return
@@ -155,7 +155,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Закрывает версию датой [date]: она перестаёт действовать с этого дня. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun closeAt(slot: ScheduleSlot, date: LocalDate) {
         tr
             .sql("UPDATE schedule_slots SET validity = daterange(lower(validity), :date::date) WHERE id = :id")
@@ -169,7 +169,7 @@ class DbGroupSchedule : GroupSchedule {
      * нетронутые удаляются вместе с правилом, изменённые человеком теряют происхождение и остаются.
      * Без открепления `ON DELETE RESTRICT` уронил бы транзакцию.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun dropVersion(slotId: SlotId) {
         tr
             .sql("DELETE FROM sessions s WHERE s.origin_slot_id = :slotId AND ${UntouchedSessions.predicate("s")}")
@@ -186,7 +186,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Создаёт новую бессрочную версию правила [slot], действующую с [from]. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun insert(groupId: GroupId, slot: NewSlot, from: LocalDate) {
         tr
             .sql(

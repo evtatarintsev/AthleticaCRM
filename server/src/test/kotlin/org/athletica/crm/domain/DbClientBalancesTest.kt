@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clientbalance.DbClientBalances
@@ -52,50 +53,57 @@ class DbClientBalancesTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "admin@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
-                .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", "Admin").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org 1").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "admin@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+                    .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", "Admin").execute()
+            }
         }
     }
 
-    private suspend fun insertClient(orgId: OrgId = this.orgId, name: String = "Иван Петров"): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", clientId)
-            .bind("orgId", orgId)
-            .bind("name", name)
-            .execute()
-        return clientId
-    }
+    private suspend fun insertClient(orgId: OrgId = this.orgId, name: String = "Иван Петров"): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId)
+                .bind("orgId", orgId)
+                .bind("name", name)
+                .execute()
+            return clientId
+        }
 
     private suspend fun insertBalanceEntry(clientId: ClientId, amount: Double, balanceAfter: Double) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
-                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
-                """.trimIndent(),
-            )
-            .bind("id", Uuid.generateV7())
-            .bind("orgId", orgId)
-            .bind("clientId", clientId)
-            .bind("amount", java.math.BigDecimal(amount.toString()))
-            .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
-            .bind("performedBy", employeeId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
+                    VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
+                    """.trimIndent(),
+                )
+                .bind("id", Uuid.generateV7())
+                .bind("orgId", orgId)
+                .bind("clientId", clientId)
+                .bind("amount", java.math.BigDecimal(amount.toString()))
+                .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
+                .bind("performedBy", employeeId)
+                .execute()
+        }
     }
 
     private suspend fun getBalance(clientId: ClientId): Double =
-        TestPostgres.db
-            .sql("SELECT COALESCE(SUM(amount), 0) FROM client_balance_journal WHERE client_id = :id")
-            .bind("id", clientId)
-            .firstOrNull { row -> row.asDouble(0) } ?: 0.0
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COALESCE(SUM(amount), 0) FROM client_balance_journal WHERE client_id = :id")
+                .bind("id", clientId)
+                .firstOrNull { row -> row.asDouble(0) } ?: 0.0
+        }
 
     // ── currentOf ────────────────────────────────────────────────────────────
 

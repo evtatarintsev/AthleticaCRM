@@ -1,8 +1,10 @@
 package org.athletica.crm.domain.leadSource
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.i18n.LocalizationKey
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -30,7 +32,7 @@ object DefaultLeadSources {
         )
 
     /** Создаёт предустановленные источники в организации [orgId] с текстами на языке [lang]. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun createFor(orgId: OrgId, lang: Lang) {
         defaults.forEach { (name, description) ->
             tr

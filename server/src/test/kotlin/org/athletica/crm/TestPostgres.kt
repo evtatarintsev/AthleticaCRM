@@ -1,6 +1,7 @@
 package org.athletica.crm
 
 import kotlinx.coroutines.runBlocking
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.auth.DbAuth
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.branch.DbBranches
@@ -37,7 +38,9 @@ object TestPostgres {
      * удаление users тянет employees (ON DELETE CASCADE) → employee_roles.
      */
     fun truncate(): Unit =
-        runBlocking {
-            db.sql("TRUNCATE users, organizations, channel_integrations CASCADE").execute()
+        orThrow {
+            runBlocking {
+                db.sql("TRUNCATE users, organizations, channel_integrations CASCADE").execute()
+            }
         }
 }

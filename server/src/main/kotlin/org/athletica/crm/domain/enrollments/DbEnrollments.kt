@@ -2,7 +2,6 @@ package org.athletica.crm.domain.enrollments
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toJavaLocalDate
 import org.athletica.crm.core.EmployeeRequestContext
@@ -27,21 +26,18 @@ class DbEnrollments : Enrollments {
         verifyGroupOwnership(groupId)
 
         clientIds.forEach { clientId ->
-            try {
-                tr
-                    .sql(
-                        """
-                        INSERT INTO enrollments (group_id, client_id)
-                        VALUES (:groupId, :clientId)
-                        ON CONFLICT (client_id, group_id) WHERE left_at IS NULL DO NOTHING
-                        """.trimIndent(),
-                    )
-                    .bind("groupId", groupId)
-                    .bind("clientId", clientId)
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()))
-            }
+            tr
+                .sql(
+                    """
+                    INSERT INTO enrollments (group_id, client_id)
+                    VALUES (:groupId, :clientId)
+                    ON CONFLICT (client_id, group_id) WHERE left_at IS NULL DO NOTHING
+                    """.trimIndent(),
+                )
+                .bind("groupId", groupId)
+                .bind("clientId", clientId)
+                .onViolation("enrollments_client_id_fkey") { CommonDomainError("CLIENT_NOT_FOUND", Messages.ClientNotFound.localize()) }
+                .execute()
         }
     }
 

@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -50,16 +51,18 @@ class ReadStateTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
+            }
         }
     }
 

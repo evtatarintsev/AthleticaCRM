@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
@@ -62,43 +63,46 @@ class CreateSessionTest {
     }
 
     /** Создаёт филиал организации теста и зал в нём. */
-    private suspend fun hallInOtherBranch(): HallId {
-        val branch = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Второй')")
-            .bind("id", branch)
-            .bind("orgId", fixture.orgId)
-            .execute()
-        return insertHall(fixture.orgId, branch)
-    }
+    private suspend fun hallInOtherBranch(): HallId =
+        orThrow {
+            val branch = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Второй')")
+                .bind("id", branch)
+                .bind("orgId", fixture.orgId)
+                .execute()
+            return insertHall(fixture.orgId, branch)
+        }
 
     /** Создаёт отдельную организацию с филиалом и зал в ней. */
-    private suspend fun hallInOtherOrg(): HallId {
-        val org = Uuid.generateV7()
-        val branch = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, 'Чужая')")
-            .bind("id", org)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Чужой')")
-            .bind("id", branch)
-            .bind("orgId", org)
-            .execute()
-        return insertHall(org, branch)
-    }
+    private suspend fun hallInOtherOrg(): HallId =
+        orThrow {
+            val org = Uuid.generateV7()
+            val branch = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, 'Чужая')")
+                .bind("id", org)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Чужой')")
+                .bind("id", branch)
+                .bind("orgId", org)
+                .execute()
+            return insertHall(org, branch)
+        }
 
     /** Вставляет зал в филиал [branch] организации [org]. */
-    private suspend fun insertHall(org: Uuid, branch: Uuid): HallId {
-        val id = HallId.new()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
-            .bind("id", id)
-            .bind("orgId", org)
-            .bind("branchId", branch)
-            .execute()
-        return id
-    }
+    private suspend fun insertHall(org: Uuid, branch: Uuid): HallId =
+        orThrow {
+            val id = HallId.new()
+            TestPostgres.db
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
+                .bind("id", id)
+                .bind("orgId", org)
+                .bind("branchId", branch)
+                .execute()
+            return id
+        }
 
     /** Ожидает ошибку домена с кодом [code]. */
     private fun assertError(code: String, result: Either<*, *>) {
@@ -142,24 +146,26 @@ class CreateSessionTest {
 
     @Test
     fun `тренер без доступа к филиалу группы отклоняется`() =
-        runTest {
-            fixture.setUp()
-            val hall = fixture.insertHall()
-            val group = fixture.insertGroup()
-            val stranger = EmployeeId.new()
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
-                    VALUES (:id, :orgId, 'Чужой', true, false, NOW())
-                    """.trimIndent(),
-                )
-                .bind("id", stranger)
-                .bind("orgId", fixture.orgId)
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val hall = fixture.insertHall()
+                val group = fixture.insertGroup()
+                val stranger = EmployeeId.new()
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
+                        VALUES (:id, :orgId, 'Чужой', true, false, NOW())
+                        """.trimIndent(),
+                    )
+                    .bind("id", stranger)
+                    .bind("orgId", fixture.orgId)
+                    .execute()
 
-            assertError("EMPLOYEE_NOT_FOUND", create(group, hall, listOf(stranger)))
-            assertEquals(0L, fixture.sessionCount())
+                assertError("EMPLOYEE_NOT_FOUND", create(group, hall, listOf(stranger)))
+                assertEquals(0L, fixture.sessionCount())
+            }
         }
 
     @Test

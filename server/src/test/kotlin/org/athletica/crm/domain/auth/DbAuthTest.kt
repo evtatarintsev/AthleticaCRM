@@ -9,6 +9,7 @@ import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.branch.Branch
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.security.UserNotFound
@@ -30,28 +31,29 @@ class DbAuthTest {
     private suspend fun insertUser(
         login: String,
         password: String,
-    ): UserId {
-        val orgId = OrgId.new()
-        val userId = UserId.new()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId)
-            .bind("name", login)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId)
-            .bind("login", login)
-            .bind("hash", hasher.hash(password).value)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
-            .bind("userId", userId)
-            .bind("orgId", orgId)
-            .bind("name", login)
-            .execute()
-        return userId
-    }
+    ): UserId =
+        orThrow {
+            val orgId = OrgId.new()
+            val userId = UserId.new()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId)
+                .bind("name", login)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId)
+                .bind("login", login)
+                .bind("hash", hasher.hash(password).value)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (user_id, org_id, name, is_owner) VALUES (:userId, :orgId, :name, true)")
+                .bind("userId", userId)
+                .bind("orgId", orgId)
+                .bind("name", login)
+                .execute()
+            return userId
+        }
 
     @Test
     fun `findById returns user when exists`() =

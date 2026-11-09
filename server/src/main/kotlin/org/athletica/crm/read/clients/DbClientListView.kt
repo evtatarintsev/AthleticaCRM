@@ -38,7 +38,7 @@ class DbClientListView : ClientListView {
     }
 
     /** Считает общее число клиентов, удовлетворяющих фильтрам [query] (без пагинации). */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun countMatching(query: ClientListQuery): Int =
         tr
             .sql("$BAL_CTE\nSELECT COUNT(*) AS total\n$FROM_WHERE")
@@ -47,7 +47,7 @@ class DbClientListView : ClientListView {
             ?: 0
 
     /** Загружает элементы текущей страницы согласно [query]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun fetchItems(query: ClientListQuery): List<ClientListItem> {
         val orderColumn =
             when (query.sortColumn) {

@@ -58,7 +58,7 @@ class DbGroupListView : GroupListView {
             .list { row -> GroupSelectItem(row.asUuid("id").toGroupId(), row.asString("name")) }
 
     /** Считает все группы организации и филиала — без фильтров [GroupListQuery]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun totalCount(): UInt =
         tr
             .sql("SELECT COUNT(*) AS cnt FROM groups g WHERE g.org_id = :orgId AND g.branch_id = :branchId")

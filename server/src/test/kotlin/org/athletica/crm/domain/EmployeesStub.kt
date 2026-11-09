@@ -38,7 +38,7 @@ data class EmployeeStub(
 ) : Employee {
     override fun hasPermission(p: UserPermission): Boolean = permissionSettings.hasPermission(p)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
     }
 

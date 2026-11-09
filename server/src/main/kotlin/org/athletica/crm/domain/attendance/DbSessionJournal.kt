@@ -142,7 +142,7 @@ class DbSessionJournal(
     }
 
     /** Сохраняет отметку [mark] участника [participant], создавая строку журнала при первой отметке. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun write(participant: JournalParticipant, mark: AttendanceMark) {
         val attendanceId =
             tr

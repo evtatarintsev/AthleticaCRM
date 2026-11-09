@@ -1,6 +1,8 @@
 package org.athletica.infra.messaging.telegram
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.entityids.ChannelIntegrationId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLong
 import kotlin.time.Duration
@@ -19,7 +21,7 @@ class TelegramPollState(
      * offset, с которого опрашивать. `null` — аренду держит другой живой владелец.
      * [botId] — числовой id бота из токена: при смене бота offset прежнего бота сбрасывается.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun acquire(integrationId: ChannelIntegrationId, owner: String, botId: String): Long? {
         tr.sql(
             """
@@ -54,7 +56,7 @@ class TelegramPollState(
      * Проверяет в транзакции записи, что аренда интеграции [integrationId] всё ещё у [owner],
      * и блокирует строку до конца транзакции, чтобы её не перехватили во время записи.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun holds(integrationId: ChannelIntegrationId, owner: String): Boolean =
         tr.sql(
             """
@@ -69,7 +71,7 @@ class TelegramPollState(
             .firstOrNull { row -> row.asLong("update_offset") } != null
 
     /** Сдвигает offset интеграции [integrationId] на [offset] и продлевает аренду [owner]. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun advance(integrationId: ChannelIntegrationId, owner: String, offset: Long) {
         tr.sql(
             """

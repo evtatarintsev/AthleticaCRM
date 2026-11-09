@@ -8,6 +8,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipExtendedEventSchema
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.MembershipFixture
@@ -57,10 +58,12 @@ class MembershipExtensionTest {
 
     /** Данные записей аудита абонемента [id] с автором, от старых к новым. */
     private suspend fun auditRows(id: MembershipId): List<Pair<String, String>> =
-        TestPostgres.db
-            .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id ORDER BY created_at, id")
-            .bind("id", id)
-            .list { it.get("username", String::class.java)!! to it.get("data", String::class.java)!! }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id ORDER BY created_at, id")
+                .bind("id", id)
+                .list { it.get("username", String::class.java)!! to it.get("data", String::class.java)!! }
+        }
 
     @Test
     fun `продление меняет только дату окончания и пишется в историю и аудит`() =
@@ -185,10 +188,12 @@ class MembershipExtensionTest {
 
     /** Отмечает уведомление «к закрытию» абонемента [id] как отправленное. */
     private suspend fun markCloseNotified(id: MembershipId) {
-        TestPostgres.db
-            .sql("UPDATE memberships SET close_notified_at = :at WHERE id = :id")
-            .bind("at", Instant.parse("2026-12-01T09:00:00Z"))
-            .bind("id", id)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("UPDATE memberships SET close_notified_at = :at WHERE id = :id")
+                .bind("at", Instant.parse("2026-12-01T09:00:00Z"))
+                .bind("id", id)
+                .execute()
+        }
     }
 }

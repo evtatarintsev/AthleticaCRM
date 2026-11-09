@@ -1,5 +1,6 @@
 package org.athletica.crm.domain.events
 
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.storage.Database
 import kotlin.uuid.Uuid
 
@@ -15,17 +16,19 @@ class FailedDomainEvents(private val database: Database) {
      */
     suspend fun retry(orgId: Uuid?, eventId: Uuid?): Long =
         database.transaction {
-            sql(
-                """
-                UPDATE domain_events
-                SET failed_at = NULL, retry_count = 0, next_attempt_at = now()
-                WHERE failed_at IS NOT NULL
-                  AND (CAST(:orgId AS uuid) IS NULL OR org_id = :orgId)
-                  AND (CAST(:eventId AS uuid) IS NULL OR id = :eventId)
-                """.trimIndent(),
-            )
-                .bind("orgId", orgId)
-                .bind("eventId", eventId)
-                .execute()
+            orThrow {
+                sql(
+                    """
+                    UPDATE domain_events
+                    SET failed_at = NULL, retry_count = 0, next_attempt_at = now()
+                    WHERE failed_at IS NOT NULL
+                      AND (CAST(:orgId AS uuid) IS NULL OR org_id = :orgId)
+                      AND (CAST(:eventId AS uuid) IS NULL OR id = :eventId)
+                    """.trimIndent(),
+                )
+                    .bind("orgId", orgId)
+                    .bind("eventId", eventId)
+                    .execute()
+            }
         }
 }

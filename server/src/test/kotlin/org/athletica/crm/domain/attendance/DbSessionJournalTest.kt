@@ -12,6 +12,7 @@ import org.athletica.crm.core.attendance.ParticipationKind
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.domain.events.AttendanceChanged
 import org.athletica.crm.domain.events.AttendanceMarkSnapshot
@@ -104,21 +105,23 @@ class DbSessionJournalTest {
 
     @Test
     fun `первая отметка создаёт строку журнала с метками`() =
-        runTest {
-            fixture.setUp()
-            val (session, clients) = sessionWithThree()
-            val late = fixture.insertLabel("Опоздал", AttendanceLabelScope.PRESENT)
-            val noUniform = fixture.insertLabel("Без формы", AttendanceLabelScope.ANY)
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val (session, clients) = sessionWithThree()
+                val late = fixture.insertLabel("Опоздал", AttendanceLabelScope.PRESENT)
+                val noUniform = fixture.insertLabel("Без формы", AttendanceLabelScope.ANY)
 
-            mark(session, clients[0], AttendanceMark.Present(setOf(late, noUniform)))
+                mark(session, clients[0], AttendanceMark.Present(setOf(late, noUniform)))
 
-            assertEquals(AttendanceMark.Present(setOf(late, noUniform)), participants(session).getValue(clients[0]).mark)
-            val rows =
-                TestPostgres.db
-                    .sql("SELECT COUNT(*) AS cnt FROM session_attendance WHERE session_id = :s")
-                    .bind("s", session)
-                    .firstOrNull { it.asLong("cnt") }
-            assertEquals(1L, rows)
+                assertEquals(AttendanceMark.Present(setOf(late, noUniform)), participants(session).getValue(clients[0]).mark)
+                val rows =
+                    TestPostgres.db
+                        .sql("SELECT COUNT(*) AS cnt FROM session_attendance WHERE session_id = :s")
+                        .bind("s", session)
+                        .firstOrNull { it.asLong("cnt") }
+                assertEquals(1L, rows)
+            }
         }
 
     @Test
@@ -149,19 +152,21 @@ class DbSessionJournalTest {
 
     @Test
     fun `архивная метка не назначается новой отметке, но остаётся на проставленной`() =
-        runTest {
-            fixture.setUp()
-            val (session, clients) = sessionWithThree()
-            val sick = fixture.insertLabel("Болеет", AttendanceLabelScope.ABSENT)
-            val truant = fixture.insertLabel("Прогул", AttendanceLabelScope.ABSENT)
-            mark(session, clients[0], absent(setOf(sick)))
-            TestPostgres.db.sql("UPDATE attendance_labels SET archived_at = now() WHERE id = :id").bind("id", sick).execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val (session, clients) = sessionWithThree()
+                val sick = fixture.insertLabel("Болеет", AttendanceLabelScope.ABSENT)
+                val truant = fixture.insertLabel("Прогул", AttendanceLabelScope.ABSENT)
+                mark(session, clients[0], absent(setOf(sick)))
+                TestPostgres.db.sql("UPDATE attendance_labels SET archived_at = now() WHERE id = :id").bind("id", sick).execute()
 
-            val result = tryMark(session, clients[1], absent(setOf(sick)))
-            mark(session, clients[0], absent(setOf(sick, truant)))
+                val result = tryMark(session, clients[1], absent(setOf(sick)))
+                mark(session, clients[0], absent(setOf(sick, truant)))
 
-            assertEquals("ATTENDANCE_LABEL_ARCHIVED", fixture.errorCode(result))
-            assertEquals(absent(setOf(sick, truant)), participants(session).getValue(clients[0]).mark)
+                assertEquals("ATTENDANCE_LABEL_ARCHIVED", fixture.errorCode(result))
+                assertEquals(absent(setOf(sick, truant)), participants(session).getValue(clients[0]).mark)
+            }
         }
 
     @Test
@@ -373,19 +378,21 @@ class DbSessionJournalTest {
 
     @Test
     fun `ушедший из группы после закрытия остаётся в составе с отметкой`() =
-        runTest {
-            fixture.setUp()
-            val (session, clients) = sessionWithThree()
-            val truant = fixture.insertLabel("Прогул", AttendanceLabelScope.ABSENT)
-            fixture.inContext { fixture.journals.byId(session).markRemainingAbsent(truant) }
-            complete(session).getOrElse { error(it) }
-            TestPostgres.db
-                .sql("UPDATE enrollments SET left_at = :d::date::timestamptz WHERE client_id = :c")
-                .bind("d", fixture.yesterday.plusDays(-5))
-                .bind("c", clients[0])
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val (session, clients) = sessionWithThree()
+                val truant = fixture.insertLabel("Прогул", AttendanceLabelScope.ABSENT)
+                fixture.inContext { fixture.journals.byId(session).markRemainingAbsent(truant) }
+                complete(session).getOrElse { error(it) }
+                TestPostgres.db
+                    .sql("UPDATE enrollments SET left_at = :d::date::timestamptz WHERE client_id = :c")
+                    .bind("d", fixture.yesterday.plusDays(-5))
+                    .bind("c", clients[0])
+                    .execute()
 
-            assertEquals(absent(setOf(truant)), participants(session).getValue(clients[0]).mark)
+                assertEquals(absent(setOf(truant)), participants(session).getValue(clients[0]).mark)
+            }
         }
 
     @Test

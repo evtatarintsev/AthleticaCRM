@@ -13,6 +13,7 @@ import io.ktor.server.testing.testApplication
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.storage.asString
@@ -96,10 +97,12 @@ class ApplicationTest {
             assertEquals(HttpStatusCode.OK, logout.status)
 
             val actions =
-                TestPostgres.db
-                    .sql("SELECT action_type FROM audit_logs WHERE username = :login ORDER BY action_type")
-                    .bind("login", login)
-                    .list { it.asString("action_type") }
+                orThrow {
+                    TestPostgres.db
+                        .sql("SELECT action_type FROM audit_logs WHERE username = :login ORDER BY action_type")
+                        .bind("login", login)
+                        .list { it.asString("action_type") }
+                }
             assertEquals(
                 listOf(
                     AuditActionType.AUTH_CHANGE_PASSWORD,

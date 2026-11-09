@@ -1,11 +1,14 @@
 package org.athletica.crm.domain.leadSource
 
 import arrow.core.getOrElse
+import arrow.core.raise.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.LeadSourceId
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.schedule.ScheduleFixture
@@ -75,15 +78,17 @@ class DbLeadSourcesTest {
 
     @Test
     fun `источник, созданный в обход приложения, получает пустое пояснение`() =
-        runTest {
-            fixture.setUp()
-            fixture.insertActor()
-            TestPostgres.db
-                .sql("INSERT INTO lead_sources (org_id, name) VALUES (:orgId, 'Старый источник')")
-                .bind("orgId", fixture.orgId)
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                fixture.insertActor()
+                TestPostgres.db
+                    .sql("INSERT INTO lead_sources (org_id, name) VALUES (:orgId, 'Старый источник')")
+                    .bind("orgId", fixture.orgId)
+                    .execute()
 
-            assertEquals(listOf("Старый источник" to ""), listed())
+                assertEquals(listOf("Старый источник" to ""), listed())
+            }
         }
 
     @Test
@@ -103,7 +108,7 @@ private class AuditLogStub : AuditLog {
     /** Записанные события по порядку. */
     val events: MutableList<AuditEvent> = mutableListOf()
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }

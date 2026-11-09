@@ -2,7 +2,6 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
@@ -88,26 +87,24 @@ class DbClients : Clients {
         customFields: List<CustomFieldValue>,
     ): ActiveClient {
         val inserted =
-            try {
-                tr
-                    .sql(
-                        """
-                        INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender, lead_source_id, custom_fields)
-                        VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender, :leadSourceId, :customFields::jsonb)
-                        """.trimIndent(),
-                    )
-                    .bind("id", id)
-                    .bind("orgId", ctx.orgId)
-                    .bind("name", name)
-                    .bind("avatarId", avatarId)
-                    .bind("birthday", birthday)
-                    .bind("gender", gender.name)
-                    .bind("leadSourceId", leadSourceId)
-                    .bind("customFields", Json.encodeToString(customFields))
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
-            }
+            tr
+                .sql(
+                    """
+                    INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender, lead_source_id, custom_fields)
+                    VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender, :leadSourceId, :customFields::jsonb)
+                    """.trimIndent(),
+                )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("name", name)
+                .bind("avatarId", avatarId)
+                .bind("birthday", birthday)
+                .bind("gender", gender.name)
+                .bind("leadSourceId", leadSourceId)
+                .bind("customFields", Json.encodeToString(customFields))
+                .onViolation("clients_pkey") { CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()) }
+                .onViolation("clients_lead_source_id_fkey") { CommonDomainError("LEAD_SOURCE_NOT_FOUND", Messages.LeadSourceNotFound.localize()) }
+                .execute()
 
         if (inserted == 0L) raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
 

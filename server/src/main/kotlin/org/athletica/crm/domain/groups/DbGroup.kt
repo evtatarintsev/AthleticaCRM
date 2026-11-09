@@ -2,7 +2,6 @@ package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
@@ -25,16 +24,13 @@ class DbGroup(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         val updatedRows =
-            try {
-                tr
-                    .sql("UPDATE groups SET name = :name WHERE id = :id AND org_id = :orgId")
-                    .bind("id", id)
-                    .bind("orgId", ctx.orgId)
-                    .bind("name", name)
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("GROUP_NAME_ALREADY_EXISTS", Messages.GroupNameAlreadyExists.localize()))
-            }
+            tr
+                .sql("UPDATE groups SET name = :name WHERE id = :id AND org_id = :orgId")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("name", name)
+                .onViolation("uq_groups_org_name") { CommonDomainError("GROUP_NAME_ALREADY_EXISTS", Messages.GroupNameAlreadyExists.localize()) }
+                .execute()
 
         if (updatedRows == 0L) {
             raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
@@ -46,17 +42,14 @@ class DbGroup(
             .execute()
 
         disciplines.forEach { disciplineId ->
-            try {
-                tr
-                    .sql(
-                        "INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:groupId, :disciplineId)",
-                    )
-                    .bind("groupId", id)
-                    .bind("disciplineId", disciplineId)
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()))
-            }
+            tr
+                .sql(
+                    "INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:groupId, :disciplineId)",
+                )
+                .bind("groupId", id)
+                .bind("disciplineId", disciplineId)
+                .onViolation("group_disciplines_discipline_id_fkey") { CommonDomainError("DISCIPLINE_NOT_FOUND", Messages.DisciplineNotFound.localize()) }
+                .execute()
         }
 
         tr
@@ -65,16 +58,13 @@ class DbGroup(
             .execute()
 
         employeeIds.forEach { employeeId ->
-            try {
-                tr
-                    .sql(
-                        "INSERT INTO group_employees (group_id, employee_id) VALUES (:groupId, :employeeId)",
-                    ).bind("groupId", id)
-                    .bind("employeeId", employeeId)
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
+            tr
+                .sql(
+                    "INSERT INTO group_employees (group_id, employee_id) VALUES (:groupId, :employeeId)",
+                ).bind("groupId", id)
+                .bind("employeeId", employeeId)
+                .onViolation("group_employees_employee_id_fkey") { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
+                .execute()
         }
     }
 

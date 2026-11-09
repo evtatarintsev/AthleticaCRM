@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUploadId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -53,33 +54,36 @@ class AuditDbClientsDocsTest {
     /** Очищает базу и создаёт организацию, пользователя и филиал. */
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
+            }
         }
     }
 
     /** Создаёт запись о загруженном файле и возвращает её идентификатор. */
-    private suspend fun insertUpload(): UploadId {
-        val id = Uuid.generateV7()
-        TestPostgres.db.sql(
-            """
-            INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-            VALUES (:id, :orgId, :userId, :key, 'scan.jpg', 'image/jpeg', 1024)
-            """.trimIndent(),
-        )
-            .bind("id", id)
-            .bind("orgId", orgId)
-            .bind("userId", userId)
-            .bind("key", "uploads/$id")
-            .execute()
-        return id.toUploadId()
-    }
+    private suspend fun insertUpload(): UploadId =
+        orThrow {
+            val id = Uuid.generateV7()
+            TestPostgres.db.sql(
+                """
+                INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                VALUES (:id, :orgId, :userId, :key, 'scan.jpg', 'image/jpeg', 1024)
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("orgId", orgId)
+                .bind("userId", userId)
+                .bind("key", "uploads/$id")
+                .execute()
+            return id.toUploadId()
+        }
 
     /** Создаёт клиента так же, как форма веб-клиента: только имя, пол по умолчанию. */
     private suspend fun newClient(): ClientId {
@@ -94,55 +98,61 @@ class AuditDbClientsDocsTest {
 
     /** Количество документов клиента [clientId] в базе. */
     private suspend fun countDocs(clientId: ClientId): Long =
-        TestPostgres.db.sql("SELECT COUNT(*) FROM client_docs WHERE client_id = :id")
-            .bind("id", clientId)
-            .firstOrNull { it.asLong(0) } ?: 0L
+        orThrow {
+            TestPostgres.db.sql("SELECT COUNT(*) FROM client_docs WHERE client_id = :id")
+                .bind("id", clientId)
+                .firstOrNull { it.asLong(0) } ?: 0L
+        }
 
     @Test
     fun `attachDoc и save сохраняют документ и пишут событие аудита`() =
-        runTest {
-            val clientId = newClient()
-            val uploadId = insertUpload()
-            val doc = clientDoc(uploadId, "scan.jpg")
+        orThrow {
+            runTest {
+                val clientId = newClient()
+                val uploadId = insertUpload()
+                val doc = clientDoc(uploadId, "scan.jpg")
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        (clients.byId(clientId) as ActiveClient).attachDoc(doc).save()
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            (clients.byId(clientId) as ActiveClient).attachDoc(doc).save()
+                        }
                     }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
+                }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(1L, countDocs(clientId))
-            val auditTypes =
-                TestPostgres.db.sql("SELECT action_type FROM audit_logs WHERE entity_type = 'client_doc' AND entity_id = :id")
-                    .bind("id", doc.id)
-                    .list { it.asString("action_type") }
-            assertEquals(listOf("create"), auditTypes)
+                assertEquals(1L, countDocs(clientId))
+                val auditTypes =
+                    TestPostgres.db.sql("SELECT action_type FROM audit_logs WHERE entity_type = 'client_doc' AND entity_id = :id")
+                        .bind("id", doc.id)
+                        .list { it.asString("action_type") }
+                assertEquals(listOf("create"), auditTypes)
+            }
         }
 
     @Test
     fun `deleteDoc и save удаляют документ и пишут событие аудита`() =
-        runTest {
-            val clientId = newClient()
-            val doc = clientDoc(insertUpload(), "scan.jpg")
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) { (clients.byId(clientId) as ActiveClient).attachDoc(doc).save() }
-                }
-            }.getOrElse { fail("Setup failed: $it") }
+        orThrow {
+            runTest {
+                val clientId = newClient()
+                val doc = clientDoc(insertUpload(), "scan.jpg")
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) { (clients.byId(clientId) as ActiveClient).attachDoc(doc).save() }
+                    }
+                }.getOrElse { fail("Setup failed: $it") }
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) { (clients.byId(clientId) as ActiveClient).deleteDoc(doc.id).save() }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) { (clients.byId(clientId) as ActiveClient).deleteDoc(doc.id).save() }
+                    }
+                }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(0L, countDocs(clientId))
-            val auditTypes =
-                TestPostgres.db.sql("SELECT action_type FROM audit_logs WHERE entity_type = 'client_doc' AND entity_id = :id ORDER BY created_at")
-                    .bind("id", doc.id)
-                    .list { it.asString("action_type") }
-            assertEquals(listOf("create", "delete"), auditTypes)
+                assertEquals(0L, countDocs(clientId))
+                val auditTypes =
+                    TestPostgres.db.sql("SELECT action_type FROM audit_logs WHERE entity_type = 'client_doc' AND entity_id = :id ORDER BY created_at")
+                        .bind("id", doc.id)
+                        .list { it.asString("action_type") }
+                assertEquals(listOf("create", "delete"), auditTypes)
+            }
         }
 }

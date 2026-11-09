@@ -2,7 +2,6 @@ package org.athletica.crm.domain.memberships
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -187,23 +186,20 @@ data class DbActiveMembership(
             raise(CommonDomainError("DEBT_EXCEEDS_REMAINING", Messages.MembershipDebtExceedsRemaining.localize()))
         }
         sessions.forEach { session ->
-            try {
-                tr
-                    .sql(
-                        """
-                        INSERT INTO membership_debits (org_id, membership_id, client_id, session_id, kind)
-                        VALUES (:orgId, :membershipId, :clientId, :sessionId, :kind)
-                        """.trimIndent(),
-                    )
-                    .bind("orgId", ctx.orgId)
-                    .bind("membershipId", id)
-                    .bind("clientId", clientId)
-                    .bind("sessionId", session.sessionId)
-                    .bind("kind", DebitKind.DEBT.name)
-                    .execute()
-            } catch (e: R2dbcDataIntegrityViolationException) {
-                raise(CommonDomainError("ALREADY_DEBITED", Messages.SessionAlreadyDebited.localize()))
-            }
+            tr
+                .sql(
+                    """
+                    INSERT INTO membership_debits (org_id, membership_id, client_id, session_id, kind)
+                    VALUES (:orgId, :membershipId, :clientId, :sessionId, :kind)
+                    """.trimIndent(),
+                )
+                .bind("orgId", ctx.orgId)
+                .bind("membershipId", id)
+                .bind("clientId", clientId)
+                .bind("sessionId", session.sessionId)
+                .bind("kind", DebitKind.DEBT.name)
+                .onViolation("uq_membership_debits_active") { CommonDomainError("ALREADY_DEBITED", Messages.SessionAlreadyDebited.localize()) }
+                .execute()
             recordMembershipEvent(id, MembershipEventKind.DEBITED, debitPayload(session.sessionId, session.sessionDate, DebitKind.DEBT))
         }
         val repaid = copy(sessionsRemaining = remaining?.minus(count))
@@ -541,7 +537,7 @@ private suspend fun revokeMembership(
 }
 
 /** Пишет в историю активацию абонемента [id] по причине [reason] со сроком [startDate]..[endDate]. */
-context(ctx: RequestContext, tr: Transaction)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 internal suspend fun recordActivation(
     id: MembershipId,
     reason: ActivationReason,
@@ -563,7 +559,7 @@ internal suspend fun recordActivation(
  * Пишет запись истории [kind] с данными [payload] абонемента [id] в текущей транзакции.
  * Автор — сотрудник из [ctx]; для системного контекста — `NULL`.
  */
-context(ctx: RequestContext, tr: Transaction)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 internal suspend fun recordMembershipEvent(id: MembershipId, kind: MembershipEventKind, payload: JsonObject = JsonObject(emptyMap())) {
     tr
         .sql(

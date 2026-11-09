@@ -32,7 +32,7 @@ data class DbEmployee(
      */
     override fun hasPermission(p: UserPermission): Boolean = isOwner || permissionSettings.hasPermission(p)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         val (allBranchesAccess, branchIds) =
             when (val access = availableBranches) {

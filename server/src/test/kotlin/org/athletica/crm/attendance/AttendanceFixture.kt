@@ -18,6 +18,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.attendance.DbAttendanceLabels
 import org.athletica.crm.domain.attendance.DbSessionJournals
 import org.athletica.crm.domain.attendance.SessionJournal
@@ -69,16 +70,17 @@ class AttendanceFixture {
     }
 
     /** Создаёт клиента [name] в организации. */
-    suspend fun insertClient(name: String): ClientId {
-        val id = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", id)
-            .bind("orgId", schedule.orgId)
-            .bind("name", name)
-            .execute()
-        return id
-    }
+    suspend fun insertClient(name: String): ClientId =
+        orThrow {
+            val id = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", id)
+                .bind("orgId", schedule.orgId)
+                .bind("name", name)
+                .execute()
+            return id
+        }
 
     /** Записывает клиента [clientId] в группу [group] с даты [from] до даты выхода [leftAt]. */
     suspend fun enroll(
@@ -87,18 +89,20 @@ class AttendanceFixture {
         leftAt: LocalDate? = null,
         group: GroupId = groupId,
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO enrollments (group_id, client_id, enrolled_at, left_at)
-                VALUES (:groupId, :clientId, :from::date::timestamptz, :leftAt::date::timestamptz)
-                """.trimIndent(),
-            )
-            .bind("groupId", group)
-            .bind("clientId", clientId)
-            .bind("from", from)
-            .bind("leftAt", leftAt)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO enrollments (group_id, client_id, enrolled_at, left_at)
+                    VALUES (:groupId, :clientId, :from::date::timestamptz, :leftAt::date::timestamptz)
+                    """.trimIndent(),
+                )
+                .bind("groupId", group)
+                .bind("clientId", clientId)
+                .bind("from", from)
+                .bind("leftAt", leftAt)
+                .execute()
+        }
     }
 
     /** Создаёт метку [name] с применимостью [scope]; архивную при [archived]. */
@@ -106,23 +110,24 @@ class AttendanceFixture {
         name: String,
         scope: AttendanceLabelScope,
         archived: Boolean = false,
-    ): AttendanceLabelId {
-        val id = AttendanceLabelId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO attendance_labels (id, org_id, name, scope, archived_at)
-                VALUES (:id, :orgId, :name, :scope::attendance_label_scope, CASE WHEN :archived THEN now() END)
-                """.trimIndent(),
-            )
-            .bind("id", id)
-            .bind("orgId", schedule.orgId)
-            .bind("name", name)
-            .bind("scope", scope.name.lowercase())
-            .bind("archived", archived)
-            .execute()
-        return id
-    }
+    ): AttendanceLabelId =
+        orThrow {
+            val id = AttendanceLabelId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO attendance_labels (id, org_id, name, scope, archived_at)
+                    VALUES (:id, :orgId, :name, :scope::attendance_label_scope, CASE WHEN :archived THEN now() END)
+                    """.trimIndent(),
+                )
+                .bind("id", id)
+                .bind("orgId", schedule.orgId)
+                .bind("name", name)
+                .bind("scope", scope.name.lowercase())
+                .bind("archived", archived)
+                .execute()
+            return id
+        }
 
     /** Создаёт занятие группы на дату [date] в 10:00–11:00 со статусом [status]. */
     suspend fun insertSession(
@@ -150,10 +155,12 @@ class AttendanceFixture {
 
     /** События организации в порядке публикации, десериализованные как [DomainEvent]. */
     suspend fun events(): List<DomainEvent> =
-        TestPostgres.db
-            .sql("SELECT payload::text AS payload FROM domain_events WHERE org_id = :orgId ORDER BY created_at, id")
-            .bind("orgId", schedule.orgId)
-            .list { Json.decodeFromString<DomainEvent>(it.asString("payload")) }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT payload::text AS payload FROM domain_events WHERE org_id = :orgId ORDER BY created_at, id")
+                .bind("orgId", schedule.orgId)
+                .list { Json.decodeFromString<DomainEvent>(it.asString("payload")) }
+        }
 }
 
 /** Дата, сдвинутая на [days] дней. */

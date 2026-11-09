@@ -2,7 +2,6 @@ package org.athletica.crm.domain.attendance
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.entityids.AttendanceLabelId
@@ -32,33 +31,30 @@ data class DbAttendanceLabel(
         if (name.isBlank()) {
             raise(CommonDomainError("ATTENDANCE_LABEL_NAME_BLANK", Messages.AttendanceLabelNameBlank.localize()))
         }
-        try {
-            tr
-                .sql(
-                    """
-                    INSERT INTO attendance_labels (id, org_id, name, scope, position, archived_at)
-                    VALUES (:id, :orgId, :name, :scope::attendance_label_scope, :position,
-                            CASE WHEN :archived THEN now() END)
-                    ON CONFLICT (id) DO UPDATE
-                        SET name = EXCLUDED.name,
-                            position = EXCLUDED.position,
-                            archived_at = CASE
-                                WHEN NOT :archived THEN NULL
-                                ELSE COALESCE(attendance_labels.archived_at, now())
-                            END
-                    WHERE attendance_labels.org_id = :orgId
-                    """.trimIndent(),
-                )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("name", name)
-                .bind("scope", scope.toDb())
-                .bind("position", position)
-                .bind("archived", isArchived)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("ATTENDANCE_LABEL_ALREADY_EXISTS", Messages.AttendanceLabelAlreadyExists.localize()))
-        }
+        tr
+            .sql(
+                """
+                INSERT INTO attendance_labels (id, org_id, name, scope, position, archived_at)
+                VALUES (:id, :orgId, :name, :scope::attendance_label_scope, :position,
+                        CASE WHEN :archived THEN now() END)
+                ON CONFLICT (id) DO UPDATE
+                    SET name = EXCLUDED.name,
+                        position = EXCLUDED.position,
+                        archived_at = CASE
+                            WHEN NOT :archived THEN NULL
+                            ELSE COALESCE(attendance_labels.archived_at, now())
+                        END
+                WHERE attendance_labels.org_id = :orgId
+                """.trimIndent(),
+            )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", name)
+            .bind("scope", scope.toDb())
+            .bind("position", position)
+            .bind("archived", isArchived)
+            .onViolation("uq_attendance_labels_org_name") { CommonDomainError("ATTENDANCE_LABEL_ALREADY_EXISTS", Messages.AttendanceLabelAlreadyExists.localize()) }
+            .execute()
     }
 }
 

@@ -1,10 +1,12 @@
 package org.athletica.crm.read.audit
 
+import arrow.core.raise.Raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.audit.AuditLogUser
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
@@ -16,7 +18,7 @@ import org.athletica.crm.storage.asUuidOrNull
 
 /** PostgreSQL-реализация [ActivityLogView]. */
 class DbActivityLogView : ActivityLogView {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(query: ActivityLogQuery): List<ActivityLogEntry> =
         tr
             .sql("$SELECT_SQL\n${whereSql(query)}\nORDER BY a.created_at DESC, a.id DESC\nLIMIT :limit OFFSET :offset")
@@ -25,7 +27,7 @@ class DbActivityLogView : ActivityLogView {
             .bind("offset", query.offset.toLong())
             .list { row -> row.toEntry() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun count(query: ActivityLogQuery): Long =
         tr
             .sql("SELECT COUNT(*) AS total FROM audit_logs a\n${whereSql(query)}")
@@ -33,7 +35,7 @@ class DbActivityLogView : ActivityLogView {
             .firstOrNull { row -> row.asLong("total") }
             ?: 0L
 
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun users(): List<AuditLogUser> =
         tr.sql(
             """

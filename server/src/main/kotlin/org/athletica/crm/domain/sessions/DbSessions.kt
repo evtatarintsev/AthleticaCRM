@@ -2,7 +2,6 @@ package org.athletica.crm.domain.sessions
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
@@ -48,55 +47,53 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-    ): Session? =
-        try {
-            val branchId =
-                tr
-                    .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
-                    .bind("groupId", groupId)
-                    .bind("orgId", ctx.orgId)
-                    .firstOrNull { row -> row.asUuid("branch_id").toBranchId() }
-                    ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
-            val distinctEmployees = employees.distinctBy { it.id }
-            distinctEmployees.forEach { employee ->
-                if (!employee.availableBranches.contains(branchId)) {
-                    raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-                }
-            }
-            requireHallInGroupBranch(groupId, hallId)
+    ): Session? {
+        val branchId =
             tr
-                .sql(
-                    """
-                    INSERT INTO sessions (
-                        id, org_id, group_id, date, start_time, end_time, hall_id, notes
-                    ) VALUES (
-                        :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes
-                    )
-                    """.trimIndent(),
-                )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
+                .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
                 .bind("groupId", groupId)
-                .bind("date", date.toJavaLocalDate())
-                .bind("startTime", startTime.toString())
-                .bind("endTime", endTime.toString())
-                .bind("hallId", hallId)
-                .bind("notes", notes)
-                .execute()
-            val session = byIdOrNull(id)
-            session?.let {
-                distinctEmployees.forEach { employee ->
-                    tr
-                        .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
-                        .bind("sessionId", id)
-                        .bind("employeeId", employee.id)
-                        .execute()
-                }
+                .bind("orgId", ctx.orgId)
+                .firstOrNull { row -> row.asUuid("branch_id").toBranchId() }
+                ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
+        val distinctEmployees = employees.distinctBy { it.id }
+        distinctEmployees.forEach { employee ->
+            if (!employee.availableBranches.contains(branchId)) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
             }
-            byIdOrNull(id)
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            null
         }
+        requireHallInGroupBranch(groupId, hallId)
+        tr
+            .sql(
+                """
+                INSERT INTO sessions (
+                    id, org_id, group_id, date, start_time, end_time, hall_id, notes
+                ) VALUES (
+                    :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes
+                )
+                """.trimIndent(),
+            )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("groupId", groupId)
+            .bind("date", date.toJavaLocalDate())
+            .bind("startTime", startTime.toString())
+            .bind("endTime", endTime.toString())
+            .bind("hallId", hallId)
+            .bind("notes", notes)
+            .onViolation("sessions_pkey") { CommonDomainError("SESSION_ALREADY_EXISTS", "Занятие уже существует") }
+            .execute()
+        val session = byIdOrNull(id)
+        session?.let {
+            distinctEmployees.forEach { employee ->
+                tr
+                    .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
+                    .bind("sessionId", id)
+                    .bind("employeeId", employee.id)
+                    .execute()
+            }
+        }
+        return byIdOrNull(id)
+    }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(

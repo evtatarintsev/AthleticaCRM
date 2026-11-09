@@ -1,8 +1,6 @@
 package org.athletica.crm.domain.branch
 
 import arrow.core.raise.context.Raise
-import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.errors.AppError
@@ -17,22 +15,19 @@ data class DbBranch(
 ) : Branch {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
-        try {
-            tr.sql(
-                """
-                INSERT INTO branches (id, org_id, name)
-                VALUES (:id, :orgId, :name)
-                ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
-                WHERE branches.org_id = :orgId
-                """.trimIndent(),
-            )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("name", name)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(CommonDomainError("BRANCH_ALREADY_EXISTS", Messages.BranchAlreadyExists.localize()))
-        }
+        tr.sql(
+            """
+            INSERT INTO branches (id, org_id, name)
+            VALUES (:id, :orgId, :name)
+            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+            WHERE branches.org_id = :orgId
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", name)
+            .onViolation("branches_org_name_unique") { CommonDomainError("BRANCH_ALREADY_EXISTS", Messages.BranchAlreadyExists.localize()) }
+            .execute()
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

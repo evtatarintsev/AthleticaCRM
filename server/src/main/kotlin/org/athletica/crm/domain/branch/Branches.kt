@@ -13,7 +13,7 @@ interface Branches {
      * Если у сотрудника [org.athletica.crm.domain.employees.EmployeeBranchAccess.All] — все филиалы организации;
      * иначе — только явно назначенные через `employee_branches`.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(): List<Branch>
 
     /** Создаёт несохранённый филиал; запись в БД выполняется через [Branch.save]. */

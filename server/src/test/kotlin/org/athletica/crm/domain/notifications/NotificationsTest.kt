@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -55,33 +56,39 @@ class NotificationsTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId)
-                .bind("name", "Org 1")
-                .execute()
-            listOf(emp1 to "Сотрудник 1", emp2 to "Сотрудник 2", stranger to "Посторонний").forEach { (id, name) ->
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
                 TestPostgres.db
-                    .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, :name, false)")
-                    .bind("id", id)
-                    .bind("orgId", orgId)
-                    .bind("name", name)
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId)
+                    .bind("name", "Org 1")
                     .execute()
+                listOf(emp1 to "Сотрудник 1", emp2 to "Сотрудник 2", stranger to "Посторонний").forEach { (id, name) ->
+                    TestPostgres.db
+                        .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, :name, false)")
+                        .bind("id", id)
+                        .bind("orgId", orgId)
+                        .bind("name", name)
+                        .execute()
+                }
             }
         }
     }
 
     private suspend fun countNotifications(): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) FROM notifications")
-            .firstOrNull { row -> row.asLong(0) } ?: 0
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) FROM notifications")
+                .firstOrNull { row -> row.asLong(0) } ?: 0
+        }
 
     private suspend fun countRecipients(): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) FROM notification_recipients")
-            .firstOrNull { row -> row.asLong(0) } ?: 0
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) FROM notification_recipients")
+                .firstOrNull { row -> row.asLong(0) } ?: 0
+        }
 
     @Test
     fun `save создаёт уведомление и записи получателей`() =

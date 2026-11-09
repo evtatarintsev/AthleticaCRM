@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -159,33 +160,36 @@ class DbPaymentsTest {
 
     // ── Хелперы ──────────────────────────────────────────────────────────────
 
-    private suspend fun insertOrg(name: String = "Тестовая организация"): Uuid {
-        val orgId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId)
-            .bind("name", name)
-            .execute()
-        return orgId
-    }
+    private suspend fun insertOrg(name: String = "Тестовая организация"): Uuid =
+        orThrow {
+            val orgId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId)
+                .bind("name", name)
+                .execute()
+            return orgId
+        }
 
     private suspend fun insertEmployee(
         orgId: Uuid,
         userId: UserId,
         employeeId: EmployeeId,
     ) {
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash) ON CONFLICT DO NOTHING")
-            .bind("id", userId)
-            .bind("login", "${userId.value}@test.com")
-            .bind("hash", "hash")
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, org_id, user_id, name) VALUES (:id, :orgId, :userId, 'Тест')")
-            .bind("id", employeeId)
-            .bind("orgId", orgId)
-            .bind("userId", userId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash) ON CONFLICT DO NOTHING")
+                .bind("id", userId)
+                .bind("login", "${userId.value}@test.com")
+                .bind("hash", "hash")
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, org_id, user_id, name) VALUES (:id, :orgId, :userId, 'Тест')")
+                .bind("id", employeeId)
+                .bind("orgId", orgId)
+                .bind("userId", userId)
+                .execute()
+        }
     }
 
     private fun ctx(

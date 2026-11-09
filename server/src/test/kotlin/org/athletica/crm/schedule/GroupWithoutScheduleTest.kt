@@ -6,6 +6,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.NewSlot
@@ -32,10 +33,12 @@ class GroupWithoutScheduleTest {
 
     /** Все версии слотов группы, включая закрытые. */
     private suspend fun versionCount(groupId: GroupId): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) AS cnt FROM schedule_slots WHERE group_id = :g")
-            .bind("g", groupId)
-            .firstOrNull { it.asLong("cnt") } ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) AS cnt FROM schedule_slots WHERE group_id = :g")
+                .bind("g", groupId)
+                .firstOrNull { it.asLong("cnt") } ?: 0L
+        }
 
     @Test
     fun `переименование группы не меняет её расписание и историю версий`() =

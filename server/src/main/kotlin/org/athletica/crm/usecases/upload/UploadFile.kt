@@ -66,5 +66,5 @@ suspend fun uploadFile(
 }
 
 /** Логирует загрузку файла: тип сущности `"upload"`, данные — JSON-снапшот [result]. */
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logCreate(result: UploadResponse) = logCreate("upload", result.id, Json.encodeToString(result))

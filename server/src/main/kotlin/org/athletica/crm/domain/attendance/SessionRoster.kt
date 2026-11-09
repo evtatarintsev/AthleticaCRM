@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.attendance
 
 import arrow.core.getOrElse
+import arrow.core.raise.Raise
 import arrow.core.raise.context.either
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.attendance.AttendancePresence
@@ -9,6 +10,7 @@ import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toClientId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
@@ -27,7 +29,7 @@ import kotlin.uuid.Uuid
  */
 object SessionRoster {
     /** Участники занятия [sessionId] группы [groupId] на дату [date] со статусом [status], по клиенту. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun load(
         sessionId: SessionId,
         groupId: GroupId,

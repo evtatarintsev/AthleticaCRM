@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.domain.channels.ChannelConfigVerifier
@@ -74,10 +75,12 @@ class UpdateChannelTest {
         }
 
     private suspend fun stored(id: ChannelIntegrationId): Triple<String, ChannelConfig, Boolean> =
-        TestPostgres.db.sql("SELECT name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
-            .bind("id", id)
-            .firstOrNull { row -> Triple(row.asString("name"), row.asString("config").toChannelConfig(), row.asBoolean("enabled")) }
-            ?: error("интеграция не найдена")
+        orThrow {
+            TestPostgres.db.sql("SELECT name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
+                .bind("id", id)
+                .firstOrNull { row -> Triple(row.asString("name"), row.asString("config").toChannelConfig(), row.asBoolean("enabled")) }
+                ?: error("интеграция не найдена")
+        }
 
     @Test
     fun `переименование без нового токена не обращается к провайдеру`() =

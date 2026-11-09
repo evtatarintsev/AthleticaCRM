@@ -11,7 +11,7 @@ import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.storage.Transaction
 
 class AuditEmployee(private val delegate: Employee, private val audit: AuditLog) : Employee by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() =
         delegate.save().also {
             audit.logUpdate("employee", id, Json.encodeToString(it))

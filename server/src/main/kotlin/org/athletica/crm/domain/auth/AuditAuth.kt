@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.auth
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
@@ -49,5 +50,11 @@ class AuditAuth(private val delegate: Auth, private val audit: AuditLog) : Auth 
     override suspend fun logout() {
         delegate.logout()
         audit.log(AuditEvent(ctx, AuditActionType.AUTH_LOGOUT))
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun changePassword(request: ChangePasswordRequest) {
+        delegate.changePassword(request)
+        audit.log(AuditEvent(ctx, AuditActionType.AUTH_CHANGE_PASSWORD))
     }
 }

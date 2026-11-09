@@ -229,9 +229,7 @@ fun Application.configureServer() {
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles, di.views)
-                        context(di.passwordHasher) {
-                            profileRoutes(di.organizations, di.orgBalances)
-                        }
+                        profileRoutes(di.auth, di.organizations, di.orgBalances)
                         orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {
                             uploadRoutes()

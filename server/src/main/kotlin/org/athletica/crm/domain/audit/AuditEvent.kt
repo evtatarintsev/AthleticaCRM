@@ -115,23 +115,6 @@ context(ctx: EmployeeRequestContext, tr: Transaction)
 suspend fun AuditLog.logUpdate(entityType: String, entityId: EntityId, data: String) = logUpdate(entityType, entityId.value, data)
 
 /**
- * Логирует смену пароля текущим авторизованным пользователем.
- * Организация, пользователь и IP берутся из контекста запроса [ctx].
- */
-context(ctx: EmployeeRequestContext, tr: Transaction)
-suspend fun AuditLog.logChangePassword() {
-    log(
-        AuditEvent(
-            orgId = ctx.orgId,
-            userId = ctx.userId,
-            username = ctx.username,
-            actionType = AuditActionType.AUTH_CHANGE_PASSWORD,
-            ipAddress = ctx.clientIp,
-        ),
-    )
-}
-
-/**
  * Логирует удаление сущности типа [entityType] с идентификатором [entityId].
  * [data] — JSON-снапшот сущности после изменения.
  * Организация, пользователь и IP берутся из контекста запроса [ctx].

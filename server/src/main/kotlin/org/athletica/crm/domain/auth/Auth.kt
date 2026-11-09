@@ -1,6 +1,8 @@
 package org.athletica.crm.domain.auth
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.api.schemas.ChangePasswordRequest
+import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
@@ -26,6 +28,12 @@ interface Auth {
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     suspend fun logout()
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun updateMe(request: UpdateMeRequest)
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    suspend fun changePassword(request: ChangePasswordRequest)
 
     context(tr: Transaction, raise: Raise<DomainError>)
     suspend fun availableBranches(

@@ -8,24 +8,20 @@ import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.permissions.UserPermission
-import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.auth.Auth
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.read.auth.profile
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
-import org.athletica.crm.usecases.auth.changePassword
-import org.athletica.crm.usecases.auth.updateMe
 
 /**
  * Регистрирует маршруты профиля:
  * GET  /auth/me               — возвращает данные текущего авторизованного пользователя.
  * POST /auth/me/update        — обновляет имя и аватар.
  * POST /auth/me/change-password — меняет пароль (требует старый пароль).
- * Требует контекстных параметров [Database], [PasswordHasher], [AuditLog].
  */
-context(db: Database, passwordHasher: PasswordHasher, audit: AuditLog)
-fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: OrgBalances) {
+context(db: Database)
+fun RouteWithContext.profileRoutes(auth: Auth, organizations: Organizations, orgBalances: OrgBalances) {
     get<Unit, AuthMeResponse>("/auth/me") {
         val user = profile().bind()
         val info =
@@ -51,12 +47,14 @@ fun RouteWithContext.profileRoutes(organizations: Organizations, orgBalances: Or
     }
 
     post<UpdateMeRequest, Unit>("/auth/me/update") { request ->
-        updateMe(request)
+        db.transaction {
+            auth.updateMe(request)
+        }
     }
 
     post<ChangePasswordRequest, Unit>("/auth/me/change-password") { request ->
         db.transaction {
-            changePassword(request)
+            auth.changePassword(request)
         }
     }
 }

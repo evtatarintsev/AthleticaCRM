@@ -59,9 +59,10 @@ class ApplicationTest {
             val login = "owner@example.com"
             val password = "password123"
 
-            suspend fun postJson(path: String, body: String) =
+            suspend fun postJson(path: String, body: String, token: String? = null) =
                 client.post("/api/auth/$path") {
                     contentType(ContentType.Application.Json)
+                    if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
                     setBody(body)
                 }
 
@@ -85,6 +86,12 @@ class ApplicationTest {
             assertEquals(HttpStatusCode.OK, loggedIn.status)
             val token = serverJson.decodeFromString<LoginResponse>(loggedIn.bodyAsText()).accessToken
 
+            val updated = postJson("me/update", """{"name":"New Name","avatarId":null}""", token)
+            assertEquals(HttpStatusCode.OK, updated.status)
+
+            val changedPassword = postJson("me/change-password", """{"oldPassword":"$password","newPassword":"newPassword123"}""", token)
+            assertEquals(HttpStatusCode.OK, changedPassword.status)
+
             val logout = client.post("/api/auth/logout") { header(HttpHeaders.Authorization, "Bearer $token") }
             assertEquals(HttpStatusCode.OK, logout.status)
 
@@ -94,7 +101,12 @@ class ApplicationTest {
                     .bind("login", login)
                     .list { it.asString("action_type") }
             assertEquals(
-                listOf(AuditActionType.AUTH_LOGIN, AuditActionType.AUTH_LOGOUT, AuditActionType.AUTH_SIGNUP).map { it.code },
+                listOf(
+                    AuditActionType.AUTH_CHANGE_PASSWORD,
+                    AuditActionType.AUTH_LOGIN,
+                    AuditActionType.AUTH_LOGOUT,
+                    AuditActionType.AUTH_SIGNUP,
+                ).map { it.code },
                 actions,
             )
         }

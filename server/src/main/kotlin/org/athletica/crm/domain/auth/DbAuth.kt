@@ -4,6 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import io.r2dbc.spi.Row
+import org.athletica.crm.api.schemas.ChangePasswordRequest
+import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
@@ -92,6 +94,38 @@ class DbAuth(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
     override suspend fun logout() {
         // JWT не хранится на сервере. Cookie очищается в HTTP-маршруте.
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun updateMe(request: UpdateMeRequest) {
+        val updatedRows =
+            tr.sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
+                .bind("name", request.name)
+                .bind("avatarId", request.avatarId)
+                .bind("userId", ctx.userId)
+                .bind("orgId", ctx.orgId)
+                .execute()
+
+        if (updatedRows == 0L) raise(UserNotFound("Employee not found for user='${ctx.userId}'"))
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    override suspend fun changePassword(request: ChangePasswordRequest) {
+        // Повторная смена пароля должна проверить хэш, сохранённый предыдущей транзакцией.
+        val passwordHash =
+            tr.sql("SELECT password_hash FROM users WHERE id = :id FOR UPDATE")
+                .bind("id", ctx.userId)
+                .firstOrNull { it.asString("password_hash") }
+                ?: raise(CommonDomainError("USER_NOT_FOUND", "User not found"))
+
+        if (!passwordHasher.verify(request.oldPassword, PasswordHash(passwordHash))) {
+            raise(CommonDomainError(code = "WRONG_PASSWORD", message = Messages.WrongPassword.localize()))
+        }
+
+        tr.sql("UPDATE users SET password_hash = :hash WHERE id = :id")
+            .bind("hash", passwordHasher.hash(request.newPassword).value)
+            .bind("id", ctx.userId)
+            .execute()
     }
 
     /** Регистрирует организацию и владельца, создаёт локализованные настройки по умолчанию. */

@@ -26,10 +26,10 @@ fun RouteWithContext.clientImportRoutes(
     definitions: CustomFieldDefinitions,
 ) {
     post<ClientImportParseRequest, ClientImportParseResponse>("/clients/import/parse") { request ->
-        importClientsParse(request).bind()
+        importClientsParse(request)
     }
 
     post<ClientImportCommitRequest, ClientImportCommitResponse>("/clients/import/commit") { request ->
-        importClientsCommit(request, clients, balances, leadSources, definitions).bind()
+        importClientsCommit(request, clients, balances, leadSources, definitions)
     }
 }

@@ -56,6 +56,6 @@ fun RouteWithContext.uploadRoutes() {
         }
 
         val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", Messages.FileNotInRequest.localize()))
-        uploadFile(bytes, originalName, contentType).bind()
+        uploadFile(bytes, originalName, contentType)
     }.contract(ApiContract(HttpMethod.Post, ApiRequest.Multipart, jsonResponse<UploadResponse>()))
 }

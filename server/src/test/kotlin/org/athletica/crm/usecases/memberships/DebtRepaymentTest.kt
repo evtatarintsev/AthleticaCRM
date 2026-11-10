@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
@@ -229,7 +230,7 @@ class DebtRepaymentTest {
                     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
                     override suspend fun new(
                         id: TaskId,
-                        title: String,
+                        title: NonBlankName,
                         description: String,
                         clientId: ClientId?,
                         dueDate: Instant?,

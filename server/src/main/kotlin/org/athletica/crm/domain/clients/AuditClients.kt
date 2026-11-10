@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -24,7 +25,7 @@ class AuditClients(private val delegate: Clients, private val audit: AuditLog) :
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: ClientId,
-        name: String,
+        name: NonBlankName,
         avatarId: UploadId?,
         birthday: LocalDate?,
         gender: Gender,

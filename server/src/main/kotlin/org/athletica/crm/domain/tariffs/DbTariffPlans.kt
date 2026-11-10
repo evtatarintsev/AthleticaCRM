@@ -4,6 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.toTariffPlanId
 import org.athletica.crm.core.errors.AppError
@@ -38,12 +40,12 @@ class DbTariffPlans : TariffPlans {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: TariffPlanId,
-        name: String,
-        sessions: Int?,
-        durationValue: Int,
+        name: NonBlankName,
+        sessions: PositiveInt?,
+        durationValue: PositiveInt,
         durationUnit: DurationUnit,
         price: Money,
-    ): TariffPlan = DbTariffPlan(id, name, sessions, durationValue, durationUnit, price, archived = false)
+    ): TariffPlan = DbTariffPlan(id, name.value, sessions?.value, durationValue.value, durationUnit, price, archived = false)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: TariffPlanId): TariffPlan =

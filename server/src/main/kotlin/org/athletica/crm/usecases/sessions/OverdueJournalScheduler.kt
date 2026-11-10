@@ -6,6 +6,7 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.errors.AppError
@@ -119,7 +120,7 @@ class OverdueJournalScheduler(
         val time = "${session.date.localized(ctx.lang)} ${session.startTime}–${session.endTime}"
         tasks.new(
             id = taskId,
-            title = Messages.OverdueJournalTaskTitle.localize(session.groupName),
+            title = NonBlankName.from(Messages.OverdueJournalTaskTitle.localize(session.groupName)),
             description = Messages.OverdueJournalTaskDescription.localize(session.groupName, time),
             clientId = null,
             dueDate = null,

@@ -28,6 +28,7 @@ import org.athletica.crm.domain.leadSource.DbLeadSources
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -303,7 +304,7 @@ class ImportClientsCommitTest {
                                         ColumnMapping("Источник", ImportTarget.LeadSource),
                                     ),
                                 defaultGender = Gender.MALE,
-                                leadSourceMapping = mapOf("Инстаграм" to LeadSourceAction.CreateNew("Инстаграм")),
+                                leadSourceMapping = mapOf("Инстаграм" to LeadSourceAction.CreateNew(testName("Инстаграм"))),
                                 dryRun = false,
                             ),
                     )

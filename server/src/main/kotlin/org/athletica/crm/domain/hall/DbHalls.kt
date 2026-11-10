@@ -3,6 +3,7 @@ package org.athletica.crm.domain.hall
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.errors.AppError
@@ -24,7 +25,7 @@ class DbHalls : Halls {
             }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: HallId, name: String): Hall = DbHall(id, name)
+    override suspend fun new(id: HallId, name: NonBlankName): Hall = DbHall(id, name.value)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: HallId): Hall =

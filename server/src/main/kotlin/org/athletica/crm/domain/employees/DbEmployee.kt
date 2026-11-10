@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -50,29 +51,30 @@ data class DbEmployee(
                 is EmployeeBranchAccess.Selected -> false to resolveEmployeeBranchIds(access.ids)
             }
 
-        val updated = tr.sql(
-            """
-            UPDATE employees
-            SET user_id             = :userId,
-                is_active           = :isActive,
-                name                = :name,
-                avatar_id           = :avatarId,
-                phone_no            = :phoneNo,
-                email               = :email,
-                all_branches_access = :allBranchesAccess
-            WHERE id = :id AND org_id = :orgId
-            """.trimIndent(),
-        )
-            .bind("userId", userId)
-            .bind("isActive", isActive)
-            .bind("name", name)
-            .bind("avatarId", avatarId)
-            .bind("phoneNo", phoneNo)
-            .bind("email", email)
-            .bind("allBranchesAccess", allBranchesAccess)
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .execute()
+        val updated =
+            tr.sql(
+                """
+                UPDATE employees
+                SET user_id             = :userId,
+                    is_active           = :isActive,
+                    name                = :name,
+                    avatar_id           = :avatarId,
+                    phone_no            = :phoneNo,
+                    email               = :email,
+                    all_branches_access = :allBranchesAccess
+                WHERE id = :id AND org_id = :orgId
+                """.trimIndent(),
+            )
+                .bind("userId", userId)
+                .bind("isActive", isActive)
+                .bind("name", name)
+                .bind("avatarId", avatarId)
+                .bind("phoneNo", phoneNo)
+                .bind("email", email)
+                .bind("allBranchesAccess", allBranchesAccess)
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
         ensure(updated == 1L) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
 
         tr.sql("DELETE FROM employee_roles WHERE employee_id = :id")
@@ -134,7 +136,7 @@ data class DbEmployee(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
@@ -143,7 +145,7 @@ data class DbEmployee(
     ): Employee {
         ensure(ctx.orgId == orgId) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
         return copy(
-            name = newName,
+            name = newName.value,
             permissionSettings = roleCatalog.resolve(newPermissions),
             email = newEmail,
             avatarId = newAvatarId,

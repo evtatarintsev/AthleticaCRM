@@ -3,6 +3,7 @@ package org.athletica.crm.domain.tasks
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -100,7 +101,7 @@ internal data class DbTask(
 
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
-        newTitle: String,
+        newTitle: NonBlankName,
         newDescription: String,
         newClientId: ClientId?,
         newDueDate: Instant?,
@@ -108,7 +109,7 @@ internal data class DbTask(
     ): Task {
         requireEditable()
         return copy(
-            title = newTitle,
+            title = newTitle.value,
             description = newDescription,
             clientId = newClientId,
             dueDate = newDueDate,

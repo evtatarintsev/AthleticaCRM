@@ -3,6 +3,7 @@ package org.athletica.crm.domain.groups
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -82,5 +83,5 @@ class DbGroup(
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, disciplines, employeeIds)
+    override suspend fun withNewName(name: NonBlankName): Group = DbGroup(id, branchId, name.value, disciplines, employeeIds)
 }

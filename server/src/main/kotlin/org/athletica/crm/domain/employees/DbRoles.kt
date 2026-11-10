@@ -2,6 +2,7 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserPermission
@@ -19,7 +20,7 @@ class DbRoles : Roles {
         tr.sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
             .bind("id", role.id)
             .bind("orgId", ctx.orgId)
-            .bind("name", role.name)
+            .bind("name", role.name.value)
             .execute()
         for (permission in role.permissions) {
             tr.sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
@@ -34,7 +35,7 @@ class DbRoles : Roles {
         tr.sql("UPDATE roles SET name = :name WHERE id = :id AND org_id = :orgId")
             .bind("id", role.id)
             .bind("orgId", ctx.orgId)
-            .bind("name", role.name)
+            .bind("name", role.name.value)
             .execute()
         tr.sql("DELETE FROM role_permissions WHERE role_id = :roleId")
             .bind("roleId", role.id)
@@ -77,7 +78,7 @@ class DbRoles : Roles {
             .map { (roleId, rows) ->
                 EmployeeRole(
                     id = roleId,
-                    name = rows.first().first,
+                    name = NonBlankName.from(rows.first().first),
                     permissions =
                         rows
                             .mapNotNull { it.second }

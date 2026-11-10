@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -36,7 +37,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
-        name: String,
+        name: NonBlankName,
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
@@ -58,7 +59,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .bind("name", name)
+            .bind("name", name.value)
             .bind("avatarId", avatarId)
             .bind("phoneNo", phoneNo)
             .bind("email", email)
@@ -91,7 +92,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         }
         return DbEmployee(
             id = id, userId = null,
-            name = name, avatarId = avatarId, isOwner = false, isActive = false,
+            name = name.value, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
             permissionSettings = permissionSettings,

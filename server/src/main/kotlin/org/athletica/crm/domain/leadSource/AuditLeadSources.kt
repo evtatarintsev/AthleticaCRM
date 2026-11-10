@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
@@ -17,7 +18,7 @@ class AuditLeadSources(private val delegate: LeadSources, private val audit: Aud
     override suspend fun list() = delegate.list().map { AuditLeadSource(it, audit) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: LeadSourceId, name: String, description: LeadSourceDescription) = AuditLeadSource(delegate.new(id, name, description), audit)
+    override suspend fun new(id: LeadSourceId, name: NonBlankName, description: LeadSourceDescription) = AuditLeadSource(delegate.new(id, name, description), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: LeadSourceId) = AuditLeadSource(delegate.byId(id), audit)
@@ -40,7 +41,7 @@ class AuditLeadSource(private val delegate: LeadSource, private val audit: Audit
             audit.logDelete("lead_source", id, "")
         }
 
-    override fun withNew(name: String, description: LeadSourceDescription) = AuditLeadSource(delegate.withNew(name, description), audit)
+    override fun withNew(name: NonBlankName, description: LeadSourceDescription) = AuditLeadSource(delegate.withNew(name, description), audit)
 }
 
 /** Снимок источника для журнала аудита (доменная сущность не сериализуется напрямую). */

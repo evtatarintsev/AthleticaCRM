@@ -11,6 +11,7 @@ import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.core.subscription.EndingSoonReason
 import org.athletica.crm.core.subscription.TermPosition
 import org.athletica.crm.employeeContext
+import org.athletica.crm.testPositiveInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,13 +22,13 @@ import kotlin.test.assertTrue
 class MembershipRulesTest {
     private val ctx = employeeContext(orgId = OrgId.new())
 
-    private fun months(n: Int) = MembershipDuration(n, DurationUnit.MONTHS)
+    private fun months(n: Int) = MembershipDuration(testPositiveInt(n), DurationUnit.MONTHS)
 
     private fun date(day: Int, month: Int, year: Int = 2027) = LocalDate(year, month, day)
 
     @Test
     fun `срок 1 день заканчивается в день начала`() {
-        assertEquals(date(16, 10, 2026), MembershipDuration(1, DurationUnit.DAYS).endDateFrom(date(16, 10, 2026)))
+        assertEquals(date(16, 10, 2026), MembershipDuration(testPositiveInt(1), DurationUnit.DAYS).endDateFrom(date(16, 10, 2026)))
     }
 
     @Test

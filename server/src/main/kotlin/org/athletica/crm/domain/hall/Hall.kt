@@ -2,6 +2,7 @@ package org.athletica.crm.domain.hall
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
@@ -23,5 +24,5 @@ interface Hall {
     suspend fun delete()
 
     /** Возвращает копию с новым именем (без записи в БД). */
-    fun withNew(name: String): Hall
+    fun withNew(name: NonBlankName): Hall
 }

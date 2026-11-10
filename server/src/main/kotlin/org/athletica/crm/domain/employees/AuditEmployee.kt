@@ -4,6 +4,7 @@ import arrow.core.raise.Raise
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
@@ -25,7 +26,7 @@ class AuditEmployee(private val delegate: Employee, private val audit: AuditLog)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,

@@ -2,6 +2,7 @@ package org.athletica.crm.domain.memberships
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
@@ -36,7 +37,7 @@ interface Memberships {
         clientId: ClientId,
         tariffPlanId: TariffPlanId?,
         name: String,
-        sessions: Int?,
+        sessions: PositiveInt?,
         groupIds: List<GroupId>,
         duration: MembershipDuration,
         price: Money,

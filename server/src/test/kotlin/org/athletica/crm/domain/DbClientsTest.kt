@@ -37,6 +37,7 @@ import org.athletica.crm.domain.clients.restore
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -116,29 +117,32 @@ class DbClientsTest {
         runTest {
             val audited = AuditClients(clients, PostgresAuditLog())
             val id = ClientId.new()
-            val stale = orThrow {
-                TestPostgres.db.transaction { context(ctx) { audited.new(id, "Клиент", null, null, Gender.MALE) } }
-            }
+            val stale =
+                orThrow {
+                    TestPostgres.db.transaction { context(ctx) { audited.new(id, testName("Клиент"), null, null, Gender.MALE) } }
+                }
             val archived = CompletableDeferred<Unit>()
             val retryStarted = CompletableDeferred<Unit>()
-            val first = async {
-                orThrow {
-                    TestPostgres.db.transaction {
-                        context(ctx) { audited.archive(id) }
-                        archived.complete(Unit)
-                        retryStarted.await()
+            val first =
+                async {
+                    orThrow {
+                        TestPostgres.db.transaction {
+                            context(ctx) { audited.archive(id) }
+                            archived.complete(Unit)
+                            retryStarted.await()
+                        }
                     }
                 }
-            }
-            val retry = async {
-                archived.await()
-                either {
-                    TestPostgres.db.transaction {
-                        retryStarted.complete(Unit)
-                        context(ctx) { stale.archive() }
+            val retry =
+                async {
+                    archived.await()
+                    either {
+                        TestPostgres.db.transaction {
+                            retryStarted.complete(Unit)
+                            context(ctx) { stale.archive() }
+                        }
                     }
                 }
-            }
             first.await()
             assertEquals("CLIENT_ALREADY_ARCHIVED", assertIs<Either.Left<AppError>>(retry.await()).value.code)
 
@@ -153,9 +157,10 @@ class DbClientsTest {
                     context(ctx) { audited.restore(id) }
                 }
             }
-            val restored = either {
-                TestPostgres.db.transaction { context(ctx) { audited.restore(id) } }
-            }
+            val restored =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { audited.restore(id) } }
+                }
             assertEquals("CLIENT_NOT_ARCHIVED", assertIs<Either.Left<AppError>>(restored).value.code)
         }
 
@@ -163,52 +168,58 @@ class DbClientsTest {
     fun `архивация опережает запись баланса и профиля из старого снимка`() =
         runTest {
             val id = ClientId.new()
-            val stale = orThrow {
-                TestPostgres.db.transaction { context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) } }
-            }
+            val stale =
+                orThrow {
+                    TestPostgres.db.transaction { context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) } }
+                }
             val balances = DbClientBalances()
             val archived = CompletableDeferred<Unit>()
             val balanceStarted = CompletableDeferred<Unit>()
             val profileStarted = CompletableDeferred<Unit>()
-            val archive = async {
-                orThrow {
-                    TestPostgres.db.transaction {
-                        context(ctx) { clients.archive(id) }
-                        archived.complete(Unit)
-                        balanceStarted.await()
-                        profileStarted.await()
+            val archive =
+                async {
+                    orThrow {
+                        TestPostgres.db.transaction {
+                            context(ctx) { clients.archive(id) }
+                            archived.complete(Unit)
+                            balanceStarted.await()
+                            profileStarted.await()
+                        }
                     }
                 }
-            }
-            val balance = async {
-                archived.await()
-                either {
-                    TestPostgres.db.transaction {
-                        balanceStarted.complete(Unit)
-                        context(ctx) { balances.adjust(stale, Money(100, Currency.RUB), "Пополнение") }
+            val balance =
+                async {
+                    archived.await()
+                    either {
+                        TestPostgres.db.transaction {
+                            balanceStarted.complete(Unit)
+                            context(ctx) { balances.adjust(stale, Money(100, Currency.RUB), "Пополнение") }
+                        }
                     }
                 }
-            }
-            val profile = async {
-                archived.await()
-                either {
-                    TestPostgres.db.transaction {
-                        profileStarted.complete(Unit)
-                        context(ctx) { stale.withNew("Новое имя", null, null, Gender.MALE).save() }
+            val profile =
+                async {
+                    archived.await()
+                    either {
+                        TestPostgres.db.transaction {
+                            profileStarted.complete(Unit)
+                            context(ctx) { stale.withNew(testName("Новое имя"), null, null, Gender.MALE).save() }
+                        }
                     }
                 }
-            }
             archive.await()
             assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(balance.await()).value.code)
             assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(profile.await()).value.code)
 
-            val contacts = either {
-                TestPostgres.db.transaction { context(ctx) { DbClientContacts().replace(stale, emptyList()) } }
-            }
+            val contacts =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { DbClientContacts().replace(stale, emptyList()) } }
+                }
             assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(contacts).value.code)
-            val active = either {
-                TestPostgres.db.transaction { context(ctx) { clients.activeById(id) } }
-            }
+            val active =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { clients.activeById(id) } }
+                }
             assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(active).value.code)
             orThrow {
                 TestPostgres.db.transaction {
@@ -229,7 +240,7 @@ class DbClientsTest {
             val id = ClientId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Иван Петров", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Иван Петров"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
 
@@ -245,7 +256,7 @@ class DbClientsTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            clients.new(id, "Мария Иванова", null, birthday, Gender.FEMALE)
+                            clients.new(id, testName("Мария Иванова"), null, birthday, Gender.FEMALE)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -267,7 +278,7 @@ class DbClientsTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            clients.new(ClientId.new(), "Клиент", uploadId, null, Gender.MALE)
+                            clients.new(ClientId.new(), testName("Клиент"), uploadId, null, Gender.MALE)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -281,14 +292,14 @@ class DbClientsTest {
             val id = ClientId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Первый", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Первый"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx) { clients.new(id, "Второй", null, null, Gender.MALE) }
+                        context(ctx) { clients.new(id, testName("Второй"), null, null, Gender.MALE) }
                     }
                 }
             assertEquals("CLIENT_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
@@ -302,14 +313,14 @@ class DbClientsTest {
             val id = ClientId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Клиент орг 1", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Клиент орг 1"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(otherCtx) { clients.new(id, "Клиент орг 2", null, null, Gender.MALE) }
+                        context(otherCtx) { clients.new(id, testName("Клиент орг 2"), null, null, Gender.MALE) }
                     }
                 }
             assertIs<Either.Left<AppError>>(result)
@@ -324,7 +335,7 @@ class DbClientsTest {
             val birthday = LocalDate(1985, 3, 22)
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Пётр Сидоров", null, birthday, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Пётр Сидоров"), null, birthday, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -359,7 +370,7 @@ class DbClientsTest {
             val id = ClientId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Чужой клиент", null, null, Gender.FEMALE) }
+                    context(ctx) { clients.new(id, testName("Чужой клиент"), null, null, Gender.FEMALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -380,7 +391,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val client = clients.new(id, "Клиент", null, null, Gender.MALE)
+                        val client = clients.new(id, testName("Клиент"), null, null, Gender.MALE)
                         context(ctx) { client.attachDoc(clientDoc(uploadId, "Договор")) }.save()
                     }
                 }
@@ -406,7 +417,7 @@ class DbClientsTest {
                 val groupId = Uuid.generateV7()
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                        context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) }
                     }
                 }.getOrElse { fail("Setup failed: $it") }
                 runBlocking {
@@ -437,7 +448,7 @@ class DbClientsTest {
             val newBirthday = LocalDate(2000, 1, 1)
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Старое имя", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Старое имя"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -445,7 +456,7 @@ class DbClientsTest {
                 TestPostgres.db.transaction {
                     context(ctx) {
                         (clients.byId(id) as ActiveClient)
-                            .withNew("Новое имя", null, newBirthday, Gender.FEMALE)
+                            .withNew(testName("Новое имя"), null, newBirthday, Gender.FEMALE)
                             .save()
                     }
                 }
@@ -470,7 +481,7 @@ class DbClientsTest {
             val uploadId = insertUpload()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -495,7 +506,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE).attachDoc(doc) }.save()
+                        context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE).attachDoc(doc) }.save()
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -524,7 +535,7 @@ class DbClientsTest {
                 TestPostgres.db.transaction {
                     context(ctx) {
                         context(ctx) {
-                            clients.new(id, "Клиент", null, null, Gender.MALE)
+                            clients.new(id, testName("Клиент"), null, null, Gender.MALE)
                                 .attachDoc(clientDoc(upload1, "Первый"))
                                 .attachDoc(clientDoc(upload2, "Второй"))
                         }.save()
@@ -558,8 +569,8 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        clients.new(id1, "Клиент 1", null, null, Gender.MALE)
-                        clients.new(id2, "Клиент 2", null, null, Gender.FEMALE)
+                        clients.new(id1, testName("Клиент 1"), null, null, Gender.MALE)
+                        clients.new(id2, testName("Клиент 2"), null, null, Gender.FEMALE)
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
@@ -567,7 +578,7 @@ class DbClientsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        (clients.byId(id1) as ActiveClient).withNew("Изменённый", null, null, Gender.MALE).save()
+                        (clients.byId(id1) as ActiveClient).withNew(testName("Изменённый"), null, null, Gender.MALE).save()
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -591,7 +602,7 @@ class DbClientsTest {
             val id = ClientId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -609,7 +620,7 @@ class DbClientsTest {
             val id = ClientId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
+                    context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 

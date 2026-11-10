@@ -42,6 +42,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -75,8 +76,8 @@ class AttendanceRoutesTest {
                 di.database.transaction {
                     di.auth.signup(
                         SignUpRequest(
-                            companyName = "Acme",
-                            userName = "John",
+                            companyName = testName("Acme"),
+                            userName = testName("John"),
                             login = "owner@example.com",
                             password = "password123",
                             timezone = "UTC",

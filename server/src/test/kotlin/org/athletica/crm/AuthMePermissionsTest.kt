@@ -48,8 +48,8 @@ class AuthMePermissionsTest {
                 di.database.transaction {
                     di.auth.signup(
                         SignUpRequest(
-                            companyName = "Acme",
-                            userName = "John",
+                            companyName = testName("Acme"),
+                            userName = testName("John"),
                             login = "owner@example.com",
                             password = "password123",
                             timezone = "UTC",

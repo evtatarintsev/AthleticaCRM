@@ -5,6 +5,7 @@ import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
@@ -46,7 +47,7 @@ class DbChannelIntegrations(
             ?: raise(channelNotFound())
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
+    override suspend fun add(id: ChannelIntegrationId, name: NonBlankName, config: ChannelConfig) {
         ensureBotNotInUse(id, config)
         tr.sql(
             """
@@ -56,7 +57,7 @@ class DbChannelIntegrations(
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .bind("name", name)
+            .bind("name", name.value)
             .bind("config", config.toJson())
             .onViolation("uq_channel_integrations_telegram_token") { botInUse() }
             .execute()
@@ -73,7 +74,7 @@ class DbChannelIntegrations(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun update(
         id: ChannelIntegrationId,
-        name: String,
+        name: NonBlankName,
         config: ChannelConfig,
     ) {
         ensureBotNotInUse(id, config)
@@ -87,7 +88,7 @@ class DbChannelIntegrations(
             )
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
-                .bind("name", name)
+                .bind("name", name.value)
                 .bind("config", config.toJson())
                 .onViolation("uq_channel_integrations_telegram_token") { botInUse() }
                 .execute()

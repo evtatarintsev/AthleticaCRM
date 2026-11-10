@@ -2,6 +2,7 @@ package org.athletica.crm.domain.channels
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
@@ -21,7 +22,7 @@ class AuditChannelIntegrations(
     private val audit: AuditLog,
 ) : ChannelIntegrations by delegate {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
+    override suspend fun add(id: ChannelIntegrationId, name: NonBlankName, config: ChannelConfig) {
         delegate.add(id, name, config)
         audit.logUpdate("channel_integration", id, """{"name":"$name","kind":"${config::class.simpleName}","enabled":true}""")
     }
@@ -29,7 +30,7 @@ class AuditChannelIntegrations(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun update(
         id: ChannelIntegrationId,
-        name: String,
+        name: NonBlankName,
         config: ChannelConfig,
     ) {
         delegate.update(id, name, config)

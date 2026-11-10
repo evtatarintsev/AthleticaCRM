@@ -25,6 +25,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -117,7 +118,7 @@ class DbTaskDetailViewTest {
     fun `возвращает карточку с именем создателя`() =
         runTest {
             val taskId = TaskId.new()
-            succeeding { tasks.new(taskId, "Позвонить", "Описание", null, null, null) }
+            succeeding { tasks.new(taskId, testName("Позвонить"), "Описание", null, null, null) }
 
             val row = succeeding { view.byId(taskId) }
 
@@ -140,7 +141,7 @@ class DbTaskDetailViewTest {
             runTest {
                 val clientId = insertClient("Анна Клиентова")
                 val taskId = TaskId.new()
-                succeeding { tasks.new(taskId, "С клиентом", "", clientId, null, null) }
+                succeeding { tasks.new(taskId, testName("С клиентом"), "", clientId, null, null) }
                 TestPostgres.db
                     .sql("UPDATE tasks SET assignee_id = :assigneeId WHERE id = :id")
                     .bind("assigneeId", otherEmployeeId).bind("id", taskId)
@@ -161,7 +162,7 @@ class DbTaskDetailViewTest {
             val taskId = TaskId.new()
             val upload = insertUpload("договор.pdf", sizeBytes = 2048)
             succeeding {
-                tasks.new(taskId, "С вложением", "", null, null, null)
+                tasks.new(taskId, testName("С вложением"), "", null, null, null)
                 tasks.byId(taskId).attach(upload).save()
             }
 
@@ -179,7 +180,7 @@ class DbTaskDetailViewTest {
         orThrow {
             runTest {
                 val taskId = TaskId.new()
-                succeeding { tasks.new(taskId, "Своя", "", null, null, null) }
+                succeeding { tasks.new(taskId, testName("Своя"), "", null, null, null) }
                 TestPostgres.db
                     .sql("UPDATE tasks SET org_id = :orgId WHERE id = :id")
                     .bind("orgId", otherOrgId).bind("id", taskId)

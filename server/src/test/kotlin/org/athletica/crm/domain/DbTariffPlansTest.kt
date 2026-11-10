@@ -23,6 +23,8 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tariffs.DbTariffPlans
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
+import org.athletica.crm.testPositiveInt
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,7 +74,7 @@ class DbTariffPlansTest {
         durationUnit: DurationUnit = DurationUnit.MONTHS,
         price: Money = Money(4_000_00, Currency.RUB),
     ): TariffPlanId {
-        tariffs.new(id, name, sessions, durationValue, durationUnit, price).save()
+        tariffs.new(id, testName(name), sessions?.let(::testPositiveInt), testPositiveInt(durationValue), durationUnit, price).save()
         return id
     }
 
@@ -134,9 +136,9 @@ class DbTariffPlansTest {
                     context(ctx) {
                         tariffs.byId(id)
                             .withNew(
-                                name = "Новое",
-                                sessions = 12,
-                                durationValue = 2,
+                                name = testName("Новое"),
+                                sessions = testPositiveInt(12),
+                                durationValue = testPositiveInt(2),
                                 durationUnit = DurationUnit.MONTHS,
                                 price = Money(5_500_00, Currency.RUB),
                             ).save()
@@ -159,9 +161,9 @@ class DbTariffPlansTest {
                         context(ctx) {
                             tariffs.byId(TariffPlanId.new())
                                 .withNew(
-                                    name = "Новое",
-                                    sessions = 8,
-                                    durationValue = 1,
+                                    name = testName("Новое"),
+                                    sessions = testPositiveInt(8),
+                                    durationValue = testPositiveInt(1),
                                     durationUnit = DurationUnit.MONTHS,
                                     price = Money(4_000_00, Currency.RUB),
                                 ).save()
@@ -222,9 +224,9 @@ class DbTariffPlansTest {
                     context(ctx) {
                         tariffs.byId(id)
                             .withNew(
-                                name = "Переименовано",
-                                sessions = 8,
-                                durationValue = 1,
+                                name = testName("Переименовано"),
+                                sessions = testPositiveInt(8),
+                                durationValue = testPositiveInt(1),
                                 durationUnit = DurationUnit.MONTHS,
                                 price = Money(4_000_00, Currency.RUB),
                             ).save()

@@ -4,6 +4,8 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
@@ -20,9 +22,9 @@ class AuditTariffPlans(private val delegate: TariffPlans, private val audit: Aud
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: TariffPlanId,
-        name: String,
-        sessions: Int?,
-        durationValue: Int,
+        name: NonBlankName,
+        sessions: PositiveInt?,
+        durationValue: PositiveInt,
         durationUnit: DurationUnit,
         price: Money,
     ) = AuditTariffPlan(delegate.new(id, name, sessions, durationValue, durationUnit, price), audit)
@@ -55,9 +57,9 @@ class AuditTariffPlan(private val delegate: TariffPlan, private val audit: Audit
         }
 
     override fun withNew(
-        name: String,
-        sessions: Int?,
-        durationValue: Int,
+        name: NonBlankName,
+        sessions: PositiveInt?,
+        durationValue: PositiveInt,
         durationUnit: DurationUnit,
         price: Money,
     ) = AuditTariffPlan(delegate.withNew(name, sessions, durationValue, durationUnit, price), audit)

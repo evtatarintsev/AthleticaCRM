@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
@@ -75,7 +76,7 @@ interface ActiveClient : Client {
     /** Возвращает копию с новыми значениями полей (без записи в БД). */
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,

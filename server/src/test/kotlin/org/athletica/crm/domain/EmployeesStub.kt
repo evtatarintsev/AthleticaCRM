@@ -3,6 +3,7 @@ package org.athletica.crm.domain
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -52,14 +53,14 @@ data class EmployeeStub(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
         newAvailableBranches: EmployeeBranchAccess,
     ) = copy(
-        name = newName,
+        name = newName.value,
         permissionSettings = EmployeePermission(roles.filter { it.id in newPermissions.roleIds }, newPermissions.grantedPermissions, newPermissions.revokedPermissions),
         email = newEmail,
         avatarId = newAvatarId,
@@ -74,7 +75,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
-        name: String,
+        name: NonBlankName,
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
@@ -87,7 +88,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             isOwner = false,
             isActive = false,
             joinedAt = clock.now(),
-            name = name,
+            name = name.value,
             phoneNo = phoneNo,
             email = email,
             avatarId = avatarId,

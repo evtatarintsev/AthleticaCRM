@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
@@ -32,23 +33,24 @@ internal data class DbActiveClient(
 ) : ActiveClient {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
-        val updated = tr.sql(
-            """
-            UPDATE clients
-            SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender,
-                lead_source_id = :leadSourceId, custom_fields = :customFields::jsonb
-            WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'
-            """.trimIndent(),
-        )
-            .bind("name", name)
-            .bind("avatarId", avatarId)
-            .bind("birthday", birthday)
-            .bind("gender", gender.name)
-            .bind("leadSourceId", leadSourceId)
-            .bind("customFields", Json.encodeToString(customFields))
-            .bind("id", id)
-            .bind("orgId", orgId)
-            .execute()
+        val updated =
+            tr.sql(
+                """
+                UPDATE clients
+                SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender,
+                    lead_source_id = :leadSourceId, custom_fields = :customFields::jsonb
+                WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'
+                """.trimIndent(),
+            )
+                .bind("name", name)
+                .bind("avatarId", avatarId)
+                .bind("birthday", birthday)
+                .bind("gender", gender.name)
+                .bind("leadSourceId", leadSourceId)
+                .bind("customFields", Json.encodeToString(customFields))
+                .bind("id", id)
+                .bind("orgId", orgId)
+                .execute()
         ensure(updated == 1L) { clientArchived() }
 
         tr.sql("DELETE FROM client_docs WHERE client_id = :clientId")
@@ -90,14 +92,14 @@ internal data class DbActiveClient(
 
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
         newLeadSourceId: LeadSourceId?,
         newCustomFields: List<CustomFieldValue>,
     ) = copy(
-        name = newName,
+        name = newName.value,
         avatarId = newAvatarId,
         birthday = newBirthday,
         gender = newGender,

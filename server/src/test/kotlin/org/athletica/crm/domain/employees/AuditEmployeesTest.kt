@@ -18,6 +18,7 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import kotlin.collections.emptyList
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -65,7 +66,7 @@ class AuditEmployeesTest {
             val employee =
                 either {
                     context(ctx, tr) {
-                        subject.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
+                        subject.new(id, testName("Иван Иванов"), "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
                     }
                 }.getOrNull()
 
@@ -85,7 +86,7 @@ class AuditEmployeesTest {
 
             either {
                 context(ctx, tr) {
-                    subject.new(id, "Мария", null, null, null, emptyPermission)
+                    subject.new(id, testName("Мария"), null, null, null, emptyPermission)
                 }
             }
 
@@ -108,7 +109,7 @@ class AuditEmployeesTest {
 
             either {
                 context(ctx, tr) {
-                    subject.new(id, "Сергей", "+79001234567", "sergey@example.com".toEmailAddress(), null, emptyPermission)
+                    subject.new(id, testName("Сергей"), "+79001234567", "sergey@example.com".toEmailAddress(), null, emptyPermission)
                 }
             }
 
@@ -129,7 +130,7 @@ class AuditEmployeesTest {
 
             either {
                 context(ctx, tr) {
-                    subject.new(EmployeeId.new(), "Без контактов", null, null, null, emptyPermission)
+                    subject.new(EmployeeId.new(), testName("Без контактов"), null, null, null, emptyPermission)
                 }
             }
 
@@ -149,7 +150,7 @@ class AuditEmployeesTest {
             repeat(3) {
                 either {
                     context(ctx, tr) {
-                        subject.new(EmployeeId.new(), "Сотрудник $it", null, null, null, emptyPermission)
+                        subject.new(EmployeeId.new(), testName("Сотрудник $it"), null, null, null, emptyPermission)
                     }
                 }
             }

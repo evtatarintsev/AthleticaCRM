@@ -2,6 +2,7 @@ package org.athletica.crm.domain.discipline
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
@@ -14,7 +15,7 @@ interface Disciplines {
 
     /** Создаёт несохранённую дисциплину; запись в БД выполняется через [Discipline.save]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun new(id: DisciplineId, name: String): Discipline
+    suspend fun new(id: DisciplineId, name: NonBlankName): Discipline
 
     /** Возвращает дисциплину по идентификатору; ошибка `DISCIPLINE_NOT_FOUND`, если не найдена. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.memberships
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
@@ -28,11 +29,11 @@ data class IssueMembershipRequest(
     /** Название абонемента (снимок на момент выдачи). */
     val name: String,
     /** Количество занятий; `null` — безлимит. */
-    val sessions: Int?,
+    val sessions: PositiveInt?,
     /** Группы, в которых действует абонемент; хотя бы одна. */
     val groupIds: List<GroupId>,
     /** Числовое значение срока действия. */
-    val durationValue: Int,
+    val durationValue: PositiveInt,
     /** Единица измерения срока действия. */
     val durationUnit: DurationUnit,
     /** Стоимость абонемента на момент выдачи (без учёта оплаты/баланса). */

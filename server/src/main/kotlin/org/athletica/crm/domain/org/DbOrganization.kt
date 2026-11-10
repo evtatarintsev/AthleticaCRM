@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.org
 
 import arrow.core.raise.Raise
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
@@ -14,7 +15,7 @@ class DbOrganization(
     override val currency: Currency,
 ) : Organization {
     context(ctx: RequestContext, raise: Raise<AppError>)
-    override suspend fun withNew(newName: String, newTimezone: String) = DbOrganization(id, newName, newTimezone, currency)
+    override suspend fun withNew(newName: NonBlankName, newTimezone: String) = DbOrganization(id, newName.value, newTimezone, currency)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {

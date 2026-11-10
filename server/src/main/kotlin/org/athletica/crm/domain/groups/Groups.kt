@@ -2,6 +2,7 @@ package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.GroupId
@@ -20,7 +21,7 @@ interface Groups {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun new(
         id: GroupId,
-        name: String,
+        name: NonBlankName,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
     ): Group

@@ -24,6 +24,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -137,8 +138,8 @@ class DbTaskListViewTest {
     fun `без фильтров возвращает все задачи организации`() =
         runTest {
             inContext(ctx) {
-                tasks.new(TaskId.new(), "Задача 1", "", null, null, null)
-                tasks.new(TaskId.new(), "Задача 2", "", null, null, null)
+                tasks.new(TaskId.new(), testName("Задача 1"), "", null, null, null)
+                tasks.new(TaskId.new(), testName("Задача 2"), "", null, null, null)
             }
 
             val result = page()
@@ -150,8 +151,8 @@ class DbTaskListViewTest {
     @Test
     fun `onlyMine возвращает только свои задачи`() =
         runTest {
-            inContext(ctx) { tasks.new(TaskId.new(), "Моя задача", "", null, null, null) }
-            inContext(otherCtx) { tasks.new(TaskId.new(), "Чужая задача", "", null, null, null) }
+            inContext(ctx) { tasks.new(TaskId.new(), testName("Моя задача"), "", null, null, null) }
+            inContext(otherCtx) { tasks.new(TaskId.new(), testName("Чужая задача"), "", null, null, null) }
 
             val result = page(query = query(onlyMine = true))
 
@@ -162,8 +163,8 @@ class DbTaskListViewTest {
     @Test
     fun `без CAN_VIEW_ALL_TASKS чужая назначенная задача не видна`() =
         runTest {
-            inContext(ctx) { tasks.new(TaskId.new(), "Моя задача", "", null, null, null) }
-            val foreign = inContext(otherCtx) { tasks.new(TaskId.new(), "Чужая задача", "", null, null, null) }
+            inContext(ctx) { tasks.new(TaskId.new(), testName("Моя задача"), "", null, null, null) }
+            val foreign = inContext(otherCtx) { tasks.new(TaskId.new(), testName("Чужая задача"), "", null, null, null) }
             assignTo(foreign.id, otherEmployeeId)
 
             val result = page(context = ctx)
@@ -176,8 +177,8 @@ class DbTaskListViewTest {
     fun `фильтр по статусу`() =
         runTest {
             inContext(ctx) {
-                tasks.new(TaskId.new(), "Ожидает", "", null, null, null)
-                val inProgress = tasks.new(TaskId.new(), "В работе", "", null, null, null)
+                tasks.new(TaskId.new(), testName("Ожидает"), "", null, null, null)
+                val inProgress = tasks.new(TaskId.new(), testName("В работе"), "", null, null, null)
                 inProgress.status(TaskStatus.IN_PROGRESS).save()
             }
 
@@ -191,8 +192,8 @@ class DbTaskListViewTest {
     fun `фильтр по searchText`() =
         runTest {
             inContext(ctx) {
-                tasks.new(TaskId.new(), "Купить молоко", "", null, null, null)
-                tasks.new(TaskId.new(), "Позвонить клиенту", "", null, null, null)
+                tasks.new(TaskId.new(), testName("Купить молоко"), "", null, null, null)
+                tasks.new(TaskId.new(), testName("Позвонить клиенту"), "", null, null, null)
             }
 
             val result = page(query = query(searchText = "молоко"))
@@ -204,7 +205,7 @@ class DbTaskListViewTest {
     @Test
     fun `total отражает общее количество без пагинации`() =
         runTest {
-            inContext(ctx) { repeat(5) { tasks.new(TaskId.new(), "Задача $it", "", null, null, null) } }
+            inContext(ctx) { repeat(5) { tasks.new(TaskId.new(), testName("Задача $it"), "", null, null, null) } }
 
             val result = page(query = query(limit = 2))
 
@@ -217,7 +218,7 @@ class DbTaskListViewTest {
         runTest {
             val clientId = insertClient("Анна Клиентова")
             val taskId = TaskId.new()
-            inContext(ctx) { tasks.new(taskId, "С исполнителем", "", clientId, null, null) }
+            inContext(ctx) { tasks.new(taskId, testName("С исполнителем"), "", clientId, null, null) }
             assignTo(taskId, otherEmployeeId)
 
             val item = page().tasks.single()
@@ -231,7 +232,7 @@ class DbTaskListViewTest {
     @Test
     fun `без исполнителя и клиента имена пустые`() =
         runTest {
-            inContext(ctx) { tasks.new(TaskId.new(), "Одинокая задача", "", null, null, null) }
+            inContext(ctx) { tasks.new(TaskId.new(), testName("Одинокая задача"), "", null, null, null) }
 
             val item = page().tasks.single()
 

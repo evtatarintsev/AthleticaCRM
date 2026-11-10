@@ -201,8 +201,8 @@ private suspend fun createMissingLeadSources(
     val toCreate =
         leadSourceMapping.values
             .filterIsInstance<LeadSourceAction.CreateNew>()
-            .map { it.name.trim() }
-            .filter { it.isNotEmpty() && !existingByName.containsKey(it) }
+            .map { it.name }
+            .filter { it.value !in existingByName }
             .distinct()
     return toCreate.map { name ->
         val created = leadSources.new(id = LeadSourceId.new(), name = name, description = LeadSourceDescription.EMPTY)
@@ -220,7 +220,7 @@ private fun resolveLeadSourceIds(
     return leadSourceMapping.mapNotNull { (csvValue, action) ->
         when (action) {
             is LeadSourceAction.UseExisting -> csvValue to action.id
-            is LeadSourceAction.CreateNew -> byName[action.name.trim()]?.let { csvValue to it.id }
+            is LeadSourceAction.CreateNew -> byName[action.name.value]?.let { csvValue to it.id }
             LeadSourceAction.Skip -> null
         }
     }.toMap()

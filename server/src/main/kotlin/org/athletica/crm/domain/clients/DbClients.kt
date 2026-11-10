@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -79,7 +80,7 @@ class DbClients : Clients {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: ClientId,
-        name: String,
+        name: NonBlankName,
         avatarId: UploadId?,
         birthday: LocalDate?,
         gender: Gender,
@@ -96,7 +97,7 @@ class DbClients : Clients {
                 )
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
-                .bind("name", name)
+                .bind("name", name.value)
                 .bind("avatarId", avatarId)
                 .bind("birthday", birthday)
                 .bind("gender", gender.name)
@@ -110,7 +111,7 @@ class DbClients : Clients {
 
         return DbActiveClient(
             id = id,
-            name = name,
+            name = name.value,
             avatarId = avatarId,
             birthday = birthday,
             gender = gender,

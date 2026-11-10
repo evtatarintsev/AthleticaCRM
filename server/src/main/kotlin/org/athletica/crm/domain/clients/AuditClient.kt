@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.LeadSourceId
@@ -72,7 +73,7 @@ data class AuditActiveClient(
 
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
@@ -81,7 +82,7 @@ data class AuditActiveClient(
     ): ActiveClient {
         val newValues =
             ClientAuditData(
-                name = newName,
+                name = newName.value,
                 avatarId = newAvatarId,
                 birthday = newBirthday,
                 gender = newGender,

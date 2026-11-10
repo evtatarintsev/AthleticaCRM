@@ -4,6 +4,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.LeadSourceId
 
 /**
@@ -22,7 +23,7 @@ sealed class LeadSourceAction {
     /** Создать новый источник с именем [name] и привязать клиентов с этим значением к нему. */
     @Serializable
     @SerialName("create_new")
-    data class CreateNew(val name: String) : LeadSourceAction()
+    data class CreateNew(val name: NonBlankName) : LeadSourceAction()
 
     /** Не проставлять источник клиентам с этим значением. */
     @Serializable

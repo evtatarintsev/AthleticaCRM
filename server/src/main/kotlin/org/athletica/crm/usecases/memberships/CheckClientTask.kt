@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases.memberships
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
@@ -25,7 +26,7 @@ suspend fun createCheckClientTaskIfDebts(unpaidSessions: UnpaidSessionsView, tas
     }
     tasks.new(
         id = TaskId.new(),
-        title = Messages.CheckClientTaskTitle.localize(),
+        title = NonBlankName.from(Messages.CheckClientTaskTitle.localize()),
         description = Messages.CheckClientTaskDescription.localize(membership.name, count),
         clientId = membership.clientId,
         dueDate = null,

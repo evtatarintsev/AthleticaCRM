@@ -16,6 +16,7 @@ import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.testPositiveInt
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.revokeMembership
 import org.junit.Before
@@ -202,7 +203,7 @@ class DbMembershipsTest {
                         "Безлимит",
                         null,
                         listOf(fixture.groupId),
-                        MembershipDuration(1, org.athletica.crm.core.subscription.DurationUnit.MONTHS),
+                        MembershipDuration(testPositiveInt(1), org.athletica.crm.core.subscription.DurationUnit.MONTHS),
                         Money(1_000_00, Currency.RUB),
                         Activation.Immediate,
                         CloseMode.ON_LAST_SESSION,
@@ -254,9 +255,9 @@ class DbMembershipsTest {
                 clientId,
                 null,
                 "8 занятий",
-                8,
+                testPositiveInt(8),
                 groupIds,
-                MembershipDuration(1, org.athletica.crm.core.subscription.DurationUnit.MONTHS),
+                MembershipDuration(testPositiveInt(1), org.athletica.crm.core.subscription.DurationUnit.MONTHS),
                 Money(1_000_00, Currency.RUB),
                 Activation.Immediate,
                 CloseMode.MANUAL,

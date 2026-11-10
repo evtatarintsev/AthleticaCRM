@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.actingEmployeeId
 import org.athletica.crm.core.entityids.ClientId
@@ -55,7 +56,7 @@ class DbMemberships : Memberships {
         clientId: ClientId,
         tariffPlanId: TariffPlanId?,
         name: String,
-        sessions: Int?,
+        sessions: PositiveInt?,
         groupIds: List<GroupId>,
         duration: MembershipDuration,
         price: Money,
@@ -63,7 +64,7 @@ class DbMemberships : Memberships {
         closeMode: CloseMode,
         issuedOn: LocalDate,
     ): Membership {
-        val outcome = issueOutcome(activation, closeMode, sessions, groupIds, issuedOn)
+        val outcome = issueOutcome(activation, closeMode, sessions?.value, groupIds, issuedOn)
         val startDate = (outcome as? IssueOutcome.Active)?.startDate
         val endDate = startDate?.let { duration.endDateFrom(it) }
         val state = if (outcome is IssueOutcome.Active) MembershipState.ACTIVE else MembershipState.INACTIVE
@@ -84,7 +85,7 @@ class DbMemberships : Memberships {
             .bind("clientId", clientId)
             .bind("tariffPlanId", tariffPlanId)
             .bind("name", name)
-            .bind("sessions", sessions)
+            .bind("sessions", sessions?.value)
             .bind("startDate", startDate)
             .bind("endDate", endDate)
             .bind("price", price)
@@ -208,7 +209,7 @@ class DbMemberships : Memberships {
             .list { it.toMembership() }
 
     /** Собирает доменный абонемент нужного состояния из строки результата. */
-    context(ctx: RequestContext)
+    context(ctx: RequestContext, raise: Raise<AppError>)
     private fun Row.toMembership(): Membership {
         val terms =
             StoredMembershipTerms(
@@ -217,7 +218,7 @@ class DbMemberships : Memberships {
                 tariffPlanId = asUuidOrNull("tariff_plan_id")?.toTariffPlanId(),
                 name = asString("name"),
                 sessionsTotal = get("sessions_total", Int::class.javaObjectType),
-                duration = MembershipDuration(asInt("duration_value"), DurationUnit.valueOf(asString("duration_unit"))),
+                duration = MembershipDuration(PositiveInt.from(asInt("duration_value")), DurationUnit.valueOf(asString("duration_unit"))),
                 groups = groupsOf(asString("groups")),
                 price = asMoney("price", ctx.currency),
                 closeMode = CloseMode.valueOf(asString("close_mode")),

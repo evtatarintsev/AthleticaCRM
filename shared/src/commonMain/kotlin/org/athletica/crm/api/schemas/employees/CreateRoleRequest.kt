@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.employees
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.permissions.UserPermission
 import kotlin.uuid.Uuid
 
@@ -8,6 +9,6 @@ import kotlin.uuid.Uuid
 @Serializable
 data class CreateRoleRequest(
     val id: Uuid,
-    val name: String,
+    val name: NonBlankName,
     val permissions: Set<UserPermission>,
 )

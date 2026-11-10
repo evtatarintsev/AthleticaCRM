@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -42,7 +43,7 @@ interface Employee : UserActor {
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNew(
-        newName: String,
+        newName: NonBlankName,
         newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,

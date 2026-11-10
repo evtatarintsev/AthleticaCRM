@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.org
 
 import arrow.core.raise.Raise
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
@@ -24,7 +25,7 @@ interface Organization {
     val currency: Currency
 
     context(ctx: RequestContext, raise: Raise<AppError>)
-    suspend fun withNew(newName: String, newTimezone: String): Organization
+    suspend fun withNew(newName: NonBlankName, newTimezone: String): Organization
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()

@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
@@ -26,7 +27,7 @@ interface Roles {
 
 data class EmployeeRole(
     val id: Uuid,
-    val name: String,
+    val name: NonBlankName,
     val permissions: Set<UserPermission>,
 )
 

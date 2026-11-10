@@ -3,6 +3,7 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -20,7 +21,7 @@ class EmailEmployees(private val delegate: Employees, private val orgEmails: Org
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
-        name: String,
+        name: NonBlankName,
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,

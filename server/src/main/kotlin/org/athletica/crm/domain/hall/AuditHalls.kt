@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
@@ -17,7 +18,7 @@ class AuditHalls(private val delegate: Halls, private val audit: AuditLog) : Hal
     override suspend fun list() = delegate.list().map { AuditHall(it, audit) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: HallId, name: String) = AuditHall(delegate.new(id, name), audit)
+    override suspend fun new(id: HallId, name: NonBlankName) = AuditHall(delegate.new(id, name), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: HallId) = AuditHall(delegate.byId(id), audit)
@@ -40,7 +41,7 @@ class AuditHall(private val delegate: Hall, private val audit: AuditLog) : Hall 
             audit.logDelete("hall", id, "")
         }
 
-    override fun withNew(name: String) = AuditHall(delegate.withNew(name), audit)
+    override fun withNew(name: NonBlankName) = AuditHall(delegate.withNew(name), audit)
 }
 
 /** Снимок зала для журнала аудита (доменная сущность не сериализуется напрямую). */

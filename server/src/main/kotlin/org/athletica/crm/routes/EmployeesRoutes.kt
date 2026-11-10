@@ -78,7 +78,7 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
             db.transaction {
                 roles.list()
             }.let { roles ->
-                RoleListResponse(roles.map { RoleItem(it.id, it.name, it.permissions) })
+                RoleListResponse(roles.map { RoleItem(it.id, it.name.value, it.permissions) })
             }
         }
 
@@ -86,14 +86,14 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
             db.transaction {
                 roles.new(DomainEmployeeRole(request.id, request.name, request.permissions))
             }
-            RoleItem(request.id, request.name, request.permissions)
+            RoleItem(request.id, request.name.value, request.permissions)
         }
 
         post<UpdateRoleRequest, RoleItem>("/roles/update") { request ->
             db.transaction {
                 roles.update(DomainEmployeeRole(request.id, request.name, request.permissions))
             }
-            RoleItem(request.id, request.name, request.permissions)
+            RoleItem(request.id, request.name.value, request.permissions)
         }
     }
 }
@@ -107,7 +107,7 @@ private fun Employee.toListItem() =
         isOwner,
         isActive,
         joinedAt,
-        roles.map { role -> EmployeeRole(role.id, role.name) },
+        roles.map { role -> EmployeeRole(role.id, role.name.value) },
     )
 
 /** Конвертирует [CreateEmployeeRequest] в доменный [EmployeeBranchAccess]. */

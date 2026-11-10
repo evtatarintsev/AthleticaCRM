@@ -1,5 +1,6 @@
 package org.athletica.crm.contracts
 
+import arrow.core.raise.context.Raise
 import io.minio.MinioClient
 import org.athletica.crm.DatabaseConfig
 import org.athletica.crm.Di
@@ -18,6 +19,7 @@ import org.athletica.crm.domain.payment.DbPayments
 import org.athletica.crm.domain.payment.PaymentCreateRequest
 import org.athletica.crm.domain.payment.PaymentCreateResult
 import org.athletica.crm.domain.payment.PaymentGateway
+import org.athletica.crm.domain.payment.PaymentGatewayError
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.MinioService
@@ -77,5 +79,6 @@ private object OfflineEmailDispatcher : EmailDispatcher {
 
 /** Платёжный шлюз, который отказывается создавать платежи. */
 private object OfflinePaymentGateway : PaymentGateway {
+    context(raise: Raise<PaymentGatewayError>)
     override suspend fun createPayment(request: PaymentCreateRequest): PaymentCreateResult = throw UnsupportedOperationException("Платёжный шлюз недоступен при генерации контрактов")
 }

@@ -1,7 +1,13 @@
 package org.athletica.crm.read.clients.import
 
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
+import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.DomainError
+import java.io.IOException
+import java.io.UncheckedIOException
 
 /**
  * Низкоуровневая обёртка над commons-csv: определяет кодировку и разделитель,
@@ -22,7 +28,9 @@ object CsvReader {
      * Определяет кодировку (UTF-8 c BOM → UTF-8 → Windows-1251 fallback) и разделитель
      * (по первой строке: тот, что даёт больше колонок).
      * Возвращает заголовки в порядке появления и список строк-данных.
+     * Колонка без заголовка и битая структура CSV поднимаются как [DomainError].
      */
+    context(raise: Raise<DomainError>)
     fun parse(bytes: ByteArray): Parsed {
         val text = decode(bytes)
         val delimiter = detectDelimiter(text)
@@ -36,22 +44,32 @@ object CsvReader {
                 .setTrim(false)
                 .build()
 
-        val parser: CSVParser = CSVParser(java.io.StringReader(text), format)
-        parser.use { p ->
-            val headers: List<String> = p.headerNames
-            val rows: List<List<String?>> =
-                p.records.map { record ->
-                    headers.indices.map { i ->
-                        if (i < record.size()) {
-                            val v: String = record.get(i)
-                            if (v.isEmpty()) null else v
-                        } else {
-                            null
-                        }
+        return try {
+            CSVParser(java.io.StringReader(text), format).use { p -> read(p) }
+        } catch (e: IllegalArgumentException) {
+            raise(CommonDomainError("CSV_INVALID_HEADER", "В CSV есть колонка без заголовка"))
+        } catch (e: IOException) {
+            raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV"))
+        } catch (e: UncheckedIOException) {
+            raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV"))
+        }
+    }
+
+    /** Читает заголовки и все записи из [parser]; пустые значения становятся `null`. */
+    private fun read(parser: CSVParser): Parsed {
+        val headers: List<String> = parser.headerNames
+        val rows: List<List<String?>> =
+            parser.records.map { record ->
+                headers.indices.map { i ->
+                    if (i < record.size()) {
+                        val v: String = record.get(i)
+                        if (v.isEmpty()) null else v
+                    } else {
+                        null
                     }
                 }
-            return Parsed(headers, rows)
-        }
+            }
+        return Parsed(headers, rows)
     }
 
     private fun decode(bytes: ByteArray): String {

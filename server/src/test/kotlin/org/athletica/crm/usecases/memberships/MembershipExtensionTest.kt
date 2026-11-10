@@ -14,6 +14,7 @@ import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.read.memberships.DbMembershipHistoryView
+import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -62,7 +63,7 @@ class MembershipExtensionTest {
             TestPostgres.db
                 .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id ORDER BY created_at, id")
                 .bind("id", id)
-                .list { it.get("username", String::class.java)!! to it.get("data", String::class.java)!! }
+                .list { it.asString("username") to it.asString("data") }
         }
 
     @Test

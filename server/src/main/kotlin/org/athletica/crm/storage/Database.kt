@@ -311,6 +311,9 @@ fun Row.asInt(column: String) = get(column, Int::class.java)!!
 
 fun Row.asInt(pos: Int) = get(pos, Int::class.java)!!
 
+/** Читает целочисленную колонку [column], допускающую `NULL`. */
+fun Row.asIntOrNull(column: String): Int? = get(column, Int::class.javaObjectType)
+
 fun Row.asInstant(pos: Int) =
     get(pos, java.time.OffsetDateTime::class.java)!!
         .toInstant()

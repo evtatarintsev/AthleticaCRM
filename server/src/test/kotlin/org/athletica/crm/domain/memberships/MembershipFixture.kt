@@ -28,6 +28,7 @@ import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asString
 import kotlin.test.fail
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -177,7 +178,7 @@ class MembershipFixture(
             TestPostgres.db
                 .sql("SELECT kind FROM membership_events WHERE membership_id = :id ORDER BY occurred_at, id")
                 .bind("id", id)
-                .list { it.get("kind", String::class.java)!! }
+                .list { it.asString("kind") }
         }
 }
 

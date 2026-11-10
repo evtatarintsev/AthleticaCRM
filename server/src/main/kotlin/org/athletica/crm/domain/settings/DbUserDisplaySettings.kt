@@ -7,6 +7,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asString
 
 interface UserDisplaySettings {
     context(tr: Transaction, raise: Raise<AppError>)
@@ -37,7 +38,7 @@ class DbUserDisplaySettings : UserDisplaySettings {
                 "SELECT settings FROM user_display_settings WHERE user_id = :userId",
             )
                 .bind("userId", ctx.userId)
-                .firstOrNull { row -> row.get("settings", String::class.java) }
+                .firstOrNull { row -> row.asString("settings") }
         return json?.let { Json.decodeFromString<DisplaySettings>(it) } ?: DisplaySettings()
     }
 

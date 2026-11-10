@@ -21,6 +21,9 @@ import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asStringOrNull
+import org.athletica.crm.storage.asUuidOrNull
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,7 +57,7 @@ class MembershipSchedulerTest {
             TestPostgres.db
                 .sql("SELECT COUNT(*) AS c FROM notification_recipients WHERE employee_id = :e")
                 .bind("e", fixture.employeeId)
-                .firstOrNull { it.get("c", java.lang.Long::class.java)!!.toLong() } ?: 0
+                .firstOrNull { it.asLong("c") } ?: 0
         }
 
     @Test
@@ -74,7 +77,7 @@ class MembershipSchedulerTest {
                     TestPostgres.db
                         .sql("SELECT actor_id, payload->>'reason' AS reason FROM membership_events WHERE membership_id = :id AND kind = 'ACTIVATED'")
                         .bind("id", issued.id)
-                        .firstOrNull { (it.get("actor_id", java.util.UUID::class.java)?.toString() ?: "system") to it.get("reason", String::class.java) }
+                        .firstOrNull { (it.asUuidOrNull("actor_id")?.toString() ?: "system") to it.asStringOrNull("reason") }
                 assertEquals("system" to ActivationReason.ON_DATE.name, actor)
             }
         }

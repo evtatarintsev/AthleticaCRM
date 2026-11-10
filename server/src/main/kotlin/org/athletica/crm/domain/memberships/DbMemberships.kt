@@ -35,6 +35,7 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asInt
+import org.athletica.crm.storage.asIntOrNull
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asMoney
@@ -216,7 +217,7 @@ class DbMemberships : Memberships {
                 clientId = asUuid("client_id").toClientId(),
                 tariffPlanId = asUuidOrNull("tariff_plan_id")?.toTariffPlanId(),
                 name = asString("name"),
-                sessionsTotal = get("sessions_total", Int::class.javaObjectType),
+                sessionsTotal = asIntOrNull("sessions_total"),
                 duration = MembershipDuration(asInt("duration_value"), DurationUnit.valueOf(asString("duration_unit"))),
                 groups = groupsOf(asString("groups")),
                 price = asMoney("price", ctx.currency),
@@ -224,7 +225,7 @@ class DbMemberships : Memberships {
                 issuedOn = asLocalDate("issued_on"),
                 issuedBy = asUuidOrNull("issued_by")?.toEmployeeId(),
             )
-        val remaining = get("sessions_remaining", Int::class.javaObjectType)
+        val remaining = asIntOrNull("sessions_remaining")
         val activation =
             when (ActivationMode.valueOf(asString("activation_mode"))) {
                 ActivationMode.IMMEDIATE -> Activation.Immediate

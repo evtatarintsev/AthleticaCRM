@@ -7,6 +7,8 @@ import org.athletica.crm.SessionsFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,10 +46,10 @@ class OverdueJournalSchedulerTest {
                 .bind("orgId", fixture.orgId)
                 .list {
                     TaskRow(
-                        it.get("title", String::class.java)!!,
-                        it.get("description", String::class.java)!!,
-                        it.get("a", String::class.java),
-                        it.get("c", String::class.java),
+                        it.asString("title"),
+                        it.asString("description"),
+                        it.asStringOrNull("a"),
+                        it.asStringOrNull("c"),
                     )
                 }
         }

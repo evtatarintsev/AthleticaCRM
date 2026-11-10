@@ -20,6 +20,7 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asIntOrNull
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -85,8 +86,8 @@ class DbSessionDebitPreviewView : SessionDebitPreviewView {
         DebitMembershipSchema(
             id = asUuid("${prefix}_id").toMembershipId(),
             name = asString("${prefix}_name"),
-            sessionsRemaining = get("${prefix}_remaining", Int::class.javaObjectType),
-            sessionsTotal = get("${prefix}_total", Int::class.javaObjectType),
+            sessionsRemaining = asIntOrNull("${prefix}_remaining"),
+            sessionsTotal = asIntOrNull("${prefix}_total"),
         )
 
     private companion object {

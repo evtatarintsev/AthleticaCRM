@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
@@ -49,29 +50,33 @@ class MembershipSchedulerTest {
     }
 
     private suspend fun notificationsCount(): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) AS c FROM notification_recipients WHERE employee_id = :e")
-            .bind("e", fixture.employeeId)
-            .firstOrNull { it.get("c", java.lang.Long::class.java)!!.toLong() } ?: 0
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) AS c FROM notification_recipients WHERE employee_id = :e")
+                .bind("e", fixture.employeeId)
+                .firstOrNull { it.get("c", java.lang.Long::class.java)!!.toLong() } ?: 0
+        }
 
     @Test
     fun `активация по наступлении даты — с этой датой и системным автором`() =
-        runTest {
-            val issued = fixture.issue(fixture.insertClient(), Activation.OnDate(LocalDate(2026, 10, 20)))
+        orThrow {
+            runTest {
+                val issued = fixture.issue(fixture.insertClient(), Activation.OnDate(LocalDate(2026, 10, 20)))
 
-            fixture.at(LocalDate(2026, 10, 19))
-            scheduler.processDue()
-            assertIs<InactiveMembership>(fixture.reload(issued.id))
+                fixture.at(LocalDate(2026, 10, 19))
+                scheduler.processDue()
+                assertIs<InactiveMembership>(fixture.reload(issued.id))
 
-            fixture.at(LocalDate(2026, 10, 20))
-            scheduler.processDue()
-            assertEquals(LocalDate(2026, 10, 20), assertIs<ActiveMembership>(fixture.reload(issued.id)).startDate)
-            val actor =
-                TestPostgres.db
-                    .sql("SELECT actor_id, payload->>'reason' AS reason FROM membership_events WHERE membership_id = :id AND kind = 'ACTIVATED'")
-                    .bind("id", issued.id)
-                    .firstOrNull { (it.get("actor_id", java.util.UUID::class.java)?.toString() ?: "system") to it.get("reason", String::class.java) }
-            assertEquals("system" to ActivationReason.ON_DATE.name, actor)
+                fixture.at(LocalDate(2026, 10, 20))
+                scheduler.processDue()
+                assertEquals(LocalDate(2026, 10, 20), assertIs<ActiveMembership>(fixture.reload(issued.id)).startDate)
+                val actor =
+                    TestPostgres.db
+                        .sql("SELECT actor_id, payload->>'reason' AS reason FROM membership_events WHERE membership_id = :id AND kind = 'ACTIVATED'")
+                        .bind("id", issued.id)
+                        .firstOrNull { (it.get("actor_id", java.util.UUID::class.java)?.toString() ?: "system") to it.get("reason", String::class.java) }
+                assertEquals("system" to ActivationReason.ON_DATE.name, actor)
+            }
         }
 
     @Test
@@ -169,15 +174,17 @@ class MembershipSchedulerTest {
 
     @Test
     fun `удалённому выдавшему уведомление не отправляется`() =
-        runTest {
-            val issued = fixture.issue(fixture.insertClient())
-            TestPostgres.db.sql("UPDATE employees SET is_active = false WHERE id = :id").bind("id", fixture.employeeId).execute()
+        orThrow {
+            runTest {
+                val issued = fixture.issue(fixture.insertClient())
+                TestPostgres.db.sql("UPDATE employees SET is_active = false WHERE id = :id").bind("id", fixture.employeeId).execute()
 
-            fixture.at(LocalDate(2026, 11, 16))
-            scheduler.processDue()
+                fixture.at(LocalDate(2026, 11, 16))
+                scheduler.processDue()
 
-            assertNull(assertIs<ActiveMembership>(fixture.reload(issued.id)).closeNotifiedAt)
-            assertEquals(0, notificationsCount())
+                assertNull(assertIs<ActiveMembership>(fixture.reload(issued.id)).closeNotifiedAt)
+                assertEquals(0, notificationsCount())
+            }
         }
 
     @Test

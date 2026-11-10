@@ -9,6 +9,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipUnfrozenEventSchema
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.FreezeStatus
 import org.athletica.crm.core.subscription.UnfreezeReason
@@ -87,10 +88,12 @@ class MembershipFreezeTest {
 
     /** Записи аудита абонемента [id]: имя автора и данные, от старых к новым. */
     private suspend fun auditRows(id: MembershipId): List<Pair<String, String>> =
-        TestPostgres.db
-            .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id ORDER BY created_at, id")
-            .bind("id", id)
-            .list { it.get("username", String::class.java)!! to it.get("data", String::class.java)!! }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id ORDER BY created_at, id")
+                .bind("id", id)
+                .list { it.get("username", String::class.java)!! to it.get("data", String::class.java)!! }
+        }
 
     @Test
     fun `правила заморозки — состояние и неиспользованные дни`() {

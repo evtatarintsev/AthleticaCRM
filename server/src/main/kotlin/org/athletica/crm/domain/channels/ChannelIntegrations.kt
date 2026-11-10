@@ -62,6 +62,6 @@ interface ChannelIntegrations {
      * Worker-путь: возвращает интеграцию по [id] без привязки к организации, готовую к отправке
      * ([ChannelIntegration.send]). Используется фоновым диспетчером. `null`, если интеграция удалена.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration?
 }

@@ -17,6 +17,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toGroupId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -38,15 +39,16 @@ class DbClientListViewTest {
 
     private val baseInstant = Instant.fromEpochMilliseconds(1_700_000_000_000)
 
-    private suspend fun insertOrg(name: String = "Test Org"): Uuid {
-        val orgId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId)
-            .bind("name", name)
-            .execute()
-        return orgId
-    }
+    private suspend fun insertOrg(name: String = "Test Org"): Uuid =
+        orThrow {
+            val orgId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId)
+                .bind("name", name)
+                .execute()
+            return orgId
+        }
 
     private suspend fun insertClient(
         orgId: Uuid,
@@ -54,82 +56,88 @@ class DbClientListViewTest {
         gender: String = "MALE",
         birthday: LocalDate? = null,
         archived: Boolean = false,
-    ): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO clients (id, org_id, name, gender, birthday, state)
-                VALUES (:id, :orgId, :name, :gender::gender, :birthday, :state::client_state)
-                """.trimIndent(),
-            )
-            .bind("id", clientId)
-            .bind("orgId", orgId)
-            .bind("name", name)
-            .bind("gender", gender)
-            .bind("birthday", birthday)
-            .bind("state", if (archived) "ARCHIVED" else "ACTIVE")
-            .execute()
-        return clientId
-    }
-
-    private suspend fun ensureBranch(orgId: Uuid): Uuid {
-        val existing =
+    ): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
             TestPostgres.db
-                .sql("SELECT id FROM branches WHERE org_id = :orgId LIMIT 1")
+                .sql(
+                    """
+                    INSERT INTO clients (id, org_id, name, gender, birthday, state)
+                    VALUES (:id, :orgId, :name, :gender::gender, :birthday, :state::client_state)
+                    """.trimIndent(),
+                )
+                .bind("id", clientId)
                 .bind("orgId", orgId)
-                .firstOrNull { it.asUuid("id") }
-        if (existing != null) return existing
-        val branchId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-            .bind("id", branchId)
-            .bind("orgId", orgId)
-            .bind("name", "Основной")
-            .execute()
-        return branchId
-    }
+                .bind("name", name)
+                .bind("gender", gender)
+                .bind("birthday", birthday)
+                .bind("state", if (archived) "ARCHIVED" else "ACTIVE")
+                .execute()
+            return clientId
+        }
 
-    private suspend fun insertGroup(orgId: Uuid, name: String): Uuid {
-        val groupId = Uuid.generateV7()
-        val branchId = ensureBranch(orgId)
-        TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
-            .bind("id", groupId)
-            .bind("orgId", orgId)
-            .bind("name", name)
-            .bind("branchId", branchId)
-            .execute()
-        return groupId
-    }
+    private suspend fun ensureBranch(orgId: Uuid): Uuid =
+        orThrow {
+            val existing =
+                TestPostgres.db
+                    .sql("SELECT id FROM branches WHERE org_id = :orgId LIMIT 1")
+                    .bind("orgId", orgId)
+                    .firstOrNull { it.asUuid("id") }
+            if (existing != null) return existing
+            val branchId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", branchId)
+                .bind("orgId", orgId)
+                .bind("name", "Основной")
+                .execute()
+            return branchId
+        }
+
+    private suspend fun insertGroup(orgId: Uuid, name: String): Uuid =
+        orThrow {
+            val groupId = Uuid.generateV7()
+            val branchId = ensureBranch(orgId)
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
+                .bind("id", groupId)
+                .bind("orgId", orgId)
+                .bind("name", name)
+                .bind("branchId", branchId)
+                .execute()
+            return groupId
+        }
 
     private suspend fun addClientToGroup(clientId: ClientId, groupId: Uuid) {
-        TestPostgres.db
-            .sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
-            .bind("clientId", clientId)
-            .bind("groupId", groupId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
+                .bind("clientId", clientId)
+                .bind("groupId", groupId)
+                .execute()
+        }
     }
 
     /** Создаёт пользователя и сотрудника-владельца организации; возвращает id сотрудника. */
-    private suspend fun insertEmployee(orgId: Uuid): EmployeeId {
-        val userId = UserId.new()
-        val employeeId = EmployeeId.new()
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId)
-            .bind("login", "u$userId@example.com")
-            .bind("hash", "hash")
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
-            .bind("id", employeeId)
-            .bind("userId", userId)
-            .bind("orgId", orgId)
-            .bind("name", "Admin")
-            .execute()
-        return employeeId
-    }
+    private suspend fun insertEmployee(orgId: Uuid): EmployeeId =
+        orThrow {
+            val userId = UserId.new()
+            val employeeId = EmployeeId.new()
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId)
+                .bind("login", "u$userId@example.com")
+                .bind("hash", "hash")
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+                .bind("id", employeeId)
+                .bind("userId", userId)
+                .bind("orgId", orgId)
+                .bind("name", "Admin")
+                .execute()
+            return employeeId
+        }
 
     private suspend fun insertJournalEntry(
         orgId: Uuid,
@@ -139,21 +147,23 @@ class DbClientListViewTest {
         createdAt: Instant,
         operationType: String = "admin_credit",
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, performed_by, created_at)
-                VALUES (:orgId, :clientId, :amount, :balanceAfter, :type::balance_operation_type, :performedBy, :createdAt)
-                """.trimIndent(),
-            )
-            .bind("orgId", orgId)
-            .bind("clientId", clientId)
-            .bind("amount", Money(balanceAfter, Currency.RUB))
-            .bind("balanceAfter", Money(balanceAfter, Currency.RUB))
-            .bind("type", operationType)
-            .bind("performedBy", performedBy)
-            .bind("createdAt", createdAt)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, performed_by, created_at)
+                    VALUES (:orgId, :clientId, :amount, :balanceAfter, :type::balance_operation_type, :performedBy, :createdAt)
+                    """.trimIndent(),
+                )
+                .bind("orgId", orgId)
+                .bind("clientId", clientId)
+                .bind("amount", Money(balanceAfter, Currency.RUB))
+                .bind("balanceAfter", Money(balanceAfter, Currency.RUB))
+                .bind("type", operationType)
+                .bind("performedBy", performedBy)
+                .bind("createdAt", createdAt)
+                .execute()
+        }
     }
 
     private suspend fun insertContact(
@@ -162,19 +172,21 @@ class DbClientListViewTest {
         type: String,
         value: String,
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO client_contacts (id, org_id, client_id, type, value)
-                VALUES (:id, :orgId, :clientId, :type, :value)
-                """.trimIndent(),
-            )
-            .bind("id", Uuid.generateV7())
-            .bind("orgId", orgId)
-            .bind("clientId", clientId)
-            .bind("type", type)
-            .bind("value", value)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO client_contacts (id, org_id, client_id, type, value)
+                    VALUES (:id, :orgId, :clientId, :type, :value)
+                    """.trimIndent(),
+                )
+                .bind("id", Uuid.generateV7())
+                .bind("orgId", orgId)
+                .bind("clientId", clientId)
+                .bind("type", type)
+                .bind("value", value)
+                .execute()
+        }
     }
 
     private fun ctx(orgId: Uuid) =

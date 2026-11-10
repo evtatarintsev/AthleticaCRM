@@ -71,7 +71,7 @@ class DbDeliveries : Deliveries {
             .bind("orgId", ctx.orgId)
             .list { row -> row.toDelivery() }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun pending(limit: Int): List<PendingDelivery> =
         tr.sql(
             """
@@ -95,7 +95,7 @@ class DbDeliveries : Deliveries {
                 )
             }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun markSent(id: DeliveryId, ref: ProviderMessageRef) {
         tr.sql(
             """
@@ -109,7 +109,7 @@ class DbDeliveries : Deliveries {
             .execute()
     }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun markFailed(id: DeliveryId, error: DeliveryError) {
         tr.sql(
             """
@@ -124,7 +124,7 @@ class DbDeliveries : Deliveries {
             .execute()
     }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun retryLater(id: DeliveryId, error: DeliveryError) {
         tr.sql(
             """

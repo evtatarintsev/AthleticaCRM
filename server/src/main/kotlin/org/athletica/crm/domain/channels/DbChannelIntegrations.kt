@@ -3,7 +3,6 @@ package org.athletica.crm.domain.channels
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
@@ -49,19 +48,18 @@ class DbChannelIntegrations(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
         ensureBotNotInUse(id, config)
-        uniqueBot {
-            tr.sql(
-                """
-                INSERT INTO channel_integrations (id, org_id, name, config, enabled)
-                VALUES (:id, :orgId, :name, :config::jsonb, true)
-                """.trimIndent(),
-            )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("name", name)
-                .bind("config", config.toJson())
-                .execute()
-        }
+        tr.sql(
+            """
+            INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+            VALUES (:id, :orgId, :name, :config::jsonb, true)
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", name)
+            .bind("config", config.toJson())
+            .onViolation("uq_channel_integrations_telegram_token") { botInUse() }
+            .execute()
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -80,20 +78,20 @@ class DbChannelIntegrations(
     ) {
         ensureBotNotInUse(id, config)
         val updated =
-            uniqueBot {
-                tr.sql(
-                    """
-                    UPDATE channel_integrations
-                    SET name = :name, config = :config::jsonb
-                    WHERE id = :id AND org_id = :orgId
-                    """.trimIndent(),
-                )
-                    .bind("id", id)
-                    .bind("orgId", ctx.orgId)
-                    .bind("name", name)
-                    .bind("config", config.toJson())
-                    .execute()
-            }
+            tr.sql(
+                """
+                UPDATE channel_integrations
+                SET name = :name, config = :config::jsonb
+                WHERE id = :id AND org_id = :orgId
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("name", name)
+                .bind("config", config.toJson())
+                .onViolation("uq_channel_integrations_telegram_token") { botInUse() }
+                .execute()
+
         ensure(updated != 0L) { channelNotFound() }
     }
 
@@ -136,7 +134,7 @@ class DbChannelIntegrations(
             .execute()
     }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration? =
         tr.sql("SELECT id, name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
             .bind("id", id)
@@ -165,18 +163,6 @@ class DbChannelIntegrations(
                 .firstOrNull { row -> row.asBoolean("in_use") } ?: false
         ensure(!inUse) { botInUse() }
     }
-
-    /**
-     * Выполняет запись [block], переводя нарушение уникального индекса токена бота в `TELEGRAM_BOT_IN_USE`:
-     * индекс страхует гонку двух одновременных сохранений, которую не ловит [ensureBotNotInUse].
-     */
-    context(ctx: RequestContext, raise: Raise<AppError>)
-    private suspend fun uniqueBot(block: suspend () -> Long): Long =
-        try {
-            block()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            raise(botInUse())
-        }
 
     /** Ошибка «интеграция канала не найдена». */
     private fun channelNotFound(): CommonDomainError = CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена")

@@ -1,11 +1,13 @@
 package org.athletica.crm.read.sessions
 
+import arrow.core.raise.Raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalTime
@@ -15,7 +17,7 @@ import kotlin.time.Duration
 import kotlin.time.Instant
 
 /** Занятия всех организаций, срок задачи по которым наступил за последние [lookback]. */
-context(tr: Transaction)
+context(tr: Transaction, raise: Raise<AppError>)
 internal suspend fun dueJournalSessions(
     now: Instant,
     fromDate: LocalDate,

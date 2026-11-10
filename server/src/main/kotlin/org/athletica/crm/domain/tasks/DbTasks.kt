@@ -109,6 +109,7 @@ class DbTasks : Tasks {
     }
 
     /** Загружает вложения для списка задач одним запросом. */
+    context(raise: Raise<AppError>)
     private suspend fun loadAttachments(
         taskIds: List<TaskId>,
         tr: Transaction,

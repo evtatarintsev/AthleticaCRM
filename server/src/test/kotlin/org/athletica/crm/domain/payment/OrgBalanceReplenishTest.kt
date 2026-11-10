@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
@@ -25,65 +26,69 @@ class OrgBalanceReplenishTest {
 
     @Test
     fun `replenish зачисляет сумму на баланс с типом replenishment`() =
-        runTest {
-            val orgId = insertOrg()
-            val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
+        orThrow {
+            runTest {
+                val orgId = insertOrg()
+                val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
 
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx) {
-                            val balance = orgBalances.current()
-                            balance.replenish(
-                                amount = Money(500_00, Currency.RUB),
-                                description = "Пополнение баланса, платёж #ext_001",
-                            )
+                val result =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(ctx) {
+                                val balance = orgBalances.current()
+                                balance.replenish(
+                                    amount = Money(500_00, Currency.RUB),
+                                    description = "Пополнение баланса, платёж #ext_001",
+                                )
+                            }
                         }
                     }
-                }
 
-            assertIs<arrow.core.Either.Right<*>>(result)
+                assertIs<arrow.core.Either.Right<*>>(result)
 
-            // Проверяем запись в журнале
-            val operationType =
-                TestPostgres.db
-                    .sql("SELECT operation_type FROM org_balance_journal WHERE org_id = :orgId")
-                    .bind("orgId", orgId)
-                    .firstOrNull { row -> row.get("operation_type", String::class.java) }
+                // Проверяем запись в журнале
+                val operationType =
+                    TestPostgres.db
+                        .sql("SELECT operation_type FROM org_balance_journal WHERE org_id = :orgId")
+                        .bind("orgId", orgId)
+                        .firstOrNull { row -> row.get("operation_type", String::class.java) }
 
-            assertEquals("replenishment", operationType)
+                assertEquals("replenishment", operationType)
+            }
         }
 
     @Test
     fun `replenish обновляет баланс организации`() =
-        runTest {
-            val orgId = insertOrg()
-            val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
+        orThrow {
+            runTest {
+                val orgId = insertOrg()
+                val ctx = SystemRequestContext(orgId = OrgId(orgId), currency = Currency.RUB)
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val balance = orgBalances.current()
-                        balance.replenish(Money(100_00, Currency.RUB), "Первое пополнение")
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            val balance = orgBalances.current()
+                            balance.replenish(Money(100_00, Currency.RUB), "Первое пополнение")
+                        }
                     }
                 }
-            }
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val balance = orgBalances.current()
-                        balance.replenish(Money(200_00, Currency.RUB), "Второе пополнение")
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            val balance = orgBalances.current()
+                            balance.replenish(Money(200_00, Currency.RUB), "Второе пополнение")
+                        }
                     }
                 }
+
+                val totalAmount =
+                    TestPostgres.db
+                        .sql("SELECT COALESCE(SUM(amount), 0) AS total FROM org_balance_journal WHERE org_id = :orgId")
+                        .bind("orgId", orgId)
+                        .firstOrNull { row -> row.get("total", java.math.BigDecimal::class.java)!! }
+
+                assertEquals(java.math.BigDecimal("300.00"), totalAmount)
             }
-
-            val totalAmount =
-                TestPostgres.db
-                    .sql("SELECT COALESCE(SUM(amount), 0) AS total FROM org_balance_journal WHERE org_id = :orgId")
-                    .bind("orgId", orgId)
-                    .firstOrNull { row -> row.get("total", java.math.BigDecimal::class.java)!! }
-
-            assertEquals(java.math.BigDecimal("300.00"), totalAmount)
         }
 
     @Test
@@ -126,13 +131,14 @@ class OrgBalanceReplenishTest {
 
     // ── Хелперы ──────────────────────────────────────────────────────────────
 
-    private suspend fun insertOrg(name: String = "Тестовая организация"): Uuid {
-        val orgId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId)
-            .bind("name", name)
-            .execute()
-        return orgId
-    }
+    private suspend fun insertOrg(name: String = "Тестовая организация"): Uuid =
+        orThrow {
+            val orgId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId)
+                .bind("name", name)
+                .execute()
+            return orgId
+        }
 }

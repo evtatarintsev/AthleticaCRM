@@ -9,6 +9,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
@@ -70,7 +71,7 @@ class MembershipScheduler(
 
     /** Один проход: обрабатывает все абонементы, которым на сейчас положено действие. */
     suspend fun processDue() {
-        val due = db.transaction { dueMemberships(clock.now()) }
+        val due = db.transaction { orThrow { dueMemberships(clock.now()) } }
         due.forEach { (orgId, membershipId) ->
             try {
                 db.transaction {

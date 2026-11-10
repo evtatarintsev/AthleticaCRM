@@ -11,6 +11,7 @@ import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.channels.ChannelChat
 import org.athletica.crm.i18n.BotMessages
 import org.athletica.crm.storage.Database
@@ -102,7 +103,7 @@ class TelegramPoller(
      * экземпляра, Bot API недоступен или обработка откатилась: стоит подождать перед повтором.
      */
     suspend fun pollOnce(): Boolean {
-        val offset = db.transaction { state.acquire(integration.id, owner, integration.botId) } ?: return false
+        val offset = db.transaction { orThrow { state.acquire(integration.id, owner, integration.botId) } } ?: return false
         val updates =
             when (val result = api.getUpdates(integration.token, offset, pollTimeoutSeconds, BATCH_LIMIT)) {
                 is TelegramResult.Ok -> result.value

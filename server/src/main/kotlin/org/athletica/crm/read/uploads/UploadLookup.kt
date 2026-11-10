@@ -1,13 +1,15 @@
 package org.athletica.crm.read.uploads
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 
 /** Метаданные файла, доступного в организации текущего сотрудника. */
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 internal suspend fun uploadById(id: UploadId): UploadRow? =
     tr.sql(
         """

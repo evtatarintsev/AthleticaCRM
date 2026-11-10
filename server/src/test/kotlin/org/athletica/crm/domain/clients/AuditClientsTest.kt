@@ -38,7 +38,7 @@ private object FakeTransaction : Transaction {
 private class AuditLogStub : AuditLog {
     val events: MutableList<AuditEvent> = mutableListOf()
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }

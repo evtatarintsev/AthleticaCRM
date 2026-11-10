@@ -1,9 +1,11 @@
 package org.athletica.crm.domain.attendance
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.i18n.LocalizationKey
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -25,7 +27,7 @@ object DefaultAttendanceLabels {
         )
 
     /** Создаёт предустановленные метки в организации [orgId] с названиями на языке [lang]. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun createFor(orgId: OrgId, lang: Lang) {
         defaults.forEachIndexed { index, (name, scope) ->
             tr

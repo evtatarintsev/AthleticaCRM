@@ -12,6 +12,7 @@ import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
@@ -42,16 +43,18 @@ class SystemTasksTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, 'Org')").bind("id", orgId).execute()
-            listOf(employeeId to "Иван", otherEmployeeId to "Пётр").forEach { (id, name) ->
-                TestPostgres.db
-                    .sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                    .bind("id", id)
-                    .bind("orgId", orgId)
-                    .bind("name", name)
-                    .execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, 'Org')").bind("id", orgId).execute()
+                listOf(employeeId to "Иван", otherEmployeeId to "Пётр").forEach { (id, name) ->
+                    TestPostgres.db
+                        .sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                        .bind("id", id)
+                        .bind("orgId", orgId)
+                        .bind("name", name)
+                        .execute()
+                }
             }
         }
     }

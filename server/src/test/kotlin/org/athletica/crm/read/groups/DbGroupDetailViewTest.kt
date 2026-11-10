@@ -19,6 +19,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -40,115 +41,130 @@ class DbGroupDetailViewTest {
         TestPostgres.truncate()
     }
 
-    private suspend fun insertOrg(name: String = "Test Org"): Uuid {
-        val orgId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId).bind("name", name)
-            .execute()
-        return orgId
-    }
-
-    private suspend fun ensureBranch(orgId: Uuid): Uuid {
-        val existing =
+    private suspend fun insertOrg(name: String = "Test Org"): Uuid =
+        orThrow {
+            val orgId = Uuid.generateV7()
             TestPostgres.db
-                .sql("SELECT id FROM branches WHERE org_id = :orgId LIMIT 1")
-                .bind("orgId", orgId)
-                .firstOrNull { it.asUuid("id") }
-        if (existing != null) return existing
-        val branchId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-            .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной")
-            .execute()
-        return branchId
-    }
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId).bind("name", name)
+                .execute()
+            return orgId
+        }
 
-    private suspend fun insertGroup(orgId: Uuid, name: String): GroupId {
-        val groupId = GroupId.new()
-        TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
-            .bind("id", groupId).bind("orgId", orgId).bind("name", name)
-            .bind("branchId", ensureBranch(orgId))
-            .execute()
-        return groupId
-    }
+    private suspend fun ensureBranch(orgId: Uuid): Uuid =
+        orThrow {
+            val existing =
+                TestPostgres.db
+                    .sql("SELECT id FROM branches WHERE org_id = :orgId LIMIT 1")
+                    .bind("orgId", orgId)
+                    .firstOrNull { it.asUuid("id") }
+            if (existing != null) return existing
+            val branchId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной")
+                .execute()
+            return branchId
+        }
 
-    private suspend fun insertClient(orgId: Uuid, name: String): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", clientId).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return clientId
-    }
+    private suspend fun insertGroup(orgId: Uuid, name: String): GroupId =
+        orThrow {
+            val groupId = GroupId.new()
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
+                .bind("id", groupId).bind("orgId", orgId).bind("name", name)
+                .bind("branchId", ensureBranch(orgId))
+                .execute()
+            return groupId
+        }
+
+    private suspend fun insertClient(orgId: Uuid, name: String): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return clientId
+        }
 
     private suspend fun enroll(clientId: ClientId, groupId: GroupId, left: Boolean = false) {
-        TestPostgres.db
-            .sql(
-                "INSERT INTO enrollments (client_id, group_id, left_at) VALUES (:c, :g, ${if (left) "NOW()" else "NULL"})",
-            )
-            .bind("c", clientId).bind("g", groupId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    "INSERT INTO enrollments (client_id, group_id, left_at) VALUES (:c, :g, ${if (left) "NOW()" else "NULL"})",
+                )
+                .bind("c", clientId).bind("g", groupId)
+                .execute()
+        }
     }
 
-    private suspend fun insertDiscipline(orgId: Uuid, name: String): DisciplineId {
-        val id = DisciplineId.new()
-        TestPostgres.db
-            .sql("INSERT INTO disciplines (id, org_id, name) VALUES (:id, :orgId, :name)")
-            .bind("id", id).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertDiscipline(orgId: Uuid, name: String): DisciplineId =
+        orThrow {
+            val id = DisciplineId.new()
+            TestPostgres.db
+                .sql("INSERT INTO disciplines (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", id).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return id
+        }
 
     private suspend fun linkDiscipline(groupId: GroupId, disciplineId: DisciplineId) {
-        TestPostgres.db
-            .sql("INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:g, :d)")
-            .bind("g", groupId).bind("d", disciplineId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:g, :d)")
+                .bind("g", groupId).bind("d", disciplineId)
+                .execute()
+        }
     }
 
-    private suspend fun insertEmployee(orgId: Uuid, name: String): EmployeeId {
-        val id = EmployeeId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
-                VALUES (:id, :orgId, :name, true, true, NOW())
-                """.trimIndent(),
-            )
-            .bind("id", id).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertEmployee(orgId: Uuid, name: String): EmployeeId =
+        orThrow {
+            val id = EmployeeId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
+                    VALUES (:id, :orgId, :name, true, true, NOW())
+                    """.trimIndent(),
+                )
+                .bind("id", id).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return id
+        }
 
     private suspend fun linkEmployee(groupId: GroupId, employeeId: EmployeeId) {
-        TestPostgres.db
-            .sql("INSERT INTO group_employees (group_id, employee_id) VALUES (:g, :e)")
-            .bind("g", groupId).bind("e", employeeId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("INSERT INTO group_employees (group_id, employee_id) VALUES (:g, :e)")
+                .bind("g", groupId).bind("e", employeeId)
+                .execute()
+        }
     }
 
-    private suspend fun insertHall(orgId: Uuid, name: String): HallId {
-        val id = HallId.new()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-            .bind("id", id).bind("orgId", orgId).bind("branchId", ensureBranch(orgId)).bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertHall(orgId: Uuid, name: String): HallId =
+        orThrow {
+            val id = HallId.new()
+            TestPostgres.db
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                .bind("id", id).bind("orgId", orgId).bind("branchId", ensureBranch(orgId)).bind("name", name)
+                .execute()
+            return id
+        }
 
     private suspend fun insertSlot(orgId: Uuid, groupId: GroupId, hallId: HallId) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
-                VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId,
-                        daterange(CURRENT_DATE, NULL))
-                """.trimIndent(),
-            )
-            .bind("orgId", orgId).bind("groupId", groupId).bind("hallId", hallId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
+                    VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId,
+                            daterange(CURRENT_DATE, NULL))
+                    """.trimIndent(),
+                )
+                .bind("orgId", orgId).bind("groupId", groupId).bind("hallId", hallId)
+                .execute()
+        }
     }
 
     private suspend fun detail(orgId: Uuid, id: GroupId): Either<AppError, GroupDetailResponse> {
@@ -272,17 +288,19 @@ class DbGroupDetailViewTest {
         from: kotlinx.datetime.LocalDate,
         to: kotlinx.datetime.LocalDate?,
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
-                VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId,
-                        daterange(:from::date, :to::date))
-                """.trimIndent(),
-            )
-            .bind("orgId", orgId).bind("groupId", groupId).bind("hallId", hallId)
-            .bind("from", from).bind("to", to)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO schedule_slots (org_id, group_id, day_of_week, start_time, end_time, hall_id, validity)
+                    VALUES (:orgId, :groupId, 'WEDNESDAY'::day_of_week, '18:00'::time, '19:00'::time, :hallId,
+                            daterange(:from::date, :to::date))
+                    """.trimIndent(),
+                )
+                .bind("orgId", orgId).bind("groupId", groupId).bind("hallId", hallId)
+                .bind("from", from).bind("to", to)
+                .execute()
+        }
     }
 }
 

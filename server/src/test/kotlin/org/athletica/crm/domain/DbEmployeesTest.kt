@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
@@ -54,12 +55,14 @@ class DbEmployeesTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Org 2").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org 1").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Org 2").execute()
+            }
         }
     }
 
@@ -179,44 +182,46 @@ class DbEmployeesTest {
 
     @Test
     fun `byId загружает права ролей сотрудника`() =
-        runTest {
-            val id = EmployeeId.new()
-            val roleId = Uuid.random()
+        orThrow {
+            runTest {
+                val id = EmployeeId.new()
+                val roleId = Uuid.random()
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        employees.new(id, "Менеджер", null, null, null, emptyPermission)
-                    }
-                }
-            }.getOrElse { fail("Setup failed: $it") }
-
-            runBlocking {
-                TestPostgres.db
-                    .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
-                    .bind("id", roleId)
-                    .bind("orgId", orgId)
-                    .bind("name", "Тренер")
-                    .execute()
-                TestPostgres.db
-                    .sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
-                    .bind("roleId", roleId)
-                    .bind("key", UserPermission.CAN_VIEW_CLIENT_BALANCE.name)
-                    .execute()
-                TestPostgres.db
-                    .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
-                    .bind("employeeId", id)
-                    .bind("roleId", roleId)
-                    .execute()
-            }
-
-            val employee =
                 either {
-                    TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
-                }.getOrElse { fail("Unexpected error: $it") }
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            employees.new(id, "Менеджер", null, null, null, emptyPermission)
+                        }
+                    }
+                }.getOrElse { fail("Setup failed: $it") }
 
-            assertTrue(employee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
-            assertFalse(employee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+                runBlocking {
+                    TestPostgres.db
+                        .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
+                        .bind("id", roleId)
+                        .bind("orgId", orgId)
+                        .bind("name", "Тренер")
+                        .execute()
+                    TestPostgres.db
+                        .sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
+                        .bind("roleId", roleId)
+                        .bind("key", UserPermission.CAN_VIEW_CLIENT_BALANCE.name)
+                        .execute()
+                    TestPostgres.db
+                        .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
+                        .bind("employeeId", id)
+                        .bind("roleId", roleId)
+                        .execute()
+                }
+
+                val employee =
+                    either {
+                        TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+                    }.getOrElse { fail("Unexpected error: $it") }
+
+                assertTrue(employee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                assertFalse(employee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+            }
         }
 
     @Test
@@ -544,10 +549,12 @@ class DbEmployeesTest {
 
     /** Делает сотрудника [id] владельцем организации, как это делает регистрация. */
     private suspend fun markOwner(id: EmployeeId) {
-        TestPostgres.db
-            .sql("UPDATE employees SET is_owner = true WHERE id = :id")
-            .bind("id", id)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("UPDATE employees SET is_owner = true WHERE id = :id")
+                .bind("id", id)
+                .execute()
+        }
     }
 
     /** Возвращает [Employee] с теми же данными и новой настройкой прав [permissions]. */

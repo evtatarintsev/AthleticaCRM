@@ -9,6 +9,7 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -66,26 +67,28 @@ class SignUpTest {
 
     @Test
     fun `signUp создаёт новой организации предустановленные метки посещаемости`() =
-        runTest {
-            val result = signup(request())
-            val user = assertIs<Either.Right<AuthenticatedUser>>(result).value
+        orThrow {
+            runTest {
+                val result = signup(request())
+                val user = assertIs<Either.Right<AuthenticatedUser>>(result).value
 
-            val labels =
-                TestPostgres.db
-                    .sql("SELECT name, scope::text AS scope FROM attendance_labels WHERE org_id = :orgId ORDER BY position")
-                    .bind("orgId", user.orgId)
-                    .list { it.asString("name") to it.asString("scope") }
+                val labels =
+                    TestPostgres.db
+                        .sql("SELECT name, scope::text AS scope FROM attendance_labels WHERE org_id = :orgId ORDER BY position")
+                        .bind("orgId", user.orgId)
+                        .list { it.asString("name") to it.asString("scope") }
 
-            assertEquals(
-                listOf(
-                    "Опоздал" to "present",
-                    "Ушёл раньше" to "present",
-                    "Болеет" to "absent",
-                    "Предупредил" to "absent",
-                    "Прогул" to "absent",
-                ),
-                labels,
-            )
+                assertEquals(
+                    listOf(
+                        "Опоздал" to "present",
+                        "Ушёл раньше" to "present",
+                        "Болеет" to "absent",
+                        "Предупредил" to "absent",
+                        "Прогул" to "absent",
+                    ),
+                    labels,
+                )
+            }
         }
 
     /** Регистрирует организацию с логином [login] на языке [lang]. */
@@ -96,11 +99,13 @@ class SignUpTest {
 
     /** Название и пояснение источников клиентов организации [orgId]. */
     private suspend fun leadSourcesOf(orgId: OrgId): Set<Pair<String, String>> =
-        TestPostgres.db
-            .sql("SELECT name, description FROM lead_sources WHERE org_id = :orgId")
-            .bind("orgId", orgId)
-            .list { it.asString("name") to it.asString("description") }
-            .toSet()
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT name, description FROM lead_sources WHERE org_id = :orgId")
+                .bind("orgId", orgId)
+                .list { it.asString("name") to it.asString("description") }
+                .toSet()
+        }
 
     @Test
     fun `signUp на русском создаёт стартовый набор источников клиентов`() =
@@ -148,16 +153,18 @@ class SignUpTest {
 
     @Test
     fun `у каждой организации свой стартовый набор источников`() =
-        runTest {
-            val first = signedUp(login = "first@example.com")
-            val second = signedUp(login = "second@example.com")
+        orThrow {
+            runTest {
+                val first = signedUp(login = "first@example.com")
+                val second = signedUp(login = "second@example.com")
 
-            TestPostgres.db
-                .sql("DELETE FROM lead_sources WHERE org_id = :orgId AND name = 'Другое'")
-                .bind("orgId", first.orgId)
-                .execute()
+                TestPostgres.db
+                    .sql("DELETE FROM lead_sources WHERE org_id = :orgId AND name = 'Другое'")
+                    .bind("orgId", first.orgId)
+                    .execute()
 
-            assertEquals(9, leadSourcesOf(first.orgId).size)
-            assertEquals(10, leadSourcesOf(second.orgId).size)
+                assertEquals(9, leadSourcesOf(first.orgId).size)
+                assertEquals(10, leadSourcesOf(second.orgId).size)
+            }
         }
 }

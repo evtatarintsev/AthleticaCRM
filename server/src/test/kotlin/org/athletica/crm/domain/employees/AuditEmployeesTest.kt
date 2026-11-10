@@ -1,5 +1,6 @@
 package org.athletica.crm.domain.employees
 
+import arrow.core.raise.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.core.Lang
@@ -7,6 +8,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.EmployeesStub
@@ -31,7 +33,7 @@ private object FakeTransaction : Transaction {
 private class AuditLogStub : AuditLog {
     val events: MutableList<AuditEvent> = mutableListOf()
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }

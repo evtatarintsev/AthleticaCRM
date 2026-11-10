@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.PostgresAuditLog
@@ -36,30 +37,31 @@ class ChangePasswordTest {
     private suspend fun insertUser(
         login: String,
         password: String = "oldPass123",
-    ): Triple<UserId, OrgId, EmployeeId> {
-        val orgId = OrgId.new()
-        val userId = UserId.new()
-        val employeeId = EmployeeId.new()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId)
-            .bind("name", login)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId)
-            .bind("login", login)
-            .bind("hash", hasher.hash(password).value)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
-            .bind("id", employeeId)
-            .bind("userId", userId)
-            .bind("orgId", orgId)
-            .bind("name", login)
-            .execute()
-        return Triple(userId, orgId, employeeId)
-    }
+    ): Triple<UserId, OrgId, EmployeeId> =
+        orThrow {
+            val orgId = OrgId.new()
+            val userId = UserId.new()
+            val employeeId = EmployeeId.new()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId)
+                .bind("name", login)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId)
+                .bind("login", login)
+                .bind("hash", hasher.hash(password).value)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+                .bind("id", employeeId)
+                .bind("userId", userId)
+                .bind("orgId", orgId)
+                .bind("name", login)
+                .execute()
+            return Triple(userId, orgId, employeeId)
+        }
 
     private fun ctx(
         userId: UserId,
@@ -126,21 +128,23 @@ class ChangePasswordTest {
 
     @Test
     fun `concurrent changes with the same old password produce one success and one audit event`() =
-        runTest {
-            val (userId, orgId, employeeId) = insertUser("user@example.com")
-            val first = async { runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456")) }
-            val second = async { runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass789")) }
-            val results = listOf(first.await(), second.await())
-            assertIs<Either.Right<Unit>>(results.single { it.isRight() })
-            assertEquals("WRONG_PASSWORD", assertIs<Either.Left<AppError>>(results.single { it.isLeft() }).value.code)
+        orThrow {
+            runTest {
+                val (userId, orgId, employeeId) = insertUser("user@example.com")
+                val first = async { runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass456")) }
+                val second = async { runChangePassword(userId, orgId, employeeId, ChangePasswordRequest("oldPass123", "newPass789")) }
+                val results = listOf(first.await(), second.await())
+                assertIs<Either.Right<Unit>>(results.single { it.isRight() })
+                assertEquals("WRONG_PASSWORD", assertIs<Either.Left<AppError>>(results.single { it.isLeft() }).value.code)
 
-            val count =
-                TestPostgres.db
-                    .sql("SELECT COUNT(*) AS count FROM audit_logs WHERE user_id = :userId AND action_type = :actionType")
-                    .bind("userId", userId)
-                    .bind("actionType", AuditActionType.AUTH_CHANGE_PASSWORD.code)
-                    .firstOrNull { it.asLong("count") }
-            assertEquals(1L, count)
+                val count =
+                    TestPostgres.db
+                        .sql("SELECT COUNT(*) AS count FROM audit_logs WHERE user_id = :userId AND action_type = :actionType")
+                        .bind("userId", userId)
+                        .bind("actionType", AuditActionType.AUTH_CHANGE_PASSWORD.code)
+                        .firstOrNull { it.asLong("count") }
+                assertEquals(1L, count)
+            }
         }
 
     // ── ошибки ────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -48,29 +49,32 @@ class DbEmployeeDetailViewTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Other Org").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Other Org").execute()
+            }
         }
     }
 
     /** Вставляет сотрудника [name] в организацию [org]; [allBranchesAccess] — доступ ко всем филиалам. */
-    private suspend fun insertEmployee(name: String, org: OrgId = orgId, allBranchesAccess: Boolean = true): EmployeeId {
-        val id = EmployeeId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO employees (id, org_id, name, phone_no, email, all_branches_access)
-                VALUES (:id, :orgId, :name, '+79001112233', 'emp@example.com', :all)
-                """.trimIndent(),
-            )
-            .bind("id", id).bind("orgId", org).bind("name", name).bind("all", allBranchesAccess)
-            .execute()
-        return id
-    }
+    private suspend fun insertEmployee(name: String, org: OrgId = orgId, allBranchesAccess: Boolean = true): EmployeeId =
+        orThrow {
+            val id = EmployeeId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO employees (id, org_id, name, phone_no, email, all_branches_access)
+                    VALUES (:id, :orgId, :name, '+79001112233', 'emp@example.com', :all)
+                    """.trimIndent(),
+                )
+                .bind("id", id).bind("orgId", org).bind("name", name).bind("all", allBranchesAccess)
+                .execute()
+            return id
+        }
 
     private suspend fun detail(id: EmployeeId): Either<AppError, EmployeeDetailResponse> =
         either {
@@ -99,55 +103,59 @@ class DbEmployeeDetailViewTest {
 
     @Test
     fun `возвращает роли, персональные выдачи и отзывы прав`() =
-        runTest {
-            val id = insertEmployee("Менеджер")
-            val roleId = Uuid.random()
-            TestPostgres.db
-                .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, 'Тренер')")
-                .bind("id", roleId).bind("orgId", orgId)
-                .execute()
-            TestPostgres.db
-                .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
-                .bind("employeeId", id).bind("roleId", roleId)
-                .execute()
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
-                    VALUES (:id, :granted, true), (:id, :revoked, false)
-                    """.trimIndent(),
-                )
-                .bind("id", id)
-                .bind("granted", UserPermission.CAN_VIEW_ALL_TASKS.name)
-                .bind("revoked", UserPermission.CAN_VIEW_CLIENT_BALANCE.name)
-                .execute()
+        orThrow {
+            runTest {
+                val id = insertEmployee("Менеджер")
+                val roleId = Uuid.random()
+                TestPostgres.db
+                    .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, 'Тренер')")
+                    .bind("id", roleId).bind("orgId", orgId)
+                    .execute()
+                TestPostgres.db
+                    .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
+                    .bind("employeeId", id).bind("roleId", roleId)
+                    .execute()
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
+                        VALUES (:id, :granted, true), (:id, :revoked, false)
+                        """.trimIndent(),
+                    )
+                    .bind("id", id)
+                    .bind("granted", UserPermission.CAN_VIEW_ALL_TASKS.name)
+                    .bind("revoked", UserPermission.CAN_VIEW_CLIENT_BALANCE.name)
+                    .execute()
 
-            val response = detail(id).getOrElse { fail("Unexpected error: $it") }
+                val response = detail(id).getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(listOf(roleId), response.roles.map { it.id })
-            assertEquals("Тренер", response.roles.first().name)
-            assertEquals(setOf(UserPermission.CAN_VIEW_ALL_TASKS), response.grantedPermissions)
-            assertEquals(setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE), response.revokedPermissions)
+                assertEquals(listOf(roleId), response.roles.map { it.id })
+                assertEquals("Тренер", response.roles.first().name)
+                assertEquals(setOf(UserPermission.CAN_VIEW_ALL_TASKS), response.grantedPermissions)
+                assertEquals(setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE), response.revokedPermissions)
+            }
         }
 
     @Test
     fun `возвращает выбранные филиалы при ограниченном доступе`() =
-        runTest {
-            val id = insertEmployee("Тренер", allBranchesAccess = false)
-            val branchId = BranchId.new()
-            TestPostgres.db
-                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")
-                .bind("id", branchId).bind("orgId", orgId)
-                .execute()
-            TestPostgres.db
-                .sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
-                .bind("employeeId", id).bind("branchId", branchId)
-                .execute()
+        orThrow {
+            runTest {
+                val id = insertEmployee("Тренер", allBranchesAccess = false)
+                val branchId = BranchId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")
+                    .bind("id", branchId).bind("orgId", orgId)
+                    .execute()
+                TestPostgres.db
+                    .sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
+                    .bind("employeeId", id).bind("branchId", branchId)
+                    .execute()
 
-            val response = detail(id).getOrElse { fail("Unexpected error: $it") }
+                val response = detail(id).getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(false, response.allBranchesAccess)
-            assertEquals(listOf(branchId), response.branchIds)
+                assertEquals(false, response.allBranchesAccess)
+                assertEquals(listOf(branchId), response.branchIds)
+            }
         }
 
     @Test

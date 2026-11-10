@@ -30,7 +30,7 @@ class DbScheduleSync : ScheduleSync {
     }
 
     /** Создаёт занятия на все подходящие даты периодов слотов внутри горизонта. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun createMissing(today: LocalDate, horizon: LocalDate) {
         tr
             .sql(
@@ -54,7 +54,7 @@ class DbScheduleSync : ScheduleSync {
     }
 
     /** Подтягивает время и зал у нетронутых будущих занятий из их версии слота. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun updateAttributes(today: LocalDate) {
         tr
             .sql(
@@ -77,7 +77,7 @@ class DbScheduleSync : ScheduleSync {
      * Удаляет нетронутые будущие занятия, дата которых вышла за период своего слота.
      * Занятие исчезает, а не отменяется: отмена остаётся высказыванием человека.
      */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun deleteOutOfValidity(today: LocalDate) {
         tr
             .sql(
@@ -95,7 +95,7 @@ class DbScheduleSync : ScheduleSync {
     }
 
     /** Приводит состав тренеров нетронутых будущих занятий к составу их группы. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun syncEmployees(today: LocalDate) {
         tr
             .sql(

@@ -21,6 +21,7 @@ import org.athletica.crm.core.entityids.InboundReceiptId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
@@ -69,18 +70,20 @@ class SendMessageTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
-            insertIntegration(smsIntegrationId, SMS_CONFIG, enabled = true)
-            insertIntegration(disabledIntegrationId, SMS_CONFIG, enabled = false)
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
+                insertIntegration(smsIntegrationId, SMS_CONFIG, enabled = true)
+                insertIntegration(disabledIntegrationId, SMS_CONFIG, enabled = false)
+            }
         }
     }
 
@@ -89,36 +92,43 @@ class SendMessageTest {
         config: String,
         enabled: Boolean,
     ) {
-        TestPostgres.db.sql(
-            """
-            INSERT INTO channel_integrations (id, org_id, name, config, enabled)
-            VALUES (:id, :orgId, :name, :config::jsonb, :enabled)
-            """.trimIndent(),
-        )
-            .bind("id", id).bind("orgId", orgId)
-            .bind("name", "Test SMS").bind("config", config).bind("enabled", enabled).execute()
+        orThrow {
+            TestPostgres.db.sql(
+                """
+                INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+                VALUES (:id, :orgId, :name, :config::jsonb, :enabled)
+                """.trimIndent(),
+            )
+                .bind("id", id).bind("orgId", orgId)
+                .bind("name", "Test SMS").bind("config", config).bind("enabled", enabled).execute()
+        }
     }
 
-    private suspend fun addPhoneContact(value: String = "+79990001122"): ClientContactId {
-        val id = ClientContactId.new()
-        TestPostgres.db.sql(
-            """
-            INSERT INTO client_contacts (id, org_id, client_id, type, value)
-            VALUES (:id, :orgId, :clientId, 'PHONE', :value)
-            """.trimIndent(),
-        ).bind("id", id).bind("orgId", orgId).bind("clientId", clientId).bind("value", value).execute()
-        return id
-    }
+    private suspend fun addPhoneContact(value: String = "+79990001122"): ClientContactId =
+        orThrow {
+            val id = ClientContactId.new()
+            TestPostgres.db.sql(
+                """
+                INSERT INTO client_contacts (id, org_id, client_id, type, value)
+                VALUES (:id, :orgId, :clientId, 'PHONE', :value)
+                """.trimIndent(),
+            ).bind("id", id).bind("orgId", orgId).bind("clientId", clientId).bind("value", value).execute()
+            return id
+        }
 
     private suspend fun deliveryState(): String? =
-        TestPostgres.db.sql("SELECT state FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asString("state") }
+        orThrow {
+            TestPostgres.db.sql("SELECT state FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asString("state") }
+        }
 
     private suspend fun recipientAddress(): String? =
-        TestPostgres.db.sql("SELECT recipient_address FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asString("recipient_address") }
+        orThrow {
+            TestPostgres.db.sql("SELECT recipient_address FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asString("recipient_address") }
+        }
 
     private suspend fun send(
         integrationId: ChannelIntegrationId,
@@ -224,39 +234,43 @@ class SendMessageTest {
 
     @Test
     fun `Telegram без связки возвращает CLIENT_NOT_LINKED, даже если есть контакт-юзернейм`() =
-        runTest {
-            val telegramId = ChannelIntegrationId.new()
-            insertIntegration(telegramId, MessagingFixture.telegramConfig(), enabled = true)
-            TestPostgres.db.sql(
-                """
-                INSERT INTO client_contacts (id, org_id, client_id, type, value)
-                VALUES (:id, :orgId, :clientId, 'TELEGRAM', '@client')
-                """.trimIndent(),
-            ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId).execute()
+        orThrow {
+            runTest {
+                val telegramId = ChannelIntegrationId.new()
+                insertIntegration(telegramId, MessagingFixture.telegramConfig(), enabled = true)
+                TestPostgres.db.sql(
+                    """
+                    INSERT INTO client_contacts (id, org_id, client_id, type, value)
+                    VALUES (:id, :orgId, :clientId, 'TELEGRAM', '@client')
+                    """.trimIndent(),
+                ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId).execute()
 
-            val result = send(telegramId)
+                val result = send(telegramId)
 
-            val error = assertIs<Either.Left<AppError>>(result).value
-            assertEquals("CLIENT_NOT_LINKED", error.code)
-            assertEquals(null, deliveryState())
+                val error = assertIs<Either.Left<AppError>>(result).value
+                assertEquals("CLIENT_NOT_LINKED", error.code)
+                assertEquals(null, deliveryState())
+            }
         }
 
     @Test
     fun `Telegram со связкой отправляет на адрес из связки`() =
-        runTest {
-            val telegramId = ChannelIntegrationId.new()
-            insertIntegration(telegramId, MessagingFixture.telegramConfig(), enabled = true)
-            TestPostgres.db.sql(
-                """
-                INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
-                VALUES (:id, :orgId, :integrationId, :clientId, 'chat-42')
-                """.trimIndent(),
-            ).bind("id", ChannelBindingId.new()).bind("orgId", orgId).bind("integrationId", telegramId).bind("clientId", clientId).execute()
+        orThrow {
+            runTest {
+                val telegramId = ChannelIntegrationId.new()
+                insertIntegration(telegramId, MessagingFixture.telegramConfig(), enabled = true)
+                TestPostgres.db.sql(
+                    """
+                    INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
+                    VALUES (:id, :orgId, :integrationId, :clientId, 'chat-42')
+                    """.trimIndent(),
+                ).bind("id", ChannelBindingId.new()).bind("orgId", orgId).bind("integrationId", telegramId).bind("clientId", clientId).execute()
 
-            val result = send(telegramId)
+                val result = send(telegramId)
 
-            assertIs<Either.Right<ConversationResponse>>(result)
-            assertEquals("chat-42", recipientAddress())
+                assertIs<Either.Right<ConversationResponse>>(result)
+                assertEquals("chat-42", recipientAddress())
+            }
         }
 
     @Test
@@ -272,17 +286,19 @@ class SendMessageTest {
 
     @Test
     fun `канал только с входящими нельзя удалить`() =
-        runTest {
-            TestPostgres.db.sql(
-                """
-                INSERT INTO inbound_receipts (id, org_id, integration_id, from_address, body)
-                VALUES (:id, :orgId, :integrationId, 'chat-1', 'Привет')
-                """.trimIndent(),
-            ).bind("id", InboundReceiptId.new()).bind("orgId", orgId).bind("integrationId", smsIntegrationId).execute()
+        orThrow {
+            runTest {
+                TestPostgres.db.sql(
+                    """
+                    INSERT INTO inbound_receipts (id, org_id, integration_id, from_address, body)
+                    VALUES (:id, :orgId, :integrationId, 'chat-1', 'Привет')
+                    """.trimIndent(),
+                ).bind("id", InboundReceiptId.new()).bind("orgId", orgId).bind("integrationId", smsIntegrationId).execute()
 
-            val error = assertIs<Either.Left<AppError>>(remove(smsIntegrationId)).value
+                val error = assertIs<Either.Left<AppError>>(remove(smsIntegrationId)).value
 
-            assertEquals("CHANNEL_IN_USE", error.code)
+                assertEquals("CHANNEL_IN_USE", error.code)
+            }
         }
 
     @Test

@@ -42,18 +42,18 @@ interface Deliveries {
      * Worker-путь: до [limit] доставок в статусе `PENDING`, чьи интеграции включены
      * (`enabled = true`). Отключённые интеграции исключаются — их доставки остаются `PENDING`.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun pending(limit: Int): List<PendingDelivery>
 
     /** Помечает доставку отправленной (`SENT`) с идентификатором у провайдера. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markSent(id: DeliveryId, ref: ProviderMessageRef)
 
     /** Помечает доставку окончательно неуспешной (`FAILED`). */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markFailed(id: DeliveryId, error: DeliveryError)
 
     /** Откладывает повтор: увеличивает счётчик попыток, доставка остаётся в `PENDING`. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun retryLater(id: DeliveryId, error: DeliveryError)
 }

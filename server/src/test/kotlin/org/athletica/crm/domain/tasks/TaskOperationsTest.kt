@@ -19,6 +19,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
@@ -72,33 +73,39 @@ class TaskOperationsTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", thirdEmployeeId).bind("orgId", orgId).bind("name", "Анна").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", thirdEmployeeId).bind("orgId", orgId).bind("name", "Анна").execute()
+            }
         }
     }
 
     private suspend fun taskStatusFromDb(taskId: TaskId): String =
-        TestPostgres.db
-            .sql("SELECT status FROM tasks WHERE id = :id")
-            .bind("id", taskId)
-            .firstOrNull { row -> row.asString("status") } ?: ""
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT status FROM tasks WHERE id = :id")
+                .bind("id", taskId)
+                .firstOrNull { row -> row.asString("status") } ?: ""
+        }
 
     private suspend fun taskCompletedAt(taskId: TaskId): String? =
-        TestPostgres.db
-            .sql("SELECT COALESCE(completed_at::text, '') AS ca FROM tasks WHERE id = :id")
-            .bind("id", taskId)
-            .firstOrNull { row -> row.asString("ca") }
-            ?.takeIf { it.isNotEmpty() }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COALESCE(completed_at::text, '') AS ca FROM tasks WHERE id = :id")
+                .bind("id", taskId)
+                .firstOrNull { row -> row.asString("ca") }
+                ?.takeIf { it.isNotEmpty() }
+        }
 
     private fun employeeStub(id: EmployeeId): Employee =
         object : Employee {
@@ -115,7 +122,7 @@ class TaskOperationsTest {
 
             override fun hasPermission(p: UserPermission): Boolean = false
 
-            context(ctx: EmployeeRequestContext, tr: Transaction)
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun save() = Unit
 
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

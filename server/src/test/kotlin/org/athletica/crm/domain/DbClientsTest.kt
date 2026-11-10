@@ -18,6 +18,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
@@ -50,48 +51,55 @@ class DbClientsTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Org 2").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org 1").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Org 2").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
+            }
         }
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private suspend fun insertUpload(orgId: OrgId = this.orgId): UploadId {
-        val id = Uuid.generateV7()
-        TestPostgres.db.sql(
-            """
-            INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-            VALUES (:id, :orgId, :userId, :key, :name, 'application/pdf', 1024)
-            """.trimIndent(),
-        )
-            .bind("id", id)
-            .bind("orgId", orgId)
-            .bind("userId", userId)
-            .bind("key", "uploads/$id")
-            .bind("name", "doc.pdf")
-            .execute()
-        return id.toUploadId()
-    }
+    private suspend fun insertUpload(orgId: OrgId = this.orgId): UploadId =
+        orThrow {
+            val id = Uuid.generateV7()
+            TestPostgres.db.sql(
+                """
+                INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                VALUES (:id, :orgId, :userId, :key, :name, 'application/pdf', 1024)
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("orgId", orgId)
+                .bind("userId", userId)
+                .bind("key", "uploads/$id")
+                .bind("name", "doc.pdf")
+                .execute()
+            return id.toUploadId()
+        }
 
     private suspend fun countClientsInDb(): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) FROM clients")
-            .firstOrNull { row -> row.asLong(0) } ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) FROM clients")
+                .firstOrNull { row -> row.asLong(0) } ?: 0L
+        }
 
     private suspend fun countDocsInDb(clientId: ClientId): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) FROM client_docs WHERE client_id = :id")
-            .bind("id", clientId)
-            .firstOrNull { row -> row.asLong(0) } ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) FROM client_docs WHERE client_id = :id")
+                .bind("id", clientId)
+                .firstOrNull { row -> row.asLong(0) } ?: 0L
+        }
 
     // ─── new() ────────────────────────────────────────────────────────────────
 
@@ -272,30 +280,32 @@ class DbClientsTest {
 
     @Test
     fun `byId загружает группы клиента`() =
-        runTest {
-            val id = ClientId.new()
-            val groupId = Uuid.generateV7()
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
-                }
-            }.getOrElse { fail("Setup failed: $it") }
-            runBlocking {
-                TestPostgres.db.sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
-                    .bind("id", groupId).bind("orgId", orgId).bind("name", "Группа А").bind("branchId", branchId).execute()
-                TestPostgres.db.sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
-                    .bind("clientId", id).bind("groupId", groupId).execute()
-            }
-
-            val client =
+        orThrow {
+            runTest {
+                val id = ClientId.new()
+                val groupId = Uuid.generateV7()
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx) { clients.byId(id) }
+                        context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) }
                     }
-                }.getOrElse { fail("Unexpected error: $it") }
+                }.getOrElse { fail("Setup failed: $it") }
+                runBlocking {
+                    TestPostgres.db.sql("INSERT INTO groups (id, org_id, name, branch_id) VALUES (:id, :orgId, :name, :branchId)")
+                        .bind("id", groupId).bind("orgId", orgId).bind("name", "Группа А").bind("branchId", branchId).execute()
+                    TestPostgres.db.sql("INSERT INTO enrollments (client_id, group_id) VALUES (:clientId, :groupId)")
+                        .bind("clientId", id).bind("groupId", groupId).execute()
+                }
 
-            assertEquals(1, client.groups.size)
-            assertEquals("Группа А", client.groups.first().name)
+                val client =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(ctx) { clients.byId(id) }
+                        }
+                    }.getOrElse { fail("Unexpected error: $it") }
+
+                assertEquals(1, client.groups.size)
+                assertEquals("Группа А", client.groups.first().name)
+            }
         }
 
     // ─── save() ───────────────────────────────────────────────────────────────

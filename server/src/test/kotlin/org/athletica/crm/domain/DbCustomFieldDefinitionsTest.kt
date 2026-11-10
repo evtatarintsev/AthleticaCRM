@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -57,18 +58,20 @@ class DbCustomFieldDefinitionsTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId)
-                .bind("name", "Орг 1")
-                .execute()
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId)
-                .bind("name", "Орг 2")
-                .execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId)
+                    .bind("name", "Орг 1")
+                    .execute()
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId)
+                    .bind("name", "Орг 2")
+                    .execute()
+            }
         }
     }
 

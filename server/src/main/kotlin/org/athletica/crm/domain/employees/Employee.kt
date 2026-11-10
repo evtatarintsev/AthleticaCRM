@@ -33,7 +33,7 @@ interface Employee : UserActor {
     /** Доступ к филиалам организации: ко всем (включая будущие) либо к явному набору. */
     val availableBranches: EmployeeBranchAccess
 
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

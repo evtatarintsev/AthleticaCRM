@@ -71,6 +71,7 @@ private suspend fun listResponseFor(
 }
 
 /** Загружает имена сотрудников по набору идентификаторов одной выборкой. */
+context(raise: Raise<AppError>)
 private suspend fun Transaction.loadEmployeeNames(ids: Set<EmployeeId>): Map<EmployeeId, String> {
     if (ids.isEmpty()) return emptyMap()
     return sql("SELECT id, name FROM employees WHERE id = ANY(:ids)")

@@ -15,7 +15,7 @@ import org.athletica.crm.storage.asUuid
 
 /** R2DBC-реализация каталога филиалов. */
 class DbBranches : Branches {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(): List<Branch> =
         when (val access = ctx.employee.availableBranches) {
             is EmployeeBranchAccess.All ->

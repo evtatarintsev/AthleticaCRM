@@ -106,7 +106,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
      * Пишет в аудит оформление ([unfreezeReason] `null`) или снятие заморозки [freeze]
      * с новой датой окончания [membershipEndDate].
      */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun logFreezeChange(
         freeze: MembershipFreeze,
         unfreezeReason: UnfreezeReason?,
@@ -125,7 +125,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
     )
 
     /** Пишет в аудит изменение абонемента с данными [data]. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun logChange(data: String) {
         val employee = ctx as? EmployeeRequestContext
         audit.log(

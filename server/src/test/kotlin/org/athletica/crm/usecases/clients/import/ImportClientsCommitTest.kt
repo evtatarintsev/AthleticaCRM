@@ -18,6 +18,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
@@ -39,60 +40,62 @@ class ImportClientsCommitTest {
 
     private data class TestOrg(val orgId: Uuid, val userId: Uuid, val employeeId: Uuid)
 
-    private suspend fun setupOrg(): TestOrg {
-        val orgId = Uuid.generateV7()
-        val userId = Uuid.generateV7()
-        val employeeId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId)
-            .bind("name", "Test Org")
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId)
-            .bind("login", "import-user-$userId@example.com")
-            .bind("hash", "x")
-            .execute()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO employees (id, user_id, org_id, name, is_owner)
-                VALUES (:id, :userId, :orgId, :name, true)
-                """.trimIndent(),
-            ).bind("id", employeeId)
-            .bind("userId", userId)
-            .bind("orgId", orgId)
-            .bind("name", "Test Owner")
-            .execute()
-        return TestOrg(orgId, userId, employeeId)
-    }
+    private suspend fun setupOrg(): TestOrg =
+        orThrow {
+            val orgId = Uuid.generateV7()
+            val userId = Uuid.generateV7()
+            val employeeId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId)
+                .bind("name", "Test Org")
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId)
+                .bind("login", "import-user-$userId@example.com")
+                .bind("hash", "x")
+                .execute()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO employees (id, user_id, org_id, name, is_owner)
+                    VALUES (:id, :userId, :orgId, :name, true)
+                    """.trimIndent(),
+                ).bind("id", employeeId)
+                .bind("userId", userId)
+                .bind("orgId", orgId)
+                .bind("name", "Test Owner")
+                .execute()
+            return TestOrg(orgId, userId, employeeId)
+        }
 
     private suspend fun uploadCsv(
         org: TestOrg,
         content: String,
         filename: String = "clients.csv",
-    ): UploadId {
-        val uploadId = UploadId.new()
-        val objectKey = "${org.orgId}/$uploadId/$filename"
-        val bytes = content.toByteArray(Charsets.UTF_8)
-        TestMinio.minioService.uploadObject(objectKey, bytes.inputStream(), bytes.size.toLong(), "text/csv")
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-                VALUES (:id, :orgId, :uploadedBy, :objectKey, :originalName, :contentType, :sizeBytes)
-                """.trimIndent(),
-            ).bind("id", uploadId)
-            .bind("orgId", org.orgId)
-            .bind("uploadedBy", org.userId)
-            .bind("objectKey", objectKey)
-            .bind("originalName", filename)
-            .bind("contentType", "text/csv")
-            .bind("sizeBytes", bytes.size.toLong())
-            .execute()
-        return uploadId
-    }
+    ): UploadId =
+        orThrow {
+            val uploadId = UploadId.new()
+            val objectKey = "${org.orgId}/$uploadId/$filename"
+            val bytes = content.toByteArray(Charsets.UTF_8)
+            TestMinio.minioService.uploadObject(objectKey, bytes.inputStream(), bytes.size.toLong(), "text/csv")
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                    VALUES (:id, :orgId, :uploadedBy, :objectKey, :originalName, :contentType, :sizeBytes)
+                    """.trimIndent(),
+                ).bind("id", uploadId)
+                .bind("orgId", org.orgId)
+                .bind("uploadedBy", org.userId)
+                .bind("objectKey", objectKey)
+                .bind("originalName", filename)
+                .bind("contentType", "text/csv")
+                .bind("sizeBytes", bytes.size.toLong())
+                .execute()
+            return uploadId
+        }
 
     private fun ctx(org: TestOrg) =
         employeeContext(
@@ -125,121 +128,125 @@ class ImportClientsCommitTest {
 
     @Test
     fun `dryRun не пишет клиентов в БД`() =
-        runTest {
-            val org = setupOrg()
-            val uploadId =
-                uploadCsv(
-                    org,
-                    """
-                    ФИО;Дата рождения
-                    Иванов Иван;15.11.2019
-                    Петров Пётр;
-                    """.trimIndent(),
-                )
-            val response =
-                runImport(
-                    org = org,
-                    request =
-                        ClientImportCommitRequest(
-                            uploadId = uploadId,
-                            columnMapping =
-                                listOf(
-                                    ColumnMapping("ФИО", ImportTarget.Name),
-                                    ColumnMapping("Дата рождения", ImportTarget.Birthday),
-                                ),
-                            defaultGender = Gender.MALE,
-                            dryRun = true,
-                        ),
-                )
-            val result = assertIs<Either.Right<ClientImportCommitResponse>>(response).value
-            assertEquals(2, result.totalRows)
-            assertEquals(2, result.imported)
-            assertEquals(0, result.skipped)
+        orThrow {
+            runTest {
+                val org = setupOrg()
+                val uploadId =
+                    uploadCsv(
+                        org,
+                        """
+                        ФИО;Дата рождения
+                        Иванов Иван;15.11.2019
+                        Петров Пётр;
+                        """.trimIndent(),
+                    )
+                val response =
+                    runImport(
+                        org = org,
+                        request =
+                            ClientImportCommitRequest(
+                                uploadId = uploadId,
+                                columnMapping =
+                                    listOf(
+                                        ColumnMapping("ФИО", ImportTarget.Name),
+                                        ColumnMapping("Дата рождения", ImportTarget.Birthday),
+                                    ),
+                                defaultGender = Gender.MALE,
+                                dryRun = true,
+                            ),
+                    )
+                val result = assertIs<Either.Right<ClientImportCommitResponse>>(response).value
+                assertEquals(2, result.totalRows)
+                assertEquals(2, result.imported)
+                assertEquals(0, result.skipped)
 
-            val count =
-                TestPostgres.db
-                    .sql("SELECT COUNT(*)::text as c FROM clients WHERE org_id = :orgId")
-                    .bind("orgId", org.orgId)
-                    .firstOrNull { it.asString("c") }
-            assertEquals("0", count)
+                val count =
+                    TestPostgres.db
+                        .sql("SELECT COUNT(*)::text as c FROM clients WHERE org_id = :orgId")
+                        .bind("orgId", org.orgId)
+                        .firstOrNull { it.asString("c") }
+                assertEquals("0", count)
+            }
         }
 
     @Test
     fun `создаёт клиентов и баланс по admin_credit, отрицательный → admin_debit`() =
-        runTest {
-            val org = setupOrg()
-            val uploadId =
-                uploadCsv(
-                    org,
-                    """
-                    ФИО;Баланс
-                    Иванов;3056.00
-                    Петров;-266.00
-                    Сидоров;
-                    """.trimIndent(),
-                )
-            val response =
-                runImport(
-                    org = org,
-                    request =
-                        ClientImportCommitRequest(
-                            uploadId = uploadId,
-                            columnMapping =
-                                listOf(
-                                    ColumnMapping("ФИО", ImportTarget.Name),
-                                    ColumnMapping("Баланс", ImportTarget.Balance),
-                                ),
-                            defaultGender = Gender.MALE,
-                            dryRun = false,
-                        ),
-                )
-            val result = assertIs<Either.Right<ClientImportCommitResponse>>(response).value
-            assertEquals(3, result.imported)
-
-            val ivanovBalance =
-                TestPostgres.db
-                    .sql(
+        orThrow {
+            runTest {
+                val org = setupOrg()
+                val uploadId =
+                    uploadCsv(
+                        org,
                         """
-                        SELECT j.amount, j.operation_type
-                        FROM client_balance_journal j
-                        JOIN clients c ON c.id = j.client_id
-                        WHERE c.name = :name AND c.org_id = :orgId
+                        ФИО;Баланс
+                        Иванов;3056.00
+                        Петров;-266.00
+                        Сидоров;
                         """.trimIndent(),
-                    ).bind("name", "Иванов")
-                    .bind("orgId", org.orgId)
-                    .firstOrNull { row ->
-                        row.asDouble("amount") to row.asString("operation_type")
-                    }
-            assertEquals(3056.0 to "admin_credit", ivanovBalance)
+                    )
+                val response =
+                    runImport(
+                        org = org,
+                        request =
+                            ClientImportCommitRequest(
+                                uploadId = uploadId,
+                                columnMapping =
+                                    listOf(
+                                        ColumnMapping("ФИО", ImportTarget.Name),
+                                        ColumnMapping("Баланс", ImportTarget.Balance),
+                                    ),
+                                defaultGender = Gender.MALE,
+                                dryRun = false,
+                            ),
+                    )
+                val result = assertIs<Either.Right<ClientImportCommitResponse>>(response).value
+                assertEquals(3, result.imported)
 
-            val petrovBalance =
-                TestPostgres.db
-                    .sql(
-                        """
-                        SELECT j.amount, j.operation_type
-                        FROM client_balance_journal j
-                        JOIN clients c ON c.id = j.client_id
-                        WHERE c.name = :name AND c.org_id = :orgId
-                        """.trimIndent(),
-                    ).bind("name", "Петров")
-                    .bind("orgId", org.orgId)
-                    .firstOrNull { row ->
-                        row.asDouble("amount") to row.asString("operation_type")
-                    }
-            assertEquals(-266.0 to "admin_debit", petrovBalance)
+                val ivanovBalance =
+                    TestPostgres.db
+                        .sql(
+                            """
+                            SELECT j.amount, j.operation_type
+                            FROM client_balance_journal j
+                            JOIN clients c ON c.id = j.client_id
+                            WHERE c.name = :name AND c.org_id = :orgId
+                            """.trimIndent(),
+                        ).bind("name", "Иванов")
+                        .bind("orgId", org.orgId)
+                        .firstOrNull { row ->
+                            row.asDouble("amount") to row.asString("operation_type")
+                        }
+                assertEquals(3056.0 to "admin_credit", ivanovBalance)
 
-            val sidorovJournalCount =
-                TestPostgres.db
-                    .sql(
-                        """
-                        SELECT COUNT(*)::text as c
-                        FROM client_balance_journal j
-                        JOIN clients c ON c.id = j.client_id
-                        WHERE c.name = :name
-                        """.trimIndent(),
-                    ).bind("name", "Сидоров")
-                    .firstOrNull { it.asString("c") }
-            assertEquals("0", sidorovJournalCount)
+                val petrovBalance =
+                    TestPostgres.db
+                        .sql(
+                            """
+                            SELECT j.amount, j.operation_type
+                            FROM client_balance_journal j
+                            JOIN clients c ON c.id = j.client_id
+                            WHERE c.name = :name AND c.org_id = :orgId
+                            """.trimIndent(),
+                        ).bind("name", "Петров")
+                        .bind("orgId", org.orgId)
+                        .firstOrNull { row ->
+                            row.asDouble("amount") to row.asString("operation_type")
+                        }
+                assertEquals(-266.0 to "admin_debit", petrovBalance)
+
+                val sidorovJournalCount =
+                    TestPostgres.db
+                        .sql(
+                            """
+                            SELECT COUNT(*)::text as c
+                            FROM client_balance_journal j
+                            JOIN clients c ON c.id = j.client_id
+                            WHERE c.name = :name
+                            """.trimIndent(),
+                        ).bind("name", "Сидоров")
+                        .firstOrNull { it.asString("c") }
+                assertEquals("0", sidorovJournalCount)
+            }
         }
 
     @Test
@@ -272,48 +279,50 @@ class ImportClientsCommitTest {
 
     @Test
     fun `создаёт новые LeadSource через CreateNew и привязывает клиентов`() =
-        runTest {
-            val org = setupOrg()
-            val uploadId =
-                uploadCsv(
-                    org,
-                    """
-                    ФИО;Источник
-                    Иванов;Инстаграм
-                    Петров;Инстаграм
-                    """.trimIndent(),
-                )
-            val response =
-                runImport(
-                    org = org,
-                    request =
-                        ClientImportCommitRequest(
-                            uploadId = uploadId,
-                            columnMapping =
-                                listOf(
-                                    ColumnMapping("ФИО", ImportTarget.Name),
-                                    ColumnMapping("Источник", ImportTarget.LeadSource),
-                                ),
-                            defaultGender = Gender.MALE,
-                            leadSourceMapping = mapOf("Инстаграм" to LeadSourceAction.CreateNew("Инстаграм")),
-                            dryRun = false,
-                        ),
-                )
-            val result = assertIs<Either.Right<ClientImportCommitResponse>>(response).value
-            assertEquals(2, result.imported)
-            assertEquals(1, result.createdLeadSources.size)
-            assertEquals("Инстаграм", result.createdLeadSources[0].name)
-
-            val sourceCount =
-                TestPostgres.db
-                    .sql(
+        orThrow {
+            runTest {
+                val org = setupOrg()
+                val uploadId =
+                    uploadCsv(
+                        org,
                         """
-                        SELECT COUNT(*)::text as c
-                        FROM clients
-                        WHERE org_id = :orgId AND lead_source_id IS NOT NULL
+                        ФИО;Источник
+                        Иванов;Инстаграм
+                        Петров;Инстаграм
                         """.trimIndent(),
-                    ).bind("orgId", org.orgId)
-                    .firstOrNull { it.asString("c") }
-            assertEquals("2", sourceCount)
+                    )
+                val response =
+                    runImport(
+                        org = org,
+                        request =
+                            ClientImportCommitRequest(
+                                uploadId = uploadId,
+                                columnMapping =
+                                    listOf(
+                                        ColumnMapping("ФИО", ImportTarget.Name),
+                                        ColumnMapping("Источник", ImportTarget.LeadSource),
+                                    ),
+                                defaultGender = Gender.MALE,
+                                leadSourceMapping = mapOf("Инстаграм" to LeadSourceAction.CreateNew("Инстаграм")),
+                                dryRun = false,
+                            ),
+                    )
+                val result = assertIs<Either.Right<ClientImportCommitResponse>>(response).value
+                assertEquals(2, result.imported)
+                assertEquals(1, result.createdLeadSources.size)
+                assertEquals("Инстаграм", result.createdLeadSources[0].name)
+
+                val sourceCount =
+                    TestPostgres.db
+                        .sql(
+                            """
+                            SELECT COUNT(*)::text as c
+                            FROM clients
+                            WHERE org_id = :orgId AND lead_source_id IS NOT NULL
+                            """.trimIndent(),
+                        ).bind("orgId", org.orgId)
+                        .firstOrNull { it.asString("c") }
+                assertEquals("2", sourceCount)
+            }
         }
 }

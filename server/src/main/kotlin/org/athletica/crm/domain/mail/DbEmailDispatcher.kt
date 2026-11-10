@@ -3,6 +3,7 @@ package org.athletica.crm.domain.mail
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.storage.Database
 import org.athletica.infra.mail.Email
 import org.athletica.infra.mail.EmailHtmlBody
@@ -29,13 +30,13 @@ class DbEmailDispatcher(
 ) : EmailDispatcher {
     override suspend fun dispatchPending() {
         while (currentCoroutineContext().isActive) {
-            val pendingEmails = db.transaction { emails.pending() }
+            val pendingEmails = db.transaction { orThrow { emails.pending() } }
             pendingEmails.forEach { email ->
                 // TODO: Убрать runCatching когда smtp.send перестанет бросать исключения
                 runCatching { smtp.send(email.toSmtpEmail()) }
                     .onFailure { e -> if (e is CancellationException) throw e }
-                    .onSuccess { db.transaction { email.markSent(email.id) } }
-                    .onFailure { e -> db.transaction { email.markFailed(email.id, e.message ?: "unknown error") } }
+                    .onSuccess { db.transaction { orThrow { email.markSent(email.id) } } }
+                    .onFailure { e -> db.transaction { orThrow { email.markFailed(email.id, e.message ?: "unknown error") } } }
             }
             delay(checkEvery)
         }

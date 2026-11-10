@@ -13,7 +13,7 @@ import org.athletica.crm.storage.Transaction
 
 /** Декоратор [Branches], оборачивающий выдаваемые филиалы в [AuditBranch]. */
 class AuditBranches(private val delegate: Branches, private val audit: AuditLog) : Branches by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list() = delegate.list().map { AuditBranch(it, audit) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.schedule.ScheduleFixture
 import org.junit.Before
@@ -33,26 +34,29 @@ class DbScheduleViewTest {
 
     private suspend fun list(query: ScheduleQuery = ScheduleQuery(from = monday, to = sunday)): ScheduleListResponse = fixture.inContext { view.list(query) }
 
-    private suspend fun insertDiscipline(name: String): DisciplineId {
-        val id = DisciplineId.new()
-        TestPostgres.db
-            .sql("INSERT INTO disciplines (id, org_id, name) VALUES (:id, :orgId, :name)")
-            .bind("id", id)
-            .bind("orgId", fixture.orgId)
-            .bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertDiscipline(name: String): DisciplineId =
+        orThrow {
+            val id = DisciplineId.new()
+            TestPostgres.db
+                .sql("INSERT INTO disciplines (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", id)
+                .bind("orgId", fixture.orgId)
+                .bind("name", name)
+                .execute()
+            return id
+        }
 
     private suspend fun linkGroupDiscipline(
         groupId: GroupId,
         disciplineId: DisciplineId,
     ) {
-        TestPostgres.db
-            .sql("INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:g, :d)")
-            .bind("g", groupId)
-            .bind("d", disciplineId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("INSERT INTO group_disciplines (group_id, discipline_id) VALUES (:g, :d)")
+                .bind("g", groupId)
+                .bind("d", disciplineId)
+                .execute()
+        }
     }
 
     /** Занятие с 10:00 до 11:00 в [date]. */
@@ -129,28 +133,30 @@ class DbScheduleViewTest {
 
     @Test
     fun `занятия группы другого филиала не попадают в выдачу`() =
-        runTest {
-            val ownGroup = fixture.insertGroup("Свой")
-            val hall = fixture.insertHall()
-            session(ownGroup, hall)
-            val otherBranch = Uuid.generateV7()
-            TestPostgres.db
-                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherBranch)
-                .bind("orgId", fixture.orgId)
-                .bind("name", "Другой")
-                .execute()
-            val otherGroup = GroupId.new()
-            TestPostgres.db
-                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-                .bind("id", otherGroup)
-                .bind("orgId", fixture.orgId)
-                .bind("branchId", otherBranch)
-                .bind("name", "Чужой")
-                .execute()
-            session(otherGroup, hall)
+        orThrow {
+            runTest {
+                val ownGroup = fixture.insertGroup("Свой")
+                val hall = fixture.insertHall()
+                session(ownGroup, hall)
+                val otherBranch = Uuid.generateV7()
+                TestPostgres.db
+                    .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherBranch)
+                    .bind("orgId", fixture.orgId)
+                    .bind("name", "Другой")
+                    .execute()
+                val otherGroup = GroupId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                    .bind("id", otherGroup)
+                    .bind("orgId", fixture.orgId)
+                    .bind("branchId", otherBranch)
+                    .bind("name", "Чужой")
+                    .execute()
+                session(otherGroup, hall)
 
-            assertEquals(listOf("Свой"), list().sessions.map { it.group.name })
+                assertEquals(listOf("Свой"), list().sessions.map { it.group.name })
+            }
         }
 
     @Test
@@ -210,17 +216,19 @@ class DbScheduleViewTest {
 
     @Test
     fun `занятие без группы исключается`() =
-        runTest {
-            val group = fixture.insertGroup()
-            val hall = fixture.insertHall()
-            val kept = session(group, hall)
-            val orphan = session(group, hall, date = sunday)
-            TestPostgres.db
-                .sql("UPDATE sessions SET group_id = NULL WHERE id = :id")
-                .bind("id", orphan)
-                .execute()
+        orThrow {
+            runTest {
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                val kept = session(group, hall)
+                val orphan = session(group, hall, date = sunday)
+                TestPostgres.db
+                    .sql("UPDATE sessions SET group_id = NULL WHERE id = :id")
+                    .bind("id", orphan)
+                    .execute()
 
-            assertEquals(listOf(kept), list().sessions.map { it.id })
+                assertEquals(listOf(kept), list().sessions.map { it.id })
+            }
         }
 
     @Test
@@ -261,26 +269,28 @@ class DbScheduleViewTest {
 
     @Test
     fun `фильтр по группе другого филиала даёт пустой ответ`() =
-        runTest {
-            val hall = fixture.insertHall()
-            session(fixture.insertGroup(), hall)
-            val otherBranch = Uuid.generateV7()
-            TestPostgres.db
-                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherBranch)
-                .bind("orgId", fixture.orgId)
-                .bind("name", "Другой")
-                .execute()
-            val otherGroup = GroupId.new()
-            TestPostgres.db
-                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-                .bind("id", otherGroup)
-                .bind("orgId", fixture.orgId)
-                .bind("branchId", otherBranch)
-                .bind("name", "Чужая")
-                .execute()
-            session(otherGroup, hall)
+        orThrow {
+            runTest {
+                val hall = fixture.insertHall()
+                session(fixture.insertGroup(), hall)
+                val otherBranch = Uuid.generateV7()
+                TestPostgres.db
+                    .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherBranch)
+                    .bind("orgId", fixture.orgId)
+                    .bind("name", "Другой")
+                    .execute()
+                val otherGroup = GroupId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                    .bind("id", otherGroup)
+                    .bind("orgId", fixture.orgId)
+                    .bind("branchId", otherBranch)
+                    .bind("name", "Чужая")
+                    .execute()
+                session(otherGroup, hall)
 
-            assertTrue(list(ScheduleQuery(monday, sunday, groupIds = listOf(otherGroup))).sessions.isEmpty())
+                assertTrue(list(ScheduleQuery(monday, sunday, groupIds = listOf(otherGroup))).sessions.isEmpty())
+            }
         }
 }

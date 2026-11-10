@@ -9,6 +9,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asBoolean
@@ -45,9 +46,11 @@ class ChannelEnabledTest {
         }
 
     private suspend fun enabled(id: ChannelIntegrationId): Boolean =
-        TestPostgres.db.sql("SELECT enabled FROM channel_integrations WHERE id = :id")
-            .bind("id", id)
-            .firstOrNull { row -> row.asBoolean("enabled") } ?: error("интеграция не найдена")
+        orThrow {
+            TestPostgres.db.sql("SELECT enabled FROM channel_integrations WHERE id = :id")
+                .bind("id", id)
+                .firstOrNull { row -> row.asBoolean("enabled") } ?: error("интеграция не найдена")
+        }
 
     @Test
     fun `канал выключается и снова включается`() =

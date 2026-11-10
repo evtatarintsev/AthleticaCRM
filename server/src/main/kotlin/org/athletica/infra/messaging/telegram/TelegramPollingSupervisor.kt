@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toOrgId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -77,19 +78,21 @@ class TelegramPollingSupervisor(
     /** Включённые Telegram-интеграции всех организаций — системный запрос без org-скоупа. */
     private suspend fun enabledIntegrations(): List<PolledIntegration> =
         db.transaction {
-            sql(
-                """
-                SELECT id, org_id, config ->> 'botToken' AS token
-                FROM channel_integrations
-                WHERE enabled AND config ->> 'type' = 'telegram_bot' AND COALESCE(config ->> 'botToken', '') <> ''
-                ORDER BY created_at
-                """.trimIndent(),
-            ).list { row ->
-                PolledIntegration(
-                    id = row.asUuid("id").toChannelIntegrationId(),
-                    orgId = row.asUuid("org_id").toOrgId(),
-                    token = row.asString("token"),
-                )
+            orThrow {
+                sql(
+                    """
+                    SELECT id, org_id, config ->> 'botToken' AS token
+                    FROM channel_integrations
+                    WHERE enabled AND config ->> 'type' = 'telegram_bot' AND COALESCE(config ->> 'botToken', '') <> ''
+                    ORDER BY created_at
+                    """.trimIndent(),
+                ).list { row ->
+                    PolledIntegration(
+                        id = row.asUuid("id").toChannelIntegrationId(),
+                        orgId = row.asUuid("org_id").toOrgId(),
+                        token = row.asString("token"),
+                    )
+                }
             }
         }
 }

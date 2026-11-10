@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.schedule.ScheduleFixture
 import org.junit.Before
@@ -50,16 +51,17 @@ class DbGroupSessionsViewTest {
         status: String = "scheduled",
     ): SessionId = fixture.insertSession(groupId, hallId, date, LocalTime(10, 0), LocalTime(11, 0), status = status)
 
-    private suspend fun insertClient(name: String): ClientId {
-        val id = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", id)
-            .bind("orgId", fixture.orgId)
-            .bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertClient(name: String): ClientId =
+        orThrow {
+            val id = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", id)
+                .bind("orgId", fixture.orgId)
+                .bind("name", name)
+                .execute()
+            return id
+        }
 
     /** Строка журнала занятия [sessionId] для клиента [clientId] с отметкой [presence]. */
     private suspend fun attendance(
@@ -67,17 +69,19 @@ class DbGroupSessionsViewTest {
         clientId: ClientId,
         presence: String?,
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO session_attendance (session_id, client_id, kind, presence)
-                VALUES (:s, :c, 'regular', :p::attendance_presence)
-                """.trimIndent(),
-            )
-            .bind("s", sessionId)
-            .bind("c", clientId)
-            .bind("p", presence)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO session_attendance (session_id, client_id, kind, presence)
+                    VALUES (:s, :c, 'regular', :p::attendance_presence)
+                    """.trimIndent(),
+                )
+                .bind("s", sessionId)
+                .bind("c", clientId)
+                .bind("p", presence)
+                .execute()
+        }
     }
 
     @Test
@@ -217,27 +221,29 @@ class DbGroupSessionsViewTest {
 
     @Test
     fun `группа другого филиала не найдена`() =
-        runTest {
-            val otherBranch = Uuid.generateV7()
-            TestPostgres.db
-                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherBranch)
-                .bind("orgId", fixture.orgId)
-                .bind("name", "Другой")
-                .execute()
-            val otherGroup = GroupId.new()
-            TestPostgres.db
-                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-                .bind("id", otherGroup)
-                .bind("orgId", fixture.orgId)
-                .bind("branchId", otherBranch)
-                .bind("name", "Чужая")
-                .execute()
+        orThrow {
+            runTest {
+                val otherBranch = Uuid.generateV7()
+                TestPostgres.db
+                    .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherBranch)
+                    .bind("orgId", fixture.orgId)
+                    .bind("name", "Другой")
+                    .execute()
+                val otherGroup = GroupId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                    .bind("id", otherGroup)
+                    .bind("orgId", fixture.orgId)
+                    .bind("branchId", otherBranch)
+                    .bind("name", "Чужая")
+                    .execute()
 
-            val result = fixture.runInContext { view.list(GroupSessionsQuery(otherGroup, from, to)) }
+                val result = fixture.runInContext { view.list(GroupSessionsQuery(otherGroup, from, to)) }
 
-            val error = assertIs<CommonDomainError>(result.leftOrNull())
-            assertEquals("GROUP_NOT_FOUND", error.code)
+                val error = assertIs<CommonDomainError>(result.leftOrNull())
+                assertEquals("GROUP_NOT_FOUND", error.code)
+            }
         }
 
     @Test

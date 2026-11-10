@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendance.DbParticipations
 import org.athletica.crm.domain.auth.DbUsers
@@ -68,10 +69,12 @@ class DebtRepaymentTest {
     private suspend fun repay(id: MembershipId, sessions: List<SessionId>) = fixture.attempt { repayDebt(fixture.memberships, DbParticipations(), calendar, id, sessions) }
 
     private suspend fun tasksForClient(client: ClientId): List<String> =
-        TestPostgres.db
-            .sql("SELECT description FROM tasks WHERE client_id = :c AND created_by IS NULL AND assignee_id IS NULL")
-            .bind("c", client)
-            .list { it.get("description", String::class.java)!! }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT description FROM tasks WHERE client_id = :c AND created_by IS NULL AND assignee_id IS NULL")
+                .bind("c", client)
+                .list { it.get("description", String::class.java)!! }
+        }
 
     @Test
     fun `посещение без абонемента — неоплаченное, отменённое и отсутствие — нет`() =

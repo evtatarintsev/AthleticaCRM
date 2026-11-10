@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.SessionsFixture
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.tasks.DbTasks
 import org.junit.Before
 import kotlin.test.Test
@@ -37,17 +38,19 @@ class OverdueJournalSchedulerTest {
     )
 
     private suspend fun tasks(): List<TaskRow> =
-        TestPostgres.db
-            .sql("SELECT title, description, assignee_id::text AS a, created_by::text AS c FROM tasks WHERE org_id = :orgId")
-            .bind("orgId", fixture.orgId)
-            .list {
-                TaskRow(
-                    it.get("title", String::class.java)!!,
-                    it.get("description", String::class.java)!!,
-                    it.get("a", String::class.java),
-                    it.get("c", String::class.java),
-                )
-            }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT title, description, assignee_id::text AS a, created_by::text AS c FROM tasks WHERE org_id = :orgId")
+                .bind("orgId", fixture.orgId)
+                .list {
+                    TaskRow(
+                        it.get("title", String::class.java)!!,
+                        it.get("description", String::class.java)!!,
+                        it.get("a", String::class.java),
+                        it.get("c", String::class.java),
+                    )
+                }
+        }
 
     private suspend fun at(instant: String) {
         fixture.now = Instant.parse(instant)
@@ -92,16 +95,18 @@ class OverdueJournalSchedulerTest {
 
     @Test
     fun `повторный проход не создаёт вторую задачу даже после удаления первой`() =
-        runTest {
-            fixture.insertSession(fixture.insertGroup(), day)
+        orThrow {
+            runTest {
+                fixture.insertSession(fixture.insertGroup(), day)
 
-            at("2026-10-17T16:00:00Z")
-            at("2026-10-17T16:05:00Z")
-            assertEquals(1, tasks().size)
+                at("2026-10-17T16:00:00Z")
+                at("2026-10-17T16:05:00Z")
+                assertEquals(1, tasks().size)
 
-            TestPostgres.db.sql("DELETE FROM tasks WHERE org_id = :orgId").bind("orgId", fixture.orgId).execute()
-            at("2026-10-17T16:10:00Z")
-            assertTrue(tasks().isEmpty())
+                TestPostgres.db.sql("DELETE FROM tasks WHERE org_id = :orgId").bind("orgId", fixture.orgId).execute()
+                at("2026-10-17T16:10:00Z")
+                assertTrue(tasks().isEmpty())
+            }
         }
 
     @Test

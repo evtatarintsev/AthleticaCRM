@@ -18,6 +18,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -51,14 +52,16 @@ class DbClientChannelsViewTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            listOf(orgId, otherOrgId).forEach { org ->
-                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                    .bind("id", org).bind("name", "Org").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                listOf(orgId, otherOrgId).forEach { org ->
+                    TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                        .bind("id", org).bind("name", "Org").execute()
+                }
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
             }
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
         }
     }
 
@@ -68,37 +71,42 @@ class DbClientChannelsViewTest {
         config: String,
         enabled: Boolean = true,
         org: OrgId = orgId,
-    ): ChannelIntegrationId {
-        val id = ChannelIntegrationId.new()
-        TestPostgres.db.sql(
-            """
-            INSERT INTO channel_integrations (id, org_id, name, config, enabled)
-            VALUES (:id, :orgId, :name, :config::jsonb, :enabled)
-            """.trimIndent(),
-        ).bind("id", id).bind("orgId", org).bind("name", name).bind("config", config).bind("enabled", enabled).execute()
-        return id
-    }
+    ): ChannelIntegrationId =
+        orThrow {
+            val id = ChannelIntegrationId.new()
+            TestPostgres.db.sql(
+                """
+                INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+                VALUES (:id, :orgId, :name, :config::jsonb, :enabled)
+                """.trimIndent(),
+            ).bind("id", id).bind("orgId", org).bind("name", name).bind("config", config).bind("enabled", enabled).execute()
+            return id
+        }
 
     /** Добавляет клиенту контакт типа [type] со значением [value]. */
     private suspend fun insertContact(type: String, value: String) {
-        TestPostgres.db.sql(
-            """
-            INSERT INTO client_contacts (id, org_id, client_id, type, value)
-            VALUES (:id, :orgId, :clientId, :type, :value)
-            """.trimIndent(),
-        ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId)
-            .bind("type", type).bind("value", value).execute()
+        orThrow {
+            TestPostgres.db.sql(
+                """
+                INSERT INTO client_contacts (id, org_id, client_id, type, value)
+                VALUES (:id, :orgId, :clientId, :type, :value)
+                """.trimIndent(),
+            ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId)
+                .bind("type", type).bind("value", value).execute()
+        }
     }
 
     /** Связывает клиента с каналом [integrationId] по адресу [address]. */
     private suspend fun insertBinding(integrationId: ChannelIntegrationId, address: String) {
-        TestPostgres.db.sql(
-            """
-            INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
-            VALUES (:id, :orgId, :integrationId, :clientId, :address)
-            """.trimIndent(),
-        ).bind("id", ChannelBindingId.new()).bind("orgId", orgId).bind("integrationId", integrationId)
-            .bind("clientId", clientId).bind("address", address).execute()
+        orThrow {
+            TestPostgres.db.sql(
+                """
+                INSERT INTO channel_bindings (id, org_id, integration_id, client_id, address)
+                VALUES (:id, :orgId, :integrationId, :clientId, :address)
+                """.trimIndent(),
+            ).bind("id", ChannelBindingId.new()).bind("orgId", orgId).bind("integrationId", integrationId)
+                .bind("clientId", clientId).bind("address", address).execute()
+        }
     }
 
     /** Каналы клиента через проекцию. */

@@ -1,9 +1,11 @@
 package org.athletica.crm.domain.events
 
+import arrow.core.raise.Raise
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.slf4j.LoggerFactory
 import kotlin.uuid.Uuid
@@ -77,7 +79,7 @@ class DomainEventBus : DomainEvents {
      * [OrgId] берётся из [ctx] и сохраняется в колонку `org_id`.
      * Обработчики будут вызваны асинхронно воркером после завершения транзакции.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun publish(event: DomainEvent) {
         tr
             .sql(

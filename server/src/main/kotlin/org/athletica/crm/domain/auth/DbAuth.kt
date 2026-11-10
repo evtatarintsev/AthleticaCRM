@@ -2,7 +2,6 @@ package org.athletica.crm.domain.auth
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.UpdateMeRequest
@@ -137,48 +136,42 @@ class DbAuth(
         val employeeId = EmployeeId.new()
         val branchId = BranchId.new()
         val hallId = HallId.new()
-        try {
-            tr.sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:orgId, :orgName, :timezone, :currency)")
-                .bind("orgId", orgId)
-                .bind("orgName", request.companyName)
-                .bind("timezone", request.timezone)
-                .bind("currency", request.currency.code)
-                .execute()
+        tr.sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:orgId, :orgName, :timezone, :currency)")
+            .bind("orgId", orgId)
+            .bind("orgName", request.companyName)
+            .bind("timezone", request.timezone)
+            .bind("currency", request.currency.code)
+            .execute()
 
-            tr.sql("INSERT INTO users (id, login, password_hash) VALUES (:userId, :login, :hash)")
-                .bind("userId", userId)
-                .bind("login", request.login)
-                .bind("hash", passwordHasher.hash(request.password).value)
-                .execute()
+        tr.sql("INSERT INTO users (id, login, password_hash) VALUES (:userId, :login, :hash)")
+            .bind("userId", userId)
+            .bind("login", request.login)
+            .bind("hash", passwordHasher.hash(request.password).value)
+            .onViolation("users_login_key") { SignUpError.UserAlreadyRegistered }
+            .execute()
 
-            tr.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:employeeId, :userId, :orgId, :name, true)")
-                .bind("employeeId", employeeId)
-                .bind("orgId", orgId)
-                .bind("userId", userId)
-                .bind("name", request.userName)
-                .execute()
+        tr.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:employeeId, :userId, :orgId, :name, true)")
+            .bind("employeeId", employeeId)
+            .bind("orgId", orgId)
+            .bind("userId", userId)
+            .bind("name", request.userName)
+            .execute()
 
-            tr.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", branchId)
-                .bind("orgId", orgId)
-                .bind("name", Messages.DefaultBranchName.localize(lang))
-                .execute()
+        tr.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+            .bind("id", branchId)
+            .bind("orgId", orgId)
+            .bind("name", Messages.DefaultBranchName.localize(lang))
+            .execute()
 
-            tr.sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-                .bind("id", hallId)
-                .bind("orgId", orgId)
-                .bind("branchId", branchId)
-                .bind("name", Messages.DefaultHallName.localize(lang))
-                .execute()
+        tr.sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+            .bind("id", hallId)
+            .bind("orgId", orgId)
+            .bind("branchId", branchId)
+            .bind("name", Messages.DefaultHallName.localize(lang))
+            .execute()
 
-            DefaultAttendanceLabels.createFor(orgId, lang)
-            DefaultLeadSources.createFor(orgId, lang)
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            if (e.message?.contains("users_login_key") == true) {
-                raise(SignUpError.UserAlreadyRegistered)
-            }
-            throw e
-        }
+        DefaultAttendanceLabels.createFor(orgId, lang)
+        DefaultLeadSources.createFor(orgId, lang)
 
         userSettings.new(userId)
         return AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)

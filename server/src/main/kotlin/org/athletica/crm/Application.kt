@@ -39,6 +39,7 @@ import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.routes.attendanceRoutes
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
@@ -279,8 +280,10 @@ private suspend fun syncSchedulesDaily(di: Di) {
         try {
             val orgIds =
                 di.database.transaction {
-                    sql("SELECT DISTINCT org_id FROM groups")
-                        .list { row -> row.get("org_id", java.util.UUID::class.java)!!.toKotlinUuid() }
+                    orThrow {
+                        sql("SELECT DISTINCT org_id FROM groups")
+                            .list { row -> row.get("org_id", java.util.UUID::class.java)!!.toKotlinUuid() }
+                    }
                 }
             orgIds.forEach { orgUuid ->
                 try {

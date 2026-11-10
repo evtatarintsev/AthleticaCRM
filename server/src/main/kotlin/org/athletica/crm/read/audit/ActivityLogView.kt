@@ -1,9 +1,11 @@
 package org.athletica.crm.read.audit
 
+import arrow.core.raise.Raise
 import org.athletica.crm.api.schemas.audit.AuditLogUser
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.storage.Transaction
 import kotlin.uuid.Uuid
@@ -38,14 +40,14 @@ data class ActivityLogEntry(
 /** Read-проекция журнала: фильтры, организация, субъекты и пагинация для экрана аудита. */
 interface ActivityLogView {
     /** Возвращает страницу событий в обратном хронологическом порядке. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: ActivityLogQuery): List<ActivityLogEntry>
 
     /** Считает все события, соответствующие фильтрам запроса без пагинации. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun count(query: ActivityLogQuery): Long
 
     /** Уникальные авторы журнала в текущей организации с последним сохранённым именем. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun users(): List<AuditLogUser>
 }

@@ -16,6 +16,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -35,12 +36,14 @@ class DbTodayScheduleViewTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", branchId).bind("orgId", orgId).bind("name", "Основной").execute()
+            }
         }
     }
 
@@ -57,23 +60,25 @@ class DbTodayScheduleViewTest {
             permissions = EmployeePermission(),
         )
 
-    private suspend fun insertHall(name: String): Uuid {
-        val id = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-            .bind("id", id).bind("orgId", orgId).bind("branchId", branchId).bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertHall(name: String): Uuid =
+        orThrow {
+            val id = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                .bind("id", id).bind("orgId", orgId).bind("branchId", branchId).bind("name", name)
+                .execute()
+            return id
+        }
 
-    private suspend fun insertGroup(name: String): Uuid {
-        val id = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
-            .bind("id", id).bind("orgId", orgId).bind("branchId", branchId).bind("name", name)
-            .execute()
-        return id
-    }
+    private suspend fun insertGroup(name: String): Uuid =
+        orThrow {
+            val id = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+                .bind("id", id).bind("orgId", orgId).bind("branchId", branchId).bind("name", name)
+                .execute()
+            return id
+        }
 
     private suspend fun insertSession(
         groupId: Uuid,
@@ -83,22 +88,24 @@ class DbTodayScheduleViewTest {
         endTime: LocalTime,
         status: String = "scheduled",
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO sessions (id, org_id, group_id, hall_id, date, start_time, end_time, status)
-                VALUES (:id, :orgId, :groupId, :hallId, :date, :startTime::time, :endTime::time, :status::session_status)
-                """.trimIndent(),
-            )
-            .bind("id", Uuid.generateV7())
-            .bind("orgId", orgId)
-            .bind("groupId", groupId)
-            .bind("hallId", hallId)
-            .bind("date", date.toJavaLocalDate())
-            .bind("startTime", startTime.toString())
-            .bind("endTime", endTime.toString())
-            .bind("status", status)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO sessions (id, org_id, group_id, hall_id, date, start_time, end_time, status)
+                    VALUES (:id, :orgId, :groupId, :hallId, :date, :startTime::time, :endTime::time, :status::session_status)
+                    """.trimIndent(),
+                )
+                .bind("id", Uuid.generateV7())
+                .bind("orgId", orgId)
+                .bind("groupId", groupId)
+                .bind("hallId", hallId)
+                .bind("date", date.toJavaLocalDate())
+                .bind("startTime", startTime.toString())
+                .bind("endTime", endTime.toString())
+                .bind("status", status)
+                .execute()
+        }
     }
 
     private suspend fun sessionsOn(date: LocalDate = today): TodaySessionsResponse =

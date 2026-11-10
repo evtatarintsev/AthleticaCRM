@@ -1,15 +1,17 @@
 package org.athletica.crm.read.memberships
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toMembershipId
 import org.athletica.crm.core.entityids.toOrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
 import kotlin.time.Instant
 
 /** Абонементы всех организаций, которым по местной дате организации положено действие. */
-context(tr: Transaction)
+context(tr: Transaction, raise: Raise<AppError>)
 internal suspend fun dueMemberships(now: Instant): List<Pair<OrgId, MembershipId>> =
     tr
         .sql(

@@ -9,6 +9,7 @@ import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.domain.payment.Payments
 import org.athletica.crm.storage.Database

@@ -9,6 +9,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendancecontrol.AttendanceControl
 import org.athletica.crm.domain.attendancecontrol.JournalCloseDelay
@@ -63,18 +64,20 @@ class OverdueJournalScheduler(
     suspend fun processDue() {
         val due =
             db.transaction {
-                val now = clock.now()
-                val fromDate =
-                    (now - JournalCloseDelay.MAX_MINUTES.minutes - LOOKBACK - 2.days)
-                        .toLocalDateTime(TimeZone.UTC)
-                        .date
-                dueJournalSessions(
-                    now,
-                    fromDate,
-                    LOOKBACK,
-                    JournalCloseDelay.DEFAULT.minutes,
-                    AttendanceControl.DEFAULT_OVERDUE_TASK_ENABLED,
-                )
+                orThrow {
+                    val now = clock.now()
+                    val fromDate =
+                        (now - JournalCloseDelay.MAX_MINUTES.minutes - LOOKBACK - 2.days)
+                            .toLocalDateTime(TimeZone.UTC)
+                            .date
+                    dueJournalSessions(
+                        now,
+                        fromDate,
+                        LOOKBACK,
+                        JournalCloseDelay.DEFAULT.minutes,
+                        AttendanceControl.DEFAULT_OVERDUE_TASK_ENABLED,
+                    )
+                }
             }
         due.forEach { session ->
             try {

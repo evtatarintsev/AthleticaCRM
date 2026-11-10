@@ -71,8 +71,8 @@ private data class ClientStub(
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId) = copy(docs = docs.filterNot { it.id == docId })
 
-    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    override fun withNew(
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
         newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,

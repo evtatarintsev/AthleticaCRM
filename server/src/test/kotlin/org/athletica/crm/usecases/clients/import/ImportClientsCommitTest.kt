@@ -12,7 +12,11 @@ import org.athletica.crm.api.schemas.clients.import.ImportTarget
 import org.athletica.crm.api.schemas.clients.import.LeadSourceAction
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
+import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.BranchId
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
@@ -22,6 +26,7 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.leadSource.DbLeadSources
@@ -124,6 +129,51 @@ class ImportClientsCommitTest {
                     leadSources = DbLeadSources(),
                     definitions = DbCustomFieldDefinitions(),
                 )
+            }
+        }
+
+    @Test
+    fun `вариант вне списка одинаково отклоняется при создании и в обоих режимах импорта`() =
+        orThrow {
+            runTest {
+                val org = setupOrg()
+                val key = CustomFieldKey.from("sport")
+                val definitions = DbCustomFieldDefinitions()
+                val actor = ctx(org)
+                TestPostgres.db.transaction {
+                    context(actor) {
+                        definitions.saveAll(
+                            CLIENT_CUSTOM_FIELD_ENTITY_TYPE,
+                            listOf(CustomFieldDefinition.Select(key, "Спорт", options = listOf("Йога"))),
+                        )
+                    }
+                }
+                val created =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(actor) {
+                                DbClients().new(
+                                    ClientId.new(), testName("Иван"), null, null, Gender.MALE,
+                                    customFields = listOf(CustomFieldValue.Select(key, "Танцы")),
+                                )
+                            }
+                        }
+                    }
+                val code = assertIs<Either.Left<AppError>>(created).value.code
+                assertEquals("CUSTOM_FIELD_INVALID_OPTION", code)
+                val upload = uploadCsv(org, "ФИО;Спорт\nИван;Танцы\n")
+                val request =
+                    ClientImportCommitRequest(
+                        uploadId = upload,
+                        columnMapping = listOf(ColumnMapping("ФИО", ImportTarget.Name), ColumnMapping("Спорт", ImportTarget.CustomField(key))),
+                        defaultGender = Gender.MALE,
+                        dryRun = true,
+                    )
+                for (dryRun in listOf(true, false)) {
+                    val result = assertIs<Either.Right<ClientImportCommitResponse>>(runImport(org, request.copy(dryRun = dryRun))).value
+                    assertEquals(0, result.imported)
+                    assertEquals(code, result.rows.single().errors.single().substringBefore(':'))
+                }
             }
         }
 

@@ -71,8 +71,8 @@ data class AuditActiveClient(
         return AuditActiveClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    override fun withNew(
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
         newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,

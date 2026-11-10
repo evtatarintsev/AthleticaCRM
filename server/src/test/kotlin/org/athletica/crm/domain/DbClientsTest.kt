@@ -11,6 +11,9 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.customfields.CustomFieldDefinition
+import org.athletica.crm.core.customfields.CustomFieldKey
+import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -34,6 +37,8 @@ import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.clients.archive
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.clients.restore
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
+import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
@@ -110,6 +115,65 @@ class DbClientsTest {
                 .sql("SELECT COUNT(*) FROM client_docs WHERE client_id = :id")
                 .bind("id", clientId)
                 .firstOrNull { row -> row.asLong(0) } ?: 0L
+        }
+
+    @Test
+    fun `редактирование сохраняет старый вариант и пропущенное новое обязательное поле`() =
+        runTest {
+            val fields = DbCustomFieldDefinitions()
+            val id = ClientId.new()
+            val other = ClientId.new()
+            val (selection, oldValue, newRequired) =
+                orThrow {
+                    val key = CustomFieldKey.from("sport")
+                    val selection = CustomFieldDefinition.Select(key, "Спорт", isRequired = true, options = listOf("Йога", "Танцы"))
+                    val required = CustomFieldDefinition.Text(CustomFieldKey.from("note"), "Примечание", isRequired = true)
+                    Triple(selection, CustomFieldValue.Select(key, "Йога"), required)
+                }
+            orThrow {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        fields.saveAll(CLIENT_CUSTOM_FIELD_ENTITY_TYPE, listOf(selection))
+                        clients.new(id, testName("Первый"), null, null, Gender.MALE, customFields = listOf(oldValue))
+                        clients.new(
+                            other, testName("Второй"), null, null, Gender.MALE,
+                            customFields = listOf(oldValue.copy(value = "Танцы")),
+                        )
+                        fields.saveAll(CLIENT_CUSTOM_FIELD_ENTITY_TYPE, listOf(selection.copy(options = listOf("Танцы")), newRequired))
+                        clients.activeById(id).withNew(
+                            testName("Первый обновлён"), null, null, Gender.MALE, newCustomFields = listOf(oldValue),
+                        ).save()
+                        assertEquals(listOf(oldValue), clients.byId(id).customFields)
+                        assertEquals("Первый обновлён", clients.byId(id).name)
+                    }
+                }
+            }
+            val cleared =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) { clients.activeById(id).withNew(testName("Первый"), null, null, Gender.MALE).save() }
+                    }
+                }
+            assertEquals("CUSTOM_FIELD_REQUIRED", assertIs<Either.Left<AppError>>(cleared).value.code)
+            val selected =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            clients.activeById(other).withNew(
+                                testName("Второй"), null, null, Gender.MALE, newCustomFields = listOf(oldValue),
+                            ).save()
+                        }
+                    }
+                }
+            assertEquals("CUSTOM_FIELD_INVALID_OPTION", assertIs<Either.Left<AppError>>(selected).value.code)
+            val created =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) { clients.new(ClientId.new(), testName("Новый"), null, null, Gender.MALE) }
+                    }
+                }
+            assertEquals("CUSTOM_FIELD_REQUIRED", assertIs<Either.Left<AppError>>(created).value.code)
+            assertEquals(2L, countClientsInDb())
         }
 
     @Test

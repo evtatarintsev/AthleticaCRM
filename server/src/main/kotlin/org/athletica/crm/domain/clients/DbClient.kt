@@ -8,12 +8,15 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
+import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -30,6 +33,7 @@ internal data class DbActiveClient(
     override val leadSourceId: LeadSourceId?,
     override val customFields: List<CustomFieldValue>,
     private val orgId: OrgId,
+    private val definitions: CustomFieldDefinitions,
 ) : ActiveClient {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
@@ -90,8 +94,8 @@ internal data class DbActiveClient(
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId) = copy(docs = docs.filterNot { it.id == docId })
 
-    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    override fun withNew(
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
         newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
@@ -104,7 +108,7 @@ internal data class DbActiveClient(
         birthday = newBirthday,
         gender = newGender,
         leadSourceId = newLeadSourceId,
-        customFields = newCustomFields,
+        customFields = CustomFieldValues(definitions.all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE)).forReplacement(customFields, newCustomFields),
     )
 }
 

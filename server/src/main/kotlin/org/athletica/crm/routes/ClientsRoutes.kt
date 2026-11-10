@@ -30,7 +30,6 @@ import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldDefinition
-import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
@@ -47,6 +46,7 @@ import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.clients.archive
 import org.athletica.crm.domain.clients.clientDoc
 import org.athletica.crm.domain.clients.restore
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
@@ -82,7 +82,7 @@ fun RouteWithContext.clientsRoutes(
         val (items, customDefs) =
             db.transaction {
                 val items = views.clientList.page(ClientListQuery(limit = null)).clients
-                Pair(items, definitions.all(CLIENT_ENTITY_TYPE))
+                Pair(items, definitions.all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE))
             }
 
         val csvContent = generateCsvContent(items, request.fields, customDefs)
@@ -105,8 +105,6 @@ fun RouteWithContext.clientsRoutes(
 
     post<CreateClientRequest, ClientDetailResponse>("/clients/create") { request ->
         db.transaction {
-            val defs = definitions.all(CLIENT_ENTITY_TYPE)
-            val customFields = CustomFieldValues(defs).with(request.customFields)
             val client =
                 clients
                     .new(
@@ -116,7 +114,7 @@ fun RouteWithContext.clientsRoutes(
                         request.birthday,
                         request.gender,
                         request.leadSourceId,
-                        customFields.toList(),
+                        request.customFields,
                     )
             contacts.replace(client, request.contacts.toDomain(client.id))
             val balance = balances.currentOf(client)
@@ -126,8 +124,6 @@ fun RouteWithContext.clientsRoutes(
 
     post<EditClientRequest, ClientDetailResponse>("/clients/edit") { request ->
         db.transaction {
-            val defs = definitions.all(CLIENT_ENTITY_TYPE)
-            val customFields = CustomFieldValues(defs).with(request.customFields)
             val client =
                 clients
                     .activeById(request.id)
@@ -137,7 +133,7 @@ fun RouteWithContext.clientsRoutes(
                         request.birthday,
                         request.gender,
                         request.leadSourceId,
-                        customFields.toList(),
+                        request.customFields,
                     )
                     .apply { save() }
             contacts.replace(client, request.contacts.toDomain(client.id))
@@ -243,8 +239,6 @@ private fun ClientContact.toSchema(): ClientContactSchema =
 
 /** Маппинг контактов из запроса в доменные сущности клиента [clientId] с новыми идентификаторами. */
 private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientContact> = map { ClientContact(ClientContactId.new(), clientId, it.type, it.value) }
-
-private const val CLIENT_ENTITY_TYPE = "CLIENT"
 
 /** Максимальный размер страницы списка клиентов: защищает от чрезмерных запросов. */
 private const val MAX_CLIENT_PAGE_SIZE = 100

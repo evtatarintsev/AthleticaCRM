@@ -74,8 +74,8 @@ interface ActiveClient : Client {
     fun deleteDoc(docId: ClientDocId): ActiveClient
 
     /** Возвращает копию с новыми значениями полей (без записи в БД). */
-    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    fun withNew(
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun withNew(
         newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,

@@ -70,6 +70,10 @@ interface Memberships {
         today: LocalDate,
     ): Membership?
 
+    /** Атомарно гасит выбранные неоплаченные занятия. Сначала блокирует участия, затем абонемент. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun repayDebt(id: MembershipId, sessionIds: List<SessionId>, today: LocalDate): Membership
+
     /** Действующее списание за участие клиента [clientId] в занятии [sessionId]; `null` — нет. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activeDebit(sessionId: SessionId, clientId: ClientId): MembershipDebit?

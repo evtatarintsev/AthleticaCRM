@@ -32,6 +32,8 @@ import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.DurationUnit
+import org.athletica.crm.domain.attendance.DbParticipations
+import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstantOrNull
@@ -49,7 +51,7 @@ import kotlin.uuid.Uuid
  * R2DBC-реализация хранилища абонементов. Все запросы фильтруются по `org_id`.
  * Валюта цены берётся из контекста организации, отдельной колонки нет.
  */
-class DbMemberships : Memberships {
+class DbMemberships(private val participations: Participations = DbParticipations()) : Memberships {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun issue(
         id: MembershipId,
@@ -138,6 +140,41 @@ class DbMemberships : Memberships {
             .bind("orgId", ctx.orgId)
             .firstOrNull { it.toMembership() }
             ?: raise(CommonDomainError("MEMBERSHIP_NOT_FOUND", Messages.MembershipNotFound.localize()))
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun repayDebt(id: MembershipId, sessionIds: List<SessionId>, today: LocalDate): Membership {
+        val ids = sessionIds.distinct()
+        if (ids.isEmpty()) {
+            raise(CommonDomainError("DEBT_SESSIONS_REQUIRED", Messages.DebtSessionsRequired.localize()))
+        }
+        val clientId =
+            tr.sql("SELECT client_id FROM memberships WHERE id = :id AND org_id = :orgId")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .firstOrNull { it.asUuid("client_id").toClientId() }
+                ?: raise(CommonDomainError("MEMBERSHIP_NOT_FOUND", Messages.MembershipNotFound.localize()))
+        // Сверка списаний тоже блокирует участие до абонемента.
+        val locked = ids.sortedBy { it.value }.associateWith { participations.lock(it, clientId) }
+        val membership = byId(id)
+        if (membership !is DbActiveMembership) {
+            if (membership is ClosedMembership && ids.any { activeDebit(it, clientId)?.membershipId == id }) {
+                raise(sessionAlreadyDebited())
+            }
+            raise(CommonDomainError("MEMBERSHIP_NOT_ACTIVE", Messages.MembershipNotActive.localize()))
+        }
+        val sessions =
+            ids.map { sessionId ->
+                val participation = locked[sessionId]
+                if (participation == null || !membership.matchesParticipation(participation)) {
+                    raise(CommonDomainError("SESSION_NOT_UNPAID", Messages.SessionNotUnpaid.localize()))
+                }
+                if (activeDebit(sessionId, clientId) != null) {
+                    raise(sessionAlreadyDebited())
+                }
+                participation
+            }
+        return membership.recordDebt(sessions, today)
+    }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun debitCandidate(

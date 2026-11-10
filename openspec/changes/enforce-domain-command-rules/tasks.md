@@ -6,8 +6,8 @@
 
 ## 2. Занятия (п. 1–2)
 
-- [ ] 2.1 Проверку `INVALID_SESSION_TIME` перенести в `DbSessions.new` и `DbSession.reschedule`, удалить из `CreateSession` и `RescheduleSession`; `CHECK` в БД оставить. Тест: равный и обратный интервал отклоняются при прямом доменном вызове обоих входов
-- [ ] 2.2 Сделать результат `Sessions.new` обязательным (`Session`) в `Sessions`, `DbSessions`, `AuditSessions`; удалить `?: raise(SESSION_ALREADY_EXISTS)` в `CreateSession`. Тест: повторный ID даёт `SESSION_ALREADY_EXISTS` без записи аудита, созданное занятие возвращается с тренерами
+- [x] 2.1 Проверку `INVALID_SESSION_TIME` перенести в `DbSessions.new` и `DbSession.reschedule`, удалить из `CreateSession` и `RescheduleSession`; `CHECK` в БД оставить. Тест: равный и обратный интервал отклоняются при прямом доменном вызове обоих входов
+- [x] 2.2 Сделать результат `Sessions.new` обязательным (`Session`) в `Sessions`, `DbSessions`, `AuditSessions`; удалить `?: raise(SESSION_ALREADY_EXISTS)` в `CreateSession`. Тест: повторный ID даёт `SESSION_ALREADY_EXISTS` без записи аудита, созданное занятие возвращается с тренерами
 
 ## 3. Сотрудники (п. 6)
 

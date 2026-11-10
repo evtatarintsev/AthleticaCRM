@@ -1,7 +1,6 @@
 package org.athletica.crm.usecases.sessions
 
 import arrow.core.raise.context.Raise
-import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.RequestContext
@@ -10,7 +9,6 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.storage.Transaction
@@ -32,9 +30,6 @@ suspend fun createSession(
     employeeIds: List<EmployeeId>,
     notes: String?,
 ) {
-    if (endTime <= startTime) {
-        raise(CommonDomainError("INVALID_SESSION_TIME", "Время окончания должно быть позже времени начала"))
-    }
     sessions.new(
         id = id,
         groupId = groupId,
@@ -44,5 +39,5 @@ suspend fun createSession(
         hallId = hallId,
         notes = notes,
         employees = employees.byIds(employeeIds),
-    ) ?: raise(CommonDomainError("SESSION_ALREADY_EXISTS", "Занятие уже существует"))
+    )
 }

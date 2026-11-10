@@ -45,18 +45,18 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-    ): Session? {
+    ): Session {
         val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employees)
-        if (session != null && ctx is EmployeeRequestContext) {
+        if (ctx is EmployeeRequestContext) {
             context(ctx) {
                 audit.logCreate(
                     "session",
                     id,
-                    Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, employees.map { it.id }, isManual = true)),
+                    Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, session.employeeIds, isManual = true)),
                 )
             }
         }
-        return session?.let { AuditSession(it, audit) }
+        return AuditSession(session, audit)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)

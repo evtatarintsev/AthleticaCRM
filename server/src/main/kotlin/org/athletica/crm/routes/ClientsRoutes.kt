@@ -1,7 +1,5 @@
 package org.athletica.crm.routes
 
-import arrow.core.raise.Raise
-import arrow.core.raise.context.raise
 import io.ktor.http.HttpHeaders
 import org.athletica.crm.api.schemas.clients.AddClientToGroupsRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
@@ -36,8 +34,6 @@ import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -47,7 +43,10 @@ import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
 import org.athletica.crm.domain.clients.Client
 import org.athletica.crm.domain.clients.Clients
+import org.athletica.crm.domain.clients.activeById
+import org.athletica.crm.domain.clients.archive
 import org.athletica.crm.domain.clients.clientDoc
+import org.athletica.crm.domain.clients.restore
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
@@ -119,7 +118,7 @@ fun RouteWithContext.clientsRoutes(
                         request.leadSourceId,
                         customFields.toList(),
                     )
-            contacts.replace(client.id, request.contacts.toDomain(client.id))
+            contacts.replace(client, request.contacts.toDomain(client.id))
             val balance = balances.currentOf(client)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
@@ -131,8 +130,7 @@ fun RouteWithContext.clientsRoutes(
             val customFields = CustomFieldValues(defs).with(request.customFields)
             val client =
                 clients
-                    .byId(request.id)
-                    .requireActive()
+                    .activeById(request.id)
                     .withNew(
                         request.name,
                         request.avatarId,
@@ -142,7 +140,7 @@ fun RouteWithContext.clientsRoutes(
                         customFields.toList(),
                     )
                     .apply { save() }
-            contacts.replace(client.id, request.contacts.toDomain(client.id))
+            contacts.replace(client, request.contacts.toDomain(client.id))
             val balance = balances.currentOf(client)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
@@ -168,11 +166,8 @@ fun RouteWithContext.clientsRoutes(
 
     post<AdjustBalanceRequest, ClientDetailResponse>("/clients/balance/adjust") { request ->
         db.transaction {
-            val client = clients.byId(request.clientId).requireActive()
-            val balance =
-                balances
-                    .currentOf(client)
-                    .adjust(request.amount, request.note)
+            val client = clients.activeById(request.clientId)
+            val balance = balances.adjust(client, request.amount, request.note)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
@@ -180,8 +175,7 @@ fun RouteWithContext.clientsRoutes(
     post<AttachClientDocRequest, Unit>("/clients/docs/attach") { request ->
         db.transaction {
             clients
-                .byId(request.clientId)
-                .requireActive()
+                .activeById(request.clientId)
                 .attachDoc(clientDoc(request.uploadId, request.name, request.docId))
                 .save()
         }
@@ -190,8 +184,7 @@ fun RouteWithContext.clientsRoutes(
     post<DeleteClientDocRequest, Unit>("/clients/docs/delete") { request ->
         db.transaction {
             clients
-                .byId(request.clientId)
-                .requireActive()
+                .activeById(request.clientId)
                 .deleteDoc(request.docId)
                 .save()
         }
@@ -199,23 +192,13 @@ fun RouteWithContext.clientsRoutes(
 
     post<ArchiveClientRequest, Unit>("/clients/archive") { request ->
         db.transaction {
-            request.clientIds.forEach { id ->
-                when (val client = clients.byId(id)) {
-                    is ActiveClient -> client.archive()
-                    is ArchivedClient -> raise(CommonDomainError("CLIENT_ALREADY_ARCHIVED", "Клиент уже в архиве"))
-                }
-            }
+            request.clientIds.forEach { id -> clients.archive(id) }
         }
     }
 
     post<RestoreClientRequest, Unit>("/clients/restore") { request ->
         db.transaction {
-            request.clientIds.forEach { id ->
-                when (val client = clients.byId(id)) {
-                    is ArchivedClient -> client.restore()
-                    is ActiveClient -> raise(CommonDomainError("CLIENT_NOT_ARCHIVED", "Клиент не в архиве"))
-                }
-            }
+            request.clientIds.forEach { id -> clients.restore(id) }
         }
     }
 
@@ -249,16 +232,6 @@ val Client.state: ClientState
             is ActiveClient -> ClientState.ACTIVE
             is ArchivedClient -> ClientState.ARCHIVED
         }
-
-/**
- * Сужает клиента до [ActiveClient]; архивный клиент недоступен для изменения.
- */
-context(raise: Raise<AppError>)
-fun Client.requireActive(): ActiveClient =
-    when (this) {
-        is ActiveClient -> this
-        is ArchivedClient -> raise(CommonDomainError("CLIENT_ARCHIVED", "Клиент в архиве и недоступен для изменения"))
-    }
 
 /** Маппинг доменного контакта клиента в схему ответа. */
 private fun ClientContact.toSchema(): ClientContactSchema =

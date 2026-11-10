@@ -315,7 +315,7 @@ private suspend fun processRow(
                 customFields = customFields,
             )
         if (balance != null && balance != 0.0) {
-            balances.currentOf(client).adjust(balance.toMoney(ctx.currency), balanceNote)
+            balances.adjust(client, balance.toMoney(ctx.currency), balanceNote)
         }
         RowResult(rowNumber = rowNumber, status = Status.OK)
     }.fold(

@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
@@ -31,12 +32,12 @@ internal data class DbActiveClient(
 ) : ActiveClient {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
-        tr.sql(
+        val updated = tr.sql(
             """
             UPDATE clients
             SET name = :name, avatar_id = :avatarId, birthday = :birthday, gender = :gender::gender,
                 lead_source_id = :leadSourceId, custom_fields = :customFields::jsonb
-            WHERE id = :id AND org_id = :orgId
+            WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'
             """.trimIndent(),
         )
             .bind("name", name)
@@ -48,6 +49,7 @@ internal data class DbActiveClient(
             .bind("id", id)
             .bind("orgId", orgId)
             .execute()
+        ensure(updated == 1L) { clientArchived() }
 
         tr.sql("DELETE FROM client_docs WHERE client_id = :clientId")
             .bind("clientId", id)
@@ -70,12 +72,14 @@ internal data class DbActiveClient(
         }
     }
 
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun archive() {
-        tr.sql("UPDATE clients SET state = 'ARCHIVED' WHERE id = :id AND org_id = :orgId")
-            .bind("id", id)
-            .bind("orgId", orgId)
-            .execute()
+        val updated =
+            tr.sql("UPDATE clients SET state = 'ARCHIVED' WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE'")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        ensure(updated == 1L) { clientAlreadyArchived() }
     }
 
     context(ctx: EmployeeRequestContext)
@@ -115,13 +119,24 @@ internal data class DbArchivedClient(
     override val docs: List<ClientDoc>,
     override val leadSourceId: LeadSourceId?,
     override val customFields: List<CustomFieldValue>,
-    private val orgId: OrgId,
 ) : ArchivedClient {
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun restore() {
-        tr.sql("UPDATE clients SET state = 'ACTIVE' WHERE id = :id AND org_id = :orgId")
-            .bind("id", id)
-            .bind("orgId", orgId)
-            .execute()
+        val updated =
+            tr.sql("UPDATE clients SET state = 'ACTIVE' WHERE id = :id AND org_id = :orgId AND state = 'ARCHIVED'")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        ensure(updated == 1L) { clientNotArchived() }
     }
+}
+
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+internal suspend fun ActiveClient.lockForWrite() {
+    val active =
+        tr.sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId AND state = 'ACTIVE' FOR UPDATE")
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .firstOrNull { 1 }
+    ensure(active != null) { clientArchived() }
 }

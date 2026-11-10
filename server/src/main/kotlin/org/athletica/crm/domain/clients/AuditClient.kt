@@ -16,6 +16,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.collections.plus
@@ -33,8 +34,11 @@ data class AuditActiveClient(
         }
     }
 
-    context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun archive() = client.archive()
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun archive() {
+        client.archive()
+        audit.logUpdate("client", id, """{"state":"ARCHIVED"}""")
+    }
 
     context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc): ActiveClient {
@@ -130,10 +134,10 @@ private fun ClientDoc.auditData() = ClientDocAuditData(uploadId, name)
 data class AuditArchivedClient(
     private val client: ArchivedClient,
     private val audit: AuditLog,
-    private val auditEvents: List<AuditEvent> = emptyList(),
 ) : ArchivedClient by client {
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun restore() {
         client.restore()
+        audit.logUpdate("client", id, """{"state":"ACTIVE"}""")
     }
 }

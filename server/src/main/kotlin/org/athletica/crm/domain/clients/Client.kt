@@ -61,7 +61,7 @@ interface ActiveClient : Client {
     suspend fun save()
 
     /** Переводит клиента в архив. После этого клиент становится [ArchivedClient]. */
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun archive()
 
     /** Возвращает копию с прикреплённым документом [doc] (без записи в БД). */
@@ -90,7 +90,7 @@ interface ActiveClient : Client {
  */
 interface ArchivedClient : Client {
     /** Восстанавливает клиента из архива. После этого клиент становится [ActiveClient]. */
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun restore()
 }
 

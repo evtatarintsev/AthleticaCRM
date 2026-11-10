@@ -59,7 +59,7 @@ private data class ClientStub(
     override suspend fun save() {
     }
 
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun archive() {
     }
 

@@ -138,7 +138,7 @@ class DbClients : Clients {
     context(ctx: EmployeeRequestContext)
     private fun ScalarClient.toClient(groups: List<ClientGroup>, docs: List<ClientDoc>): Client =
         if (archived) {
-            DbArchivedClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId)
+            DbArchivedClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields)
         } else {
             DbActiveClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId)
         }

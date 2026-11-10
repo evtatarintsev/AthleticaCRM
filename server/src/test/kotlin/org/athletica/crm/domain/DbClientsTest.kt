@@ -3,6 +3,8 @@ package org.athletica.crm.domain
 import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.context.either
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -20,10 +22,18 @@ import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
+import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
+import org.athletica.crm.domain.clients.AuditClients
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.clients.activeById
+import org.athletica.crm.domain.clients.archive
 import org.athletica.crm.domain.clients.clientDoc
+import org.athletica.crm.domain.clients.restore
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
@@ -99,6 +109,116 @@ class DbClientsTest {
                 .sql("SELECT COUNT(*) FROM client_docs WHERE client_id = :id")
                 .bind("id", clientId)
                 .firstOrNull { row -> row.asLong(0) } ?: 0L
+        }
+
+    @Test
+    fun `два архивирования одного клиента дают одну запись аудита`() =
+        runTest {
+            val audited = AuditClients(clients, PostgresAuditLog())
+            val id = ClientId.new()
+            val stale = orThrow {
+                TestPostgres.db.transaction { context(ctx) { audited.new(id, "Клиент", null, null, Gender.MALE) } }
+            }
+            val archived = CompletableDeferred<Unit>()
+            val retryStarted = CompletableDeferred<Unit>()
+            val first = async {
+                orThrow {
+                    TestPostgres.db.transaction {
+                        context(ctx) { audited.archive(id) }
+                        archived.complete(Unit)
+                        retryStarted.await()
+                    }
+                }
+            }
+            val retry = async {
+                archived.await()
+                either {
+                    TestPostgres.db.transaction {
+                        retryStarted.complete(Unit)
+                        context(ctx) { stale.archive() }
+                    }
+                }
+            }
+            first.await()
+            assertEquals("CLIENT_ALREADY_ARCHIVED", assertIs<Either.Left<AppError>>(retry.await()).value.code)
+
+            orThrow {
+                TestPostgres.db.transaction {
+                    assertEquals(
+                        1L,
+                        sql("SELECT COUNT(*) FROM audit_logs WHERE entity_id = :id AND data ->> 'state' = 'ARCHIVED'")
+                            .bind("id", id)
+                            .firstOrNull { it.asLong(0) },
+                    )
+                    context(ctx) { audited.restore(id) }
+                }
+            }
+            val restored = either {
+                TestPostgres.db.transaction { context(ctx) { audited.restore(id) } }
+            }
+            assertEquals("CLIENT_NOT_ARCHIVED", assertIs<Either.Left<AppError>>(restored).value.code)
+        }
+
+    @Test
+    fun `архивация опережает запись баланса и профиля из старого снимка`() =
+        runTest {
+            val id = ClientId.new()
+            val stale = orThrow {
+                TestPostgres.db.transaction { context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE) } }
+            }
+            val balances = DbClientBalances()
+            val archived = CompletableDeferred<Unit>()
+            val balanceStarted = CompletableDeferred<Unit>()
+            val profileStarted = CompletableDeferred<Unit>()
+            val archive = async {
+                orThrow {
+                    TestPostgres.db.transaction {
+                        context(ctx) { clients.archive(id) }
+                        archived.complete(Unit)
+                        balanceStarted.await()
+                        profileStarted.await()
+                    }
+                }
+            }
+            val balance = async {
+                archived.await()
+                either {
+                    TestPostgres.db.transaction {
+                        balanceStarted.complete(Unit)
+                        context(ctx) { balances.adjust(stale, Money(100, Currency.RUB), "Пополнение") }
+                    }
+                }
+            }
+            val profile = async {
+                archived.await()
+                either {
+                    TestPostgres.db.transaction {
+                        profileStarted.complete(Unit)
+                        context(ctx) { stale.withNew("Новое имя", null, null, Gender.MALE).save() }
+                    }
+                }
+            }
+            archive.await()
+            assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(balance.await()).value.code)
+            assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(profile.await()).value.code)
+
+            val contacts = either {
+                TestPostgres.db.transaction { context(ctx) { DbClientContacts().replace(stale, emptyList()) } }
+            }
+            assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(contacts).value.code)
+            val active = either {
+                TestPostgres.db.transaction { context(ctx) { clients.activeById(id) } }
+            }
+            assertEquals("CLIENT_ARCHIVED", assertIs<Either.Left<AppError>>(active).value.code)
+            orThrow {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        val client = assertIs<ArchivedClient>(clients.byId(id))
+                        assertEquals("Клиент", client.name)
+                        assertEquals(emptyList(), balances.currentOf(client).history())
+                    }
+                }
+            }
         }
 
     // ─── new() ────────────────────────────────────────────────────────────────

@@ -165,9 +165,6 @@ class DbChannelIntegrations(
         ensure(!inUse) { botInUse() }
     }
 
-    /** Ошибка «интеграция канала не найдена». */
-    private fun channelNotFound(): CommonDomainError = CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена")
-
     /** Ошибка «бот уже подключён к другой интеграции». */
     context(ctx: RequestContext)
     private fun botInUse(): CommonDomainError = CommonDomainError("TELEGRAM_BOT_IN_USE", Messages.TelegramBotInUse.localize())
@@ -186,3 +183,5 @@ class DbChannelIntegrations(
         )
     }
 }
+
+internal fun channelNotFound(): CommonDomainError = CommonDomainError("CHANNEL_NOT_FOUND", "Интеграция канала не найдена")

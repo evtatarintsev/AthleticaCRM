@@ -1,6 +1,8 @@
 package org.athletica.crm.domain.messagedelivery
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
@@ -10,7 +12,10 @@ import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toDeliveryId
 import org.athletica.crm.core.entityids.toMessageId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.domain.channels.channelNotFound
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
@@ -24,8 +29,16 @@ class DbDeliveries : Deliveries {
     override suspend fun create(
         messageId: MessageId,
         channelIntegrationId: ChannelIntegrationId,
-        recipientAddress: String,
+        resolveRecipientAddress: suspend () -> String,
     ): Delivery {
+        val enabled =
+            tr.sql("SELECT enabled FROM channel_integrations WHERE id = :id AND org_id = :orgId FOR SHARE")
+                .bind("id", channelIntegrationId)
+                .bind("orgId", ctx.orgId)
+                .firstOrNull { it.asBoolean("enabled") }
+                ?: raise(channelNotFound())
+        ensure(enabled) { CommonDomainError("CHANNEL_DISABLED", "Канал отключён") }
+        val recipientAddress = resolveRecipientAddress()
         val id = DeliveryId.new()
         val now = Clock.System.now()
         tr.sql(

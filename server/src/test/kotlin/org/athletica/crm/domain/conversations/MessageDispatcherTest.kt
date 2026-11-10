@@ -99,7 +99,7 @@ class MessageDispatcherTest {
                 context(ctx) {
                     val conversation = conversations.forClient(clientId)
                     val message = conversation.appendOutbound(Author.Employee(employeeId), "Привет")
-                    deliveries.create(message.id, integrationId, "+79990001122")
+                    deliveries.create(message.id, integrationId) { "+79990001122" }
                 }
             }
         }.let { if (it is Either.Left) fail("Не удалось поставить доставку: ${it.value}") }

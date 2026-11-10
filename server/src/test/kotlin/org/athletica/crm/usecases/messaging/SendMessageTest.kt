@@ -26,6 +26,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
+import org.athletica.crm.domain.conversations.Author
 import org.athletica.crm.domain.conversations.DbConversations
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
@@ -223,13 +224,47 @@ class SendMessageTest {
     @Test
     fun `выключенный канал возвращает CHANNEL_DISABLED`() =
         runTest {
-            addPhoneContact()
-
             val result = send(disabledIntegrationId)
 
             val error = assertIs<Either.Left<AppError>>(result).value
             assertEquals("CHANNEL_DISABLED", error.code)
             assertEquals(null, deliveryState())
+            orThrow {
+                TestPostgres.db.transaction {
+                    context(ctx) { assertEquals(null, conversations.byClient(clientId)) }
+                }
+            }
+        }
+
+    @Test
+    fun `домен отклоняет пустой текст и постановку доставки в отключённый канал`() =
+        runTest {
+            val conversation =
+                orThrow {
+                    TestPostgres.db.transaction { context(ctx) { conversations.forClient(clientId) } }
+                }
+            val empty =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { conversation.appendOutbound(Author.Employee(employeeId), " \t ") } }
+                }
+            assertEquals("MESSAGE_EMPTY", assertIs<Either.Left<AppError>>(empty).value.code)
+
+            val disabled =
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            val message = conversation.appendOutbound(Author.Employee(employeeId), "Привет")
+                            deliveries.create(message.id, disabledIntegrationId) { error("Адрес не должен разрешаться") }
+                        }
+                    }
+                }
+            assertEquals("CHANNEL_DISABLED", assertIs<Either.Left<AppError>>(disabled).value.code)
+            assertEquals(null, deliveryState())
+            orThrow {
+                TestPostgres.db.transaction {
+                    context(ctx) { assertEquals(emptyList(), conversation.messages()) }
+                }
+            }
         }
 
     @Test

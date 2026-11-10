@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.domain.sessions.DbScheduleSync
@@ -444,7 +445,7 @@ class DbScheduleSyncTest {
 
             val systemContext = org.athletica.crm.core.SystemRequestContext(orgId = org.athletica.crm.core.entityids.OrgId(fixture.orgId), currency = org.athletica.crm.core.money.Currency.RUB)
             arrow.core.raise.either {
-                val raise: arrow.core.raise.Raise<org.athletica.crm.core.errors.DomainError> = this
+                val raise: arrow.core.raise.Raise<AppError> = this
                 TestPostgres.db.transaction {
                     context(systemContext, this, raise) { sync.sync() }
                 }

@@ -20,7 +20,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.InboundReceiptId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelIntegrations
@@ -195,7 +195,7 @@ class SendMessageTest {
 
             val result = send(smsIntegrationId, ClientContactId.new())
 
-            val error = assertIs<Either.Left<DomainError>>(result).value
+            val error = assertIs<Either.Left<AppError>>(result).value
             assertEquals("CONTACT_NOT_FOUND", error.code)
             assertEquals(null, deliveryState())
         }
@@ -205,7 +205,7 @@ class SendMessageTest {
         runTest {
             val result = send(smsIntegrationId)
 
-            val error = assertIs<Either.Left<DomainError>>(result).value
+            val error = assertIs<Either.Left<AppError>>(result).value
             assertEquals("CLIENT_HAS_NO_CONTACT", error.code)
             assertEquals(null, deliveryState())
         }
@@ -217,7 +217,7 @@ class SendMessageTest {
 
             val result = send(disabledIntegrationId)
 
-            val error = assertIs<Either.Left<DomainError>>(result).value
+            val error = assertIs<Either.Left<AppError>>(result).value
             assertEquals("CHANNEL_DISABLED", error.code)
             assertEquals(null, deliveryState())
         }
@@ -236,7 +236,7 @@ class SendMessageTest {
 
             val result = send(telegramId)
 
-            val error = assertIs<Either.Left<DomainError>>(result).value
+            val error = assertIs<Either.Left<AppError>>(result).value
             assertEquals("CLIENT_NOT_LINKED", error.code)
             assertEquals(null, deliveryState())
         }
@@ -265,7 +265,7 @@ class SendMessageTest {
             addPhoneContact()
             assertIs<Either.Right<ConversationResponse>>(send(smsIntegrationId))
 
-            val error = assertIs<Either.Left<DomainError>>(remove(smsIntegrationId)).value
+            val error = assertIs<Either.Left<AppError>>(remove(smsIntegrationId)).value
 
             assertEquals("CHANNEL_IN_USE", error.code)
         }
@@ -280,7 +280,7 @@ class SendMessageTest {
                 """.trimIndent(),
             ).bind("id", InboundReceiptId.new()).bind("orgId", orgId).bind("integrationId", smsIntegrationId).execute()
 
-            val error = assertIs<Either.Left<DomainError>>(remove(smsIntegrationId)).value
+            val error = assertIs<Either.Left<AppError>>(remove(smsIntegrationId)).value
 
             assertEquals("CHANNEL_IN_USE", error.code)
         }
@@ -290,12 +290,12 @@ class SendMessageTest {
         runTest {
             assertIs<Either.Right<Unit>>(remove(smsIntegrationId))
 
-            val error = assertIs<Either.Left<DomainError>>(send(smsIntegrationId)).value
+            val error = assertIs<Either.Left<AppError>>(send(smsIntegrationId)).value
             assertEquals("CHANNEL_NOT_FOUND", error.code)
         }
 
     /** Удаляет канал [id] от имени сотрудника. */
-    private suspend fun remove(id: ChannelIntegrationId): Either<DomainError, Unit> =
+    private suspend fun remove(id: ChannelIntegrationId): Either<AppError, Unit> =
         either {
             TestPostgres.db.transaction {
                 context(ctx) { channels.remove(id) }

@@ -8,7 +8,7 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.HallId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.domain.employees.Employee
@@ -42,13 +42,13 @@ private fun Session.snapshot() =
  * Декоратор [Session], добавляющий запись в журнал аудита при изменении состояния занятия.
  */
 class AuditSession(private val delegate: Session, private val audit: AuditLog) : Session by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun cancel() =
         delegate.cancel().also {
             audit.logUpdate("session", id, delegate.snapshot())
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun reschedule(
         newDate: LocalDate,
         newStartTime: LocalTime,
@@ -58,13 +58,13 @@ class AuditSession(private val delegate: Session, private val audit: AuditLog) :
         audit.logUpdate("session", id, delegate.snapshot())
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun complete() =
         delegate.complete().also {
             audit.logUpdate("session", id, delegate.snapshot())
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun setEmployees(employees: List<Employee>) =
         delegate.setEmployees(employees).also {
             audit.logUpdate("session", id, delegate.snapshot())

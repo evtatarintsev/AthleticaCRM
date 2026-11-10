@@ -4,8 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.api.schemas.messaging.SendMessageRequest
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.conversations.Author
 import org.athletica.crm.domain.conversations.Conversations
@@ -20,7 +20,7 @@ import org.athletica.crm.storage.Transaction
  * При нарушении ошибка возвращается до создания сообщения. Создаёт одну доставку (структура поддерживает
  * фан-аут на несколько каналов).
  */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun sendMessage(
     request: SendMessageRequest,
     channels: ChannelIntegrations,

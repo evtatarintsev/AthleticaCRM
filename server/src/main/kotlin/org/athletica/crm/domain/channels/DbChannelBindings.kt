@@ -7,8 +7,8 @@ import org.athletica.crm.core.entityids.ChannelBindingId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toClientId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -17,7 +17,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация хранилища связок каналов на PostgreSQL через R2DBC. */
 class DbChannelBindings : ChannelBindings {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun link(integrationId: ChannelIntegrationId, clientId: ClientId, address: String): ChannelBinding {
         val clientExists =
             tr.sql("SELECT EXISTS (SELECT 1 FROM clients WHERE id = :clientId AND org_id = :orgId) AS found")
@@ -46,7 +46,7 @@ class DbChannelBindings : ChannelBindings {
         return ChannelBinding(id = id, integrationId = integrationId, clientId = clientId, address = address)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun clientFor(integrationId: ChannelIntegrationId, address: String): ClientId? =
         tr.sql(
             """
@@ -60,7 +60,7 @@ class DbChannelBindings : ChannelBindings {
             .bind("orgId", ctx.orgId)
             .firstOrNull { row -> row.asUuid("client_id").toClientId() }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun addressFor(integrationId: ChannelIntegrationId, clientId: ClientId): String? =
         tr.sql(
             """
@@ -76,7 +76,7 @@ class DbChannelBindings : ChannelBindings {
             .bind("orgId", ctx.orgId)
             .firstOrNull { row -> row.asString("address") }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun touchInbound(integrationId: ChannelIntegrationId, address: String) {
         tr.sql(
             """

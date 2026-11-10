@@ -6,8 +6,8 @@ import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.entityids.AttendanceLabelId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 
@@ -27,7 +27,7 @@ data class DbAttendanceLabel(
 
     override fun restored(): AttendanceLabel = copy(isArchived = false)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         if (name.isBlank()) {
             raise(CommonDomainError("ATTENDANCE_LABEL_NAME_BLANK", Messages.AttendanceLabelNameBlank.localize()))

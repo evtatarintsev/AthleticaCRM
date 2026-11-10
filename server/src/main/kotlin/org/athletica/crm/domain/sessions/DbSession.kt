@@ -12,8 +12,8 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.toBranchId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.domain.attendance.AttendanceMark
 import org.athletica.crm.domain.attendance.SessionRoster
@@ -48,7 +48,7 @@ class DbSession(
     override val isEmployeeAssignmentOverridden: Boolean,
     private val events: DomainEvents,
 ) : Session {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun cancel() {
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_CANCEL", "Можно отменить только запланированное занятие"))
@@ -66,7 +66,7 @@ class DbSession(
         events.publish(SessionCancelled(id, groupId, date, ctx.employee.id))
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun reschedule(
         newDate: LocalDate,
         newStartTime: LocalTime,
@@ -94,7 +94,7 @@ class DbSession(
             .execute()
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun complete() {
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_COMPLETE", "Можно завершить только запланированное занятие"))
@@ -151,7 +151,7 @@ class DbSession(
             .bind("orgId", ctx.orgId)
             .firstOrNull { it.asBoolean("started") } ?: false
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun setEmployees(employees: List<Employee>) {
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_ASSIGN_EMPLOYEES", "Можно назначить преподавателей только для запланированного занятия"))

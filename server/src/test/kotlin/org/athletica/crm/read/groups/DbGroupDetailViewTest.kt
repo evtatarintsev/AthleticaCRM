@@ -18,7 +18,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -151,7 +151,7 @@ class DbGroupDetailViewTest {
             .execute()
     }
 
-    private suspend fun detail(orgId: Uuid, id: GroupId): Either<DomainError, GroupDetailResponse> {
+    private suspend fun detail(orgId: Uuid, id: GroupId): Either<AppError, GroupDetailResponse> {
         val context =
             employeeContext(
                 lang = Lang.RU,
@@ -165,7 +165,7 @@ class DbGroupDetailViewTest {
                 permissions = EmployeePermission(),
             )
         return either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(context, this, raise) { view.byId(id) }
             }
@@ -233,7 +233,7 @@ class DbGroupDetailViewTest {
             val orgB = insertOrg("B")
             val foreign = insertGroup(orgB, "Чужая")
 
-            assertIs<Either.Left<DomainError>>(detail(orgA, foreign))
+            assertIs<Either.Left<AppError>>(detail(orgA, foreign))
         }
 
     @Test

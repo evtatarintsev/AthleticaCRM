@@ -7,7 +7,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
@@ -19,7 +19,7 @@ interface Sessions {
      * [employees] — преподаватели; каждый должен иметь доступ к филиалу группы,
      * иначе ошибка `EMPLOYEE_NOT_FOUND`.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun new(
         id: SessionId,
         groupId: GroupId,
@@ -32,7 +32,7 @@ interface Sessions {
     ): Session?
 
     /** Возвращает список занятий группы за период [from]..[to]. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(
         groupId: GroupId,
         from: LocalDate,
@@ -40,13 +40,13 @@ interface Sessions {
     ): List<Session>
 
     /** Возвращает список всех занятий организации за период [from]..[to]. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun listAll(
         from: LocalDate,
         to: LocalDate,
     ): List<Session>
 
     /** Возвращает занятие по идентификатору. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: SessionId): Session
 }

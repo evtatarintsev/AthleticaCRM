@@ -5,7 +5,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.attendance.ClientAttendanceResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -14,7 +14,7 @@ import org.athletica.crm.storage.Transaction
  */
 interface ClientAttendanceView {
     /** Отметки клиента по периоду из [query], по дате и времени занятия. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: ClientAttendanceQuery): ClientAttendanceResponse
 }
 

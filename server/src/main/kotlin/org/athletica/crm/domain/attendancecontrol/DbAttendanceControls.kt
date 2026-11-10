@@ -4,14 +4,14 @@ import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asInt
 
 /** Репозиторий настроек контроля посещаемости поверх PostgreSQL. */
 class DbAttendanceControls : AttendanceControls {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun current(): AttendanceControl =
         tr
             .sql(

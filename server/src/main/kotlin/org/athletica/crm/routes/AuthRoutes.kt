@@ -5,7 +5,6 @@ import arrow.core.raise.context.raise
 import arrow.core.raise.either
 import com.auth0.jwt.interfaces.DecodedJWT
 import io.ktor.http.Cookie
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.header
 import io.ktor.server.request.receive
@@ -14,7 +13,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.post
-import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.AuthBranchesRequest
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
@@ -27,8 +25,8 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.auth.Auth
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.security.JwtConfig
@@ -46,7 +44,7 @@ fun Route.authRoutes(auth: Auth) {
                 AuthBranchesResponse(available.map { BranchDetailResponse(it.id, it.name) })
             }
         }.fold(
-            { call.respond(HttpStatusCode.BadRequest, ErrorResponse(code = it.code, message = it.message)) },
+            { call.respondError(it) },
             { call.respond(it) },
         )
     }.contract(postContract<AuthBranchesRequest, AuthBranchesResponse>())
@@ -126,10 +124,10 @@ fun RouteWithContext.switchBranchRoute(auth: Auth) {
 
 /**
  * Выполняет [block] в контексте [Raise], при успехе выпускает новые JWT-токены и отвечает [LoginResponse].
- * При ошибке отвечает HTTP 400 с [ErrorResponse].
+ * Ошибку передаёт в [respondError].
  */
 context(jwtConfig: JwtConfig)
-suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<DomainError>.() -> AuthenticatedUser) {
+suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<AppError>.() -> AuthenticatedUser) {
     either {
         val user = block()
         val newAccessToken = jwtConfig.makeAccessToken(user)
@@ -137,19 +135,14 @@ suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<DomainError>.()
 
         response.cookies.setJwtCookies(newAccessToken, newRefreshToken)
         respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
-    }.onLeft {
-        respond(
-            HttpStatusCode.BadRequest,
-            ErrorResponse(code = it.code, message = it.message),
-        )
-    }
+    }.onLeft { respondError(it) }
 }
 
 /**
  * Верифицирует JWT-токен с помощью [jwtConfig].
  * Возвращает декодированный токен; если подпись невалидна либо токен истёк — поднимает ошибку.
  */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun String.verifiedJwtToken(jwtConfig: JwtConfig): DecodedJWT =
     runCatching { jwtConfig.verifier.verify(this) }
         .getOrNull() ?: raise(CommonDomainError("", ""))
@@ -159,7 +152,7 @@ fun String.verifiedJwtToken(jwtConfig: JwtConfig): DecodedJWT =
  * Сначала ищет в заголовке `X-Refresh-Token`, затем в cookie [JwtConfig.COOKIE_REFRESH_TOKEN].
  * Возвращает токен; если он отсутствует — поднимает ошибку.
  */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun ApplicationRequest.refreshToken(): String =
     call.request.header("X-Refresh-Token")
         ?: call.request.cookies[JwtConfig.COOKIE_REFRESH_TOKEN]
@@ -169,7 +162,7 @@ fun ApplicationRequest.refreshToken(): String =
  * Извлекает идентификатор пользователя и филиал из claim-ов токена.
  * Проверяет, что тип токена — [JwtConfig.TYPE_REFRESH], иначе поднимает ошибку.
  */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun DecodedJWT.userIdAndBranchClaim(): Pair<UserId, BranchId> {
     if (getClaim(JwtConfig.CLAIM_TYPE).asString() != JwtConfig.TYPE_REFRESH) {
         raise(CommonDomainError("", ""))

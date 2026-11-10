@@ -8,8 +8,8 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.ClientNoteId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -23,7 +23,7 @@ internal data class DbClientNote(
     override val createdAt: Instant,
     override val updatedAt: Instant?,
 ) : ClientNote {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         tr.sql(
             """
@@ -39,7 +39,7 @@ internal data class DbClientNote(
             .execute()
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun delete() {
         requireAuthor()
         val now = Clock.System.now()
@@ -56,14 +56,14 @@ internal data class DbClientNote(
             .execute()
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun withText(newText: ClientNoteText): ClientNote {
         requireAuthor()
         return copy(text = newText, updatedAt = Clock.System.now())
     }
 
     /** Проверяет, что заметку правит/удаляет её автор. Иначе — `PERMISSION_DENIED`. */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private fun requireAuthor() {
         if (authorId != ctx.employee.id) {
             raise(CommonDomainError("PERMISSION_DENIED", "Заметку может изменять только её автор"))

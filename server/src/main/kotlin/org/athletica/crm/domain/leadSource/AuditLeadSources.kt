@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.LeadSourceId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logDelete
 import org.athletica.crm.domain.audit.logUpdate
@@ -13,28 +13,28 @@ import org.athletica.crm.storage.Transaction
 
 /** Декоратор [LeadSources], оборачивающий выдаваемые источники в [AuditLeadSource]. */
 class AuditLeadSources(private val delegate: LeadSources, private val audit: AuditLog) : LeadSources by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list() = delegate.list().map { AuditLeadSource(it, audit) }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(id: LeadSourceId, name: String, description: LeadSourceDescription) = AuditLeadSource(delegate.new(id, name, description), audit)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: LeadSourceId) = AuditLeadSource(delegate.byId(id), audit)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<LeadSourceId>) = delegate.byIds(ids).map { AuditLeadSource(it, audit) }
 }
 
 /** Декоратор [LeadSource], логирующий сохранение и удаление. */
 class AuditLeadSource(private val delegate: LeadSource, private val audit: AuditLog) : LeadSource by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() =
         delegate.save().also {
             audit.logUpdate("lead_source", id, Json.encodeToString(LeadSourceAuditData(name, description.value)))
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun delete() =
         delegate.delete().also {
             audit.logDelete("lead_source", id, "")

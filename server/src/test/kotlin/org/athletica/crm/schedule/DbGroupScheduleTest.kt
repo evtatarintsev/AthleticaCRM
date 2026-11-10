@@ -10,6 +10,7 @@ import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SlotId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.domain.groups.ScheduleSlot
@@ -180,7 +181,7 @@ class DbGroupScheduleTest {
 
             val result = setFrom(group, today.plusDays(-1), listOf(mondayAt10(hall)))
 
-            assertEquals("SCHEDULE_EFFECTIVE_FROM_IN_PAST", assertIs<Either.Left<*>>(result).value.let { (it as org.athletica.crm.core.errors.DomainError).code })
+            assertEquals("SCHEDULE_EFFECTIVE_FROM_IN_PAST", assertIs<Either.Left<*>>(result).value.let { (it as AppError).code })
             assertEquals(0, slotsOn(group, today).size)
         }
 
@@ -222,7 +223,7 @@ class DbGroupScheduleTest {
 
             val result = setFrom(group, today, listOf(mondayAt10(hall), mondayAt10(hall, LocalTime(12, 0))))
 
-            assertEquals("DUPLICATE_SCHEDULE_SLOT", assertIs<Either.Left<org.athletica.crm.core.errors.DomainError>>(result).value.code)
+            assertEquals("DUPLICATE_SCHEDULE_SLOT", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(0, slotsOn(group, today).size)
         }
 
@@ -235,7 +236,7 @@ class DbGroupScheduleTest {
 
             val result = setFrom(group, today, listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(10, 0), hall)))
 
-            assertEquals("INVALID_SCHEDULE_TIME", assertIs<Either.Left<org.athletica.crm.core.errors.DomainError>>(result).value.code)
+            assertEquals("INVALID_SCHEDULE_TIME", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(0, slotsOn(group, today).size)
         }
 

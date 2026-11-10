@@ -14,7 +14,7 @@ import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupScheduleRequest
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
@@ -145,7 +145,7 @@ private fun GroupListRequest.toQuery() =
 fun ScheduleSlotSchema.toNewSlot() = NewSlot(dayOfWeek, startAt, endAt, hallId)
 
 /** Преобразует запрос занятий группы в параметры выборки, проверив границы периода. */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 private fun GroupSessionsRequest.toQuery(): GroupSessionsQuery {
     checkSchedulePeriod(from, to)
     return GroupSessionsQuery(groupId = groupId, from = from, to = to)

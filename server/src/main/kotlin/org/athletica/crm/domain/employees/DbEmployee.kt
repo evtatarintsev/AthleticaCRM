@@ -6,7 +6,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.storage.Transaction
@@ -115,7 +115,7 @@ data class DbEmployee(
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) {
         val user = users.new(email.value, password)
         copy(userId = user.id, isActive = true, email = email).save()

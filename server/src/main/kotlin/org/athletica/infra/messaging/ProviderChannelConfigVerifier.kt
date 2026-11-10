@@ -3,8 +3,8 @@ package org.athletica.infra.messaging
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.domain.channels.ChannelConfigVerifier
 import org.athletica.crm.i18n.Messages
@@ -18,7 +18,7 @@ import org.athletica.infra.messaging.telegram.TelegramResult
 class ProviderChannelConfigVerifier(
     private val telegram: TelegramBotApi,
 ) : ChannelConfigVerifier {
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: RequestContext, raise: Raise<AppError>)
     override suspend fun verified(config: ChannelConfig): ChannelConfig =
         when (config) {
             is ChannelConfig.TelegramBot -> verifiedTelegram(config)
@@ -29,7 +29,7 @@ class ProviderChannelConfigVerifier(
      * Токен бота действителен — конфиг с именем бота из `getMe`. `TELEGRAM_TOKEN_INVALID` — Bot API
      * отклонил токен; `TELEGRAM_UNAVAILABLE` — Bot API недоступен ни через один прокси.
      */
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: RequestContext, raise: Raise<AppError>)
     private suspend fun verifiedTelegram(config: ChannelConfig.TelegramBot): ChannelConfig.TelegramBot {
         val token = config.botToken.trim()
         if (token.isEmpty() || token.contains('/')) {

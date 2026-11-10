@@ -15,8 +15,8 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.channels.ChannelChat
 import org.athletica.crm.domain.channels.ChannelChats
 import org.athletica.crm.domain.channels.DbChannelBindings
@@ -59,7 +59,7 @@ class TelegramPollerTest {
     private class FailingOnceChats(private val delegate: ChannelChats) : ChannelChats by delegate {
         var failures = 1
 
-        context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+        context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
         override suspend fun upsert(
             integrationId: ChannelIntegrationId,
             address: String,

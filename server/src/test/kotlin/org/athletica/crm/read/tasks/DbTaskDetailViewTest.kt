@@ -16,7 +16,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
@@ -98,15 +98,15 @@ class DbTaskDetailViewTest {
         return id.toUploadId()
     }
 
-    private suspend fun <T> inTransaction(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> =
+    private suspend fun <T> inTransaction(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(ctx, this, raise) { block() }
             }
         }
 
-    private suspend fun <T> succeeding(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): T = inTransaction(block).getOrElse { fail("Unexpected error: $it") }
+    private suspend fun <T> succeeding(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): T = inTransaction(block).getOrElse { fail("Unexpected error: $it") }
 
     @Test
     fun `возвращает карточку с именем создателя`() =
@@ -177,6 +177,6 @@ class DbTaskDetailViewTest {
                 .bind("orgId", otherOrgId).bind("id", taskId)
                 .execute()
 
-            assertIs<Either.Left<DomainError>>(inTransaction { view.byId(taskId) })
+            assertIs<Either.Left<AppError>>(inTransaction { view.byId(taskId) })
         }
 }

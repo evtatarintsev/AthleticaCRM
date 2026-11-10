@@ -16,8 +16,8 @@ import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toLeadSourceId
 import org.athletica.crm.core.entityids.toUploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -27,7 +27,7 @@ import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
 class DbClients : Clients {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: ClientId): Client {
         val scalar =
             tr
@@ -77,7 +77,7 @@ class DbClients : Clients {
         return scalar.toClient(groups, docs)
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: ClientId,
         name: String,

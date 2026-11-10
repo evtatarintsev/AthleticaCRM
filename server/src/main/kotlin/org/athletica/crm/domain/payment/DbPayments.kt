@@ -6,7 +6,7 @@ import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.storage.Transaction
@@ -20,7 +20,7 @@ import kotlin.uuid.Uuid
 
 /** Реализация [Payments] поверх R2DBC. */
 class DbPayments : Payments {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun create(
         gatewayName: String,
         externalPaymentId: String,
@@ -53,7 +53,7 @@ class DbPayments : Payments {
             .firstOrNull { row -> row.toPayment() }!!
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun markAsPaid(gatewayName: String, externalPaymentId: String): Payment {
         val payment =
             tr

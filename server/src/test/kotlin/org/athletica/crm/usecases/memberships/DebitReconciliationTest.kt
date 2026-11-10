@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
@@ -300,7 +300,7 @@ class DebitReconciliationTest {
 
             val result = fixture.attempt { revokeMembership(fixture.memberships, issued.id) }
 
-            assertEquals("MEMBERSHIP_HAS_DEBITS", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_HAS_DEBITS", assertIs<Either.Left<AppError>>(result).value.code)
             assertIs<ActiveMembership>(fixture.reload(issued.id))
         }
 

@@ -6,7 +6,7 @@ import org.athletica.crm.api.schemas.home.UnclosedSessionItem
 import org.athletica.crm.api.schemas.home.UnclosedSessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toSessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalTime
@@ -19,7 +19,7 @@ import org.athletica.crm.storage.asUuid
  * времени организации в момент времени в SQL; филиал определяется группой занятия.
  */
 class DbUnclosedSessionsView : UnclosedSessionsView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unclosed(query: UnclosedSessionsQuery): UnclosedSessionsResponse {
         val sessions =
             tr

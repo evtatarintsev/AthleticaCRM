@@ -8,7 +8,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
@@ -42,7 +42,7 @@ data class EmployeeStub(
     override suspend fun save() {
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: arrow.core.raise.Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: arrow.core.raise.Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) {
     }
 
@@ -67,7 +67,7 @@ data class EmployeeStub(
 class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : Employees {
     val employees: MutableList<EmployeeStub> = employees.toMutableList()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
         name: String,
@@ -91,12 +91,12 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             availableBranches = availableBranches,
         ).also { employees.add(it) }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: EmployeeId): Employee = employees.first { it.id == id }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<EmployeeId>): List<Employee> = employees.filter { it.id in ids }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> = employees.filter { it.isActive && it.availableBranches.contains(branchId) }.map { it.id }
 }

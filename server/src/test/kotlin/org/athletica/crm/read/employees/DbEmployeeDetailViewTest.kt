@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -72,7 +72,7 @@ class DbEmployeeDetailViewTest {
         return id
     }
 
-    private suspend fun detail(id: EmployeeId): Either<DomainError, EmployeeDetailResponse> =
+    private suspend fun detail(id: EmployeeId): Either<AppError, EmployeeDetailResponse> =
         either {
             TestPostgres.db.transaction { context(ctx) { view.byId(id) } }
         }
@@ -155,7 +155,7 @@ class DbEmployeeDetailViewTest {
         runTest {
             val result = detail(EmployeeId.new())
 
-            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -165,6 +165,6 @@ class DbEmployeeDetailViewTest {
 
             val result = detail(id)
 
-            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 }

@@ -25,8 +25,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
@@ -43,7 +43,7 @@ import kotlin.uuid.Uuid
 
 /** Реализация [MembershipHistoryView] поверх `membership_events` одним запросом. */
 class DbMembershipHistoryView : MembershipHistoryView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byMembership(membershipId: MembershipId): MembershipHistoryResponse {
         tr
             .sql("SELECT 1 FROM memberships WHERE id = :id AND org_id = :orgId")

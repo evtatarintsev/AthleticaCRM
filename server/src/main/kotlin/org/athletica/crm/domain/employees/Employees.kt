@@ -7,12 +7,12 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 interface Employees {
     /** Создаёт нового сотрудника. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun new(
         id: EmployeeId,
         name: String,
@@ -24,7 +24,7 @@ interface Employees {
     ): Employee
 
     /** Возвращает одного сотрудника по идентификатору; ошибка `EMPLOYEE_NOT_FOUND` если не найден. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: EmployeeId): Employee
 
     /**
@@ -32,13 +32,13 @@ interface Employees {
      * Порядок результата не гарантирован; дубликаты в [ids] игнорируются.
      * Ошибка `EMPLOYEE_NOT_FOUND` если хотя бы один из запрошенных id не найден в организации.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byIds(ids: List<EmployeeId>): List<Employee>
 
     /**
      * Возвращает идентификаторы активных сотрудников организации,
      * которым доступен филиал [branchId]: со всеми филиалами либо с явно назначенным [branchId].
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId>
 }

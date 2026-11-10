@@ -11,7 +11,7 @@ import org.athletica.crm.SessionsFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.home.UnclosedSessionsResponse
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
@@ -36,7 +36,7 @@ class DbUnclosedSessionsViewTest {
 
     private suspend fun unclosed(now: String, limit: Int = 10): UnclosedSessionsResponse =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = fixture.orgId, branchId = fixture.branchId), this, raise) {
                     view.unclosed(UnclosedSessionsQuery(Instant.parse(now), limit))

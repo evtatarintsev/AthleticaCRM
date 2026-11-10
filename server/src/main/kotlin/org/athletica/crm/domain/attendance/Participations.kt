@@ -7,7 +7,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toGroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asString
@@ -43,13 +43,13 @@ interface Participations {
      * Возвращает участие клиента [clientId] в занятии [sessionId] по текущему состоянию журнала
      * и блокирует строку отметки до конца транзакции. `null` — клиента нет в журнале занятия.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun lock(sessionId: SessionId, clientId: ClientId): Participation?
 }
 
 /** Реализация [Participations] поверх `session_attendance` и `sessions`. */
 class DbParticipations : Participations {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun lock(sessionId: SessionId, clientId: ClientId): Participation? =
         tr
             .sql(

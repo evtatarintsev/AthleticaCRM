@@ -3,7 +3,7 @@ package org.athletica.crm.usecases.memberships
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.notifications.MembershipClosePending
@@ -16,7 +16,7 @@ import org.athletica.crm.storage.Transaction
  * его истории — один раз на эпизод. Если выдавший удалён или неизвестен, уведомление не отправляется
  * и отправка не отмечается. Возвращает абонемент после возможной отметки.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun notifyClosePendingIfDue(
     notifications: Notifications,
     employees: Employees,

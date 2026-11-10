@@ -5,7 +5,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -17,11 +17,11 @@ import org.athletica.crm.storage.Transaction
  */
 interface GroupSchedule {
     /** Слоты группы [groupId], действующие на [date]. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun slotsOn(groupId: GroupId, date: LocalDate): List<ScheduleSlot>
 
     /** Слоты группы [groupId], период действия которых пересекает [from]..[to] включительно. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun slotsDuring(groupId: GroupId, from: LocalDate, to: LocalDate): List<ScheduleSlot>
 
     /**
@@ -32,6 +32,6 @@ interface GroupSchedule {
      * [effectiveFrom] в прошлом отклоняется; `null` означает сегодняшний день.
      * Пустой [slots] означает, что с этой даты у группы нет расписания.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>)
 }

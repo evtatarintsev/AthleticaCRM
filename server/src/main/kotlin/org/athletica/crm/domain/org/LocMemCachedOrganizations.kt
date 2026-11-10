@@ -3,7 +3,7 @@ package org.athletica.crm.domain.org
 import arrow.core.raise.Raise
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import java.util.concurrent.ConcurrentHashMap
 
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap
 class LocMemCachedOrganizations(private val delegate: Organizations) : Organizations {
     private val cache = ConcurrentHashMap<OrgId, Organization>()
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun current(): Organization =
         cache[ctx.orgId] ?: CachedOrganization(delegate.current(), cache)
             .also { cache[ctx.orgId] = it }
@@ -36,10 +36,10 @@ class CachedOrganization(
     private val delegate: Organization,
     private val cache: ConcurrentHashMap<OrgId, Organization>,
 ) : Organization by delegate {
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: RequestContext, raise: Raise<AppError>)
     override suspend fun withNew(newName: String, newTimezone: String) = CachedOrganization(delegate.withNew(newName, newTimezone), cache)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         delegate.save()
         cache.remove(delegate.id)

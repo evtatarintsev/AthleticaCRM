@@ -9,8 +9,8 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.core.tasks.toTaskId
@@ -25,10 +25,10 @@ import kotlin.time.Instant
 
 /** Реализация репозитория задач на основе PostgreSQL через R2DBC. */
 class DbTasks : Tasks {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: TaskId): Task = byIds(listOf(id)).first()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<TaskId>): List<Task> {
         if (ids.isEmpty()) return emptyList()
 
@@ -60,7 +60,7 @@ class DbTasks : Tasks {
         return ids.map { byId.getValue(it) }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: TaskId,
         title: String,

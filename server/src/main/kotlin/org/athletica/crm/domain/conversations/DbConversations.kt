@@ -5,13 +5,13 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.ConversationId
 import org.athletica.crm.core.entityids.toConversationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
 
 /** Реализация репозитория диалогов на PostgreSQL через R2DBC. */
 class DbConversations : Conversations {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun forClient(clientId: ClientId): Conversation {
         val existing = byClient(clientId)
         if (existing != null) {
@@ -34,7 +34,7 @@ class DbConversations : Conversations {
         return byClient(clientId)!!
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byClient(clientId: ClientId): Conversation? =
         tr.sql("SELECT id FROM conversations WHERE client_id = :clientId AND org_id = :orgId")
             .bind("clientId", clientId)

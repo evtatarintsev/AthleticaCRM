@@ -7,8 +7,8 @@ import org.athletica.crm.api.schemas.clients.import.ClientImportParseResponse
 import org.athletica.crm.api.schemas.clients.import.ClientImportParseResponse.Companion.SAMPLE_ROWS_LIMIT
 import org.athletica.crm.api.schemas.clients.import.ClientImportParseResponse.Companion.UNIQUE_VALUES_LIMIT
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.read.uploads.uploadById
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
@@ -22,7 +22,7 @@ private const val MAX_CSV_SIZE_BYTES = 10L * 1024 * 1024
  *
  * Никакого suggested mapping не строится — пользователь задаёт всё вручную в UI.
  */
-context(db: Database, minio: MinioService, ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+context(db: Database, minio: MinioService, ctx: EmployeeRequestContext, raise: Raise<AppError>)
 suspend fun importClientsParse(request: ClientImportParseRequest): ClientImportParseResponse {
     val upload =
         db.transaction { uploadById(request.uploadId) }

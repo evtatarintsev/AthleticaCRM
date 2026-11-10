@@ -17,7 +17,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
@@ -110,7 +110,7 @@ class ImportClientsCommitTest {
     private suspend fun runImport(
         org: TestOrg,
         request: ClientImportCommitRequest,
-    ): Either<DomainError, ClientImportCommitResponse> =
+    ): Either<AppError, ClientImportCommitResponse> =
         either {
             context(TestPostgres.db, TestMinio.minioService, ctx(org)) {
                 importClientsCommit(

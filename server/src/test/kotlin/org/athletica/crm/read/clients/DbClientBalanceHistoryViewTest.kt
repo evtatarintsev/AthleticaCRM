@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -94,7 +94,7 @@ class DbClientBalanceHistoryViewTest {
             .execute()
     }
 
-    private suspend fun history(orgId: Uuid, clientId: ClientId): Either<DomainError, ClientBalanceHistoryResponse> {
+    private suspend fun history(orgId: Uuid, clientId: ClientId): Either<AppError, ClientBalanceHistoryResponse> {
         val context =
             employeeContext(
                 lang = Lang.RU,
@@ -108,7 +108,7 @@ class DbClientBalanceHistoryViewTest {
                 permissions = EmployeePermission(),
             )
         return either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(context, this, raise) { view.byClient(clientId) }
             }
@@ -176,6 +176,6 @@ class DbClientBalanceHistoryViewTest {
             val orgB = insertOrg("B")
             val foreignClient = insertClient(orgB, "Чужой")
 
-            assertIs<Either.Left<DomainError>>(history(orgA, foreignClient))
+            assertIs<Either.Left<AppError>>(history(orgA, foreignClient))
         }
 }

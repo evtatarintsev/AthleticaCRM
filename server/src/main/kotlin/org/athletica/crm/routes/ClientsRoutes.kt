@@ -36,8 +36,8 @@ import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientbalance.ClientBalance
 import org.athletica.crm.domain.clientbalance.ClientBalances
@@ -253,7 +253,7 @@ val Client.state: ClientState
 /**
  * Сужает клиента до [ActiveClient]; архивный клиент недоступен для изменения.
  */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun Client.requireActive(): ActiveClient =
     when (this) {
         is ActiveClient -> this

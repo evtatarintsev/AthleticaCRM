@@ -8,8 +8,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.SessionsFixture
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
@@ -34,7 +34,7 @@ class DbAttendanceControlsTest {
 
     private suspend fun current(fixture: SessionsFixture): AttendanceControl =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = fixture.orgId), this, raise) { repository.current() }
             }
@@ -42,7 +42,7 @@ class DbAttendanceControlsTest {
 
     private suspend fun save(fixture: SessionsFixture, enabled: Boolean, minutes: Int) {
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = fixture.orgId), this, raise) {
                     val delay = either { JournalCloseDelay.from(minutes) }.getOrElse { fail("Unexpected error: $it") }
@@ -75,7 +75,7 @@ class DbAttendanceControlsTest {
     @Test
     fun `окно вне диапазона отклоняется`() {
         listOf(5, 14, 10081).forEach {
-            val error = assertIs<Either.Left<DomainError>>(either { JournalCloseDelay.from(it) }).value
+            val error = assertIs<Either.Left<AppError>>(either { JournalCloseDelay.from(it) }).value
             assertEquals("INVALID_JOURNAL_CLOSE_DELAY", assertIs<CommonDomainError>(error).code)
         }
         listOf(15, 10080).forEach { assertIs<Either.Right<JournalCloseDelay>>(either { JournalCloseDelay.from(it) }) }

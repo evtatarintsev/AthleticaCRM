@@ -5,8 +5,8 @@ import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.payment.InitiatePaymentRequest
 import org.athletica.crm.api.schemas.payment.PaymentUrlResponse
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
@@ -35,7 +35,7 @@ fun RouteWithContext.paymentRoutes(
  * HTTP-вызов к шлюзу выполняется ВНЕ БД-транзакции, чтобы не держать соединение открытым
  * во время сетевого запроса.
  */
-context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
 private suspend fun initiatePayment(
     db: Database,
     audit: AuditLog,

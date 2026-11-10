@@ -3,7 +3,7 @@ package org.athletica.crm.domain.leadSource
 import arrow.core.Either
 import arrow.core.raise.context.either
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -37,7 +37,7 @@ class LeadSourceDescriptionTest {
     fun `пояснение из 501 символа отклоняется`() {
         val result = either { LeadSourceDescription.from("а".repeat(501), Lang.EN) }
 
-        val error = assertIs<Either.Left<DomainError>>(result).value
+        val error = assertIs<Either.Left<AppError>>(result).value
         assertEquals("LEAD_SOURCE_DESCRIPTION_TOO_LONG", error.code)
         assertEquals("Description cannot be longer than 500 characters", error.message)
     }

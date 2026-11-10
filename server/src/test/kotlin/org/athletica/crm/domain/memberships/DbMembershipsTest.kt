@@ -7,7 +7,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.SystemContexts
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
@@ -135,7 +135,7 @@ class DbMembershipsTest {
 
             val result = fixture.attempt { closeMembership(fixture.memberships, calendar, issued.id) }
 
-            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<AppError>>(result).value.code)
             assertIs<InactiveMembership>(fixture.reload(issued.id))
         }
 
@@ -170,8 +170,8 @@ class DbMembershipsTest {
             val revoke = fixture.attempt { revokeMembership(fixture.memberships, issued.id) }
             val close = fixture.attempt { closeMembership(fixture.memberships, calendar, issued.id) }
 
-            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<DomainError>>(revoke).value.code)
-            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<DomainError>>(close).value.code)
+            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<AppError>>(revoke).value.code)
+            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<AppError>>(close).value.code)
             assertIs<ClosedMembership>(fixture.reload(issued.id))
             assertEquals(listOf("ISSUED", "ACTIVATED", "CLOSED"), fixture.eventKinds(issued.id))
         }
@@ -184,7 +184,7 @@ class DbMembershipsTest {
 
             val close = fixture.attempt { closeMembership(fixture.memberships, calendar, issued.id) }
 
-            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<DomainError>>(close).value.code)
+            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<AppError>>(close).value.code)
             assertIs<RevokedMembership>(fixture.reload(issued.id))
         }
 
@@ -209,7 +209,7 @@ class DbMembershipsTest {
                     )
                 }
 
-            assertEquals("UNLIMITED_CLOSE_ON_LAST_SESSION", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("UNLIMITED_CLOSE_ON_LAST_SESSION", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
         }
 
@@ -220,7 +220,7 @@ class DbMembershipsTest {
 
             val result = runCatchingIssue(clientId, emptyList())
 
-            assertEquals("MEMBERSHIP_GROUPS_REQUIRED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_GROUPS_REQUIRED", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
         }
 
@@ -233,7 +233,7 @@ class DbMembershipsTest {
 
             val result = runCatchingIssue(clientId, listOf(fixture.groupId, other.groupId))
 
-            assertEquals("GROUP_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("GROUP_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
         }
 

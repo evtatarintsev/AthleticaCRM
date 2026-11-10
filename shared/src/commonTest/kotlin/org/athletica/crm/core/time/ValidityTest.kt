@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import org.athletica.crm.core.errors.AppError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -40,7 +41,7 @@ class ValidityTest {
     fun `период с окончанием раньше начала отклоняется`() {
         val result = either { Validity.of(june1, march1) }
 
-        assertEquals("INVALID_VALIDITY", assertIs<Either.Left<org.athletica.crm.core.errors.DomainError>>(result).value.code)
+        assertEquals("INVALID_VALIDITY", assertIs<Either.Left<AppError>>(result).value.code)
     }
 
     @Test

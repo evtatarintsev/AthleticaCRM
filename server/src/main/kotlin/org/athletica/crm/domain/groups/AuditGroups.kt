@@ -8,7 +8,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.domain.employees.Employee
@@ -32,7 +32,7 @@ private data class NewGroupSnapshot(
  * [byId] оборачивает результат в [AuditGroup], сохраняя аудит-поведение при дальнейших мутациях.
  */
 class AuditGroups(private val delegate: Groups, private val audit: AuditLog) : Groups by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: GroupId,
         name: String,
@@ -43,6 +43,6 @@ class AuditGroups(private val delegate: Groups, private val audit: AuditLog) : G
             audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name, disciplineIds, employees.map { it.id })))
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: GroupId): Group = AuditGroup(delegate.byId(id), audit)
 }

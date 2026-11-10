@@ -14,7 +14,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
@@ -62,7 +62,7 @@ class DbTariffPlansTest {
     private lateinit var tariffs: DbTariffPlans
 
     /** Создаёт и сохраняет тариф с параметрами по умолчанию, возвращая его идентификатор. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun saveNewPlan(
         id: TariffPlanId = TariffPlanId.new(),
         name: String = "8 занятий",
@@ -165,7 +165,7 @@ class DbTariffPlansTest {
                         }
                     }
                 }
-            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -205,7 +205,7 @@ class DbTariffPlansTest {
                 either {
                     TestPostgres.db.transaction { context(ctx) { tariffs.byId(TariffPlanId.new()).archive() } }
                 }
-            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test

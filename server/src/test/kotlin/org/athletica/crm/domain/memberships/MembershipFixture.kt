@@ -19,7 +19,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.CloseMode
@@ -113,16 +113,16 @@ class MembershipFixture(
     /** Выполняет [block] в транзакции в контексте [context]; ошибка домена — провал теста. */
     suspend fun <T> tx(
         context: RequestContext = ctx,
-        block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T,
+        block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T,
     ): T = attempt(context, block).getOrElse { fail("Unexpected error: $it") }
 
     /** Выполняет [block] в транзакции в контексте [context] и возвращает результат или ошибку домена. */
     suspend fun <T> attempt(
         context: RequestContext = ctx,
-        block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T,
-    ): Either<DomainError, T> =
+        block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T,
+    ): Either<AppError, T> =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction { block(context, this, raise) }
         }
 

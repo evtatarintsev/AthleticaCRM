@@ -17,8 +17,8 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
@@ -51,10 +51,10 @@ data class DbInactiveOnDate(
     override val sessionsRemaining: Int?,
 ) : InactiveMembership.OnDate,
     MembershipTerms by terms {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activate(startDate: LocalDate, reason: ActivationReason): ActiveMembership = activateMembership(this, terms, startDate, reason)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun revoke(): RevokedMembership = revokeMembership(this, terms, MembershipState.INACTIVE, null, null)
 }
 
@@ -65,10 +65,10 @@ data class DbInactiveOnFirstVisit(
     override val sessionsRemaining: Int?,
 ) : InactiveMembership.OnFirstVisit,
     MembershipTerms by terms {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activate(startDate: LocalDate, reason: ActivationReason): ActiveMembership = activateMembership(this, terms, startDate, reason)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun revoke(): RevokedMembership = revokeMembership(this, terms, MembershipState.INACTIVE, null, null)
 }
 
@@ -83,7 +83,7 @@ data class DbActiveMembership(
     override val freeze: MembershipFreeze?,
 ) : ActiveMembership,
     MembershipTerms by terms {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun close(reason: CloseReason, closedOn: LocalDate): ClosedMembership {
         val updated =
             tr
@@ -111,7 +111,7 @@ data class DbActiveMembership(
         return DbClosedMembership(terms, activation, sessionsRemaining, startDate, endDate, closedOn, reason)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun revoke(): RevokedMembership {
         val hasDebits =
             tr
@@ -124,7 +124,7 @@ data class DbActiveMembership(
         return revokeMembership(this, terms, MembershipState.ACTIVE, startDate, endDate)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun debit(sessionId: SessionId, sessionDate: LocalDate, today: LocalDate): Membership {
         val updated =
             tr
@@ -163,7 +163,7 @@ data class DbActiveMembership(
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun repayDebt(sessions: List<DebtSession>, today: LocalDate): Membership {
         val count = sessions.size
         val remaining = sessionsRemaining
@@ -214,7 +214,7 @@ data class DbActiveMembership(
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun reverse(debit: MembershipDebit, today: LocalDate): ActiveMembership {
         reverseDebit(this, debit)
         val returned = copy(sessionsRemaining = sessionsRemaining?.plus(1))
@@ -229,7 +229,7 @@ data class DbActiveMembership(
         return returned.copy(closeNotifiedAt = null)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun freeze(
         start: LocalDate,
         end: LocalDate,
@@ -274,7 +274,7 @@ data class DbActiveMembership(
         return copy(endDate = newEndDate, freeze = frozen)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun extend(newEndDate: LocalDate, reason: String, today: LocalDate): ActiveMembership {
         val trimmed = reason.trim()
         if (trimmed.isEmpty()) {
@@ -314,7 +314,7 @@ data class DbActiveMembership(
         return extended.copy(closeNotifiedAt = notifiedAt)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): DbActiveMembership {
         val current = freeze ?: raise(CommonDomainError("MEMBERSHIP_NOT_FROZEN", Messages.MembershipNotFrozen.localize()))
         val newEndDate = endDate.minus(DatePeriod(days = current.unusedDaysFrom(day)))
@@ -344,7 +344,7 @@ data class DbActiveMembership(
         return copy(endDate = newEndDate, freeze = null)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun markCloseNotified(): ActiveMembership {
         val now = Clock.System.now()
         val updated =
@@ -382,7 +382,7 @@ data class DbClosedMembership(
     override val closeReason: CloseReason,
 ) : ClosedMembership,
     MembershipTerms by terms {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun reverse(debit: MembershipDebit): ClosedMembership {
         reverseDebit(this, debit)
         return copy(sessionsRemaining = sessionsRemaining?.plus(1))
@@ -454,7 +454,7 @@ private const val CLEAR_FREEZE = "freeze_start = NULL, freeze_end = NULL, freeze
  * Возвращает занятие списания [debit] на абонемент [membership]: отменяет списание,
  * увеличивает остаток (кроме безлимита) и пишет возврат в историю.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun reverseDebit(membership: Membership, debit: MembershipDebit) {
     val reversed =
         tr
@@ -493,7 +493,7 @@ internal fun debitPayload(sessionId: SessionId, sessionDate: LocalDate, kind: De
     }
 
 /** Активирует неактивированный абонемент [membership] с датой начала [startDate] по причине [reason]. */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun activateMembership(
     membership: InactiveMembership,
     terms: StoredMembershipTerms,
@@ -520,7 +520,7 @@ private suspend fun activateMembership(
 }
 
 /** Отзывает абонемент [membership] из состояния [from]; [startDate]/[endDate] — его даты, если были. */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun revokeMembership(
     membership: Membership,
     terms: StoredMembershipTerms,
@@ -581,7 +581,7 @@ internal suspend fun recordMembershipEvent(id: MembershipId, kind: MembershipEve
 }
 
 /** Отклоняет переход, если строка абонемента не обновлена: состояние изменилось параллельно. */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 private fun requireTransition(updatedRows: Long) {
     if (updatedRows != 1L) {
         raise(CommonDomainError("MEMBERSHIP_CHANGED_CONCURRENTLY", Messages.MembershipChangedConcurrently.localize()))

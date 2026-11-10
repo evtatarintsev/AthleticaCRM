@@ -299,7 +299,10 @@ private val managerContext =
 - Use `projects.shared` in dependencies (type-safe project accessors)
 
 ### Error Handling Strategy
-- **Domain errors**: Modeled as sealed classes (`DomainError`)
+- **Иерархия ошибок** (`core/errors/AppError.kt`): `AppError` — любая ожидаемая ошибка в `Raise<AppError>`;
+  `DomainError : AppError` — бизнес-ошибка, маршрут отвечает HTTP 400 с её `code`/`message`;
+  любая другая `AppError` (например, ошибка инфраструктуры) — HTTP 500 через `UnhandledAppError` и `StatusPages`.
+  Ответ на ошибку в маршрутах — только через `RoutingCall.respondError`
 - **Common errors**: `CommonDomainError(code: String, message: String)` for 80% of cases
 - **Client errors**: HTTP 400 (validation) → 404 (not found) → 409 (conflict)
 - **Server errors**: HTTP 500 (log to audit trail)

@@ -13,7 +13,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
@@ -124,7 +124,7 @@ class DbEmployeesTest {
                         context(ctx) { employees.new(id, "Второй", null, null, null, emptyPermission) }
                     }
                 }
-            assertEquals("EMPLOYEE_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("EMPLOYEE_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     // ─── byId ─────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ class DbEmployeesTest {
                 either {
                     TestPostgres.db.transaction { context(ctx) { employees.byId(EmployeeId.new()) } }
                 }
-            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -174,7 +174,7 @@ class DbEmployeesTest {
                 either {
                     TestPostgres.db.transaction { context(otherCtx) { employees.byId(id) } }
                 }
-            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -539,7 +539,7 @@ class DbEmployeesTest {
                         context(ctx) { emp2.invite(email, "pass2") }
                     }
                 }
-            assertEquals("LOGIN_TAKEN", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("LOGIN_TAKEN", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     /** Делает сотрудника [id] владельцем организации, как это делает регистрация. */

@@ -8,7 +8,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.MembershipId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
@@ -92,7 +92,7 @@ class MembershipScheduler(
      * закрытие по сроку или уведомление
      * «к закрытию».
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun process(id: MembershipId, today: LocalDate) {
         when (val membership = memberships.byId(id)) {
             is InactiveMembership.OnDate ->

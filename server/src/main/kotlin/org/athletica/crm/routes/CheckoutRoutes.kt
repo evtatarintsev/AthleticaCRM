@@ -8,6 +8,7 @@ import io.ktor.server.routing.post
 import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.SystemContexts
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.domain.payment.Payments
 import org.athletica.crm.storage.Database
@@ -74,7 +75,9 @@ fun Route.checkoutRoutes(
                     }
                 }
             }.onLeft { error ->
-                // PaymentAlreadyProcessed — идемпотентный случай, не критическая ошибка
+                if (error !is DomainError) {
+                    throw UnhandledAppError(error)
+                }
                 logger.warn("Webhook обработан ранее или платёж не найден: ${error.message}")
             }
         }

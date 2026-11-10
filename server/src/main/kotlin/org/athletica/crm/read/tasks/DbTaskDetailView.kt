@@ -9,8 +9,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.core.tasks.toTaskId
@@ -28,7 +28,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * приходят join'ами, вложения — JSONB-агрегатом, поэтому карточка собирается одним запросом.
  */
 class DbTaskDetailView : TaskDetailView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: TaskId): TaskDetailRow =
         tr
             .sql(SQL)

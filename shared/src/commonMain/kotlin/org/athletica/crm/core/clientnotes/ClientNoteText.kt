@@ -12,8 +12,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import kotlin.jvm.JvmInline
 
 /**
@@ -38,7 +38,7 @@ value class ClientNoteText private constructor(val value: String) {
          * Поднимает [CommonDomainError] с кодом `EMPTY_CLIENT_NOTE_TEXT` для пустой строки
          * либо `CLIENT_NOTE_TEXT_TOO_LONG`, если длина превышает [MAX_LENGTH].
          */
-        context(raise: Raise<DomainError>)
+        context(raise: Raise<AppError>)
         fun from(value: String): ClientNoteText {
             val trimmed = value.trim()
             if (trimmed.isEmpty()) {
@@ -74,5 +74,5 @@ value class ClientNoteText private constructor(val value: String) {
 }
 
 /** Удобный синоним для [ClientNoteText.from]. */
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 fun String.toClientNoteText(): ClientNoteText = ClientNoteText.from(this)

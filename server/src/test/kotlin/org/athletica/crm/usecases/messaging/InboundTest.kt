@@ -16,7 +16,7 @@ import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
@@ -51,7 +51,7 @@ class InboundTest {
     }
 
     /** Выполняет [block] в системном контексте организации, как поллер. */
-    private suspend fun <T> system(block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> =
+    private suspend fun <T> system(block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
         either {
             TestPostgres.db.transaction {
                 val ctx = SystemContexts.forOrg(orgId)
@@ -63,7 +63,7 @@ class InboundTest {
 
     private suspend fun linkByPhone(address: String, phone: String): PhoneLinkResult = assertIs<Either.Right<PhoneLinkResult>>(system { linkChatByPhone(integrationId, address, phone, stores) }).value
 
-    private suspend fun assign(address: String, client: ClientId = clientId): Either<DomainError, Unit> =
+    private suspend fun assign(address: String, client: ClientId = clientId): Either<AppError, Unit> =
         either {
             TestPostgres.db.transaction {
                 context(employeeCtx) { assignChat(integrationId, address, client, stores) }
@@ -163,7 +163,7 @@ class InboundTest {
                 }
 
             assertEquals(1, results.count { it is Either.Right })
-            val error = assertIs<Either.Left<DomainError>>(results.single { it is Either.Left }).value
+            val error = assertIs<Either.Left<AppError>>(results.single { it is Either.Left }).value
             assertEquals("CHAT_ALREADY_LINKED", error.code)
             val bound = MessagingFixture.boundClient(integrationId, "chat-1")
             val winner = listOf(clientId, other).single { it.toString() == bound }
@@ -188,7 +188,7 @@ class InboundTest {
             MessagingFixture.insertBinding(orgId, integrationId, clientId, "chat-1")
             val other = MessagingFixture.insertClient(orgId, name = "Сидоров")
 
-            val error = assertIs<Either.Left<DomainError>>(assign("chat-1", other)).value
+            val error = assertIs<Either.Left<AppError>>(assign("chat-1", other)).value
 
             assertEquals("CHAT_ALREADY_LINKED", error.code)
         }
@@ -199,7 +199,7 @@ class InboundTest {
             val foreign = MessagingFixture.insertClient(otherOrgId)
             receive("chat-1", "Привет")
 
-            assertEquals("NOT_FOUND", assertIs<Either.Left<DomainError>>(assign("chat-unknown")).value.code)
-            assertEquals("NOT_FOUND", assertIs<Either.Left<DomainError>>(assign("chat-1", foreign)).value.code)
+            assertEquals("NOT_FOUND", assertIs<Either.Left<AppError>>(assign("chat-unknown")).value.code)
+            assertEquals("NOT_FOUND", assertIs<Either.Left<AppError>>(assign("chat-1", foreign)).value.code)
         }
 }

@@ -5,7 +5,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -20,7 +20,7 @@ interface Enrollments {
      * Проверяет принадлежность группы организации из контекста.
      * Идемпотентен: если клиент уже активен в группе — повторная запись игнорируется.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun add(groupId: GroupId, clientIds: List<ClientId>)
 
     /**
@@ -28,18 +28,18 @@ interface Enrollments {
      * Проверяет принадлежность группы организации из контекста.
      * Если клиент не был активен — операция игнорируется.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun remove(groupId: GroupId, clientIds: List<ClientId>)
 
     /**
      * Возвращает записи клиентов, чьё участие пересекается с периодом [[from], [to]].
      * Пересечение: клиент записался до конца периода и не вышел до его начала.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activeIn(groupId: GroupId, from: LocalDate, to: LocalDate): List<Enrollment>
 
     /** Возвращает записи клиентов, активных в конкретный [date]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activeOn(groupId: GroupId, date: LocalDate): List<Enrollment> = activeIn(groupId, date, date)
 }
 
@@ -49,7 +49,7 @@ interface Enrollments {
  * поэтому декоратор аудита логирует каждую запись. Атомарность обеспечивает
  * транзакция [tr]: ошибка на любой группе откатывает записи во все предыдущие.
  */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun Enrollments.addToGroups(clientId: ClientId, groupIds: List<GroupId>) {
     groupIds.forEach { add(it, listOf(clientId)) }
 }

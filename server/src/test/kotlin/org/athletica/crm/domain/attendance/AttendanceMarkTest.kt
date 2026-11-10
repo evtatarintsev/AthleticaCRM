@@ -4,7 +4,7 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.core.entityids.AttendanceLabelId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -14,7 +14,7 @@ class AttendanceMarkTest {
     private val label = AttendanceLabelId.new()
 
     /** Код ошибки из [result]; успех роняет тест. */
-    private fun code(result: Either<DomainError, *>): String = assertIs<Either.Left<DomainError>>(result).value.code
+    private fun code(result: Either<AppError, *>): String = assertIs<Either.Left<AppError>>(result).value.code
 
     @Test
     fun `отсутствие без меток создать нельзя`() {
@@ -40,7 +40,7 @@ class AttendanceMarkTest {
 
     @Test
     fun `присутствие без меток допустимо`() {
-        assertEquals<Either<DomainError, AttendanceMark>>(Either.Right(AttendanceMark.Present()), either { AttendanceMark.from(AttendancePresence.PRESENT, emptyList()) })
+        assertEquals<Either<AppError, AttendanceMark>>(Either.Right(AttendanceMark.Present()), either { AttendanceMark.from(AttendancePresence.PRESENT, emptyList()) })
     }
 
     @Test
@@ -52,6 +52,6 @@ class AttendanceMarkTest {
 
     @Test
     fun `без присутствия и меток — не отмечен`() {
-        assertEquals<Either<DomainError, AttendanceMark>>(Either.Right(AttendanceMark.Unmarked), either { AttendanceMark.from(null, emptyList()) })
+        assertEquals<Either<AppError, AttendanceMark>>(Either.Right(AttendanceMark.Unmarked), either { AttendanceMark.from(null, emptyList()) })
     }
 }

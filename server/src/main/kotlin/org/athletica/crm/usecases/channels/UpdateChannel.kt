@@ -6,8 +6,8 @@ import org.athletica.crm.api.schemas.channels.ChannelConfigChange
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.domain.channels.ChannelConfigVerifier
 import org.athletica.crm.domain.channels.ChannelIntegrations
@@ -20,7 +20,7 @@ import org.athletica.crm.storage.Database
  * проверяется только если учётные данные изменились, и вне транзакции: сетевой запрос не держит
  * соединение пула. Включённость интеграции не меняется.
  */
-context(db: Database, ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+context(db: Database, ctx: EmployeeRequestContext, raise: Raise<AppError>)
 suspend fun updateChannel(
     channels: ChannelIntegrations,
     verifier: ChannelConfigVerifier,
@@ -44,7 +44,7 @@ suspend fun updateChannel(
  * Telegram-бота — тоже (при новом токене его обновит проверка). `CHANNEL_PROVIDER_MISMATCH`,
  * если провайдер изменения отличается от сохранённого.
  */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 fun ChannelConfigChange.mergedInto(current: ChannelConfig): ChannelConfig =
     when (this) {
         is ChannelConfigChange.SmscSms ->

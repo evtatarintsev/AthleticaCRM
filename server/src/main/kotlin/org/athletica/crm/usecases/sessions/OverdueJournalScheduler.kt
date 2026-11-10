@@ -8,7 +8,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendancecontrol.AttendanceControl
 import org.athletica.crm.domain.attendancecontrol.JournalCloseDelay
@@ -95,7 +95,7 @@ class OverdueJournalScheduler(
      * Занимает занятие [session] и создаёт по нему задачу без исполнителя. Если занятие уже
      * занято другим проходом или успело стать проведённым или отменённым — ничего не делает.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun createTask(session: DueSession) {
         val taskId = TaskId.new()
         val claimed =

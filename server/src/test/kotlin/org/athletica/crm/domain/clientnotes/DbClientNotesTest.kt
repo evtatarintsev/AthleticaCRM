@@ -12,7 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -198,7 +198,7 @@ class DbClientNotesTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("CLIENT_NOTE_NOT_FOUND", result.value.code)
         }
 
@@ -262,7 +262,7 @@ class DbClientNotesTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("PERMISSION_DENIED", result.value.code)
 
             val reloaded =
@@ -334,7 +334,7 @@ class DbClientNotesTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("PERMISSION_DENIED", result.value.code)
             assertNull(rawDeletedAt(created.id))
         }

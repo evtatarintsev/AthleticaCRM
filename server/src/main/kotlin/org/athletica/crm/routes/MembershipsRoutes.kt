@@ -25,8 +25,8 @@ import org.athletica.crm.api.schemas.memberships.UnfreezeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.memberships.Activation
@@ -128,7 +128,7 @@ fun RouteWithContext.membershipsRoutes(
 }
 
 /** Режим активации запроса с его датой; дата обязательна для режима «с даты». */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 private fun IssueMembershipRequest.activation(): Activation =
     when (activationMode) {
         ActivationMode.IMMEDIATE -> Activation.Immediate

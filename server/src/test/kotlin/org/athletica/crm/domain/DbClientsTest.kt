@@ -17,7 +17,7 @@ import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
@@ -163,7 +163,7 @@ class DbClientsTest {
                         context(ctx) { clients.new(id, "Второй", null, null, Gender.MALE) }
                     }
                 }
-            assertEquals("CLIENT_ALREADY_EXISTS", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CLIENT_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(1L, countClientsInDb()) // в базе по-прежнему один клиент
         }
 
@@ -184,7 +184,7 @@ class DbClientsTest {
                         context(otherCtx) { clients.new(id, "Клиент орг 2", null, null, Gender.MALE) }
                     }
                 }
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
         }
 
     // ─── byId() ───────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ class DbClientsTest {
                         context(ctx) { clients.byId(ClientId.new()) }
                     }
                 }
-            assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -241,7 +241,7 @@ class DbClientsTest {
                         context(otherCtx) { clients.byId(id) }
                     }
                 }
-            assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test

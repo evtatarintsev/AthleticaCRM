@@ -9,7 +9,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.conversations.DbConversationReadStates
 import org.athletica.crm.domain.conversations.DbConversations
@@ -59,7 +59,7 @@ class ConversationReadTest {
     private suspend fun markRead(
         client: ClientId,
         upTo: Instant,
-    ): Either<DomainError, Unit> =
+    ): Either<AppError, Unit> =
         either {
             TestPostgres.db.transaction {
                 context(ctx) { markConversationRead(client, upTo, clients, conversations, readStates) }
@@ -114,14 +114,14 @@ class ConversationReadTest {
     @Test
     fun `клиент чужой организации даёт CLIENT_NOT_FOUND`() =
         runTest {
-            val error = assertIs<Either.Left<DomainError>>(markRead(otherClientId, Clock.System.now())).value
+            val error = assertIs<Either.Left<AppError>>(markRead(otherClientId, Clock.System.now())).value
             assertEquals("CLIENT_NOT_FOUND", error.code)
         }
 
     @Test
     fun `несуществующий клиент даёт CLIENT_NOT_FOUND`() =
         runTest {
-            val error = assertIs<Either.Left<DomainError>>(markRead(ClientId.new(), Clock.System.now())).value
+            val error = assertIs<Either.Left<AppError>>(markRead(ClientId.new(), Clock.System.now())).value
             assertEquals("CLIENT_NOT_FOUND", error.code)
         }
 }

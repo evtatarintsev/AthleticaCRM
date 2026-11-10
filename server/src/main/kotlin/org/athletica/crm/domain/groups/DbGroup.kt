@@ -8,8 +8,8 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -22,7 +22,7 @@ class DbGroup(
     override val disciplines: List<DisciplineId>,
     override val employeeIds: List<EmployeeId>,
 ) : Group {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         val updatedRows =
             try {
@@ -78,10 +78,10 @@ class DbGroup(
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = DbGroup(id, branchId, name, disciplines, employeeIds)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewEmployees(employees: List<Employee>): Group {
         employees.forEach { employee ->
             if (!employee.availableBranches.contains(branchId)) {
@@ -91,6 +91,6 @@ class DbGroup(
         return DbGroup(id, branchId, name, disciplines, employees.map { it.id })
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewName(name: String): Group = DbGroup(id, branchId, name, disciplines, employeeIds)
 }

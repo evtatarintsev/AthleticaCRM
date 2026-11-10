@@ -9,7 +9,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.SlotId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
@@ -66,10 +66,10 @@ interface Session {
      * Отменяет запланированное занятие и публикует событие об отмене; отметки журнала
      * перестают учитываться. Проведённое занятие не отменяется: ошибка `SESSION_CANNOT_CANCEL`.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun cancel()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reschedule(
         newDate: LocalDate,
         newStartTime: LocalTime,
@@ -82,7 +82,7 @@ interface Session {
      * Ошибки: `SESSION_CANNOT_COMPLETE` (занятие не запланировано), `SESSION_NOT_STARTED`
      * (время начала не наступило), `SESSION_JOURNAL_INCOMPLETE` (есть неотмеченные участники).
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun complete()
 
     /**
@@ -90,6 +90,6 @@ interface Session {
      * Каждый [Employee] из [employees] должен иметь доступ к филиалу группы,
      * иначе ошибка `EMPLOYEE_NOT_FOUND`.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun setEmployees(employees: List<Employee>)
 }

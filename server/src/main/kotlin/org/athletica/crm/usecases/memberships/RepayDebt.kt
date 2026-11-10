@@ -5,8 +5,8 @@ import arrow.core.raise.context.raise
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.DebtSession
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.Transaction
  * и только потом проверяется: занятие проведено, отметка «пришёл», группа входит в группы
  * абонемента, действующего списания нет. Иначе — ошибка, ничего не списано.
  */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun repayDebt(
     memberships: Memberships,
     participations: Participations,

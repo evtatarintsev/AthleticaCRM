@@ -8,8 +8,8 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toSessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
@@ -19,7 +19,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [UnpaidSessionsView] одним SQL по журналу, группам абонемента и списаниям. */
 class DbUnpaidSessionsView : UnpaidSessionsView {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byMembership(membershipId: MembershipId): UnpaidSessionsResponse {
         tr
             .sql("SELECT 1 FROM memberships WHERE id = :id AND org_id = :orgId")

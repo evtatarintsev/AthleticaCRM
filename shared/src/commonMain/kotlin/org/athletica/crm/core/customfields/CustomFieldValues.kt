@@ -2,8 +2,8 @@ package org.athletica.crm.core.customfields
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 
 /**
  * Набор значений кастомных полей, всегда соответствующий определениям.
@@ -25,14 +25,14 @@ class CustomFieldValues private constructor(
      * Обновить или добавить одно значение.
      * Поднимает ошибку, если [value] ссылается на несуществующее поле или тип не совпадает.
      */
-    context(raise: Raise<DomainError>)
+    context(raise: Raise<AppError>)
     fun with(value: CustomFieldValue): CustomFieldValues = with(listOf(value))
 
     /**
      * Массовое обновление значений.
      * Поднимает ошибку при первом несоответствии ключа или типа определению.
      */
-    context(raise: Raise<DomainError>)
+    context(raise: Raise<AppError>)
     fun with(values: List<CustomFieldValue>): CustomFieldValues {
         values.forEach { v ->
             val def =

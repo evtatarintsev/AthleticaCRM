@@ -12,7 +12,7 @@ import org.athletica.crm.api.schemas.messaging.UnresolvedChatItemSchema
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toClientId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asLong
@@ -26,7 +26,7 @@ import org.athletica.crm.storage.asUuid
  * последнее сообщение и непрочитанное считаются только для строк страницы.
  */
 class DbInboxView : InboxView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(query: InboxQuery): InboxListResponse {
         val total = count(query.filter)
         if (total == 0) {
@@ -78,11 +78,11 @@ class DbInboxView : InboxView {
         return InboxListResponse(items, total)
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun counter(): InboxCounterResponse = InboxCounterResponse(count(InboxFilterSchema.UNREAD))
 
     /** Число записей списка под фильтром [filter]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun count(filter: InboxFilterSchema): Int =
         tr
             .sql("$ITEMS_CTE\nSELECT count(*) AS total FROM items")

@@ -10,7 +10,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.domain.attendance.Participation
@@ -86,7 +86,7 @@ class DebitReconciliation(
     }
 
     /** Приводит списание за участие в соответствие с журналом. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun reconcileParticipation(sessionId: SessionId, clientId: ClientId) {
         val participation = participations.lock(sessionId, clientId)
         val existing = memberships.activeDebit(sessionId, clientId)
@@ -109,7 +109,7 @@ class DebitReconciliation(
      * абонемент, в той же транзакции проверяет долги клиента и при их наличии создаёт задачу
      * «Проверить клиента»: активация → списание → проверка долгов → задача.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun debit(participation: Participation, groupId: GroupId, today: LocalDate) {
         val candidate =
             memberships.debitCandidate(participation.clientId, groupId, participation.sessionDate, today) ?: return
@@ -134,7 +134,7 @@ class DebitReconciliation(
      * Снимает с абонемента [membership] заморозку, в период которой попадает посещение от [sessionDate]
      * при сегодняшней дате [today]; иначе возвращает абонемент без изменений.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun unfreezeForVisit(membership: ActiveMembership, sessionDate: LocalDate, today: LocalDate): ActiveMembership {
         val freeze = membership.freezeAt(today)
         if (freeze == null || !freeze.covers(sessionDate)) {
@@ -144,7 +144,7 @@ class DebitReconciliation(
     }
 
     /** Возвращает занятие списания [debit] на его абонемент — активный или закрытый. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun reverse(debit: MembershipDebit, today: LocalDate) {
         when (val membership = memberships.byId(debit.membershipId)) {
             is ActiveMembership -> membership.reverse(debit, today)

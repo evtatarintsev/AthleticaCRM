@@ -6,7 +6,7 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.NotificationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -32,7 +32,7 @@ data class DbNotification(
 
     override fun body(lang: Lang): String = content.body(lang)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         if (recipients.isEmpty()) {
             return

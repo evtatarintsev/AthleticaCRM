@@ -9,8 +9,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.core.messaging.toJson
@@ -31,7 +31,7 @@ class DbChannelIntegrations(
     private val contacts: ClientContacts,
     private val bindings: ChannelBindings,
 ) : ChannelIntegrations {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: ChannelIntegrationId): ChannelIntegration =
         tr.sql(
             """
@@ -46,7 +46,7 @@ class DbChannelIntegrations(
             .firstOrNull { row -> row.toChannelIntegration() }
             ?: raise(channelNotFound())
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig) {
         ensureBotNotInUse(id, config)
         uniqueBot {
@@ -64,7 +64,7 @@ class DbChannelIntegrations(
         }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun config(id: ChannelIntegrationId): ChannelConfig =
         tr.sql("SELECT config::text AS config FROM channel_integrations WHERE id = :id AND org_id = :orgId")
             .bind("id", id)
@@ -72,7 +72,7 @@ class DbChannelIntegrations(
             .firstOrNull { row -> row.asString("config").toChannelConfig() }
             ?: raise(channelNotFound())
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun update(
         id: ChannelIntegrationId,
         name: String,
@@ -97,7 +97,7 @@ class DbChannelIntegrations(
         ensure(updated != 0L) { channelNotFound() }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun setEnabled(id: ChannelIntegrationId, enabled: Boolean) {
         val updated =
             tr.sql("UPDATE channel_integrations SET enabled = :enabled WHERE id = :id AND org_id = :orgId")
@@ -108,7 +108,7 @@ class DbChannelIntegrations(
         ensure(updated != 0L) { channelNotFound() }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun remove(id: ChannelIntegrationId) {
         tr.sql("SELECT id FROM channel_integrations WHERE id = :id AND org_id = :orgId FOR UPDATE")
             .bind("id", id)
@@ -146,7 +146,7 @@ class DbChannelIntegrations(
      * `TELEGRAM_BOT_IN_USE`, если бот из [config] уже подключён к другой интеграции (любой организации):
      * один бот опрашивается только одной интеграцией.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun ensureBotNotInUse(id: ChannelIntegrationId, config: ChannelConfig) {
         if (config !is ChannelConfig.TelegramBot) {
             return
@@ -170,7 +170,7 @@ class DbChannelIntegrations(
      * Выполняет запись [block], переводя нарушение уникального индекса токена бота в `TELEGRAM_BOT_IN_USE`:
      * индекс страхует гонку двух одновременных сохранений, которую не ловит [ensureBotNotInUse].
      */
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: RequestContext, raise: Raise<AppError>)
     private suspend fun uniqueBot(block: suspend () -> Long): Long =
         try {
             block()

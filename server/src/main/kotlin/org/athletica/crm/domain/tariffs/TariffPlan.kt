@@ -3,7 +3,7 @@ package org.athletica.crm.domain.tariffs
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.TariffPlanId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.storage.Transaction
@@ -37,15 +37,15 @@ interface TariffPlan {
      * Сохраняет параметры тарифа: INSERT при создании либо UPDATE существующего.
      * Признак архивности не затрагивается — для этого есть [archive] и [unarchive].
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
     /** Архивирует тариф: он исчезает из активного списка, но остаётся для ранее выданных абонементов. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun archive()
 
     /** Восстанавливает тариф из архива. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun unarchive()
 
     /** Возвращает копию с новыми параметрами (без записи в БД); архивность сохраняется. */

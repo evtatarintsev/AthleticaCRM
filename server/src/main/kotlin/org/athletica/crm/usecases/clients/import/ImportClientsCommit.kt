@@ -20,8 +20,8 @@ import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.toMoney
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
@@ -45,7 +45,7 @@ private const val CLIENT_ENTITY_TYPE = "CLIENT"
  * Импорт идёт в одной транзакции. Строки с ошибками не блокируют импорт остальных —
  * каждая строка обрабатывается изолированно, ошибочные попадают в [RowResult.errors].
  */
-context(db: Database, minio: MinioService, ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+context(db: Database, minio: MinioService, ctx: EmployeeRequestContext, raise: Raise<AppError>)
 suspend fun importClientsCommit(
     request: ClientImportCommitRequest,
     clients: Clients,
@@ -138,7 +138,7 @@ private data class ImportPlan(
     val customFieldIndices: Map<Int, String>,
 )
 
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 private fun validateMapping(mapping: List<ColumnMapping>) {
     val builtInCounts =
         mapping
@@ -160,7 +160,7 @@ private fun validateMapping(mapping: List<ColumnMapping>) {
     }
 }
 
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 private fun buildPlan(
     mapping: List<ColumnMapping>,
     columnIndex: Map<String, Int>,
@@ -197,7 +197,7 @@ private fun buildPlan(
     )
 }
 
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun createMissingLeadSources(
     leadSourceMapping: Map<String, LeadSourceAction>,
     existingByName: Map<String, LeadSource>,
@@ -231,7 +231,7 @@ private fun resolveLeadSourceIds(
     }.toMap()
 }
 
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun processRow(
     rowNumber: Int,
     row: List<String?>,

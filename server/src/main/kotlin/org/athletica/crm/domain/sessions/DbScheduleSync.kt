@@ -6,7 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 
@@ -19,7 +19,7 @@ private const val HORIZON_MONTHS = 3
  * поэтому «какие занятия должны существовать» полностью выразимо запросом.
  */
 class DbScheduleSync : ScheduleSync {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun sync() {
         val today = java.time.LocalDate.now().toKotlinLocalDate()
         val horizon = today.plus(HORIZON_MONTHS, DateTimeUnit.MONTH)

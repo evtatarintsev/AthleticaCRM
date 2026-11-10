@@ -5,7 +5,7 @@ import org.athletica.crm.api.schemas.messaging.InboxCounterResponse
 import org.athletica.crm.api.schemas.messaging.InboxFilterSchema
 import org.athletica.crm.api.schemas.messaging.InboxListResponse
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /** Нормализованный запрос страницы «Входящих». */
@@ -24,10 +24,10 @@ data class InboxQuery(
  */
 interface InboxView {
     /** Возвращает страницу списка по [query]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: InboxQuery): InboxListResponse
 
     /** Возвращает число записей, требующих внимания: беседы с непрочитанным и неразобранные чаты. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun counter(): InboxCounterResponse
 }

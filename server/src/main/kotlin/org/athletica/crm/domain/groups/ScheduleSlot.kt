@@ -8,8 +8,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SlotId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.time.Validity
 import org.athletica.crm.i18n.Messages
 
@@ -58,7 +58,7 @@ data class NewSlot(
     val key: Pair<DayOfWeek, LocalTime> get() = dayOfWeek to startAt
 
     /** Проверяет, что занятие заканчивается позже, чем начинается. */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun validate() {
         if (endAt <= startAt) {
             raise(

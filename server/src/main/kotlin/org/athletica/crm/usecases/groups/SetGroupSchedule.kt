@@ -5,7 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
@@ -20,7 +20,7 @@ import org.athletica.crm.storage.Transaction
  * (`null` — с сегодняшнего дня), приводит занятия в соответствие с ним
  * и уведомляет об изменении остальных активных сотрудников, которым доступен филиал группы.
  */
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun setGroupSchedule(
     schedule: GroupSchedule,
     sync: ScheduleSync,

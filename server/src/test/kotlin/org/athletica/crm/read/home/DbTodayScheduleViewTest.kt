@@ -15,7 +15,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -103,7 +103,7 @@ class DbTodayScheduleViewTest {
 
     private suspend fun sessionsOn(date: LocalDate = today): TodaySessionsResponse =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(ctx, this, raise) { view.sessionsOn(date) }
             }

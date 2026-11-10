@@ -55,4 +55,4 @@
 
 ## 11. Сквозная проверка
 
-- [ ] 11.1 `./gradlew build`, `./gradlew ktlintFormat`, в `web/` — `npm run format` и `npm run check`; контракты в `web/src/api/generated/` закоммичены
+- [x] 11.1 `./gradlew build`, `./gradlew ktlintFormat`, в `web/` — `npm run format` и `npm run check`; контракты в `web/src/api/generated/` закоммичены

@@ -1,12 +1,10 @@
 package org.athletica.crm.routes
 
 import arrow.core.raise.context.Raise
-import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.payment.InitiatePaymentRequest
 import org.athletica.crm.api.schemas.payment.PaymentUrlResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
@@ -47,18 +45,14 @@ private suspend fun initiatePayment(
     val idempotencyKey = Uuid.generateV7().toString()
 
     val gatewayResult =
-        try {
-            paymentGateway.createPayment(
-                PaymentCreateRequest(
-                    idempotencyKey = idempotencyKey,
-                    amount = amount,
-                    description = request.description,
-                    orgId = ctx.orgId,
-                ),
-            )
-        } catch (e: Exception) {
-            raise(CommonDomainError("PAYMENT_GATEWAY_ERROR", "Ошибка платёжного шлюза: ${e.message}"))
-        }
+        paymentGateway.createPayment(
+            PaymentCreateRequest(
+                idempotencyKey = idempotencyKey,
+                amount = amount,
+                description = request.description,
+                orgId = ctx.orgId,
+            ),
+        )
 
     return db.transaction {
         val payment =

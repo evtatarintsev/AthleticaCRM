@@ -64,12 +64,7 @@ suspend fun importClientsCommit(
     validateMapping(request.columnMapping)
 
     val bytes = minio.downloadObject(upload.objectKey)
-    val parsed =
-        try {
-            CsvReader.parse(bytes)
-        } catch (e: Exception) {
-            raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV: ${e.message ?: ""}"))
-        }
+    val parsed = CsvReader.parse(bytes)
 
     val columnIndex = parsed.headers.withIndex().associate { (i, h) -> h to i }
     val plan = buildPlan(request.columnMapping, columnIndex)

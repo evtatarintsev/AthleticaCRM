@@ -1,6 +1,5 @@
 package org.athletica.crm
 
-import arrow.core.raise.either
 import com.github.ajalt.clikt.command.main
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -215,7 +214,7 @@ fun Application.configureServer() {
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }
-                        groupsRoutes(di.groups, di.employees, di.groupSchedule, di.scheduleSync, di.notifications, di.views)
+                        groupsRoutes(di.groups, di.employees, di.groupSchedule, di.notifications, di.views)
                         sessionsRoutes(di.sessions, di.employees, di.views)
                         attendanceRoutes(di.attendanceLabels, di.sessionJournals, di.sessions, di.views)
                         orgRoutes(di.organizations, di.attendanceControls)
@@ -287,8 +286,8 @@ private suspend fun syncSchedulesDaily(di: Di) {
                 }
             orgIds.forEach { orgUuid ->
                 try {
-                    di.database.transaction {
-                        either {
+                    orThrow {
+                        di.database.transaction {
                             context(SystemContexts.forOrg(OrgId(orgUuid))) {
                                 di.scheduleSync.sync()
                             }

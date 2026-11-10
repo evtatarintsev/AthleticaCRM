@@ -16,9 +16,15 @@ import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.groups.DbGroupSchedule
+import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.NewSlot
+import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.sessions.DbScheduleSync
+import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalTime
 import org.athletica.crm.storage.asString
@@ -28,6 +34,8 @@ import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Тесты сверки расписания и занятий: создание, обновление и удаление нетронутых занятий,
@@ -85,6 +93,41 @@ class DbScheduleSyncTest {
         }
 
     private fun mondayAt10(hall: HallId, endAt: LocalTime = LocalTime(11, 0)) = NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), endAt, hall)
+
+    @Test
+    fun `дата организации управляет сменой расписания и сверкой в одной транзакции`() =
+        orThrow {
+            runTest {
+                fixture.setUp()
+                TestPostgres.db.sql("UPDATE organizations SET timezone = 'Pacific/Kiritimati' WHERE id = :id")
+                    .bind("id", fixture.orgId)
+                    .execute()
+                val calendar =
+                    DbOrgCalendar(
+                        object : Clock {
+                            override fun now() = Instant.parse("2026-10-18T12:00:00Z")
+                        },
+                    )
+                val schedule = DbGroupSchedule(calendar)
+                val group = fixture.insertGroup()
+                val hall = fixture.insertHall()
+                val orgToday = LocalDate(2026, 10, 19)
+                val past = orgToday.plusDays(-7)
+                val start = LocalTime(10, 0)
+                val end = LocalTime(11, 0)
+                val slot = fixture.insertSlot(group, hall, DayOfWeek.MONDAY, start, end, past)
+                val pastId = fixture.insertSession(group, hall, past, start, end, originSlotId = slot)
+                fixture.insertSession(group, hall, orgToday, start, end, originSlotId = slot)
+                val rescheduled =
+                    fixture.insertSession(
+                        group, hall, orgToday, LocalTime(12, 0), LocalTime(13, 0),
+                        originSlotId = slot, originDate = orgToday.plusDays(7), isRescheduled = true,
+                    )
+
+                assertEquals(orgToday, fixture.inContext { schedule.setFrom(group, null, emptyList()) })
+                assertEquals(listOf(pastId, rescheduled), sessions(group).map { it.id })
+            }
+        }
 
     @Test
     fun `занятия создаются на все подходящие даты периода внутри горизонта`() =
@@ -232,9 +275,10 @@ class DbScheduleSyncTest {
                 val future = sessions(group).first { it.date >= today }
                 assertEquals(listOf(oldCoach), employeesOf(future.id))
 
-                TestPostgres.db.sql("DELETE FROM group_employees WHERE group_id = :g").bind("g", group).execute()
-                fixture.linkGroupEmployee(group, newCoach)
-                sync()
+                val employees = DbEmployees(DbUsers(PasswordHasher()), DbRoles())
+                fixture.inContext {
+                    DbGroups(sync).byId(group).withNewEmployees(employees.byIds(listOf(newCoach))).save()
+                }
 
                 assertEquals(listOf(newCoach), employeesOf(future.id))
                 assertEquals(listOf(oldCoach), employeesOf(past))

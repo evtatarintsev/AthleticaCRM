@@ -15,13 +15,15 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.sessions.DbScheduleSync
+import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /** Реализация [Groups] с доступом к PostgreSQL через R2DBC. */
-class DbGroups : Groups {
+class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: GroupId,
@@ -61,7 +63,7 @@ class DbGroups : Groups {
                 .onViolation("group_employees_employee_id_fkey") { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
                 .execute()
         }
-        return DbGroup(id, ctx.branchId, name.value, disciplineIds, employees.map { it.id })
+        return DbGroup(id, ctx.branchId, name.value, disciplineIds, employees.map { it.id }, sync)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -129,6 +131,7 @@ class DbGroups : Groups {
                 name = name,
                 disciplines = disciplinesByGroup[id] ?: emptyList(),
                 employeeIds = employeeIdsByGroup[id] ?: emptyList(),
+                sync = sync,
             )
         }
     }
@@ -155,6 +158,6 @@ class DbGroups : Groups {
                 .bind("groupId", id)
                 .list { row -> row.asUuid("employee_id").toEmployeeId() }
 
-        return DbGroup(id, branchId, name, disciplines, employeeIds)
+        return DbGroup(id, branchId, name, disciplines, employeeIds, sync)
     }
 }

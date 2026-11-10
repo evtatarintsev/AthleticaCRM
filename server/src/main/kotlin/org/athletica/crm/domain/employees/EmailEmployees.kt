@@ -24,7 +24,7 @@ class EmailEmployees(private val delegate: Employees, private val orgEmails: Org
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-        permissions: EmployeePermission,
+        permissions: EmployeePermissionSelection,
         availableBranches: EmployeeBranchAccess,
     ) = EmailEmployee(delegate.new(id, name, phoneNo, email, avatarId, permissions, availableBranches), orgEmails)
 }

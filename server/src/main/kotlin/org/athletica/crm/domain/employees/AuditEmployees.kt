@@ -27,7 +27,7 @@ class AuditEmployees(private val delegate: Employees, private val audit: AuditLo
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-        permissions: EmployeePermission,
+        permissions: EmployeePermissionSelection,
         availableBranches: EmployeeBranchAccess,
     ) = delegate.new(id, name, phoneNo, email, avatarId, permissions, availableBranches)
         .also {

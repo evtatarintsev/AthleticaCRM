@@ -19,7 +19,7 @@ interface Employees {
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-        permissions: EmployeePermission,
+        permissions: EmployeePermissionSelection,
         availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
     ): Employee
 

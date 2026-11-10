@@ -12,12 +12,12 @@ import org.athletica.crm.core.permissions.UserActor
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 /**
  * Сотрудник организации — агрегат и одновременно актор запроса:
  * ответ «что может сотрудник» даёт [hasPermission]. Устройство прав (роли,
- * персональные выдачи и отзывы) — вход команд [withNew] и `Employees.new`
- * и не раскрывается через интерфейс.
+ * персональные выдачи и отзывы) — вход команд [withNew] и `Employees.new`.
  */
 interface Employee : UserActor {
     val id: EmployeeId
@@ -29,6 +29,7 @@ interface Employee : UserActor {
     val joinedAt: Instant
     val phoneNo: String?
     val email: EmailAddress?
+    val roles: List<EmployeeRole>
 
     /** Доступ к филиалам организации: ко всем (включая будущие) либо к явному набору. */
     val availableBranches: EmployeeBranchAccess
@@ -39,16 +40,22 @@ interface Employee : UserActor {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun invite(email: EmailAddress, password: String)
 
-    context(ctx: EmployeeRequestContext)
-    fun withNew(
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun withNew(
         newName: String,
-        newPermissions: EmployeePermission,
+        newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
         newAvailableBranches: EmployeeBranchAccess,
     ): Employee
 }
+
+data class EmployeePermissionSelection(
+    val roleIds: List<Uuid> = emptyList(),
+    val grantedPermissions: Set<UserPermission> = emptySet(),
+    val revokedPermissions: Set<UserPermission> = emptySet(),
+)
 
 data class EmployeePermission(
     val roles: List<EmployeeRole>,

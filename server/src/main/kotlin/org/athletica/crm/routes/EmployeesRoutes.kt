@@ -14,7 +14,7 @@ import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
-import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.read.ReadViews
@@ -38,14 +38,6 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
 
         post<CreateEmployeeRequest, EmployeeListItem>("/create") { request ->
             db.transaction {
-                val allRoles = roles.list()
-                val selectedRoles = allRoles.filter { it.id in request.roleIds }
-                val permissions =
-                    EmployeePermission(
-                        roles = selectedRoles,
-                        grantedPermissions = request.grantedPermissions,
-                        revokedPermissions = request.revokedPermissions,
-                    )
                 employees
                     .new(
                         id = request.id,
@@ -53,22 +45,14 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
                         phoneNo = request.phoneNo,
                         email = request.email,
                         avatarId = request.avatarId,
-                        permissions = permissions,
+                        permissions = EmployeePermissionSelection(request.roleIds, request.grantedPermissions, request.revokedPermissions),
                         availableBranches = request.toAvailableBranches(),
-                    ).toListItem(selectedRoles)
+                    ).toListItem()
             }
         }
 
         post<UpdateEmployeeRequest, Unit>("/update") { request ->
             db.transaction {
-                val allRoles = roles.list()
-                val selectedRoles = allRoles.filter { it.id in request.roleIds }
-                val permissions =
-                    EmployeePermission(
-                        roles = selectedRoles,
-                        grantedPermissions = request.grantedPermissions,
-                        revokedPermissions = request.revokedPermissions,
-                    )
                 employees
                     .byId(request.id)
                     .withNew(
@@ -76,7 +60,7 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
                         newPhoneNo = request.phoneNo,
                         newEmail = request.email,
                         newAvatarId = request.avatarId,
-                        newPermissions = permissions,
+                        newPermissions = EmployeePermissionSelection(request.roleIds, request.grantedPermissions, request.revokedPermissions),
                         newAvailableBranches = request.toAvailableBranches(),
                     ).save()
             }
@@ -114,8 +98,8 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
     }
 }
 
-/** Собирает элемент списка из только что созданного сотрудника и назначенных ему ролей [roles]. */
-private fun Employee.toListItem(roles: List<DomainEmployeeRole>) =
+/** Собирает элемент списка из только что созданного сотрудника и назначенных ему ролей. */
+private fun Employee.toListItem() =
     EmployeeListItem(
         id,
         name,

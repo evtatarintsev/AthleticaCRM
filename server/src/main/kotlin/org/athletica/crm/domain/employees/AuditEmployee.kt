@@ -23,10 +23,10 @@ class AuditEmployee(private val delegate: Employee, private val audit: AuditLog)
             audit.logUpdate("employee", id, Json.encodeToString(it))
         }
 
-    context(ctx: EmployeeRequestContext)
-    override fun withNew(
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
         newName: String,
-        newPermissions: EmployeePermission,
+        newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,

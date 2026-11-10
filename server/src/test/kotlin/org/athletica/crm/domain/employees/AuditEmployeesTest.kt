@@ -45,7 +45,7 @@ class AuditEmployeesTest {
     private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
-    private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
+    private val emptyPermission = EmployeePermissionSelection()
 
     private fun makeSubject(
         stub: EmployeesStub,

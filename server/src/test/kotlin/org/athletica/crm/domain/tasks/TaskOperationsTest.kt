@@ -27,6 +27,8 @@ import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
+import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
@@ -118,6 +120,7 @@ class TaskOperationsTest {
             override val joinedAt: Instant = Clock.System.now()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
+            override val roles = emptyList<EmployeeRole>()
             override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All
 
             override fun hasPermission(p: UserPermission): Boolean = false
@@ -128,10 +131,10 @@ class TaskOperationsTest {
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun invite(email: EmailAddress, password: String) = Unit
 
-            context(ctx: EmployeeRequestContext)
-            override fun withNew(
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun withNew(
                 newName: String,
-                newPermissions: EmployeePermission,
+                newPermissions: EmployeePermissionSelection,
                 newAvatarId: UploadId?,
                 newPhoneNo: String?,
                 newEmail: EmailAddress?,

@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import arrow.core.raise.context.Raise
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
@@ -13,6 +14,7 @@ import org.athletica.crm.domain.payment.DbPayments
 import org.athletica.crm.domain.payment.PaymentCreateRequest
 import org.athletica.crm.domain.payment.PaymentCreateResult
 import org.athletica.crm.domain.payment.PaymentGateway
+import org.athletica.crm.domain.payment.PaymentGatewayError
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.infra.yookassa.YookassaConfig
@@ -48,6 +50,7 @@ fun testDi(): Di {
         payments = DbPayments(),
         paymentGateway =
             object : PaymentGateway {
+                context(raise: Raise<PaymentGatewayError>)
                 override suspend fun createPayment(request: PaymentCreateRequest): PaymentCreateResult = throw UnsupportedOperationException("PaymentGateway not available in tests")
             },
     )

@@ -6,6 +6,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.util.logging.KtorSimpleLogger
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.errors.DomainError
@@ -45,7 +46,11 @@ fun Route.checkoutRoutes(
         val webhook =
             try {
                 webhookJson.decodeFromString<YookassaWebhook>(payload)
-            } catch (e: Exception) {
+            } catch (e: SerializationException) {
+                logger.warn("Не удалось распарсить webhook ЮKassa: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest)
+                return@post
+            } catch (e: IllegalArgumentException) {
                 logger.warn("Не удалось распарсить webhook ЮKassa: ${e.message}")
                 call.respond(HttpStatusCode.BadRequest)
                 return@post

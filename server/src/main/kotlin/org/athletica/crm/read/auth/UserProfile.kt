@@ -20,8 +20,7 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
-import java.util.UUID
-import kotlin.uuid.toKotlinUuid
+import org.athletica.crm.storage.asUuidOrNull
 
 /**
  * Возвращает профиль текущего авторизованного пользователя.
@@ -65,7 +64,7 @@ private fun Row.toUserProfile() =
         employeeId = asUuid("employee_id").toEmployeeId(),
         username = asString("login"),
         name = asString("name"),
-        avatarId = get("avatar_id", UUID::class.java)?.toKotlinUuid()?.toUploadId(),
+        avatarId = asUuidOrNull("avatar_id")?.toUploadId(),
         currentBranchId = asUuid("branch_id").toBranchId(),
         currentBranchName = asStringOrNull("branch_name") ?: "",
     )

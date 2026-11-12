@@ -8,6 +8,10 @@ import org.athletica.crm.admin.AdminDi
 import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInt
+import org.athletica.crm.storage.asLong
+import org.athletica.crm.storage.asStringOrNull
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -86,10 +90,10 @@ class DomainEventWorkerTest {
                 .bind("id", id)
                 .firstOrNull {
                     Row(
-                        it.get("retry_count", Integer::class.java)!!.toInt(),
-                        it.get("processed", java.lang.Boolean::class.java)!!.booleanValue(),
-                        it.get("failed", java.lang.Boolean::class.java)!!.booleanValue(),
-                        it.get("delayed", java.lang.Long::class.java)!!.toLong(),
+                        it.asInt("retry_count"),
+                        it.asBoolean("processed"),
+                        it.asBoolean("failed"),
+                        it.asLong("delayed"),
                     )
                 }!!
         }
@@ -170,7 +174,7 @@ class DomainEventWorkerTest {
                 worker.processBatch()
 
                 assertTrue(row(id).processed)
-                assertNull(TestPostgres.db.sql("SELECT last_error FROM domain_events WHERE id = :id").bind("id", id).firstOrNull { it.get("last_error", String::class.java) ?: "" }?.ifEmpty { null })
+                assertNull(TestPostgres.db.sql("SELECT last_error FROM domain_events WHERE id = :id").bind("id", id).firstOrNull { it.asStringOrNull("last_error") ?: "" }?.ifEmpty { null })
                 assertNotNull(id)
             }
         }

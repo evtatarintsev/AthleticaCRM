@@ -9,6 +9,7 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
+import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -51,7 +52,7 @@ class OrgBalanceReplenishTest {
                     TestPostgres.db
                         .sql("SELECT operation_type FROM org_balance_journal WHERE org_id = :orgId")
                         .bind("orgId", orgId)
-                        .firstOrNull { row -> row.get("operation_type", String::class.java) }
+                        .firstOrNull { row -> row.asString("operation_type") }
 
                 assertEquals("replenishment", operationType)
             }

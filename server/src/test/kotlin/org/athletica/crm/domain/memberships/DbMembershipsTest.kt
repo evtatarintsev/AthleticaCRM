@@ -16,6 +16,7 @@ import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.storage.asString
 import org.athletica.crm.testPositiveInt
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.revokeMembership
@@ -290,7 +291,7 @@ class DbMembershipsTest {
                     TestPostgres.db
                         .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id AND data::text LIKE '%freezeStart%' ORDER BY created_at, id")
                         .bind("id", id)
-                        .list { it.get("username", String::class.java)!! to Json.parseToJsonElement(it.get("data", String::class.java)!!) }
+                        .list { it.asString("username") to Json.parseToJsonElement(it.asString("data")) }
                 val frozen =
                     """{"action":"FROZEN","unfreezeReason":null,"freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-25"}"""
                 val unfrozen =

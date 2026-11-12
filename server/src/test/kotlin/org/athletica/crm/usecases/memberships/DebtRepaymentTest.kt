@@ -39,6 +39,7 @@ import org.athletica.crm.domain.tasks.Tasks
 import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -82,7 +83,7 @@ class DebtRepaymentTest {
             TestPostgres.db
                 .sql("SELECT description FROM tasks WHERE client_id = :c AND created_by IS NULL AND assignee_id IS NULL")
                 .bind("c", client)
-                .list { it.get("description", String::class.java)!! }
+                .list { it.asString("description") }
         }
 
     @Test

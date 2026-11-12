@@ -14,6 +14,8 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInt
+import org.athletica.crm.storage.asIntOrNull
 import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -83,8 +85,8 @@ class DbTariffPlans : TariffPlans {
         DbTariffPlan(
             id = asUuid("id").toTariffPlanId(),
             name = asString("name"),
-            sessions = get("sessions_count", Int::class.javaObjectType),
-            durationValue = get("duration_value", Int::class.javaObjectType)!!,
+            sessions = asIntOrNull("sessions_count"),
+            durationValue = asInt("duration_value"),
             durationUnit = DurationUnit.valueOf(asString("duration_unit")),
             price = asMoney("price", ctx.currency),
             archived = asBoolean("is_archived"),

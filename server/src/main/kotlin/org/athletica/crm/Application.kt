@@ -74,9 +74,10 @@ import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.storage.asUuid
 import java.sql.DriverManager
 import kotlin.context
-import kotlin.uuid.toKotlinUuid
+import kotlin.time.Duration.Companion.hours
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
@@ -281,7 +282,7 @@ private suspend fun syncSchedulesDaily(di: Di) {
                 di.database.transaction {
                     orThrow {
                         sql("SELECT DISTINCT org_id FROM groups")
-                            .list { row -> row.get("org_id", java.util.UUID::class.java)!!.toKotlinUuid() }
+                            .list { row -> row.asUuid("org_id") }
                     }
                 }
             orgIds.forEach { orgUuid ->
@@ -300,7 +301,7 @@ private suspend fun syncSchedulesDaily(di: Di) {
         } catch (e: Exception) {
             logger.error("syncSchedulesDaily error", e)
         }
-        delay(24 * 60 * 60 * 1_000L)
+        delay(24.hours)
     }
 }
 

@@ -17,6 +17,7 @@ import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.usecases.memberships.DebitReconciliation
 import kotlin.uuid.Uuid
@@ -126,7 +127,7 @@ class DebitFixture(val base: MembershipFixture) {
                 .sql("SELECT COUNT(*) AS c FROM membership_debits WHERE session_id = :s AND client_id = :c")
                 .bind("s", sessionId)
                 .bind("c", clientId)
-                .firstOrNull { it.get("c", java.lang.Long::class.java)!!.toLong() } ?: 0
+                .firstOrNull { it.asLong("c") } ?: 0
         }
 
     /** Устанавливает срок абонемента [id] напрямую в БД. */
@@ -147,6 +148,6 @@ class DebitFixture(val base: MembershipFixture) {
             TestPostgres.db
                 .sql("SELECT COUNT(*) AS c FROM notification_recipients WHERE employee_id = :e")
                 .bind("e", base.employeeId)
-                .firstOrNull { it.get("c", java.lang.Long::class.java)!!.toLong() } ?: 0
+                .firstOrNull { it.asLong("c") } ?: 0
         }
 }

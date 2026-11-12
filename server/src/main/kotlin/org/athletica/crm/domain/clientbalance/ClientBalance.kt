@@ -15,9 +15,6 @@ interface ClientBalance {
     val totalAmount: Money
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun adjust(amount: Money, note: String): ClientBalance
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun history(): List<ClientBalanceEntry>
 }
 

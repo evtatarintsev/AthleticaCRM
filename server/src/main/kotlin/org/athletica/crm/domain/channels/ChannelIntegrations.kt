@@ -2,6 +2,7 @@ package org.athletica.crm.domain.channels
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
@@ -22,7 +23,7 @@ interface ChannelIntegrations {
 
     /** Добавляет новую (активную) интеграцию [id] с настройками [config]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig)
+    suspend fun add(id: ChannelIntegrationId, name: NonBlankName, config: ChannelConfig)
 
     /**
      * Сохранённые настройки провайдера интеграции [id] вместе с секретами — для слияния с частичным
@@ -38,7 +39,7 @@ interface ChannelIntegrations {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun update(
         id: ChannelIntegrationId,
-        name: String,
+        name: NonBlankName,
         config: ChannelConfig,
     )
 

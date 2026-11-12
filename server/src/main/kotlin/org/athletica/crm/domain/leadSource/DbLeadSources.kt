@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.toLeadSourceId
 import org.athletica.crm.core.errors.AppError
@@ -24,7 +25,7 @@ class DbLeadSources : LeadSources {
             }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: LeadSourceId, name: String, description: LeadSourceDescription): LeadSource = DbLeadSource(id, name, description)
+    override suspend fun new(id: LeadSourceId, name: NonBlankName, description: LeadSourceDescription): LeadSource = DbLeadSource(id, name.value, description)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: LeadSourceId): LeadSource =

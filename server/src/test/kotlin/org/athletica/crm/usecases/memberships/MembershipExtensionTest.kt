@@ -12,6 +12,7 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.MembershipFixture
+import org.athletica.crm.domain.memberships.extendManually
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.read.memberships.DbMembershipHistoryView
 import org.athletica.crm.storage.asString
@@ -132,7 +133,7 @@ class MembershipExtensionTest {
         runTest {
             val id = november(fixture.insertClient())
             fixture.tx { freezeMembership(fixture.memberships, calendar, id, date(1), date(3), "отпуск") }
-            fixture.at(date(10))
+            fixture.at(date(4))
 
             extend(id, date(31, 12))
 
@@ -152,11 +153,13 @@ class MembershipExtensionTest {
             val revoked = november(fixture.insertClient())
             fixture.tx { revokeMembership(fixture.memberships, revoked) }
 
-            assertEquals("MEMBERSHIP_NOT_ACTIVE", errorCode(inactive, date(31, 12)))
-            assertEquals("MEMBERSHIP_FINAL", errorCode(closed, date(31, 12)))
-            assertEquals("MEMBERSHIP_FINAL", errorCode(revoked, date(31, 12)))
-            listOf(inactive, closed, revoked).forEach {
-                assertTrue("EXTENDED" !in fixture.eventKinds(it))
+            for ((id, code) in listOf(inactive to "MEMBERSHIP_NOT_ACTIVE", closed to "MEMBERSHIP_FINAL", revoked to "MEMBERSHIP_FINAL")) {
+                val error =
+                    fixture.attempt {
+                        fixture.memberships.byId(id).extendManually(date(31, 12), "перенос", date(1))
+                    }.leftOrNull()
+                assertEquals(code, assertIs<CommonDomainError>(error).code)
+                assertTrue("EXTENDED" !in fixture.eventKinds(id))
             }
         }
 

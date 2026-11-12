@@ -73,6 +73,7 @@ class DbSession(
         newEndTime: LocalTime,
         newHallId: HallId,
     ) {
+        ensureValidSessionTime(newStartTime, newEndTime)
         if (status != "scheduled") {
             raise(CommonDomainError("SESSION_CANNOT_RESCHEDULE", "Можно перенести только запланированное занятие"))
         }

@@ -3,6 +3,7 @@ package org.athletica.crm.domain.discipline
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.errors.AppError
@@ -23,7 +24,7 @@ class DbDisciplines : Disciplines {
             }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: DisciplineId, name: String): Discipline = DbDiscipline(id, name)
+    override suspend fun new(id: DisciplineId, name: NonBlankName): Discipline = DbDiscipline(id, name.value)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: DisciplineId): Discipline =

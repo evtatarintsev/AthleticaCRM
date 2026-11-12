@@ -2,6 +2,7 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserPermission
@@ -11,6 +12,7 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import kotlin.collections.component1
 import kotlin.collections.component2
+import kotlin.uuid.Uuid
 
 class DbRoles : Roles {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -18,7 +20,7 @@ class DbRoles : Roles {
         tr.sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
             .bind("id", role.id)
             .bind("orgId", ctx.orgId)
-            .bind("name", role.name)
+            .bind("name", role.name.value)
             .execute()
         for (permission in role.permissions) {
             tr.sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
@@ -33,7 +35,7 @@ class DbRoles : Roles {
         tr.sql("UPDATE roles SET name = :name WHERE id = :id AND org_id = :orgId")
             .bind("id", role.id)
             .bind("orgId", ctx.orgId)
-            .bind("name", role.name)
+            .bind("name", role.name.value)
             .execute()
         tr.sql("DELETE FROM role_permissions WHERE role_id = :roleId")
             .bind("roleId", role.id)
@@ -47,7 +49,13 @@ class DbRoles : Roles {
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun list(): List<EmployeeRole> =
+    override suspend fun list(): List<EmployeeRole> = load(null)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun byIds(ids: List<Uuid>): List<EmployeeRole> = if (ids.isEmpty()) emptyList() else load(ids)
+
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    private suspend fun load(ids: List<Uuid>?): List<EmployeeRole> =
         tr
             .sql(
                 """
@@ -55,9 +63,10 @@ class DbRoles : Roles {
                 FROM roles r
                 LEFT JOIN role_permissions rp ON rp.role_id = r.id
                 WHERE r.org_id = :orgId
-                """.trimIndent(),
+                """.trimIndent() + if (ids == null) "" else " AND r.id = ANY(:ids)",
             )
             .bind("orgId", ctx.orgId)
+            .let { query -> if (ids == null) query else query.bind("ids", ids) }
             .list { row ->
                 Triple(
                     row.asUuid("id"),
@@ -69,7 +78,7 @@ class DbRoles : Roles {
             .map { (roleId, rows) ->
                 EmployeeRole(
                     id = roleId,
-                    name = rows.first().first,
+                    name = NonBlankName.from(rows.first().first),
                     permissions =
                         rows
                             .mapNotNull { it.second }

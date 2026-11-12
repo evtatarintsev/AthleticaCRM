@@ -3,6 +3,7 @@ package org.athletica.crm.domain
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -13,6 +14,8 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
+import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
@@ -36,6 +39,8 @@ data class EmployeeStub(
     override val email: EmailAddress? = null,
     override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
 ) : Employee {
+    override val roles: List<EmployeeRole> get() = permissionSettings.roles
+
     override fun hasPermission(p: UserPermission): Boolean = permissionSettings.hasPermission(p)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -46,17 +51,17 @@ data class EmployeeStub(
     override suspend fun invite(email: EmailAddress, password: String) {
     }
 
-    context(ctx: EmployeeRequestContext)
-    override fun withNew(
-        newName: String,
-        newPermissions: EmployeePermission,
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
+        newName: NonBlankName,
+        newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
         newAvailableBranches: EmployeeBranchAccess,
     ) = copy(
-        name = newName,
-        permissionSettings = newPermissions,
+        name = newName.value,
+        permissionSettings = EmployeePermission(roles.filter { it.id in newPermissions.roleIds }, newPermissions.grantedPermissions, newPermissions.revokedPermissions),
         email = newEmail,
         avatarId = newAvatarId,
         phoneNo = newPhoneNo,
@@ -70,11 +75,11 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
-        name: String,
+        name: NonBlankName,
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-        permissions: EmployeePermission,
+        permissions: EmployeePermissionSelection,
         availableBranches: EmployeeBranchAccess,
     ): Employee =
         EmployeeStub(
@@ -83,11 +88,11 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
             isOwner = false,
             isActive = false,
             joinedAt = clock.now(),
-            name = name,
+            name = name.value,
             phoneNo = phoneNo,
             email = email,
             avatarId = avatarId,
-            permissionSettings = permissions,
+            permissionSettings = EmployeePermission(emptyList(), permissions.grantedPermissions, permissions.revokedPermissions),
             availableBranches = availableBranches,
         ).also { employees.add(it) }
 

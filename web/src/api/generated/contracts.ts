@@ -353,7 +353,7 @@ export type BirthdayWindow = z.output<typeof BirthdayWindowSchema>;
 export const BranchCreateRequestSchema = z
   .object({
     id: BranchIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type BranchCreateRequest = z.output<typeof BranchCreateRequestSchema>;
@@ -368,7 +368,7 @@ export type BranchListResponse = z.output<typeof BranchListResponseSchema>;
 export const BranchUpdateRequestSchema = z
   .object({
     id: BranchIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type BranchUpdateRequest = z.output<typeof BranchUpdateRequestSchema>;
@@ -748,7 +748,7 @@ export type ColumnMapping = z.output<typeof ColumnMappingSchema>;
 export const LeadSourceActionCreateNewSchema = z
   .object({
     type: z.literal("create_new"),
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type LeadSourceActionCreateNew = z.output<typeof LeadSourceActionCreateNewSchema>;
@@ -1086,7 +1086,7 @@ export type NewChannelConfig = z.output<typeof NewChannelConfigSchema>;
 export const CreateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     config: NewChannelConfigSchema,
   })
   .readonly();
@@ -1095,7 +1095,7 @@ export type CreateChannelIntegrationRequest = z.output<typeof CreateChannelInteg
 export const CreateClientRequestSchema = z
   .object({
     id: ClientIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     avatarId: UploadIdSchema.nullable().optional(),
     birthday: LocalDateSchema.nullable().optional(),
     gender: GenderSchema,
@@ -1112,7 +1112,7 @@ export type DisciplineId = z.output<typeof DisciplineIdSchema>;
 export const CreateDisciplineRequestSchema = z
   .object({
     id: DisciplineIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type CreateDisciplineRequest = z.output<typeof CreateDisciplineRequestSchema>;
@@ -1120,7 +1120,7 @@ export type CreateDisciplineRequest = z.output<typeof CreateDisciplineRequestSch
 export const CreateEmployeeRequestSchema = z
   .object({
     id: EmployeeIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     phoneNo: z.string().nullable().optional(),
     email: z.string().nullable().optional(),
     avatarId: UploadIdSchema.nullable().optional(),
@@ -1139,7 +1139,7 @@ export type HallId = z.output<typeof HallIdSchema>;
 export const CreateHallRequestSchema = z
   .object({
     id: HallIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type CreateHallRequest = z.output<typeof CreateHallRequestSchema>;
@@ -1147,7 +1147,7 @@ export type CreateHallRequest = z.output<typeof CreateHallRequestSchema>;
 export const CreateLeadSourceRequestSchema = z
   .object({
     id: LeadSourceIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     description: z.string().optional(),
   })
   .readonly();
@@ -1156,7 +1156,7 @@ export type CreateLeadSourceRequest = z.output<typeof CreateLeadSourceRequestSch
 export const CreateRoleRequestSchema = z
   .object({
     id: z.uuid(),
-    name: z.string(),
+    name: z.string().trim().min(1),
     permissions: z.array(UserPermissionSchema).readonly(),
   })
   .readonly();
@@ -1182,9 +1182,9 @@ export type DurationUnit = z.output<typeof DurationUnitSchema>;
 export const CreateTariffPlanRequestSchema = z
   .object({
     id: TariffPlanIdSchema,
-    name: z.string(),
-    sessions: z.int32().nullable(),
-    durationValue: z.int32(),
+    name: z.string().trim().min(1),
+    sessions: z.int32().positive().nullable(),
+    durationValue: z.int32().positive(),
     durationUnit: DurationUnitSchema,
     price: MoneySchema,
   })
@@ -1194,7 +1194,7 @@ export type CreateTariffPlanRequest = z.output<typeof CreateTariffPlanRequestSch
 export const CreateTaskRequestSchema = z
   .object({
     id: TaskIdSchema,
-    title: z.string(),
+    title: z.string().trim().min(1),
     description: z.string(),
     clientId: ClientIdSchema.nullable(),
     dueDate: InstantSchema.nullable(),
@@ -1705,7 +1705,7 @@ export type EditClientNoteRequest = z.output<typeof EditClientNoteRequestSchema>
 export const EditClientRequestSchema = z
   .object({
     id: ClientIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     avatarId: UploadIdSchema.nullable().optional(),
     birthday: LocalDateSchema.nullable().optional(),
     gender: GenderSchema,
@@ -1719,7 +1719,7 @@ export type EditClientRequest = z.output<typeof EditClientRequestSchema>;
 export const EditGroupRequestSchema = z
   .object({
     id: GroupIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     disciplineIds: z.array(DisciplineIdSchema).readonly().optional(),
     employeeIds: z.array(EmployeeIdSchema).readonly().optional(),
   })
@@ -1864,7 +1864,7 @@ export type GroupClient = z.output<typeof GroupClientSchema>;
 export const GroupCreateRequestSchema = z
   .object({
     id: GroupIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     disciplineIds: z.array(DisciplineIdSchema).readonly().optional(),
     employeeIds: z.array(EmployeeIdSchema).readonly().optional(),
   })
@@ -2120,9 +2120,9 @@ export const IssueMembershipRequestSchema = z
     clientId: ClientIdSchema,
     tariffPlanId: TariffPlanIdSchema.nullable(),
     name: z.string(),
-    sessions: z.int32().nullable(),
+    sessions: z.int32().positive().nullable(),
     groupIds: z.array(GroupIdSchema).readonly(),
-    durationValue: z.int32(),
+    durationValue: z.int32().positive(),
     durationUnit: DurationUnitSchema,
     price: MoneySchema,
     activationMode: ActivationModeSchema,
@@ -2835,8 +2835,8 @@ export type SetSessionEmployeesRequest = z.output<typeof SetSessionEmployeesRequ
 
 export const SignUpRequestSchema = z
   .object({
-    companyName: z.string(),
-    userName: z.string(),
+    companyName: z.string().trim().min(1),
+    userName: z.string().trim().min(1),
     login: z.string(),
     password: z.string(),
     timezone: z.string(),
@@ -3120,7 +3120,7 @@ export type UpdateAttendanceLabelRequest = z.output<typeof UpdateAttendanceLabel
 export const UpdateChannelIntegrationRequestSchema = z
   .object({
     id: ChannelIntegrationIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     config: ChannelConfigChangeSchema,
   })
   .readonly();
@@ -3129,7 +3129,7 @@ export type UpdateChannelIntegrationRequest = z.output<typeof UpdateChannelInteg
 export const UpdateDisciplineRequestSchema = z
   .object({
     id: DisciplineIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type UpdateDisciplineRequest = z.output<typeof UpdateDisciplineRequestSchema>;
@@ -3137,7 +3137,7 @@ export type UpdateDisciplineRequest = z.output<typeof UpdateDisciplineRequestSch
 export const UpdateEmployeeRequestSchema = z
   .object({
     id: EmployeeIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     phoneNo: z.string().nullable().optional(),
     email: z.string().nullable().optional(),
     avatarId: UploadIdSchema.nullable().optional(),
@@ -3153,7 +3153,7 @@ export type UpdateEmployeeRequest = z.output<typeof UpdateEmployeeRequestSchema>
 export const UpdateHallRequestSchema = z
   .object({
     id: HallIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
   })
   .readonly();
 export type UpdateHallRequest = z.output<typeof UpdateHallRequestSchema>;
@@ -3161,7 +3161,7 @@ export type UpdateHallRequest = z.output<typeof UpdateHallRequestSchema>;
 export const UpdateLeadSourceRequestSchema = z
   .object({
     id: LeadSourceIdSchema,
-    name: z.string(),
+    name: z.string().trim().min(1),
     description: z.string().optional(),
   })
   .readonly();
@@ -3169,7 +3169,7 @@ export type UpdateLeadSourceRequest = z.output<typeof UpdateLeadSourceRequestSch
 
 export const UpdateMeRequestSchema = z
   .object({
-    name: z.string(),
+    name: z.string().trim().min(1),
     avatarId: UploadIdSchema.nullable().optional(),
   })
   .readonly();
@@ -3177,7 +3177,7 @@ export type UpdateMeRequest = z.output<typeof UpdateMeRequestSchema>;
 
 export const UpdateOrgSettingsRequestSchema = z
   .object({
-    name: z.string(),
+    name: z.string().trim().min(1),
     timezone: z.string(),
   })
   .readonly();
@@ -3186,7 +3186,7 @@ export type UpdateOrgSettingsRequest = z.output<typeof UpdateOrgSettingsRequestS
 export const UpdateRoleRequestSchema = z
   .object({
     id: z.uuid(),
-    name: z.string(),
+    name: z.string().trim().min(1),
     permissions: z.array(UserPermissionSchema).readonly(),
   })
   .readonly();
@@ -3195,9 +3195,9 @@ export type UpdateRoleRequest = z.output<typeof UpdateRoleRequestSchema>;
 export const UpdateTariffPlanRequestSchema = z
   .object({
     id: TariffPlanIdSchema,
-    name: z.string(),
-    sessions: z.int32().nullable(),
-    durationValue: z.int32(),
+    name: z.string().trim().min(1),
+    sessions: z.int32().positive().nullable(),
+    durationValue: z.int32().positive(),
     durationUnit: DurationUnitSchema,
     price: MoneySchema,
   })
@@ -3207,7 +3207,7 @@ export type UpdateTariffPlanRequest = z.output<typeof UpdateTariffPlanRequestSch
 export const UpdateTaskRequestSchema = z
   .object({
     id: TaskIdSchema,
-    title: z.string(),
+    title: z.string().trim().min(1),
     description: z.string(),
     clientId: ClientIdSchema.nullable(),
     dueDate: InstantSchema.nullable(),

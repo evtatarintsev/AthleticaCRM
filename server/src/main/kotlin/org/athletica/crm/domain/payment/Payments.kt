@@ -1,8 +1,10 @@
 package org.athletica.crm.domain.payment
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.storage.Transaction
@@ -11,6 +13,7 @@ import org.athletica.crm.storage.Transaction
 interface Payments {
     /**
      * Создаёт транзакцию в статусе PENDING.
+     * [amount] должна быть положительной (см. [ensurePaymentAmountPositive]).
      * Требует [EmployeeRequestContext]: платёж инициируется только аутентифицированным сотрудником.
      * [ctx.employee.id] автоматически используется как [Payment.createdBy].
      */
@@ -39,4 +42,15 @@ class PaymentAlreadyProcessed(
 ) : DomainError {
     override val code = "PAYMENT_ALREADY_PROCESSED"
     override val message = "Транзакция не найдена или уже обработана: $externalPaymentId"
+}
+
+/**
+ * Проверяет, что сумма платежа [amount] положительна; иначе поднимает `PAYMENT_AMOUNT_NOT_POSITIVE`.
+ * Общее правило для инициации платежа до обращения к шлюзу и для [Payments.create].
+ */
+context(raise: Raise<DomainError>)
+fun ensurePaymentAmountPositive(amount: Money) {
+    ensure(amount.isPositive) {
+        CommonDomainError("PAYMENT_AMOUNT_NOT_POSITIVE", "Сумма платежа должна быть положительной")
+    }
 }

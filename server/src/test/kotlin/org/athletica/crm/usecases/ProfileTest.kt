@@ -19,6 +19,7 @@ import org.athletica.crm.employeeContext
 import org.athletica.crm.read.auth.UserProfile
 import org.athletica.crm.read.auth.profile
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -126,7 +127,7 @@ class ProfileTest {
                 context(TestPostgres.db, requestContext(userId, orgId, employeeId)) {
                     val result =
                         either {
-                            TestPostgres.db.transaction { TestPostgres.auth.updateMe(UpdateMeRequest("New Name", uploadId)) }
+                            TestPostgres.db.transaction { TestPostgres.auth.updateMe(UpdateMeRequest(testName("New Name"), uploadId)) }
                         }
                     assertIs<Either.Right<Unit>>(result)
 

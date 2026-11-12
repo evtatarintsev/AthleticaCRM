@@ -2,6 +2,7 @@ package org.athletica.crm.domain.leadSource
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
@@ -26,5 +27,5 @@ interface LeadSource {
     suspend fun delete()
 
     /** Возвращает копию с новыми названием [name] и пояснением [description] (без записи в БД). */
-    fun withNew(name: String, description: LeadSourceDescription): LeadSource
+    fun withNew(name: NonBlankName, description: LeadSourceDescription): LeadSource
 }

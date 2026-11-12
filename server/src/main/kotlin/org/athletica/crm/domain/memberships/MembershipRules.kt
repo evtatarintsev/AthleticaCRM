@@ -7,6 +7,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
@@ -24,10 +25,12 @@ import org.athletica.crm.i18n.Messages
 /** Срок действия абонемента: [value] [unit]. */
 data class MembershipDuration(
     /** Числовое значение срока. */
-    val value: Int,
+    private val length: PositiveInt,
     /** Единица срока. */
     val unit: DurationUnit,
 ) {
+    val value: Int get() = length.value
+
     /**
      * Дата окончания срока, начавшегося [startDate], — последний день действия включительно.
      *

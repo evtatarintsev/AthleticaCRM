@@ -4,6 +4,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 
 /**
@@ -143,7 +144,7 @@ data class ChannelListResponse(
 @Serializable
 data class CreateChannelIntegrationRequest(
     val id: ChannelIntegrationId,
-    val name: String,
+    val name: NonBlankName,
     val config: NewChannelConfig,
 )
 
@@ -151,7 +152,7 @@ data class CreateChannelIntegrationRequest(
 @Serializable
 data class UpdateChannelIntegrationRequest(
     val id: ChannelIntegrationId,
-    val name: String,
+    val name: NonBlankName,
     val config: ChannelConfigChange,
 )
 

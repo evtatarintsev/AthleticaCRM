@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.conversations
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
@@ -12,6 +13,7 @@ import org.athletica.crm.core.entityids.toConversationId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toMessageId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.messaging.MessageDirection
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -41,6 +43,7 @@ class DbConversation(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun appendOutbound(author: Author, body: String): OutboundMessage {
+        ensure(body.isNotBlank()) { CommonDomainError("MESSAGE_EMPTY", "Сообщение не может быть пустым") }
         val messageId = MessageId.new()
         val now = Clock.System.now()
         val (authorKind, authorEmployeeId) =

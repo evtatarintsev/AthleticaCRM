@@ -20,7 +20,6 @@ import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.domain.notifications.Notifications
-import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.groups.GroupListQuery
 import org.athletica.crm.read.groups.GroupSessionsQuery
@@ -37,7 +36,6 @@ fun RouteWithContext.groupsRoutes(
     groups: Groups,
     employees: Employees,
     schedule: GroupSchedule,
-    sync: ScheduleSync,
     notifications: Notifications,
     views: ReadViews,
 ) {
@@ -76,7 +74,6 @@ fun RouteWithContext.groupsRoutes(
                         request.disciplineIds,
                         employees.byIds(request.employeeIds),
                     )
-                sync.sync()
                 views.groupDetail.byId(group.id)
             }
         }
@@ -91,7 +88,6 @@ fun RouteWithContext.groupsRoutes(
                         employees.byIds(request.employeeIds),
                     )
                     .save()
-                sync.sync()
                 views.groupDetail.byId(request.id)
             }
         }
@@ -100,7 +96,6 @@ fun RouteWithContext.groupsRoutes(
             db.transaction {
                 setGroupSchedule(
                     schedule,
-                    sync,
                     groups,
                     employees,
                     notifications,
@@ -127,7 +122,6 @@ fun RouteWithContext.groupsRoutes(
                     .byId(request.groupId)
                     .withNewEmployees(employees.byIds(request.employeeIds))
                     .save()
-                sync.sync()
             }
         }
     }

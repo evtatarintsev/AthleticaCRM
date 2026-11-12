@@ -2,6 +2,8 @@ package org.athletica.crm.domain.tariffs
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
@@ -63,16 +65,16 @@ data class DbTariffPlan(
     }
 
     override fun withNew(
-        name: String,
-        sessions: Int?,
-        durationValue: Int,
+        name: NonBlankName,
+        sessions: PositiveInt?,
+        durationValue: PositiveInt,
         durationUnit: DurationUnit,
         price: Money,
     ): TariffPlan =
         copy(
-            name = name,
-            sessions = sessions,
-            durationValue = durationValue,
+            name = name.value,
+            sessions = sessions?.value,
+            durationValue = durationValue.value,
             durationUnit = durationUnit,
             price = price,
         )

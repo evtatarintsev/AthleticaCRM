@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
@@ -17,7 +18,7 @@ class AuditBranches(private val delegate: Branches, private val audit: AuditLog)
     override suspend fun list() = delegate.list().map { AuditBranch(it, audit) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: BranchId, name: String) = AuditBranch(delegate.new(id, name), audit)
+    override suspend fun new(id: BranchId, name: NonBlankName) = AuditBranch(delegate.new(id, name), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: BranchId) = AuditBranch(delegate.byId(id), audit)
@@ -40,7 +41,7 @@ class AuditBranch(private val delegate: Branch, private val audit: AuditLog) : B
             audit.logDelete("branch", id, "")
         }
 
-    override fun withNew(name: String) = AuditBranch(delegate.withNew(name), audit)
+    override fun withNew(name: NonBlankName) = AuditBranch(delegate.withNew(name), audit)
 }
 
 /** Снимок филиала для журнала аудита (доменная сущность не сериализуется напрямую). */

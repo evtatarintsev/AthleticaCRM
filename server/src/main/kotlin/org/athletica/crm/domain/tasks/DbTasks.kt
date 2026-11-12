@@ -3,6 +3,7 @@ package org.athletica.crm.domain.tasks
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.actingEmployeeId
 import org.athletica.crm.core.entityids.ClientId
@@ -63,7 +64,7 @@ class DbTasks : Tasks {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: TaskId,
-        title: String,
+        title: NonBlankName,
         description: String,
         clientId: ClientId?,
         dueDate: Instant?,
@@ -82,7 +83,7 @@ class DbTasks : Tasks {
             .bind("orgId", ctx.orgId)
             .bind("createdBy", ctx.actingEmployeeId)
             .bind("clientId", clientId)
-            .bind("title", title)
+            .bind("title", title.value)
             .bind("description", description)
             .bind("dueDate", dueDate)
             .bind("dueDateEnd", dueDateEnd)
@@ -95,7 +96,7 @@ class DbTasks : Tasks {
             createdBy = ctx.actingEmployeeId,
             assigneeId = null,
             clientId = clientId,
-            title = title,
+            title = title.value,
             description = description,
             status = TaskStatus.PENDING,
             dueDate = dueDate,

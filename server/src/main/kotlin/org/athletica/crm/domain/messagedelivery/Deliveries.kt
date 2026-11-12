@@ -26,12 +26,12 @@ data class PendingDelivery(
  * worker-путь (`pending`/`mark*`) — кросс-организационный.
  */
 interface Deliveries {
-    /** Создаёт доставку сообщения [messageId] в интеграцию [channelIntegrationId] в статусе `PENDING`. */
+    /** Создаёт доставку сообщения [messageId] во включённую интеграцию [channelIntegrationId] в статусе `PENDING`. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun create(
         messageId: MessageId,
         channelIntegrationId: ChannelIntegrationId,
-        recipientAddress: String,
+        resolveRecipientAddress: suspend () -> String,
     ): Delivery
 
     /** Возвращает доставки сообщения [messageId] в порядке создания. */

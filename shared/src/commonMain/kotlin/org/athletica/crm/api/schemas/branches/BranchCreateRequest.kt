@@ -1,10 +1,11 @@
 package org.athletica.crm.api.schemas.branches
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 
 @Serializable
 data class BranchCreateRequest(
     val id: BranchId,
-    val name: String,
+    val name: NonBlankName,
 )

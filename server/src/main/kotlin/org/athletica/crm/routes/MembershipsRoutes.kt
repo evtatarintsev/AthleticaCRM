@@ -28,7 +28,6 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.subscription.ActivationMode
-import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -44,7 +43,6 @@ import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.extendMembership
 import org.athletica.crm.usecases.memberships.freezeMembership
-import org.athletica.crm.usecases.memberships.repayDebt
 import org.athletica.crm.usecases.memberships.revokeMembership
 import org.athletica.crm.usecases.memberships.unfreezeMembership
 
@@ -55,7 +53,6 @@ import org.athletica.crm.usecases.memberships.unfreezeMembership
 context(db: Database)
 fun RouteWithContext.membershipsRoutes(
     memberships: Memberships,
-    participations: Participations,
     calendar: OrgCalendar,
     views: ReadViews,
 ) {
@@ -101,7 +98,7 @@ fun RouteWithContext.membershipsRoutes(
 
         post<RepayDebtRequest, Unit>("/repay-debt") { request ->
             db.transaction {
-                repayDebt(memberships, participations, calendar, request.membershipId, request.sessionIds)
+                memberships.repayDebt(request.membershipId, request.sessionIds, calendar.today())
             }
         }
 

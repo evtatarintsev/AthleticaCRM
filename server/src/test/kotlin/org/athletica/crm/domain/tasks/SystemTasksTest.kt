@@ -24,6 +24,7 @@ import org.athletica.crm.read.tasks.DbTaskDetailView
 import org.athletica.crm.read.tasks.DbTaskListView
 import org.athletica.crm.read.tasks.TaskListQuery
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -69,7 +70,7 @@ class SystemTasksTest {
 
     private suspend fun systemTask(): TaskId {
         val id = TaskId.new()
-        tx(system) { tasks.new(id, "Проверить клиента", "", null, null, null) }
+        tx(system) { tasks.new(id, testName("Проверить клиента"), "", null, null, null) }
         return id
     }
 
@@ -90,7 +91,7 @@ class SystemTasksTest {
     fun `задача сотрудника не становится системной`() =
         runTest {
             val id = TaskId.new()
-            tx(ctx) { context(ctx) { tasks.new(id, "Позвонить", "", null, null, null) } }
+            tx(ctx) { context(ctx) { tasks.new(id, testName("Позвонить"), "", null, null, null) } }
 
             val row = tx(ctx) { context(ctx) { DbTaskDetailView().byId(id) } }
 

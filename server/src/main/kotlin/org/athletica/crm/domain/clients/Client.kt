@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.ClientId
@@ -61,7 +62,7 @@ interface ActiveClient : Client {
     suspend fun save()
 
     /** Переводит клиента в архив. После этого клиент становится [ArchivedClient]. */
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun archive()
 
     /** Возвращает копию с прикреплённым документом [doc] (без записи в БД). */
@@ -73,9 +74,9 @@ interface ActiveClient : Client {
     fun deleteDoc(docId: ClientDocId): ActiveClient
 
     /** Возвращает копию с новыми значениями полей (без записи в БД). */
-    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    fun withNew(
-        newName: String,
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun withNew(
+        newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
@@ -90,7 +91,7 @@ interface ActiveClient : Client {
  */
 interface ArchivedClient : Client {
     /** Восстанавливает клиента из архива. После этого клиент становится [ActiveClient]. */
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun restore()
 }
 

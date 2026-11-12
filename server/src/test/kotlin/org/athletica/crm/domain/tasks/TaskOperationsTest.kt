@@ -13,6 +13,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -27,9 +28,12 @@ import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
+import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -118,6 +122,7 @@ class TaskOperationsTest {
             override val joinedAt: Instant = Clock.System.now()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
+            override val roles = emptyList<EmployeeRole>()
             override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All
 
             override fun hasPermission(p: UserPermission): Boolean = false
@@ -128,10 +133,10 @@ class TaskOperationsTest {
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun invite(email: EmailAddress, password: String) = Unit
 
-            context(ctx: EmployeeRequestContext)
-            override fun withNew(
-                newName: String,
-                newPermissions: EmployeePermission,
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun withNew(
+                newName: NonBlankName,
+                newPermissions: EmployeePermissionSelection,
                 newAvatarId: UploadId?,
                 newPhoneNo: String?,
                 newEmail: EmailAddress?,
@@ -149,8 +154,8 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -177,8 +182,8 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -207,8 +212,8 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -243,7 +248,7 @@ class TaskOperationsTest {
             val id = TaskId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { tasks.new(id, "Системная задача", "", null, null, null) }
+                    context(ctx) { tasks.new(id, testName("Системная задача"), "", null, null, null) }
                 }
             }.getOrElse { fail("Setup: $it") }
 
@@ -285,7 +290,7 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача", "", null, null, null)
+                        tasks.new(id1, testName("Задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -327,14 +332,14 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(myTaskId, "Моя задача", "", null, null, null)
+                        tasks.new(myTaskId, testName("Моя задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
             either {
                 TestPostgres.db.transaction {
                     context(otherCtx) {
-                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
+                        tasks.new(foreignTaskId, testName("Чужая задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -363,7 +368,7 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(otherCtx) {
-                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
+                        tasks.new(foreignTaskId, testName("Чужая задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }

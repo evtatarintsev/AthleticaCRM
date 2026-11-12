@@ -2,6 +2,7 @@ package org.athletica.crm.domain.leadSource
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
@@ -40,5 +41,5 @@ data class DbLeadSource(
             .execute()
     }
 
-    override fun withNew(name: String, description: LeadSourceDescription): LeadSource = copy(name = name, description = description)
+    override fun withNew(name: NonBlankName, description: LeadSourceDescription): LeadSource = copy(name = name.value, description = description)
 }

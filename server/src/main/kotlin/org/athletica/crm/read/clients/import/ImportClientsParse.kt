@@ -36,12 +36,7 @@ suspend fun importClientsParse(request: ClientImportParseRequest): ClientImportP
     }
 
     val bytes = minio.downloadObject(upload.objectKey)
-    val parsed =
-        try {
-            CsvReader.parse(bytes)
-        } catch (e: Exception) {
-            raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV: ${e.message ?: ""}"))
-        }
+    val parsed = CsvReader.parse(bytes)
     if (parsed.headers.isEmpty()) {
         raise(CommonDomainError("CSV_EMPTY_HEADER", "В CSV нет заголовков"))
     }

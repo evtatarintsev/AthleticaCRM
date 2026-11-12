@@ -6,6 +6,8 @@ import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
+internal const val CLIENT_CUSTOM_FIELD_ENTITY_TYPE = "CLIENT"
+
 /** Репозиторий определений кастомных полей организации. */
 interface CustomFieldDefinitions {
     /**

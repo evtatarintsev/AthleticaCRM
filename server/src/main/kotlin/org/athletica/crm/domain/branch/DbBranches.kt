@@ -3,6 +3,7 @@ package org.athletica.crm.domain.branch
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.errors.AppError
@@ -37,7 +38,7 @@ class DbBranches : Branches {
         }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun new(id: BranchId, name: String): Branch = DbBranch(id, name)
+    override suspend fun new(id: BranchId, name: NonBlankName): Branch = DbBranch(id, name.value)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: BranchId): Branch =

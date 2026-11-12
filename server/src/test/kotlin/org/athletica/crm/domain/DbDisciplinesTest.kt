@@ -18,6 +18,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.discipline.DbDisciplines
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,8 +66,8 @@ class DbDisciplinesTest {
     fun `list возвращает только дисциплины своей организации`() =
         runTest {
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), "Теннис").save() } }
-                TestPostgres.db.transaction { context(otherCtx) { disciplines.new(DisciplineId.new(), "Волейбол").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), testName("Теннис")).save() } }
+                TestPostgres.db.transaction { context(otherCtx) { disciplines.new(DisciplineId.new(), testName("Волейбол")).save() } }
 
                 val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(1, list.size)
@@ -80,9 +81,9 @@ class DbDisciplinesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        disciplines.new(DisciplineId.new(), "Хоккей").save()
-                        disciplines.new(DisciplineId.new(), "Бокс").save()
-                        disciplines.new(DisciplineId.new(), "Плавание").save()
+                        disciplines.new(DisciplineId.new(), testName("Хоккей")).save()
+                        disciplines.new(DisciplineId.new(), testName("Бокс")).save()
+                        disciplines.new(DisciplineId.new(), testName("Плавание")).save()
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
@@ -97,7 +98,7 @@ class DbDisciplinesTest {
         runTest {
             val id = DisciplineId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, "Футбол").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, testName("Футбол")).save() } }
                 val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals(1, list.size)
                 assertEquals(id, list.first().id)
@@ -109,12 +110,12 @@ class DbDisciplinesTest {
     fun `save возвращает ошибку при дублировании имени в той же организации`() =
         runTest {
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), "Хоккей").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), testName("Хоккей")).save() } }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
                 either {
-                    TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), "Хоккей").save() } }
+                    TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), testName("Хоккей")).save() } }
                 }
             assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
         }
@@ -123,8 +124,8 @@ class DbDisciplinesTest {
     fun `save допускает одинаковое имя в разных организациях`() =
         runTest {
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), "Баскетбол").save() } }
-                TestPostgres.db.transaction { context(otherCtx) { disciplines.new(DisciplineId.new(), "Баскетбол").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(DisciplineId.new(), testName("Баскетбол")).save() } }
+                TestPostgres.db.transaction { context(otherCtx) { disciplines.new(DisciplineId.new(), testName("Баскетбол")).save() } }
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -135,8 +136,8 @@ class DbDisciplinesTest {
         runTest {
             val id = DisciplineId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, "Старое название").save() } }
-                TestPostgres.db.transaction { context(ctx) { disciplines.byId(id).withNew("Новое название").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, testName("Старое название")).save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.byId(id).withNew(testName("Новое название")).save() } }
                 val list = TestPostgres.db.transaction { context(ctx) { disciplines.list() } }
                 assertEquals("Новое название", list.first().name)
             }.getOrElse { fail("Unexpected error: $it") }
@@ -147,7 +148,7 @@ class DbDisciplinesTest {
         runTest {
             val result =
                 either {
-                    TestPostgres.db.transaction { context(ctx) { disciplines.byId(DisciplineId.new()).withNew("Что угодно").save() } }
+                    TestPostgres.db.transaction { context(ctx) { disciplines.byId(DisciplineId.new()).withNew(testName("Что угодно")).save() } }
                 }
             assertEquals("DISCIPLINE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
@@ -159,15 +160,15 @@ class DbDisciplinesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        disciplines.new(id, "Бег").save()
-                        disciplines.new(DisciplineId.new(), "Прыжки").save()
+                        disciplines.new(id, testName("Бег")).save()
+                        disciplines.new(DisciplineId.new(), testName("Прыжки")).save()
                     }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
                 either {
-                    TestPostgres.db.transaction { context(ctx) { disciplines.byId(id).withNew("Прыжки").save() } }
+                    TestPostgres.db.transaction { context(ctx) { disciplines.byId(id).withNew(testName("Прыжки")).save() } }
                 }
             assertEquals("DISCIPLINE_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
         }
@@ -177,12 +178,12 @@ class DbDisciplinesTest {
         runTest {
             val id = DisciplineId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, "Гимнастика").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, testName("Гимнастика")).save() } }
             }.getOrElse { fail("Setup failed: $it") }
 
             val updateResult =
                 either {
-                    TestPostgres.db.transaction { context(otherCtx) { disciplines.byId(id).withNew("Другое").save() } }
+                    TestPostgres.db.transaction { context(otherCtx) { disciplines.byId(id).withNew(testName("Другое")).save() } }
                 }
             assertIs<Either.Left<AppError>>(updateResult)
 
@@ -201,7 +202,7 @@ class DbDisciplinesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        disciplines.new(id, "Фехтование").save()
+                        disciplines.new(id, testName("Фехтование")).save()
                         disciplines.byIds(listOf(id)).forEach { it.delete() }
                     }
                 }
@@ -216,7 +217,7 @@ class DbDisciplinesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        disciplines.new(DisciplineId.new(), "Самбо").save()
+                        disciplines.new(DisciplineId.new(), testName("Самбо")).save()
                         disciplines.byIds(emptyList()).forEach { it.delete() }
                     }
                 }
@@ -234,9 +235,9 @@ class DbDisciplinesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        disciplines.new(id1, "Дзюдо").save()
-                        disciplines.new(id2, "Карате").save()
-                        disciplines.new(id3, "Айкидо").save()
+                        disciplines.new(id1, testName("Дзюдо")).save()
+                        disciplines.new(id2, testName("Карате")).save()
+                        disciplines.new(id3, testName("Айкидо")).save()
                         disciplines.byIds(listOf(id1, id2)).forEach { it.delete() }
                     }
                 }
@@ -250,7 +251,7 @@ class DbDisciplinesTest {
         runTest {
             val id = DisciplineId.new()
             either {
-                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, "Лыжи").save() } }
+                TestPostgres.db.transaction { context(ctx) { disciplines.new(id, testName("Лыжи")).save() } }
             }.getOrElse { fail("Setup failed: $it") }
 
             val deleteResult =

@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.CloseMode
+import org.athletica.crm.domain.attendance.DbParticipations
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -264,9 +265,12 @@ class DebitReconciliationTest {
             val session = debits.session(date(16))
             val stale = assertIs<ActiveMembership>(fixture.reload(issued.id))
             fixture.setRemaining(issued.id, 0)
+            debits.mark(session, client, "present")
 
             assertFailsWith<MembershipDebitConflict> {
-                fixture.tx(fixture.system) { stale.debit(session, date(16), date(16)) }
+                fixture.tx(fixture.system) {
+                    stale.debit(checkNotNull(DbParticipations().lock(session, client)), date(16))
+                }
             }
             assertEquals(0, debits.debitRows(session, client))
         }

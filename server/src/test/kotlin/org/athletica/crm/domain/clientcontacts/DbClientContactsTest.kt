@@ -14,6 +14,8 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.junit.Before
@@ -27,6 +29,7 @@ class DbClientContactsTest {
     private val orgId = OrgId.new()
     private val clientId = ClientId.new()
     private val contacts = DbClientContacts()
+    private val clients = DbClients()
 
     private val ctx =
         employeeContext(
@@ -62,14 +65,14 @@ class DbClientContactsTest {
                     TestPostgres.db.transaction {
                         context(ctx) {
                             contacts.replace(
-                                clientId,
+                                clients.activeById(clientId),
                                 listOf(
                                     ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79990001122"),
                                     ClientContact(ClientContactId.new(), clientId, ContactType.EMAIL, "a@b.c"),
                                 ),
                             )
                             contacts.replace(
-                                clientId,
+                                clients.activeById(clientId),
                                 listOf(ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+70001112233")),
                             )
                             contacts.byClient(clientId)
@@ -103,20 +106,20 @@ class DbClientContactsTest {
                         TestPostgres.db.transaction {
                             context(ctx) {
                                 contacts.replace(
-                                    clientId,
+                                    clients.activeById(clientId),
                                     listOf(
                                         ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79990001122"),
                                         ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79993334455"),
                                     ),
                                 )
                                 contacts.replace(
-                                    clientId2,
+                                    clients.activeById(clientId2),
                                     listOf(ClientContact(ClientContactId.new(), clientId2, ContactType.EMAIL, "a@b.c")),
                                 )
                             }
                             context(ctx.copy(orgId = otherOrgId)) {
                                 contacts.replace(
-                                    otherClientId,
+                                    clients.activeById(otherClientId),
                                     listOf(ClientContact(ClientContactId.new(), otherClientId, ContactType.PHONE, "+70000000000")),
                                 )
                             }

@@ -12,6 +12,7 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.employeeContext
+import org.athletica.crm.testName
 import org.athletica.infra.messaging.ProviderChannelTransports
 import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
@@ -39,7 +40,7 @@ class TelegramBotUniquenessTest {
         either {
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = org)) {
-                    integrations.add(id, "Бот", ChannelConfig.TelegramBot(botToken = token, botUsername = "club_bot"))
+                    integrations.add(id, testName("Бот"), ChannelConfig.TelegramBot(botToken = token, botUsername = "club_bot"))
                 }
             }
         }
@@ -64,7 +65,7 @@ class TelegramBotUniquenessTest {
                 either {
                     TestPostgres.db.transaction {
                         context(employeeContext(orgId = orgId)) {
-                            integrations.update(id, "Бот клуба", ChannelConfig.TelegramBot(botToken = "123:abc"))
+                            integrations.update(id, testName("Бот клуба"), ChannelConfig.TelegramBot(botToken = "123:abc"))
                         }
                     }
                 }

@@ -12,6 +12,7 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,8 +24,8 @@ class SignUpTest {
 
     private fun request(login: String = "user@example.com") =
         SignUpRequest(
-            companyName = "Acme",
-            userName = "John",
+            companyName = testName("Acme"),
+            userName = testName("John"),
             login = login,
             password = "password123",
             timezone = "UTC",

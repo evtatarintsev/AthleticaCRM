@@ -3,6 +3,7 @@ package org.athletica.crm.domain.hall
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
@@ -59,5 +60,5 @@ data class DbHall(
             .execute()
     }
 
-    override fun withNew(name: String): Hall = copy(name = name)
+    override fun withNew(name: NonBlankName): Hall = copy(name = name.value)
 }

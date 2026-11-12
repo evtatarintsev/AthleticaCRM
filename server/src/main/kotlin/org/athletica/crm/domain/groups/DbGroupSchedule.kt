@@ -5,7 +5,6 @@ import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
-import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
@@ -17,6 +16,10 @@ import org.athletica.crm.core.entityids.toSlotId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.time.Validity
+import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.sessions.DbScheduleSync
+import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.domain.sessions.UntouchedSessions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -26,7 +29,10 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /** Реализация [GroupSchedule] поверх PostgreSQL: версии слотов в `schedule_slots.validity`. */
-class DbGroupSchedule : GroupSchedule {
+class DbGroupSchedule(
+    private val calendar: OrgCalendar = DbOrgCalendar(),
+    private val sync: ScheduleSync = DbScheduleSync(calendar),
+) : GroupSchedule {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun slotsOn(groupId: GroupId, date: LocalDate): List<ScheduleSlot> =
         tr
@@ -50,8 +56,8 @@ class DbGroupSchedule : GroupSchedule {
             .list { row -> row.toSlot() }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>) {
-        val today = java.time.LocalDate.now().toKotlinLocalDate()
+    override suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>): LocalDate {
+        val today = calendar.today()
         val from = effectiveFrom ?: today
         if (from < today) {
             raise(CommonDomainError("SCHEDULE_EFFECTIVE_FROM_IN_PAST", Messages.ScheduleEffectiveFromInPast.localize()))
@@ -76,6 +82,8 @@ class DbGroupSchedule : GroupSchedule {
         }
 
         slots.filterNot { it.key in kept }.forEach { insert(groupId, it, from) }
+        sync.sync(today)
+        return from
     }
 
     /** Отклоняет повторяющиеся правила и правила с некорректным временем. */

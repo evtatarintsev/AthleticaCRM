@@ -7,6 +7,7 @@ import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientDocId
@@ -25,6 +26,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -59,7 +61,7 @@ private data class ClientStub(
     override suspend fun save() {
     }
 
-    context(tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun archive() {
     }
 
@@ -69,16 +71,16 @@ private data class ClientStub(
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId) = copy(docs = docs.filterNot { it.id == docId })
 
-    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    override fun withNew(
-        newName: String,
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
+        newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
         newLeadSourceId: LeadSourceId?,
         newCustomFields: List<CustomFieldValue>,
     ) = copy(
-        name = newName,
+        name = newName.value,
         avatarId = newAvatarId,
         birthday = newBirthday,
         gender = newGender,
@@ -96,14 +98,14 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: ClientId,
-        name: String,
+        name: NonBlankName,
         avatarId: UploadId?,
         birthday: LocalDate?,
         gender: Gender,
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
     ): ActiveClient {
-        val client = ClientStub(id, name, avatarId, birthday, gender, leadSourceId = leadSourceId, customFields = customFields)
+        val client = ClientStub(id, name.value, avatarId, birthday, gender, leadSourceId = leadSourceId, customFields = customFields)
         clients.add(client)
         return client
     }
@@ -149,7 +151,7 @@ class AuditClientsTest {
             val client =
                 either {
                     context(ctx, tr) {
-                        subject.new(ClientId.new(), "Мария", null, null, Gender.FEMALE, null, emptyList())
+                        subject.new(ClientId.new(), testName("Мария"), null, null, Gender.FEMALE, null, emptyList())
                     }
                 }.getOrNull()
 
@@ -165,7 +167,7 @@ class AuditClientsTest {
 
             either {
                 context(ctx, tr) {
-                    val updated = (subject.byId(id) as ActiveClient).withNew("Иван Петров", null, null, Gender.MALE, null, emptyList())
+                    val updated = (subject.byId(id) as ActiveClient).withNew(testName("Иван Петров"), null, null, Gender.MALE, null, emptyList())
                     updated.save()
                 }
             }

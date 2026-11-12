@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.errors.AppError
@@ -44,5 +45,5 @@ class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Gro
     override suspend fun withNewEmployees(employees: List<Employee>): Group = AuditGroup(delegate.withNewEmployees(employees), audit)
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun withNewName(name: String): Group = AuditGroup(delegate.withNewName(name), audit)
+    override suspend fun withNewName(name: NonBlankName): Group = AuditGroup(delegate.withNewName(name), audit)
 }

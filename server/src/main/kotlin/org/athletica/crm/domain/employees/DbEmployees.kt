@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -36,17 +37,18 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
-        name: String,
+        name: NonBlankName,
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-        permissions: EmployeePermission,
+        permissions: EmployeePermissionSelection,
         availableBranches: EmployeeBranchAccess,
     ): Employee {
+        val permissionSettings = roles.resolve(permissions)
         val (allBranchesAccess, branchIds) =
             when (availableBranches) {
                 is EmployeeBranchAccess.All -> true to emptyList()
-                is EmployeeBranchAccess.Selected -> false to availableBranches.ids
+                is EmployeeBranchAccess.Selected -> false to resolveEmployeeBranchIds(availableBranches.ids)
             }
 
         tr.sql(
@@ -57,26 +59,26 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         )
             .bind("id", id)
             .bind("orgId", ctx.orgId)
-            .bind("name", name)
+            .bind("name", name.value)
             .bind("avatarId", avatarId)
             .bind("phoneNo", phoneNo)
             .bind("email", email)
             .bind("allBranchesAccess", allBranchesAccess)
             .onViolation("employees_pkey") { CommonDomainError("EMPLOYEE_ALREADY_EXISTS", Messages.EmployeeAlreadyExists.localize()) }
             .execute()
-        for (role in permissions.roles) {
+        for (role in permissionSettings.roles) {
             tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                 .bind("employeeId", id)
                 .bind("roleId", role.id)
                 .execute()
         }
-        for (permission in permissions.grantedPermissions) {
+        for (permission in permissionSettings.grantedPermissions) {
             tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, true)")
                 .bind("employeeId", id)
                 .bind("key", permission.name)
                 .execute()
         }
-        for (permission in permissions.revokedPermissions) {
+        for (permission in permissionSettings.revokedPermissions) {
             tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, false)")
                 .bind("employeeId", id)
                 .bind("key", permission.name)
@@ -90,10 +92,12 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         }
         return DbEmployee(
             id = id, userId = null,
-            name = name, avatarId = avatarId, isOwner = false, isActive = false,
+            name = name.value, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
-            permissionSettings = permissions,
+            permissionSettings = permissionSettings,
+            roleCatalog = roles,
+            orgId = ctx.orgId,
             availableBranches = availableBranches,
         )
     }
@@ -137,6 +141,8 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email")?.toEmailAddress(),
                         users = users,
+                        roleCatalog = roles,
+                        orgId = ctx.orgId,
                         permissionSettings =
                             EmployeePermission(
                                 roles = rolesByEmployee[employeeId] ?: emptyList(),

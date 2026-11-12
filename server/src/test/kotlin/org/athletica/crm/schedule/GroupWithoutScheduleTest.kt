@@ -11,6 +11,7 @@ import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.storage.asLong
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -47,7 +48,7 @@ class GroupWithoutScheduleTest {
             val hallA = fixture.insertHall("A")
             val hallB = fixture.insertHall("B")
             val groupId = GroupId.new()
-            fixture.inContext { groups.new(groupId, "Йога", emptyList(), emptyList()) }
+            fixture.inContext { groups.new(groupId, testName("Йога"), emptyList(), emptyList()) }
             fixture.inContext { schedule.setFrom(groupId, today, listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), hallA))) }
             fixture.inContext {
                 schedule.setFrom(groupId, today.plusDays(30), listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), hallB)))
@@ -55,7 +56,7 @@ class GroupWithoutScheduleTest {
             val before = fixture.inContext { schedule.slotsOn(groupId, today) }
             val versionsBefore = versionCount(groupId)
 
-            fixture.inContext { groups.byId(groupId).withNewName("Йога продвинутая").save() }
+            fixture.inContext { groups.byId(groupId).withNewName(testName("Йога продвинутая")).save() }
 
             assertEquals(before, fixture.inContext { schedule.slotsOn(groupId, today) })
             assertEquals(versionsBefore, versionCount(groupId))
@@ -68,7 +69,7 @@ class GroupWithoutScheduleTest {
             fixture.setUp()
             val groupId = GroupId.new()
 
-            fixture.inContext { groups.new(groupId, "Йога", emptyList(), emptyList()) }
+            fixture.inContext { groups.new(groupId, testName("Йога"), emptyList(), emptyList()) }
 
             assertEquals(emptyList(), fixture.inContext { schedule.slotsOn(groupId, today) })
             assertEquals(0L, versionCount(groupId))
@@ -82,7 +83,7 @@ class GroupWithoutScheduleTest {
             val groupId = GroupId.new()
 
             fixture.inContext {
-                groups.new(groupId, "Йога", emptyList(), emptyList())
+                groups.new(groupId, testName("Йога"), emptyList(), emptyList())
                 schedule.setFrom(groupId, today, listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), hall)))
             }
 

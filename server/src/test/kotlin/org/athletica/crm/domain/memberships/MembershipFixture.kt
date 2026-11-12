@@ -28,6 +28,7 @@ import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testPositiveInt
 import kotlin.test.fail
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -136,7 +137,7 @@ class MembershipFixture(
         activation: Activation = Activation.Immediate,
         closeMode: CloseMode = CloseMode.MANUAL,
         sessions: Int? = 8,
-        duration: MembershipDuration = MembershipDuration(1, DurationUnit.MONTHS),
+        duration: MembershipDuration = MembershipDuration(testPositiveInt(1), DurationUnit.MONTHS),
         issuedOn: LocalDate = LocalDate(2026, 10, 16),
         name: String = "8 занятий",
         groupIds: List<GroupId> = listOf(groupId),
@@ -147,7 +148,7 @@ class MembershipFixture(
                 clientId,
                 null,
                 name,
-                sessions,
+                sessions?.let(::testPositiveInt),
                 groupIds,
                 duration,
                 Money(4_000_00, currency),

@@ -2,6 +2,7 @@ package org.athletica.crm.domain.tasks
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.AppError
@@ -31,7 +32,7 @@ interface Tasks {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun new(
         id: TaskId,
-        title: String,
+        title: NonBlankName,
         description: String,
         clientId: ClientId?,
         dueDate: Instant?,

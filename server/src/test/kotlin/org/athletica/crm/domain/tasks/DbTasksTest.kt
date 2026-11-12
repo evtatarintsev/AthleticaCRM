@@ -25,6 +25,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
@@ -123,7 +124,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Тест", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Тест"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -143,7 +144,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "Описание", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "Описание", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -165,7 +166,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -192,7 +193,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -230,7 +231,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -255,7 +256,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -283,7 +284,7 @@ class DbTasksTest {
                     either {
                         TestPostgres.db.transaction {
                             context(ctx) {
-                                tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                                tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                             }
                         }
                     }.getOrElse { fail("Unexpected error: $it") }
@@ -331,7 +332,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -369,8 +370,8 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -393,7 +394,7 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача", "", null, null, null)
+                        tasks.new(id1, testName("Задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -420,7 +421,7 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val task = tasks.new(taskId, "Задача", "", null, null, null)
+                        val task = tasks.new(taskId, testName("Задача"), "", null, null, null)
                         val updated = context(ctx) { task.attach(upload) }
                         updated.save()
                     }
@@ -462,7 +463,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Оригинал", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Оригинал"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -470,7 +471,7 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val updated = context(ctx) { tasks.byId(task.id).withNew("Изменено", "", null, null, null) }
+                        val updated = context(ctx) { tasks.byId(task.id).withNew(testName("Изменено"), "", null, null, null) }
                         updated.save()
                     }
                 }
@@ -492,7 +493,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(otherCtx) {
-                            tasks.new(TaskId.new(), "Чужая", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Чужая"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -501,7 +502,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            val updated = context(ctx) { tasks.byId(task.id).withNew("Попытка", "", null, null, null) }
+                            val updated = context(ctx) { tasks.byId(task.id).withNew(testName("Попытка"), "", null, null, null) }
                             updated.save()
                         }
                     }
@@ -518,7 +519,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(otherCtx) {
-                            tasks.new(TaskId.new(), "Чужая", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Чужая"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -529,7 +530,7 @@ class DbTasksTest {
                         val updated =
                             tasks
                                 .byId(task.id)
-                                .withNew("Менеджер изменил", "", null, null, null)
+                                .withNew(testName("Менеджер изменил"), "", null, null, null)
                         updated.save()
                     }
                 }

@@ -23,6 +23,7 @@ import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.UnfreezeReason
+import org.athletica.crm.domain.attendance.Participation
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
@@ -124,7 +125,13 @@ data class DbActiveMembership(
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun debit(sessionId: SessionId, sessionDate: LocalDate, today: LocalDate): Membership {
+    override suspend fun debit(participation: Participation, today: LocalDate): Membership {
+        val groupId = participation.groupId
+        if (groupId == null || !matchesParticipation(participation) || !isDebitCandidate(groupId, participation.sessionDate, today)) {
+            raise(CommonDomainError("SESSION_NOT_UNPAID", Messages.SessionNotUnpaid.localize()))
+        }
+        val sessionId = participation.sessionId
+        val sessionDate = participation.sessionDate
         val updated =
             tr
                 .sql(
@@ -163,7 +170,7 @@ data class DbActiveMembership(
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun repayDebt(sessions: List<DebtSession>, today: LocalDate): Membership {
+    internal suspend fun recordDebt(sessions: List<Participation>, today: LocalDate): Membership {
         val count = sessions.size
         val remaining = sessionsRemaining
         if (remaining != null && count > remaining) {
@@ -198,7 +205,7 @@ data class DbActiveMembership(
                 .bind("clientId", clientId)
                 .bind("sessionId", session.sessionId)
                 .bind("kind", DebitKind.DEBT.name)
-                .onViolation("uq_membership_debits_active") { CommonDomainError("ALREADY_DEBITED", Messages.SessionAlreadyDebited.localize()) }
+                .onViolation("uq_membership_debits_active") { sessionAlreadyDebited() }
                 .execute()
             recordMembershipEvent(id, MembershipEventKind.DEBITED, debitPayload(session.sessionId, session.sessionDate, DebitKind.DEBT))
         }

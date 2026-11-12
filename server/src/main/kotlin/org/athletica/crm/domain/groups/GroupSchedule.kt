@@ -29,9 +29,10 @@ interface GroupSchedule {
      * всё, что действовало начиная с этой даты, включая ранее запланированные изменения,
      * заменяется на [slots]. Расписание до [effectiveFrom] сохраняется.
      *
-     * [effectiveFrom] в прошлом отклоняется; `null` означает сегодняшний день.
+     * [effectiveFrom] в прошлом отклоняется; `null` означает сегодняшнюю дату организации.
+     * Возвращает дату вступления в силу после сверки занятий.
      * Пустой [slots] означает, что с этой даты у группы нет расписания.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>)
+    suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>): LocalDate
 }

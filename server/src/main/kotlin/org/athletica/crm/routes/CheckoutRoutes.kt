@@ -1,5 +1,6 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.context.either
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
@@ -8,12 +9,12 @@ import io.ktor.server.routing.post
 import io.ktor.util.logging.KtorSimpleLogger
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import org.athletica.crm.core.SystemContexts
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.domain.orgbalance.OrgBalances
+import org.athletica.crm.domain.payment.PaymentAlreadyProcessed
 import org.athletica.crm.domain.payment.Payments
 import org.athletica.crm.storage.Database
+import org.athletica.crm.usecases.payments.confirmPayment
 import org.athletica.infra.yookassa.YookassaConfig
 import org.athletica.infra.yookassa.YookassaWebhook
 import javax.crypto.Mac
@@ -64,31 +65,15 @@ fun Route.checkoutRoutes(
 
         val externalId = webhook.paymentObject.id
 
-        // 4. Атомарно: markAsPaid + replenish — в одной транзакции
-        db.transaction {
-            arrow.core.raise.either {
-                context(this@transaction) {
-                    // markAsPaid не требует RequestContext — поиск по глобально уникальному ключу
-                    val payment = payments.markAsPaid("yookassa", externalId)
-
-                    val sysCtx = SystemContexts.forOrg(payment.orgId)
-
-                    context(sysCtx) {
-                        orgBalances.current().replenish(
-                            amount = payment.amount,
-                            description = "Пополнение баланса, платёж #${payment.externalPaymentId}",
-                        )
-                    }
-                }
-            }.onLeft { error ->
-                if (error !is DomainError) {
+        // 4. Подтверждение и зачисление атомарны; при отказе зачисления — 500, чтобы ЮKassa повторила доставку
+        either { confirmPayment(db, payments, orgBalances, "yookassa", externalId) }
+            .onLeft { error ->
+                if (error !is PaymentAlreadyProcessed) {
                     throw UnhandledAppError(error)
                 }
                 logger.warn("Webhook обработан ранее или платёж не найден: ${error.message}")
             }
-        }
 
-        // Всегда отвечаем 200 — иначе ЮKassa будет повторять доставку webhook
         call.respond(HttpStatusCode.OK)
     }.contract(postContract<YookassaWebhook, Unit>())
 }

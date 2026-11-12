@@ -21,6 +21,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -90,7 +91,7 @@ class AuditDbClientsDocsTest {
         val id = ClientId.new()
         either {
             TestPostgres.db.transaction {
-                context(ctx) { clients.new(id, "Клиент", null, null, Gender.MALE).save() }
+                context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE).save() }
             }
         }.getOrElse { fail("Setup failed: $it") }
         return id

@@ -2,6 +2,7 @@ package org.athletica.crm.domain
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.raise.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -23,10 +24,14 @@ import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.collections.emptyList
 import kotlin.test.Test
@@ -51,7 +56,7 @@ class DbEmployeesTest {
     private val roles = DbRoles()
     private val employees = DbEmployees(users, roles)
 
-    private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
+    private val emptyPermission = EmployeePermissionSelection()
 
     @Before
     fun setUp() {
@@ -76,7 +81,7 @@ class DbEmployeesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            employees.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
+                            employees.new(id, testName("Иван Иванов"), "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -100,7 +105,7 @@ class DbEmployeesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            employees.new(id, "Анна", null, null, null, emptyPermission)
+                            employees.new(id, testName("Анна"), null, null, null, emptyPermission)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -117,14 +122,14 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { employees.new(id, "Первый", null, null, null, emptyPermission) }
+                    context(ctx) { employees.new(id, testName("Первый"), null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
             val result =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id, "Второй", null, null, null, emptyPermission) }
+                        context(ctx) { employees.new(id, testName("Второй"), null, null, null, emptyPermission) }
                     }
                 }
             assertEquals("EMPLOYEE_ALREADY_EXISTS", assertIs<Either.Left<AppError>>(result).value.code)
@@ -139,7 +144,7 @@ class DbEmployeesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        employees.new(id, "Пётр Петров", "89001234567", "petr@example.com".toEmailAddress(), null, emptyPermission)
+                        employees.new(id, testName("Пётр Петров"), "89001234567", "petr@example.com".toEmailAddress(), null, emptyPermission)
                     }
                 }
                 val employee = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
@@ -169,7 +174,7 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { employees.new(id, "Сотрудник", null, null, null, emptyPermission) }
+                    context(ctx) { employees.new(id, testName("Сотрудник"), null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -190,7 +195,7 @@ class DbEmployeesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            employees.new(id, "Менеджер", null, null, null, emptyPermission)
+                            employees.new(id, testName("Менеджер"), null, null, null, emptyPermission)
                         }
                     }
                 }.getOrElse { fail("Setup failed: $it") }
@@ -230,7 +235,7 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { employees.new(id, "Без ролей", null, null, null, emptyPermission) }
+                    context(ctx) { employees.new(id, testName("Без ролей"), null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
 
@@ -247,18 +252,18 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either {
-                val role = EmployeeRole(Uuid.random(), "Кассир", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_MANAGE_ORG_BALANCE))
+                val role = EmployeeRole(Uuid.random(), testName("Кассир"), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_MANAGE_ORG_BALANCE))
                 TestPostgres.db.transaction {
                     context(ctx) {
                         roles.new(role)
                         employees.new(
                             id,
-                            "Кассир",
+                            testName("Кассир"),
                             null,
                             null,
                             null,
-                            EmployeePermission(
-                                roles = listOf(role),
+                            EmployeePermissionSelection(
+                                roleIds = listOf(role.id),
                                 grantedPermissions = emptySet(),
                                 revokedPermissions = setOf(UserPermission.CAN_MANAGE_ORG_BALANCE),
                             ),
@@ -278,7 +283,7 @@ class DbEmployeesTest {
             val id = EmployeeId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { employees.new(id, "Владелец", null, null, null, emptyPermission) }
+                    context(ctx) { employees.new(id, testName("Владелец"), null, null, null, emptyPermission) }
                 }
             }.getOrElse { fail("Setup failed: $it") }
             markOwner(id)
@@ -301,12 +306,12 @@ class DbEmployeesTest {
                     context(ctx) {
                         employees.new(
                             id,
-                            "Владелец",
+                            testName("Владелец"),
                             null,
                             null,
                             null,
-                            EmployeePermission(
-                                roles = emptyList(),
+                            EmployeePermissionSelection(
+                                roleIds = emptyList(),
                                 grantedPermissions = emptySet(),
                                 revokedPermissions = setOf(UserPermission.CAN_MANAGE_TASKS),
                             ),
@@ -329,18 +334,18 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either {
-                val role = EmployeeRole(Uuid.random(), "Кассир", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_MANAGE_ORG_BALANCE))
+                val role = EmployeeRole(Uuid.random(), testName("Кассир"), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_MANAGE_ORG_BALANCE))
                 TestPostgres.db.transaction {
                     context(ctx) {
                         roles.new(role)
                         employees.new(
                             id,
-                            "Кассир",
+                            testName("Кассир"),
                             null,
                             null,
                             null,
-                            EmployeePermission(
-                                roles = listOf(role),
+                            EmployeePermissionSelection(
+                                roleIds = listOf(role.id),
                                 grantedPermissions = emptySet(),
                                 revokedPermissions = setOf(UserPermission.CAN_MANAGE_ORG_BALANCE),
                             ),
@@ -366,7 +371,7 @@ class DbEmployeesTest {
             either {
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id, "Старое имя", null, null, null, emptyPermission) }
+                        context(ctx) { employees.new(id, testName("Старое имя"), null, null, null, emptyPermission) }
                     }
 
                 TestPostgres.db.transaction {
@@ -391,7 +396,7 @@ class DbEmployeesTest {
             either {
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id, "Сотрудник", null, null, null, emptyPermission) }
+                        context(ctx) { employees.new(id, testName("Сотрудник"), null, null, null, emptyPermission) }
                     }
 
                 TestPostgres.db.transaction {
@@ -412,8 +417,8 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either {
-                val trainer = EmployeeRole(Uuid.random(), "Тренер", setOf(UserPermission.CAN_VIEW_ALL_TASKS))
-                val manager = EmployeeRole(Uuid.random(), "Менеджер", setOf(UserPermission.CAN_MANAGE_TASKS))
+                val trainer = EmployeeRole(Uuid.random(), testName("Тренер"), setOf(UserPermission.CAN_VIEW_ALL_TASKS))
+                val manager = EmployeeRole(Uuid.random(), testName("Менеджер"), setOf(UserPermission.CAN_MANAGE_TASKS))
                 TestPostgres.db.transaction {
                     context(ctx) {
                         roles.new(trainer)
@@ -421,17 +426,17 @@ class DbEmployeesTest {
                     }
                 }
 
-                val permission = EmployeePermission(roles = listOf(trainer, manager), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val permission = EmployeePermissionSelection(roleIds = listOf(trainer.id, manager.id), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id, "Сотрудник с ролями", null, null, null, permission) }
+                        context(ctx) { employees.new(id, testName("Сотрудник с ролями"), null, null, null, permission) }
                     }
 
                 var retrieved = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
                 assertTrue(retrieved.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
                 assertTrue(retrieved.hasPermission(UserPermission.CAN_MANAGE_TASKS))
 
-                val updatedPermission = EmployeePermission(roles = listOf(manager), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val updatedPermission = EmployeePermissionSelection(roleIds = listOf(manager.id), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 TestPostgres.db.transaction {
                     context(this, ctx) {
                         employee.withNewPermissions(updatedPermission).save()
@@ -449,9 +454,9 @@ class DbEmployeesTest {
         runTest {
             val id = EmployeeId.new()
             either {
-                val first = EmployeeRole(Uuid.random(), "Роль 1", setOf(UserPermission.CAN_VIEW_ALL_TASKS))
-                val second = EmployeeRole(Uuid.random(), "Роль 2", setOf(UserPermission.CAN_MANAGE_TASKS))
-                val third = EmployeeRole(Uuid.random(), "Роль 3", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                val first = EmployeeRole(Uuid.random(), testName("Роль 1"), setOf(UserPermission.CAN_VIEW_ALL_TASKS))
+                val second = EmployeeRole(Uuid.random(), testName("Роль 2"), setOf(UserPermission.CAN_MANAGE_TASKS))
+                val third = EmployeeRole(Uuid.random(), testName("Роль 3"), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE))
                 TestPostgres.db.transaction {
                     context(ctx) {
                         roles.new(first)
@@ -460,15 +465,15 @@ class DbEmployeesTest {
                     }
                 }
 
-                val initialPermission = EmployeePermission(roles = listOf(first, second), grantedPermissions = emptySet(), revokedPermissions = emptySet())
+                val initialPermission = EmployeePermissionSelection(roleIds = listOf(first.id, second.id), grantedPermissions = emptySet(), revokedPermissions = emptySet())
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id, "Сотрудник", null, null, null, initialPermission) }
+                        context(ctx) { employees.new(id, testName("Сотрудник"), null, null, null, initialPermission) }
                     }
 
                 val newPermission =
-                    EmployeePermission(
-                        roles = listOf(third),
+                    EmployeePermissionSelection(
+                        roleIds = listOf(third.id),
                         grantedPermissions = setOf(UserPermission.CAN_MANAGE_ORG_BALANCE),
                         revokedPermissions = emptySet(),
                     )
@@ -495,7 +500,7 @@ class DbEmployeesTest {
             either {
                 val employee =
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id, "Новый сотрудник", null, null, null, emptyPermission) }
+                        context(ctx) { employees.new(id, testName("Новый сотрудник"), null, null, null, emptyPermission) }
                     }
 
                 assertNull(employee.userId)
@@ -524,7 +529,7 @@ class DbEmployeesTest {
             either {
                 val emp1 =
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id1, "Первый", null, null, null, emptyPermission) }
+                        context(ctx) { employees.new(id1, testName("Первый"), null, null, null, emptyPermission) }
                     }
                 TestPostgres.db.transaction {
                     context(ctx) { emp1.invite(email, "pass1") }
@@ -534,7 +539,7 @@ class DbEmployeesTest {
             val emp2 =
                 either {
                     TestPostgres.db.transaction {
-                        context(ctx) { employees.new(id2, "Второй", null, null, null, emptyPermission) }
+                        context(ctx) { employees.new(id2, testName("Второй"), null, null, null, emptyPermission) }
                     }
                 }.getOrElse { fail("Setup failed: $it") }
 
@@ -557,7 +562,71 @@ class DbEmployeesTest {
         }
     }
 
+    @Test
+    fun `чужие назначения отклоняются целиком при создании и изменении`() =
+        runTest {
+            val id = EmployeeId.new()
+            val newId = EmployeeId.new()
+            val ownRole = EmployeeRole(Uuid.random(), testName("Своя роль"), setOf(UserPermission.CAN_MANAGE_TASKS))
+            val foreignRole = EmployeeRole(Uuid.random(), testName("Чужая роль"), emptySet())
+            val foreignBranch = BranchId.new()
+            orThrow {
+                TestPostgres.db.transaction {
+                    context(otherCtx) { roles.new(foreignRole) }
+                    sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Чужой филиал')")
+                        .bind("id", foreignBranch)
+                        .bind("orgId", otherOrgId)
+                        .execute()
+                    context(ctx) {
+                        roles.new(ownRole)
+                        employees.new(id, testName("Сотрудник"), null, null, null, EmployeePermissionSelection(listOf(ownRole.id)))
+                    }
+                }
+            }
+
+            val noBranches = EmployeeBranchAccess.Selected(emptyList())
+            for ((code, selection, branches) in listOf(
+                Triple("ROLE_NOT_FOUND", EmployeePermissionSelection(listOf(ownRole.id, foreignRole.id)), noBranches),
+                Triple("BRANCH_NOT_FOUND", emptyPermission, EmployeeBranchAccess.Selected(listOf(foreignBranch))),
+            )) {
+                val created =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(ctx) { employees.new(newId, testName("Новый"), null, null, null, selection, branches) }
+                        }
+                    }
+                assertEquals(code, assertIs<Either.Left<AppError>>(created).value.code)
+                val updated =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(ctx) {
+                                employees.byId(id).withNew(testName("Новое имя"), selection, null, null, null, branches).save()
+                            }
+                        }
+                    }
+                assertEquals(code, assertIs<Either.Left<AppError>>(updated).value.code)
+            }
+
+            orThrow {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        val employee = employees.byId(id)
+                        assertEquals("Сотрудник", employee.name)
+                        assertEquals(listOf(ownRole), employee.roles)
+                        assertEquals(EmployeeBranchAccess.All, employee.availableBranches)
+
+                        val created = employees.new(newId, testName("Новый"), null, null, null, emptyPermission, noBranches)
+                        assertEquals(emptyList(), created.roles)
+                        assertEquals(noBranches, created.availableBranches)
+                        employee.withNew(testName(employee.name), emptyPermission, null, null, null, noBranches).save()
+                        assertEquals(emptyList(), employees.byId(id).roles)
+                        assertEquals(noBranches, employees.byId(id).availableBranches)
+                    }
+                }
+            }
+        }
+
     /** Возвращает [Employee] с теми же данными и новой настройкой прав [permissions]. */
-    context(ctx: EmployeeRequestContext)
-    private fun Employee.withNewPermissions(permissions: EmployeePermission): Employee = withNew(name, permissions, avatarId, phoneNo, email, availableBranches)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    private suspend fun Employee.withNewPermissions(permissions: EmployeePermissionSelection): Employee = withNew(testName(name), permissions, avatarId, phoneNo, email, availableBranches)
 }

@@ -18,6 +18,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asDouble
@@ -215,7 +216,7 @@ class DbClientBalancesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        balances.currentOf(clients.byId(clientId)).adjust(rub(500.0), "Бонус")
+                        balances.adjust(clients.activeById(clientId), rub(500.0), "Бонус")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -232,7 +233,7 @@ class DbClientBalancesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        balances.currentOf(clients.byId(clientId)).adjust(rub(-300.0), "Корректировка")
+                        balances.adjust(clients.activeById(clientId), rub(-300.0), "Корректировка")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -248,10 +249,10 @@ class DbClientBalancesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val b = balances.currentOf(clients.byId(clientId))
-                        val b2 = b.adjust(rub(200.0), "Первое пополнение")
-                        val b3 = b2.adjust(rub(300.0), "Второе пополнение")
-                        b3.adjust(rub(-100.0), "Списание")
+                        val client = clients.activeById(clientId)
+                        balances.adjust(client, rub(200.0), "Первое пополнение")
+                        balances.adjust(client, rub(300.0), "Второе пополнение")
+                        balances.adjust(client, rub(-100.0), "Списание")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -268,7 +269,7 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(rub(750.0), "Пополнение")
+                            balances.adjust(clients.activeById(clientId), rub(750.0), "Пополнение")
                         }
                     }
                 }.getOrElse { fail("Expected success: $it") }
@@ -285,7 +286,7 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(Money.zero(Currency.RUB), "Комментарий")
+                            balances.adjust(clients.activeById(clientId), Money.zero(Currency.RUB), "Комментарий")
                         }
                     }
                 }
@@ -303,7 +304,7 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "")
+                            balances.adjust(clients.activeById(clientId), rub(100.0), "")
                         }
                     }
                 }
@@ -321,7 +322,7 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "   ")
+                            balances.adjust(clients.activeById(clientId), rub(100.0), "   ")
                         }
                     }
                 }

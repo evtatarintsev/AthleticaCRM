@@ -14,7 +14,7 @@ import org.athletica.crm.storage.Transaction
 /** Репозиторий занятий организации. */
 interface Sessions {
     /**
-     * Создаёт разовое занятие вне расписания; возвращает `null`, если занятие с таким [id] уже есть.
+     * Создаёт разовое занятие вне расписания; поднимает `SESSION_ALREADY_EXISTS`, если такой [id] уже есть.
      * Занятия из расписания материализует [ScheduleSync], а не этот метод.
      * [employees] — преподаватели; каждый должен иметь доступ к филиалу группы,
      * иначе ошибка `EMPLOYEE_NOT_FOUND`.
@@ -29,7 +29,7 @@ interface Sessions {
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-    ): Session?
+    ): Session
 
     /** Возвращает список занятий группы за период [from]..[to]. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)

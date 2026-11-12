@@ -100,7 +100,7 @@ class DbAuth(
     override suspend fun updateMe(request: UpdateMeRequest) {
         val updatedRows =
             tr.sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
-                .bind("name", request.name)
+                .bind("name", request.name.value)
                 .bind("avatarId", request.avatarId)
                 .bind("userId", ctx.userId)
                 .bind("orgId", ctx.orgId)
@@ -138,7 +138,7 @@ class DbAuth(
         val hallId = HallId.new()
         tr.sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:orgId, :orgName, :timezone, :currency)")
             .bind("orgId", orgId)
-            .bind("orgName", request.companyName)
+            .bind("orgName", request.companyName.value)
             .bind("timezone", request.timezone)
             .bind("currency", request.currency.code)
             .execute()
@@ -154,7 +154,7 @@ class DbAuth(
             .bind("employeeId", employeeId)
             .bind("orgId", orgId)
             .bind("userId", userId)
-            .bind("name", request.userName)
+            .bind("name", request.userName.value)
             .execute()
 
         tr.sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")

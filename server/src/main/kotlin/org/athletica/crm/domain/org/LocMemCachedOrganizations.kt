@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.org
 
 import arrow.core.raise.Raise
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
@@ -37,7 +38,7 @@ class CachedOrganization(
     private val cache: ConcurrentHashMap<OrgId, Organization>,
 ) : Organization by delegate {
     context(ctx: RequestContext, raise: Raise<AppError>)
-    override suspend fun withNew(newName: String, newTimezone: String) = CachedOrganization(delegate.withNew(newName, newTimezone), cache)
+    override suspend fun withNew(newName: NonBlankName, newTimezone: String) = CachedOrganization(delegate.withNew(newName, newTimezone), cache)
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {

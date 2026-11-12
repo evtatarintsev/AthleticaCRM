@@ -25,6 +25,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.toMoney
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.leadSource.LeadSource
 import org.athletica.crm.domain.leadSource.LeadSourceDescription
@@ -36,7 +37,6 @@ import org.athletica.crm.storage.MinioService
 import org.athletica.crm.storage.Transaction
 
 private const val MAX_CSV_SIZE_BYTES = 10L * 1024 * 1024
-private const val CLIENT_ENTITY_TYPE = "CLIENT"
 
 /**
  * Валидирует и (при `dryRun = false`) импортирует клиентов из ранее загруженного CSV
@@ -73,7 +73,7 @@ suspend fun importClientsCommit(
         val existingLeadSources = leadSources.list().associateBy { it.name }
         val customDefs =
             definitions
-                .all(CLIENT_ENTITY_TYPE)
+                .all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE)
                 .associateBy { it.fieldKey.value }
 
         val createdLeadSources =
@@ -201,8 +201,8 @@ private suspend fun createMissingLeadSources(
     val toCreate =
         leadSourceMapping.values
             .filterIsInstance<LeadSourceAction.CreateNew>()
-            .map { it.name.trim() }
-            .filter { it.isNotEmpty() && !existingByName.containsKey(it) }
+            .map { it.name }
+            .filter { it.value !in existingByName }
             .distinct()
     return toCreate.map { name ->
         val created = leadSources.new(id = LeadSourceId.new(), name = name, description = LeadSourceDescription.EMPTY)
@@ -220,7 +220,7 @@ private fun resolveLeadSourceIds(
     return leadSourceMapping.mapNotNull { (csvValue, action) ->
         when (action) {
             is LeadSourceAction.UseExisting -> csvValue to action.id
-            is LeadSourceAction.CreateNew -> byName[action.name.trim()]?.let { csvValue to it.id }
+            is LeadSourceAction.CreateNew -> byName[action.name.value]?.let { csvValue to it.id }
             LeadSourceAction.Skip -> null
         }
     }.toMap()
@@ -315,7 +315,7 @@ private suspend fun processRow(
                 customFields = customFields,
             )
         if (balance != null && balance != 0.0) {
-            balances.currentOf(client).adjust(balance.toMoney(ctx.currency), balanceNote)
+            balances.adjust(client, balance.toMoney(ctx.currency), balanceNote)
         }
         RowResult(rowNumber = rowNumber, status = Status.OK)
     }.fold(
@@ -336,9 +336,6 @@ private fun collectCustomFields(
     defs: Map<String, CustomFieldDefinition>,
     errors: MutableList<String>,
 ): List<CustomFieldValue> {
-    if (plan.customFieldIndices.isEmpty()) {
-        return emptyList()
-    }
     val values =
         plan.customFieldIndices.mapNotNull { (idx, key) ->
             val raw = row.getOrNull(idx)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
@@ -349,13 +346,13 @@ private fun collectCustomFields(
                 }
             buildCustomFieldValue(def, raw, errors)
         }
-    val container = either { CustomFieldValues(defs.values.toList()).with(values) }
+    val container = either { CustomFieldValues(defs.values.toList()).forCreation(values) }
     return container.fold(
         ifLeft = { err ->
-            errors += err.message
+            errors += "${err.code}: ${err.message}"
             emptyList()
         },
-        ifRight = { it.toList() },
+        ifRight = { it },
     )
 }
 
@@ -392,13 +389,7 @@ private fun buildCustomFieldValue(
         is CustomFieldDefinition.Bool -> CustomFieldValue.Bool(def.fieldKey, parseBool(raw))
 
         is CustomFieldDefinition.Select ->
-            if (def.options.any { it.equals(raw, ignoreCase = true) }) {
-                val canonical = def.options.first { it.equals(raw, ignoreCase = true) }
-                CustomFieldValue.Select(def.fieldKey, canonical)
-            } else {
-                errors += "Значение «$raw» не входит в варианты поля ${def.fieldKey.value}"
-                null
-            }
+            CustomFieldValue.Select(def.fieldKey, def.options.firstOrNull { it.equals(raw, ignoreCase = true) } ?: raw)
     }
 
 private fun parseBool(raw: String): Boolean =

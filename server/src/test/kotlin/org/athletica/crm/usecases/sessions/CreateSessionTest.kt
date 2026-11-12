@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases.sessions
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -9,16 +10,21 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.domain.audit.AuditEvent
+import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.events.DomainEventBus
+import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbSessions
 import org.athletica.crm.read.sessions.DbSessionDetailView
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -224,5 +230,60 @@ class CreateSessionTest {
             }
 
             assertEquals(otherHall, fixture.inContext { sessions.byId(id) }.hallId)
+        }
+
+    @Test
+    fun `домен отклоняет равный и обратный интервал при создании и переносе`() =
+        runTest {
+            fixture.setUp()
+            val hall = fixture.insertHall()
+            val group = fixture.insertGroup()
+            val start = LocalTime(15, 0)
+            val end = LocalTime(16, 0)
+            val id = fixture.insertSession(group, hall, date, start, end)
+
+            for (invalidEnd in listOf(start, LocalTime(14, 0))) {
+                assertError(
+                    "INVALID_SESSION_TIME",
+                    fixture.runInContext { sessions.new(SessionId.new(), group, date, start, invalidEnd, hall, null, emptyList()) },
+                )
+                assertError(
+                    "INVALID_SESSION_TIME",
+                    fixture.runInContext { sessions.byId(id).reschedule(date, start, invalidEnd, hall) },
+                )
+            }
+            assertEquals(1L, fixture.sessionCount())
+            assertEquals(end, fixture.inContext { sessions.byId(id) }.endTime)
+        }
+
+    @Test
+    fun `создание возвращает тренеров и повторный ID не пишет аудит`() =
+        runTest {
+            fixture.setUp()
+            val hall = fixture.insertHall()
+            val group = fixture.insertGroup()
+            val trainers = listOf(fixture.insertEmployee(), fixture.insertEmployee())
+            val id = SessionId.new()
+            val auditEvents = mutableListOf<AuditEvent>()
+            val audited =
+                AuditSessions(
+                    sessions,
+                    object : AuditLog {
+                        context(tr: Transaction, raise: Raise<AppError>)
+                        override suspend fun log(event: AuditEvent) {
+                            auditEvents.add(event)
+                        }
+                    },
+                )
+
+            suspend fun create() =
+                fixture.runInContext {
+                    audited.new(id, group, date, LocalTime(15, 0), LocalTime(16, 0), hall, null, employees.byIds(trainers))
+                }
+
+            assertEquals(trainers.toSet(), create().getOrNull()?.employeeIds?.toSet())
+            assertError("SESSION_ALREADY_EXISTS", create())
+            assertEquals(1L, fixture.sessionCount())
+            assertEquals(id.value, auditEvents.single().entityId)
         }
 }

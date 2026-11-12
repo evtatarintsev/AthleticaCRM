@@ -10,15 +10,12 @@ import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
-import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
-import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.memberships.ActiveMembership
-import org.athletica.crm.domain.memberships.ClosedMembership
 import org.athletica.crm.domain.memberships.InactiveMembership
 import org.athletica.crm.domain.memberships.Memberships
-import org.athletica.crm.domain.memberships.RevokedMembership
+import org.athletica.crm.domain.memberships.advanceCalendar
 import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.org.OrgCalendar
 import org.athletica.crm.domain.tasks.Tasks
@@ -95,28 +92,14 @@ class MembershipScheduler(
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun process(id: MembershipId, today: LocalDate) {
-        when (val membership = memberships.byId(id)) {
-            is InactiveMembership.OnDate ->
-                if (membership.activation.date <= today) {
-                    val active = membership.activate(membership.activation.date, ActivationReason.ON_DATE)
-                    createCheckClientTaskIfDebts(unpaidSessions, tasks, active)
-                }
-            is InactiveMembership.OnFirstVisit -> {
-                val deadline = membership.activation.deadline
-                if (deadline != null && deadline <= today) {
-                    val active = membership.activate(deadline, ActivationReason.ON_DEADLINE)
-                    createCheckClientTaskIfDebts(unpaidSessions, tasks, active)
-                }
+        val previous = memberships.byId(id)
+        val updated = previous.advanceCalendar(today)
+        if (updated is ActiveMembership) {
+            when (previous) {
+                is InactiveMembership -> createCheckClientTaskIfDebts(unpaidSessions, tasks, updated)
+                is ActiveMembership -> notifyClosePendingIfDue(notifications, employees, updated, today)
+                else -> Unit
             }
-            is ActiveMembership -> {
-                val active = clearExpiredFreeze(membership, today)
-                if (active.closeMode == CloseMode.ON_EXPIRY && active.endDate < today) {
-                    active.close(CloseReason.EXPIRY, today)
-                } else {
-                    notifyClosePendingIfDue(notifications, employees, active, today)
-                }
-            }
-            is ClosedMembership, is RevokedMembership -> Unit
         }
     }
 }

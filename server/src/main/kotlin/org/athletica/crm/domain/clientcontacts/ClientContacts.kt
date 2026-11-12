@@ -7,6 +7,7 @@ import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -38,7 +39,7 @@ interface ClientContacts {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun clientsByPhone(phone: PhoneDigits): List<ClientId>
 
-    /** Полностью заменяет набор контактов клиента [clientId] на [contacts]. */
+    /** Полностью заменяет набор контактов клиента [client] на [contacts]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun replace(clientId: ClientId, contacts: List<ClientContact>)
+    suspend fun replace(client: ActiveClient, contacts: List<ClientContact>)
 }

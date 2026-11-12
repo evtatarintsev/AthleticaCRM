@@ -15,6 +15,7 @@ import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.UnfreezeReason
+import org.athletica.crm.domain.attendance.Participation
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -181,13 +182,13 @@ interface ActiveMembership : Membership {
     suspend fun markCloseNotified(): ActiveMembership
 
     /**
-     * Списывает с абонемента одно занятие [sessionId] от [sessionDate] за клиента-владельца и пишет
+     * Списывает с абонемента одно занятие по [participation] клиента-владельца и пишет
      * списание в историю. Остаток уменьшается на 1 (кроме безлимита) guarded-обновлением: если
      * параллельная транзакция успела обнулить остаток, бросает [MembershipDebitConflict].
      * С режимом «при списании последнего» абонемент, остаток которого стал 0, закрывается датой [today].
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun debit(sessionId: SessionId, sessionDate: LocalDate, today: LocalDate): Membership
+    suspend fun debit(participation: Participation, today: LocalDate): Membership
 
     /**
      * Возвращает занятие действующего списания [debit] на абонемент. Если после возврата абонемент
@@ -196,24 +197,7 @@ interface ActiveMembership : Membership {
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverse(debit: MembershipDebit, today: LocalDate): ActiveMembership
-
-    /**
-     * Гасит долг: списывает неоплаченные занятия [sessions] клиента-владельца, в том числе вне срока,
-     * и пишет каждое в историю как погашение долга. Дата начала не меняется. Занятий не больше
-     * остатка (кроме безлимита), иначе ошибка; уже списанное занятие — ошибка `ALREADY_DEBITED`.
-     * С режимом «при списании последнего» абонемент, остаток которого стал 0, закрывается датой [today].
-     */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun repayDebt(sessions: List<DebtSession>, today: LocalDate): Membership
 }
-
-/** Неоплаченное занятие [sessionId] от [sessionDate], которое гасится с абонемента. */
-data class DebtSession(
-    /** Занятие. */
-    val sessionId: SessionId,
-    /** Дата занятия. */
-    val sessionDate: LocalDate,
-)
 
 /** Закрытый абонемент: финальное состояние, переходов нет. */
 interface ClosedMembership : Membership {

@@ -28,6 +28,7 @@ class DbPayments : Payments {
         description: String,
         confirmationUrl: String,
     ): Payment {
+        ensurePaymentAmountPositive(amount)
         val id = Uuid.generateV7()
         return tr
             .sql(

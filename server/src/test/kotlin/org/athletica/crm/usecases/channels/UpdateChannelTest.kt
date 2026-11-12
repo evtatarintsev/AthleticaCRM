@@ -24,6 +24,7 @@ import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.athletica.infra.messaging.ProviderChannelTransports
 import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
@@ -70,7 +71,7 @@ class UpdateChannelTest {
     ): Either<AppError, Unit> =
         either {
             context(TestPostgres.db, context) {
-                updateChannel(channels, verifier, id, name, change)
+                updateChannel(channels, verifier, id, testName(name), change)
             }
         }
 

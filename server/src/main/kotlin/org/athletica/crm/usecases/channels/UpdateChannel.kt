@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.channels.ChannelConfigChange
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.errors.AppError
@@ -25,7 +26,7 @@ suspend fun updateChannel(
     channels: ChannelIntegrations,
     verifier: ChannelConfigVerifier,
     id: ChannelIntegrationId,
-    name: String,
+    name: NonBlankName,
     change: ChannelConfigChange,
 ) {
     val current = db.transaction { channels.config(id) }

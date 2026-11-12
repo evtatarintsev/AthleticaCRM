@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.sessions
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -47,7 +48,8 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-    ): Session? {
+    ): Session {
+        ensureValidSessionTime(startTime, endTime)
         val branchId =
             tr
                 .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
@@ -82,17 +84,14 @@ class DbSessions(private val events: DomainEvents) : Sessions {
             .bind("notes", notes)
             .onViolation("sessions_pkey") { CommonDomainError("SESSION_ALREADY_EXISTS", "Занятие уже существует") }
             .execute()
-        val session = byIdOrNull(id)
-        session?.let {
-            distinctEmployees.forEach { employee ->
-                tr
-                    .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
-                    .bind("sessionId", id)
-                    .bind("employeeId", employee.id)
-                    .execute()
-            }
+        distinctEmployees.forEach { employee ->
+            tr
+                .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
+                .bind("sessionId", id)
+                .bind("employeeId", employee.id)
+                .execute()
         }
-        return byIdOrNull(id)
+        return byId(id)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -269,4 +268,11 @@ internal suspend fun requireHallInGroupBranch(
         .bind("orgId", ctx.orgId)
         .firstOrNull { 1 }
         ?: raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
+}
+
+context(raise: Raise<AppError>)
+internal fun ensureValidSessionTime(startTime: LocalTime, endTime: LocalTime) {
+    ensure(endTime > startTime) {
+        CommonDomainError("INVALID_SESSION_TIME", "Время окончания должно быть позже времени начала")
+    }
 }

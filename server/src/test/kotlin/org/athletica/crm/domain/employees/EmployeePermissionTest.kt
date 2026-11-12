@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.employees
 
 import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.testName
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -10,7 +11,7 @@ class EmployeePermissionTest {
     private fun role(vararg permissions: UserPermission) =
         EmployeeRole(
             id = Uuid.random(),
-            name = "role",
+            name = testName("role"),
             permissions = permissions.toSet(),
         )
 

@@ -6,7 +6,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
+import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
@@ -17,6 +19,9 @@ import org.athletica.crm.core.entityids.toLeadSourceId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
+import org.athletica.crm.domain.customfields.CustomFieldDefinitions
+import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -25,7 +30,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
-class DbClients : Clients {
+class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldDefinitions()) : Clients {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: ClientId): Client {
         val scalar =
@@ -79,13 +84,14 @@ class DbClients : Clients {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: ClientId,
-        name: String,
+        name: NonBlankName,
         avatarId: UploadId?,
         birthday: LocalDate?,
         gender: Gender,
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
     ): ActiveClient {
+        val validatedFields = CustomFieldValues(definitions.all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE)).forCreation(customFields)
         val inserted =
             tr
                 .sql(
@@ -96,12 +102,12 @@ class DbClients : Clients {
                 )
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
-                .bind("name", name)
+                .bind("name", name.value)
                 .bind("avatarId", avatarId)
                 .bind("birthday", birthday)
                 .bind("gender", gender.name)
                 .bind("leadSourceId", leadSourceId)
-                .bind("customFields", Json.encodeToString(customFields))
+                .bind("customFields", Json.encodeToString(validatedFields))
                 .onViolation("clients_pkey") { CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()) }
                 .onViolation("clients_lead_source_id_fkey") { CommonDomainError("LEAD_SOURCE_NOT_FOUND", Messages.LeadSourceNotFound.localize()) }
                 .execute()
@@ -110,15 +116,16 @@ class DbClients : Clients {
 
         return DbActiveClient(
             id = id,
-            name = name,
+            name = name.value,
             avatarId = avatarId,
             birthday = birthday,
             gender = gender,
             groups = emptyList(),
             docs = emptyList(),
             leadSourceId = leadSourceId,
-            customFields = customFields,
+            customFields = validatedFields,
             orgId = ctx.orgId,
+            definitions = definitions,
         )
     }
 
@@ -138,9 +145,9 @@ class DbClients : Clients {
     context(ctx: EmployeeRequestContext)
     private fun ScalarClient.toClient(groups: List<ClientGroup>, docs: List<ClientDoc>): Client =
         if (archived) {
-            DbArchivedClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId)
+            DbArchivedClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields)
         } else {
-            DbActiveClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId)
+            DbActiveClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId, definitions)
         }
 
     private fun io.r2dbc.spi.Row.toScalarClient(): ScalarClient =

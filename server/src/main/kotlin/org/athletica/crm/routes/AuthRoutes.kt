@@ -51,7 +51,7 @@ fun Route.authRoutes(auth: Auth) {
 
     post("/auth/sign-up") {
         call.eitherToAuthResponse {
-            val request = call.receive<SignUpRequest>()
+            val request = call.body<SignUpRequest>()
             db.transaction {
                 auth.signup(request, call.langFromRequest(), call.clientIp())
             }

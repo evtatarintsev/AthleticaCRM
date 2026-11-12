@@ -2,6 +2,7 @@ package org.athletica.crm.domain.discipline
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
@@ -38,5 +39,5 @@ data class DbDiscipline(
             .execute()
     }
 
-    override fun withNew(name: String): Discipline = copy(name = name)
+    override fun withNew(name: NonBlankName): Discipline = copy(name = name.value)
 }

@@ -13,6 +13,7 @@ import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,7 +35,7 @@ class DbLeadSourcesTest {
 
     private suspend fun create(name: String, description: String): LeadSourceId {
         val id = LeadSourceId.new()
-        fixture.inContext { leadSources.new(id, name, description(description)).save() }
+        fixture.inContext { leadSources.new(id, testName(name), description(description)).save() }
         return id
     }
 
@@ -59,7 +60,7 @@ class DbLeadSourcesTest {
             fixture.insertActor()
             val id = create("Сайт", "")
 
-            fixture.inContext { leadSources.byId(id).withNew("Сайт и лендинги", description("Сайт организации и посадочные страницы")).save() }
+            fixture.inContext { leadSources.byId(id).withNew(testName("Сайт и лендинги"), description("Сайт организации и посадочные страницы")).save() }
 
             assertEquals(listOf("Сайт и лендинги" to "Сайт организации и посадочные страницы"), listed())
         }
@@ -71,7 +72,7 @@ class DbLeadSourcesTest {
             fixture.insertActor()
             val id = create("Сайт", "Сайт организации")
 
-            fixture.inContext { leadSources.byId(id).withNew("Сайт", LeadSourceDescription.EMPTY).save() }
+            fixture.inContext { leadSources.byId(id).withNew(testName("Сайт"), LeadSourceDescription.EMPTY).save() }
 
             assertEquals(listOf("Сайт" to ""), listed())
         }

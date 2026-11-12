@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class ValueParsersTest {
     @Test
     fun `parseName trim и проверка непустоты`() {
-        assertEquals("Иванов И", (ValueParsers.parseName("  Иванов И  ") as Either.Right).value)
+        assertEquals("Иванов И", (ValueParsers.parseName("  Иванов И  ") as Either.Right).value.value)
         assertTrue(ValueParsers.parseName("   ") is Either.Left)
         assertTrue(ValueParsers.parseName("") is Either.Left)
         assertTrue(ValueParsers.parseName(null) is Either.Left)

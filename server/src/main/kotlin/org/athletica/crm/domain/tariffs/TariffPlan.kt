@@ -2,6 +2,8 @@ package org.athletica.crm.domain.tariffs
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
@@ -50,9 +52,9 @@ interface TariffPlan {
 
     /** Возвращает копию с новыми параметрами (без записи в БД); архивность сохраняется. */
     fun withNew(
-        name: String,
-        sessions: Int?,
-        durationValue: Int,
+        name: NonBlankName,
+        sessions: PositiveInt?,
+        durationValue: PositiveInt,
         durationUnit: DurationUnit,
         price: Money,
     ): TariffPlan

@@ -2,6 +2,7 @@ package org.athletica.crm.domain.discipline
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
@@ -23,5 +24,5 @@ interface Discipline {
     suspend fun delete()
 
     /** Возвращает копию с новым именем (без записи в БД). */
-    fun withNew(name: String): Discipline
+    fun withNew(name: NonBlankName): Discipline
 }

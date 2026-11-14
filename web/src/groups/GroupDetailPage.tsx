@@ -315,12 +315,7 @@ export function GroupDetailPage({
           <GroupSessionsSection api={api} branchId={branchId} groupId={groupId} />
         </TabsContent>
         <TabsContent value="journal">
-          <GroupJournalTab
-            api={api}
-            branchId={branchId}
-            groupId={groupId}
-            roster={roster.data?.clients ?? []}
-          />
+          <GroupJournalTab api={api} branchId={branchId} groupId={groupId} roster={roster} />
         </TabsContent>
       </Tabs>
 
@@ -362,7 +357,12 @@ export function GroupDetailPage({
         title={t("groups.detail.addClients")}
         mode="multiple"
         unavailable={
-          new Map(detail.clients.map((client) => [client.id, t("groups.detail.alreadyInGroup")]))
+          new Map(
+            (roster.data?.clients ?? []).map((client) => [
+              client.id,
+              t("groups.detail.alreadyInGroup"),
+            ]),
+          )
         }
         submitLabel={t("action.add")}
         onSubmit={addClients}

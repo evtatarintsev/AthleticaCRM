@@ -24,9 +24,11 @@ import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.groups.GroupListQuery
+import org.athletica.crm.read.groups.GroupRosterQuery
 import org.athletica.crm.read.groups.GroupSessionsQuery
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.groups.setGroupSchedule
+import kotlin.time.Clock
 import org.athletica.crm.api.schemas.groups.ScheduleSlot as ScheduleSlotSchema
 
 /**
@@ -62,8 +64,9 @@ fun RouteWithContext.groupsRoutes(
         }
 
         get<GroupRosterRequest, GroupRosterResponse>("/roster") { request ->
+            val query = GroupRosterQuery(groupId = request.groupId, now = Clock.System.now())
             db.transaction {
-                views.groupRoster.list(request.groupId)
+                views.groupRoster.list(query)
             }
         }
 

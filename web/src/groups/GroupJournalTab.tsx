@@ -1,8 +1,9 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
-import type { BranchId, GroupId, GroupRosterClient } from "@/api/generated/contracts";
+import type { BranchId, GroupId, GroupRosterResponse } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
@@ -20,8 +21,9 @@ import { useGroupAttendance } from "./groupsQueries";
 
 /**
  * Вкладка «Журнал»: матрица посещаемости группы за период — закрытые занятия столбцами, строки —
- * текущий состав [roster] и исключённые участники, отмеченные в периоде. Период по умолчанию —
- * последние 4 недели, переключается назад и вперёд.
+ * текущий состав [roster] и исключённые участники, отмеченные в периоде. Матрица строится, когда
+ * загружены и посещаемость, и состав: без состава все отмеченные выглядели бы исключёнными.
+ * Период по умолчанию — последние 4 недели, переключается назад и вперёд.
  */
 export function GroupJournalTab({
   api,
@@ -32,12 +34,13 @@ export function GroupJournalTab({
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly groupId: GroupId;
-  readonly roster: readonly GroupRosterClient[];
+  readonly roster: UseQueryResult<GroupRosterResponse>;
 }) {
   const { t, format } = useI18n();
   const [period, setPeriod] = useState<JournalPeriod>(() => defaultJournalPeriod(todayLocalDate()));
   const query = useGroupAttendance(api, branchId, groupId, period.from, period.to);
   const data = query.data;
+  const clients = roster.data?.clients;
 
   return (
     <div className="space-y-3">
@@ -70,12 +73,12 @@ export function GroupJournalTab({
         </Button>
       </div>
 
-      {query.isError && <FormAlert message={t("groups.journal.loadError")} />}
-      {query.isPending && <Skeleton className="h-48 w-full" />}
+      {(query.isError || roster.isError) && <FormAlert message={t("groups.journal.loadError")} />}
+      {(query.isPending || roster.isPending) && <Skeleton className="h-48 w-full" />}
       {data?.sessions.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("groups.journal.empty")}</p>
       )}
-      {data !== undefined && data.sessions.length > 0 && (
+      {data !== undefined && clients !== undefined && data.sessions.length > 0 && (
         <div
           className={cn(
             "overflow-x-auto rounded-xl border bg-card",
@@ -101,7 +104,7 @@ export function GroupJournalTab({
               </tr>
             </thead>
             <tbody>
-              {journalRows(roster, data).map((row) => (
+              {journalRows(clients, data).map((row) => (
                 <tr key={row.clientId} className="border-t">
                   <th
                     scope="row"

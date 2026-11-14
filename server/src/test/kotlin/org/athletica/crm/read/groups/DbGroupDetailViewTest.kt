@@ -10,7 +10,6 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.Lang
-import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
@@ -77,27 +76,6 @@ class DbGroupDetailViewTest {
                 .execute()
             return groupId
         }
-
-    private suspend fun insertClient(orgId: Uuid, name: String): ClientId =
-        orThrow {
-            val clientId = ClientId.new()
-            TestPostgres.db
-                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", name)
-                .execute()
-            return clientId
-        }
-
-    private suspend fun enroll(clientId: ClientId, groupId: GroupId, left: Boolean = false) {
-        orThrow {
-            TestPostgres.db
-                .sql(
-                    "INSERT INTO enrollments (client_id, group_id, left_at) VALUES (:c, :g, ${if (left) "NOW()" else "NULL"})",
-                )
-                .bind("c", clientId).bind("g", groupId)
-                .execute()
-        }
-    }
 
     private suspend fun insertDiscipline(orgId: Uuid, name: String): DisciplineId =
         orThrow {
@@ -198,10 +176,8 @@ class DbGroupDetailViewTest {
             val hallId = insertHall(orgId, "Малый зал")
             val yoga = insertDiscipline(orgId, "Йога")
             val anna = insertEmployee(orgId, "Анна")
-            val client = insertClient(orgId, "Пётр Клиентов")
             linkDiscipline(groupId, yoga)
             linkEmployee(groupId, anna)
-            enroll(client, groupId)
             insertSlot(orgId, groupId, hallId)
 
             val result = succeeding(orgId, groupId)
@@ -209,23 +185,11 @@ class DbGroupDetailViewTest {
             assertEquals("Йога", result.name)
             assertEquals(listOf("Йога"), result.disciplines.map { it.name })
             assertEquals(listOf("Анна"), result.employees.map { it.name })
-            assertEquals(listOf("Пётр Клиентов"), result.clients.map { it.name })
 
             val slot = result.schedule.single()
             assertEquals(DayOfWeek.WEDNESDAY, slot.dayOfWeek)
             assertEquals(LocalTime(18, 0), slot.startAt)
             assertEquals("Малый зал", slot.hallName)
-        }
-
-    @Test
-    fun `отчисленные участники не попадают в карточку`() =
-        runTest {
-            val orgId = insertOrg()
-            val groupId = insertGroup(orgId, "Бокс")
-            enroll(insertClient(orgId, "Активный"), groupId)
-            enroll(insertClient(orgId, "Ушедший"), groupId, left = true)
-
-            assertEquals(listOf("Активный"), succeeding(orgId, groupId).clients.map { it.name })
         }
 
     @Test
@@ -239,7 +203,6 @@ class DbGroupDetailViewTest {
             assertTrue(result.schedule.isEmpty())
             assertTrue(result.disciplines.isEmpty())
             assertTrue(result.employees.isEmpty())
-            assertTrue(result.clients.isEmpty())
         }
 
     @Test

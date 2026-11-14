@@ -145,10 +145,8 @@ function NextSessionTile({
   readonly onEditSchedule: () => void;
 }) {
   const { t } = useI18n();
-  const window = defaultSessionsWindow(todayLocalDate());
-  const query = useQuery(
-    apiQuery(api, branchId, "groups/sessions", { groupId, from: window.from, to: window.to }),
-  );
+  const { from, to } = defaultSessionsWindow(todayLocalDate());
+  const query = useQuery(apiQuery(api, branchId, "groups/sessions", { groupId, from, to }));
   if (query.data === undefined) {
     return <Skeleton className="min-h-[7.5rem] rounded-xl" />;
   }

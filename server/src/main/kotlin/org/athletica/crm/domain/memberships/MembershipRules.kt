@@ -15,9 +15,12 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
+import org.athletica.crm.core.subscription.ActiveStatus
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.core.subscription.FreezeStatus
+import org.athletica.crm.core.subscription.Remaining
+import org.athletica.crm.core.subscription.TermPosition
 import org.athletica.crm.i18n.Messages
 
 /** Срок действия абонемента: [value] [unit]. */
@@ -76,6 +79,18 @@ sealed interface Activation {
         override val mode = ActivationMode.ON_FIRST_VISIT
     }
 }
+
+/**
+ * Нужно ли уведомление «к закрытию» при режиме закрытия [closeMode]: абонемент «к закрытию»,
+ * а режим его сам не закроет. «Вручную» — при любом «к закрытию»; «при списании последнего» —
+ * при вышедшем сроке и оставшихся занятиях; «по истечении срока» — никогда.
+ */
+fun ActiveStatus.needsCloseNotification(closeMode: CloseMode): Boolean =
+    when (closeMode) {
+        CloseMode.MANUAL -> closePending
+        CloseMode.ON_LAST_SESSION -> termPosition == TermPosition.EXPIRED && remaining is Remaining.Left
+        CloseMode.ON_EXPIRY -> false
+    }
 
 /**
  * Текущая заморозка активного абонемента: период [start]..[end] включительно. Дата окончания

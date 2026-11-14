@@ -58,7 +58,6 @@ function createServer({ failCreate = false }: { failCreate?: boolean } = {}) {
         employees: staff
           .filter((e) => (request.employeeIds ?? []).includes(e.id))
           .map((e) => ({ id: e.id, name: e.name, avatarId: e.avatarId })),
-        clients: [],
       };
       return json(created);
     },

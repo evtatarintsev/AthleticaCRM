@@ -4,7 +4,6 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import kotlinx.serialization.json.Json
-import org.athletica.crm.api.schemas.groups.GroupClient
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupDiscipline
 import org.athletica.crm.api.schemas.groups.GroupEmployee
@@ -21,8 +20,8 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /**
- * Реализация [GroupDetailView] поверх PostgreSQL. Расписание, дисциплины, тренеры
- * и активные участники приходят JSONB-агрегатами в одном запросе.
+ * Реализация [GroupDetailView] поверх PostgreSQL. Расписание, дисциплины и тренеры
+ * приходят JSONB-агрегатами в одном запросе; состав группы — в [GroupRosterView].
  */
 class DbGroupDetailView : GroupDetailView {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -42,7 +41,6 @@ class DbGroupDetailView : GroupDetailView {
             scheduleChangeAt = asLocalDateOrNull("schedule_change_at"),
             disciplines = Json.decodeFromString<List<GroupDiscipline>>(asString("disciplines")),
             employees = Json.decodeFromString<List<GroupEmployee>>(asString("employees")),
-            clients = Json.decodeFromString<List<GroupClient>>(asString("clients")),
         )
 
     private companion object {
@@ -59,13 +57,7 @@ class DbGroupDetailView : GroupDetailView {
                         ) ORDER BY d.name), '[]'::jsonb)
                    FROM group_disciplines gd
                    JOIN disciplines d ON d.id = gd.discipline_id
-                  WHERE gd.group_id = g.id) AS disciplines,
-                (SELECT COALESCE(jsonb_agg(jsonb_build_object(
-                            'id', c.id, 'name', c.name
-                        ) ORDER BY c.name), '[]'::jsonb)
-                   FROM enrollments e
-                   JOIN clients c ON c.id = e.client_id
-                  WHERE e.group_id = g.id AND e.left_at IS NULL) AS clients
+                  WHERE gd.group_id = g.id) AS disciplines
             FROM groups g
             WHERE g.id = :id AND g.org_id = :orgId
             """.trimIndent()

@@ -3,8 +3,6 @@ package org.athletica.crm.read.groups
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.groups.GroupClientAttention
 import org.athletica.crm.api.schemas.groups.GroupRosterClient
@@ -16,6 +14,7 @@ import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.core.subscription.EndingSoonReason
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.employeeContext
@@ -26,7 +25,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 
 /** DB-тесты проекции состава группы: выбор абонемента, причина внимания, порядок и скоуп. */
 class GroupRosterViewTest {
@@ -34,8 +32,8 @@ class GroupRosterViewTest {
     private val view = DbGroupRosterView()
     private val ctx: EmployeeRequestContext = employeeContext(orgId = fixture.orgId, branchId = fixture.branchId)
 
-    /** Сегодня организации (UTC): проекция берёт дату из `now()` базы. */
-    private val today: LocalDate = Clock.System.todayIn(TimeZone.UTC)
+    /** Сегодня организации: дата часов фикстуры, которые передаются в проекцию. */
+    private val today: LocalDate = LocalDate(2026, 10, 16)
 
     @Before
     fun setUp() {
@@ -46,7 +44,7 @@ class GroupRosterViewTest {
     private suspend fun roster(
         groupId: GroupId = fixture.groupId,
         context: EmployeeRequestContext = ctx,
-    ): List<GroupRosterClient> = fixture.tx(context) { context(context) { view.list(groupId) } }.clients
+    ): List<GroupRosterClient> = fixture.tx(context) { context(context) { view.list(GroupRosterQuery(groupId, fixture.clock.now())) } }.clients
 
     private suspend fun single(): GroupRosterClient = roster().single()
 
@@ -87,8 +85,9 @@ class GroupRosterViewTest {
             val hallId = HallId.new()
             val sessionId = SessionId.new()
             TestPostgres.db
-                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
                 .bind("id", hallId)
+                .bind("name", "Зал $hallId")
                 .bind("orgId", fixture.orgId)
                 .bind("branchId", fixture.branchId)
                 .execute()
@@ -145,7 +144,7 @@ class GroupRosterViewTest {
             member()
             val other = employeeContext(orgId = fixture.orgId)
 
-            val error = fixture.attempt(other) { context(other) { view.list(fixture.groupId) } }.leftOrNull()
+            val error = fixture.attempt(other) { context(other) { view.list(GroupRosterQuery(fixture.groupId, fixture.clock.now())) } }.leftOrNull()
 
             assertEquals("GROUP_NOT_FOUND", assertIs<CommonDomainError>(error).code)
         }
@@ -306,5 +305,66 @@ class GroupRosterViewTest {
             unpaidVisit(member("Яковлева"))
 
             assertEquals(listOf("Яковлева", "Абрамов", "Белова"), roster().map { it.name })
+        }
+
+    @Test
+    fun `срок вышел — NO_MEMBERSHIP`() =
+        runTest {
+            val clientId = member()
+            active(clientId)
+            fixture.at(LocalDate(2026, 11, 16))
+
+            val client = single()
+
+            assertTrue(client.membership?.closePending == true)
+            assertEquals(GroupClientAttention.NO_MEMBERSHIP, client.attention)
+        }
+
+    @Test
+    fun `до конца срока 7 дней — MEMBERSHIP_ENDING по дате`() =
+        runTest {
+            val clientId = member()
+            active(clientId)
+            fixture.at(LocalDate(2026, 11, 8))
+
+            val client = single()
+
+            assertEquals(listOf(EndingSoonReason.BY_DATE), client.membership?.endingSoon)
+            assertEquals(GroupClientAttention.MEMBERSHIP_ENDING, client.attention)
+        }
+
+    @Test
+    fun `активный с вышедшим сроком уступает действующему активному`() =
+        runTest {
+            val clientId = member()
+            fixture.issue(clientId, issuedOn = LocalDate(2026, 9, 1), name = "Старый")
+            val currentId = active(clientId)
+
+            val client = single()
+
+            assertEquals(currentId, client.membership?.id)
+            assertNull(client.attention)
+        }
+
+    @Test
+    fun `долг на активном абонементе с остатком можно погасить`() =
+        runTest {
+            val clientId = member()
+            active(clientId)
+            unpaidVisit(clientId)
+
+            assertTrue(single().canRepay)
+        }
+
+    @Test
+    fun `долг без абонемента или с исчерпанным остатком погасить нельзя`() =
+        runTest {
+            val withoutMembership = member("Без абонемента")
+            unpaidVisit(withoutMembership)
+            val exhausted = member("Исчерпан")
+            fixture.setRemaining(active(exhausted), 0)
+            unpaidVisit(exhausted)
+
+            assertEquals(listOf(false, false), roster().map { it.canRepay })
         }
 }

@@ -61,6 +61,7 @@ function client(
     membership: membership(),
     hasNextMembership: false,
     unpaidSessions: 0,
+    canRepay: false,
     balance: { minorUnits: 0, currency: "RUB" },
     attention,
     ...overrides,
@@ -114,33 +115,15 @@ describe("filterRoster", () => {
 });
 
 describe("rosterAction", () => {
-  it("неоплаченные занятия при активном абонементе с остатком — погасить долг", () => {
-    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 2 }))).toBe("repay");
+  it("погашение разрешено сервером — погасить долг", () => {
+    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 2, canRepay: true }))).toBe("repay");
   });
 
-  it("безлимитный абонемент — погасить долг", () => {
-    const unlimited = membership({ sessionsTotal: null, sessionsRemaining: null });
-    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 1, membership: unlimited }))).toBe(
-      "repay",
-    );
-  });
-
-  it("долг только по балансу — открыть клиента", () => {
+  it("погашение не разрешено — открыть клиента", () => {
     expect(
       rosterAction(client("А", "DEBT", { balance: { minorUnits: -500_00, currency: "RUB" } })),
     ).toBe("openClient");
-  });
-
-  it("неактивированный абонемент или нулевой остаток — открыть клиента", () => {
-    const inactive = membership({ activated: false });
-    const empty = membership({ sessionsRemaining: 0 });
-    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 1, membership: inactive }))).toBe(
-      "openClient",
-    );
-    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 1, membership: empty }))).toBe(
-      "openClient",
-    );
-    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 1, membership: null }))).toBe(
+    expect(rosterAction(client("А", "DEBT", { unpaidSessions: 1, canRepay: false }))).toBe(
       "openClient",
     );
   });

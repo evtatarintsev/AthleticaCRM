@@ -38,6 +38,11 @@ data class GroupRosterClient(
     val hasNextMembership: Boolean,
     /** Число неоплаченных занятий клиента в этой группе. */
     val unpaidSessions: Int,
+    /**
+     * Неоплаченные занятия можно погасить с [membership]: он активирован и в нём остались
+     * занятия (или безлимит).
+     */
+    val canRepay: Boolean,
     /** Баланс личного счёта клиента. */
     val balance: Money,
     /** Причина внимания; `null` — участник в порядке. */

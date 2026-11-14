@@ -1853,14 +1853,6 @@ export const GroupAttendanceResponseSchema = z
   .readonly();
 export type GroupAttendanceResponse = z.output<typeof GroupAttendanceResponseSchema>;
 
-export const GroupClientSchema = z
-  .object({
-    id: ClientIdSchema,
-    name: z.string(),
-  })
-  .readonly();
-export type GroupClient = z.output<typeof GroupClientSchema>;
-
 export const GroupClientAttentionSchema = z.enum(["DEBT", "NO_MEMBERSHIP", "MEMBERSHIP_ENDING"]);
 export type GroupClientAttention = z.output<typeof GroupClientAttentionSchema>;
 
@@ -1926,7 +1918,6 @@ export const GroupDetailResponseSchema = z
     scheduleChangeAt: LocalDateSchema.nullable(),
     disciplines: z.array(GroupDisciplineSchema).readonly(),
     employees: z.array(GroupEmployeeSchema).readonly(),
-    clients: z.array(GroupClientSchema).readonly(),
   })
   .readonly();
 export type GroupDetailResponse = z.output<typeof GroupDetailResponseSchema>;
@@ -1981,6 +1972,7 @@ export const GroupRosterClientSchema = z
     membership: GroupRosterMembershipSchema.nullable(),
     hasNextMembership: z.boolean(),
     unpaidSessions: z.int32(),
+    canRepay: z.boolean(),
     balance: MoneySchema,
     attention: GroupClientAttentionSchema.nullable(),
   })

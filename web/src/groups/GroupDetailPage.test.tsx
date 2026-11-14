@@ -17,6 +17,7 @@ import {
   SetGroupDisciplinesRequestSchema,
   SetGroupEmployeesRequestSchema,
   SetGroupScheduleRequestSchema,
+  type ClientId,
   type GroupAttendanceResponse,
   type GroupDetailResponse,
   type GroupRosterClient,
@@ -87,7 +88,6 @@ const juniors = GroupDetailResponseSchema.parse({
   scheduleChangeAt: null,
   disciplines: [],
   employees: [],
-  clients: [{ id: anna.id, name: anna.name }],
 });
 
 const membershipId = "0199a0b2-0000-7000-8000-b00000000001";
@@ -114,6 +114,7 @@ const rosterClient = (
     },
     hasNextMembership: false,
     unpaidSessions: 0,
+    canRepay: false,
     balance: { minorUnits: 0, currency: "RUB" },
     attention: null,
   }),
@@ -130,33 +131,36 @@ const noAttendance: GroupAttendanceResponse = { sessions: [], participants: [] }
 /**
  * Поддельный сервер карточки группы: хранит группу и применяет к ней изменения так же, как
  * сервер. [failRemove] — удаление клиента отвечает бизнес-ошибкой, [failSet] — замена
- * дисциплин, тренеров и расписания. Состав строится из участников группы с правками [roster]
- * по идентификатору; [next] — ближайшее занятие, [attendance] — посещаемость группы.
+ * дисциплин, тренеров и расписания. Состав строится из участников [members] (по умолчанию —
+ * Анна) с правками [roster] по идентификатору; [next] — ближайшее занятие, [attendance] — посещаемость группы.
  */
 function groupServer(
   initial: GroupDetailResponse,
   {
     failRemove = false,
     failSet = false,
+    members: initialMembers = [anna],
     roster = {},
     next = null,
     attendance = noAttendance,
   }: {
     failRemove?: boolean;
     failSet?: boolean;
+    members?: readonly { readonly id: ClientId; readonly name: string }[];
     roster?: Readonly<Record<string, Partial<GroupRosterClient>>>;
     next?: GroupSessionSchema | null;
     attendance?: GroupAttendanceResponse;
   } = {},
 ) {
   let group = initial;
+  let members = initialMembers.map((c) => ({ id: c.id, name: c.name }));
   const all = [anna, vera, gleb];
   const staff = [ivanov, kozlov, sidorova];
   const disciplines = [boxing, judo];
   return appServer({
     "groups/detail": () => json(group),
     "groups/roster": () =>
-      json({ clients: group.clients.map((c) => rosterClient(c.id, c.name, roster[c.id])) }),
+      json({ clients: members.map((c) => rosterClient(c.id, c.name, roster[c.id])) }),
     "groups/sessions": () => json({ sessions: next === null ? [] : [next], last: null, next }),
     "attendance/group": () => json(attendance),
     "disciplines/list": () => json({ disciplines }),
@@ -215,7 +219,7 @@ function groupServer(
       const added = all
         .filter((c) => request.clientIds.includes(c.id))
         .map((c) => ({ id: c.id, name: c.name }));
-      group = { ...group, clients: [...group.clients, ...added] };
+      members = [...members, ...added];
       return empty();
     },
     "clients/remove-from-group": ({ body }) => {
@@ -223,7 +227,7 @@ function groupServer(
         return groupNotFound();
       }
       const request = RemoveClientFromGroupRequestSchema.parse(body);
-      group = { ...group, clients: group.clients.filter((c) => !request.clientIds.includes(c.id)) };
+      members = members.filter((c) => !request.clientIds.includes(c.id));
       return empty();
     },
     "memberships/list": () =>
@@ -357,13 +361,11 @@ describe("сводка на вкладке «Обзор»", () => {
   });
 
   it("«Требуют внимания» показывает число с разбивкой и открывает состав с фильтром", async () => {
-    const group = {
-      ...juniors,
-      clients: [anna, vera, gleb].map((c) => ({ id: c.id, name: c.name })),
-    };
+    const group = juniors;
     openApp(
       `/groups/${group.id}`,
       groupServer(group, {
+        members: [anna, vera, gleb],
         roster: {
           [anna.id]: { attention: "DEBT" },
           [vera.id]: { attention: "DEBT" },
@@ -477,7 +479,7 @@ describe("состав группы на вкладке «Клиенты»", () 
   });
 
   it("пустая группа — сообщение и действие добавления", async () => {
-    openApp(`/groups/${juniors.id}?tab=clients`, groupServer({ ...juniors, clients: [] }).fetch);
+    openApp(`/groups/${juniors.id}?tab=clients`, groupServer(juniors, { members: [] }).fetch);
 
     expect(await screen.findByText(ru["groups.detail.clientsEmpty"])).toBeVisible();
     expect(
@@ -508,8 +510,9 @@ describe("состав группы на вкладке «Клиенты»", () 
   it("неоплаченные занятия с остатком — «Погасить долг» открывает абонемент клиента", async () => {
     openApp(
       `/groups/${juniors.id}?tab=clients`,
-      groupServer(juniors, { roster: { [anna.id]: { unpaidSessions: 2, attention: "DEBT" } } })
-        .fetch,
+      groupServer(juniors, {
+        roster: { [anna.id]: { unpaidSessions: 2, canRepay: true, attention: "DEBT" } },
+      }).fetch,
     );
     const user = userEvent.setup();
 
@@ -536,13 +539,13 @@ describe("состав группы на вкладке «Клиенты»", () 
   });
 
   it("фильтр «Требуют внимания» и поиск по имени", async () => {
-    const group = {
-      ...juniors,
-      clients: [anna, vera, gleb].map((c) => ({ id: c.id, name: c.name })),
-    };
+    const group = juniors;
     openApp(
       `/groups/${group.id}?tab=clients`,
-      groupServer(group, { roster: { [vera.id]: { attention: "MEMBERSHIP_ENDING" } } }).fetch,
+      groupServer(group, {
+        members: [anna, vera, gleb],
+        roster: { [vera.id]: { attention: "MEMBERSHIP_ENDING" } },
+      }).fetch,
     );
     const user = userEvent.setup();
 
@@ -601,13 +604,11 @@ describe("состав группы на вкладке «Клиенты»", () 
 
 describe("вкладка «Абонементы»", () => {
   it("группирует состав по абонементу, без абонемента — отдельно", async () => {
-    const group = {
-      ...juniors,
-      clients: [anna, vera, gleb].map((c) => ({ id: c.id, name: c.name })),
-    };
+    const group = juniors;
     openApp(
       `/groups/${group.id}?tab=memberships`,
       groupServer(group, {
+        members: [anna, vera, gleb],
         roster: { [gleb.id]: { membership: null, attention: "NO_MEMBERSHIP" } },
       }).fetch,
     );
@@ -621,7 +622,7 @@ describe("вкладка «Абонементы»", () => {
 describe("вкладка «Журнал»", () => {
   it("отличает «не участвовал» от «не пришёл», исключённые — в конце", async () => {
     const sessionId = "0199a0b2-0000-7000-8000-a00000000009";
-    const group = { ...juniors, clients: [anna, vera].map((c) => ({ id: c.id, name: c.name })) };
+    const group = juniors;
     const attendance = GroupAttendanceResponseSchema.parse({
       sessions: [{ id: sessionId, date: addDays(todayLocalDate(), -3), startTime: "18:00" }],
       participants: [
@@ -655,7 +656,10 @@ describe("вкладка «Журнал»", () => {
         },
       ],
     });
-    openApp(`/groups/${group.id}?tab=journal`, groupServer(group, { attendance }).fetch);
+    openApp(
+      `/groups/${group.id}?tab=journal`,
+      groupServer(group, { members: [anna, vera], attendance }).fetch,
+    );
 
     const absent = await screen.findByRole("link", { name: "Не пришёл · болеет" });
     expect(absent).toHaveAttribute("href", `/sessions/${sessionId}`);

@@ -9,13 +9,13 @@ import org.athletica.crm.api.schemas.groups.GroupRosterClient
 import org.athletica.crm.api.schemas.groups.GroupRosterMembership
 import org.athletica.crm.api.schemas.groups.GroupRosterResponse
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toMembershipId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.subscription.ActiveStatus
+import org.athletica.crm.core.subscription.Remaining
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -25,36 +25,50 @@ import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
 /**
- * Реализация [GroupRosterView] одним SQL: строка на активного участника с выбранным по ступеням
- * абонементом группы, числом неоплаченных занятий и балансом. Признаки «заканчивается» и
- * «к закрытию» выводит общий [ActiveStatus.of] на сегодняшнюю дату организации, причину внимания
- * и порядок по ней — Kotlin после SQL: состав одной группы невелик и не постраничный.
+ * Реализация [GroupRosterView]: сегодняшняя дата организации на момент запроса с проверкой
+ * группы, затем один SQL по участникам с выбранным по ступеням абонементом группы, числом
+ * неоплаченных занятий и балансом. Признаки «заканчивается» и «к закрытию» выводит общий
+ * [ActiveStatus.of], причину внимания и порядок по ней — Kotlin после SQL: состав одной группы
+ * невелик и не постраничный.
  */
 class DbGroupRosterView : GroupRosterView {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun list(groupId: GroupId): GroupRosterResponse {
-        val rows =
+    override suspend fun list(query: GroupRosterQuery): GroupRosterResponse {
+        val today =
             tr
-                .sql(SQL)
-                .bind("groupId", groupId)
+                .sql(
+                    """
+                    SELECT (CAST(:now AS timestamptz) AT TIME ZONE o.timezone)::date AS today
+                      FROM groups g
+                      JOIN organizations o ON o.id = g.org_id
+                     WHERE g.id = :groupId AND g.org_id = :orgId AND g.branch_id = :branchId
+                    """.trimIndent(),
+                )
+                .bind("now", query.now)
+                .bind("groupId", query.groupId)
                 .bind("orgId", ctx.orgId)
                 .bind("branchId", ctx.branchId)
-                .list { row -> listOfNotNull(row.toClient()) }
-        if (rows.isEmpty()) {
-            raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
-        }
-        val clients = rows.flatten().sortedBy { it.attention?.ordinal ?: GroupClientAttention.entries.size }
-        return GroupRosterResponse(clients)
+                .firstOrNull { it.asLocalDate("today") }
+                ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
+        val clients =
+            tr
+                .sql(SQL)
+                .bind("groupId", query.groupId)
+                .bind("orgId", ctx.orgId)
+                .bind("today", today)
+                .list { it.toClient(today) }
+        return GroupRosterResponse(clients.sortedWith(compareBy(nullsLast()) { it.attention }))
     }
 
-    /** Участник из строки выборки; `null` — строка пустой группы без участников. */
+    /** Участник из строки выборки с признаками абонемента на дату [today]. */
     context(ctx: EmployeeRequestContext)
-    private fun Row.toClient(): GroupRosterClient? {
-        val id = asUuidOrNull("client_id") ?: return null
-        val membership = toMembership(asLocalDate("today"))
+    private fun Row.toClient(today: LocalDate): GroupRosterClient {
+        val status = activeStatus(today)
+        val membership = toMembership(status)
         val hasNext = asBoolean("has_next")
         val unpaid = asInt("unpaid_sessions")
         val balance = asMoney("balance", ctx.currency)
@@ -66,36 +80,38 @@ class DbGroupRosterView : GroupRosterView {
                 else -> null
             }
         return GroupRosterClient(
-            id = id.toClientId(),
+            id = asUuid("client_id").toClientId(),
             name = asString("client_name"),
             avatarId = asUuidOrNull("avatar_id")?.toUploadId(),
             membership = membership,
             hasNextMembership = hasNext,
             unpaidSessions = unpaid,
+            canRepay = unpaid > 0 && status != null && status.remaining != Remaining.Exhausted,
             balance = balance,
             attention = attention,
         )
     }
 
-    /** Абонемент, действующий в группе, с признаками на дату [today]; `null` — его нет. */
-    private fun Row.toMembership(today: LocalDate): GroupRosterMembership? {
-        val id = asUuidOrNull("membership_id") ?: return null
-        val remaining = asIntOrNull("sessions_remaining")
+    /** Признаки активного абонемента на дату [today]; `null` — абонемента нет или он не активирован. */
+    private fun Row.activeStatus(today: LocalDate): ActiveStatus? {
         val start = asLocalDateOrNull("start_date")
         val end = asLocalDateOrNull("end_date")
-        val status =
-            if (asString("state") == "ACTIVE" && start != null && end != null) {
-                ActiveStatus.of(start, end, remaining, today)
-            } else {
-                null
-            }
+        if (start == null || end == null || asString("state") != "ACTIVE") {
+            return null
+        }
+        return ActiveStatus.of(start, end, asIntOrNull("sessions_remaining"), today)
+    }
+
+    /** Абонемент, действующий в группе, с признаками [status]; `null` — его нет. */
+    private fun Row.toMembership(status: ActiveStatus?): GroupRosterMembership? {
+        val id = asUuidOrNull("membership_id") ?: return null
         return GroupRosterMembership(
             id = id.toMembershipId(),
             name = asString("membership_name"),
             activated = status != null,
             sessionsTotal = asIntOrNull("sessions_total"),
-            sessionsRemaining = remaining,
-            endDate = end,
+            sessionsRemaining = asIntOrNull("sessions_remaining"),
+            endDate = asLocalDateOrNull("end_date"),
             endingSoon = status?.endingSoon?.sorted().orEmpty(),
             closePending = status?.closePending ?: false,
         )
@@ -103,20 +119,13 @@ class DbGroupRosterView : GroupRosterView {
 
     private companion object {
         /**
-         * Строка группы с участниками: пустая группа даёт одну строку без участника, чужая —
-         * ни одной. Ступень абонемента «к закрытию» — то же определение, что [ActiveStatus.closePending]:
-         * срок вышел или остаток 0.
+         * Активные участники группы. Ступень абонемента «к закрытию» — то же определение, что
+         * [ActiveStatus.closePending]: срок вышел или остаток 0; нужна SQL-копия, чтобы выбрать
+         * абонемент в `LATERAL`.
          */
         val SQL =
             """
-            WITH grp AS (
-                SELECT g.id, g.org_id, (now() AT TIME ZONE o.timezone)::date AS today
-                  FROM groups g
-                  JOIN organizations o ON o.id = g.org_id
-                 WHERE g.id = :groupId AND g.org_id = :orgId AND g.branch_id = :branchId
-            )
             SELECT
-                grp.today,
                 c.id AS client_id,
                 c.name AS client_name,
                 c.avatar_id,
@@ -129,38 +138,38 @@ class DbGroupRosterView : GroupRosterView {
                 m.end_date,
                 EXISTS (SELECT 1
                           FROM memberships n
-                          JOIN membership_groups ng ON ng.membership_id = n.id AND ng.group_id = grp.id
-                         WHERE n.client_id = c.id AND n.org_id = grp.org_id AND n.state = 'INACTIVE'
+                          JOIN membership_groups ng ON ng.membership_id = n.id AND ng.group_id = e.group_id
+                         WHERE n.client_id = c.id AND n.org_id = c.org_id AND n.state = 'INACTIVE'
                            AND n.id IS DISTINCT FROM m.id) AS has_next,
                 (SELECT COUNT(*)::int
                    FROM session_attendance a
                    JOIN sessions s ON s.id = a.session_id
                   WHERE a.client_id = c.id AND a.presence = 'present'
-                    AND s.group_id = grp.id AND s.org_id = grp.org_id AND s.status = 'completed'
+                    AND s.group_id = e.group_id AND s.org_id = c.org_id AND s.status = 'completed'
                     AND NOT EXISTS (SELECT 1 FROM membership_debits d
                                      WHERE d.session_id = s.id AND d.client_id = c.id
                                        AND d.reversed_at IS NULL)) AS unpaid_sessions,
                 COALESCE((SELECT j.balance_after
                             FROM client_balance_journal j
-                           WHERE j.client_id = c.id AND j.org_id = grp.org_id
+                           WHERE j.client_id = c.id AND j.org_id = c.org_id
                            ORDER BY j.created_at DESC
                            LIMIT 1), 0) AS balance
-            FROM grp
-            LEFT JOIN enrollments e ON e.group_id = grp.id AND e.left_at IS NULL
-            LEFT JOIN clients c ON c.id = e.client_id
+            FROM enrollments e
+            JOIN clients c ON c.id = e.client_id AND c.org_id = :orgId
             LEFT JOIN LATERAL (
                 SELECT mm.*
                   FROM memberships mm
-                  JOIN membership_groups mg ON mg.membership_id = mm.id AND mg.group_id = grp.id
-                 WHERE mm.client_id = c.id AND mm.org_id = grp.org_id AND mm.state IN ('ACTIVE', 'INACTIVE')
+                  JOIN membership_groups mg ON mg.membership_id = mm.id AND mg.group_id = e.group_id
+                 WHERE mm.client_id = c.id AND mm.org_id = c.org_id AND mm.state IN ('ACTIVE', 'INACTIVE')
                  ORDER BY CASE
                               WHEN mm.state = 'INACTIVE' THEN 1
-                              WHEN mm.end_date < grp.today OR mm.sessions_remaining <= 0 THEN 2
+                              WHEN mm.end_date < :today OR mm.sessions_remaining <= 0 THEN 2
                               ELSE 0
                           END,
                           mm.end_date NULLS LAST, mm.issued_on, mm.created_at, mm.id
                  LIMIT 1
             ) m ON TRUE
+            WHERE e.group_id = :groupId AND e.left_at IS NULL
             ORDER BY c.name, c.id
             """.trimIndent()
     }

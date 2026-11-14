@@ -29,9 +29,6 @@ export const GroupDetailSearchSchema = z.object({
   tab: z.enum(GROUP_TABS).optional().catch(undefined),
 });
 
-/** Search-параметры карточки группы. */
-export type GroupDetailSearch = z.output<typeof GroupDetailSearchSchema>;
-
 /** Причины внимания в порядке важности, как их упорядочивает сервер. */
 export const ATTENTION_ORDER: readonly GroupClientAttention[] = [
   "DEBT",
@@ -85,23 +82,16 @@ export function filterRoster(
 export type RosterAction = "repay" | "openClient" | "issue" | "issueNext";
 
 /**
- * Действие для участника [client]: долг гасится с абонемента, только если есть неоплаченные
- * занятия, абонемент активирован и в нём остались занятия (или безлимит), иначе — переход в карточку
- * клиента; без абонемента — выдача, заканчивающийся — выдача нового. Без причины — `null`.
+ * Действие для участника [client]: долг гасится с абонемента, если сервер разрешил погашение
+ * (`canRepay`), иначе — переход в карточку клиента; без абонемента — выдача, заканчивающийся —
+ * выдача нового. Без причины — `null`.
  */
 export function rosterAction(client: GroupRosterClient): RosterAction | null {
   switch (client.attention) {
     case null:
       return null;
-    case "DEBT": {
-      const membership = client.membership;
-      const canRepay =
-        client.unpaidSessions > 0 &&
-        membership !== null &&
-        membership.activated &&
-        (membership.sessionsRemaining === null || membership.sessionsRemaining > 0);
-      return canRepay ? "repay" : "openClient";
-    }
+    case "DEBT":
+      return client.canRepay ? "repay" : "openClient";
     case "NO_MEMBERSHIP":
       return "issue";
     case "MEMBERSHIP_ENDING":

@@ -34,18 +34,6 @@ data class ActiveStatus(
     val closePending: Boolean
         get() = termPosition == TermPosition.EXPIRED || remaining == Remaining.Exhausted
 
-    /**
-     * Нужно ли уведомление «к закрытию» при режиме закрытия [closeMode]: абонемент «к закрытию»,
-     * а режим его сам не закроет. «Вручную» — при любом «к закрытию»; «при списании последнего» —
-     * при вышедшем сроке и оставшихся занятиях; «по истечении срока» — никогда.
-     */
-    fun needsCloseNotification(closeMode: CloseMode): Boolean =
-        when (closeMode) {
-            CloseMode.MANUAL -> closePending
-            CloseMode.ON_LAST_SESSION -> termPosition == TermPosition.EXPIRED && remaining is Remaining.Left
-            CloseMode.ON_EXPIRY -> false
-        }
-
     companion object {
         /** Порог «заканчивается по дате»: до даты окончания столько дней или меньше. */
         const val ENDING_SOON_DAYS = 7

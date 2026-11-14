@@ -1,28 +1,34 @@
 ## 1. Server: group roster projection
 
-- [ ] 1.1 Add to `shared` (`api/schemas/groups/`): `GroupClientAttention` enum (`DEBT`,
-      `NO_MEMBERSHIP`, `MEMBERSHIP_ENDING`), `GroupRosterMembership` (`id`, `name`,
+- [ ] 1.1 Move `ActiveStatus`, `Remaining` and `ActiveStatus.of` from
+      `domain/memberships/MembershipRules.kt` to `shared` (`core/subscription/`) as pure code;
+      `domain/memberships` keeps using them; existing membership tests stay green.
+- [ ] 1.2 Add to `shared` (`api/schemas/groups/`): `GroupClientAttention` enum (`DEBT`,
+      `NO_MEMBERSHIP`, `MEMBERSHIP_ENDING`), `GroupRosterMembership` (`id`, `name`, `activated`,
       `sessionsTotal?`, `sessionsRemaining?`, `endDate?`, `endingSoon`, `closePending`),
-      `GroupRosterClient` (`id`, `name`, `avatarId?`, `membership?`, `unpaidSessions`, `balance`,
-      `attention?`), `GroupRosterRequest` (`groupId`), `GroupRosterResponse` (`clients`).
-- [ ] 1.2 Create `read/groups/GroupRosterView` + `DbGroupRosterView`: one SQL over active
-      enrollments scoped by `ctx.orgId` and the group branch; membership acting in the group via
-      `membership_groups` (active before not-started, then nearest end date; closed and revoked
-      excluded); `endingSoon` / `closePending` derived the same way as `membership-lifecycle`;
-      unpaid sessions per `membership-debits`; balance per `client-balance`; attention rule and
-      ordering per `group-roster` spec.
-- [ ] 1.3 DB test `server/src/test/kotlin/org/athletica/crm/read/groups/GroupRosterViewTest.kt`
+      `GroupRosterClient` (`id`, `name`, `avatarId?`, `membership?`, `hasNextMembership`,
+      `unpaidSessions`, `balance`, `attention?`), `GroupRosterRequest` (`groupId`),
+      `GroupRosterResponse` (`clients`).
+- [ ] 1.3 Create `read/groups/GroupRosterView` + `DbGroupRosterView`: one SQL over active
+      enrollments scoped by `ctx.orgId` and the group branch, returning raw fields; membership
+      acting in the group via `membership_groups` picked by tiers (active not close-pending →
+      inactive → active close-pending; then nearest end date `NULLS LAST`, then issued earlier;
+      closed and revoked excluded); `hasNextMembership`; unpaid sessions per `membership-debits`;
+      balance per `client-balance`. `endingSoon` / `closePending` via shared `ActiveStatus.of`,
+      attention rule and ordering in Kotlin on the org's today, per `group-roster` spec.
+- [ ] 1.4 DB test `server/src/test/kotlin/org/athletica/crm/read/groups/GroupRosterViewTest.kt`
       covering every scenario of `specs/group-roster/spec.md`.
-- [ ] 1.4 Register in `ReadViews`; add GET `groups/roster` to `routes/GroupsRoutes.kt`.
-- [ ] 1.5 `./gradlew build`, `./gradlew ktlintFormat`, `cd web && npm run contracts`, commit
+- [ ] 1.5 Register in `ReadViews`; add GET `groups/roster` to `routes/GroupsRoutes.kt`.
+- [ ] 1.6 `./gradlew build`, `./gradlew ktlintFormat`, `cd web && npm run contracts`, commit
       `web/src/api/generated/`.
 
 ## 2. Web: data and pure logic
 
 - [ ] 2.1 Add `useGroupRoster` and `useGroupAttendance` to `web/src/groups/groupsQueries.ts`.
 - [ ] 2.2 `web/src/groups/groupOverview.ts`: attention counts by reason, roster filtering and
-      search, membership grouping, attendance rate over the last 10 closed sessions, schedule slot
-      merging for phone; unit tests for each spec scenario.
+      search, membership grouping, attendance rate over the last 10 closed sessions, journal rows
+      (current roster + marked former members), debt action choice (repay vs open client),
+      schedule slot merging for phone; unit tests for each spec scenario.
 
 ## 3. Web: page and tabs
 
@@ -33,8 +39,9 @@
       attention indicator.
 - [ ] 3.3 `GroupOverviewTab.tsx`: next session, attention, clients, attendance tiles; schedule and
       trainers cards; empty states.
-- [ ] 3.4 `GroupClientsTab.tsx`: roster rows with membership, balance, reason and action (repay
-      debt via the client membership sheet, issue membership sheet); search, filters with counts;
+- [ ] 3.4 `GroupClientsTab.tsx`: roster rows with membership, balance, reason and action («Погасить
+      долг» via the client membership sheet or «Открыть клиента»; «Оформить абонемент» /
+      «Новый абонемент» via the issue membership sheet); search, filters with counts;
       keep add/remove behaviour from `group-clients`.
 - [ ] 3.5 `GroupMembershipsTab.tsx`; move `GroupSessionsSection` into the «Занятия» tab;
       `GroupJournalTab.tsx` over `attendance/group` with period switching and links to session

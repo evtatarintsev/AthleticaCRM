@@ -1,10 +1,10 @@
 package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
-import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
@@ -13,9 +13,13 @@ import org.athletica.crm.core.entityids.SlotId
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSlotId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.time.Validity
+import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.sessions.DbScheduleSync
+import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.domain.sessions.UntouchedSessions
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -25,8 +29,11 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
 /** Реализация [GroupSchedule] поверх PostgreSQL: версии слотов в `schedule_slots.validity`. */
-class DbGroupSchedule : GroupSchedule {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+class DbGroupSchedule(
+    private val calendar: OrgCalendar = DbOrgCalendar(),
+    private val sync: ScheduleSync = DbScheduleSync(calendar),
+) : GroupSchedule {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun slotsOn(groupId: GroupId, date: LocalDate): List<ScheduleSlot> =
         tr
             .sql("$SELECT_SLOTS AND ss.validity @> :date::date ORDER BY ss.day_of_week, ss.start_time")
@@ -35,7 +42,7 @@ class DbGroupSchedule : GroupSchedule {
             .bind("date", date)
             .list { row -> row.toSlot() }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun slotsDuring(groupId: GroupId, from: LocalDate, to: LocalDate): List<ScheduleSlot> =
         tr
             .sql(
@@ -48,9 +55,9 @@ class DbGroupSchedule : GroupSchedule {
             .bind("to", to)
             .list { row -> row.toSlot() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>) {
-        val today = java.time.LocalDate.now().toKotlinLocalDate()
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun setFrom(groupId: GroupId, effectiveFrom: LocalDate?, slots: List<NewSlot>): LocalDate {
+        val today = calendar.today()
         val from = effectiveFrom ?: today
         if (from < today) {
             raise(CommonDomainError("SCHEDULE_EFFECTIVE_FROM_IN_PAST", Messages.ScheduleEffectiveFromInPast.localize()))
@@ -75,10 +82,12 @@ class DbGroupSchedule : GroupSchedule {
         }
 
         slots.filterNot { it.key in kept }.forEach { insert(groupId, it, from) }
+        sync.sync(today)
+        return from
     }
 
     /** Отклоняет повторяющиеся правила и правила с некорректным временем. */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private fun List<NewSlot>.validated() {
         forEach { it.validate() }
         groupingBy { it.key }
@@ -96,7 +105,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Убеждается, что группа существует в организации контекста. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun requireGroupExists(groupId: GroupId) {
         tr
             .sql("SELECT 1 AS ok FROM groups WHERE id = :groupId AND org_id = :orgId")
@@ -107,7 +116,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Убеждается, что зал слота принадлежит филиалу группы. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun requireHallBelongsToGroup(groupId: GroupId, slot: NewSlot) {
         tr
             .sql(
@@ -126,7 +135,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Версии, которые начинают действовать строго позже [from] — отложенные изменения. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun plannedAfter(groupId: GroupId, from: LocalDate): List<SlotId> =
         tr
             .sql(
@@ -142,7 +151,7 @@ class DbGroupSchedule : GroupSchedule {
             .list { row -> row.asUuid("id").toSlotId() }
 
     /** Снимает ограничение периода сверху: версия действует бессрочно. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun extendForever(slot: ScheduleSlot) {
         if (slot.validity.to == null) {
             return
@@ -154,7 +163,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Закрывает версию датой [date]: она перестаёт действовать с этого дня. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun closeAt(slot: ScheduleSlot, date: LocalDate) {
         tr
             .sql("UPDATE schedule_slots SET validity = daterange(lower(validity), :date::date) WHERE id = :id")
@@ -168,7 +177,7 @@ class DbGroupSchedule : GroupSchedule {
      * нетронутые удаляются вместе с правилом, изменённые человеком теряют происхождение и остаются.
      * Без открепления `ON DELETE RESTRICT` уронил бы транзакцию.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun dropVersion(slotId: SlotId) {
         tr
             .sql("DELETE FROM sessions s WHERE s.origin_slot_id = :slotId AND ${UntouchedSessions.predicate("s")}")
@@ -185,7 +194,7 @@ class DbGroupSchedule : GroupSchedule {
     }
 
     /** Создаёт новую бессрочную версию правила [slot], действующую с [from]. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun insert(groupId: GroupId, slot: NewSlot, from: LocalDate) {
         tr
             .sql(
@@ -231,6 +240,6 @@ private fun io.r2dbc.spi.Row.toSlot(): ScheduleSlot {
         startAt = asLocalTime("start_time"),
         endAt = asLocalTime("end_time"),
         hallId = asUuid("hall_id").toHallId(),
-        validity = Validity.of(from, to).getOrNull()!!,
+        validity = either { Validity.of(from, to) }.getOrNull()!!,
     )
 }

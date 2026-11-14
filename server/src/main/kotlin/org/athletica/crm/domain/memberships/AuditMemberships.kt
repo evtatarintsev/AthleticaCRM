@@ -5,12 +5,13 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.CloseMode
@@ -28,13 +29,13 @@ import org.athletica.crm.storage.Transaction
  * обёрнуты [AuditActiveMembership].
  */
 class AuditMemberships(private val delegate: Memberships, private val audit: AuditLog) : Memberships by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun issue(
         id: MembershipId,
         clientId: ClientId,
         tariffPlanId: TariffPlanId?,
         name: String,
-        sessions: Int?,
+        sessions: PositiveInt?,
         groupIds: List<GroupId>,
         duration: MembershipDuration,
         price: Money,
@@ -45,15 +46,15 @@ class AuditMemberships(private val delegate: Memberships, private val audit: Aud
         delegate.issue(id, clientId, tariffPlanId, name, sessions, groupIds, duration, price, activation, closeMode, issuedOn).also {
             if (ctx is EmployeeRequestContext) {
                 context(ctx) {
-                    audit.logUpdate("membership", id, Json.encodeToString(MembershipAuditData(clientId, tariffPlanId, name, sessions, groupIds, activation.mode, closeMode, issuedOn, price)))
+                    audit.logUpdate("membership", id, Json.encodeToString(MembershipAuditData(clientId, tariffPlanId, name, sessions?.value, groupIds, activation.mode, closeMode, issuedOn, price)))
                 }
             }
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: MembershipId): Membership = audited(delegate.byId(id))
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun debitCandidate(
         clientId: ClientId,
         groupId: GroupId,
@@ -75,7 +76,7 @@ class AuditMemberships(private val delegate: Memberships, private val audit: Aud
  * продление в той же транзакции. Автор — сотрудник из контекста, для системного контекста — «Система».
  */
 private class AuditActiveMembership(private val delegate: ActiveMembership, private val audit: AuditLog) : ActiveMembership by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun freeze(
         start: LocalDate,
         end: LocalDate,
@@ -86,7 +87,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
             logFreezeChange(requireNotNull(it.freeze), null, it.endDate)
         }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unfreeze(day: LocalDate, reason: UnfreezeReason): ActiveMembership {
         val freeze = delegate.freeze
         return AuditActiveMembership(delegate.unfreeze(day, reason), audit).also {
@@ -94,7 +95,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun extend(newEndDate: LocalDate, reason: String, today: LocalDate): ActiveMembership {
         val previousEndDate = delegate.endDate
         return AuditActiveMembership(delegate.extend(newEndDate, reason, today), audit).also {
@@ -106,7 +107,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
      * Пишет в аудит оформление ([unfreezeReason] `null`) или снятие заморозки [freeze]
      * с новой датой окончания [membershipEndDate].
      */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun logFreezeChange(
         freeze: MembershipFreeze,
         unfreezeReason: UnfreezeReason?,
@@ -125,7 +126,7 @@ private class AuditActiveMembership(private val delegate: ActiveMembership, priv
     )
 
     /** Пишет в аудит изменение абонемента с данными [data]. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun logChange(data: String) {
         val employee = ctx as? EmployeeRequestContext
         audit.log(

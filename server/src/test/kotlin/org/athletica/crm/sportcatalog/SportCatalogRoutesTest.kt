@@ -1,6 +1,7 @@
 package org.athletica.crm.sportcatalog
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -15,13 +16,12 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.sportcatalog.SportCatalogResponse
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
-import org.athletica.crm.usecases.auth.signUp
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -41,21 +41,23 @@ class SportCatalogRoutesTest {
     /** Регистрирует организацию [company] с владельцем [login] и возвращает его токен. */
     private suspend fun ownerToken(company: String, login: String): String {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
-                            companyName = company,
-                            userName = "Owner",
+                            companyName = testName(company),
+                            userName = testName("Owner"),
                             login = login,
                             password = "password123",
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        return testJwtConfig.makeAccessToken(assertIs<Either.Right<User>>(result).value)
+        return testJwtConfig.makeAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
     }
 
     /** Каталог, запрошенный с токеном [token] и языком [lang]. */

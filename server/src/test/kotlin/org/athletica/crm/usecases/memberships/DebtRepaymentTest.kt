@@ -2,25 +2,35 @@ package org.athletica.crm.usecases.memberships
 
 import arrow.core.Either
 import arrow.core.raise.context.Raise
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.attendance.DbParticipations
+import org.athletica.crm.domain.attendance.Participation
+import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
+import org.athletica.crm.domain.memberships.DbMemberships
 import org.athletica.crm.domain.memberships.DebitFixture
 import org.athletica.crm.domain.memberships.InactiveMembership
 import org.athletica.crm.domain.memberships.MembershipFixture
+import org.athletica.crm.domain.memberships.reconcileDebit
 import org.athletica.crm.domain.notifications.DbNotifications
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.tasks.DbTasks
@@ -29,6 +39,7 @@ import org.athletica.crm.domain.tasks.Tasks
 import org.athletica.crm.read.memberships.DbUnpaidSessionsView
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,13 +76,15 @@ class DebtRepaymentTest {
 
     private suspend fun unpaidOf(id: MembershipId) = fixture.tx { unpaid.byMembership(id) }.sessions.map { it.sessionId }
 
-    private suspend fun repay(id: MembershipId, sessions: List<SessionId>) = fixture.attempt { repayDebt(fixture.memberships, DbParticipations(), calendar, id, sessions) }
+    private suspend fun repay(id: MembershipId, sessions: List<SessionId>) = fixture.attempt { fixture.memberships.repayDebt(id, sessions, calendar.today()) }
 
     private suspend fun tasksForClient(client: ClientId): List<String> =
-        TestPostgres.db
-            .sql("SELECT description FROM tasks WHERE client_id = :c AND created_by IS NULL AND assignee_id IS NULL")
-            .bind("c", client)
-            .list { it.get("description", String::class.java)!! }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT description FROM tasks WHERE client_id = :c AND created_by IS NULL AND assignee_id IS NULL")
+                .bind("c", client)
+                .list { it.asString("description") }
+        }
 
     @Test
     fun `посещение без абонемента — неоплаченное, отменённое и отсутствие — нет`() =
@@ -124,7 +137,7 @@ class DebtRepaymentTest {
 
             val result = repay(issued.id, sessions)
 
-            assertEquals("DEBT_EXCEEDS_REMAINING", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("DEBT_EXCEEDS_REMAINING", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(2, unpaidOf(issued.id).size)
             assertEquals(1, fixture.reload(issued.id).sessionsRemaining)
         }
@@ -139,7 +152,7 @@ class DebtRepaymentTest {
 
             val result = repay(issued.id, listOf(session))
 
-            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -153,8 +166,81 @@ class DebtRepaymentTest {
 
             val result = repay(second.id, listOf(session))
 
-            assertEquals("ALREADY_DEBITED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("ALREADY_DEBITED", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(8, fixture.reload(second.id).sessionsRemaining)
+        }
+
+    @Test
+    fun `пустой набор и чужая группа не меняют абонемент, повторы списываются один раз`() =
+        orThrow {
+            runTest {
+                val client = fixture.insertClient()
+                val valid = attended(client, 10)
+                val foreignGroup = GroupId.new()
+                TestPostgres.db.sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :org, :branch, 'Другая группа')")
+                    .bind("id", foreignGroup)
+                    .bind("org", fixture.orgId)
+                    .bind("branch", fixture.branchId)
+                    .execute()
+                val invalid = debits.session(date(11), groupId = foreignGroup)
+                debits.mark(invalid, client, "present")
+                val issued = fixture.issue(client, sessions = 1)
+                val history = fixture.eventKinds(issued.id)
+
+                for ((expected, ids) in listOf(
+                    "DEBT_SESSIONS_REQUIRED" to emptyList(),
+                    "SESSION_NOT_UNPAID" to listOf(valid, invalid),
+                )) {
+                    assertEquals(expected, assertIs<Either.Left<AppError>>(repay(issued.id, ids)).value.code)
+                    assertEquals(1, fixture.reload(issued.id).sessionsRemaining)
+                    assertEquals(history, fixture.eventKinds(issued.id))
+                    assertEquals(0, debits.debitRows(valid, client))
+                }
+
+                assertIs<Either.Right<*>>(repay(issued.id, listOf(valid, valid)))
+                assertEquals(0, fixture.reload(issued.id).sessionsRemaining)
+                assertEquals(1, debits.debitRows(valid, client))
+            }
+        }
+
+    @Test
+    fun `автоматическое списание и погашение блокируют участие до абонемента`() =
+        runTest {
+            val client = fixture.insertClient()
+            val issued = fixture.issue(client, sessions = 1, closeMode = CloseMode.ON_LAST_SESSION)
+            val session = debits.session(date(16))
+            debits.mark(session, client, "present")
+            val autoLocked = CompletableDeferred<Unit>()
+            val manualReadyToLock = CompletableDeferred<Unit>()
+            val real = DbParticipations()
+            val manual =
+                DbMemberships(
+                    object : Participations {
+                        context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+                        override suspend fun lock(sessionId: SessionId, clientId: ClientId): Participation? {
+                            manualReadyToLock.complete(Unit)
+                            return real.lock(sessionId, clientId)
+                        }
+                    },
+                )
+
+            val automatic =
+                async {
+                    fixture.tx(fixture.system) {
+                        val participation = real.lock(session, client)
+                        autoLocked.complete(Unit)
+                        manualReadyToLock.await()
+                        fixture.memberships.reconcileDebit(session, client, participation, date(16))
+                    }
+                }
+            val repayment =
+                async {
+                    autoLocked.await()
+                    fixture.attempt { manual.repayDebt(issued.id, listOf(session), date(16)) }
+                }
+            assertEquals(issued.id, automatic.await()?.membership?.id)
+            assertEquals("ALREADY_DEBITED", assertIs<Either.Left<AppError>>(repayment.await()).value.code)
+            assertEquals(1, debits.debitRows(session, client))
         }
 
     @Test
@@ -223,10 +309,10 @@ class DebtRepaymentTest {
             fixture.at(date(10))
             val failingTasks =
                 object : Tasks by DbTasks() {
-                    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+                    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
                     override suspend fun new(
                         id: TaskId,
-                        title: String,
+                        title: NonBlankName,
                         description: String,
                         clientId: ClientId?,
                         dueDate: Instant?,

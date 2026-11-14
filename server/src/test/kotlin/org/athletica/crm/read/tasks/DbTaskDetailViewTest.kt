@@ -16,7 +16,8 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
@@ -24,6 +25,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -59,60 +61,64 @@ class DbTaskDetailViewTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Other Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Other Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+            }
         }
     }
 
-    private suspend fun insertClient(name: String): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", clientId).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return clientId
-    }
+    private suspend fun insertClient(name: String): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return clientId
+        }
 
-    private suspend fun insertUpload(originalName: String, sizeBytes: Long): UploadId {
-        val id = Uuid.generateV7()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-                VALUES (:id, :orgId, :userId, :key, :name, 'application/pdf', :size)
-                """.trimIndent(),
-            )
-            .bind("id", id).bind("orgId", orgId).bind("userId", userId)
-            .bind("key", "uploads/$id").bind("name", originalName).bind("size", sizeBytes)
-            .execute()
-        return id.toUploadId()
-    }
+    private suspend fun insertUpload(originalName: String, sizeBytes: Long): UploadId =
+        orThrow {
+            val id = Uuid.generateV7()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                    VALUES (:id, :orgId, :userId, :key, :name, 'application/pdf', :size)
+                    """.trimIndent(),
+                )
+                .bind("id", id).bind("orgId", orgId).bind("userId", userId)
+                .bind("key", "uploads/$id").bind("name", originalName).bind("size", sizeBytes)
+                .execute()
+            return id.toUploadId()
+        }
 
-    private suspend fun <T> inTransaction(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> =
+    private suspend fun <T> inTransaction(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(ctx, this, raise) { block() }
             }
         }
 
-    private suspend fun <T> succeeding(block: suspend context(EmployeeRequestContext, Transaction, Raise<DomainError>) () -> T): T = inTransaction(block).getOrElse { fail("Unexpected error: $it") }
+    private suspend fun <T> succeeding(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): T = inTransaction(block).getOrElse { fail("Unexpected error: $it") }
 
     @Test
     fun `возвращает карточку с именем создателя`() =
         runTest {
             val taskId = TaskId.new()
-            succeeding { tasks.new(taskId, "Позвонить", "Описание", null, null, null) }
+            succeeding { tasks.new(taskId, testName("Позвонить"), "Описание", null, null, null) }
 
             val row = succeeding { view.byId(taskId) }
 
@@ -131,21 +137,23 @@ class DbTaskDetailViewTest {
 
     @Test
     fun `подставляет имена исполнителя и клиента`() =
-        runTest {
-            val clientId = insertClient("Анна Клиентова")
-            val taskId = TaskId.new()
-            succeeding { tasks.new(taskId, "С клиентом", "", clientId, null, null) }
-            TestPostgres.db
-                .sql("UPDATE tasks SET assignee_id = :assigneeId WHERE id = :id")
-                .bind("assigneeId", otherEmployeeId).bind("id", taskId)
-                .execute()
+        orThrow {
+            runTest {
+                val clientId = insertClient("Анна Клиентова")
+                val taskId = TaskId.new()
+                succeeding { tasks.new(taskId, testName("С клиентом"), "", clientId, null, null) }
+                TestPostgres.db
+                    .sql("UPDATE tasks SET assignee_id = :assigneeId WHERE id = :id")
+                    .bind("assigneeId", otherEmployeeId).bind("id", taskId)
+                    .execute()
 
-            val row = succeeding { view.byId(taskId) }
+                val row = succeeding { view.byId(taskId) }
 
-            assertEquals(otherEmployeeId, row.assigneeId)
-            assertEquals("Пётр", row.assigneeName)
-            assertEquals(clientId, row.clientId)
-            assertEquals("Анна Клиентова", row.clientName)
+                assertEquals(otherEmployeeId, row.assigneeId)
+                assertEquals("Пётр", row.assigneeName)
+                assertEquals(clientId, row.clientId)
+                assertEquals("Анна Клиентова", row.clientName)
+            }
         }
 
     @Test
@@ -154,7 +162,7 @@ class DbTaskDetailViewTest {
             val taskId = TaskId.new()
             val upload = insertUpload("договор.pdf", sizeBytes = 2048)
             succeeding {
-                tasks.new(taskId, "С вложением", "", null, null, null)
+                tasks.new(taskId, testName("С вложением"), "", null, null, null)
                 tasks.byId(taskId).attach(upload).save()
             }
 
@@ -169,14 +177,16 @@ class DbTaskDetailViewTest {
 
     @Test
     fun `задача чужой организации не находится`() =
-        runTest {
-            val taskId = TaskId.new()
-            succeeding { tasks.new(taskId, "Своя", "", null, null, null) }
-            TestPostgres.db
-                .sql("UPDATE tasks SET org_id = :orgId WHERE id = :id")
-                .bind("orgId", otherOrgId).bind("id", taskId)
-                .execute()
+        orThrow {
+            runTest {
+                val taskId = TaskId.new()
+                succeeding { tasks.new(taskId, testName("Своя"), "", null, null, null) }
+                TestPostgres.db
+                    .sql("UPDATE tasks SET org_id = :orgId WHERE id = :id")
+                    .bind("orgId", otherOrgId).bind("id", taskId)
+                    .execute()
 
-            assertIs<Either.Left<DomainError>>(inTransaction { view.byId(taskId) })
+                assertIs<Either.Left<AppError>>(inTransaction { view.byId(taskId) })
+            }
         }
 }

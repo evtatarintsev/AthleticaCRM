@@ -8,8 +8,8 @@ import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.common.PerformedBy
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -24,7 +24,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * одним запросом, без загрузки агрегатов клиента, баланса и списка сотрудников.
  */
 class DbClientBalanceHistoryView : ClientBalanceHistoryView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byClient(clientId: ClientId): ClientBalanceHistoryResponse {
         requireClientExists(clientId)
         val entries =
@@ -41,7 +41,7 @@ class DbClientBalanceHistoryView : ClientBalanceHistoryView {
      * пуст, и без этой проверки несуществующий идентификатор возвращал бы пустой
      * список вместо ошибки.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun requireClientExists(clientId: ClientId) {
         tr
             .sql("SELECT 1 FROM clients WHERE id = :clientId AND org_id = :orgId")

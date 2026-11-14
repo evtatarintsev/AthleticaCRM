@@ -1,8 +1,10 @@
 package org.athletica.crm.core.time
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import org.athletica.crm.core.errors.AppError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -16,7 +18,7 @@ class ValidityTest {
 
     @Test
     fun `период с окончанием позже начала создаётся`() {
-        val result = Validity.of(march1, june1)
+        val result = either { Validity.of(march1, june1) }
 
         val validity = assertIs<Either.Right<Validity>>(result).value
         assertEquals(march1, validity.from)
@@ -25,26 +27,26 @@ class ValidityTest {
 
     @Test
     fun `бессрочный период создаётся`() {
-        val result = Validity.of(march1)
+        val result = either { Validity.of(march1) }
 
         assertEquals(null, assertIs<Either.Right<Validity>>(result).value.to)
     }
 
     @Test
     fun `вырожденный период отклоняется`() {
-        assertIs<Either.Left<*>>(Validity.of(march1, march1))
+        assertIs<Either.Left<*>>(either { Validity.of(march1, march1) })
     }
 
     @Test
     fun `период с окончанием раньше начала отклоняется`() {
-        val result = Validity.of(june1, march1)
+        val result = either { Validity.of(june1, march1) }
 
-        assertEquals("INVALID_VALIDITY", assertIs<Either.Left<org.athletica.crm.core.errors.DomainError>>(result).value.code)
+        assertEquals("INVALID_VALIDITY", assertIs<Either.Left<AppError>>(result).value.code)
     }
 
     @Test
     fun `начало периода входит в него, окончание — нет`() {
-        val validity = assertIs<Either.Right<Validity>>(Validity.of(march1, june1)).value
+        val validity = assertIs<Either.Right<Validity>>(either { Validity.of(march1, june1) }).value
 
         assertTrue(validity.contains(march1))
         assertTrue(validity.contains(LocalDate(2026, 5, 31)))
@@ -54,7 +56,7 @@ class ValidityTest {
 
     @Test
     fun `бессрочный период содержит любую дату не раньше начала`() {
-        val validity = assertIs<Either.Right<Validity>>(Validity.of(march1)).value
+        val validity = assertIs<Either.Right<Validity>>(either { Validity.of(march1) }).value
 
         assertTrue(validity.contains(LocalDate(2099, 1, 1)))
         assertFalse(validity.contains(LocalDate(2026, 2, 28)))
@@ -62,9 +64,9 @@ class ValidityTest {
 
     @Test
     fun `closedAt закрывает период указанной датой`() {
-        val validity = assertIs<Either.Right<Validity>>(Validity.of(march1)).value
+        val validity = assertIs<Either.Right<Validity>>(either { Validity.of(march1) }).value
 
-        val closed = assertIs<Either.Right<Validity>>(validity.closedAt(june1)).value
+        val closed = assertIs<Either.Right<Validity>>(either { validity.closedAt(june1) }).value
 
         assertEquals(march1, closed.from)
         assertEquals(june1, closed.to)
@@ -72,14 +74,14 @@ class ValidityTest {
 
     @Test
     fun `closedAt датой начала отклоняется`() {
-        val validity = assertIs<Either.Right<Validity>>(Validity.of(march1)).value
+        val validity = assertIs<Either.Right<Validity>>(either { Validity.of(march1) }).value
 
-        assertIs<Either.Left<*>>(validity.closedAt(march1))
+        assertIs<Either.Left<*>>(either { validity.closedAt(march1) })
     }
 
     @Test
     fun `сериализуется и десериализуется без потери границ`() {
-        val validity = assertIs<Either.Right<Validity>>(Validity.of(march1, june1)).value
+        val validity = assertIs<Either.Right<Validity>>(either { Validity.of(march1, june1) }).value
 
         val json = Json.encodeToString(Validity.serializer(), validity)
 

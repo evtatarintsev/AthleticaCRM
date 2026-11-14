@@ -16,10 +16,11 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toMembershipId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asIntOrNull
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -34,7 +35,7 @@ import org.athletica.crm.storage.sql.MembershipCandidateSql
  * занятие попадает в её период.
  */
 class DbSessionDebitPreviewView : SessionDebitPreviewView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun preview(sessionId: SessionId): SessionDebitPreviewResponse {
         tr
             .sql("SELECT 1 FROM sessions WHERE id = :sessionId AND org_id = :orgId")
@@ -85,8 +86,8 @@ class DbSessionDebitPreviewView : SessionDebitPreviewView {
         DebitMembershipSchema(
             id = asUuid("${prefix}_id").toMembershipId(),
             name = asString("${prefix}_name"),
-            sessionsRemaining = get("${prefix}_remaining", Int::class.javaObjectType),
-            sessionsTotal = get("${prefix}_total", Int::class.javaObjectType),
+            sessionsRemaining = asIntOrNull("${prefix}_remaining"),
+            sessionsTotal = asIntOrNull("${prefix}_total"),
         )
 
     private companion object {

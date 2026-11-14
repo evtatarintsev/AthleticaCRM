@@ -1,5 +1,6 @@
 package org.athletica.crm.domain.employees
 
+import arrow.core.raise.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.core.Lang
@@ -7,6 +8,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.EmployeesStub
@@ -16,6 +18,7 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import kotlin.collections.emptyList
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -31,7 +34,7 @@ private object FakeTransaction : Transaction {
 private class AuditLogStub : AuditLog {
     val events: MutableList<AuditEvent> = mutableListOf()
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }
@@ -43,7 +46,7 @@ class AuditEmployeesTest {
     private val ctx = employeeContext(lang = Lang.EN, orgId = orgId, currency = Currency.RUB, userId = UserId.new(), branchId = BranchId.new(), employeeId = employeeId, username = "owner@example.com", clientIp = "127.0.0.1", permissions = EmployeePermission())
     private val tr = FakeTransaction
     private val clock = Clock.System
-    private val emptyPermission = EmployeePermission(emptyList(), emptySet(), emptySet())
+    private val emptyPermission = EmployeePermissionSelection()
 
     private fun makeSubject(
         stub: EmployeesStub,
@@ -63,7 +66,7 @@ class AuditEmployeesTest {
             val employee =
                 either {
                     context(ctx, tr) {
-                        subject.new(id, "Иван Иванов", "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
+                        subject.new(id, testName("Иван Иванов"), "+71234567890", "ivan@example.com".toEmailAddress(), null, emptyPermission)
                     }
                 }.getOrNull()
 
@@ -83,7 +86,7 @@ class AuditEmployeesTest {
 
             either {
                 context(ctx, tr) {
-                    subject.new(id, "Мария", null, null, null, emptyPermission)
+                    subject.new(id, testName("Мария"), null, null, null, emptyPermission)
                 }
             }
 
@@ -106,7 +109,7 @@ class AuditEmployeesTest {
 
             either {
                 context(ctx, tr) {
-                    subject.new(id, "Сергей", "+79001234567", "sergey@example.com".toEmailAddress(), null, emptyPermission)
+                    subject.new(id, testName("Сергей"), "+79001234567", "sergey@example.com".toEmailAddress(), null, emptyPermission)
                 }
             }
 
@@ -127,7 +130,7 @@ class AuditEmployeesTest {
 
             either {
                 context(ctx, tr) {
-                    subject.new(EmployeeId.new(), "Без контактов", null, null, null, emptyPermission)
+                    subject.new(EmployeeId.new(), testName("Без контактов"), null, null, null, emptyPermission)
                 }
             }
 
@@ -147,7 +150,7 @@ class AuditEmployeesTest {
             repeat(3) {
                 either {
                     context(ctx, tr) {
-                        subject.new(EmployeeId.new(), "Сотрудник $it", null, null, null, emptyPermission)
+                        subject.new(EmployeeId.new(), testName("Сотрудник $it"), null, null, null, emptyPermission)
                     }
                 }
             }

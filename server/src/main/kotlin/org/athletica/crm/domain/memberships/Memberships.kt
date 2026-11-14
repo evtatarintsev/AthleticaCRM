@@ -2,13 +2,14 @@ package org.athletica.crm.domain.memberships
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.storage.Transaction
@@ -30,13 +31,13 @@ interface Memberships {
      * [activation] и правила выдачи ([issueOutcome]): при активации при выдаче в историю
      * пишется и активация. Выдавший — сотрудник из контекста.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun issue(
         id: MembershipId,
         clientId: ClientId,
         tariffPlanId: TariffPlanId?,
         name: String,
-        sessions: Int?,
+        sessions: PositiveInt?,
         groupIds: List<GroupId>,
         duration: MembershipDuration,
         price: Money,
@@ -49,7 +50,7 @@ interface Memberships {
      * Возвращает абонемент [id] организации, блокируя его строку до конца транзакции
      * (`FOR UPDATE`): за ним следует команда перехода.
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: MembershipId): Membership
 
     /**
@@ -61,7 +62,7 @@ interface Memberships {
      * `null` — подходящих абонементов нет (нормальный исход). Если кандидаты были, но все попытки
      * перехвачены, бросает [MembershipDebitConflict].
      */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun debitCandidate(
         clientId: ClientId,
         groupId: GroupId,
@@ -69,11 +70,15 @@ interface Memberships {
         today: LocalDate,
     ): Membership?
 
+    /** Атомарно гасит выбранные неоплаченные занятия. Сначала блокирует участия, затем абонемент. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun repayDebt(id: MembershipId, sessionIds: List<SessionId>, today: LocalDate): Membership
+
     /** Действующее списание за участие клиента [clientId] в занятии [sessionId]; `null` — нет. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activeDebit(sessionId: SessionId, clientId: ClientId): MembershipDebit?
 
     /** Возвращает абонементы клиента, новые сверху. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun forClient(clientId: ClientId): List<Membership>
 }

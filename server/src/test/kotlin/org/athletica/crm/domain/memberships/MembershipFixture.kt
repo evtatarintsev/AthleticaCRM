@@ -19,7 +19,8 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.CloseMode
@@ -27,6 +28,8 @@ import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asString
+import org.athletica.crm.testPositiveInt
 import kotlin.test.fail
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -59,33 +62,35 @@ class MembershipFixture(
 
     /** Создаёт организацию, выдающего сотрудника и его пользователя (на него ссылается аудит). */
     suspend fun setUp() {
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, 'hash')")
-            .bind("id", ctx.userId)
-            .bind("login", ctx.userId.toString())
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:id, 'Org', :tz, :currency)")
-            .bind("id", orgId)
-            .bind("tz", timezone)
-            .bind("currency", currency.name)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, 'Админ', true)")
-            .bind("id", employeeId)
-            .bind("orgId", orgId)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")
-            .bind("id", branchId)
-            .bind("orgId", orgId)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Дети 7–9')")
-            .bind("id", groupId)
-            .bind("orgId", orgId)
-            .bind("branchId", branchId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, 'hash')")
+                .bind("id", ctx.userId)
+                .bind("login", ctx.userId.toString())
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name, timezone, currency) VALUES (:id, 'Org', :tz, :currency)")
+                .bind("id", orgId)
+                .bind("tz", timezone)
+                .bind("currency", currency.name)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, 'Админ', true)")
+                .bind("id", employeeId)
+                .bind("orgId", orgId)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")
+                .bind("id", branchId)
+                .bind("orgId", orgId)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Дети 7–9')")
+                .bind("id", groupId)
+                .bind("orgId", orgId)
+                .bind("branchId", branchId)
+                .execute()
+        }
     }
 
     /** Ставит часы на полдень даты [date] в часовом поясе организации. */
@@ -100,29 +105,30 @@ class MembershipFixture(
     val groupId: GroupId = GroupId.new()
 
     /** Создаёт клиента организации. */
-    suspend fun insertClient(): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, 'Иван', 'MALE'::gender)")
-            .bind("id", clientId)
-            .bind("orgId", orgId)
-            .execute()
-        return clientId
-    }
+    suspend fun insertClient(): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, 'Иван', 'MALE'::gender)")
+                .bind("id", clientId)
+                .bind("orgId", orgId)
+                .execute()
+            return clientId
+        }
 
     /** Выполняет [block] в транзакции в контексте [context]; ошибка домена — провал теста. */
     suspend fun <T> tx(
         context: RequestContext = ctx,
-        block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T,
+        block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T,
     ): T = attempt(context, block).getOrElse { fail("Unexpected error: $it") }
 
     /** Выполняет [block] в транзакции в контексте [context] и возвращает результат или ошибку домена. */
     suspend fun <T> attempt(
         context: RequestContext = ctx,
-        block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T,
-    ): Either<DomainError, T> =
+        block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T,
+    ): Either<AppError, T> =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction { block(context, this, raise) }
         }
 
@@ -132,7 +138,7 @@ class MembershipFixture(
         activation: Activation = Activation.Immediate,
         closeMode: CloseMode = CloseMode.MANUAL,
         sessions: Int? = 8,
-        duration: MembershipDuration = MembershipDuration(1, DurationUnit.MONTHS),
+        duration: MembershipDuration = MembershipDuration(testPositiveInt(1), DurationUnit.MONTHS),
         issuedOn: LocalDate = LocalDate(2026, 10, 16),
         name: String = "8 занятий",
         groupIds: List<GroupId> = listOf(groupId),
@@ -143,7 +149,7 @@ class MembershipFixture(
                 clientId,
                 null,
                 name,
-                sessions,
+                sessions?.let(::testPositiveInt),
                 groupIds,
                 duration,
                 Money(4_000_00, currency),
@@ -158,19 +164,23 @@ class MembershipFixture(
 
     /** Устанавливает остаток занятий абонемента [id] напрямую в БД. */
     suspend fun setRemaining(id: MembershipId, remaining: Int) {
-        TestPostgres.db
-            .sql("UPDATE memberships SET sessions_remaining = :r WHERE id = :id")
-            .bind("r", remaining)
-            .bind("id", id)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("UPDATE memberships SET sessions_remaining = :r WHERE id = :id")
+                .bind("r", remaining)
+                .bind("id", id)
+                .execute()
+        }
     }
 
     /** Виды записей истории абонемента [id] от старых к новым. */
     suspend fun eventKinds(id: MembershipId): List<String> =
-        TestPostgres.db
-            .sql("SELECT kind FROM membership_events WHERE membership_id = :id ORDER BY occurred_at, id")
-            .bind("id", id)
-            .list { it.get("kind", String::class.java)!! }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT kind FROM membership_events WHERE membership_id = :id ORDER BY occurred_at, id")
+                .bind("id", id)
+                .list { it.asString("kind") }
+        }
 }
 
 /** Часы с изменяемым «сейчас» [now]. */

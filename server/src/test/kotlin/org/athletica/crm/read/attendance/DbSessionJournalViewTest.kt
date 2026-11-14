@@ -1,6 +1,7 @@
 package org.athletica.crm.read.attendance
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
@@ -8,6 +9,7 @@ import org.athletica.crm.attendance.plusDays
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.core.attendance.ParticipationKind
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.domain.attendance.AttendanceMark
 import org.junit.Before
@@ -28,38 +30,40 @@ class DbSessionJournalViewTest {
 
     @Test
     fun `журнал открытого занятия — группа и разовые участники с отметками по имени`() =
-        runTest {
-            fixture.setUp()
-            val coach = fixture.schedule.insertEmployee("Сергей")
-            val anna = fixture.insertClient("Аня")
-            val boris = fixture.insertClient("Борис")
-            val guest = fixture.insertClient("Вера")
-            fixture.enroll(anna, fixture.yesterday.plusDays(-30))
-            fixture.enroll(boris, fixture.yesterday.plusDays(-30))
-            val sick = fixture.insertLabel("Болеет", AttendanceLabelScope.ABSENT)
-            val session = fixture.insertSession()
-            fixture.schedule.linkSessionEmployee(session, coach)
-            fixture.inContext {
-                val journal = fixture.journals.byId(session)
-                journal.addOneTime(guest)
-                journal.mark(boris, AttendanceMark.Absent.from(setOf(sick)).getOrElse { error(it) })
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val coach = fixture.schedule.insertEmployee("Сергей")
+                val anna = fixture.insertClient("Аня")
+                val boris = fixture.insertClient("Борис")
+                val guest = fixture.insertClient("Вера")
+                fixture.enroll(anna, fixture.yesterday.plusDays(-30))
+                fixture.enroll(boris, fixture.yesterday.plusDays(-30))
+                val sick = fixture.insertLabel("Болеет", AttendanceLabelScope.ABSENT)
+                val session = fixture.insertSession()
+                fixture.schedule.linkSessionEmployee(session, coach)
+                fixture.inContext {
+                    val journal = fixture.journals.byId(session)
+                    journal.addOneTime(guest)
+                    journal.mark(boris, either { AttendanceMark.Absent.from(setOf(sick)) }.getOrElse { error(it) })
+                }
+                TestPostgres.db.sql("UPDATE attendance_labels SET archived_at = now() WHERE id = :id").bind("id", sick).execute()
+
+                val journal = fixture.inContext { view.journal(session) }
+
+                assertEquals(SessionStatus.SCHEDULED, journal.status)
+                assertTrue(journal.hasStarted)
+                assertEquals(listOf("Сергей"), journal.coaches.map { it.name })
+                assertEquals(listOf("Аня", "Борис", "Вера"), journal.participants.map { it.name })
+                assertEquals(
+                    listOf(ParticipationKind.REGULAR, ParticipationKind.REGULAR, ParticipationKind.ONE_TIME),
+                    journal.participants.map { it.kind },
+                )
+                assertEquals(listOf(null, AttendancePresence.ABSENT, null), journal.participants.map { it.presence })
+                val label = journal.participants[1].labels.single()
+                assertEquals(sick, label.id)
+                assertTrue(label.isArchived)
             }
-            TestPostgres.db.sql("UPDATE attendance_labels SET archived_at = now() WHERE id = :id").bind("id", sick).execute()
-
-            val journal = fixture.inContext { view.journal(session) }
-
-            assertEquals(SessionStatus.SCHEDULED, journal.status)
-            assertTrue(journal.hasStarted)
-            assertEquals(listOf("Сергей"), journal.coaches.map { it.name })
-            assertEquals(listOf("Аня", "Борис", "Вера"), journal.participants.map { it.name })
-            assertEquals(
-                listOf(ParticipationKind.REGULAR, ParticipationKind.REGULAR, ParticipationKind.ONE_TIME),
-                journal.participants.map { it.kind },
-            )
-            assertEquals(listOf(null, AttendancePresence.ABSENT, null), journal.participants.map { it.presence })
-            val label = journal.participants[1].labels.single()
-            assertEquals(sick, label.id)
-            assertTrue(label.isArchived)
         }
 
     @Test

@@ -12,7 +12,10 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.junit.Before
@@ -26,6 +29,7 @@ class DbClientContactsTest {
     private val orgId = OrgId.new()
     private val clientId = ClientId.new()
     private val contacts = DbClientContacts()
+    private val clients = DbClients()
 
     private val ctx =
         employeeContext(
@@ -42,12 +46,14 @@ class DbClientContactsTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
+            }
         }
     }
 
@@ -59,14 +65,14 @@ class DbClientContactsTest {
                     TestPostgres.db.transaction {
                         context(ctx) {
                             contacts.replace(
-                                clientId,
+                                clients.activeById(clientId),
                                 listOf(
                                     ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79990001122"),
                                     ClientContact(ClientContactId.new(), clientId, ContactType.EMAIL, "a@b.c"),
                                 ),
                             )
                             contacts.replace(
-                                clientId,
+                                clients.activeById(clientId),
                                 listOf(ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+70001112233")),
                             )
                             contacts.byClient(clientId)
@@ -82,50 +88,52 @@ class DbClientContactsTest {
 
     @Test
     fun `byClients группирует контакты по клиенту, сохраняет порядок и изолирует организацию`() =
-        runTest {
-            val clientId2 = ClientId.new()
-            val otherOrgId = OrgId.new()
-            val otherClientId = ClientId.new()
+        orThrow {
+            runTest {
+                val clientId2 = ClientId.new()
+                val otherOrgId = OrgId.new()
+                val otherClientId = ClientId.new()
 
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId2).bind("orgId", orgId).bind("name", "Клиент 2").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Другая Org").execute()
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", otherClientId).bind("orgId", otherOrgId).bind("name", "Чужой клиент").execute()
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", clientId2).bind("orgId", orgId).bind("name", "Клиент 2").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Другая Org").execute()
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", otherClientId).bind("orgId", otherOrgId).bind("name", "Чужой клиент").execute()
 
-            val result =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx) {
-                            contacts.replace(
-                                clientId,
-                                listOf(
-                                    ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79990001122"),
-                                    ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79993334455"),
-                                ),
-                            )
-                            contacts.replace(
-                                clientId2,
-                                listOf(ClientContact(ClientContactId.new(), clientId2, ContactType.EMAIL, "a@b.c")),
-                            )
-                        }
-                        context(ctx.copy(orgId = otherOrgId)) {
-                            contacts.replace(
-                                otherClientId,
-                                listOf(ClientContact(ClientContactId.new(), otherClientId, ContactType.PHONE, "+70000000000")),
-                            )
-                        }
-                        context(ctx) {
-                            contacts.byClients(listOf(clientId, clientId2, otherClientId))
+                val result =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(ctx) {
+                                contacts.replace(
+                                    clients.activeById(clientId),
+                                    listOf(
+                                        ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79990001122"),
+                                        ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, "+79993334455"),
+                                    ),
+                                )
+                                contacts.replace(
+                                    clients.activeById(clientId2),
+                                    listOf(ClientContact(ClientContactId.new(), clientId2, ContactType.EMAIL, "a@b.c")),
+                                )
+                            }
+                            context(ctx.copy(orgId = otherOrgId)) {
+                                contacts.replace(
+                                    clients.activeById(otherClientId),
+                                    listOf(ClientContact(ClientContactId.new(), otherClientId, ContactType.PHONE, "+70000000000")),
+                                )
+                            }
+                            context(ctx) {
+                                contacts.byClients(listOf(clientId, clientId2, otherClientId))
+                            }
                         }
                     }
-                }
 
-            val byClient = result.getOrNull().orEmpty()
-            assertEquals(setOf("+79990001122", "+79993334455"), byClient.getValue(clientId).map { it.value }.toSet())
-            assertEquals(listOf("a@b.c"), byClient.getValue(clientId2).map { it.value })
-            assertFalse(byClient.containsKey(otherClientId))
+                val byClient = result.getOrNull().orEmpty()
+                assertEquals(setOf("+79990001122", "+79993334455"), byClient.getValue(clientId).map { it.value }.toSet())
+                assertEquals(listOf("a@b.c"), byClient.getValue(clientId2).map { it.value })
+                assertFalse(byClient.containsKey(otherClientId))
+            }
         }
 
     @Test

@@ -1,14 +1,19 @@
 package org.athletica.crm.domain.leadSource
 
 import arrow.core.getOrElse
+import arrow.core.raise.Raise
+import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.LeadSourceId
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,11 +31,11 @@ class DbLeadSourcesTest {
     }
 
     /** Пояснение из [raw]; ошибка роняет тест. */
-    private fun description(raw: String): LeadSourceDescription = LeadSourceDescription.from(raw, Lang.RU).getOrElse { error(it.toString()) }
+    private fun description(raw: String): LeadSourceDescription = either { LeadSourceDescription.from(raw, Lang.RU) }.getOrElse { error(it.toString()) }
 
     private suspend fun create(name: String, description: String): LeadSourceId {
         val id = LeadSourceId.new()
-        fixture.inContext { leadSources.new(id, name, description(description)).save() }
+        fixture.inContext { leadSources.new(id, testName(name), description(description)).save() }
         return id
     }
 
@@ -55,7 +60,7 @@ class DbLeadSourcesTest {
             fixture.insertActor()
             val id = create("Сайт", "")
 
-            fixture.inContext { leadSources.byId(id).withNew("Сайт и лендинги", description("Сайт организации и посадочные страницы")).save() }
+            fixture.inContext { leadSources.byId(id).withNew(testName("Сайт и лендинги"), description("Сайт организации и посадочные страницы")).save() }
 
             assertEquals(listOf("Сайт и лендинги" to "Сайт организации и посадочные страницы"), listed())
         }
@@ -67,22 +72,24 @@ class DbLeadSourcesTest {
             fixture.insertActor()
             val id = create("Сайт", "Сайт организации")
 
-            fixture.inContext { leadSources.byId(id).withNew("Сайт", LeadSourceDescription.EMPTY).save() }
+            fixture.inContext { leadSources.byId(id).withNew(testName("Сайт"), LeadSourceDescription.EMPTY).save() }
 
             assertEquals(listOf("Сайт" to ""), listed())
         }
 
     @Test
     fun `источник, созданный в обход приложения, получает пустое пояснение`() =
-        runTest {
-            fixture.setUp()
-            fixture.insertActor()
-            TestPostgres.db
-                .sql("INSERT INTO lead_sources (org_id, name) VALUES (:orgId, 'Старый источник')")
-                .bind("orgId", fixture.orgId)
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                fixture.insertActor()
+                TestPostgres.db
+                    .sql("INSERT INTO lead_sources (org_id, name) VALUES (:orgId, 'Старый источник')")
+                    .bind("orgId", fixture.orgId)
+                    .execute()
 
-            assertEquals(listOf("Старый источник" to ""), listed())
+                assertEquals(listOf("Старый источник" to ""), listed())
+            }
         }
 
     @Test
@@ -102,7 +109,7 @@ private class AuditLogStub : AuditLog {
     /** Записанные события по порядку. */
     val events: MutableList<AuditEvent> = mutableListOf()
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }

@@ -7,7 +7,7 @@ import org.athletica.crm.api.schemas.tasks.TaskListResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toEmployeeId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.core.tasks.toTaskId
@@ -25,7 +25,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * приходят из `LEFT JOIN`, поэтому дополнительных запросов за ними не требуется.
  */
 class DbTaskListView : TaskListView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun page(query: TaskListQuery): TaskListResponse {
         val total =
             buildQuery(query, "COUNT(*) AS cnt", paginate = false)

@@ -2,11 +2,12 @@ package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 
@@ -31,10 +32,10 @@ interface Group {
     /** Преподаватели группы, используемые как шаблон при генерации занятий. */
     val employeeIds: List<EmployeeId>
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group
 
     /**
@@ -42,15 +43,15 @@ interface Group {
      * Каждый [Employee] из [employees] должен иметь доступ к филиалу [branchId];
      * иначе при последующем [save] поднимется ошибка `EMPLOYEE_NOT_FOUND`.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNewEmployees(employees: List<Employee>): Group
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun withNewName(name: String): Group
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun withNewName(name: NonBlankName): Group
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNew(
-        name: String,
+        name: NonBlankName,
         disciplines: List<DisciplineId>,
         employees: List<Employee>,
     ): Group =

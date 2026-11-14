@@ -14,6 +14,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.DebitFixture
@@ -49,7 +50,10 @@ class DebitCandidateScenariosTest {
         fixture.at(today)
     }
 
-    private fun days(n: Int) = if (n >= 0) today.plus(DatePeriod(days = n)) else today.minus(DatePeriod(days = -n))
+    private fun days(n: Int) =
+        orThrow {
+            if (n >= 0) today.plus(DatePeriod(days = n)) else today.minus(DatePeriod(days = -n))
+        }
 
     /**
      * Сценарий: [setup] выдаёт абонементы клиенту и возвращает дату занятия;
@@ -102,16 +106,18 @@ class DebitCandidateScenariosTest {
             },
             Scenario("закрытый по сроку при позднем проведении", null) { client ->
                 val closed = fixture.issue(client, closeMode = CloseMode.ON_EXPIRY, name = "Закрыт", issuedOn = days(-40))
-                TestPostgres.db
-                    .sql("UPDATE memberships SET state = 'CLOSED', closed_on = :d, close_reason = 'EXPIRY' WHERE id = :id")
-                    .bind("d", days(-1))
-                    .bind("id", closed.id)
-                    .execute()
+                orThrow {
+                    TestPostgres.db
+                        .sql("UPDATE memberships SET state = 'CLOSED', closed_on = :d, close_reason = 'EXPIRY' WHERE id = :id")
+                        .bind("d", days(-1))
+                        .bind("id", closed.id)
+                        .execute()
+                }
                 days(-10)
             },
             Scenario("с даты, наступившей сегодня, до фоновой активации", "С даты") { client ->
                 fixture.issue(client, Activation.OnDate(days(1)), name = "С даты", issuedOn = days(-1))
-                TestPostgres.db.sql("UPDATE memberships SET activate_on = :d").bind("d", today).execute()
+                orThrow { TestPostgres.db.sql("UPDATE memberships SET activate_on = :d").bind("d", today).execute() }
                 today
             },
             Scenario("будущая дата активации не подбирается", null) { client ->
@@ -120,12 +126,14 @@ class DebitCandidateScenariosTest {
             },
             Scenario("занятие чужой группы", null) { client ->
                 val other = GroupId.new()
-                TestPostgres.db
-                    .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Взрослые')")
-                    .bind("id", other)
-                    .bind("orgId", fixture.orgId)
-                    .bind("branchId", fixture.branchId)
-                    .execute()
+                orThrow {
+                    TestPostgres.db
+                        .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Взрослые')")
+                        .bind("id", other)
+                        .bind("orgId", fixture.orgId)
+                        .bind("branchId", fixture.branchId)
+                        .execute()
+                }
                 fixture.issue(client, name = "Взрослые", issuedOn = today, groupIds = listOf(other))
                 today
             },
@@ -154,12 +162,14 @@ class DebitCandidateScenariosTest {
 
     /** Ставит абонементу [id] заморозку [start]..[end] напрямую в БД. */
     private suspend fun freeze(id: MembershipId, start: LocalDate, end: LocalDate) {
-        TestPostgres.db
-            .sql("UPDATE memberships SET freeze_start = :s, freeze_end = :e, freeze_reason = 'отпуск' WHERE id = :id")
-            .bind("s", start)
-            .bind("e", end)
-            .bind("id", id)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql("UPDATE memberships SET freeze_start = :s, freeze_end = :e, freeze_reason = 'отпуск' WHERE id = :id")
+                .bind("s", start)
+                .bind("e", end)
+                .bind("id", id)
+                .execute()
+        }
     }
 
     @Test
@@ -186,40 +196,44 @@ class DebitCandidateScenariosTest {
 
     @Test
     fun `сценарии подбора на списании`() =
-        runTest {
-            scenarios.forEach { scenario ->
-                val client = fixture.insertClient()
-                val sessionDate = scenario.setup(client)
-                val picked =
-                    fixture.tx(fixture.system) {
-                        fixture.memberships.debitCandidate(client, fixture.groupId, sessionDate, today)?.name
-                    }
-                assertEquals(scenario.expected, picked, scenario.name)
-                TestPostgres.db.sql("DELETE FROM memberships").execute()
+        orThrow {
+            runTest {
+                scenarios.forEach { scenario ->
+                    val client = fixture.insertClient()
+                    val sessionDate = scenario.setup(client)
+                    val picked =
+                        fixture.tx(fixture.system) {
+                            fixture.memberships.debitCandidate(client, fixture.groupId, sessionDate, today)?.name
+                        }
+                    assertEquals(scenario.expected, picked, scenario.name)
+                    TestPostgres.db.sql("DELETE FROM memberships").execute()
+                }
             }
         }
 
     @Test
     fun `те же сценарии на превью`() =
-        runTest {
-            scenarios.forEach { scenario ->
-                val client = fixture.insertClient()
-                val sessionDate = scenario.setup(client)
-                val session = debits.session(sessionDate, status = "scheduled")
-                debits.mark(session, client, null)
-                val state =
-                    fixture.tx { context(fixture.ctx) { preview.preview(session) } }
-                        .participants
-                        .single { it.clientId == client }
-                        .debit
-                val picked =
-                    when (state) {
-                        is WillDebitParticipantDebitSchema -> state.membership.name
-                        NoMembershipParticipantDebitSchema -> null
-                        else -> error("Неожиданное состояние $state")
-                    }
-                assertEquals(scenario.expected, picked, scenario.name)
-                TestPostgres.db.sql("DELETE FROM memberships").execute()
+        orThrow {
+            runTest {
+                scenarios.forEach { scenario ->
+                    val client = fixture.insertClient()
+                    val sessionDate = scenario.setup(client)
+                    val session = debits.session(sessionDate, status = "scheduled")
+                    debits.mark(session, client, null)
+                    val state =
+                        fixture.tx { context(fixture.ctx) { preview.preview(session) } }
+                            .participants
+                            .single { it.clientId == client }
+                            .debit
+                    val picked =
+                        when (state) {
+                            is WillDebitParticipantDebitSchema -> state.membership.name
+                            NoMembershipParticipantDebitSchema -> null
+                            else -> error("Неожиданное состояние $state")
+                        }
+                    assertEquals(scenario.expected, picked, scenario.name)
+                    TestPostgres.db.sql("DELETE FROM memberships").execute()
+                }
             }
         }
 }

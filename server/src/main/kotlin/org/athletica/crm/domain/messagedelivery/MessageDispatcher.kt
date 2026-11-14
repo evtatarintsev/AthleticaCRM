@@ -3,6 +3,7 @@ package org.athletica.crm.domain.messagedelivery
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.channels.SendResult
 import org.athletica.crm.storage.Database
@@ -50,25 +51,25 @@ class MessageDispatcher(
 
     /** Обрабатывает одну порцию доставок из очереди. Выделено для прямого вызова в тестах. */
     suspend fun pollOnce() {
-        val pending = db.transaction { deliveries.pending(20) }
+        val pending = db.transaction { orThrow { deliveries.pending(20) } }
         pending.forEach { delivery -> dispatch(delivery) }
     }
 
     private suspend fun dispatch(delivery: PendingDelivery) {
-        val sender = db.transaction { channels.senderById(delivery.channelIntegrationId) } ?: return
+        val sender = db.transaction { orThrow { channels.senderById(delivery.channelIntegrationId) } } ?: return
 
         when (val result = sender.send(delivery.recipientAddress, delivery.body)) {
             is SendResult.Sent ->
-                db.transaction { deliveries.markSent(delivery.id, ProviderMessageRef(result.providerRef)) }
+                db.transaction { orThrow { deliveries.markSent(delivery.id, ProviderMessageRef(result.providerRef)) } }
 
             is SendResult.PermanentFailure ->
-                db.transaction { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) }
+                db.transaction { orThrow { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) } }
 
             is SendResult.TransientFailure ->
                 if (delivery.attempts + 1 >= maxRetries) {
-                    db.transaction { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) }
+                    db.transaction { orThrow { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) } }
                 } else {
-                    db.transaction { deliveries.retryLater(delivery.id, DeliveryError(result.code, result.message)) }
+                    db.transaction { orThrow { deliveries.retryLater(delivery.id, DeliveryError(result.code, result.message)) } }
                 }
         }
     }

@@ -299,7 +299,10 @@ private val managerContext =
 - Use `projects.shared` in dependencies (type-safe project accessors)
 
 ### Error Handling Strategy
-- **Domain errors**: Modeled as sealed classes (`DomainError`)
+- **Иерархия ошибок** (`core/errors/AppError.kt`): `AppError` — любая ожидаемая ошибка в `Raise<AppError>`;
+  `DomainError : AppError` — бизнес-ошибка, маршрут отвечает HTTP 400 с её `code`/`message`;
+  любая другая `AppError` (например, ошибка инфраструктуры) — HTTP 500 через `UnhandledAppError` и `StatusPages`.
+  Ответ на ошибку в маршрутах — только через `RoutingCall.respondError`
 - **Common errors**: `CommonDomainError(code: String, message: String)` for 80% of cases
 - **Client errors**: HTTP 400 (validation) → 404 (not found) → 409 (conflict)
 - **Server errors**: HTTP 500 (log to audit trail)
@@ -312,8 +315,10 @@ private val managerContext =
 **Parse, Don't Validate** (Alexis King) и **Make Illegal States Unrepresentable** (Yaron Minsky).
 
 Реализация в Kotlin: `value class` с приватным основным конструктором и фабричным методом
-в `companion object`, возвращающим `Either<DomainError, T>`. Дополнительно — `String.toX()`-расширение
+в `companion object` с `context(raise: Raise<DomainError>)`, как и остальной код. Дополнительно — `String.toX()`-расширение
 для удобства и кастомный `KSerializer`, чтобы инвариант проверялся уже на десериализации.
+Там, где ошибку нужно разобрать на месте (сериализатор, чтение из БД, тесты), вызов оборачивается
+в `either { ... }`.
 
 **Пример** — `CustomFieldKey` (`shared/src/commonMain/kotlin/org/athletica/crm/core/customfields/CustomFieldKey.kt`):
 ```kotlin
@@ -322,13 +327,22 @@ private val managerContext =
 value class CustomFieldKey private constructor(val value: String) {
     companion object {
         private val REGEX = Regex("[a-z_]+")
-        fun from(value: String): Either<DomainError, CustomFieldKey> =
-            if (value.matches(REGEX)) CustomFieldKey(value).right()
-            else CommonDomainError("INVALID_FIELD_KEY", "...").left()
+        context(raise: Raise<DomainError>)
+        fun from(value: String): CustomFieldKey {
+            if (!value.matches(REGEX)) {
+                raise(CommonDomainError("INVALID_FIELD_KEY", "..."))
+            }
+            return CustomFieldKey(value)
+        }
     }
-    object Serializer : KSerializer<CustomFieldKey> { /* десериализация через from() */ }
+    object Serializer : KSerializer<CustomFieldKey> {
+        override fun deserialize(decoder: Decoder): CustomFieldKey =
+            either { from(decoder.decodeString()) }.getOrElse { throw SerializationException(it.message) }
+        // ...
+    }
 }
-fun String.toFieldKey(): Either<DomainError, CustomFieldKey> = CustomFieldKey.from(this)
+context(raise: Raise<DomainError>)
+fun String.toFieldKey(): CustomFieldKey = CustomFieldKey.from(this)
 ```
 
 Когда применять: любые «string-обёртки» с непустым множеством запрещённых значений
@@ -375,9 +389,13 @@ Domain ничего не знает про схемы запросов и отв
 Признаки нарушения: импорт из `org.athletica.crm.api.schemas.*` внутри `domain/*`,
 `@Serializable` на доменной сущности, поля-объекты соседних агрегатов в data class-ах.
 
-### Foreign Key Constraints
-- Database enforces FK constraints; R2DBC surfaces FK violations as exceptions
-- Tests catch FK exceptions with `runCatching` if needed (see AddClientsToGroupTest)
+### Нарушения ограничений БД
+- `execute`/`list`/`firstOrNull` требуют `Raise<AppError>`; нарушение ограничения (unique, FK, check)
+  поднимается как `ConstraintViolation(constraint)` (`storage/DbError.kt`) — HTTP 500, если не перемаплено.
+- Ожидаемое нарушение переводится в доменную ошибку по имени ограничения прямо в запросе:
+  `.onViolation("uq_groups_org_name") { CommonDomainError(...) }`. `catch` исключений драйвера в `domain/` не нужен.
+- Прочие ошибки драйвера (соединение, синтаксис SQL) остаются исключениями.
+- Код вне HTTP-запроса (фоновые задачи, CLI, тестовые фикстуры) оборачивает обращения к БД в `orThrow { }`.
 
 ## Dependency Injection (Manual)
 

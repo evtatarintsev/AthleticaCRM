@@ -7,8 +7,8 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.toAttendanceLabelId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -18,7 +18,7 @@ import org.athletica.crm.storage.asUuid
 
 /** R2DBC-реализация справочника меток посещаемости. */
 class DbAttendanceLabels : AttendanceLabels {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(includeArchived: Boolean): List<AttendanceLabel> =
         tr
             .sql(
@@ -33,7 +33,7 @@ class DbAttendanceLabels : AttendanceLabels {
             .bind("includeArchived", includeArchived)
             .list { it.toLabel() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(id: AttendanceLabelId, name: String, scope: AttendanceLabelScope): AttendanceLabel {
         val position =
             tr
@@ -43,10 +43,10 @@ class DbAttendanceLabels : AttendanceLabels {
         return DbAttendanceLabel(id = id, name = name.trim(), scope = scope, position = position, isArchived = false)
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: AttendanceLabelId): AttendanceLabel = byIds(listOf(id)).single()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: Collection<AttendanceLabelId>): List<AttendanceLabel> {
         val distinctIds = ids.distinct()
         if (distinctIds.isEmpty()) {

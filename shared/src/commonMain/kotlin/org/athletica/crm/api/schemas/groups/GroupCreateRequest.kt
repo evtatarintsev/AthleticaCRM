@@ -1,6 +1,7 @@
 package org.athletica.crm.api.schemas.groups
 
 import kotlinx.serialization.Serializable
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
@@ -14,7 +15,7 @@ data class GroupCreateRequest(
     /** Клиент-генерируемый идентификатор. Рекомендуется использовать UUIDv7. */
     val id: GroupId,
     /** Название группы. */
-    val name: String,
+    val name: NonBlankName,
     /** Идентификаторы дисциплин, привязываемых к группе. */
     val disciplineIds: List<DisciplineId> = emptyList(),
     /** Идентификаторы преподавателей группы, наследуемые новыми занятиями. */

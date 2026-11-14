@@ -1,15 +1,21 @@
 package org.athletica.crm.usecases.sessions
 
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.SessionsFixture
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.read.sessions.dueJournalSessions
+import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 /**
@@ -37,22 +43,58 @@ class OverdueJournalSchedulerTest {
     )
 
     private suspend fun tasks(): List<TaskRow> =
-        TestPostgres.db
-            .sql("SELECT title, description, assignee_id::text AS a, created_by::text AS c FROM tasks WHERE org_id = :orgId")
-            .bind("orgId", fixture.orgId)
-            .list {
-                TaskRow(
-                    it.get("title", String::class.java)!!,
-                    it.get("description", String::class.java)!!,
-                    it.get("a", String::class.java),
-                    it.get("c", String::class.java),
-                )
-            }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT title, description, assignee_id::text AS a, created_by::text AS c FROM tasks WHERE org_id = :orgId")
+                .bind("orgId", fixture.orgId)
+                .list {
+                    TaskRow(
+                        it.asString("title"),
+                        it.asString("description"),
+                        it.asStringOrNull("a"),
+                        it.asStringOrNull("c"),
+                    )
+                }
+        }
 
     private suspend fun at(instant: String) {
         fixture.now = Instant.parse(instant)
         scheduler.processDue()
     }
+
+    @Test
+    fun `резервирование перепроверяет перенос выключение и новое окно после выборки`() =
+        orThrow {
+            runTest {
+                val id = fixture.insertSession(fixture.insertGroup(), day)
+                fixture.now = Instant.parse("2026-10-17T16:00:00Z")
+                val candidate =
+                    TestPostgres.db.transaction {
+                        dueJournalSessions(fixture.now, day, 1.days).single()
+                    }
+                TestPostgres.db.sql("UPDATE sessions SET end_time = '20:00' WHERE id = :id").bind("id", id).execute()
+                scheduler.processCandidate(candidate)
+                assertTrue(tasks().isEmpty())
+
+                TestPostgres.db.sql("UPDATE sessions SET end_time = '19:00' WHERE id = :id").bind("id", id).execute()
+                fixture.saveSettings(enabled = false, delayMinutes = 120)
+                scheduler.processCandidate(candidate)
+                assertTrue(tasks().isEmpty())
+
+                TestPostgres.db.sql("UPDATE attendance_control_settings SET overdue_task_enabled = true, overdue_task_delay_minutes = 180 WHERE org_id = :id")
+                    .bind("id", fixture.orgId)
+                    .execute()
+                scheduler.processCandidate(candidate)
+                assertTrue(tasks().isEmpty())
+
+                fixture.now = Instant.parse("2026-10-17T17:00:00Z")
+                val first = async { scheduler.processDue() }
+                val second = async { scheduler.processDue() }
+                first.await()
+                second.await()
+                assertEquals(1, tasks().size)
+            }
+        }
 
     @Test
     fun `задача без исполнителя от системы после окна`() =
@@ -92,16 +134,18 @@ class OverdueJournalSchedulerTest {
 
     @Test
     fun `повторный проход не создаёт вторую задачу даже после удаления первой`() =
-        runTest {
-            fixture.insertSession(fixture.insertGroup(), day)
+        orThrow {
+            runTest {
+                fixture.insertSession(fixture.insertGroup(), day)
 
-            at("2026-10-17T16:00:00Z")
-            at("2026-10-17T16:05:00Z")
-            assertEquals(1, tasks().size)
+                at("2026-10-17T16:00:00Z")
+                at("2026-10-17T16:05:00Z")
+                assertEquals(1, tasks().size)
 
-            TestPostgres.db.sql("DELETE FROM tasks WHERE org_id = :orgId").bind("orgId", fixture.orgId).execute()
-            at("2026-10-17T16:10:00Z")
-            assertTrue(tasks().isEmpty())
+                TestPostgres.db.sql("DELETE FROM tasks WHERE org_id = :orgId").bind("orgId", fixture.orgId).execute()
+                at("2026-10-17T16:10:00Z")
+                assertTrue(tasks().isEmpty())
+            }
         }
 
     @Test

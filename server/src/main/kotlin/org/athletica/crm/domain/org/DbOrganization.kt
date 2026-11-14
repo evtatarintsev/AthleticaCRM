@@ -1,9 +1,10 @@
 package org.athletica.crm.domain.org
 
 import arrow.core.raise.Raise
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.storage.Transaction
 
@@ -13,10 +14,10 @@ class DbOrganization(
     override val timezone: String,
     override val currency: Currency,
 ) : Organization {
-    context(ctx: RequestContext, raise: Raise<DomainError>)
-    override suspend fun withNew(newName: String, newTimezone: String) = DbOrganization(id, newName, newTimezone, currency)
+    context(ctx: RequestContext, raise: Raise<AppError>)
+    override suspend fun withNew(newName: NonBlankName, newTimezone: String) = DbOrganization(id, newName.value, newTimezone, currency)
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         tr
             .sql("UPDATE organizations SET name = :name, timezone = :timezone WHERE id = :id")

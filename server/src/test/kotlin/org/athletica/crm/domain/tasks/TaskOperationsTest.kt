@@ -13,12 +13,14 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
@@ -26,9 +28,12 @@ import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
+import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,33 +77,39 @@ class TaskOperationsTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", thirdEmployeeId).bind("orgId", orgId).bind("name", "Анна").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", thirdEmployeeId).bind("orgId", orgId).bind("name", "Анна").execute()
+            }
         }
     }
 
     private suspend fun taskStatusFromDb(taskId: TaskId): String =
-        TestPostgres.db
-            .sql("SELECT status FROM tasks WHERE id = :id")
-            .bind("id", taskId)
-            .firstOrNull { row -> row.asString("status") } ?: ""
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT status FROM tasks WHERE id = :id")
+                .bind("id", taskId)
+                .firstOrNull { row -> row.asString("status") } ?: ""
+        }
 
     private suspend fun taskCompletedAt(taskId: TaskId): String? =
-        TestPostgres.db
-            .sql("SELECT COALESCE(completed_at::text, '') AS ca FROM tasks WHERE id = :id")
-            .bind("id", taskId)
-            .firstOrNull { row -> row.asString("ca") }
-            ?.takeIf { it.isNotEmpty() }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COALESCE(completed_at::text, '') AS ca FROM tasks WHERE id = :id")
+                .bind("id", taskId)
+                .firstOrNull { row -> row.asString("ca") }
+                ?.takeIf { it.isNotEmpty() }
+        }
 
     private fun employeeStub(id: EmployeeId): Employee =
         object : Employee {
@@ -111,20 +122,21 @@ class TaskOperationsTest {
             override val joinedAt: Instant = Clock.System.now()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
+            override val roles = emptyList<EmployeeRole>()
             override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All
 
             override fun hasPermission(p: UserPermission): Boolean = false
 
-            context(ctx: EmployeeRequestContext, tr: Transaction)
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun save() = Unit
 
-            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun invite(email: EmailAddress, password: String) = Unit
 
-            context(ctx: EmployeeRequestContext)
-            override fun withNew(
-                newName: String,
-                newPermissions: EmployeePermission,
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun withNew(
+                newName: NonBlankName,
+                newPermissions: EmployeePermissionSelection,
                 newAvatarId: UploadId?,
                 newPhoneNo: String?,
                 newEmail: EmailAddress?,
@@ -142,8 +154,8 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -170,8 +182,8 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -200,8 +212,8 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -236,7 +248,7 @@ class TaskOperationsTest {
             val id = TaskId.new()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { tasks.new(id, "Системная задача", "", null, null, null) }
+                    context(ctx) { tasks.new(id, testName("Системная задача"), "", null, null, null) }
                 }
             }.getOrElse { fail("Setup: $it") }
 
@@ -278,7 +290,7 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача", "", null, null, null)
+                        tasks.new(id1, testName("Задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -320,14 +332,14 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(myTaskId, "Моя задача", "", null, null, null)
+                        tasks.new(myTaskId, testName("Моя задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
             either {
                 TestPostgres.db.transaction {
                     context(otherCtx) {
-                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
+                        tasks.new(foreignTaskId, testName("Чужая задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }
@@ -343,7 +355,7 @@ class TaskOperationsTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("PERMISSION_DENIED", result.value.code)
             assertEquals("PENDING", taskStatusFromDb(myTaskId))
             assertEquals("PENDING", taskStatusFromDb(foreignTaskId))
@@ -356,7 +368,7 @@ class TaskOperationsTest {
             either {
                 TestPostgres.db.transaction {
                     context(otherCtx) {
-                        tasks.new(foreignTaskId, "Чужая задача", "", null, null, null)
+                        tasks.new(foreignTaskId, testName("Чужая задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Setup: $it") }

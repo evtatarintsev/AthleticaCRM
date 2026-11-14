@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.channels.ChannelTransport
@@ -71,22 +72,24 @@ class MessageDispatcherTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
-            TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
-            TestPostgres.db.sql(
-                """
-                INSERT INTO channel_integrations (id, org_id, name, config, enabled)
-                VALUES (:id, :orgId, 'Test SMS', :config::jsonb, true)
-                """.trimIndent(),
-            ).bind("id", integrationId).bind("orgId", orgId).bind("config", TWILIO_CONFIG).execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "a@example.com").bind("hash", "h").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Админ").execute()
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", clientId).bind("orgId", orgId).bind("name", "Клиент").execute()
+                TestPostgres.db.sql(
+                    """
+                    INSERT INTO channel_integrations (id, org_id, name, config, enabled)
+                    VALUES (:id, :orgId, 'Test SMS', :config::jsonb, true)
+                    """.trimIndent(),
+                ).bind("id", integrationId).bind("orgId", orgId).bind("config", TWILIO_CONFIG).execute()
+            }
         }
     }
 
@@ -96,29 +99,35 @@ class MessageDispatcherTest {
                 context(ctx) {
                     val conversation = conversations.forClient(clientId)
                     val message = conversation.appendOutbound(Author.Employee(employeeId), "Привет")
-                    deliveries.create(message.id, integrationId, "+79990001122")
+                    deliveries.create(message.id, integrationId) { "+79990001122" }
                 }
             }
         }.let { if (it is Either.Left) fail("Не удалось поставить доставку: ${it.value}") }
     }
 
     private suspend fun state(): String =
-        TestPostgres.db.sql("SELECT state FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asString("state") }!!
+        orThrow {
+            TestPostgres.db.sql("SELECT state FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asString("state") }!!
+        }
 
     private suspend fun attempts(): Int =
-        TestPostgres.db.sql("SELECT attempts FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asInt("attempts") }!!
+        orThrow {
+            TestPostgres.db.sql("SELECT attempts FROM message_deliveries WHERE org_id = :orgId LIMIT 1")
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asInt("attempts") }!!
+        }
 
     private suspend fun providerRef(): String? =
-        TestPostgres.db.sql(
-            "SELECT COALESCE(provider_message_ref, '') AS ref FROM message_deliveries WHERE org_id = :orgId LIMIT 1",
-        )
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asString("ref") }
-            ?.takeIf { it.isNotEmpty() }
+        orThrow {
+            TestPostgres.db.sql(
+                "SELECT COALESCE(provider_message_ref, '') AS ref FROM message_deliveries WHERE org_id = :orgId LIMIT 1",
+            )
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asString("ref") }
+                ?.takeIf { it.isNotEmpty() }
+        }
 
     @Test
     fun `успешная отправка переводит доставку в SENT с provider ref`() =
@@ -173,20 +182,22 @@ class MessageDispatcherTest {
 
     @Test
     fun `доставка отключённой интеграции не поллится и остаётся PENDING`() =
-        runTest {
-            enqueueDelivery()
-            TestPostgres.db.sql("UPDATE channel_integrations SET enabled = false WHERE id = :id")
-                .bind("id", integrationId).execute()
-            val dispatcher =
-                MessageDispatcher(
-                    TestPostgres.db,
-                    deliveries,
-                    channelsWith(SendResult.Sent("provider-123")),
-                )
+        orThrow {
+            runTest {
+                enqueueDelivery()
+                TestPostgres.db.sql("UPDATE channel_integrations SET enabled = false WHERE id = :id")
+                    .bind("id", integrationId).execute()
+                val dispatcher =
+                    MessageDispatcher(
+                        TestPostgres.db,
+                        deliveries,
+                        channelsWith(SendResult.Sent("provider-123")),
+                    )
 
-            dispatcher.pollOnce()
+                dispatcher.pollOnce()
 
-            assertEquals("PENDING", state())
+                assertEquals("PENDING", state())
+            }
         }
 
     private companion object {

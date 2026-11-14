@@ -4,9 +4,10 @@ import arrow.core.raise.context.Raise
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.domain.employees.Employee
@@ -31,18 +32,18 @@ private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, disciplin
  * [withNew] возвращает новый [AuditGroup], сохраняя аудит-поведение в цепочках.
  */
 class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Group by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() =
         delegate.save().also {
             audit.logUpdate("group", id, delegate.snapshot())
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewDisciplines(disciplines: List<DisciplineId>): Group = AuditGroup(delegate.withNewDisciplines(disciplines), audit)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewEmployees(employees: List<Employee>): Group = AuditGroup(delegate.withNewEmployees(employees), audit)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun withNewName(name: String): Group = AuditGroup(delegate.withNewName(name), audit)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNewName(name: NonBlankName): Group = AuditGroup(delegate.withNewName(name), audit)
 }

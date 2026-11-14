@@ -23,8 +23,8 @@ import org.athletica.crm.api.schemas.attendance.SessionJournalRequest
 import org.athletica.crm.api.schemas.attendance.SessionJournalResponse
 import org.athletica.crm.api.schemas.attendance.UpdateAttendanceLabelRequest
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.attendance.AttendanceLabel
 import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AttendanceMark
@@ -97,7 +97,7 @@ fun RouteWithContext.attendanceRoutes(
         }
 
         post<MarkAttendanceRequest, SessionJournalResponse>("/journal/mark") { request ->
-            val mark = AttendanceMark.from(request.presence, request.labelIds).fold({ raise(it) }, { it })
+            val mark = AttendanceMark.from(request.presence, request.labelIds)
             db.transaction {
                 journals.byId(request.sessionId).mark(request.clientId, mark)
                 views.sessionJournal.journal(request.sessionId)
@@ -154,7 +154,7 @@ fun RouteWithContext.attendanceRoutes(
 private fun AttendanceLabel.toSchema() = AttendanceLabelSchema(id = id, name = name, scope = scope, position = position, isArchived = isArchived)
 
 /** Проверяет период отчёта [from]..[to]: конец не раньше начала и не длиннее [MAX_ATTENDANCE_PERIOD_DAYS]. */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 private fun ensureAttendancePeriod(from: LocalDate, to: LocalDate) {
     if (to < from) {
         raise(CommonDomainError("INVALID_ATTENDANCE_PERIOD", Messages.InvalidAttendancePeriod.localize()))

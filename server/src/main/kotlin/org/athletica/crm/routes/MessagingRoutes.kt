@@ -24,7 +24,6 @@ import org.athletica.crm.read.messaging.InboxQuery
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.messaging.InboundStores
 import org.athletica.crm.usecases.messaging.assignChat
-import org.athletica.crm.usecases.messaging.conversationView
 import org.athletica.crm.usecases.messaging.markConversationRead
 import org.athletica.crm.usecases.messaging.sendMessage
 import kotlin.time.Instant
@@ -46,7 +45,7 @@ fun RouteWithContext.messagingRoutes(
     route("/messaging") {
         get<ConversationRequest, ConversationResponse>("/conversation") { request ->
             db.transaction {
-                conversationView(request.clientId, conversations, deliveries)
+                views.conversation.messages(request.clientId)
             }
         }
 
@@ -59,6 +58,7 @@ fun RouteWithContext.messagingRoutes(
         post<SendMessageRequest, ConversationResponse>("/send") { request ->
             db.transaction {
                 sendMessage(request, channels, conversations, deliveries)
+                views.conversation.messages(request.clientId)
             }
         }
 

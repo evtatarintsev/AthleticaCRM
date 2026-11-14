@@ -2,9 +2,10 @@ package org.athletica.crm.core.customfields
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.raise.context.either
 import org.athletica.crm.api.appJson
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -15,16 +16,16 @@ class CustomFieldsTest {
     @Test
     fun `with возвращает UNKNOWN_CUSTOM_FIELD для неизвестного ключа`() {
         val cv = CustomFieldValues(listOf(CustomFieldDefinition.Text(fieldKey = key("name"), label = "name")))
-        val result = cv.with(CustomFieldValue.Text(fieldKey = key("ghost"), value = "x"))
-        val left = assertIs<Either.Left<DomainError>>(result)
+        val result = either { cv.with(CustomFieldValue.Text(fieldKey = key("ghost"), value = "x")) }
+        val left = assertIs<Either.Left<AppError>>(result)
         assertEquals("UNKNOWN_CUSTOM_FIELD", (left.value as CommonDomainError).code)
     }
 
     @Test
     fun `with возвращает CUSTOM_FIELD_TYPE_MISMATCH при несовпадении типа`() {
         val cv = CustomFieldValues(listOf(CustomFieldDefinition.Number(fieldKey = key("age"), label = "age")))
-        val result = cv.with(CustomFieldValue.Text(fieldKey = key("age"), value = "not a number"))
-        val left = assertIs<Either.Left<DomainError>>(result)
+        val result = either { cv.with(CustomFieldValue.Text(fieldKey = key("age"), value = "not a number")) }
+        val left = assertIs<Either.Left<AppError>>(result)
         assertEquals("CUSTOM_FIELD_TYPE_MISMATCH", (left.value as CommonDomainError).code)
     }
 
@@ -38,21 +39,23 @@ class CustomFieldsTest {
             )
         val cv = CustomFieldValues(defs)
         val result =
-            cv.with(
-                listOf(
-                    CustomFieldValue.Text(key("p"), "+7..."),
-                    CustomFieldValue.Text(key("e"), "a@b"),
-                    CustomFieldValue.Text(key("u"), "https://x"),
-                ),
-            )
+            either {
+                cv.with(
+                    listOf(
+                        CustomFieldValue.Text(key("p"), "+7..."),
+                        CustomFieldValue.Text(key("e"), "a@b"),
+                        CustomFieldValue.Text(key("u"), "https://x"),
+                    ),
+                )
+            }
         assertIs<Either.Right<CustomFieldValues>>(result)
     }
 
     @Test
     fun `with перезаписывает существующее значение по ключу`() {
         val cv = CustomFieldValues(listOf(CustomFieldDefinition.Text(fieldKey = key("name"), label = "name")))
-        val first = assertIs<Either.Right<CustomFieldValues>>(cv.with(CustomFieldValue.Text(key("name"), "first"))).value
-        val second = assertIs<Either.Right<CustomFieldValues>>(first.with(CustomFieldValue.Text(key("name"), "second"))).value
+        val first = assertIs<Either.Right<CustomFieldValues>>(either { cv.with(CustomFieldValue.Text(key("name"), "first")) }).value
+        val second = assertIs<Either.Right<CustomFieldValues>>(either { first.with(CustomFieldValue.Text(key("name"), "second")) }).value
         assertEquals(1, second.toList().size)
         assertEquals("second", (second[key("name")] as CustomFieldValue.Text).value)
     }
@@ -95,5 +98,5 @@ class CustomFieldsTest {
         assertEquals(original, decoded)
     }
 
-    private fun key(value: String): CustomFieldKey = value.toFieldKey().getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
+    private fun key(value: String): CustomFieldKey = either { value.toFieldKey() }.getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
 }

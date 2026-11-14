@@ -1,6 +1,7 @@
 package org.athletica.crm.schedule
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -19,21 +20,22 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.toEmployeeId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.notifications.GroupScheduleChanged
 import org.athletica.crm.domain.notifications.NotificationContent
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,7 +50,7 @@ import kotlin.test.assertTrue
 class GroupScheduleRouteTest {
     private lateinit var di: Di
     private lateinit var token: String
-    private lateinit var user: User
+    private lateinit var user: AuthenticatedUser
     private var hallId: HallId = HallId.new()
     private val today = java.time.LocalDate.now().toKotlinLocalDate()
     private val json = Json { ignoreUnknownKeys = true }
@@ -61,30 +63,34 @@ class GroupScheduleRouteTest {
 
     /** Регистрирует организацию, запоминает токен сотрудника и создаёт зал в его филиале. */
     private suspend fun signUpWithHall() {
-        val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    org.athletica.crm.usecases.auth.signUp(
-                        SignUpRequest(
-                            companyName = "Acme",
-                            userName = "John",
-                            login = "owner@example.com",
-                            password = "password123",
-                            timezone = "UTC",
-                            currency = Currency.RUB,
-                        ),
-                    )
+        orThrow {
+            val result =
+                either {
+                    di.database.transaction {
+                        di.auth.signup(
+                            SignUpRequest(
+                                companyName = testName("Acme"),
+                                userName = testName("John"),
+                                login = "owner@example.com",
+                                password = "password123",
+                                timezone = "UTC",
+                                currency = Currency.RUB,
+                            ),
+                            lang = Lang.RU,
+                            clientIp = null,
+                        )
+                    }
                 }
-            }
-        user = assertIs<Either.Right<User>>(result).value
-        token = testJwtConfig.makeAccessToken(user)
-        hallId = HallId.new()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
-            .bind("id", hallId)
-            .bind("orgId", user.orgId)
-            .bind("branchId", user.branchId)
-            .execute()
+            user = assertIs<Either.Right<AuthenticatedUser>>(result).value
+            token = testJwtConfig.makeAccessToken(user)
+            hallId = HallId.new()
+            TestPostgres.db
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
+                .bind("id", hallId)
+                .bind("orgId", user.orgId)
+                .bind("branchId", user.branchId)
+                .execute()
+        }
     }
 
     private suspend fun ApplicationTestBuilder.postJson(path: String, body: String) =
@@ -161,76 +167,83 @@ class GroupScheduleRouteTest {
 
     @Test
     fun `сразу после установки расписания занятия существуют`() =
-        runTest {
-            signUpWithHall()
-            val groupId = GroupId.new()
-            testApplication {
-                application { context(di) { configureServer() } }
-                createGroup(groupId)
-                postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
+        orThrow {
+            runTest {
+                signUpWithHall()
+                val groupId = GroupId.new()
+                testApplication {
+                    application { context(di) { configureServer() } }
+                    createGroup(groupId)
+                    postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
 
-                val count =
-                    TestPostgres.db
-                        .sql("SELECT COUNT(*) AS cnt FROM sessions WHERE group_id = :groupId")
-                        .bind("groupId", groupId)
-                        .firstOrNull { it.asLong("cnt") } ?: 0L
-                assertTrue(count > 0, "занятия должны существовать сразу после изменения расписания")
+                    val count =
+                        TestPostgres.db
+                            .sql("SELECT COUNT(*) AS cnt FROM sessions WHERE group_id = :groupId")
+                            .bind("groupId", groupId)
+                            .firstOrNull { it.asLong("cnt") } ?: 0L
+                    assertTrue(count > 0, "занятия должны существовать сразу после изменения расписания")
+                }
             }
         }
 
     /** Добавляет в организацию сотрудника [name] с признаком активности [isActive] и доступом [allBranches]. */
-    private suspend fun insertColleague(name: String, isActive: Boolean, allBranches: Boolean): EmployeeId {
-        val id = EmployeeId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO employees (id, org_id, name, is_owner, is_active, all_branches_access)
-                VALUES (:id, :orgId, :name, false, :isActive, :allBranches)
-                """.trimIndent(),
-            )
-            .bind("id", id)
-            .bind("orgId", user.orgId)
-            .bind("name", name)
-            .bind("isActive", isActive)
-            .bind("allBranches", allBranches)
-            .execute()
-        return id
-    }
+    private suspend fun insertColleague(name: String, isActive: Boolean, allBranches: Boolean): EmployeeId =
+        orThrow {
+            val id = EmployeeId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO employees (id, org_id, name, is_owner, is_active, all_branches_access)
+                    VALUES (:id, :orgId, :name, false, :isActive, :allBranches)
+                    """.trimIndent(),
+                )
+                .bind("id", id)
+                .bind("orgId", user.orgId)
+                .bind("name", name)
+                .bind("isActive", isActive)
+                .bind("allBranches", allBranches)
+                .execute()
+            return id
+        }
 
     /** Получатели уведомлений в порядке возрастания идентификатора. */
     private suspend fun notificationRecipients(): List<EmployeeId> =
-        TestPostgres.db
-            .sql("SELECT employee_id FROM notification_recipients ORDER BY employee_id")
-            .list { it.asUuid("employee_id").toEmployeeId() }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT employee_id FROM notification_recipients ORDER BY employee_id")
+                .list { it.asUuid("employee_id").toEmployeeId() }
+        }
 
     @Test
     fun `изменение расписания уведомляет коллег с доступом к филиалу группы, кроме автора`() =
-        runTest {
-            signUpWithHall()
-            val colleague = insertColleague("Коллега", isActive = true, allBranches = true)
-            val assigned = insertColleague("Сотрудник филиала", isActive = true, allBranches = false)
-            TestPostgres.db
-                .sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
-                .bind("employeeId", assigned)
-                .bind("branchId", user.branchId)
-                .execute()
-            insertColleague("Другой филиал", isActive = true, allBranches = false)
-            insertColleague("Неактивный", isActive = false, allBranches = true)
-            val groupId = GroupId.new()
-            testApplication {
-                application { context(di) { configureServer() } }
-                createGroup(groupId)
+        orThrow {
+            runTest {
+                signUpWithHall()
+                val colleague = insertColleague("Коллега", isActive = true, allBranches = true)
+                val assigned = insertColleague("Сотрудник филиала", isActive = true, allBranches = false)
+                TestPostgres.db
+                    .sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
+                    .bind("employeeId", assigned)
+                    .bind("branchId", user.branchId)
+                    .execute()
+                insertColleague("Другой филиал", isActive = true, allBranches = false)
+                insertColleague("Неактивный", isActive = false, allBranches = true)
+                val groupId = GroupId.new()
+                testApplication {
+                    application { context(di) { configureServer() } }
+                    createGroup(groupId)
 
-                val response = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
+                    val response = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
 
-                assertEquals(HttpStatusCode.OK, response.status)
-                assertEquals(listOf(colleague, assigned).sortedBy { it.value }, notificationRecipients())
-                val content =
-                    TestPostgres.db
-                        .sql("SELECT content FROM notifications")
-                        .list { Json.decodeFromString<NotificationContent>(it.asString("content")) }
-                        .single()
-                assertEquals(GroupScheduleChanged(groupId, "Йога", today, "John"), content)
+                    assertEquals(HttpStatusCode.OK, response.status)
+                    assertEquals(listOf(colleague, assigned).sortedBy { it.value }, notificationRecipients())
+                    val content =
+                        TestPostgres.db
+                            .sql("SELECT content FROM notifications")
+                            .list { Json.decodeFromString<NotificationContent>(it.asString("content")) }
+                            .single()
+                    assertEquals(GroupScheduleChanged(groupId, "Йога", today, "John"), content)
+                }
             }
         }
 }

@@ -2,8 +2,9 @@ package org.athletica.crm.domain.channels
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ChannelIntegrationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.storage.Transaction
 
@@ -17,28 +18,28 @@ interface ChannelIntegrations {
      * другой организации. Строка интеграции блокируется от удаления до конца транзакции, чтобы
      * параллельный [remove] не удалил канал между выбором и записью доставки.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: ChannelIntegrationId): ChannelIntegration
 
     /** Добавляет новую (активную) интеграцию [id] с настройками [config]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun add(id: ChannelIntegrationId, name: String, config: ChannelConfig)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun add(id: ChannelIntegrationId, name: NonBlankName, config: ChannelConfig)
 
     /**
      * Сохранённые настройки провайдера интеграции [id] вместе с секретами — для слияния с частичным
      * изменением; `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun config(id: ChannelIntegrationId): ChannelConfig
 
     /**
      * Меняет имя и настройки провайдера интеграции [id], не трогая включённость;
      * `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun update(
         id: ChannelIntegrationId,
-        name: String,
+        name: NonBlankName,
         config: ChannelConfig,
     )
 
@@ -46,7 +47,7 @@ interface ChannelIntegrations {
      * Включает или выключает интеграцию [id] без проверки настроек у провайдера;
      * `CHANNEL_NOT_FOUND`, если не найдена или принадлежит другой организации.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun setEnabled(id: ChannelIntegrationId, enabled: Boolean)
 
     /**
@@ -55,13 +56,13 @@ interface ChannelIntegrations {
      * блокируется до проверки, поэтому параллельная отправка либо завершится до неё и будет учтена,
      * либо дождётся удаления и получит `CHANNEL_NOT_FOUND`.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun remove(id: ChannelIntegrationId)
 
     /**
      * Worker-путь: возвращает интеграцию по [id] без привязки к организации, готовую к отправке
      * ([ChannelIntegration.send]). Используется фоновым диспетчером. `null`, если интеграция удалена.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration?
 }

@@ -10,7 +10,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -36,11 +36,11 @@ interface GroupListView {
      * `total` в ответе — общее число групп организации (и филиала, если он задан)
      * без учёта фильтров: список групп не постраничный.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: GroupListQuery): GroupListResponse
 
     /** Возвращает группы в сокращённом виде для выпадающих списков. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun forSelect(): List<GroupSelectItem>
 }
 
@@ -50,7 +50,7 @@ interface GroupListView {
  */
 interface GroupDetailView {
     /** Возвращает карточку группы [id]; ошибка, если группа не найдена в организации. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: GroupId): GroupDetailResponse
 }
 
@@ -73,6 +73,6 @@ interface GroupSessionsView {
      * Возвращает занятия группы и периода из [query]; ошибка `GROUP_NOT_FOUND`, если группы
      * нет в текущем филиале организации.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: GroupSessionsQuery): GroupSessionsResponse
 }

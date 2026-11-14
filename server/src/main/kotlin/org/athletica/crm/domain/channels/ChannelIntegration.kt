@@ -5,7 +5,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -31,7 +31,7 @@ interface ChannelIntegration {
      * [contactId] — выбранный контакт-адресат для прямых каналов (`null` — взять первый подходящий);
      * связанные каналы (Telegram/VK) его игнорируют и берут адрес из связки.
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun recipientAddress(clientId: ClientId, contactId: ClientContactId?): String
 
     /**

@@ -1,9 +1,9 @@
 package org.athletica.crm.core.time
 
-import arrow.core.Either
 import arrow.core.getOrElse
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
+import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -11,8 +11,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 
 /**
  * Период действия правила: полуоткрытый интервал дат `[from, to)`.
@@ -34,9 +34,10 @@ data class Validity private constructor(
 
     /**
      * Период, закрытый датой [date]: правило перестаёт действовать с неё.
-     * Возвращает ошибку `INVALID_VALIDITY`, если [date] не позже [from].
+     * Поднимает ошибку `INVALID_VALIDITY`, если [date] не позже [from].
      */
-    fun closedAt(date: LocalDate): Either<DomainError, Validity> = of(from, date)
+    context(raise: Raise<AppError>)
+    fun closedAt(date: LocalDate): Validity = of(from, date)
 
     override fun toString(): String = "[$from, ${to ?: "∞"})"
 
@@ -46,14 +47,15 @@ data class Validity private constructor(
 
         /**
          * Создаёт период `[from, to)`.
-         * Возвращает [CommonDomainError] с кодом `INVALID_VALIDITY`, если [to] не позже [from].
+         * Поднимает [CommonDomainError] с кодом `INVALID_VALIDITY`, если [to] не позже [from].
          */
-        fun of(from: LocalDate, to: LocalDate? = null): Either<DomainError, Validity> =
-            if (to == null || to > from) {
-                Validity(from, to).right()
-            } else {
-                CommonDomainError("INVALID_VALIDITY", INVALID_VALIDITY_MESSAGE).left()
+        context(raise: Raise<AppError>)
+        fun of(from: LocalDate, to: LocalDate? = null): Validity {
+            if (to != null && to <= from) {
+                raise(CommonDomainError("INVALID_VALIDITY", INVALID_VALIDITY_MESSAGE))
             }
+            return Validity(from, to)
+        }
     }
 
     /**
@@ -73,7 +75,7 @@ data class Validity private constructor(
 
         override fun deserialize(decoder: Decoder): Validity {
             val surrogate = decoder.decodeSerializableValue(Surrogate.serializer())
-            return of(surrogate.from, surrogate.to).getOrElse { err ->
+            return either { of(surrogate.from, surrogate.to) }.getOrElse { err ->
                 throw SerializationException(err.message)
             }
         }

@@ -1,11 +1,12 @@
 package org.athletica.crm.usecases.upload
 
-import arrow.core.Either
-import arrow.core.raise.either
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
@@ -18,53 +19,52 @@ import org.athletica.crm.storage.Transaction
  * Загружает файл в MinIO и сохраняет метаданные в таблице uploads.
  * Возвращает [UploadResponse] с presigned URL для доступа к файлу.
  */
-context(db: Database, minioService: MinioService, ctx: EmployeeRequestContext, audit: AuditLog)
+context(db: Database, minioService: MinioService, ctx: EmployeeRequestContext, audit: AuditLog, raise: Raise<AppError>)
 suspend fun uploadFile(
     bytes: ByteArray,
     originalName: String,
     contentType: String,
-): Either<CommonDomainError, UploadResponse> =
-    either {
-        if (bytes.isEmpty()) {
-            raise(CommonDomainError("EMPTY_FILE", Messages.EmptyFile.localize()))
-        }
-
-        val uploadId = UploadId.new()
-        val sanitizedName = originalName.replace(Regex("[^a-zA-Z0-9._\\-]"), "_")
-        val objectKey = "${ctx.orgId.value}/$uploadId/$sanitizedName"
-
-        minioService.uploadObject(
-            key = objectKey,
-            stream = bytes.inputStream(),
-            size = bytes.size.toLong(),
-            contentType = contentType,
-        )
-
-        db.transaction {
-            sql(
-                """
-                INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-                VALUES (:id, :orgId, :uploadedBy, :objectKey, :originalName, :contentType, :sizeBytes)
-                """.trimIndent(),
-            ).bind("id", uploadId)
-                .bind("orgId", ctx.orgId)
-                .bind("uploadedBy", ctx.userId)
-                .bind("objectKey", objectKey)
-                .bind("originalName", originalName)
-                .bind("contentType", contentType)
-                .bind("sizeBytes", bytes.size.toLong())
-                .execute()
-
-            UploadResponse(
-                id = uploadId,
-                url = minioService.presignedGetUrl(objectKey),
-                originalName = originalName,
-                contentType = contentType,
-                sizeBytes = bytes.size.toLong(),
-            ).also { audit.logCreate(it) }
-        }
+): UploadResponse {
+    if (bytes.isEmpty()) {
+        raise(CommonDomainError("EMPTY_FILE", Messages.EmptyFile.localize()))
     }
 
+    val uploadId = UploadId.new()
+    val sanitizedName = originalName.replace(Regex("[^a-zA-Z0-9._\\-]"), "_")
+    val objectKey = "${ctx.orgId.value}/$uploadId/$sanitizedName"
+
+    minioService.uploadObject(
+        key = objectKey,
+        stream = bytes.inputStream(),
+        size = bytes.size.toLong(),
+        contentType = contentType,
+    )
+
+    return db.transaction {
+        sql(
+            """
+            INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+            VALUES (:id, :orgId, :uploadedBy, :objectKey, :originalName, :contentType, :sizeBytes)
+            """.trimIndent(),
+        ).bind("id", uploadId)
+            .bind("orgId", ctx.orgId)
+            .bind("uploadedBy", ctx.userId)
+            .bind("objectKey", objectKey)
+            .bind("originalName", originalName)
+            .bind("contentType", contentType)
+            .bind("sizeBytes", bytes.size.toLong())
+            .execute()
+
+        UploadResponse(
+            id = uploadId,
+            url = minioService.presignedGetUrl(objectKey),
+            originalName = originalName,
+            contentType = contentType,
+            sizeBytes = bytes.size.toLong(),
+        ).also { audit.logCreate(it) }
+    }
+}
+
 /** Логирует загрузку файла: тип сущности `"upload"`, данные — JSON-снапшот [result]. */
-context(ctx: EmployeeRequestContext, tr: Transaction)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun AuditLog.logCreate(result: UploadResponse) = logCreate("upload", result.id, Json.encodeToString(result))

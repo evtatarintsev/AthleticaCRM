@@ -11,7 +11,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.domain.employees.Employee
@@ -35,7 +35,7 @@ private data class NewSessionSnapshot(
  * [ScheduleSync] множественным запросом, минуя репозиторий.
  */
 class AuditSessions(private val delegate: Sessions, private val audit: AuditLog) : Sessions by delegate {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: SessionId,
         groupId: GroupId,
@@ -45,20 +45,20 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-    ): Session? {
+    ): Session {
         val session = delegate.new(id, groupId, date, startTime, endTime, hallId, notes, employees)
-        if (session != null && ctx is EmployeeRequestContext) {
+        if (ctx is EmployeeRequestContext) {
             context(ctx) {
                 audit.logCreate(
                     "session",
                     id,
-                    Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, employees.map { it.id }, isManual = true)),
+                    Json.encodeToString(NewSessionSnapshot(id, groupId, date, startTime, endTime, hallId, session.employeeIds, isManual = true)),
                 )
             }
         }
-        return session?.let { AuditSession(it, audit) }
+        return AuditSession(session, audit)
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: SessionId): Session = AuditSession(delegate.byId(id), audit)
 }

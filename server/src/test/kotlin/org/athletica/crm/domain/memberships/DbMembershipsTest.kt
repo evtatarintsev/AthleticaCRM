@@ -7,7 +7,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.SystemContexts
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
@@ -15,6 +16,8 @@ import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.UnfreezeReason
 import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.storage.asString
+import org.athletica.crm.testPositiveInt
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.revokeMembership
 import org.junit.Before
@@ -135,7 +138,7 @@ class DbMembershipsTest {
 
             val result = fixture.attempt { closeMembership(fixture.memberships, calendar, issued.id) }
 
-            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_NOT_ACTIVE", assertIs<Either.Left<AppError>>(result).value.code)
             assertIs<InactiveMembership>(fixture.reload(issued.id))
         }
 
@@ -170,8 +173,8 @@ class DbMembershipsTest {
             val revoke = fixture.attempt { revokeMembership(fixture.memberships, issued.id) }
             val close = fixture.attempt { closeMembership(fixture.memberships, calendar, issued.id) }
 
-            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<DomainError>>(revoke).value.code)
-            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<DomainError>>(close).value.code)
+            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<AppError>>(revoke).value.code)
+            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<AppError>>(close).value.code)
             assertIs<ClosedMembership>(fixture.reload(issued.id))
             assertEquals(listOf("ISSUED", "ACTIVATED", "CLOSED"), fixture.eventKinds(issued.id))
         }
@@ -184,7 +187,7 @@ class DbMembershipsTest {
 
             val close = fixture.attempt { closeMembership(fixture.memberships, calendar, issued.id) }
 
-            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<DomainError>>(close).value.code)
+            assertEquals("MEMBERSHIP_FINAL", assertIs<Either.Left<AppError>>(close).value.code)
             assertIs<RevokedMembership>(fixture.reload(issued.id))
         }
 
@@ -201,7 +204,7 @@ class DbMembershipsTest {
                         "Безлимит",
                         null,
                         listOf(fixture.groupId),
-                        MembershipDuration(1, org.athletica.crm.core.subscription.DurationUnit.MONTHS),
+                        MembershipDuration(testPositiveInt(1), org.athletica.crm.core.subscription.DurationUnit.MONTHS),
                         Money(1_000_00, Currency.RUB),
                         Activation.Immediate,
                         CloseMode.ON_LAST_SESSION,
@@ -209,7 +212,7 @@ class DbMembershipsTest {
                     )
                 }
 
-            assertEquals("UNLIMITED_CLOSE_ON_LAST_SESSION", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("UNLIMITED_CLOSE_ON_LAST_SESSION", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
         }
 
@@ -220,7 +223,7 @@ class DbMembershipsTest {
 
             val result = runCatchingIssue(clientId, emptyList())
 
-            assertEquals("MEMBERSHIP_GROUPS_REQUIRED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_GROUPS_REQUIRED", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
         }
 
@@ -233,7 +236,7 @@ class DbMembershipsTest {
 
             val result = runCatchingIssue(clientId, listOf(fixture.groupId, other.groupId))
 
-            assertEquals("GROUP_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("GROUP_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(emptyList(), fixture.tx { fixture.memberships.forClient(clientId) })
         }
 
@@ -253,9 +256,9 @@ class DbMembershipsTest {
                 clientId,
                 null,
                 "8 занятий",
-                8,
+                testPositiveInt(8),
                 groupIds,
-                MembershipDuration(1, org.athletica.crm.core.subscription.DurationUnit.MONTHS),
+                MembershipDuration(testPositiveInt(1), org.athletica.crm.core.subscription.DurationUnit.MONTHS),
                 Money(1_000_00, Currency.RUB),
                 Activation.Immediate,
                 CloseMode.MANUAL,
@@ -277,24 +280,26 @@ class DbMembershipsTest {
 
     @Test
     fun `декоратор пишет в аудит заморозку от сотрудника и разморозку от системы`() =
-        runTest {
-            val id = fixture.issue(fixture.insertClient()).id
-            val day = LocalDate(2026, 10, 20)
-            fixture.tx { assertIs<ActiveMembership>(fixture.memberships.byId(id)).freeze(day, LocalDate(2026, 10, 29), "болезнь", LocalDate(2026, 10, 16)) }
-            fixture.tx(fixture.system) { assertIs<ActiveMembership>(fixture.memberships.byId(id)).unfreeze(day, UnfreezeReason.EXPIRED) }
+        orThrow {
+            runTest {
+                val id = fixture.issue(fixture.insertClient()).id
+                val day = LocalDate(2026, 10, 20)
+                fixture.tx { assertIs<ActiveMembership>(fixture.memberships.byId(id)).freeze(day, LocalDate(2026, 10, 29), "болезнь", LocalDate(2026, 10, 16)) }
+                fixture.tx(fixture.system) { assertIs<ActiveMembership>(fixture.memberships.byId(id)).unfreeze(day, UnfreezeReason.EXPIRED) }
 
-            val rows =
-                TestPostgres.db
-                    .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id AND data::text LIKE '%freezeStart%' ORDER BY created_at, id")
-                    .bind("id", id)
-                    .list { it.get("username", String::class.java)!! to Json.parseToJsonElement(it.get("data", String::class.java)!!) }
-            val frozen =
-                """{"action":"FROZEN","unfreezeReason":null,"freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-25"}"""
-            val unfrozen =
-                """{"action":"UNFROZEN","unfreezeReason":"EXPIRED","freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-15"}"""
-            assertEquals(
-                listOf(fixture.ctx.username to Json.parseToJsonElement(frozen), "Система" to Json.parseToJsonElement(unfrozen)),
-                rows,
-            )
+                val rows =
+                    TestPostgres.db
+                        .sql("SELECT username, data::text AS data FROM audit_logs WHERE entity_id = :id AND data::text LIKE '%freezeStart%' ORDER BY created_at, id")
+                        .bind("id", id)
+                        .list { it.asString("username") to Json.parseToJsonElement(it.asString("data")) }
+                val frozen =
+                    """{"action":"FROZEN","unfreezeReason":null,"freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-25"}"""
+                val unfrozen =
+                    """{"action":"UNFROZEN","unfreezeReason":"EXPIRED","freezeStart":"2026-10-20","freezeEnd":"2026-10-29","freezeReason":"болезнь","membershipEndDate":"2026-11-15"}"""
+                assertEquals(
+                    listOf(fixture.ctx.username to Json.parseToJsonElement(frozen), "Система" to Json.parseToJsonElement(unfrozen)),
+                    rows,
+                )
+            }
         }
 }

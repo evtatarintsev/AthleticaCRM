@@ -8,10 +8,11 @@ import org.athletica.crm.MessagingFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.employeeContext
+import org.athletica.crm.testName
 import org.athletica.infra.messaging.ProviderChannelTransports
 import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
@@ -35,11 +36,11 @@ class TelegramBotUniquenessTest {
         }
     }
 
-    private suspend fun add(org: OrgId, id: ChannelIntegrationId, token: String): Either<DomainError, Unit> =
+    private suspend fun add(org: OrgId, id: ChannelIntegrationId, token: String): Either<AppError, Unit> =
         either {
             TestPostgres.db.transaction {
                 context(employeeContext(orgId = org)) {
-                    integrations.add(id, "Бот", ChannelConfig.TelegramBot(botToken = token, botUsername = "club_bot"))
+                    integrations.add(id, testName("Бот"), ChannelConfig.TelegramBot(botToken = token, botUsername = "club_bot"))
                 }
             }
         }
@@ -51,7 +52,7 @@ class TelegramBotUniquenessTest {
 
             val result = add(otherOrgId, ChannelIntegrationId.new(), "123:abc")
 
-            assertEquals("TELEGRAM_BOT_IN_USE", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TELEGRAM_BOT_IN_USE", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -64,7 +65,7 @@ class TelegramBotUniquenessTest {
                 either {
                     TestPostgres.db.transaction {
                         context(employeeContext(orgId = orgId)) {
-                            integrations.update(id, "Бот клуба", ChannelConfig.TelegramBot(botToken = "123:abc"))
+                            integrations.update(id, testName("Бот клуба"), ChannelConfig.TelegramBot(botToken = "123:abc"))
                         }
                     }
                 }

@@ -6,13 +6,13 @@ import org.athletica.crm.api.schemas.attendance.AttendanceSessionSchema
 import org.athletica.crm.api.schemas.attendance.GroupAttendanceResponse
 import org.athletica.crm.api.schemas.attendance.GroupAttendanceRowSchema
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 
 /** Реализация [GroupAttendanceView] одним SQL: занятия и строки участников — JSONB-агрегатами. */
 class DbGroupAttendanceView : GroupAttendanceView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun summary(query: GroupAttendanceQuery): GroupAttendanceResponse =
         tr
             .sql(

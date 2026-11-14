@@ -12,8 +12,9 @@ import org.athletica.crm.api.schemas.channels.ChannelConfigChange
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.domain.channels.ChannelConfigVerifier
@@ -23,6 +24,7 @@ import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.athletica.infra.messaging.ProviderChannelTransports
 import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
@@ -42,7 +44,7 @@ class UpdateChannelTest {
     private class FakeVerifier(private val reject: Boolean = false) : ChannelConfigVerifier {
         val verified = mutableListOf<ChannelConfig>()
 
-        context(ctx: RequestContext, raise: Raise<DomainError>)
+        context(ctx: RequestContext, raise: Raise<AppError>)
         override suspend fun verified(config: ChannelConfig): ChannelConfig {
             verified += config
             if (reject) {
@@ -66,18 +68,20 @@ class UpdateChannelTest {
         id: ChannelIntegrationId,
         name: String,
         change: ChannelConfigChange,
-    ): Either<DomainError, Unit> =
+    ): Either<AppError, Unit> =
         either {
             context(TestPostgres.db, context) {
-                updateChannel(channels, verifier, id, name, change)
+                updateChannel(channels, verifier, id, testName(name), change)
             }
         }
 
     private suspend fun stored(id: ChannelIntegrationId): Triple<String, ChannelConfig, Boolean> =
-        TestPostgres.db.sql("SELECT name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
-            .bind("id", id)
-            .firstOrNull { row -> Triple(row.asString("name"), row.asString("config").toChannelConfig(), row.asBoolean("enabled")) }
-            ?: error("интеграция не найдена")
+        orThrow {
+            TestPostgres.db.sql("SELECT name, config::text AS config, enabled FROM channel_integrations WHERE id = :id")
+                .bind("id", id)
+                .firstOrNull { row -> Triple(row.asString("name"), row.asString("config").toChannelConfig(), row.asBoolean("enabled")) }
+                ?: error("интеграция не найдена")
+        }
 
     @Test
     fun `переименование без нового токена не обращается к провайдеру`() =
@@ -121,7 +125,7 @@ class UpdateChannelTest {
 
             val result = update(FakeVerifier(reject = true), id, "Другое имя", ChannelConfigChange.TelegramBot(botToken = "2:bad"))
 
-            assertEquals("TELEGRAM_TOKEN_INVALID", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TELEGRAM_TOKEN_INVALID", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(Triple("Бот", ChannelConfig.TelegramBot("1:old", "old_bot"), true), stored(id))
         }
 
@@ -160,7 +164,7 @@ class UpdateChannelTest {
 
             val result = update(FakeVerifier(), id, "SMS", ChannelConfigChange.TelegramBot(botToken = "1:abc"))
 
-            assertEquals("CHANNEL_PROVIDER_MISMATCH", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CHANNEL_PROVIDER_MISMATCH", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -172,6 +176,6 @@ class UpdateChannelTest {
 
             val result = update(FakeVerifier(), id, "Бот", ChannelConfigChange.TelegramBot(botToken = null))
 
-            assertEquals("CHANNEL_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CHANNEL_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 }

@@ -1,14 +1,18 @@
 package org.athletica.crm.schedule
 
+import arrow.core.raise.either
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.entityids.SlotId
+import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.storage.ConstraintViolation
 import org.athletica.crm.storage.asInt
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -30,11 +34,13 @@ class ScheduleSchemaTest {
     fun `isodow_of переводит день недели в ISO-номер`() =
         runTest {
             val numbers =
-                DayOfWeek.entries.map { day ->
-                    TestPostgres.db
-                        .sql("SELECT isodow_of(:day::day_of_week) AS n")
-                        .bind("day", day.name)
-                        .firstOrNull { it.asInt("n") }
+                orThrow {
+                    DayOfWeek.entries.map { day ->
+                        TestPostgres.db
+                            .sql("SELECT isodow_of(:day::day_of_week) AS n")
+                            .bind("day", day.name)
+                            .firstOrNull { it.asInt("n") }
+                    }
                 }
 
             assertEquals(listOf(1, 2, 3, 4, 5, 6, 7), numbers)
@@ -132,11 +138,11 @@ class ScheduleSchemaTest {
             fixture.insertSession(group, hall, monday, LocalTime(10, 0), LocalTime(11, 0))
 
             val error =
-                runCatching {
+                either {
                     TestPostgres.db.sql("DELETE FROM groups WHERE id = :id").bind("id", group).execute()
-                }.exceptionOrNull()
+                }.leftOrNull()
 
-            assertTrue(error?.message?.contains("sessions_group_id_fkey") == true, "ожидался RESTRICT по занятиям, было: $error")
+            assertEquals("sessions_group_id_fkey", assertIs<ConstraintViolation>(error).constraint)
         }
 
     @Test
@@ -149,11 +155,11 @@ class ScheduleSchemaTest {
             fixture.insertSession(group, hall, monday, LocalTime(10, 0), LocalTime(11, 0), originSlotId = slot)
 
             val error =
-                runCatching {
+                either {
                     TestPostgres.db.sql("DELETE FROM schedule_slots WHERE id = :id").bind("id", slot).execute()
-                }.exceptionOrNull()
+                }.leftOrNull()
 
-            assertTrue(error?.message?.contains("origin_slot_id") == true, "ожидался RESTRICT по занятиям, было: $error")
+            assertEquals("sessions_origin_slot_id_fkey", assertIs<ConstraintViolation>(error).constraint)
         }
 
     @Test

@@ -1,10 +1,12 @@
 package org.athletica.crm.domain.attendance
 
+import arrow.core.raise.Raise
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.entityids.AttendanceLabelId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
@@ -129,7 +131,7 @@ private class AuditLogStub : AuditLog {
     /** Записанные события по порядку. */
     val events: MutableList<AuditEvent> = mutableListOf()
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun log(event: AuditEvent) {
         events.add(event)
     }

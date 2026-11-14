@@ -4,29 +4,30 @@ import arrow.core.raise.Raise
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.storage.Transaction
 
 class AuditEmployee(private val delegate: Employee, private val audit: AuditLog) : Employee by delegate {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() =
         delegate.save().also {
             audit.logUpdate("employee", id, Json.encodeToString(it))
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) =
         delegate.invite(email, password).also {
             audit.logUpdate("employee", id, Json.encodeToString(it))
         }
 
-    context(ctx: EmployeeRequestContext)
-    override fun withNew(
-        newName: String,
-        newPermissions: EmployeePermission,
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
+        newName: NonBlankName,
+        newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,

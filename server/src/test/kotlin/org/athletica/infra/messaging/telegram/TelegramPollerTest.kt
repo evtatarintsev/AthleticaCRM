@@ -15,8 +15,9 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.channels.ChannelChat
 import org.athletica.crm.domain.channels.ChannelChats
 import org.athletica.crm.domain.channels.DbChannelBindings
@@ -59,7 +60,7 @@ class TelegramPollerTest {
     private class FailingOnceChats(private val delegate: ChannelChats) : ChannelChats by delegate {
         var failures = 1
 
-        context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+        context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
         override suspend fun upsert(
             integrationId: ChannelIntegrationId,
             address: String,
@@ -112,8 +113,10 @@ class TelegramPollerTest {
            "chat":{"id":5,"type":"private"},$fields}}"""
 
     private suspend fun offset(): Long =
-        TestPostgres.db.sql("SELECT update_offset FROM telegram_poll_state WHERE integration_id = :id")
-            .bind("id", integrationId).firstOrNull { it.asLong("update_offset") } ?: 0L
+        orThrow {
+            TestPostgres.db.sql("SELECT update_offset FROM telegram_poll_state WHERE integration_id = :id")
+                .bind("id", integrationId).firstOrNull { it.asLong("update_offset") } ?: 0L
+        }
 
     @Test
     fun `сбой транзакции не сдвигает offset, повторная выдача обрабатывается один раз`() =
@@ -166,16 +169,18 @@ class TelegramPollerTest {
 
     @Test
     fun `запись с чужой арендой ничего не пишет`() =
-        runTest {
-            val stealLease: suspend () -> Unit = {
-                TestPostgres.db.sql(
-                    "UPDATE telegram_poll_state SET lease_owner = 'other', lease_until = now() + interval '60 seconds' WHERE integration_id = :id",
-                ).bind("id", integrationId).execute()
+        orThrow {
+            runTest {
+                val stealLease: suspend () -> Unit = {
+                    TestPostgres.db.sql(
+                        "UPDATE telegram_poll_state SET lease_owner = 'other', lease_until = now() + interval '60 seconds' WHERE integration_id = :id",
+                    ).bind("id", integrationId).execute()
+                }
+
+                assertFalse(poller(listOf(privateUpdate(30, """"text":"Привет"""")), onGetUpdates = stealLease).pollOnce())
+
+                assertEquals(0L, offset())
+                assertEquals(0L, MessagingFixture.unresolvedCount(integrationId))
             }
-
-            assertFalse(poller(listOf(privateUpdate(30, """"text":"Привет"""")), onGetUpdates = stealLease).pollOnce())
-
-            assertEquals(0L, offset())
-            assertEquals(0L, MessagingFixture.unresolvedCount(integrationId))
         }
 }

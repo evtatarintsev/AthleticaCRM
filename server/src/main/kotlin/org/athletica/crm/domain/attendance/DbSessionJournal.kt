@@ -10,8 +10,8 @@ import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.domain.events.AttendanceChanged
 import org.athletica.crm.domain.events.AttendanceMarkSnapshot
@@ -31,7 +31,7 @@ class DbSessionJournal(
     private val labels: AttendanceLabels,
     private val events: DomainEvents,
 ) : SessionJournal {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun mark(clientId: ClientId, mark: AttendanceMark) {
         ensureNotCancelled()
         val participant = participant(clientId)
@@ -52,20 +52,18 @@ class DbSessionJournal(
         events.publish(event)
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun markRemainingAbsent(labelId: AttendanceLabelId) {
         ensureNotCancelled()
         val absent =
-            AttendanceMark.Absent
-                .from(setOf(labelId))
-                .fold({ raise(it) }, { it })
+            AttendanceMark.Absent.from(setOf(labelId))
         ensureLabelsAssignable(absent, AttendanceMark.Unmarked)
         participants
             .filter { it.mark is AttendanceMark.Unmarked }
             .forEach { mark(it.clientId, absent) }
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun addOneTime(clientId: ClientId) {
         ensureOpen()
         if (participants.any { it.clientId == clientId }) {
@@ -90,7 +88,7 @@ class DbSessionJournal(
             .execute()
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun removeOneTime(clientId: ClientId) {
         ensureOpen()
         if (participant(clientId).kind != ParticipationKind.ONE_TIME) {
@@ -104,13 +102,13 @@ class DbSessionJournal(
     }
 
     /** Участник [clientId] из состава; ошибка `ATTENDANCE_PARTICIPANT_NOT_FOUND`, если его нет. */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private fun participant(clientId: ClientId): JournalParticipant =
         participants.find { it.clientId == clientId }
             ?: raise(CommonDomainError("ATTENDANCE_PARTICIPANT_NOT_FOUND", Messages.AttendanceParticipantNotFound.localize()))
 
     /** Отказ для отменённого занятия: его журнал аннулирован. */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private fun ensureNotCancelled() {
         if (status == SessionStatus.CANCELLED) {
             raise(CommonDomainError("ATTENDANCE_SESSION_CANCELLED", Messages.AttendanceSessionCancelled.localize()))
@@ -118,7 +116,7 @@ class DbSessionJournal(
     }
 
     /** Отказ для занятия, журнал которого закрыт или аннулирован: состав меняется только у запланированного. */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private fun ensureOpen() {
         ensureNotCancelled()
         if (status != SessionStatus.SCHEDULED) {
@@ -130,7 +128,7 @@ class DbSessionJournal(
      * Проверяет, что метки отметки [mark] применимы к её состоянию и не архивны.
      * Архивная метка допустима, только если уже стоит на прежней отметке [previous].
      */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun ensureLabelsAssignable(mark: AttendanceMark, previous: AttendanceMark) {
         val presence = mark.presence ?: return
         labels.byIds(mark.labelIds).forEach { label ->
@@ -144,7 +142,7 @@ class DbSessionJournal(
     }
 
     /** Сохраняет отметку [mark] участника [participant], создавая строку журнала при первой отметке. */
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun write(participant: JournalParticipant, mark: AttendanceMark) {
         val attendanceId =
             tr

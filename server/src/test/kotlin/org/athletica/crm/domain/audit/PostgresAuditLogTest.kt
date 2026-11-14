@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -36,150 +37,41 @@ class PostgresAuditLogTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId)
-                .bind("name", "Audit Test Org")
-                .execute()
-            TestPostgres.db
-                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId)
-                .bind("login", "${userId.value}@example.com")
-                .bind("hash", "hash")
-                .execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId)
+                    .bind("name", "Audit Test Org")
+                    .execute()
+                TestPostgres.db
+                    .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId)
+                    .bind("login", "${userId.value}@example.com")
+                    .bind("hash", "hash")
+                    .execute()
+            }
         }
     }
 
     private suspend fun countRows(): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) FROM audit_logs WHERE org_id = :orgId")
-            .bind("orgId", orgId)
-            .firstOrNull { row -> row.asLong(0) }
-            ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) FROM audit_logs WHERE org_id = :orgId")
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asLong(0) }
+                ?: 0L
+        }
 
     // ─────────────────────────── tests ─────────────────────────────
 
     @Test
     fun `log сохраняет одно событие в БД`() =
-        runTest {
-            val entityId = Uuid.generateV7()
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user@example.com",
-                        actionType = AuditActionType.CREATE,
-                        entityType = "client",
-                        entityId = entityId,
-                        data = """{"name":"Иван"}""",
-                        ipAddress = "192.168.1.1",
-                    ),
-                )
-            }
-            assertEquals(1L, countRows())
-        }
-
-    @Test
-    fun `log сохраняет все поля события корректно`() =
-        runTest {
-            val entityId = Uuid.generateV7()
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "admin@example.com",
-                        actionType = AuditActionType.UPDATE,
-                        entityType = "client",
-                        entityId = entityId,
-                        data = """{"name":"Пётр"}""",
-                        ipAddress = "10.0.0.1",
-                    ),
-                )
-            }
-
-            val row =
-                TestPostgres.db
-                    .sql(
-                        """
-                        SELECT org_id, user_id, username, action_type, entity_type, entity_id, data::text, ip_address
-                        FROM audit_logs
-                        WHERE org_id = :orgId
-                        """.trimIndent(),
-                    ).bind("orgId", orgId)
-                    .firstOrNull { r ->
-                        mapOf(
-                            "orgId" to r.asUuid("org_id"),
-                            "userId" to r.asUuidOrNull("user_id"),
-                            "username" to r.asString("username"),
-                            "actionType" to r.asString("action_type"),
-                            "entityType" to r.asStringOrNull("entity_type"),
-                            "entityId" to r.asUuidOrNull("entity_id"),
-                            "data" to r.asStringOrNull("data"),
-                            "ipAddress" to r.asStringOrNull("ip_address"),
-                        )
-                    }
-
-            assertNotNull(row)
-            assertEquals(orgId.value, row["orgId"])
-            assertEquals(userId.value, row["userId"])
-            assertEquals("admin@example.com", row["username"])
-            assertEquals("update", row["actionType"])
-            assertEquals("client", row["entityType"])
-            assertEquals(entityId, row["entityId"])
-            assertEquals("10.0.0.1", row["ipAddress"])
-            assertNotNull(row["data"])
-        }
-
-    @Test
-    fun `log сохраняет событие без опциональных полей`() =
-        runTest {
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = null,
-                        username = "system",
-                        actionType = AuditActionType.EXPORT,
-                        entityType = null,
-                        entityId = null,
-                        data = null,
-                        ipAddress = null,
-                    ),
-                )
-            }
-
-            val row =
-                TestPostgres.db
-                    .sql(
-                        """
-                        SELECT user_id, entity_type, entity_id, data, ip_address
-                        FROM audit_logs
-                        WHERE org_id = :orgId
-                        """.trimIndent(),
-                    ).bind("orgId", orgId)
-                    .firstOrNull { r ->
-                        listOf(
-                            r.asUuidOrNull("user_id"),
-                            r.asStringOrNull("entity_type"),
-                            r.asUuidOrNull("entity_id"),
-                            r.asStringOrNull("data"),
-                            r.asStringOrNull("ip_address"),
-                        )
-                    }
-
-            assertNotNull(row)
-            row.forEach { assertNull(it) }
-        }
-
-    @Test
-    fun `log сохраняет несколько событий`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(5) { i ->
+        orThrow {
+            runTest {
+                val entityId = Uuid.generateV7()
+                TestPostgres.db.transaction {
                     auditLog.log(
                         AuditEvent(
                             orgId = orgId,
@@ -187,575 +79,740 @@ class PostgresAuditLogTest {
                             username = "user@example.com",
                             actionType = AuditActionType.CREATE,
                             entityType = "client",
-                            entityId = Uuid.generateV7(),
-                            data = """{"index":$i}""",
-                            ipAddress = "127.0.0.1",
+                            entityId = entityId,
+                            data = """{"name":"Иван"}""",
+                            ipAddress = "192.168.1.1",
                         ),
                     )
                 }
+                assertEquals(1L, countRows())
             }
-            assertEquals(5L, countRows())
         }
 
     @Test
-    fun `log сохраняет все типы действий`() =
-        runTest {
-            TestPostgres.db.transaction {
-                for (actionType in AuditActionType.entries) {
+    fun `log сохраняет все поля события корректно`() =
+        orThrow {
+            runTest {
+                val entityId = Uuid.generateV7()
+                TestPostgres.db.transaction {
                     auditLog.log(
                         AuditEvent(
                             orgId = orgId,
                             userId = userId,
-                            username = "user@example.com",
-                            actionType = actionType,
+                            username = "admin@example.com",
+                            actionType = AuditActionType.UPDATE,
+                            entityType = "client",
+                            entityId = entityId,
+                            data = """{"name":"Пётр"}""",
+                            ipAddress = "10.0.0.1",
                         ),
                     )
                 }
+
+                val row =
+                    TestPostgres.db
+                        .sql(
+                            """
+                            SELECT org_id, user_id, username, action_type, entity_type, entity_id, data::text, ip_address
+                            FROM audit_logs
+                            WHERE org_id = :orgId
+                            """.trimIndent(),
+                        ).bind("orgId", orgId)
+                        .firstOrNull { r ->
+                            mapOf(
+                                "orgId" to r.asUuid("org_id"),
+                                "userId" to r.asUuidOrNull("user_id"),
+                                "username" to r.asString("username"),
+                                "actionType" to r.asString("action_type"),
+                                "entityType" to r.asStringOrNull("entity_type"),
+                                "entityId" to r.asUuidOrNull("entity_id"),
+                                "data" to r.asStringOrNull("data"),
+                                "ipAddress" to r.asStringOrNull("ip_address"),
+                            )
+                        }
+
+                assertNotNull(row)
+                assertEquals(orgId.value, row["orgId"])
+                assertEquals(userId.value, row["userId"])
+                assertEquals("admin@example.com", row["username"])
+                assertEquals("update", row["actionType"])
+                assertEquals("client", row["entityType"])
+                assertEquals(entityId, row["entityId"])
+                assertEquals("10.0.0.1", row["ipAddress"])
+                assertNotNull(row["data"])
             }
+        }
 
-            assertEquals(AuditActionType.entries.size.toLong(), countRows())
+    @Test
+    fun `log сохраняет событие без опциональных полей`() =
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = null,
+                            username = "system",
+                            actionType = AuditActionType.EXPORT,
+                            entityType = null,
+                            entityId = null,
+                            data = null,
+                            ipAddress = null,
+                        ),
+                    )
+                }
 
-            val savedCodes =
-                TestPostgres.db
-                    .sql("SELECT action_type FROM audit_logs WHERE org_id = :orgId ORDER BY action_type")
-                    .bind("orgId", orgId)
-                    .list { row -> row.asString(0) }
-                    .toSet()
+                val row =
+                    TestPostgres.db
+                        .sql(
+                            """
+                            SELECT user_id, entity_type, entity_id, data, ip_address
+                            FROM audit_logs
+                            WHERE org_id = :orgId
+                            """.trimIndent(),
+                        ).bind("orgId", orgId)
+                        .firstOrNull { r ->
+                            listOf(
+                                r.asUuidOrNull("user_id"),
+                                r.asStringOrNull("entity_type"),
+                                r.asUuidOrNull("entity_id"),
+                                r.asStringOrNull("data"),
+                                r.asStringOrNull("ip_address"),
+                            )
+                        }
 
-            val expectedCodes = AuditActionType.entries.map { it.code }.toSet()
-            assertEquals(expectedCodes, savedCodes)
+                assertNotNull(row)
+                row.forEach { assertNull(it) }
+            }
+        }
+
+    @Test
+    fun `log сохраняет несколько событий`() =
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    repeat(5) { i ->
+                        auditLog.log(
+                            AuditEvent(
+                                orgId = orgId,
+                                userId = userId,
+                                username = "user@example.com",
+                                actionType = AuditActionType.CREATE,
+                                entityType = "client",
+                                entityId = Uuid.generateV7(),
+                                data = """{"index":$i}""",
+                                ipAddress = "127.0.0.1",
+                            ),
+                        )
+                    }
+                }
+                assertEquals(5L, countRows())
+            }
+        }
+
+    @Test
+    fun `log сохраняет все типы действий`() =
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    for (actionType in AuditActionType.entries) {
+                        auditLog.log(
+                            AuditEvent(
+                                orgId = orgId,
+                                userId = userId,
+                                username = "user@example.com",
+                                actionType = actionType,
+                            ),
+                        )
+                    }
+                }
+
+                assertEquals(AuditActionType.entries.size.toLong(), countRows())
+
+                val savedCodes =
+                    TestPostgres.db
+                        .sql("SELECT action_type FROM audit_logs WHERE org_id = :orgId ORDER BY action_type")
+                        .bind("orgId", orgId)
+                        .list { row -> row.asString(0) }
+                        .toSet()
+
+                val expectedCodes = AuditActionType.entries.map { it.code }.toSet()
+                assertEquals(expectedCodes, savedCodes)
+            }
         }
 
     @Test
     fun `log balance_adjust сохраняет данные операции`() =
-        runTest {
-            val clientId = Uuid.generateV7()
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "admin@example.com",
-                        actionType = AuditActionType.BALANCE_ADJUST,
-                        entityType = "client",
-                        entityId = clientId,
-                        data = """{"amount":500.0,"operationType":"admin_credit","note":"Бонус"}""",
-                        ipAddress = "127.0.0.1",
-                    ),
-                )
+        orThrow {
+            runTest {
+                val clientId = Uuid.generateV7()
+                TestPostgres.db.transaction {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "admin@example.com",
+                            actionType = AuditActionType.BALANCE_ADJUST,
+                            entityType = "client",
+                            entityId = clientId,
+                            data = """{"amount":500.0,"operationType":"admin_credit","note":"Бонус"}""",
+                            ipAddress = "127.0.0.1",
+                        ),
+                    )
+                }
+
+                val savedEntityId =
+                    TestPostgres.db
+                        .sql("SELECT entity_id FROM audit_logs WHERE org_id = :orgId AND action_type = 'balance_adjust'")
+                        .bind("orgId", orgId)
+                        .firstOrNull { row -> row.asUuid("entity_id") }
+
+                assertEquals(clientId, savedEntityId)
             }
-
-            val savedEntityId =
-                TestPostgres.db
-                    .sql("SELECT entity_id FROM audit_logs WHERE org_id = :orgId AND action_type = 'balance_adjust'")
-                    .bind("orgId", orgId)
-                    .firstOrNull { row -> row.asUuid("entity_id") }
-
-            assertEquals(clientId, savedEntityId)
         }
 
     // ─────────────────────────── list ──────────────────────────────
 
     @Test
     fun `list возвращает пустой список когда событий нет`() =
-        runTest {
-            val result =
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
+        orThrow {
+            runTest {
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
                     }
-                }
-            assertTrue(result.isEmpty())
+                assertTrue(result.isEmpty())
+            }
         }
 
     @Test
     fun `list возвращает событие с корректными полями`() =
-        runTest {
-            val entityId = Uuid.generateV7()
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user@example.com",
-                        actionType = AuditActionType.CREATE,
-                        entityType = "client",
-                        entityId = entityId,
-                        data = """{"name":"Иван"}""",
-                        ipAddress = "127.0.0.1",
-                    ),
-                )
-            }
-
-            val events =
+        orThrow {
+            runTest {
+                val entityId = Uuid.generateV7()
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
-                    }
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "user@example.com",
+                            actionType = AuditActionType.CREATE,
+                            entityType = "client",
+                            entityId = entityId,
+                            data = """{"name":"Иван"}""",
+                            ipAddress = "127.0.0.1",
+                        ),
+                    )
                 }
 
-            assertEquals(1, events.size)
-            val event = events.first()
-            assertEquals(orgId, event.orgId)
-            assertEquals(userId, event.userId)
-            assertEquals("user@example.com", event.username)
-            assertEquals(AuditActionType.CREATE, event.actionType)
-            assertEquals("client", event.entityType)
-            assertEquals(entityId, event.entityId)
-            assertEquals("127.0.0.1", event.ipAddress)
-            assertNotNull(event.id)
-            assertNotNull(event.createdAt)
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
+                    }
+
+                assertEquals(1, events.size)
+                val event = events.first()
+                assertEquals(orgId, event.orgId)
+                assertEquals(userId, event.userId)
+                assertEquals("user@example.com", event.username)
+                assertEquals(AuditActionType.CREATE, event.actionType)
+                assertEquals("client", event.entityType)
+                assertEquals(entityId, event.entityId)
+                assertEquals("127.0.0.1", event.ipAddress)
+                assertNotNull(event.id)
+                assertNotNull(event.createdAt)
+            }
         }
 
     @Test
     fun `list разрешает название субъекта только в своей организации`() =
-        runTest {
-            val entityId = Uuid.generateV7()
-            TestPostgres.db
-                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-                .bind("id", entityId)
-                .bind("orgId", orgId)
-                .bind("name", "Анна Петрова")
-                .execute()
-            val uploadId = Uuid.generateV7()
-            val documentId = Uuid.generateV7()
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-                    VALUES (:id, :orgId, :userId, 'audit-doc', 'passport.pdf', 'application/pdf', 1)
-                    """.trimIndent(),
-                )
-                .bind("id", uploadId)
-                .bind("orgId", orgId)
-                .bind("userId", userId)
-                .execute()
-            TestPostgres.db
-                .sql("INSERT INTO client_docs (id, client_id, org_id, upload_id, name) VALUES (:id, :clientId, :orgId, :uploadId, :name)")
-                .bind("id", documentId)
-                .bind("clientId", entityId)
-                .bind("orgId", orgId)
-                .bind("uploadId", uploadId)
-                .bind("name", "Паспорт")
-                .execute()
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user@example.com",
-                        actionType = AuditActionType.UPDATE,
-                        entityType = "client",
-                        entityId = entityId,
-                    ),
-                )
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user@example.com",
-                        actionType = AuditActionType.CREATE,
-                        entityType = "client_doc",
-                        entityId = documentId,
-                    ),
-                )
-            }
-
-            val events =
+        orThrow {
+            runTest {
+                val entityId = Uuid.generateV7()
+                TestPostgres.db
+                    .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                    .bind("id", entityId)
+                    .bind("orgId", orgId)
+                    .bind("name", "Анна Петрова")
+                    .execute()
+                val uploadId = Uuid.generateV7()
+                val documentId = Uuid.generateV7()
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                        VALUES (:id, :orgId, :userId, 'audit-doc', 'passport.pdf', 'application/pdf', 1)
+                        """.trimIndent(),
+                    )
+                    .bind("id", uploadId)
+                    .bind("orgId", orgId)
+                    .bind("userId", userId)
+                    .execute()
+                TestPostgres.db
+                    .sql("INSERT INTO client_docs (id, client_id, org_id, upload_id, name) VALUES (:id, :clientId, :orgId, :uploadId, :name)")
+                    .bind("id", documentId)
+                    .bind("clientId", entityId)
+                    .bind("orgId", orgId)
+                    .bind("uploadId", uploadId)
+                    .bind("name", "Паспорт")
+                    .execute()
                 TestPostgres.db.transaction {
-                    context(ctx) { activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u)) }
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "user@example.com",
+                            actionType = AuditActionType.UPDATE,
+                            entityType = "client",
+                            entityId = entityId,
+                        ),
+                    )
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "user@example.com",
+                            actionType = AuditActionType.CREATE,
+                            entityType = "client_doc",
+                            entityId = documentId,
+                        ),
+                    )
                 }
 
-            assertEquals("Анна Петрова", events.first { it.entityType == "client" }.subjectTitle)
-            val document = events.first { it.entityType == "client_doc" }
-            assertEquals("Паспорт", document.subjectTitle)
-            assertEquals(entityId, document.subjectTargetId)
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) { activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u)) }
+                    }
+
+                assertEquals("Анна Петрова", events.first { it.entityType == "client" }.subjectTitle)
+                val document = events.first { it.entityType == "client_doc" }
+                assertEquals("Паспорт", document.subjectTitle)
+                assertEquals(entityId, document.subjectTargetId)
+            }
         }
 
     @Test
     fun `users возвращает уникальных авторов только текущей организации`() =
-        runTest {
-            val otherOrgId = OrgId.new()
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId)
-                .bind("name", "Other Org")
-                .execute()
-            TestPostgres.db.transaction {
-                auditLog.log(AuditEvent(orgId, userId, "old-name", AuditActionType.CREATE))
-                auditLog.log(AuditEvent(orgId, userId, "latest-name", AuditActionType.UPDATE))
-                auditLog.log(AuditEvent(otherOrgId, userId, "other-org-name", AuditActionType.DELETE))
-            }
-
-            val users =
+        orThrow {
+            runTest {
+                val otherOrgId = OrgId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId)
+                    .bind("name", "Other Org")
+                    .execute()
                 TestPostgres.db.transaction {
-                    context(ctx) { activityLog.users() }
+                    auditLog.log(AuditEvent(orgId, userId, "old-name", AuditActionType.CREATE))
+                    auditLog.log(AuditEvent(orgId, userId, "latest-name", AuditActionType.UPDATE))
+                    auditLog.log(AuditEvent(otherOrgId, userId, "other-org-name", AuditActionType.DELETE))
                 }
 
-            assertEquals(1, users.size)
-            assertEquals(userId, users.single().id)
-            assertEquals("latest-name", users.single().username)
+                val users =
+                    TestPostgres.db.transaction {
+                        context(ctx) { activityLog.users() }
+                    }
+
+                assertEquals(1, users.size)
+                assertEquals(userId, users.single().id)
+                assertEquals("latest-name", users.single().username)
+            }
         }
 
     @Test
     fun `list фильтрует по actionType`() =
-        runTest {
-            TestPostgres.db.transaction {
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE))
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
-            }
-
-            val events =
+        orThrow {
+            runTest {
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.CREATE))
-                    }
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE))
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
                 }
 
-            assertEquals(2, events.size)
-            assertTrue(events.all { it.actionType == AuditActionType.CREATE })
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.CREATE))
+                        }
+                    }
+
+                assertEquals(2, events.size)
+                assertTrue(events.all { it.actionType == AuditActionType.CREATE })
+            }
         }
 
     @Test
     fun `list фильтрует по userId`() =
-        runTest {
-            val otherUserId = UserId.new()
-            TestPostgres.db
-                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", otherUserId)
-                .bind("login", "${otherUserId.value}@example.com")
-                .bind("hash", "hash")
-                .execute()
+        orThrow {
+            runTest {
+                val otherUserId = UserId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", otherUserId)
+                    .bind("login", "${otherUserId.value}@example.com")
+                    .bind("hash", "hash")
+                    .execute()
 
-            TestPostgres.db.transaction {
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "user1", actionType = AuditActionType.CREATE))
-                auditLog.log(AuditEvent(orgId = orgId, userId = otherUserId, username = "user2", actionType = AuditActionType.CREATE))
-            }
-
-            val events =
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, userId = userId))
-                    }
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "user1", actionType = AuditActionType.CREATE))
+                    auditLog.log(AuditEvent(orgId = orgId, userId = otherUserId, username = "user2", actionType = AuditActionType.CREATE))
                 }
 
-            assertEquals(1, events.size)
-            assertEquals(userId, events.first().userId)
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, userId = userId))
+                        }
+                    }
+
+                assertEquals(1, events.size)
+                assertEquals(userId, events.first().userId)
+            }
         }
 
     @Test
     fun `list фильтрует по entityType`() =
-        runTest {
-            TestPostgres.db.transaction {
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "client"))
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "group"))
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "client"))
-            }
-
-            val events =
+        orThrow {
+            runTest {
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, entityType = "client"))
-                    }
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "client"))
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "group"))
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "client"))
                 }
 
-            assertEquals(2, events.size)
-            assertTrue(events.all { it.entityType == "client" })
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, entityType = "client"))
+                        }
+                    }
+
+                assertEquals(2, events.size)
+                assertTrue(events.all { it.entityType == "client" })
+            }
         }
 
     @Test
     fun `list соблюдает limit и offset`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(5) {
-                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    repeat(5) {
+                        auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
+                    }
                 }
+
+                val page1 =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 2u, offset = 0u))
+                        }
+                    }
+                val page2 =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 2u, offset = 2u))
+                        }
+                    }
+
+                assertEquals(2, page1.size)
+                assertEquals(2, page2.size)
+                assertTrue((page1.map { it.id } intersect page2.map { it.id }.toSet()).isEmpty())
             }
-
-            val page1 =
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 2u, offset = 0u))
-                    }
-                }
-            val page2 =
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 2u, offset = 2u))
-                    }
-                }
-
-            assertEquals(2, page1.size)
-            assertEquals(2, page2.size)
-            assertTrue((page1.map { it.id } intersect page2.map { it.id }.toSet()).isEmpty())
         }
 
     @Test
     fun `list возвращает события в порядке убывания created_at`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(3) {
-                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
-                }
-            }
-
-            val events =
+        orThrow {
+            runTest {
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
+                    repeat(3) {
+                        auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
                     }
                 }
 
-            assertEquals(3, events.size)
-            val dates = events.map { it.createdAt!! }
-            assertEquals(dates.sortedDescending(), dates)
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
+                    }
+
+                assertEquals(3, events.size)
+                val dates = events.map { it.createdAt!! }
+                assertEquals(dates.sortedDescending(), dates)
+            }
         }
 
     @Test
     fun `list возвращает только события своей организации`() =
-        runTest {
-            val otherOrgId = OrgId.new()
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId)
-                .bind("name", "Other Org")
-                .execute()
+        orThrow {
+            runTest {
+                val otherOrgId = OrgId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId)
+                    .bind("name", "Other Org")
+                    .execute()
 
-            TestPostgres.db.transaction {
-                auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
-                auditLog.log(AuditEvent(orgId = otherOrgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
-            }
-
-            val events =
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
-                    }
+                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
+                    auditLog.log(AuditEvent(orgId = otherOrgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
                 }
 
-            assertEquals(1, events.size)
-            assertEquals(orgId, events.first().orgId)
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
+                    }
+
+                assertEquals(1, events.size)
+                assertEquals(orgId, events.first().orgId)
+            }
         }
 
     @Test
     fun `list фильтрует по from`() =
-        runTest {
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO audit_logs (org_id, user_id, username, action_type, created_at)
-                    VALUES (:orgId, :userId, 'u', 'create', '2024-01-01T00:00:00Z'::timestamptz),
-                           (:orgId, :userId, 'u', 'create', '2024-06-01T00:00:00Z'::timestamptz)
-                    """.trimIndent(),
-                ).bind("orgId", orgId)
-                .bind("userId", userId)
-                .execute()
+        orThrow {
+            runTest {
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO audit_logs (org_id, user_id, username, action_type, created_at)
+                        VALUES (:orgId, :userId, 'u', 'create', '2024-01-01T00:00:00Z'::timestamptz),
+                               (:orgId, :userId, 'u', 'create', '2024-06-01T00:00:00Z'::timestamptz)
+                        """.trimIndent(),
+                    ).bind("orgId", orgId)
+                    .bind("userId", userId)
+                    .execute()
 
-            val events =
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, from = "2024-03-01T00:00:00Z"))
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, from = "2024-03-01T00:00:00Z"))
+                        }
                     }
-                }
 
-            assertEquals(1, events.size)
+                assertEquals(1, events.size)
+            }
         }
 
     @Test
     fun `list фильтрует по to`() =
-        runTest {
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO audit_logs (org_id, user_id, username, action_type, created_at)
-                    VALUES (:orgId, :userId, 'u', 'create', '2024-01-01T00:00:00Z'::timestamptz),
-                           (:orgId, :userId, 'u', 'create', '2024-06-01T00:00:00Z'::timestamptz)
-                    """.trimIndent(),
-                ).bind("orgId", orgId)
-                .bind("userId", userId)
-                .execute()
+        orThrow {
+            runTest {
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO audit_logs (org_id, user_id, username, action_type, created_at)
+                        VALUES (:orgId, :userId, 'u', 'create', '2024-01-01T00:00:00Z'::timestamptz),
+                               (:orgId, :userId, 'u', 'create', '2024-06-01T00:00:00Z'::timestamptz)
+                        """.trimIndent(),
+                    ).bind("orgId", orgId)
+                    .bind("userId", userId)
+                    .execute()
 
-            val events =
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, to = "2024-03-01T00:00:00Z"))
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u, to = "2024-03-01T00:00:00Z"))
+                        }
                     }
-                }
 
-            assertEquals(1, events.size)
+                assertEquals(1, events.size)
+            }
         }
 
     // ─────────────────────────── count ─────────────────────────────
 
     @Test
     fun `count возвращает 0 когда событий нет`() =
-        runTest {
-            val result =
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
+        orThrow {
+            runTest {
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
                     }
-                }
-            assertEquals(0L, result)
+                assertEquals(0L, result)
+            }
         }
 
     @Test
     fun `count считает все события организации`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(7) {
-                    auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
-                }
-            }
-
-            val result =
+        orThrow {
+            runTest {
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
+                    repeat(7) {
+                        auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE))
                     }
                 }
 
-            assertEquals(7L, result)
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
+                    }
+
+                assertEquals(7L, result)
+            }
         }
 
     @Test
     fun `count фильтрует по actionType`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE)) }
-                repeat(2) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE)) }
-            }
-
-            val result =
+        orThrow {
+            runTest {
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.DELETE))
-                    }
+                    repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE)) }
+                    repeat(2) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE)) }
                 }
 
-            assertEquals(2L, result)
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.DELETE))
+                        }
+                    }
+
+                assertEquals(2L, result)
+            }
         }
 
     @Test
     fun `count фильтрует по userId`() =
-        runTest {
-            val otherUserId = UserId.new()
-            TestPostgres.db
-                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", otherUserId)
-                .bind("login", "${otherUserId.value}@example.com")
-                .bind("hash", "hash")
-                .execute()
+        orThrow {
+            runTest {
+                val otherUserId = UserId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", otherUserId)
+                    .bind("login", "${otherUserId.value}@example.com")
+                    .bind("hash", "hash")
+                    .execute()
 
-            TestPostgres.db.transaction {
-                repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u1", actionType = AuditActionType.CREATE)) }
-                repeat(2) { auditLog.log(AuditEvent(orgId = orgId, userId = otherUserId, username = "u2", actionType = AuditActionType.CREATE)) }
-            }
-
-            val result =
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, userId = userId))
-                    }
+                    repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u1", actionType = AuditActionType.CREATE)) }
+                    repeat(2) { auditLog.log(AuditEvent(orgId = orgId, userId = otherUserId, username = "u2", actionType = AuditActionType.CREATE)) }
                 }
 
-            assertEquals(3L, result)
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, userId = userId))
+                        }
+                    }
+
+                assertEquals(3L, result)
+            }
         }
 
     @Test
     fun `count фильтрует по entityType`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(4) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "client")) }
-                repeat(2) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "group")) }
-            }
-
-            val result =
+        orThrow {
+            runTest {
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, entityType = "client"))
-                    }
+                    repeat(4) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "client")) }
+                    repeat(2) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE, entityType = "group")) }
                 }
 
-            assertEquals(4L, result)
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u, entityType = "client"))
+                        }
+                    }
+
+                assertEquals(4L, result)
+            }
         }
 
     @Test
     fun `count считает только события своей организации`() =
-        runTest {
-            val otherOrgId = OrgId.new()
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId)
-                .bind("name", "Other Org")
-                .execute()
+        orThrow {
+            runTest {
+                val otherOrgId = OrgId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId)
+                    .bind("name", "Other Org")
+                    .execute()
 
-            TestPostgres.db.transaction {
-                repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE)) }
-                repeat(5) { auditLog.log(AuditEvent(orgId = otherOrgId, userId = userId, username = "u", actionType = AuditActionType.CREATE)) }
-            }
-
-            val result =
                 TestPostgres.db.transaction {
-                    context(ctx) {
-                        activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
-                    }
+                    repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.CREATE)) }
+                    repeat(5) { auditLog.log(AuditEvent(orgId = otherOrgId, userId = userId, username = "u", actionType = AuditActionType.CREATE)) }
                 }
 
-            assertEquals(3L, result)
+                val result =
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            activityLog.count(ActivityLogQuery(limit = 10u, offset = 0u))
+                        }
+                    }
+
+                assertEquals(3L, result)
+            }
         }
 
     @Test
     fun `count и list согласованы при фильтрации`() =
-        runTest {
-            TestPostgres.db.transaction {
-                repeat(4) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.UPDATE)) }
-                repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE)) }
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    repeat(4) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.UPDATE)) }
+                    repeat(3) { auditLog.log(AuditEvent(orgId = orgId, userId = userId, username = "u", actionType = AuditActionType.DELETE)) }
+                }
+
+                val filter = ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.UPDATE)
+                val count =
+                    TestPostgres.db.transaction {
+                        context(ctx) { activityLog.count(filter) }
+                    }
+                val list =
+                    TestPostgres.db.transaction {
+                        context(ctx) { activityLog.list(filter) }
+                    }
+
+                assertEquals(count, list.size.toLong())
             }
-
-            val filter = ActivityLogQuery(limit = 10u, offset = 0u, actionType = AuditActionType.UPDATE)
-            val count =
-                TestPostgres.db.transaction {
-                    context(ctx) { activityLog.count(filter) }
-                }
-            val list =
-                TestPostgres.db.transaction {
-                    context(ctx) { activityLog.list(filter) }
-                }
-
-            assertEquals(count, list.size.toLong())
         }
 
     @Test
     fun `события из разных организаций не смешиваются`() =
-        runTest {
-            val otherOrgId = OrgId.new()
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId)
-                .bind("name", "Other Org")
-                .execute()
+        orThrow {
+            runTest {
+                val otherOrgId = OrgId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId)
+                    .bind("name", "Other Org")
+                    .execute()
 
-            TestPostgres.db.transaction {
-                auditLog.log(
-                    AuditEvent(
-                        orgId = orgId,
-                        userId = userId,
-                        username = "user1@example.com",
-                        actionType = AuditActionType.CREATE,
-                    ),
-                )
-                auditLog.log(
-                    AuditEvent(
-                        orgId = otherOrgId,
-                        userId = userId,
-                        username = "user2@example.com",
-                        actionType = AuditActionType.DELETE,
-                    ),
-                )
+                TestPostgres.db.transaction {
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = orgId,
+                            userId = userId,
+                            username = "user1@example.com",
+                            actionType = AuditActionType.CREATE,
+                        ),
+                    )
+                    auditLog.log(
+                        AuditEvent(
+                            orgId = otherOrgId,
+                            userId = userId,
+                            username = "user2@example.com",
+                            actionType = AuditActionType.DELETE,
+                        ),
+                    )
+                }
+
+                assertEquals(1L, countRows())
             }
-
-            assertEquals(1L, countRows())
         }
 }

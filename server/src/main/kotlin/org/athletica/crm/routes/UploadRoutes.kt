@@ -12,10 +12,10 @@ import org.athletica.crm.api.schemas.upload.UploadResponse
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.i18n.Messages
+import org.athletica.crm.read.uploads.uploadById
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.usecases.upload.uploadFile
-import org.athletica.crm.usecases.upload.uploadInfo
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -29,7 +29,16 @@ fun RouteWithContext.uploadRoutes() {
     get<UploadInfoRequest, UploadResponse>("/upload/info") { request, call ->
         val cacheTTL = 7.days
         call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = cacheTTL.inWholeSeconds.toInt()))
-        uploadInfo(request.id.value, cacheTTL).bind()
+        val upload =
+            db.transaction { uploadById(request.id) }
+                ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", Messages.UploadNotFound.localize()))
+        UploadResponse(
+            id = upload.id,
+            url = minioService.presignedGetUrl(upload.objectKey, ttlSeconds = cacheTTL.inWholeSeconds.toInt()),
+            originalName = upload.originalName,
+            contentType = upload.contentType,
+            sizeBytes = upload.sizeBytes,
+        )
     }
 
     post<Unit, UploadResponse>("/upload") { _, call ->
@@ -47,6 +56,6 @@ fun RouteWithContext.uploadRoutes() {
         }
 
         val bytes = fileBytes ?: raise(CommonDomainError("NO_FILE", Messages.FileNotInRequest.localize()))
-        uploadFile(bytes, originalName, contentType).bind()
+        uploadFile(bytes, originalName, contentType)
     }.contract(ApiContract(HttpMethod.Post, ApiRequest.Multipart, jsonResponse<UploadResponse>()))
 }

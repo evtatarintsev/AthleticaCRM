@@ -1,6 +1,7 @@
 package org.athletica.crm.routes
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -19,12 +20,12 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.attendancecontrol.AttendanceControlSettingsResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,21 +47,23 @@ class AttendanceControlRoutesTest {
     /** Регистрирует организацию и запоминает токен её владельца. */
     private suspend fun signUp() {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    org.athletica.crm.usecases.auth.signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
-                            companyName = "Acme",
-                            userName = "John",
+                            companyName = testName("Acme"),
+                            userName = testName("John"),
                             login = "owner@example.com",
                             password = "password123",
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        token = testJwtConfig.makeAccessToken(assertIs<Either.Right<User>>(result).value)
+        token = testJwtConfig.makeAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
     }
 
     private suspend fun ApplicationTestBuilder.settings(): AttendanceControlSettingsResponse {

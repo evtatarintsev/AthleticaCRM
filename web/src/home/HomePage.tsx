@@ -9,7 +9,12 @@ import { useI18n } from "@/i18n/context";
 import { useSession } from "@/query/session";
 import { PageHeader } from "@/ui/PageHeader";
 import { BirthdaysWidgetCard } from "./BirthdaysWidgetCard";
-import { orderedVisible, resolveTitle, withDashboardDefaults } from "./dashboardSettings";
+import {
+  normalizeDashboardOrder,
+  orderedVisible,
+  resolveTitle,
+  withDashboardDefaults,
+} from "./dashboardSettings";
 import { DashboardSettingsDialog } from "./DashboardSettingsDialog";
 import { DebtorsWidgetCard } from "./DebtorsWidgetCard";
 import { SessionsWidgetCard } from "./SessionsWidgetCard";
@@ -26,7 +31,10 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
   const branchId = useSession(api).currentBranch.id;
   const display = useQuery(displaySettingsQuery(api));
   const dashboard = useMemo(
-    () => (display.data === undefined ? undefined : withDashboardDefaults(display.data.dashboard)),
+    () =>
+      display.data === undefined
+        ? undefined
+        : normalizeDashboardOrder(withDashboardDefaults(display.data.dashboard)),
     [display.data],
   );
   const [settingsOpen, setSettingsOpen] = useState(false);

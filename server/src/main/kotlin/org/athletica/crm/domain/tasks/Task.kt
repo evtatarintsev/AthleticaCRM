@@ -2,11 +2,12 @@ package org.athletica.crm.domain.tasks
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
@@ -56,7 +57,7 @@ interface Task {
      * в этом экземпляре, добавляются только новые. Связки, добавленные параллельными транзакциями,
      * не затрагиваются.
      */
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
     /**
@@ -64,9 +65,9 @@ interface Task {
      * Требует права на редактирование: без [org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_TASKS]
      * разрешено только для задач, где сотрудник — создатель или исполнитель.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun withNew(
-        newTitle: String,
+        newTitle: NonBlankName,
         newDescription: String,
         newClientId: ClientId?,
         newDueDate: Instant?,
@@ -77,21 +78,21 @@ interface Task {
      * Возвращает копию задачи с назначенным [employee].
      * Требует права на редактирование; без него можно только взять себе задачу без исполнителя.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun assignTo(employee: Employee): Task
 
     /**
      * Возвращает копию задачи со снятым исполнителем.
      * Требует права на редактирование.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun unassign(): Task
 
     /**
      * Возвращает копию задачи с изменённым [newStatus].
      * Требует права на редактирование.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun status(newStatus: TaskStatus): Task
 
     /**
@@ -99,13 +100,13 @@ interface Task {
      * Идемпотентна: если вложение уже есть, возвращает текущий экземпляр без изменений.
      * Требует права на редактирование.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun attach(uploadId: UploadId): Task
 
     /**
      * Возвращает копию задачи с удалённым вложением [uploadId].
      * Требует права на редактирование.
      */
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     fun detach(uploadId: UploadId): Task
 }

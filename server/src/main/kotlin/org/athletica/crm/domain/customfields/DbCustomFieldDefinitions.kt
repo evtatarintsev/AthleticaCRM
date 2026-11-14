@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.customfields
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -9,14 +10,15 @@ import kotlinx.serialization.json.jsonObject
 import org.athletica.crm.api.appJson
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
 
 /** R2DBC-реализация [CustomFieldDefinitions]. */
 class DbCustomFieldDefinitions : CustomFieldDefinitions {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun all(entityType: String): List<CustomFieldDefinition> =
         tr.sql(
             """
@@ -41,8 +43,21 @@ class DbCustomFieldDefinitions : CustomFieldDefinitions {
                 )
             }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun saveAll(entityType: String, definitions: List<CustomFieldDefinition>) {
+        definitions.forEach { def ->
+            val valid =
+                when (def) {
+                    is CustomFieldDefinition.Select -> def.options.any { it.isNotBlank() }
+                    is CustomFieldDefinition.Text ->
+                        (def.minLength ?: 0) >= 0 && (def.maxLength ?: Int.MAX_VALUE) >= (def.minLength ?: 0)
+                    is CustomFieldDefinition.Number -> (def.minValue ?: Long.MIN_VALUE) <= (def.maxValue ?: Long.MAX_VALUE)
+                    else -> true
+                }
+            ensure(valid) {
+                CommonDomainError("CUSTOM_FIELD_INVALID_DEFINITION", "Некорректное определение поля ${def.fieldKey}")
+            }
+        }
         tr.sql(
             "DELETE FROM custom_field_definitions WHERE org_id = :orgId AND entity_type = :entityType",
         )

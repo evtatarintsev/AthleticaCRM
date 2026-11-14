@@ -3,10 +3,11 @@ package org.athletica.crm.domain.branch
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.toBranchId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -15,7 +16,7 @@ import org.athletica.crm.storage.asUuid
 
 /** R2DBC-реализация каталога филиалов. */
 class DbBranches : Branches {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(): List<Branch> =
         when (val access = ctx.employee.availableBranches) {
             is EmployeeBranchAccess.All ->
@@ -36,15 +37,15 @@ class DbBranches : Branches {
                 }
         }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun new(id: BranchId, name: String): Branch = DbBranch(id, name)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun new(id: BranchId, name: NonBlankName): Branch = DbBranch(id, name.value)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: BranchId): Branch =
         byIds(listOf(id)).singleOrNull()
             ?: raise(CommonDomainError("BRANCH_NOT_FOUND", Messages.BranchNotFound.localize()))
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<BranchId>): List<Branch> {
         val distinctIds = ids.distinct()
         if (distinctIds.isEmpty()) {

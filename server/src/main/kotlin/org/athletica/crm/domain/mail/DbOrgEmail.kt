@@ -1,8 +1,10 @@
 package org.athletica.crm.domain.mail
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.entityids.OrgEmailId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -26,7 +28,7 @@ data class DbOrgEmail(
     override val sentAt: Instant? = null,
     override val lastError: String? = null,
 ) : OrgEmail {
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markSent(id: OrgEmailId) {
         tr.sql(
             """
@@ -39,7 +41,7 @@ data class DbOrgEmail(
             .execute()
     }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markFailed(id: OrgEmailId, error: String) {
         tr.sql(
             """

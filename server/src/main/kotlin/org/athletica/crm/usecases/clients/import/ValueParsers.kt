@@ -2,10 +2,12 @@ package org.athletica.crm.usecases.clients.import
 
 import arrow.core.Either
 import arrow.core.left
+import arrow.core.raise.context.either
 import arrow.core.right
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
@@ -90,14 +92,7 @@ object ValueParsers {
      * Парсит ФИО клиента: trim и проверка непустоты.
      * Никакой постобработки — хвосты вида «(чт,сб)» остаются в имени.
      */
-    fun parseName(raw: String?): Either<String, String> {
-        val trimmed = raw?.trim().orEmpty()
-        return if (trimmed.isEmpty()) {
-            "EMPTY_NAME".left()
-        } else {
-            trimmed.right()
-        }
-    }
+    fun parseName(raw: String?): Either<String, NonBlankName> = either { NonBlankName.from(raw.orEmpty()) }.mapLeft { "EMPTY_NAME" }
 
     private fun tryParseDate(value: String, pattern: String): LocalDate? =
         try {

@@ -1,9 +1,9 @@
 package org.athletica.crm.core.customfields
 
-import arrow.core.Either
 import arrow.core.getOrElse
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
+import arrow.core.raise.context.raise
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -12,8 +12,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import kotlin.jvm.JvmInline
 
 /**
@@ -34,14 +34,15 @@ value class CustomFieldKey private constructor(val value: String) {
 
         /**
          * Парсит [value] в [CustomFieldKey].
-         * Возвращает [CommonDomainError] с кодом `INVALID_FIELD_KEY`, если строка нарушает инвариант.
+         * Поднимает [CommonDomainError] с кодом `INVALID_FIELD_KEY`, если строка нарушает инвариант.
          */
-        fun from(value: String): Either<DomainError, CustomFieldKey> =
-            if (value.matches(REGEX)) {
-                CustomFieldKey(value).right()
-            } else {
-                CommonDomainError("INVALID_FIELD_KEY", INVALID_FIELD_KEY_MESSAGE).left()
+        context(raise: Raise<AppError>)
+        fun from(value: String): CustomFieldKey {
+            if (!value.matches(REGEX)) {
+                raise(CommonDomainError("INVALID_FIELD_KEY", INVALID_FIELD_KEY_MESSAGE))
             }
+            return CustomFieldKey(value)
+        }
     }
 
     /**
@@ -59,7 +60,7 @@ value class CustomFieldKey private constructor(val value: String) {
 
         override fun deserialize(decoder: Decoder): CustomFieldKey {
             val raw = decoder.decodeString()
-            return from(raw).getOrElse { err ->
+            return either { from(raw) }.getOrElse { err ->
                 throw SerializationException(err.message)
             }
         }
@@ -67,4 +68,5 @@ value class CustomFieldKey private constructor(val value: String) {
 }
 
 /** Удобный синоним для [CustomFieldKey.from]. */
-fun String.toFieldKey(): Either<DomainError, CustomFieldKey> = CustomFieldKey.from(this)
+context(raise: Raise<AppError>)
+fun String.toFieldKey(): CustomFieldKey = CustomFieldKey.from(this)

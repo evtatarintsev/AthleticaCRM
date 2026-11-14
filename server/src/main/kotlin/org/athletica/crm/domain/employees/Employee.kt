@@ -3,21 +3,22 @@ package org.athletica.crm.domain.employees
 import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserActor
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 /**
  * Сотрудник организации — агрегат и одновременно актор запроса:
  * ответ «что может сотрудник» даёт [hasPermission]. Устройство прав (роли,
- * персональные выдачи и отзывы) — вход команд [withNew] и `Employees.new`
- * и не раскрывается через интерфейс.
+ * персональные выдачи и отзывы) — вход команд [withNew] и `Employees.new`.
  */
 interface Employee : UserActor {
     val id: EmployeeId
@@ -29,26 +30,33 @@ interface Employee : UserActor {
     val joinedAt: Instant
     val phoneNo: String?
     val email: EmailAddress?
+    val roles: List<EmployeeRole>
 
     /** Доступ к филиалам организации: ко всем (включая будущие) либо к явному набору. */
     val availableBranches: EmployeeBranchAccess
 
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun invite(email: EmailAddress, password: String)
 
-    context(ctx: EmployeeRequestContext)
-    fun withNew(
-        newName: String,
-        newPermissions: EmployeePermission,
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun withNew(
+        newName: NonBlankName,
+        newPermissions: EmployeePermissionSelection,
         newAvatarId: UploadId?,
         newPhoneNo: String?,
         newEmail: EmailAddress?,
         newAvailableBranches: EmployeeBranchAccess,
     ): Employee
 }
+
+data class EmployeePermissionSelection(
+    val roleIds: List<Uuid> = emptyList(),
+    val grantedPermissions: Set<UserPermission> = emptySet(),
+    val revokedPermissions: Set<UserPermission> = emptySet(),
+)
 
 data class EmployeePermission(
     val roles: List<EmployeeRole>,

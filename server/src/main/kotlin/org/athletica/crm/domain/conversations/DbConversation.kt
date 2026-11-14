@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.conversations
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
@@ -11,7 +12,8 @@ import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.entityids.toConversationId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toMessageId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.messaging.MessageDirection
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -25,7 +27,7 @@ import kotlin.time.Instant
 class DbConversation(
     override val id: ConversationId,
 ) : Conversation {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun touch() {
         tr.sql(
             """
@@ -39,8 +41,9 @@ class DbConversation(
             .execute()
     }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun appendOutbound(author: Author, body: String): OutboundMessage {
+        ensure(body.isNotBlank()) { CommonDomainError("MESSAGE_EMPTY", "Сообщение не может быть пустым") }
         val messageId = MessageId.new()
         val now = Clock.System.now()
         val (authorKind, authorEmployeeId) =
@@ -73,7 +76,7 @@ class DbConversation(
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun appendInbound(receivedVia: ChannelIntegrationId, body: String, receivedAt: Instant): InboundMessage {
         val messageId = MessageId.new()
         tr.sql(
@@ -100,7 +103,7 @@ class DbConversation(
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun messages(): List<Message> =
         tr.sql(
             """

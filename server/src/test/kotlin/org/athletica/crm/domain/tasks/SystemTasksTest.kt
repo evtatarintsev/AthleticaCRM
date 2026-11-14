@@ -11,7 +11,8 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
@@ -23,6 +24,7 @@ import org.athletica.crm.read.tasks.DbTaskDetailView
 import org.athletica.crm.read.tasks.DbTaskListView
 import org.athletica.crm.read.tasks.TaskListQuery
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,31 +44,33 @@ class SystemTasksTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, 'Org')").bind("id", orgId).execute()
-            listOf(employeeId to "Иван", otherEmployeeId to "Пётр").forEach { (id, name) ->
-                TestPostgres.db
-                    .sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                    .bind("id", id)
-                    .bind("orgId", orgId)
-                    .bind("name", name)
-                    .execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, 'Org')").bind("id", orgId).execute()
+                listOf(employeeId to "Иван", otherEmployeeId to "Пётр").forEach { (id, name) ->
+                    TestPostgres.db
+                        .sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                        .bind("id", id)
+                        .bind("orgId", orgId)
+                        .bind("name", name)
+                        .execute()
+                }
             }
         }
     }
 
-    private suspend fun <T> attempt(context: RequestContext, block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> =
+    private suspend fun <T> attempt(context: RequestContext, block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
         either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction { block(context, this, raise) }
         }
 
-    private suspend fun <T> tx(context: RequestContext, block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T): T = attempt(context, block).getOrElse { fail("Unexpected error: $it") }
+    private suspend fun <T> tx(context: RequestContext, block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T): T = attempt(context, block).getOrElse { fail("Unexpected error: $it") }
 
     private suspend fun systemTask(): TaskId {
         val id = TaskId.new()
-        tx(system) { tasks.new(id, "Проверить клиента", "", null, null, null) }
+        tx(system) { tasks.new(id, testName("Проверить клиента"), "", null, null, null) }
         return id
     }
 
@@ -87,7 +91,7 @@ class SystemTasksTest {
     fun `задача сотрудника не становится системной`() =
         runTest {
             val id = TaskId.new()
-            tx(ctx) { context(ctx) { tasks.new(id, "Позвонить", "", null, null, null) } }
+            tx(ctx) { context(ctx) { tasks.new(id, testName("Позвонить"), "", null, null, null) } }
 
             val row = tx(ctx) { context(ctx) { DbTaskDetailView().byId(id) } }
 
@@ -129,7 +133,7 @@ class SystemTasksTest {
 
             val result = attempt(ctx) { context(ctx) { tasks.byId(id).assignTo(stub(otherEmployeeId)).save() } }
 
-            assertEquals("PERMISSION_DENIED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("PERMISSION_DENIED", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -139,6 +143,6 @@ class SystemTasksTest {
 
             val result = attempt(otherCtx) { context(otherCtx) { tasks.byId(id).status(TaskStatus.IN_PROGRESS).save() } }
 
-            assertEquals("PERMISSION_DENIED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("PERMISSION_DENIED", assertIs<Either.Left<AppError>>(result).value.code)
         }
 }

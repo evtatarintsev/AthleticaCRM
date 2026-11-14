@@ -4,14 +4,18 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.toTariffPlanId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
+import org.athletica.crm.storage.asInt
+import org.athletica.crm.storage.asIntOrNull
 import org.athletica.crm.storage.asMoney
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -21,7 +25,7 @@ import org.athletica.crm.storage.asUuid
  * Валюта цены берётся из контекста организации, отдельной колонки нет.
  */
 class DbTariffPlans : TariffPlans {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(includeArchived: Boolean): List<TariffPlan> =
         tr.sql(
             """
@@ -35,22 +39,22 @@ class DbTariffPlans : TariffPlans {
             .bind("includeArchived", includeArchived)
             .list { it.toTariffPlan() }
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: TariffPlanId,
-        name: String,
-        sessions: Int?,
-        durationValue: Int,
+        name: NonBlankName,
+        sessions: PositiveInt?,
+        durationValue: PositiveInt,
         durationUnit: DurationUnit,
         price: Money,
-    ): TariffPlan = DbTariffPlan(id, name, sessions, durationValue, durationUnit, price, archived = false)
+    ): TariffPlan = DbTariffPlan(id, name.value, sessions?.value, durationValue.value, durationUnit, price, archived = false)
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: TariffPlanId): TariffPlan =
         byIds(listOf(id)).singleOrNull()
             ?: raise(CommonDomainError("TARIFF_NOT_FOUND", "Тарифный план не найден"))
 
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<TariffPlanId>): List<TariffPlan> {
         val distinctIds = ids.distinct()
         if (distinctIds.isEmpty()) {
@@ -81,8 +85,8 @@ class DbTariffPlans : TariffPlans {
         DbTariffPlan(
             id = asUuid("id").toTariffPlanId(),
             name = asString("name"),
-            sessions = get("sessions_count", Int::class.javaObjectType),
-            durationValue = get("duration_value", Int::class.javaObjectType)!!,
+            sessions = asIntOrNull("sessions_count"),
+            durationValue = asInt("duration_value"),
             durationUnit = DurationUnit.valueOf(asString("duration_unit")),
             price = asMoney("price", ctx.currency),
             archived = asBoolean("is_archived"),

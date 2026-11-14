@@ -1,8 +1,8 @@
 package org.athletica.crm.domain.sessions
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
@@ -18,8 +18,8 @@ import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.entityids.toSlotId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.events.DomainEvents
 import org.athletica.crm.i18n.Messages
@@ -38,7 +38,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * [events] передаётся занятиям для публикации событий о проведении и отмене.
  */
 class DbSessions(private val events: DomainEvents) : Sessions {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: SessionId,
         groupId: GroupId,
@@ -48,57 +48,53 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         hallId: HallId,
         notes: String?,
         employees: List<Employee>,
-    ): Session? =
-        try {
-            val branchId =
-                tr
-                    .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
-                    .bind("groupId", groupId)
-                    .bind("orgId", ctx.orgId)
-                    .firstOrNull { row -> row.asUuid("branch_id").toBranchId() }
-                    ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
-            val distinctEmployees = employees.distinctBy { it.id }
-            distinctEmployees.forEach { employee ->
-                if (!employee.availableBranches.contains(branchId)) {
-                    raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-                }
-            }
-            requireHallInGroupBranch(groupId, hallId)
+    ): Session {
+        ensureValidSessionTime(startTime, endTime)
+        val branchId =
             tr
-                .sql(
-                    """
-                    INSERT INTO sessions (
-                        id, org_id, group_id, date, start_time, end_time, hall_id, notes
-                    ) VALUES (
-                        :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes
-                    )
-                    """.trimIndent(),
-                )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
+                .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
                 .bind("groupId", groupId)
-                .bind("date", date.toJavaLocalDate())
-                .bind("startTime", startTime.toString())
-                .bind("endTime", endTime.toString())
-                .bind("hallId", hallId)
-                .bind("notes", notes)
-                .execute()
-            val session = byIdOrNull(id)
-            session?.let {
-                distinctEmployees.forEach { employee ->
-                    tr
-                        .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
-                        .bind("sessionId", id)
-                        .bind("employeeId", employee.id)
-                        .execute()
-                }
+                .bind("orgId", ctx.orgId)
+                .firstOrNull { row -> row.asUuid("branch_id").toBranchId() }
+                ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
+        val distinctEmployees = employees.distinctBy { it.id }
+        distinctEmployees.forEach { employee ->
+            if (!employee.availableBranches.contains(branchId)) {
+                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
             }
-            byIdOrNull(id)
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            null
         }
+        requireHallInGroupBranch(groupId, hallId)
+        tr
+            .sql(
+                """
+                INSERT INTO sessions (
+                    id, org_id, group_id, date, start_time, end_time, hall_id, notes
+                ) VALUES (
+                    :id, :orgId, :groupId, :date, :startTime::time, :endTime::time, :hallId, :notes
+                )
+                """.trimIndent(),
+            )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("groupId", groupId)
+            .bind("date", date.toJavaLocalDate())
+            .bind("startTime", startTime.toString())
+            .bind("endTime", endTime.toString())
+            .bind("hallId", hallId)
+            .bind("notes", notes)
+            .onViolation("sessions_pkey") { CommonDomainError("SESSION_ALREADY_EXISTS", "Занятие уже существует") }
+            .execute()
+        distinctEmployees.forEach { employee ->
+            tr
+                .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:sessionId, :employeeId)")
+                .bind("sessionId", id)
+                .bind("employeeId", employee.id)
+                .execute()
+        }
+        return byId(id)
+    }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(
         groupId: GroupId,
         from: LocalDate,
@@ -131,7 +127,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun listAll(
         from: LocalDate,
         to: LocalDate,
@@ -162,12 +158,12 @@ class DbSessions(private val events: DomainEvents) : Sessions {
         }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: SessionId): Session =
         byIdOrNull(id)
             ?: raise(CommonDomainError("SESSION_NOT_FOUND", "Занятие не найдено"))
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun byIdOrNull(id: SessionId): Session? =
         tr
             .sql(
@@ -186,7 +182,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
                 row.toSession(employeeIdsBySession[id] ?: emptyList(), events)
             }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun loadEmployeeIds(sessionIds: List<SessionId>): Map<SessionId, List<EmployeeId>> =
         tr
             .sql(
@@ -253,7 +249,7 @@ private fun SessionRow.toSession(
     )
 
 /** Проверяет, что зал [hallId] принадлежит организации и филиалу группы [groupId]; иначе ошибка `HALL_NOT_FOUND`. */
-context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 internal suspend fun requireHallInGroupBranch(
     groupId: GroupId,
     hallId: HallId,
@@ -272,4 +268,11 @@ internal suspend fun requireHallInGroupBranch(
         .bind("orgId", ctx.orgId)
         .firstOrNull { 1 }
         ?: raise(CommonDomainError("HALL_NOT_FOUND", Messages.HallNotFound.localize()))
+}
+
+context(raise: Raise<AppError>)
+internal fun ensureValidSessionTime(startTime: LocalTime, endTime: LocalTime) {
+    ensure(endTime > startTime) {
+        CommonDomainError("INVALID_SESSION_TIME", "Время окончания должно быть позже времени начала")
+    }
 }

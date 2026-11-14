@@ -2,9 +2,9 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -13,8 +13,8 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
 import org.athletica.crm.domain.auth.Users
@@ -34,56 +34,51 @@ private data class PermissionOverrides(
 )
 
 class DbEmployees(private val users: Users, private val roles: Roles) : Employees {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
-        name: String,
+        name: NonBlankName,
         phoneNo: String?,
         email: EmailAddress?,
         avatarId: UploadId?,
-        permissions: EmployeePermission,
+        permissions: EmployeePermissionSelection,
         availableBranches: EmployeeBranchAccess,
     ): Employee {
+        val permissionSettings = roles.resolve(permissions)
         val (allBranchesAccess, branchIds) =
             when (availableBranches) {
                 is EmployeeBranchAccess.All -> true to emptyList()
-                is EmployeeBranchAccess.Selected -> false to availableBranches.ids
+                is EmployeeBranchAccess.Selected -> false to resolveEmployeeBranchIds(availableBranches.ids)
             }
 
-        try {
-            tr.sql(
-                """
-                INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active, all_branches_access)
-                VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false, :allBranchesAccess)
-                """.trimIndent(),
-            )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("name", name)
-                .bind("avatarId", avatarId)
-                .bind("phoneNo", phoneNo)
-                .bind("email", email)
-                .bind("allBranchesAccess", allBranchesAccess)
-                .execute()
-        } catch (e: R2dbcDataIntegrityViolationException) {
-            if (e.message?.contains("employees_pkey") == true) {
-                raise(CommonDomainError("EMPLOYEE_ALREADY_EXISTS", Messages.EmployeeAlreadyExists.localize()))
-            }
-            throw e
-        }
-        for (role in permissions.roles) {
+        tr.sql(
+            """
+            INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active, all_branches_access)
+            VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false, :allBranchesAccess)
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("name", name.value)
+            .bind("avatarId", avatarId)
+            .bind("phoneNo", phoneNo)
+            .bind("email", email)
+            .bind("allBranchesAccess", allBranchesAccess)
+            .onViolation("employees_pkey") { CommonDomainError("EMPLOYEE_ALREADY_EXISTS", Messages.EmployeeAlreadyExists.localize()) }
+            .execute()
+        for (role in permissionSettings.roles) {
             tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                 .bind("employeeId", id)
                 .bind("roleId", role.id)
                 .execute()
         }
-        for (permission in permissions.grantedPermissions) {
+        for (permission in permissionSettings.grantedPermissions) {
             tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, true)")
                 .bind("employeeId", id)
                 .bind("key", permission.name)
                 .execute()
         }
-        for (permission in permissions.revokedPermissions) {
+        for (permission in permissionSettings.revokedPermissions) {
             tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, false)")
                 .bind("employeeId", id)
                 .bind("key", permission.name)
@@ -97,20 +92,22 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         }
         return DbEmployee(
             id = id, userId = null,
-            name = name, avatarId = avatarId, isOwner = false, isActive = false,
+            name = name.value, avatarId = avatarId, isOwner = false, isActive = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
-            permissionSettings = permissions,
+            permissionSettings = permissionSettings,
+            roleCatalog = roles,
+            orgId = ctx.orgId,
             availableBranches = availableBranches,
         )
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: EmployeeId): Employee =
         byIds(listOf(id)).singleOrNull()
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<EmployeeId>): List<Employee> {
         val distinctIds = ids.distinct()
         if (distinctIds.isEmpty()) {
@@ -144,6 +141,8 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email")?.toEmailAddress(),
                         users = users,
+                        roleCatalog = roles,
+                        orgId = ctx.orgId,
                         permissionSettings =
                             EmployeePermission(
                                 roles = rolesByEmployee[employeeId] ?: emptyList(),
@@ -166,7 +165,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             EmployeeBranchAccess.Selected(branchIds ?: emptyList())
         }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun permissionsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, PermissionOverrides> {
         data class Row(val employeeId: EmployeeId, val permission: UserPermission, val isGranted: Boolean)
 
@@ -198,7 +197,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
     }
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> =
         tr
             .sql(
@@ -220,7 +219,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             .bind("branchId", branchId)
             .list { row -> row.asUuid("id").toEmployeeId() }
 
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     private suspend fun branchIdsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<BranchId>> =
         tr
             .sql(
@@ -236,7 +235,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             }
             .groupBy({ it.first }, { it.second })
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun rolesByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<EmployeeRole>> {
         val rolesById = roles.list().associateBy { it.id }
         return tr

@@ -1,6 +1,5 @@
 package org.athletica.crm
 
-import arrow.core.raise.either
 import com.github.ajalt.clikt.command.main
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -39,6 +38,7 @@ import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.routes.attendanceRoutes
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
@@ -74,9 +74,10 @@ import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.storage.asUuid
 import java.sql.DriverManager
 import kotlin.context
-import kotlin.uuid.toKotlinUuid
+import kotlin.time.Duration.Companion.hours
 
 private val logger = KtorSimpleLogger("org.athletica.crm.Application")
 
@@ -179,14 +180,14 @@ fun Application.configureServer() {
             checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
 
             route("/api") {
-                context(di.employees, di.organizations, di.jwtConfig, di.passwordHasher, di.branches, di.userDisplaySettings) {
-                    authRoutes()
+                context(di.jwtConfig) {
+                    authRoutes(di.auth)
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
-                        logout(di.audit)
+                        logout(di.auth)
                         context(di.jwtConfig) {
-                            switchBranchRoute()
+                            switchBranchRoute(di.auth)
                         }
                         context(di.branches) {
                             myBranchesRoute()
@@ -214,8 +215,8 @@ fun Application.configureServer() {
                         context(di.minio) {
                             clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
                         }
-                        groupsRoutes(di.groups, di.employees, di.groupSchedule, di.scheduleSync, di.notifications, di.views)
-                        sessionsRoutes(di.groups, di.sessions, di.employees)
+                        groupsRoutes(di.groups, di.employees, di.groupSchedule, di.notifications, di.views)
+                        sessionsRoutes(di.sessions, di.employees, di.views)
                         attendanceRoutes(di.attendanceLabels, di.sessionJournals, di.sessions, di.views)
                         orgRoutes(di.organizations, di.attendanceControls)
                         branchesRoutes(di.branches)
@@ -225,13 +226,11 @@ fun Application.configureServer() {
                         disciplinesRoutes(di.disciplines)
                         sportCatalogRoutes()
                         tariffsRoutes(di.tariffPlans)
-                        membershipsRoutes(di.memberships, di.participations, di.orgCalendar, di.views)
+                        membershipsRoutes(di.memberships, di.orgCalendar, di.views)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles, di.views)
-                        context(di.passwordHasher) {
-                            profileRoutes(di.organizations, di.orgBalances)
-                        }
+                        profileRoutes(di.auth, di.organizations, di.orgBalances)
                         orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {
                             uploadRoutes()
@@ -281,13 +280,15 @@ private suspend fun syncSchedulesDaily(di: Di) {
         try {
             val orgIds =
                 di.database.transaction {
-                    sql("SELECT DISTINCT org_id FROM groups")
-                        .list { row -> row.get("org_id", java.util.UUID::class.java)!!.toKotlinUuid() }
+                    orThrow {
+                        sql("SELECT DISTINCT org_id FROM groups")
+                            .list { row -> row.asUuid("org_id") }
+                    }
                 }
             orgIds.forEach { orgUuid ->
                 try {
-                    di.database.transaction {
-                        either {
+                    orThrow {
+                        di.database.transaction {
                             context(SystemContexts.forOrg(OrgId(orgUuid))) {
                                 di.scheduleSync.sync()
                             }
@@ -300,7 +301,7 @@ private suspend fun syncSchedulesDaily(di: Di) {
         } catch (e: Exception) {
             logger.error("syncSchedulesDaily error", e)
         }
-        delay(24 * 60 * 60 * 1_000L)
+        delay(24.hours)
     }
 }
 

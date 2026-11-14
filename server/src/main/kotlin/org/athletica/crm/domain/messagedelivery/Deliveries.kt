@@ -5,7 +5,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.DeliveryId
 import org.athletica.crm.core.entityids.MessageId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -26,34 +26,34 @@ data class PendingDelivery(
  * worker-путь (`pending`/`mark*`) — кросс-организационный.
  */
 interface Deliveries {
-    /** Создаёт доставку сообщения [messageId] в интеграцию [channelIntegrationId] в статусе `PENDING`. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    /** Создаёт доставку сообщения [messageId] во включённую интеграцию [channelIntegrationId] в статусе `PENDING`. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun create(
         messageId: MessageId,
         channelIntegrationId: ChannelIntegrationId,
-        recipientAddress: String,
+        resolveRecipientAddress: suspend () -> String,
     ): Delivery
 
     /** Возвращает доставки сообщения [messageId] в порядке создания. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byMessage(messageId: MessageId): List<Delivery>
 
     /**
      * Worker-путь: до [limit] доставок в статусе `PENDING`, чьи интеграции включены
      * (`enabled = true`). Отключённые интеграции исключаются — их доставки остаются `PENDING`.
      */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun pending(limit: Int): List<PendingDelivery>
 
     /** Помечает доставку отправленной (`SENT`) с идентификатором у провайдера. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markSent(id: DeliveryId, ref: ProviderMessageRef)
 
     /** Помечает доставку окончательно неуспешной (`FAILED`). */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun markFailed(id: DeliveryId, error: DeliveryError)
 
     /** Откладывает повтор: увеличивает счётчик попыток, доставка остаётся в `PENDING`. */
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     suspend fun retryLater(id: DeliveryId, error: DeliveryError)
 }

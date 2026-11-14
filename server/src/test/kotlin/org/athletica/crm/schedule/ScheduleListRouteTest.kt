@@ -1,6 +1,7 @@
 package org.athletica.crm.schedule
 
 import arrow.core.Either
+import arrow.core.raise.context.either
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -22,18 +23,18 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.schedule.ScheduleListResponse
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.Lang
+import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.settings.DbUserDisplaySettings
-import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
-import org.athletica.crm.usecases.auth.User
-import org.athletica.crm.usecases.auth.signUp
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,7 +47,7 @@ import kotlin.test.assertTrue
  */
 class ScheduleListRouteTest {
     private lateinit var di: Di
-    private lateinit var user: User
+    private lateinit var user: AuthenticatedUser
     private lateinit var token: String
     private val monday = LocalDate(2026, 3, 16)
     private val json = Json { ignoreUnknownKeys = true }
@@ -60,66 +61,71 @@ class ScheduleListRouteTest {
     /** Регистрирует организацию и запоминает её первого сотрудника и его токен. */
     private suspend fun signUpOwner() {
         val result =
-            TestPostgres.db.transaction {
-                context(this, PasswordHasher(), DbUserDisplaySettings()) {
-                    signUp(
+            either {
+                di.database.transaction {
+                    di.auth.signup(
                         SignUpRequest(
-                            companyName = "Acme",
-                            userName = "John",
+                            companyName = testName("Acme"),
+                            userName = testName("John"),
                             login = "owner@example.com",
                             password = "password123",
                             timezone = "UTC",
                             currency = Currency.RUB,
                         ),
+                        lang = Lang.RU,
+                        clientIp = null,
                     )
                 }
             }
-        user = assertIs<Either.Right<User>>(result).value
+        user = assertIs<Either.Right<AuthenticatedUser>>(result).value
         token = testJwtConfig.makeAccessToken(user)
     }
 
     /** Создаёт в филиале владельца зал, группу и занятие с тренером-владельцем в понедельник. */
-    private suspend fun insertSession(): SessionId {
-        val hallId = HallId.new()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Большой зал')")
-            .bind("id", hallId)
-            .bind("orgId", user.orgId)
-            .bind("branchId", user.branchId)
-            .execute()
-        val groupId = GroupId.new()
-        TestPostgres.db
-            .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Йога')")
-            .bind("id", groupId)
-            .bind("orgId", user.orgId)
-            .bind("branchId", user.branchId)
-            .execute()
-        val sessionId = SessionId.new()
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO sessions (id, org_id, group_id, date, start_time, end_time, hall_id)
-                VALUES (:id, :orgId, :groupId, :date, '10:00'::time, '11:00'::time, :hallId)
-                """.trimIndent(),
-            )
-            .bind("id", sessionId)
-            .bind("orgId", user.orgId)
-            .bind("groupId", groupId)
-            .bind("date", monday)
-            .bind("hallId", hallId)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:s, :e)")
-            .bind("s", sessionId)
-            .bind("e", user.employeeId)
-            .execute()
-        return sessionId
-    }
+    private suspend fun insertSession(): SessionId =
+        orThrow {
+            val hallId = HallId.new()
+            TestPostgres.db
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Большой зал')")
+                .bind("id", hallId)
+                .bind("orgId", user.orgId)
+                .bind("branchId", user.branchId)
+                .execute()
+            val groupId = GroupId.new()
+            TestPostgres.db
+                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Йога')")
+                .bind("id", groupId)
+                .bind("orgId", user.orgId)
+                .bind("branchId", user.branchId)
+                .execute()
+            val sessionId = SessionId.new()
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO sessions (id, org_id, group_id, date, start_time, end_time, hall_id)
+                    VALUES (:id, :orgId, :groupId, :date, '10:00'::time, '11:00'::time, :hallId)
+                    """.trimIndent(),
+                )
+                .bind("id", sessionId)
+                .bind("orgId", user.orgId)
+                .bind("groupId", groupId)
+                .bind("date", monday)
+                .bind("hallId", hallId)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO session_employees (session_id, employee_id) VALUES (:s, :e)")
+                .bind("s", sessionId)
+                .bind("e", user.employeeId)
+                .execute()
+            return sessionId
+        }
 
     private suspend fun sessionCount(): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) AS cnt FROM sessions")
-            .firstOrNull { it.asLong("cnt") } ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) AS cnt FROM sessions")
+                .firstOrNull { it.asLong("cnt") } ?: 0L
+        }
 
     private suspend fun ApplicationTestBuilder.list(body: String): HttpResponse =
         client.post("/api/schedule/list") {

@@ -9,7 +9,7 @@ import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asInstant
@@ -22,7 +22,7 @@ import org.athletica.crm.storage.asUuidOrNull
  * JSONB-агрегатом, поэтому список собирается одним запросом.
  */
 class DbEmployeeListView : EmployeeListView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(): EmployeeListResponse {
         val items =
             tr

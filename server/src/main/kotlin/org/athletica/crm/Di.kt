@@ -19,6 +19,9 @@ import org.athletica.crm.domain.attendancecontrol.AttendanceControls
 import org.athletica.crm.domain.attendancecontrol.DbAttendanceControls
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
+import org.athletica.crm.domain.auth.AuditAuth
+import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.DbAuth
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
@@ -167,19 +170,20 @@ data class Di(
             EmailEmployees(DbEmployees(users, roles), orgEmails),
             audit,
         )
+    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
     val orgCalendar: OrgCalendar = DbOrgCalendar()
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
-    val groups: Groups = AuditGroups(DbGroups(), audit)
+    val scheduleSync: ScheduleSync = DbScheduleSync(orgCalendar)
+    val groups: Groups = AuditGroups(DbGroups(scheduleSync), audit)
     val enrollments: Enrollments = AuditEnrollments(DbEnrollments(), audit)
     val sessions: Sessions = AuditSessions(DbSessions(bus), audit)
     val attendanceLabels: AttendanceLabels = AuditAttendanceLabels(DbAttendanceLabels(), audit)
     val sessionJournals: SessionJournals = DbSessionJournals(attendanceLabels, bus)
-    val groupSchedule: GroupSchedule = DbGroupSchedule()
-    val scheduleSync: ScheduleSync = DbScheduleSync()
+    val groupSchedule: GroupSchedule = DbGroupSchedule(orgCalendar, scheduleSync)
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val clientContacts = DbClientContacts()

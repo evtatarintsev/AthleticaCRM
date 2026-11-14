@@ -1,7 +1,9 @@
 package org.athletica.crm.storage
 
+import arrow.core.raise.Raise
 import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.spi.Connection
+import io.r2dbc.spi.R2dbcDataIntegrityViolationException
 import io.r2dbc.spi.Row
 import io.r2dbc.spi.RowMetadata
 import kotlinx.coroutines.flow.toList
@@ -15,6 +17,8 @@ import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinLocalTime
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.entityids.EntityId
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import kotlin.time.Instant
@@ -120,6 +124,7 @@ class QueryBuilder(
     private val scope: ConnectionScope,
 ) {
     private val bindings = mutableListOf<Pair<String, Any?>>()
+    private val violations = mutableMapOf<String?, () -> DomainError>()
 
     /** Привязывает именованный параметр к значению. */
     fun bind(name: String, value: Any?): QueryBuilder {
@@ -163,10 +168,20 @@ class QueryBuilder(
     fun bind(name: String, value: List<Uuid>) = bind(name, value.map { it.toJavaUuid() }.toTypedArray())
 
     /**
+     * Регистрирует перевод нарушения ограничения [constraint] в доменную ошибку [error].
+     * Нарушения других ограничений поднимаются как [ConstraintViolation] (HTTP 500).
+     */
+    fun onViolation(constraint: String, error: () -> DomainError): QueryBuilder {
+        violations[constraint] = error
+        return this
+    }
+
+    /**
      * Выполняет запрос и возвращает первый результат или `null`.
      *
      * [mapper] — функция преобразования строки результата в доменный объект.
      */
+    context(raise: Raise<AppError>)
     suspend fun <T : Any> firstOrNull(mapper: (Row, RowMetadata) -> T): T? = execute(mapper).firstOrNull()
 
     /**
@@ -174,6 +189,7 @@ class QueryBuilder(
      *
      * [mapper] — функция преобразования строки результата в доменный объект.
      */
+    context(raise: Raise<AppError>)
     suspend fun <T : Any> firstOrNull(mapper: (Row) -> T): T? = execute { row, _ -> mapper(row) }.firstOrNull()
 
     /**
@@ -181,6 +197,7 @@ class QueryBuilder(
      *
      * [mapper] — функция преобразования строки результата в доменный объект.
      */
+    context(raise: Raise<AppError>)
     suspend fun <T : Any> list(mapper: (Row, RowMetadata) -> T): List<T> = execute(mapper)
 
     /**
@@ -188,20 +205,33 @@ class QueryBuilder(
      *
      * [mapper] — функция преобразования строки результата в доменный объект.
      */
+    context(raise: Raise<AppError>)
     suspend fun <T : Any> list(mapper: (Row) -> T): List<T> = execute { row, _ -> mapper(row) }
 
     /**
      * Выполняет запрос и возвращает количество затронутых строк (INSERT / UPDATE / DELETE).
      */
-    suspend fun execute(): Long =
-        scope.use { connection ->
-            connection.executeStatement(sql, bindings)
-        }
+    context(raise: Raise<AppError>)
+    suspend fun execute(): Long = guarded { it.executeStatement(sql, bindings) }
 
-    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> =
-        scope.use { connection ->
-            connection.executeStatement(sql, bindings, mapper)
-        }
+    context(raise: Raise<AppError>)
+    private suspend fun <T : Any> execute(mapper: (Row, RowMetadata) -> T): List<T> = guarded { it.executeStatement(sql, bindings, mapper) }
+
+    /**
+     * Выполняет [block] на соединении, поднимая нарушение ограничения как ошибку:
+     * зарегистрированную через [onViolation] доменную или [ConstraintViolation].
+     * Прочие исключения драйвера (обрыв соединения, синтаксис SQL) пробрасываются как есть.
+     */
+    context(raise: Raise<AppError>)
+    private suspend fun <R> guarded(block: suspend (Connection) -> R): R {
+        val violation =
+            try {
+                return scope.use(block)
+            } catch (e: R2dbcDataIntegrityViolationException) {
+                e.toConstraintViolation()
+            }
+        raise.raise(violations[violation.constraint]?.invoke() ?: violation)
+    }
 }
 
 private suspend fun Connection.executeStatement(
@@ -280,6 +310,9 @@ fun Row.asLong(pos: Int) = get(pos, Long::class.java)!!
 fun Row.asInt(column: String) = get(column, Int::class.java)!!
 
 fun Row.asInt(pos: Int) = get(pos, Int::class.java)!!
+
+/** Читает целочисленную колонку [column], допускающую `NULL`. */
+fun Row.asIntOrNull(column: String): Int? = get(column, Int::class.javaObjectType)
 
 fun Row.asInstant(pos: Int) =
     get(pos, java.time.OffsetDateTime::class.java)!!

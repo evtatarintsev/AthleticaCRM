@@ -12,7 +12,8 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -37,37 +38,40 @@ class DbClientBalanceHistoryViewTest {
         TestPostgres.truncate()
     }
 
-    private suspend fun insertOrg(name: String = "Test Org"): Uuid {
-        val orgId = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId).bind("name", name)
-            .execute()
-        return orgId
-    }
+    private suspend fun insertOrg(name: String = "Test Org"): Uuid =
+        orThrow {
+            val orgId = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId).bind("name", name)
+                .execute()
+            return orgId
+        }
 
-    private suspend fun insertClient(orgId: Uuid, name: String): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", clientId).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return clientId
-    }
+    private suspend fun insertClient(orgId: Uuid, name: String): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return clientId
+        }
 
-    private suspend fun insertEmployee(orgId: Uuid, name: String): EmployeeId {
-        val userId = UserId.new()
-        val employeeId = EmployeeId.new()
-        TestPostgres.db
-            .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId).bind("login", "u$userId@example.com").bind("hash", "hash")
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, user_id, org_id, name) VALUES (:id, :userId, :orgId, :name)")
-            .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", name)
-            .execute()
-        return employeeId
-    }
+    private suspend fun insertEmployee(orgId: Uuid, name: String): EmployeeId =
+        orThrow {
+            val userId = UserId.new()
+            val employeeId = EmployeeId.new()
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId).bind("login", "u$userId@example.com").bind("hash", "hash")
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, user_id, org_id, name) VALUES (:id, :userId, :orgId, :name)")
+                .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", name)
+                .execute()
+            return employeeId
+        }
 
     private suspend fun insertEntry(
         orgId: Uuid,
@@ -79,22 +83,24 @@ class DbClientBalanceHistoryViewTest {
         note: String? = null,
         operationType: String = "admin_credit",
     ) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, note, performed_by, created_at)
-                VALUES (:orgId, :clientId, :amount, :balanceAfter, :type::balance_operation_type, :note, :performedBy, :createdAt)
-                """.trimIndent(),
-            )
-            .bind("orgId", orgId).bind("clientId", clientId)
-            .bind("amount", Money(amount, Currency.RUB))
-            .bind("balanceAfter", Money(balanceAfter, Currency.RUB))
-            .bind("type", operationType).bind("note", note)
-            .bind("performedBy", performedBy).bind("createdAt", createdAt)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, note, performed_by, created_at)
+                    VALUES (:orgId, :clientId, :amount, :balanceAfter, :type::balance_operation_type, :note, :performedBy, :createdAt)
+                    """.trimIndent(),
+                )
+                .bind("orgId", orgId).bind("clientId", clientId)
+                .bind("amount", Money(amount, Currency.RUB))
+                .bind("balanceAfter", Money(balanceAfter, Currency.RUB))
+                .bind("type", operationType).bind("note", note)
+                .bind("performedBy", performedBy).bind("createdAt", createdAt)
+                .execute()
+        }
     }
 
-    private suspend fun history(orgId: Uuid, clientId: ClientId): Either<DomainError, ClientBalanceHistoryResponse> {
+    private suspend fun history(orgId: Uuid, clientId: ClientId): Either<AppError, ClientBalanceHistoryResponse> {
         val context =
             employeeContext(
                 lang = Lang.RU,
@@ -108,7 +114,7 @@ class DbClientBalanceHistoryViewTest {
                 permissions = EmployeePermission(),
             )
         return either {
-            val raise: Raise<DomainError> = this
+            val raise: Raise<AppError> = this
             TestPostgres.db.transaction {
                 context(context, this, raise) { view.byClient(clientId) }
             }
@@ -176,6 +182,6 @@ class DbClientBalanceHistoryViewTest {
             val orgB = insertOrg("B")
             val foreignClient = insertClient(orgB, "Чужой")
 
-            assertIs<Either.Left<DomainError>>(history(orgA, foreignClient))
+            assertIs<Either.Left<AppError>>(history(orgA, foreignClient))
         }
 }

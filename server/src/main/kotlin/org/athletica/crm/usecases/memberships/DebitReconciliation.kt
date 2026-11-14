@@ -3,28 +3,20 @@ package org.athletica.crm.usecases.memberships
 import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
-import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ClientId
-import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.SessionId
-import org.athletica.crm.core.errors.DomainError
-import org.athletica.crm.core.subscription.ActivationReason
-import org.athletica.crm.core.subscription.UnfreezeReason
-import org.athletica.crm.domain.attendance.Participation
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.attendance.Participations
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.events.AttendanceChanged
 import org.athletica.crm.domain.events.AttendanceMarked
 import org.athletica.crm.domain.events.SessionCompleted
 import org.athletica.crm.domain.memberships.ActiveMembership
-import org.athletica.crm.domain.memberships.ClosedMembership
-import org.athletica.crm.domain.memberships.InactiveMembership
-import org.athletica.crm.domain.memberships.MembershipDebit
 import org.athletica.crm.domain.memberships.Memberships
-import org.athletica.crm.domain.memberships.RevokedMembership
+import org.athletica.crm.domain.memberships.reconcileDebit
 import org.athletica.crm.domain.notifications.Notifications
 import org.athletica.crm.domain.org.OrgCalendar
 import org.athletica.crm.domain.tasks.Tasks
@@ -86,71 +78,17 @@ class DebitReconciliation(
     }
 
     /** Приводит списание за участие в соответствие с журналом. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun reconcileParticipation(sessionId: SessionId, clientId: ClientId) {
         val participation = participations.lock(sessionId, clientId)
-        val existing = memberships.activeDebit(sessionId, clientId)
         val today = calendar.today()
-        val groupId = participation?.groupId
-        when {
-            participation?.shouldBeDebited == true && groupId != null && existing == null ->
-                debit(participation, groupId, today)
-            participation?.shouldBeDebited != true && existing != null -> reverse(existing, today)
-            else -> Unit
+        val debit = memberships.reconcileDebit(sessionId, clientId, participation, today) ?: return
+        val membership = debit.membership
+        if (membership is ActiveMembership) {
+            notifyClosePendingIfDue(notifications, employees, membership, today)
         }
-    }
-
-    /**
-     * Списывает занятие [participation] группы [groupId] с подобранного абонемента, активируя
-     * неактивированный: «с даты» — датой активации, «при первом посещении» — датой занятия.
-     * Если дата занятия попадает в период текущей заморозки, заморозка сначала снимается с возвратом
-     * неиспользованных дней.
-     * Если абонемент стал «к закрытию», сразу уведомляет выдавшего. Если списание активировало
-     * абонемент, в той же транзакции проверяет долги клиента и при их наличии создаёт задачу
-     * «Проверить клиента»: активация → списание → проверка долгов → задача.
-     */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    private suspend fun debit(participation: Participation, groupId: GroupId, today: LocalDate) {
-        val candidate =
-            memberships.debitCandidate(participation.clientId, groupId, participation.sessionDate, today) ?: return
-        val activated = candidate is InactiveMembership
-        val active =
-            when (candidate) {
-                is ActiveMembership -> unfreezeForVisit(candidate, participation.sessionDate, today)
-                is InactiveMembership.OnDate -> candidate.activate(candidate.activation.date, ActivationReason.ON_DATE)
-                is InactiveMembership.OnFirstVisit -> candidate.activate(participation.sessionDate, ActivationReason.FIRST_VISIT)
-                is ClosedMembership, is RevokedMembership -> error("Подобран абонемент ${candidate.id} в финальном состоянии")
-            }
-        val debited = active.debit(participation.sessionId, participation.sessionDate, today)
-        if (debited is ActiveMembership) {
-            notifyClosePendingIfDue(notifications, employees, debited, today)
-        }
-        if (activated) {
-            createCheckClientTaskIfDebts(unpaidSessions, tasks, debited)
-        }
-    }
-
-    /**
-     * Снимает с абонемента [membership] заморозку, в период которой попадает посещение от [sessionDate]
-     * при сегодняшней дате [today]; иначе возвращает абонемент без изменений.
-     */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    private suspend fun unfreezeForVisit(membership: ActiveMembership, sessionDate: LocalDate, today: LocalDate): ActiveMembership {
-        val freeze = membership.freezeAt(today)
-        if (freeze == null || !freeze.covers(sessionDate)) {
-            return membership
-        }
-        return membership.unfreeze(sessionDate, UnfreezeReason.VISIT)
-    }
-
-    /** Возвращает занятие списания [debit] на его абонемент — активный или закрытый. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    private suspend fun reverse(debit: MembershipDebit, today: LocalDate) {
-        when (val membership = memberships.byId(debit.membershipId)) {
-            is ActiveMembership -> membership.reverse(debit, today)
-            is ClosedMembership -> membership.reverse(debit)
-            is InactiveMembership, is RevokedMembership ->
-                error("Действующее списание ${debit.id} на абонементе ${membership.id} без списаний")
+        if (debit.activated) {
+            createCheckClientTaskIfDebts(unpaidSessions, tasks, membership)
         }
     }
 }

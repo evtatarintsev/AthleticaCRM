@@ -5,12 +5,13 @@ import arrow.core.raise.either
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.core.subscription.EndingSoonReason
 import org.athletica.crm.core.subscription.TermPosition
 import org.athletica.crm.employeeContext
+import org.athletica.crm.testPositiveInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,13 +22,13 @@ import kotlin.test.assertTrue
 class MembershipRulesTest {
     private val ctx = employeeContext(orgId = OrgId.new())
 
-    private fun months(n: Int) = MembershipDuration(n, DurationUnit.MONTHS)
+    private fun months(n: Int) = MembershipDuration(testPositiveInt(n), DurationUnit.MONTHS)
 
     private fun date(day: Int, month: Int, year: Int = 2027) = LocalDate(year, month, day)
 
     @Test
     fun `срок 1 день заканчивается в день начала`() {
-        assertEquals(date(16, 10, 2026), MembershipDuration(1, DurationUnit.DAYS).endDateFrom(date(16, 10, 2026)))
+        assertEquals(date(16, 10, 2026), MembershipDuration(testPositiveInt(1), DurationUnit.DAYS).endDateFrom(date(16, 10, 2026)))
     }
 
     @Test
@@ -115,7 +116,7 @@ class MembershipRulesTest {
         assertFalse(expired.needsCloseNotification(CloseMode.ON_EXPIRY))
     }
 
-    private fun outcome(activation: Activation, closeMode: CloseMode = CloseMode.MANUAL, sessions: Int? = 8): Either<DomainError, IssueOutcome> = either { context(ctx, this) { issueOutcome(activation, closeMode, sessions, listOf(GroupId.new()), date(16, 10, 2026)) } }
+    private fun outcome(activation: Activation, closeMode: CloseMode = CloseMode.MANUAL, sessions: Int? = 8): Either<AppError, IssueOutcome> = either { context(ctx, this) { issueOutcome(activation, closeMode, sessions, listOf(GroupId.new()), date(16, 10, 2026)) } }
 
     @Test
     fun `сразу активирует датой выдачи`() {
@@ -141,7 +142,7 @@ class MembershipRulesTest {
 
     @Test
     fun `крайняя дата раньше выдачи отклоняется`() {
-        val error = assertIs<Either.Left<DomainError>>(outcome(Activation.OnFirstVisit(date(15, 10, 2026)))).value
+        val error = assertIs<Either.Left<AppError>>(outcome(Activation.OnFirstVisit(date(15, 10, 2026)))).value
         assertEquals("ACTIVATION_DEADLINE_BEFORE_ISSUE", error.code)
     }
 
@@ -152,7 +153,7 @@ class MembershipRulesTest {
 
     @Test
     fun `безлимит с закрытием по занятиям отклоняется`() {
-        val error = assertIs<Either.Left<DomainError>>(outcome(Activation.Immediate, CloseMode.ON_LAST_SESSION, sessions = null)).value
+        val error = assertIs<Either.Left<AppError>>(outcome(Activation.Immediate, CloseMode.ON_LAST_SESSION, sessions = null)).value
         assertEquals("UNLIMITED_CLOSE_ON_LAST_SESSION", error.code)
     }
 }

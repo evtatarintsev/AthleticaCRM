@@ -2,8 +2,9 @@ package org.athletica.crm.domain.branch
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /** Филиал организации. */
@@ -15,13 +16,13 @@ interface Branch {
     val name: String
 
     /** Сохраняет филиал: INSERT при создании либо UPDATE существующего. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
     /** Удаляет филиал. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun delete()
 
     /** Возвращает копию с новым именем (без записи в БД). */
-    fun withNew(name: String): Branch
+    fun withNew(name: NonBlankName): Branch
 }

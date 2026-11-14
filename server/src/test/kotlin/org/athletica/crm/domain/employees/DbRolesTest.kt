@@ -10,10 +10,12 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,13 +36,15 @@ class DbRolesTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        roles = DbRoles()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Org 2").execute()
+        orThrow {
+            TestPostgres.truncate()
+            roles = DbRoles()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org 1").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Org 2").execute()
+            }
         }
     }
 
@@ -60,14 +64,14 @@ class DbRolesTest {
         runTest {
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet())) }
+                    context(ctx) { roles.new(EmployeeRole(Uuid.random(), testName("Тренер"), emptySet())) }
                 }
                 TestPostgres.db.transaction {
-                    context(otherCtx) { roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet())) }
+                    context(otherCtx) { roles.new(EmployeeRole(Uuid.random(), testName("Менеджер"), emptySet())) }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(1, list.size)
-                assertEquals("Тренер", list.first().name)
+                assertEquals("Тренер", list.first().name.value)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -77,9 +81,9 @@ class DbRolesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        roles.new(EmployeeRole(Uuid.random(), "Тренер", emptySet()))
-                        roles.new(EmployeeRole(Uuid.random(), "Менеджер", emptySet()))
-                        roles.new(EmployeeRole(Uuid.random(), "Администратор", emptySet()))
+                        roles.new(EmployeeRole(Uuid.random(), testName("Тренер"), emptySet()))
+                        roles.new(EmployeeRole(Uuid.random(), testName("Менеджер"), emptySet()))
+                        roles.new(EmployeeRole(Uuid.random(), testName("Администратор"), emptySet()))
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
@@ -95,12 +99,12 @@ class DbRolesTest {
             val id = Uuid.random()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { roles.new(EmployeeRole(id, "Тренер", emptySet())) }
+                    context(ctx) { roles.new(EmployeeRole(id, testName("Тренер"), emptySet())) }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(1, list.size)
                 assertEquals(id, list.first().id)
-                assertEquals("Тренер", list.first().name)
+                assertEquals("Тренер", list.first().name.value)
                 assertTrue(list.first().permissions.isEmpty())
             }.getOrElse { fail("Unexpected error: $it") }
         }
@@ -112,7 +116,7 @@ class DbRolesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        roles.new(EmployeeRole(id, "Менеджер", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
+                        roles.new(EmployeeRole(id, testName("Менеджер"), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
@@ -128,7 +132,7 @@ class DbRolesTest {
             val permissions = UserPermission.entries.toSet()
             either {
                 TestPostgres.db.transaction {
-                    context(ctx) { roles.new(EmployeeRole(id, "Суперменеджер", permissions)) }
+                    context(ctx) { roles.new(EmployeeRole(id, testName("Суперменеджер"), permissions)) }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }
                 assertEquals(permissions, list.first().permissions)
@@ -143,8 +147,8 @@ class DbRolesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        roles.new(EmployeeRole(id1, "Роль с правами", setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
-                        roles.new(EmployeeRole(id2, "Роль без прав", emptySet()))
+                        roles.new(EmployeeRole(id1, testName("Роль с правами"), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)))
+                        roles.new(EmployeeRole(id2, testName("Роль без прав"), emptySet()))
                     }
                 }
                 val list = TestPostgres.db.transaction { context(ctx) { roles.list() } }

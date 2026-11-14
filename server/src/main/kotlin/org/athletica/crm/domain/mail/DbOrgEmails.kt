@@ -1,10 +1,12 @@
 package org.athletica.crm.domain.mail
 
+import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.OrgEmailId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toOrgEmailId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInt
@@ -13,7 +15,7 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 
 class DbOrgEmails : OrgEmails {
-    context(ctx: EmployeeRequestContext, tr: Transaction)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun schedule(
         orgId: OrgId,
         to: List<EmailAddress>,
@@ -37,7 +39,7 @@ class DbOrgEmails : OrgEmails {
     }
 
     // TODO: Убрать из интерфейса
-    context(tr: Transaction)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun pending(limit: Int): List<DbOrgEmail> =
         tr.sql(
             """

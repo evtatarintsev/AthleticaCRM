@@ -2,6 +2,8 @@ package org.athletica.crm.contracts
 
 import kotlinx.serialization.json.JsonElement
 import org.athletica.crm.api.schemas.schedule.SessionColorKey
+import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.clientnotes.ClientNoteText
 import org.athletica.crm.core.customfields.CustomFieldKey
 import org.athletica.crm.core.money.Currency
@@ -31,6 +33,8 @@ val customSerializerRules: Map<String, CustomRule> =
         Currency.serializer().descriptor.serialName to CustomRule.Named("Currency", zodEnum(Currency.entries.map { it.code })),
         CustomFieldKey.serializer().descriptor.serialName to
             CustomRule.Named("CustomFieldKey", "z.string().regex(/^[a-z_]+$/).brand<\"CustomFieldKey\">()"),
+        NonBlankName.serializer().descriptor.serialName to CustomRule.Inline("z.string().trim().min(1)"),
+        PositiveInt.serializer().descriptor.serialName to CustomRule.Inline("z.int32().positive()"),
         ClientNoteText.serializer().descriptor.serialName to CustomRule.Inline("z.string().max(${ClientNoteText.MAX_LENGTH})"),
         SessionColorKey.serializer().descriptor.serialName to CustomRule.Named("SessionColorKey", zodEnum(SessionColorKey.entries.map { it.name })),
         Validity.serializer().descriptor.serialName to CustomRule.Renamed("Validity"),

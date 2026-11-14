@@ -1,5 +1,6 @@
 package org.athletica.crm.admin
 
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
@@ -22,49 +23,53 @@ class OrgSearch(private val database: Database) {
     /** Ищет организации по подстроке в названии или логине владельца. */
     suspend fun find(query: String): List<OrgInfo> =
         database.transaction {
-            sql(
-                """
-                SELECT o.id, o.name, o.currency, u.login AS owner_login
-                FROM organizations o
-                JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
-                JOIN users u     ON u.id = e.user_id
-                WHERE o.name ILIKE '%' || :query || '%'
-                   OR u.login ILIKE '%' || :query || '%'
-                ORDER BY o.name
-                """.trimIndent(),
-            )
-                .bind("query", query)
-                .list { row ->
-                    OrgInfo(
-                        id = row.asUuid("id"),
-                        name = row.asString("name"),
-                        currency = Currency.entries.first { it.code == row.asString("currency").trim().uppercase() },
-                        ownerLogin = row.asString("owner_login"),
-                    )
-                }
+            orThrow {
+                sql(
+                    """
+                    SELECT o.id, o.name, o.currency, u.login AS owner_login
+                    FROM organizations o
+                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
+                    JOIN users u     ON u.id = e.user_id
+                    WHERE o.name ILIKE '%' || :query || '%'
+                       OR u.login ILIKE '%' || :query || '%'
+                    ORDER BY o.name
+                    """.trimIndent(),
+                )
+                    .bind("query", query)
+                    .list { row ->
+                        OrgInfo(
+                            id = row.asUuid("id"),
+                            name = row.asString("name"),
+                            currency = Currency.entries.first { it.code == row.asString("currency").trim().uppercase() },
+                            ownerLogin = row.asString("owner_login"),
+                        )
+                    }
+            }
         }
 
     /** Ищет организацию по точному UUID. */
     suspend fun findById(id: Uuid): OrgInfo? =
         database.transaction {
-            sql(
-                """
-                SELECT o.id, o.name, o.currency, u.login AS owner_login
-                FROM organizations o
-                JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
-                JOIN users u     ON u.id = e.user_id
-                WHERE o.id = :id
-                """.trimIndent(),
-            )
-                .bind("id", id)
-                .firstOrNull { row ->
-                    OrgInfo(
-                        id = row.asUuid("id"),
-                        name = row.asString("name"),
-                        currency = Currency.entries.first { it.code == row.asString("currency").trim().uppercase() },
-                        ownerLogin = row.asString("owner_login"),
-                    )
-                }
+            orThrow {
+                sql(
+                    """
+                    SELECT o.id, o.name, o.currency, u.login AS owner_login
+                    FROM organizations o
+                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
+                    JOIN users u     ON u.id = e.user_id
+                    WHERE o.id = :id
+                    """.trimIndent(),
+                )
+                    .bind("id", id)
+                    .firstOrNull { row ->
+                        OrgInfo(
+                            id = row.asUuid("id"),
+                            name = row.asString("name"),
+                            currency = Currency.entries.first { it.code == row.asString("currency").trim().uppercase() },
+                            ownerLogin = row.asString("owner_login"),
+                        )
+                    }
+            }
         }
 
     /**

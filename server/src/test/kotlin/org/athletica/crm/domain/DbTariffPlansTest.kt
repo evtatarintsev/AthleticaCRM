@@ -14,7 +14,8 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.DurationUnit
@@ -22,6 +23,8 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tariffs.DbTariffPlans
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.testName
+import org.athletica.crm.testPositiveInt
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -62,7 +65,7 @@ class DbTariffPlansTest {
     private lateinit var tariffs: DbTariffPlans
 
     /** Создаёт и сохраняет тариф с параметрами по умолчанию, возвращая его идентификатор. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun saveNewPlan(
         id: TariffPlanId = TariffPlanId.new(),
         name: String = "8 занятий",
@@ -71,19 +74,21 @@ class DbTariffPlansTest {
         durationUnit: DurationUnit = DurationUnit.MONTHS,
         price: Money = Money(4_000_00, Currency.RUB),
     ): TariffPlanId {
-        tariffs.new(id, name, sessions, durationValue, durationUnit, price).save()
+        tariffs.new(id, testName(name), sessions?.let(::testPositiveInt), testPositiveInt(durationValue), durationUnit, price).save()
         return id
     }
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        tariffs = DbTariffPlans()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Org 2").execute()
+        orThrow {
+            TestPostgres.truncate()
+            tariffs = DbTariffPlans()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org 1").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Org 2").execute()
+            }
         }
     }
 
@@ -131,9 +136,9 @@ class DbTariffPlansTest {
                     context(ctx) {
                         tariffs.byId(id)
                             .withNew(
-                                name = "Новое",
-                                sessions = 12,
-                                durationValue = 2,
+                                name = testName("Новое"),
+                                sessions = testPositiveInt(12),
+                                durationValue = testPositiveInt(2),
                                 durationUnit = DurationUnit.MONTHS,
                                 price = Money(5_500_00, Currency.RUB),
                             ).save()
@@ -156,16 +161,16 @@ class DbTariffPlansTest {
                         context(ctx) {
                             tariffs.byId(TariffPlanId.new())
                                 .withNew(
-                                    name = "Новое",
-                                    sessions = 8,
-                                    durationValue = 1,
+                                    name = testName("Новое"),
+                                    sessions = testPositiveInt(8),
+                                    durationValue = testPositiveInt(1),
                                     durationUnit = DurationUnit.MONTHS,
                                     price = Money(4_000_00, Currency.RUB),
                                 ).save()
                         }
                     }
                 }
-            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -205,7 +210,7 @@ class DbTariffPlansTest {
                 either {
                     TestPostgres.db.transaction { context(ctx) { tariffs.byId(TariffPlanId.new()).archive() } }
                 }
-            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("TARIFF_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test
@@ -219,9 +224,9 @@ class DbTariffPlansTest {
                     context(ctx) {
                         tariffs.byId(id)
                             .withNew(
-                                name = "Переименовано",
-                                sessions = 8,
-                                durationValue = 1,
+                                name = testName("Переименовано"),
+                                sessions = testPositiveInt(8),
+                                durationValue = testPositiveInt(1),
                                 durationUnit = DurationUnit.MONTHS,
                                 price = Money(4_000_00, Currency.RUB),
                             ).save()

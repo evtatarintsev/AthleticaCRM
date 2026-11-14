@@ -1,7 +1,7 @@
 package org.athletica.crm.usecases.clients.import
 
-import arrow.core.Either
 import arrow.core.raise.Raise
+import arrow.core.raise.context.raise
 import arrow.core.raise.either
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toKotlinLocalDate
@@ -20,21 +20,23 @@ import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.customfields.CustomFieldValues
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.toMoney
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
+import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.leadSource.LeadSource
 import org.athletica.crm.domain.leadSource.LeadSourceDescription
 import org.athletica.crm.domain.leadSource.LeadSources
+import org.athletica.crm.read.clients.import.CsvReader
+import org.athletica.crm.read.uploads.uploadById
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.storage.Transaction
 
 private const val MAX_CSV_SIZE_BYTES = 10L * 1024 * 1024
-private const val CLIENT_ENTITY_TYPE = "CLIENT"
 
 /**
  * Валидирует и (при `dryRun = false`) импортирует клиентов из ранее загруженного CSV
@@ -43,84 +45,80 @@ private const val CLIENT_ENTITY_TYPE = "CLIENT"
  * Импорт идёт в одной транзакции. Строки с ошибками не блокируют импорт остальных —
  * каждая строка обрабатывается изолированно, ошибочные попадают в [RowResult.errors].
  */
-context(db: Database, minio: MinioService, ctx: EmployeeRequestContext)
+context(db: Database, minio: MinioService, ctx: EmployeeRequestContext, raise: Raise<AppError>)
 suspend fun importClientsCommit(
     request: ClientImportCommitRequest,
     clients: Clients,
     balances: ClientBalances,
     leadSources: LeadSources,
     definitions: CustomFieldDefinitions,
-): Either<DomainError, ClientImportCommitResponse> =
-    either {
-        val upload = db.transaction { uploadRecordById(request.uploadId) }
+): ClientImportCommitResponse {
+    val upload =
+        db.transaction { uploadById(request.uploadId) }
+            ?: raise(CommonDomainError("UPLOAD_NOT_FOUND", "Файл не найден"))
 
-        if (upload.sizeBytes > MAX_CSV_SIZE_BYTES) {
-            raise(CommonDomainError("FILE_TOO_BIG", "Файл превышает 10 МБ"))
-        }
+    if (upload.sizeBytes > MAX_CSV_SIZE_BYTES) {
+        raise(CommonDomainError("FILE_TOO_BIG", "Файл превышает 10 МБ"))
+    }
 
-        validateMapping(request.columnMapping).bind()
+    validateMapping(request.columnMapping)
 
-        val bytes = minio.downloadObject(upload.objectKey)
-        val parsed =
-            try {
-                CsvReader.parse(bytes)
-            } catch (e: Exception) {
-                raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV: ${e.message ?: ""}"))
-            }
+    val bytes = minio.downloadObject(upload.objectKey)
+    val parsed = CsvReader.parse(bytes)
 
-        val columnIndex = parsed.headers.withIndex().associate { (i, h) -> h to i }
-        val plan = buildPlan(request.columnMapping, columnIndex).bind()
+    val columnIndex = parsed.headers.withIndex().associate { (i, h) -> h to i }
+    val plan = buildPlan(request.columnMapping, columnIndex)
 
-        db.transaction {
-            val existingLeadSources = leadSources.list().associateBy { it.name }
-            val customDefs =
-                definitions
-                    .all(CLIENT_ENTITY_TYPE)
-                    .associateBy { it.fieldKey.value }
+    return db.transaction {
+        val existingLeadSources = leadSources.list().associateBy { it.name }
+        val customDefs =
+            definitions
+                .all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE)
+                .associateBy { it.fieldKey.value }
 
-            val createdLeadSources =
-                if (request.dryRun) {
-                    emptyList()
-                } else {
-                    createMissingLeadSources(
-                        leadSourceMapping = request.leadSourceMapping,
-                        existingByName = existingLeadSources,
-                        leadSources = leadSources,
-                    )
-                }
-
-            val leadSourceIdByCsvValue: Map<String, LeadSourceId> =
-                resolveLeadSourceIds(
+        val createdLeadSources =
+            if (request.dryRun) {
+                emptyList()
+            } else {
+                createMissingLeadSources(
                     leadSourceMapping = request.leadSourceMapping,
                     existingByName = existingLeadSources,
-                    created = createdLeadSources,
+                    leadSources = leadSources,
                 )
+            }
 
-            val balanceNote = "Импорт CSV ${upload.originalName} от ${today()}"
-            val rows =
-                parsed.rows.mapIndexed { idx, row ->
-                    processRow(
-                        rowNumber = idx + 1,
-                        row = row,
-                        plan = plan,
-                        request = request,
-                        customDefs = customDefs,
-                        leadSourceIdByCsvValue = leadSourceIdByCsvValue,
-                        clients = clients,
-                        balances = balances,
-                        balanceNote = balanceNote,
-                    )
-                }
-
-            ClientImportCommitResponse(
-                totalRows = parsed.rows.size,
-                imported = rows.count { it.status == Status.OK },
-                skipped = rows.count { it.status == Status.ERROR },
-                rows = rows,
-                createdLeadSources = createdLeadSources.map { CreatedLeadSource(it.id, it.name) },
+        val leadSourceIdByCsvValue: Map<String, LeadSourceId> =
+            resolveLeadSourceIds(
+                leadSourceMapping = request.leadSourceMapping,
+                existingByName = existingLeadSources,
+                created = createdLeadSources,
             )
-        }
+
+        val balanceNote = "Импорт CSV ${upload.originalName} от ${today()}"
+        val rows =
+            parsed.rows.mapIndexed { idx, row ->
+                processRow(
+                    rowNumber = idx + 1,
+                    row = row,
+                    plan = plan,
+                    request = request,
+                    customDefs = customDefs,
+                    leadSourceIdByCsvValue = leadSourceIdByCsvValue,
+                    clients = clients,
+                    balances = balances,
+                    balanceNote = balanceNote,
+                )
+            }
+
+        ClientImportCommitResponse(
+            totalRows = parsed.rows.size,
+            imported = rows.count { it.status == Status.OK },
+            skipped = rows.count { it.status == Status.ERROR },
+            rows = rows,
+            createdLeadSources = createdLeadSources.map { CreatedLeadSource(it.id, it.name) },
+        )
     }
+}
 
 /**
  * Готовый к исполнению план импорта: индексы CSV-колонок для каждого назначения.
@@ -135,66 +133,66 @@ private data class ImportPlan(
     val customFieldIndices: Map<Int, String>,
 )
 
-private fun validateMapping(mapping: List<ColumnMapping>): Either<DomainError, Unit> =
-    either {
-        val builtInCounts =
-            mapping
-                .groupingBy { it.target::class.qualifiedName ?: "?" }
-                .eachCount()
-        if (mapping.none { it.target is ImportTarget.Name }) {
-            raise(CommonDomainError("MAPPING_NAME_MISSING", "Не выбрана колонка с ФИО"))
-        }
-        listOf(
-            ImportTarget.Name::class.qualifiedName!! to "MAPPING_NAME_DUPLICATED",
-            ImportTarget.Birthday::class.qualifiedName!! to "MAPPING_BIRTHDAY_DUPLICATED",
-            ImportTarget.Gender::class.qualifiedName!! to "MAPPING_GENDER_DUPLICATED",
-            ImportTarget.LeadSource::class.qualifiedName!! to "MAPPING_LEAD_SOURCE_DUPLICATED",
-            ImportTarget.Balance::class.qualifiedName!! to "MAPPING_BALANCE_DUPLICATED",
-        ).forEach { (className, code) ->
-            if ((builtInCounts[className] ?: 0) > 1) {
-                raise(CommonDomainError(code, "В маппинге несколько колонок ссылаются на одно поле"))
-            }
+context(raise: Raise<AppError>)
+private fun validateMapping(mapping: List<ColumnMapping>) {
+    val builtInCounts =
+        mapping
+            .groupingBy { it.target::class.qualifiedName ?: "?" }
+            .eachCount()
+    if (mapping.none { it.target is ImportTarget.Name }) {
+        raise(CommonDomainError("MAPPING_NAME_MISSING", "Не выбрана колонка с ФИО"))
+    }
+    listOf(
+        ImportTarget.Name::class.qualifiedName!! to "MAPPING_NAME_DUPLICATED",
+        ImportTarget.Birthday::class.qualifiedName!! to "MAPPING_BIRTHDAY_DUPLICATED",
+        ImportTarget.Gender::class.qualifiedName!! to "MAPPING_GENDER_DUPLICATED",
+        ImportTarget.LeadSource::class.qualifiedName!! to "MAPPING_LEAD_SOURCE_DUPLICATED",
+        ImportTarget.Balance::class.qualifiedName!! to "MAPPING_BALANCE_DUPLICATED",
+    ).forEach { (className, code) ->
+        if ((builtInCounts[className] ?: 0) > 1) {
+            raise(CommonDomainError(code, "В маппинге несколько колонок ссылаются на одно поле"))
         }
     }
+}
 
+context(raise: Raise<AppError>)
 private fun buildPlan(
     mapping: List<ColumnMapping>,
     columnIndex: Map<String, Int>,
-): Either<DomainError, ImportPlan> =
-    either {
-        fun indexOf(column: String): Int =
-            columnIndex[column]
-                ?: raise(CommonDomainError("MAPPING_UNKNOWN_COLUMN", "Колонка не найдена в CSV: $column"))
+): ImportPlan {
+    fun indexOf(column: String): Int =
+        columnIndex[column]
+            ?: raise(CommonDomainError("MAPPING_UNKNOWN_COLUMN", "Колонка не найдена в CSV: $column"))
 
-        var nameIdx: Int? = null
-        var birthdayIdx: Int? = null
-        var genderIdx: Int? = null
-        var leadSourceIdx: Int? = null
-        var balanceIdx: Int? = null
-        val customs = mutableMapOf<Int, String>()
-        mapping.forEach { cm ->
-            when (val target = cm.target) {
-                ImportTarget.Skip -> {}
-                ImportTarget.Name -> nameIdx = indexOf(cm.sourceColumn)
-                ImportTarget.Birthday -> birthdayIdx = indexOf(cm.sourceColumn)
-                ImportTarget.Gender -> genderIdx = indexOf(cm.sourceColumn)
-                ImportTarget.LeadSource -> leadSourceIdx = indexOf(cm.sourceColumn)
-                ImportTarget.Balance -> balanceIdx = indexOf(cm.sourceColumn)
-                is ImportTarget.CustomField -> customs[indexOf(cm.sourceColumn)] = target.key.value
-            }
+    var nameIdx: Int? = null
+    var birthdayIdx: Int? = null
+    var genderIdx: Int? = null
+    var leadSourceIdx: Int? = null
+    var balanceIdx: Int? = null
+    val customs = mutableMapOf<Int, String>()
+    mapping.forEach { cm ->
+        when (val target = cm.target) {
+            ImportTarget.Skip -> {}
+            ImportTarget.Name -> nameIdx = indexOf(cm.sourceColumn)
+            ImportTarget.Birthday -> birthdayIdx = indexOf(cm.sourceColumn)
+            ImportTarget.Gender -> genderIdx = indexOf(cm.sourceColumn)
+            ImportTarget.LeadSource -> leadSourceIdx = indexOf(cm.sourceColumn)
+            ImportTarget.Balance -> balanceIdx = indexOf(cm.sourceColumn)
+            is ImportTarget.CustomField -> customs[indexOf(cm.sourceColumn)] = target.key.value
         }
-
-        ImportPlan(
-            nameIndex = nameIdx ?: raise(CommonDomainError("MAPPING_NAME_MISSING", "Не выбрана колонка с ФИО")),
-            birthdayIndex = birthdayIdx,
-            genderIndex = genderIdx,
-            leadSourceIndex = leadSourceIdx,
-            balanceIndex = balanceIdx,
-            customFieldIndices = customs,
-        )
     }
 
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    return ImportPlan(
+        nameIndex = nameIdx ?: raise(CommonDomainError("MAPPING_NAME_MISSING", "Не выбрана колонка с ФИО")),
+        birthdayIndex = birthdayIdx,
+        genderIndex = genderIdx,
+        leadSourceIndex = leadSourceIdx,
+        balanceIndex = balanceIdx,
+        customFieldIndices = customs,
+    )
+}
+
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun createMissingLeadSources(
     leadSourceMapping: Map<String, LeadSourceAction>,
     existingByName: Map<String, LeadSource>,
@@ -203,8 +201,8 @@ private suspend fun createMissingLeadSources(
     val toCreate =
         leadSourceMapping.values
             .filterIsInstance<LeadSourceAction.CreateNew>()
-            .map { it.name.trim() }
-            .filter { it.isNotEmpty() && !existingByName.containsKey(it) }
+            .map { it.name }
+            .filter { it.value !in existingByName }
             .distinct()
     return toCreate.map { name ->
         val created = leadSources.new(id = LeadSourceId.new(), name = name, description = LeadSourceDescription.EMPTY)
@@ -222,13 +220,13 @@ private fun resolveLeadSourceIds(
     return leadSourceMapping.mapNotNull { (csvValue, action) ->
         when (action) {
             is LeadSourceAction.UseExisting -> csvValue to action.id
-            is LeadSourceAction.CreateNew -> byName[action.name.trim()]?.let { csvValue to it.id }
+            is LeadSourceAction.CreateNew -> byName[action.name.value]?.let { csvValue to it.id }
             LeadSourceAction.Skip -> null
         }
     }.toMap()
 }
 
-context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 private suspend fun processRow(
     rowNumber: Int,
     row: List<String?>,
@@ -317,7 +315,7 @@ private suspend fun processRow(
                 customFields = customFields,
             )
         if (balance != null && balance != 0.0) {
-            balances.currentOf(client).adjust(balance.toMoney(ctx.currency), balanceNote)
+            balances.adjust(client, balance.toMoney(ctx.currency), balanceNote)
         }
         RowResult(rowNumber = rowNumber, status = Status.OK)
     }.fold(
@@ -338,9 +336,6 @@ private fun collectCustomFields(
     defs: Map<String, CustomFieldDefinition>,
     errors: MutableList<String>,
 ): List<CustomFieldValue> {
-    if (plan.customFieldIndices.isEmpty()) {
-        return emptyList()
-    }
     val values =
         plan.customFieldIndices.mapNotNull { (idx, key) ->
             val raw = row.getOrNull(idx)?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
@@ -351,13 +346,13 @@ private fun collectCustomFields(
                 }
             buildCustomFieldValue(def, raw, errors)
         }
-    val container = CustomFieldValues(defs.values.toList()).with(values)
+    val container = either { CustomFieldValues(defs.values.toList()).forCreation(values) }
     return container.fold(
         ifLeft = { err ->
-            errors += err.message
+            errors += "${err.code}: ${err.message}"
             emptyList()
         },
-        ifRight = { it.toList() },
+        ifRight = { it },
     )
 }
 
@@ -394,13 +389,7 @@ private fun buildCustomFieldValue(
         is CustomFieldDefinition.Bool -> CustomFieldValue.Bool(def.fieldKey, parseBool(raw))
 
         is CustomFieldDefinition.Select ->
-            if (def.options.any { it.equals(raw, ignoreCase = true) }) {
-                val canonical = def.options.first { it.equals(raw, ignoreCase = true) }
-                CustomFieldValue.Select(def.fieldKey, canonical)
-            } else {
-                errors += "Значение «$raw» не входит в варианты поля ${def.fieldKey.value}"
-                null
-            }
+            CustomFieldValue.Select(def.fieldKey, def.options.firstOrNull { it.equals(raw, ignoreCase = true) } ?: raw)
     }
 
 private fun parseBool(raw: String): Boolean =

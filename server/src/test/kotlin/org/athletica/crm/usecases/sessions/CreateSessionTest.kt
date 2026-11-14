@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases.sessions
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -9,15 +10,21 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.domain.audit.AuditEvent
+import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.events.DomainEventBus
-import org.athletica.crm.domain.groups.DbGroups
+import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbSessions
+import org.athletica.crm.read.sessions.DbSessionDetailView
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,7 +37,6 @@ import kotlin.uuid.Uuid
  * явный состав тренеров без признака замены и принадлежность зала филиалу группы.
  */
 class CreateSessionTest {
-    private val groups = DbGroups()
     private val sessions = DbSessions(DomainEventBus())
     private val employees = DbEmployees(DbUsers(PasswordHasher()), DbRoles())
     private val fixture = ScheduleFixture()
@@ -49,7 +55,6 @@ class CreateSessionTest {
         id: SessionId = SessionId.new(),
     ) = fixture.runInContext {
         createSession(
-            groups = groups,
             sessions = sessions,
             employees = employees,
             id = id,
@@ -64,43 +69,46 @@ class CreateSessionTest {
     }
 
     /** Создаёт филиал организации теста и зал в нём. */
-    private suspend fun hallInOtherBranch(): HallId {
-        val branch = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Второй')")
-            .bind("id", branch)
-            .bind("orgId", fixture.orgId)
-            .execute()
-        return insertHall(fixture.orgId, branch)
-    }
+    private suspend fun hallInOtherBranch(): HallId =
+        orThrow {
+            val branch = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Второй')")
+                .bind("id", branch)
+                .bind("orgId", fixture.orgId)
+                .execute()
+            return insertHall(fixture.orgId, branch)
+        }
 
     /** Создаёт отдельную организацию с филиалом и зал в ней. */
-    private suspend fun hallInOtherOrg(): HallId {
-        val org = Uuid.generateV7()
-        val branch = Uuid.generateV7()
-        TestPostgres.db
-            .sql("INSERT INTO organizations (id, name) VALUES (:id, 'Чужая')")
-            .bind("id", org)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Чужой')")
-            .bind("id", branch)
-            .bind("orgId", org)
-            .execute()
-        return insertHall(org, branch)
-    }
+    private suspend fun hallInOtherOrg(): HallId =
+        orThrow {
+            val org = Uuid.generateV7()
+            val branch = Uuid.generateV7()
+            TestPostgres.db
+                .sql("INSERT INTO organizations (id, name) VALUES (:id, 'Чужая')")
+                .bind("id", org)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Чужой')")
+                .bind("id", branch)
+                .bind("orgId", org)
+                .execute()
+            return insertHall(org, branch)
+        }
 
     /** Вставляет зал в филиал [branch] организации [org]. */
-    private suspend fun insertHall(org: Uuid, branch: Uuid): HallId {
-        val id = HallId.new()
-        TestPostgres.db
-            .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
-            .bind("id", id)
-            .bind("orgId", org)
-            .bind("branchId", branch)
-            .execute()
-        return id
-    }
+    private suspend fun insertHall(org: Uuid, branch: Uuid): HallId =
+        orThrow {
+            val id = HallId.new()
+            TestPostgres.db
+                .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
+                .bind("id", id)
+                .bind("orgId", org)
+                .bind("branchId", branch)
+                .execute()
+            return id
+        }
 
     /** Ожидает ошибку домена с кодом [code]. */
     private fun assertError(code: String, result: Either<*, *>) {
@@ -121,10 +129,11 @@ class CreateSessionTest {
 
             assertIs<Either.Right<*>>(create(group, hall, listOf(otherTrainer), id))
 
-            val session = fixture.inContext { sessions.byId(id) }
-            assertEquals(listOf(otherTrainer), session.employeeIds)
-            assertFalse(session.isEmployeeAssignmentOverridden)
-            assertEquals(null, session.originSlotId)
+            val detail = fixture.inContext { DbSessionDetailView().detail(id) }
+            assertEquals(group, detail.groupId)
+            assertEquals(listOf(otherTrainer), detail.employeeIds)
+            assertFalse(detail.isEmployeeAssignmentOverridden)
+            assertEquals(true, detail.isManual)
         }
 
     @Test
@@ -143,24 +152,26 @@ class CreateSessionTest {
 
     @Test
     fun `тренер без доступа к филиалу группы отклоняется`() =
-        runTest {
-            fixture.setUp()
-            val hall = fixture.insertHall()
-            val group = fixture.insertGroup()
-            val stranger = EmployeeId.new()
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
-                    VALUES (:id, :orgId, 'Чужой', true, false, NOW())
-                    """.trimIndent(),
-                )
-                .bind("id", stranger)
-                .bind("orgId", fixture.orgId)
-                .execute()
+        orThrow {
+            runTest {
+                fixture.setUp()
+                val hall = fixture.insertHall()
+                val group = fixture.insertGroup()
+                val stranger = EmployeeId.new()
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
+                        VALUES (:id, :orgId, 'Чужой', true, false, NOW())
+                        """.trimIndent(),
+                    )
+                    .bind("id", stranger)
+                    .bind("orgId", fixture.orgId)
+                    .execute()
 
-            assertError("EMPLOYEE_NOT_FOUND", create(group, hall, listOf(stranger)))
-            assertEquals(0L, fixture.sessionCount())
+                assertError("EMPLOYEE_NOT_FOUND", create(group, hall, listOf(stranger)))
+                assertEquals(0L, fixture.sessionCount())
+            }
         }
 
     @Test
@@ -219,5 +230,60 @@ class CreateSessionTest {
             }
 
             assertEquals(otherHall, fixture.inContext { sessions.byId(id) }.hallId)
+        }
+
+    @Test
+    fun `домен отклоняет равный и обратный интервал при создании и переносе`() =
+        runTest {
+            fixture.setUp()
+            val hall = fixture.insertHall()
+            val group = fixture.insertGroup()
+            val start = LocalTime(15, 0)
+            val end = LocalTime(16, 0)
+            val id = fixture.insertSession(group, hall, date, start, end)
+
+            for (invalidEnd in listOf(start, LocalTime(14, 0))) {
+                assertError(
+                    "INVALID_SESSION_TIME",
+                    fixture.runInContext { sessions.new(SessionId.new(), group, date, start, invalidEnd, hall, null, emptyList()) },
+                )
+                assertError(
+                    "INVALID_SESSION_TIME",
+                    fixture.runInContext { sessions.byId(id).reschedule(date, start, invalidEnd, hall) },
+                )
+            }
+            assertEquals(1L, fixture.sessionCount())
+            assertEquals(end, fixture.inContext { sessions.byId(id) }.endTime)
+        }
+
+    @Test
+    fun `создание возвращает тренеров и повторный ID не пишет аудит`() =
+        runTest {
+            fixture.setUp()
+            val hall = fixture.insertHall()
+            val group = fixture.insertGroup()
+            val trainers = listOf(fixture.insertEmployee(), fixture.insertEmployee())
+            val id = SessionId.new()
+            val auditEvents = mutableListOf<AuditEvent>()
+            val audited =
+                AuditSessions(
+                    sessions,
+                    object : AuditLog {
+                        context(tr: Transaction, raise: Raise<AppError>)
+                        override suspend fun log(event: AuditEvent) {
+                            auditEvents.add(event)
+                        }
+                    },
+                )
+
+            suspend fun create() =
+                fixture.runInContext {
+                    audited.new(id, group, date, LocalTime(15, 0), LocalTime(16, 0), hall, null, employees.byIds(trainers))
+                }
+
+            assertEquals(trainers.toSet(), create().getOrNull()?.employeeIds?.toSet())
+            assertError("SESSION_ALREADY_EXISTS", create())
+            assertEquals(1L, fixture.sessionCount())
+            assertEquals(id.value, auditEvents.single().entityId)
         }
 }

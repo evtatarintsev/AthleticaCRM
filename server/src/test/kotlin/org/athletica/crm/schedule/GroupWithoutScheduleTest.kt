@@ -6,10 +6,12 @@ import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.DayOfWeek
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.groups.DbGroupSchedule
 import org.athletica.crm.domain.groups.DbGroups
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.storage.asLong
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,10 +34,12 @@ class GroupWithoutScheduleTest {
 
     /** Все версии слотов группы, включая закрытые. */
     private suspend fun versionCount(groupId: GroupId): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) AS cnt FROM schedule_slots WHERE group_id = :g")
-            .bind("g", groupId)
-            .firstOrNull { it.asLong("cnt") } ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) AS cnt FROM schedule_slots WHERE group_id = :g")
+                .bind("g", groupId)
+                .firstOrNull { it.asLong("cnt") } ?: 0L
+        }
 
     @Test
     fun `переименование группы не меняет её расписание и историю версий`() =
@@ -44,7 +48,7 @@ class GroupWithoutScheduleTest {
             val hallA = fixture.insertHall("A")
             val hallB = fixture.insertHall("B")
             val groupId = GroupId.new()
-            fixture.inContext { groups.new(groupId, "Йога", emptyList(), emptyList()) }
+            fixture.inContext { groups.new(groupId, testName("Йога"), emptyList(), emptyList()) }
             fixture.inContext { schedule.setFrom(groupId, today, listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), hallA))) }
             fixture.inContext {
                 schedule.setFrom(groupId, today.plusDays(30), listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), hallB)))
@@ -52,7 +56,7 @@ class GroupWithoutScheduleTest {
             val before = fixture.inContext { schedule.slotsOn(groupId, today) }
             val versionsBefore = versionCount(groupId)
 
-            fixture.inContext { groups.byId(groupId).withNewName("Йога продвинутая").save() }
+            fixture.inContext { groups.byId(groupId).withNewName(testName("Йога продвинутая")).save() }
 
             assertEquals(before, fixture.inContext { schedule.slotsOn(groupId, today) })
             assertEquals(versionsBefore, versionCount(groupId))
@@ -65,7 +69,7 @@ class GroupWithoutScheduleTest {
             fixture.setUp()
             val groupId = GroupId.new()
 
-            fixture.inContext { groups.new(groupId, "Йога", emptyList(), emptyList()) }
+            fixture.inContext { groups.new(groupId, testName("Йога"), emptyList(), emptyList()) }
 
             assertEquals(emptyList(), fixture.inContext { schedule.slotsOn(groupId, today) })
             assertEquals(0L, versionCount(groupId))
@@ -79,7 +83,7 @@ class GroupWithoutScheduleTest {
             val groupId = GroupId.new()
 
             fixture.inContext {
-                groups.new(groupId, "Йога", emptyList(), emptyList())
+                groups.new(groupId, testName("Йога"), emptyList(), emptyList())
                 schedule.setFrom(groupId, today, listOf(NewSlot(DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), hall)))
             }
 

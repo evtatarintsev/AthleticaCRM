@@ -3,6 +3,7 @@ package org.athletica.crm.admin
 import com.github.ajalt.clikt.command.test
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
@@ -30,18 +31,19 @@ class AthleticaCliTest {
         serverStarts = 0
     }
 
-    private suspend fun insertOrg(name: String, login: String): Uuid {
-        val orgId = Uuid.random()
-        val userId = Uuid.random()
-        TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-            .bind("id", orgId).bind("name", name).execute()
-        TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-            .bind("id", userId).bind("login", login).bind("hash", "hash").execute()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
-            .bind("id", Uuid.random()).bind("userId", userId).bind("orgId", orgId).bind("name", "Владелец").execute()
-        return orgId
-    }
+    private suspend fun insertOrg(name: String, login: String): Uuid =
+        orThrow {
+            val orgId = Uuid.random()
+            val userId = Uuid.random()
+            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId).bind("name", name).execute()
+            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId).bind("login", login).bind("hash", "hash").execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+                .bind("id", Uuid.random()).bind("userId", userId).bind("orgId", orgId).bind("name", "Владелец").execute()
+            return orgId
+        }
 
     @Test
     fun `serve запускает веб-сервер`() =

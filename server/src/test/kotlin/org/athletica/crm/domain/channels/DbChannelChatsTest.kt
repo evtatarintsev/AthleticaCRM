@@ -9,7 +9,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,7 +31,7 @@ class DbChannelChatsTest {
     }
 
     private suspend fun upsert(name: String, username: String?, phone: String?): ChannelChat {
-        val result: Either<DomainError, ChannelChat> =
+        val result: Either<AppError, ChannelChat> =
             either {
                 TestPostgres.db.transaction {
                     context(SystemContexts.forOrg(orgId)) {

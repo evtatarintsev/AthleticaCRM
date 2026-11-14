@@ -2,7 +2,7 @@ package org.athletica.crm.domain.channels
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 
 /**
@@ -14,6 +14,6 @@ interface ChannelConfigVerifier {
      * Проверяет [config] и возвращает его, дополненный данными провайдера (например, имя бота).
      * Ошибка провайдера — `Raise` с кодом, специфичным для вида канала, и текстом на языке [ctx].
      */
-    context(ctx: RequestContext, raise: Raise<DomainError>)
+    context(ctx: RequestContext, raise: Raise<AppError>)
     suspend fun verified(config: ChannelConfig): ChannelConfig
 }

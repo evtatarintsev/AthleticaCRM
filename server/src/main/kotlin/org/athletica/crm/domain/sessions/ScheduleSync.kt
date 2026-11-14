@@ -1,8 +1,9 @@
 package org.athletica.crm.domain.sessions
 
 import arrow.core.raise.context.Raise
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -14,7 +15,7 @@ import org.athletica.crm.storage.Transaction
  * Занятия, которых касался человек, сверка не трогает никогда.
  */
 interface ScheduleSync {
-    /** Приводит занятия организации в соответствие с расписанием. */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    suspend fun sync()
+    /** Приводит занятия в соответствие с расписанием на [today] или текущую дату организации. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun sync(today: LocalDate? = null)
 }

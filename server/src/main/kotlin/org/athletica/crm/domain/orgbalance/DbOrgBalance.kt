@@ -4,8 +4,8 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import org.athletica.crm.core.AdminRequestContext
 import org.athletica.crm.core.SystemRequestContext
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -16,7 +16,7 @@ data class DbOrgBalance(
     override val totalAmount: Money,
     override val history: List<OrgBalanceEntry>,
 ) : OrgBalance {
-    context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun adjust(amount: Money, description: String): OrgBalance {
         ensure(amount.currency == ctx.currency) {
             CommonDomainError("BALANCE_CURRENCY_MISMATCH", Messages.BalanceCurrencyMismatch.localize())
@@ -53,7 +53,7 @@ data class DbOrgBalance(
         return DbOrgBalance(balanceAfter, history)
     }
 
-    context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun replenish(amount: Money, description: String): OrgBalance {
         ensure(amount.currency == ctx.currency) {
             CommonDomainError("BALANCE_CURRENCY_MISMATCH", Messages.BalanceCurrencyMismatch.localize())

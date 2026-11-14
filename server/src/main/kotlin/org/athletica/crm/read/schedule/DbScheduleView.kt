@@ -13,7 +13,7 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.entityids.toHallId
 import org.athletica.crm.core.entityids.toSessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.read.SessionSql
 import org.athletica.crm.storage.QueryBuilder
@@ -29,7 +29,7 @@ import org.athletica.crm.storage.asUuid
  * Занятия без группы отсекаются самим `JOIN groups`.
  */
 class DbScheduleView : ScheduleView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun list(query: ScheduleQuery): ScheduleListResponse {
         val sessions =
             tr

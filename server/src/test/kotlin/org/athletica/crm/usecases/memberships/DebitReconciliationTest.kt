@@ -10,8 +10,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.entityids.GroupId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.subscription.CloseMode
+import org.athletica.crm.domain.attendance.DbParticipations
 import org.athletica.crm.domain.memberships.Activation
 import org.athletica.crm.domain.memberships.ActiveMembership
 import org.athletica.crm.domain.memberships.ClosedMembership
@@ -216,22 +218,24 @@ class DebitReconciliationTest {
 
     @Test
     fun `занятие чужой группы не списывается`() =
-        runTest {
-            val client = fixture.insertClient()
-            fixture.issue(client)
-            val otherGroup = GroupId.new()
-            TestPostgres.db
-                .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Взрослые')")
-                .bind("id", otherGroup)
-                .bind("orgId", fixture.orgId)
-                .bind("branchId", fixture.branchId)
-                .execute()
-            val session = debits.session(date(16), groupId = otherGroup)
-            debits.mark(session, client, "present")
+        orThrow {
+            runTest {
+                val client = fixture.insertClient()
+                fixture.issue(client)
+                val otherGroup = GroupId.new()
+                TestPostgres.db
+                    .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Взрослые')")
+                    .bind("id", otherGroup)
+                    .bind("orgId", fixture.orgId)
+                    .bind("branchId", fixture.branchId)
+                    .execute()
+                val session = debits.session(date(16), groupId = otherGroup)
+                debits.mark(session, client, "present")
 
-            debits.reconcile(session, client)
+                debits.reconcile(session, client)
 
-            assertNull(debits.debitedFrom(session, client))
+                assertNull(debits.debitedFrom(session, client))
+            }
         }
 
     @Test
@@ -261,9 +265,12 @@ class DebitReconciliationTest {
             val session = debits.session(date(16))
             val stale = assertIs<ActiveMembership>(fixture.reload(issued.id))
             fixture.setRemaining(issued.id, 0)
+            debits.mark(session, client, "present")
 
             assertFailsWith<MembershipDebitConflict> {
-                fixture.tx(fixture.system) { stale.debit(session, date(16), date(16)) }
+                fixture.tx(fixture.system) {
+                    stale.debit(checkNotNull(DbParticipations().lock(session, client)), date(16))
+                }
             }
             assertEquals(0, debits.debitRows(session, client))
         }
@@ -300,7 +307,7 @@ class DebitReconciliationTest {
 
             val result = fixture.attempt { revokeMembership(fixture.memberships, issued.id) }
 
-            assertEquals("MEMBERSHIP_HAS_DEBITS", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("MEMBERSHIP_HAS_DEBITS", assertIs<Either.Left<AppError>>(result).value.code)
             assertIs<ActiveMembership>(fixture.reload(issued.id))
         }
 

@@ -14,13 +14,12 @@ import org.athletica.crm.api.schemas.groups.SetGroupDisciplinesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupEmployeesRequest
 import org.athletica.crm.api.schemas.groups.SetGroupScheduleRequest
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.groups.GroupSchedule
 import org.athletica.crm.domain.groups.Groups
 import org.athletica.crm.domain.groups.NewSlot
 import org.athletica.crm.domain.notifications.Notifications
-import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.groups.GroupListQuery
 import org.athletica.crm.read.groups.GroupSessionsQuery
@@ -37,7 +36,6 @@ fun RouteWithContext.groupsRoutes(
     groups: Groups,
     employees: Employees,
     schedule: GroupSchedule,
-    sync: ScheduleSync,
     notifications: Notifications,
     views: ReadViews,
 ) {
@@ -76,7 +74,6 @@ fun RouteWithContext.groupsRoutes(
                         request.disciplineIds,
                         employees.byIds(request.employeeIds),
                     )
-                sync.sync()
                 views.groupDetail.byId(group.id)
             }
         }
@@ -91,7 +88,6 @@ fun RouteWithContext.groupsRoutes(
                         employees.byIds(request.employeeIds),
                     )
                     .save()
-                sync.sync()
                 views.groupDetail.byId(request.id)
             }
         }
@@ -100,7 +96,6 @@ fun RouteWithContext.groupsRoutes(
             db.transaction {
                 setGroupSchedule(
                     schedule,
-                    sync,
                     groups,
                     employees,
                     notifications,
@@ -127,7 +122,6 @@ fun RouteWithContext.groupsRoutes(
                     .byId(request.groupId)
                     .withNewEmployees(employees.byIds(request.employeeIds))
                     .save()
-                sync.sync()
             }
         }
     }
@@ -145,7 +139,7 @@ private fun GroupListRequest.toQuery() =
 fun ScheduleSlotSchema.toNewSlot() = NewSlot(dayOfWeek, startAt, endAt, hallId)
 
 /** Преобразует запрос занятий группы в параметры выборки, проверив границы периода. */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 private fun GroupSessionsRequest.toQuery(): GroupSessionsQuery {
     checkSchedulePeriod(from, to)
     return GroupSessionsQuery(groupId = groupId, from = from, to = to)

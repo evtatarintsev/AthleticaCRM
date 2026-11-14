@@ -15,7 +15,8 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toUploadId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
@@ -24,6 +25,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
+import org.athletica.crm.testName
 import org.junit.Before
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
@@ -66,64 +68,73 @@ class DbTasksTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
-                .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "test@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", employeeId).bind("orgId", orgId).bind("name", "Иван").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, org_id, name) VALUES (:id, :orgId, :name)")
+                    .bind("id", otherEmployeeId).bind("orgId", orgId).bind("name", "Пётр").execute()
+            }
         }
     }
 
-    private suspend fun insertUpload(): UploadId {
-        val id = Uuid.generateV7()
-        TestPostgres.db.sql(
-            """
-            INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
-            VALUES (:id, :orgId, :userId, :key, :name, 'application/pdf', 1024)
-            """.trimIndent(),
-        )
-            .bind("id", id).bind("orgId", orgId).bind("userId", userId)
-            .bind("key", "uploads/$id").bind("name", "file.pdf")
-            .execute()
-        return id.toUploadId()
-    }
+    private suspend fun insertUpload(): UploadId =
+        orThrow {
+            val id = Uuid.generateV7()
+            TestPostgres.db.sql(
+                """
+                INSERT INTO uploads (id, org_id, uploaded_by, object_key, original_name, content_type, size_bytes)
+                VALUES (:id, :orgId, :userId, :key, :name, 'application/pdf', 1024)
+                """.trimIndent(),
+            )
+                .bind("id", id).bind("orgId", orgId).bind("userId", userId)
+                .bind("key", "uploads/$id").bind("name", "file.pdf")
+                .execute()
+            return id.toUploadId()
+        }
 
     private suspend fun countAttachments(taskId: TaskId): Long =
-        TestPostgres.db
-            .sql("SELECT COUNT(*) FROM task_attachments WHERE task_id = :id")
-            .bind("id", taskId)
-            .firstOrNull { row -> row.asLong(0) } ?: 0L
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COUNT(*) FROM task_attachments WHERE task_id = :id")
+                .bind("id", taskId)
+                .firstOrNull { row -> row.asLong(0) } ?: 0L
+        }
 
     private suspend fun taskCompletedAt(taskId: TaskId): String? =
-        TestPostgres.db
-            .sql("SELECT COALESCE(completed_at::text, '') AS ca FROM tasks WHERE id = :id")
-            .bind("id", taskId)
-            .firstOrNull { row -> row.asString("ca") }
-            ?.takeIf { it.isNotEmpty() }
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COALESCE(completed_at::text, '') AS ca FROM tasks WHERE id = :id")
+                .bind("id", taskId)
+                .firstOrNull { row -> row.asString("ca") }
+                ?.takeIf { it.isNotEmpty() }
+        }
 
     // ─── new() ────────────────────────────────────────────────────────────────
 
     @Test
     fun `new создаёт задачу в базе данных`() =
-        runTest {
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        tasks.new(TaskId.new(), "Тест", "", null, null, null)
+        orThrow {
+            runTest {
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            tasks.new(TaskId.new(), testName("Тест"), "", null, null, null)
+                        }
                     }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
+                }.getOrElse { fail("Unexpected error: $it") }
 
-            val count =
-                TestPostgres.db
-                    .sql("SELECT COUNT(*) FROM tasks")
-                    .firstOrNull { row -> row.asLong(0) } ?: 0L
-            assertEquals(1L, count)
+                val count =
+                    TestPostgres.db
+                        .sql("SELECT COUNT(*) FROM tasks")
+                        .firstOrNull { row -> row.asLong(0) } ?: 0L
+                assertEquals(1L, count)
+            }
         }
 
     @Test
@@ -133,7 +144,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "Описание", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "Описание", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -155,7 +166,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -182,7 +193,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -220,7 +231,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -245,7 +256,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -265,50 +276,52 @@ class DbTasksTest {
 
     @Test
     fun `detach удаляет вложение`() =
-        runTest {
-            val upload1 = insertUpload()
-            val upload2 = insertUpload()
-            val task =
+        orThrow {
+            runTest {
+                val upload1 = insertUpload()
+                val upload2 = insertUpload()
+                val task =
+                    either {
+                        TestPostgres.db.transaction {
+                            context(ctx) {
+                                tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
+                            }
+                        }
+                    }.getOrElse { fail("Unexpected error: $it") }
+
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            val withAttachments =
+                                context(ctx) {
+                                    tasks.byId(task.id).attach(upload1).attach(upload2)
+                                }
+                            withAttachments.save()
+                        }
+                    }
+                }.getOrElse { fail("Setup: $it") }
+
+                assertEquals(2L, countAttachments(task.id))
+
+                either {
+                    TestPostgres.db.transaction {
+                        context(ctx) {
+                            val updated = context(ctx) { tasks.byId(task.id).detach(upload1) }
+                            updated.save()
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val withAttachments =
-                            context(ctx) {
-                                tasks.byId(task.id).attach(upload1).attach(upload2)
-                            }
-                        withAttachments.save()
-                    }
-                }
-            }.getOrElse { fail("Setup: $it") }
+                assertEquals(1L, countAttachments(task.id))
 
-            assertEquals(2L, countAttachments(task.id))
-
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val updated = context(ctx) { tasks.byId(task.id).detach(upload1) }
-                        updated.save()
-                    }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
-
-            assertEquals(1L, countAttachments(task.id))
-
-            val remaining =
-                TestPostgres.db
-                    .sql("SELECT upload_id::text FROM task_attachments WHERE task_id = :taskId")
-                    .bind("taskId", task.id)
-                    .list { row -> row.asString(0) }
-                    .toSet()
-            assertEquals(setOf(upload2.value.toString()), remaining)
+                val remaining =
+                    TestPostgres.db
+                        .sql("SELECT upload_id::text FROM task_attachments WHERE task_id = :taskId")
+                        .bind("taskId", task.id)
+                        .list { row -> row.asString(0) }
+                        .toSet()
+                assertEquals(setOf(upload2.value.toString()), remaining)
+            }
         }
 
     @Test
@@ -319,7 +332,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Задача", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -357,8 +370,8 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача 1", "", null, null, null)
-                        tasks.new(id2, "Задача 2", "", null, null, null)
+                        tasks.new(id1, testName("Задача 1"), "", null, null, null)
+                        tasks.new(id2, testName("Задача 2"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -381,7 +394,7 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        tasks.new(id1, "Задача", "", null, null, null)
+                        tasks.new(id1, testName("Задача"), "", null, null, null)
                     }
                 }
             }.getOrElse { fail("Unexpected error: $it") }
@@ -393,7 +406,7 @@ class DbTasksTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("TASK_NOT_FOUND", result.value.code)
         }
 
@@ -408,7 +421,7 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val task = tasks.new(taskId, "Задача", "", null, null, null)
+                        val task = tasks.new(taskId, testName("Задача"), "", null, null, null)
                         val updated = context(ctx) { task.attach(upload) }
                         updated.save()
                     }
@@ -437,7 +450,7 @@ class DbTasksTest {
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("TASK_NOT_FOUND", result.value.code)
         }
 
@@ -450,7 +463,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            tasks.new(TaskId.new(), "Оригинал", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Оригинал"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -458,7 +471,7 @@ class DbTasksTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val updated = context(ctx) { tasks.byId(task.id).withNew("Изменено", "", null, null, null) }
+                        val updated = context(ctx) { tasks.byId(task.id).withNew(testName("Изменено"), "", null, null, null) }
                         updated.save()
                     }
                 }
@@ -480,7 +493,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(otherCtx) {
-                            tasks.new(TaskId.new(), "Чужая", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Чужая"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -489,13 +502,13 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            val updated = context(ctx) { tasks.byId(task.id).withNew("Попытка", "", null, null, null) }
+                            val updated = context(ctx) { tasks.byId(task.id).withNew(testName("Попытка"), "", null, null, null) }
                             updated.save()
                         }
                     }
                 }
 
-            assertIs<arrow.core.Either.Left<DomainError>>(result)
+            assertIs<arrow.core.Either.Left<AppError>>(result)
             assertEquals("PERMISSION_DENIED", result.value.code)
         }
 
@@ -506,7 +519,7 @@ class DbTasksTest {
                 either {
                     TestPostgres.db.transaction {
                         context(otherCtx) {
-                            tasks.new(TaskId.new(), "Чужая", "", null, null, null)
+                            tasks.new(TaskId.new(), testName("Чужая"), "", null, null, null)
                         }
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
@@ -517,7 +530,7 @@ class DbTasksTest {
                         val updated =
                             tasks
                                 .byId(task.id)
-                                .withNew("Менеджер изменил", "", null, null, null)
+                                .withNew(testName("Менеджер изменил"), "", null, null, null)
                         updated.save()
                     }
                 }

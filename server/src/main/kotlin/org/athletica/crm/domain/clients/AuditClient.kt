@@ -7,15 +7,17 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logUpdate
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.collections.plus
@@ -25,7 +27,7 @@ data class AuditActiveClient(
     private val audit: AuditLog,
     private val auditEvents: List<AuditEvent> = emptyList(),
 ) : ActiveClient by client {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
         client.save()
         auditEvents.forEach {
@@ -33,8 +35,11 @@ data class AuditActiveClient(
         }
     }
 
-    context(tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun archive() = client.archive()
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun archive() {
+        client.archive()
+        audit.logUpdate("client", id, """{"state":"ARCHIVED"}""")
+    }
 
     context(ctx: EmployeeRequestContext)
     override fun attachDoc(doc: ClientDoc): ActiveClient {
@@ -49,7 +54,7 @@ data class AuditActiveClient(
         return AuditActiveClient(client.attachDoc(doc), audit, auditEvents + auditEvent)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     override fun deleteDoc(docId: ClientDocId): ActiveClient {
         val docToDelete = client.docs.firstOrNull { it.id == docId }
         if (docToDelete == null) {
@@ -66,9 +71,9 @@ data class AuditActiveClient(
         return AuditActiveClient(client.deleteDoc(docId), audit, auditEvents + auditEvent)
     }
 
-    context(ctx: EmployeeRequestContext, raise: Raise<DomainError>)
-    override fun withNew(
-        newName: String,
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun withNew(
+        newName: NonBlankName,
         newAvatarId: UploadId?,
         newBirthday: LocalDate?,
         newGender: Gender,
@@ -77,7 +82,7 @@ data class AuditActiveClient(
     ): ActiveClient {
         val newValues =
             ClientAuditData(
-                name = newName,
+                name = newName.value,
                 avatarId = newAvatarId,
                 birthday = newBirthday,
                 gender = newGender,
@@ -130,10 +135,10 @@ private fun ClientDoc.auditData() = ClientDocAuditData(uploadId, name)
 data class AuditArchivedClient(
     private val client: ArchivedClient,
     private val audit: AuditLog,
-    private val auditEvents: List<AuditEvent> = emptyList(),
 ) : ArchivedClient by client {
-    context(tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun restore() {
         client.restore()
+        audit.logUpdate("client", id, """{"state":"ACTIVE"}""")
     }
 }

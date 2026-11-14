@@ -10,6 +10,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
@@ -42,38 +43,42 @@ class DbEmployeeListViewTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org").execute()
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId).bind("name", "Other Org").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org").execute()
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId).bind("name", "Other Org").execute()
+            }
         }
     }
 
     /** Вставляет сотрудника [name] в организацию [org]; [isOwner] — признак владельца. */
-    private suspend fun insertEmployee(name: String, org: OrgId = orgId, isOwner: Boolean = false): EmployeeId {
-        val id = EmployeeId.new()
-        TestPostgres.db
-            .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, :name, :isOwner)")
-            .bind("id", id).bind("orgId", org).bind("name", name).bind("isOwner", isOwner)
-            .execute()
-        return id
-    }
+    private suspend fun insertEmployee(name: String, org: OrgId = orgId, isOwner: Boolean = false): EmployeeId =
+        orThrow {
+            val id = EmployeeId.new()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, :name, :isOwner)")
+                .bind("id", id).bind("orgId", org).bind("name", name).bind("isOwner", isOwner)
+                .execute()
+            return id
+        }
 
     /** Создаёт роль [name] и назначает её сотруднику [employeeId]. */
-    private suspend fun assignRole(employeeId: EmployeeId, name: String): Uuid {
-        val roleId = Uuid.random()
-        TestPostgres.db
-            .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
-            .bind("id", roleId).bind("orgId", orgId).bind("name", name)
-            .execute()
-        TestPostgres.db
-            .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
-            .bind("employeeId", employeeId).bind("roleId", roleId)
-            .execute()
-        return roleId
-    }
+    private suspend fun assignRole(employeeId: EmployeeId, name: String): Uuid =
+        orThrow {
+            val roleId = Uuid.random()
+            TestPostgres.db
+                .sql("INSERT INTO roles (id, org_id, name) VALUES (:id, :orgId, :name)")
+                .bind("id", roleId).bind("orgId", orgId).bind("name", name)
+                .execute()
+            TestPostgres.db
+                .sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
+                .bind("employeeId", employeeId).bind("roleId", roleId)
+                .execute()
+            return roleId
+        }
 
     private suspend fun list() =
         either {

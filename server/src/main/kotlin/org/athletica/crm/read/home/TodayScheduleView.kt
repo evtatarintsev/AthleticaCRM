@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.home.TodaySessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
 /**
@@ -13,6 +13,6 @@ import org.athletica.crm.storage.Transaction
  */
 interface TodayScheduleView {
     /** Возвращает запланированные занятия за [date]. */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun sessionsOn(date: LocalDate): TodaySessionsResponse
 }

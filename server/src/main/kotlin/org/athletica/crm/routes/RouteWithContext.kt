@@ -33,13 +33,14 @@ import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
-import org.athletica.crm.storage.asString
 import kotlin.uuid.Uuid
 
 class RouteWithContext(val di: Di, val router: Route) {
@@ -54,7 +55,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     )
     inline fun <reified Res> get(
         path: String,
-        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(RoutingCall) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<AppError>.(RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val response = body(call)
@@ -64,7 +65,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     @JvmName("getWithRequest")
     inline fun <reified Req, reified Res> get(
         path: String,
-        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<AppError>.(Req) -> Res,
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val request = call.request.queryParameters.decode<Req>()
@@ -75,7 +76,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     @JvmName("getWithRequestAndCall")
     inline fun <reified Req, reified Res> get(
         path: String,
-        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<AppError>.(Req, RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Get) { call ->
             val request = call.request.queryParameters.decode<Req>()
@@ -85,7 +86,7 @@ class RouteWithContext(val di: Di, val router: Route) {
 
     inline fun <reified Req, reified Res> post(
         path: String,
-        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<AppError>.(Req) -> Res,
     ): Route =
         route(path, HttpMethod.Post) { call ->
             @Suppress("UNCHECKED_CAST")
@@ -97,7 +98,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     @JvmName("postWithCall")
     inline fun <reified Req, reified Res> post(
         path: String,
-        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(Req, RoutingCall) -> Res,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<AppError>.(Req, RoutingCall) -> Res,
     ): Route =
         route(path, HttpMethod.Post) { call ->
             @Suppress("UNCHECKED_CAST")
@@ -109,25 +110,31 @@ class RouteWithContext(val di: Di, val router: Route) {
     inline fun route(
         path: String,
         method: HttpMethod,
-        crossinline body: suspend context(EmployeeRequestContext) Raise<DomainError>.(RoutingCall) -> Unit,
+        crossinline body: suspend context(EmployeeRequestContext) Raise<AppError>.(RoutingCall) -> Unit,
     ): Route =
         router.route(path, method) {
             handle {
                 context(call.contextFromRequest(di.database, di.employees, di.organizations)) {
                     either {
                         body(call)
-                    }.onLeft {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse(code = it.code, message = it.message),
-                        )
-                    }
+                    }.onLeft { call.respondError(it) }
                 }
             }
         }
 }
 
-context(raise: Raise<DomainError>)
+/**
+ * Отвечает клиенту на ошибку [error]: [DomainError] — HTTP 400 с её кодом и сообщением,
+ * любая другая [AppError] — бросает [UnhandledAppError] (HTTP 500).
+ */
+suspend fun RoutingCall.respondError(error: AppError) {
+    if (error !is DomainError) {
+        throw UnhandledAppError(error)
+    }
+    respond(HttpStatusCode.BadRequest, ErrorResponse(code = error.code, message = error.message))
+}
+
+context(raise: Raise<AppError>)
 suspend inline fun <reified T> RoutingCall.body() =
     try {
         receive<T>(typeInfo<T>())
@@ -135,7 +142,7 @@ suspend inline fun <reified T> RoutingCall.body() =
         raise(CommonDomainError("INVALID_REQUEST", "Invalid request body"))
     }
 
-context(raise: Raise<DomainError>)
+context(raise: Raise<AppError>)
 @PublishedApi
 internal inline fun <reified T> Parameters.decode(): T {
     val jsonObject =
@@ -205,23 +212,6 @@ suspend fun RoutingCall.contextFromRequest(
     }.getOrElse { throw RuntimeException("Error getting context from request: $it") }
 
 fun Payload.claimAsUuid(claim: String) = Uuid.parse(getClaim(claim).asString())
-
-/**
- * Выполняет [block] в контексте [Raise], оборачивает результат в [either] и отвечает:
- * - успех: [respond] с телом типа [A]
- * - ошибка: HTTP 400 с [ErrorResponse]
- */
-suspend inline fun <reified A : Any> RoutingCall.eitherToResponse(block: Raise<DomainError>.() -> A) {
-    either {
-        val result = block()
-        respond(result)
-    }.onLeft {
-        respond(
-            HttpStatusCode.BadRequest,
-            ErrorResponse(code = it.code, message = it.message),
-        )
-    }
-}
 
 /**
  * Возвращает IP-адрес клиента из заголовка X-Forwarded-For (для запросов через прокси)

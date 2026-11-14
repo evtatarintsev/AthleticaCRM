@@ -12,11 +12,13 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
+import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asDouble
@@ -52,50 +54,57 @@ class DbClientBalancesTest {
 
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId).bind("name", "Org 1").execute()
-            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
-                .bind("id", userId).bind("login", "admin@example.com").bind("hash", "hash").execute()
-            TestPostgres.db.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
-                .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", "Admin").execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId).bind("name", "Org 1").execute()
+                TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                    .bind("id", userId).bind("login", "admin@example.com").bind("hash", "hash").execute()
+                TestPostgres.db.sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, true)")
+                    .bind("id", employeeId).bind("userId", userId).bind("orgId", orgId).bind("name", "Admin").execute()
+            }
         }
     }
 
-    private suspend fun insertClient(orgId: OrgId = this.orgId, name: String = "Иван Петров"): ClientId {
-        val clientId = ClientId.new()
-        TestPostgres.db
-            .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
-            .bind("id", clientId)
-            .bind("orgId", orgId)
-            .bind("name", name)
-            .execute()
-        return clientId
-    }
+    private suspend fun insertClient(orgId: OrgId = this.orgId, name: String = "Иван Петров"): ClientId =
+        orThrow {
+            val clientId = ClientId.new()
+            TestPostgres.db
+                .sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+                .bind("id", clientId)
+                .bind("orgId", orgId)
+                .bind("name", name)
+                .execute()
+            return clientId
+        }
 
     private suspend fun insertBalanceEntry(clientId: ClientId, amount: Double, balanceAfter: Double) {
-        TestPostgres.db
-            .sql(
-                """
-                INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
-                VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
-                """.trimIndent(),
-            )
-            .bind("id", Uuid.generateV7())
-            .bind("orgId", orgId)
-            .bind("clientId", clientId)
-            .bind("amount", java.math.BigDecimal(amount.toString()))
-            .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
-            .bind("performedBy", employeeId)
-            .execute()
+        orThrow {
+            TestPostgres.db
+                .sql(
+                    """
+                    INSERT INTO client_balance_journal (id, org_id, client_id, amount, balance_after, operation_type, performed_by)
+                    VALUES (:id, :orgId, :clientId, :amount, :balanceAfter, 'admin_credit'::balance_operation_type, :performedBy)
+                    """.trimIndent(),
+                )
+                .bind("id", Uuid.generateV7())
+                .bind("orgId", orgId)
+                .bind("clientId", clientId)
+                .bind("amount", java.math.BigDecimal(amount.toString()))
+                .bind("balanceAfter", java.math.BigDecimal(balanceAfter.toString()))
+                .bind("performedBy", employeeId)
+                .execute()
+        }
     }
 
     private suspend fun getBalance(clientId: ClientId): Double =
-        TestPostgres.db
-            .sql("SELECT COALESCE(SUM(amount), 0) FROM client_balance_journal WHERE client_id = :id")
-            .bind("id", clientId)
-            .firstOrNull { row -> row.asDouble(0) } ?: 0.0
+        orThrow {
+            TestPostgres.db
+                .sql("SELECT COALESCE(SUM(amount), 0) FROM client_balance_journal WHERE client_id = :id")
+                .bind("id", clientId)
+                .firstOrNull { row -> row.asDouble(0) } ?: 0.0
+        }
 
     // ── currentOf ────────────────────────────────────────────────────────────
 
@@ -207,7 +216,7 @@ class DbClientBalancesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        balances.currentOf(clients.byId(clientId)).adjust(rub(500.0), "Бонус")
+                        balances.adjust(clients.activeById(clientId), rub(500.0), "Бонус")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -224,7 +233,7 @@ class DbClientBalancesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        balances.currentOf(clients.byId(clientId)).adjust(rub(-300.0), "Корректировка")
+                        balances.adjust(clients.activeById(clientId), rub(-300.0), "Корректировка")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -240,10 +249,10 @@ class DbClientBalancesTest {
             either {
                 TestPostgres.db.transaction {
                     context(ctx) {
-                        val b = balances.currentOf(clients.byId(clientId))
-                        val b2 = b.adjust(rub(200.0), "Первое пополнение")
-                        val b3 = b2.adjust(rub(300.0), "Второе пополнение")
-                        b3.adjust(rub(-100.0), "Списание")
+                        val client = clients.activeById(clientId)
+                        balances.adjust(client, rub(200.0), "Первое пополнение")
+                        balances.adjust(client, rub(300.0), "Второе пополнение")
+                        balances.adjust(client, rub(-100.0), "Списание")
                     }
                 }
             }.getOrElse { fail("Expected success: $it") }
@@ -260,7 +269,7 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(rub(750.0), "Пополнение")
+                            balances.adjust(clients.activeById(clientId), rub(750.0), "Пополнение")
                         }
                     }
                 }.getOrElse { fail("Expected success: $it") }
@@ -277,12 +286,12 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(Money.zero(Currency.RUB), "Комментарий")
+                            balances.adjust(clients.activeById(clientId), Money.zero(Currency.RUB), "Комментарий")
                         }
                     }
                 }
 
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
             assertEquals("BALANCE_AMOUNT_ZERO", result.value.code)
         }
 
@@ -295,12 +304,12 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "")
+                            balances.adjust(clients.activeById(clientId), rub(100.0), "")
                         }
                     }
                 }
 
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
             assertEquals("BALANCE_NOTE_REQUIRED", result.value.code)
         }
 
@@ -313,12 +322,12 @@ class DbClientBalancesTest {
                 either {
                     TestPostgres.db.transaction {
                         context(ctx) {
-                            balances.currentOf(clients.byId(clientId)).adjust(rub(100.0), "   ")
+                            balances.adjust(clients.activeById(clientId), rub(100.0), "   ")
                         }
                     }
                 }
 
-            assertIs<Either.Left<DomainError>>(result)
+            assertIs<Either.Left<AppError>>(result)
             assertEquals("BALANCE_NOTE_REQUIRED", result.value.code)
         }
 }

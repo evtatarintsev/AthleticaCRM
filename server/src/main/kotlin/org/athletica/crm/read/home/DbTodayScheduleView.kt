@@ -8,7 +8,7 @@ import org.athletica.crm.api.schemas.home.TodaySessionItem
 import org.athletica.crm.api.schemas.home.TodaySessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.toSessionId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalTime
 import org.athletica.crm.storage.asStringOrNull
@@ -19,7 +19,7 @@ import org.athletica.crm.storage.asUuid
  * join'ами, фильтр по статусу и сортировка выполняются в SQL.
  */
 class DbTodayScheduleView : TodayScheduleView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun sessionsOn(date: LocalDate): TodaySessionsResponse {
         val sessions =
             tr

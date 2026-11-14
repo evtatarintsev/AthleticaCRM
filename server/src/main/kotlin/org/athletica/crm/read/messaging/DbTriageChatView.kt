@@ -6,7 +6,7 @@ import org.athletica.crm.api.schemas.messaging.TriageMessageSchema
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.toInboundReceiptId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asString
@@ -14,7 +14,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [TriageChatView] поверх PostgreSQL. */
 class DbTriageChatView : TriageChatView {
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun messages(integrationId: ChannelIntegrationId, address: String): TriageChatMessagesResponse =
         TriageChatMessagesResponse(
             tr

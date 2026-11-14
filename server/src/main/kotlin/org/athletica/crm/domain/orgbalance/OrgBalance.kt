@@ -3,7 +3,7 @@ package org.athletica.crm.domain.orgbalance
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.AdminRequestContext
 import org.athletica.crm.core.SystemRequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
@@ -17,7 +17,7 @@ interface OrgBalance {
      * Корректирует баланс организации: [amount] > 0 — зачисление, < 0 — списание.
      * [description] — обязательное описание причины операции.
      */
-    context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: AdminRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun adjust(amount: Money, description: String): OrgBalance
 
     /**
@@ -26,7 +26,7 @@ interface OrgBalance {
      * Вызывается исключительно системными обработчиками (webhook, event handlers).
      * [amount] должна быть положительной.
      */
-    context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: SystemRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun replenish(amount: Money, description: String): OrgBalance
 }
 

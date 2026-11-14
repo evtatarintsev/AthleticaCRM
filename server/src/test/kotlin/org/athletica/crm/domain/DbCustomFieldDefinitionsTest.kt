@@ -1,5 +1,6 @@
 package org.athletica.crm.domain
 
+import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
@@ -13,6 +14,8 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -55,20 +58,46 @@ class DbCustomFieldDefinitionsTest {
 
     private val definitions = DbCustomFieldDefinitions()
 
+    @Test
+    fun `неверные определения отклоняются до удаления прежних`() =
+        orThrow {
+            runTest {
+                val previous = listOf(CustomFieldDefinition.Bool(key("previous"), "Прежнее поле"))
+                val invalid =
+                    listOf(
+                        CustomFieldDefinition.Select(key("option"), "Список"),
+                        CustomFieldDefinition.Number(key("number"), "Число", minValue = 10, maxValue = 5),
+                        CustomFieldDefinition.Text(key("text"), "Текст", minLength = 10, maxLength = 5),
+                    )
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        definitions.saveAll("client", previous)
+                        for (def in invalid) {
+                            val rejected = either { definitions.saveAll("client", listOf(def)) }
+                            assertEquals("CUSTOM_FIELD_INVALID_DEFINITION", assertIs<Either.Left<AppError>>(rejected).value.code)
+                        }
+                        assertEquals(previous, definitions.all("client"))
+                    }
+                }
+            }
+        }
+
     @Before
     fun setUp() {
-        TestPostgres.truncate()
-        runBlocking {
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", orgId)
-                .bind("name", "Орг 1")
-                .execute()
-            TestPostgres.db
-                .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
-                .bind("id", otherOrgId)
-                .bind("name", "Орг 2")
-                .execute()
+        orThrow {
+            TestPostgres.truncate()
+            runBlocking {
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", orgId)
+                    .bind("name", "Орг 1")
+                    .execute()
+                TestPostgres.db
+                    .sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                    .bind("id", otherOrgId)
+                    .bind("name", "Орг 2")
+                    .execute()
+            }
         }
     }
 
@@ -392,5 +421,5 @@ class DbCustomFieldDefinitionsTest {
             assertTrue(result.isSortable)
         }
 
-    private fun key(value: String): CustomFieldKey = value.toFieldKey().getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
+    private fun key(value: String): CustomFieldKey = either { value.toFieldKey() }.getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
 }

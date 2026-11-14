@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.tasks
 
 import kotlinx.serialization.Serializable
 import org.athletica.crm.api.schemas.upload.UploadResponse
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -91,7 +92,7 @@ data class TaskDetailResponse(
 data class CreateTaskRequest(
     /** Клиентский идентификатор (UUID v7), генерируется на клиенте. */
     val id: TaskId,
-    val title: String,
+    val title: NonBlankName,
     val description: String,
     val clientId: ClientId?,
     val dueDate: Instant?,
@@ -104,7 +105,7 @@ data class CreateTaskRequest(
 @Serializable
 data class UpdateTaskRequest(
     val id: TaskId,
-    val title: String,
+    val title: NonBlankName,
     val description: String,
     val clientId: ClientId?,
     val dueDate: Instant?,

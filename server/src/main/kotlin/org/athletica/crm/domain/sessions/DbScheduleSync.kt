@@ -4,9 +4,10 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
-import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.domain.org.OrgCalendar
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 
@@ -18,19 +19,19 @@ private const val HORIZON_MONTHS = 3
  * Цикла по группам и датам нет: `schedule_slots` содержит период действия каждой версии,
  * поэтому «какие занятия должны существовать» полностью выразимо запросом.
  */
-class DbScheduleSync : ScheduleSync {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
-    override suspend fun sync() {
-        val today = java.time.LocalDate.now().toKotlinLocalDate()
-        val horizon = today.plus(HORIZON_MONTHS, DateTimeUnit.MONTH)
-        createMissing(today, horizon)
-        updateAttributes(today)
-        deleteOutOfValidity(today)
-        syncEmployees(today)
+class DbScheduleSync(private val calendar: OrgCalendar = DbOrgCalendar()) : ScheduleSync {
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun sync(today: LocalDate?) {
+        val date = today ?: calendar.today()
+        val horizon = date.plus(HORIZON_MONTHS, DateTimeUnit.MONTH)
+        createMissing(date, horizon)
+        updateAttributes(date)
+        deleteOutOfValidity(date)
+        syncEmployees(date)
     }
 
     /** Создаёт занятия на все подходящие даты периодов слотов внутри горизонта. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun createMissing(today: LocalDate, horizon: LocalDate) {
         tr
             .sql(
@@ -54,7 +55,7 @@ class DbScheduleSync : ScheduleSync {
     }
 
     /** Подтягивает время и зал у нетронутых будущих занятий из их версии слота. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun updateAttributes(today: LocalDate) {
         tr
             .sql(
@@ -77,7 +78,7 @@ class DbScheduleSync : ScheduleSync {
      * Удаляет нетронутые будущие занятия, дата которых вышла за период своего слота.
      * Занятие исчезает, а не отменяется: отмена остаётся высказыванием человека.
      */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun deleteOutOfValidity(today: LocalDate) {
         tr
             .sql(
@@ -95,7 +96,7 @@ class DbScheduleSync : ScheduleSync {
     }
 
     /** Приводит состав тренеров нетронутых будущих занятий к составу их группы. */
-    context(ctx: RequestContext, tr: Transaction)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun syncEmployees(today: LocalDate) {
         tr
             .sql(

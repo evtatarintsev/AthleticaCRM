@@ -7,9 +7,11 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.core.subscription.ActivationMode
@@ -23,10 +25,12 @@ import org.athletica.crm.i18n.Messages
 /** Срок действия абонемента: [value] [unit]. */
 data class MembershipDuration(
     /** Числовое значение срока. */
-    val value: Int,
+    private val length: PositiveInt,
     /** Единица срока. */
     val unit: DurationUnit,
 ) {
+    val value: Int get() = length.value
+
     /**
      * Дата окончания срока, начавшегося [startDate], — последний день действия включительно.
      *
@@ -267,7 +271,7 @@ sealed interface IssueOutcome {
  * - Крайняя дата первого посещения не раньше [issuedOn].
  * - «Сразу» активирует с [issuedOn]; «с даты» не позже [issuedOn] активирует с этой даты.
  */
-context(ctx: RequestContext, raise: Raise<DomainError>)
+context(ctx: RequestContext, raise: Raise<AppError>)
 fun issueOutcome(
     activation: Activation,
     closeMode: CloseMode,

@@ -5,7 +5,7 @@ import io.r2dbc.spi.Row
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
@@ -14,7 +14,7 @@ import kotlin.uuid.Uuid
 
 /** Реализация хранилища чатов связанных каналов на PostgreSQL через R2DBC. */
 class DbChannelChats : ChannelChats {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun upsert(
         integrationId: ChannelIntegrationId,
         address: String,
@@ -42,7 +42,7 @@ class DbChannelChats : ChannelChats {
             .bind("phone", phone)
             .firstOrNull { row -> row.toChat() }!!
 
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<DomainError>)
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byAddress(integrationId: ChannelIntegrationId, address: String): ChannelChat? =
         tr.sql(
             """

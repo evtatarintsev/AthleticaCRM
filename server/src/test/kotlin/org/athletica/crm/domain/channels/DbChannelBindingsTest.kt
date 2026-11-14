@@ -12,7 +12,7 @@ import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
-import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.junit.Before
 import kotlin.test.Test
@@ -38,7 +38,7 @@ class DbChannelBindingsTest {
         }
     }
 
-    private suspend fun <T> inOrg(block: suspend context(RequestContext, Transaction, Raise<DomainError>) () -> T): Either<DomainError, T> =
+    private suspend fun <T> inOrg(block: suspend context(RequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
         either {
             TestPostgres.db.transaction {
                 context(SystemContexts.forOrg(orgId)) { block() }
@@ -52,7 +52,7 @@ class DbChannelBindingsTest {
 
             val result = inOrg { bindings.link(integrationId, otherClientId, "chat-1") }
 
-            assertEquals("CHAT_ALREADY_LINKED", assertIs<Either.Left<DomainError>>(result).value.code)
+            assertEquals("CHAT_ALREADY_LINKED", assertIs<Either.Left<AppError>>(result).value.code)
             assertEquals(clientId.toString(), MessagingFixture.boundClient(integrationId, "chat-1"))
         }
 

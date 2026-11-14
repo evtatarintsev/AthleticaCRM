@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { PencilIcon, PlusIcon, XIcon } from "lucide-react";
+import { MoreHorizontalIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
@@ -10,43 +9,64 @@ import type {
   EmployeeId,
   GroupId,
   LocalDate,
-  ScheduleSlot,
   UploadId,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientPickerSheet, type PickedClient } from "@/clients/ClientPickerSheet";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
-import { todayLocalDate, WEEK_DAYS } from "@/lib/localDate";
+import { todayLocalDate } from "@/lib/localDate";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
-import { PageHeader } from "@/ui/PageHeader";
 import { employeeChecklistItem } from "./employeeChecklistItem";
-import { GroupChips, GroupChipsSection } from "./GroupChips";
+import { GroupClientsTab } from "./GroupClientsTab";
+import { GroupJournalTab } from "./GroupJournalTab";
+import { GroupMembershipsTab } from "./GroupMembershipsTab";
+import { GroupOverviewTab } from "./GroupOverviewTab";
 import { GroupRenameSheet } from "./GroupRenameSheet";
 import { GroupScheduleSheet } from "./GroupScheduleSheet";
 import { GroupSessionsSection } from "./GroupSessionsSection";
 import { cardsToSlotInputs, slotsToCards, type SlotCard } from "./groupSchedule";
-import { useGroup, useGroupDisciplines, useGroupEmployees, useGroupHalls } from "./groupsQueries";
+import { GROUP_TABS, attentionCounts, type GroupTab, type RosterFilter } from "./groupOverview";
+import {
+  useGroup,
+  useGroupDisciplines,
+  useGroupEmployees,
+  useGroupHalls,
+  useGroupRoster,
+} from "./groupsQueries";
 
 /**
- * Карточка группы: дисциплины, расписание, тренеры и клиенты. Дисциплины и тренеры
- * меняются целиком в панели с чекбоксами, клиенты добавляются и убираются на месте —
- * изменение сразу отражается в карточке (7.2).
+ * Карточка группы: шапка с названием, дисциплинами, «Добавить клиентов» и меню «⋯», и вкладки
+ * «Обзор», «Клиенты», «Абонементы», «Занятия», «Журнал». Активная вкладка [tab] хранится в адресе,
+ * её смена сообщается через [onTabChange]. Дисциплины, тренеры, расписание и название меняются
+ * в существующих панелях; изменения сразу отражаются в карточке.
  */
 export function GroupDetailPage({
   api,
   groupId,
+  tab,
+  onTabChange,
 }: {
   readonly api: ApiClient;
   readonly groupId: GroupId;
+  readonly tab: GroupTab;
+  readonly onTabChange: (tab: GroupTab) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const branchId = useSession(api).currentBranch.id;
   const group = useGroup(api, branchId, groupId);
+  const roster = useGroupRoster(api, branchId, groupId);
   const disciplines = useGroupDisciplines(api, branchId);
   const employees = useGroupEmployees(api, branchId);
   const halls = useGroupHalls(api, branchId);
@@ -55,6 +75,7 @@ export function GroupDetailPage({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientsFilter, setClientsFilter] = useState<RosterFilter>("all");
 
   const refresh = () =>
     Promise.all([
@@ -63,6 +84,9 @@ export function GroupDetailPage({
         queryKey: ["api", branchId, "groups/detail", { id: groupId }],
       }),
     ]);
+
+  const refreshRoster = () =>
+    queryClient.invalidateQueries({ queryKey: ["api", branchId, "groups/roster", { groupId }] });
 
   const saveDisciplines = async (
     disciplineIds: readonly DisciplineId[],
@@ -95,6 +119,7 @@ export function GroupDetailPage({
   const refreshClients = () =>
     Promise.all([
       refresh(),
+      refreshRoster(),
       queryClient.invalidateQueries({ queryKey: ["api", branchId, "clients/list"] }),
     ]);
 
@@ -153,120 +178,152 @@ export function GroupDetailPage({
     );
   }
   const detail = group.data;
+  const needsAttention = attentionCounts(roster.data?.clients ?? []).total > 0;
+  const openAdd = () => {
+    setClientPickerOpen(true);
+  };
+  const openClients = (filter: RosterFilter) => {
+    setClientsFilter(filter);
+    onTabChange("clients");
+  };
 
   return (
-    <section className="max-w-6xl pb-16">
-      <PageHeader
-        title={detail.name}
-        actions={
-          <Button
-            variant="outline"
-            onClick={() => {
-              setRenameOpen(true);
-            }}
-          >
-            <PencilIcon aria-hidden />
-            {t("groups.detail.editAction")}
+    <section className="max-w-6xl pb-24 sm:pb-16">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">{detail.name}</h1>
+        {detail.disciplines.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {detail.disciplines.map((discipline) => (
+              <li
+                key={discipline.id}
+                className="rounded-full border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+              >
+                {discipline.name}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button className="max-sm:hidden" onClick={openAdd}>
+            <PlusIcon aria-hidden />
+            {t("groups.detail.addClients")}
           </Button>
-        }
-      />
-
-      <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-8 xl:space-y-0">
-        <div className="min-w-0 space-y-6">
-          <GroupChipsSection
-            title={t("groups.detail.disciplinesTitle")}
-            onEdit={() => {
-              setPicker("disciplines");
-            }}
-          >
-            <GroupChips
-              items={detail.disciplines}
-              emptyText={t("groups.detail.disciplinesEmpty")}
-            />
-          </GroupChipsSection>
-
-          <section className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                {t("groups.detail.scheduleTitle")}
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label={t("groups.detail.more")}>
+                <MoreHorizontalIcon aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setRenameOpen(true);
+                }}
+              >
+                {t("groups.detail.rename")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
                   setScheduleOpen(true);
                 }}
               >
                 {t("groups.detail.editSchedule")}
-              </Button>
-            </div>
-            <ScheduleSummaryList schedule={detail.schedule} />
-            {detail.scheduleChangeAt !== null && (
-              <p className="text-xs text-muted-foreground">
-                {t("groups.scheduleChangeNote", { date: detail.scheduleChangeAt })}
-              </p>
-            )}
-          </section>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setPicker("disciplines");
+                }}
+              >
+                {t("groups.detail.disciplinesTitle")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setPicker("employees");
+                }}
+              >
+                {t("groups.detail.employeesTitle")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
-          <GroupChipsSection
-            title={t("groups.detail.employeesTitle")}
-            onEdit={() => {
-              setPicker("employees");
-            }}
-          >
-            <GroupChips
-              items={detail.employees.map(withAvatar)}
-              emptyText={t("groups.detail.employeesEmpty")}
-            />
-          </GroupChipsSection>
-
-          <GroupSessionsSection api={api} branchId={branchId} groupId={groupId} />
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          const next = GROUP_TABS.find((candidate) => candidate === value);
+          if (next !== undefined) {
+            onTabChange(next);
+          }
+        }}
+        className="gap-4"
+      >
+        <div className="sticky top-14 z-30 -mx-4 overflow-x-auto border-b bg-background px-4 [scrollbar-width:none] sm:static sm:mx-0 sm:px-0">
+          <TabsList variant="line" className="h-11">
+            {GROUP_TABS.map((value) => (
+              <TabsTrigger key={value} value={value} className="flex-none px-3">
+                {t(`groups.tabs.${value}`)}
+                {value === "clients" && needsAttention && (
+                  <span className="size-1.5 rounded-full bg-amber-500">
+                    <span className="sr-only">{t("groups.tabs.attentionMark")}</span>
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
 
-        <section className="space-y-2 xl:sticky xl:top-20 xl:flex xl:max-h-[calc(100dvh-6rem)] xl:flex-col">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              {t("groups.detail.clientsTitle")}
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setClientPickerOpen(true);
-              }}
-            >
-              <PlusIcon aria-hidden />
-              {t("groups.detail.addClients")}
-            </Button>
-          </div>
-          {detail.clients.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("groups.detail.clientsEmpty")}</p>
-          ) : (
-            <ul className="divide-y rounded-md border xl:min-h-0 xl:overflow-y-auto">
-              {detail.clients.map((client) => (
-                <li key={client.id} className="flex items-center hover:bg-accent">
-                  <Link
-                    to="/clients/$clientId"
-                    params={{ clientId: client.id }}
-                    className="min-w-0 flex-1 truncate px-4 py-3 text-sm"
-                  >
-                    {client.name}
-                  </Link>
-                  <button
-                    type="button"
-                    aria-label={t("groups.detail.removeClientAria", { name: client.name })}
-                    onClick={() => {
-                      void removeClient(client.id);
-                    }}
-                    className="mr-2 rounded-full p-2 text-muted-foreground hover:text-destructive"
-                  >
-                    <XIcon aria-hidden className="size-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <TabsContent value="overview">
+          <GroupOverviewTab
+            api={api}
+            branchId={branchId}
+            groupId={groupId}
+            detail={detail}
+            roster={roster.data?.clients}
+            onOpenClients={openClients}
+            onOpenJournal={() => {
+              onTabChange("journal");
+            }}
+            onEditSchedule={() => {
+              setScheduleOpen(true);
+            }}
+            onEditEmployees={() => {
+              setPicker("employees");
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="clients">
+          <GroupClientsTab
+            api={api}
+            branchId={branchId}
+            roster={roster}
+            filter={clientsFilter}
+            onFilterChange={setClientsFilter}
+            onAdd={openAdd}
+            onRemove={(clientId) => {
+              void removeClient(clientId);
+            }}
+            onChanged={() => {
+              void refreshRoster();
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="memberships">
+          <GroupMembershipsTab roster={roster} />
+        </TabsContent>
+        <TabsContent value="sessions">
+          <GroupSessionsSection api={api} branchId={branchId} groupId={groupId} />
+        </TabsContent>
+        <TabsContent value="journal">
+          <GroupJournalTab api={api} branchId={branchId} groupId={groupId} roster={roster} />
+        </TabsContent>
+      </Tabs>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur sm:hidden">
+        <Button className="w-full" onClick={openAdd}>
+          <PlusIcon aria-hidden />
+          {t("groups.detail.addClients")}
+        </Button>
       </div>
 
       <ChecklistSheet
@@ -300,7 +357,12 @@ export function GroupDetailPage({
         title={t("groups.detail.addClients")}
         mode="multiple"
         unavailable={
-          new Map(detail.clients.map((client) => [client.id, t("groups.detail.alreadyInGroup")]))
+          new Map(
+            (roster.data?.clients ?? []).map((client) => [
+              client.id,
+              t("groups.detail.alreadyInGroup"),
+            ]),
+          )
         }
         submitLabel={t("action.add")}
         onSubmit={addClients}
@@ -317,26 +379,5 @@ export function GroupDetailPage({
         onSave={saveSchedule}
       />
     </section>
-  );
-}
-
-/** Сводка действующего расписания [schedule] карточками: дни, время, зал. */
-function ScheduleSummaryList({ schedule }: { readonly schedule: readonly ScheduleSlot[] }) {
-  const { t } = useI18n();
-  const cards = slotsToCards(schedule);
-  if (cards.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t("groups.noSchedule")}</p>;
-  }
-  return (
-    <ul className="space-y-1 text-sm">
-      {cards.map((card) => (
-        <li key={card.id} className="text-muted-foreground">
-          {WEEK_DAYS.filter((day) => card.days.has(day))
-            .map((day) => t(`day.${day}`))
-            .join(" ")}{" "}
-          {card.startAt}–{card.endAt}
-        </li>
-      ))}
-    </ul>
   );
 }

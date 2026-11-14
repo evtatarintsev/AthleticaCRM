@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.groups.GroupRosterResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.GroupSessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
@@ -12,6 +13,7 @@ import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Instant
 
 /**
  * Параметры выборки списка групп. Пустой список означает отсутствие фильтра,
@@ -75,4 +77,25 @@ interface GroupSessionsView {
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: GroupSessionsQuery): GroupSessionsResponse
+}
+
+/** Параметры выборки состава группы. */
+data class GroupRosterQuery(
+    /** Группа. */
+    val groupId: GroupId,
+    /** Момент запроса: по нему в часовом поясе организации определяется «сегодня». */
+    val now: Instant,
+)
+
+/**
+ * Read-проекция состава группы для её карточки: активные участники с абонементом, действующим
+ * в группе, неоплаченными занятиями, балансом и причиной внимания.
+ */
+interface GroupRosterView {
+    /**
+     * Возвращает состав группы из [query], упорядоченный по причине внимания и имени; ошибка
+     * `GROUP_NOT_FOUND`, если группы нет в текущем филиале организации.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun list(query: GroupRosterQuery): GroupRosterResponse
 }

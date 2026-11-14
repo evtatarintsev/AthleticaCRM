@@ -1853,13 +1853,8 @@ export const GroupAttendanceResponseSchema = z
   .readonly();
 export type GroupAttendanceResponse = z.output<typeof GroupAttendanceResponseSchema>;
 
-export const GroupClientSchema = z
-  .object({
-    id: ClientIdSchema,
-    name: z.string(),
-  })
-  .readonly();
-export type GroupClient = z.output<typeof GroupClientSchema>;
+export const GroupClientAttentionSchema = z.enum(["DEBT", "NO_MEMBERSHIP", "MEMBERSHIP_ENDING"]);
+export type GroupClientAttention = z.output<typeof GroupClientAttentionSchema>;
 
 export const GroupCreateRequestSchema = z
   .object({
@@ -1923,7 +1918,6 @@ export const GroupDetailResponseSchema = z
     scheduleChangeAt: LocalDateSchema.nullable(),
     disciplines: z.array(GroupDisciplineSchema).readonly(),
     employees: z.array(GroupEmployeeSchema).readonly(),
-    clients: z.array(GroupClientSchema).readonly(),
   })
   .readonly();
 export type GroupDetailResponse = z.output<typeof GroupDetailResponseSchema>;
@@ -1955,6 +1949,49 @@ export const GroupListResponseSchema = z
   })
   .readonly();
 export type GroupListResponse = z.output<typeof GroupListResponseSchema>;
+
+export const GroupRosterMembershipSchema = z
+  .object({
+    id: MembershipIdSchema,
+    name: z.string(),
+    activated: z.boolean(),
+    sessionsTotal: z.int32().nullable(),
+    sessionsRemaining: z.int32().nullable(),
+    endDate: LocalDateSchema.nullable(),
+    endingSoon: z.array(EndingSoonReasonSchema).readonly(),
+    closePending: z.boolean(),
+  })
+  .readonly();
+export type GroupRosterMembership = z.output<typeof GroupRosterMembershipSchema>;
+
+export const GroupRosterClientSchema = z
+  .object({
+    id: ClientIdSchema,
+    name: z.string(),
+    avatarId: UploadIdSchema.nullable(),
+    membership: GroupRosterMembershipSchema.nullable(),
+    hasNextMembership: z.boolean(),
+    unpaidSessions: z.int32(),
+    canRepay: z.boolean(),
+    balance: MoneySchema,
+    attention: GroupClientAttentionSchema.nullable(),
+  })
+  .readonly();
+export type GroupRosterClient = z.output<typeof GroupRosterClientSchema>;
+
+export const GroupRosterRequestSchema = z
+  .object({
+    groupId: GroupIdSchema,
+  })
+  .readonly();
+export type GroupRosterRequest = z.output<typeof GroupRosterRequestSchema>;
+
+export const GroupRosterResponseSchema = z
+  .object({
+    clients: z.array(GroupRosterClientSchema).readonly(),
+  })
+  .readonly();
+export type GroupRosterResponse = z.output<typeof GroupRosterResponseSchema>;
 
 export const GroupSelectItemSchema = z
   .object({
@@ -3715,6 +3752,13 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: z.array(GroupSelectItemSchema).readonly(),
+  },
+  "groups/roster": {
+    method: "GET",
+    in: "query",
+    request: GroupRosterRequestSchema,
+    out: "json",
+    response: GroupRosterResponseSchema,
   },
   "groups/sessions": {
     method: "GET",

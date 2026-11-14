@@ -20,9 +20,11 @@ import org.athletica.crm.read.employees.EmployeeDetailView
 import org.athletica.crm.read.employees.EmployeeListView
 import org.athletica.crm.read.groups.DbGroupDetailView
 import org.athletica.crm.read.groups.DbGroupListView
+import org.athletica.crm.read.groups.DbGroupRosterView
 import org.athletica.crm.read.groups.DbGroupSessionsView
 import org.athletica.crm.read.groups.GroupDetailView
 import org.athletica.crm.read.groups.GroupListView
+import org.athletica.crm.read.groups.GroupRosterView
 import org.athletica.crm.read.groups.GroupSessionsView
 import org.athletica.crm.read.home.DbTodayScheduleView
 import org.athletica.crm.read.home.DbUnclosedSessionsView
@@ -71,6 +73,8 @@ data class ReadViews(
     val groupDetail: GroupDetailView = DbGroupDetailView(),
     /** Занятия группы за период для блока «Занятия» карточки группы. */
     val groupSessions: GroupSessionsView = DbGroupSessionsView(),
+    /** Состав группы с абонементом, долгом, балансом и причиной внимания. */
+    val groupRoster: GroupRosterView = DbGroupRosterView(),
     /** Список задач с именами исполнителя и клиента. */
     val taskList: TaskListView = DbTaskListView(),
     /** Карточка задачи со связанными именами и вложениями. */

@@ -7,6 +7,8 @@ import org.athletica.crm.api.schemas.groups.GroupDetailRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListRequest
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.groups.GroupRosterRequest
+import org.athletica.crm.api.schemas.groups.GroupRosterResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.GroupSessionsRequest
 import org.athletica.crm.api.schemas.groups.GroupSessionsResponse
@@ -56,6 +58,12 @@ fun RouteWithContext.groupsRoutes(
             val query = request.toQuery()
             db.transaction {
                 views.groupSessions.list(query)
+            }
+        }
+
+        get<GroupRosterRequest, GroupRosterResponse>("/roster") { request ->
+            db.transaction {
+                views.groupRoster.list(request.groupId)
             }
         }
 

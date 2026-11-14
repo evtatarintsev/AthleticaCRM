@@ -69,6 +69,7 @@ function server(
 ) {
   return appServer({
     "groups/detail": () => json(group),
+    "groups/roster": () => json({ clients: [] }),
     "disciplines/list": () => json({ disciplines: [] }),
     "employees/list": () => json({ employees: [], total: 0 }),
     "halls/list": () => json({ halls: [] }),
@@ -103,7 +104,7 @@ const sessionsBlock = async () => {
 describe("блок занятий в карточке группы", () => {
   it("запрашивает окно по умолчанию и показывает строки с бейджами и посещаемостью", async () => {
     const fake = server(standard);
-    openApp(`/groups/${group.id}`, fake.fetch);
+    openApp(`/groups/${group.id}?tab=sessions`, fake.fetch);
     const block = await sessionsBlock();
 
     expect(await within(block).findAllByText(/8 из 12/)).not.toHaveLength(0);
@@ -121,7 +122,10 @@ describe("блок занятий в карточке группы", () => {
   });
 
   it("без последнего и ближайшего не показывает закреплённые позиции", async () => {
-    openApp(`/groups/${group.id}`, server(() => ({ sessions: [], last: null, next: null })).fetch);
+    openApp(
+      `/groups/${group.id}?tab=sessions`,
+      server(() => ({ sessions: [], last: null, next: null })).fetch,
+    );
     const block = await sessionsBlock();
 
     expect(await within(block).findByText(ru["groups.sessions.empty"])).toBeVisible();
@@ -131,7 +135,7 @@ describe("блок занятий в карточке группы", () => {
 
   it("сдвигает период назад и запрашивает занятия нового окна", async () => {
     const fake = server(standard);
-    openApp(`/groups/${group.id}`, fake.fetch);
+    openApp(`/groups/${group.id}?tab=sessions`, fake.fetch);
     const user = userEvent.setup();
     const block = await sessionsBlock();
 
@@ -147,7 +151,7 @@ describe("блок занятий в карточке группы", () => {
   });
 
   it("клик по строке открывает карточку занятия", async () => {
-    const { history } = openApp(`/groups/${group.id}`, server(standard).fetch);
+    const { history } = openApp(`/groups/${group.id}?tab=sessions`, server(standard).fetch);
     const user = userEvent.setup();
     const block = await sessionsBlock();
 
@@ -158,7 +162,7 @@ describe("блок занятий в карточке группы", () => {
 
   it("«Календарь» открывает расписание с фильтром по группе", async () => {
     const fake = server(standard);
-    const { history } = openApp(`/groups/${group.id}`, fake.fetch);
+    const { history } = openApp(`/groups/${group.id}?tab=sessions`, fake.fetch);
     const user = userEvent.setup();
     const block = await sessionsBlock();
 
@@ -176,13 +180,13 @@ describe("блок занятий в карточке группы", () => {
     ).toBeVisible();
   });
 
-  it("ошибка загрузки показывает повтор, остальные секции карточки работают", async () => {
-    openApp(`/groups/${group.id}`, server(standard, { fail: true }).fetch);
+  it("ошибка загрузки показывает повтор, остальные вкладки карточки доступны", async () => {
+    openApp(`/groups/${group.id}?tab=sessions`, server(standard, { fail: true }).fetch);
     const block = await sessionsBlock();
 
     expect(
       await within(block).findByRole("button", { name: ru["action.retry"] }, { timeout: 5000 }),
     ).toBeVisible();
-    expect(screen.getByRole("heading", { name: ru["groups.detail.clientsTitle"] })).toBeVisible();
+    expect(screen.getByRole("tab", { name: ru["groups.tabs.clients"] })).toBeVisible();
   });
 });

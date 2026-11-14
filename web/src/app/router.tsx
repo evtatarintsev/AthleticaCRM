@@ -31,6 +31,7 @@ import { EmployeesPage } from "@/employees/EmployeesPage";
 import { GroupsPage } from "@/groups/GroupsPage";
 import { GroupDetailPage } from "@/groups/GroupDetailPage";
 import { GroupListSearchSchema, type GroupListSearch } from "@/groups/groupListSearch";
+import { GroupDetailSearchSchema } from "@/groups/groupOverview";
 import { SchedulePage } from "@/schedule/SchedulePage";
 import { ScheduleSearchSchema, type ScheduleSearch } from "@/schedule/scheduleWeek";
 import { SessionDetailPage } from "@/sessions/SessionDetailPage";
@@ -416,10 +417,22 @@ const groupRoute = createRoute({
     },
     stringify: ({ groupId }) => ({ groupId }),
   },
+  validateSearch: GroupDetailSearchSchema,
   component: function GroupRoute() {
     const { api } = groupRoute.useRouteContext();
     const { groupId } = groupRoute.useParams();
-    return <GroupDetailPage api={api} groupId={groupId} />;
+    const { tab } = groupRoute.useSearch();
+    const navigate = groupRoute.useNavigate();
+    return (
+      <GroupDetailPage
+        api={api}
+        groupId={groupId}
+        tab={tab ?? "overview"}
+        onTabChange={(next) => {
+          void navigate({ search: next === "overview" ? {} : { tab: next } });
+        }}
+      />
+    );
   },
 });
 

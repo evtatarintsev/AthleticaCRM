@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationReason
+import org.athletica.crm.core.subscription.ActiveStatus
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.CloseReason
 import org.athletica.crm.core.subscription.UnfreezeReason

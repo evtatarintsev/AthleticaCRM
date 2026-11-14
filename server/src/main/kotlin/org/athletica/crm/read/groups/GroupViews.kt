@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.api.schemas.groups.GroupListResponse
+import org.athletica.crm.api.schemas.groups.GroupRosterResponse
 import org.athletica.crm.api.schemas.groups.GroupSelectItem
 import org.athletica.crm.api.schemas.groups.GroupSessionsResponse
 import org.athletica.crm.core.EmployeeRequestContext
@@ -75,4 +76,17 @@ interface GroupSessionsView {
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun list(query: GroupSessionsQuery): GroupSessionsResponse
+}
+
+/**
+ * Read-проекция состава группы для её карточки: активные участники с абонементом, действующим
+ * в группе, неоплаченными занятиями, балансом и причиной внимания.
+ */
+interface GroupRosterView {
+    /**
+     * Возвращает состав группы [groupId], упорядоченный по причине внимания и имени; ошибка
+     * `GROUP_NOT_FOUND`, если группы нет в текущем филиале организации.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun list(groupId: GroupId): GroupRosterResponse
 }

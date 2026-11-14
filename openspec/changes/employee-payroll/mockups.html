@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AthleticaCRM — зарплата</title><style>html{color-scheme:light dark}body{margin:0;padding:20px;background:light-dark(#f1f5f9,#0d1526)}button,summary{cursor:pointer}@media(max-width:480px){body{padding:8px}}</style></head>
+<body>
+<div id="athletica-payroll" aria-label="Макеты зарплаты AthleticaCRM">
+  <style>
+    #athletica-payroll { color-scheme:light dark; --p-bg:light-dark(#f8fafc,#101b30); --p-surface:light-dark(#fff,#1d2a40); --p-text:light-dark(#142037,#f1f5fb); --p-muted:light-dark(#59677c,#afbed2); --p-line:light-dark(#e2e8f0,#35445b); --p-brand:light-dark(#2857c7,#719bff); --p-onbrand:light-dark(#fff,#101b30); --p-soft:light-dark(#edf3ff,#223b63); --p-warn:light-dark(#fff8e9,#3c3020); --p-warntext:light-dark(#795013,#f6ce87); --p-danger:light-dark(#b63035,#ff9ba0); color:var(--p-text); font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; }
+    #athletica-payroll * { box-sizing:border-box; }
+    #athletica-payroll [hidden] { display:none !important; }
+    #athletica-payroll button, #athletica-payroll input, #athletica-payroll select, #athletica-payroll textarea { font:inherit; }
+    #athletica-payroll button { cursor:inherit; }
+    #athletica-payroll button:focus-visible, #athletica-payroll summary:focus-visible, #athletica-payroll input:focus-visible, #athletica-payroll select:focus-visible { outline:2px solid var(--p-brand); outline-offset:3px; }
+    #athletica-payroll h2, #athletica-payroll h3, #athletica-payroll p { margin:0; }
+    #athletica-payroll h2 { font-size:24px; font-weight:600; letter-spacing:-.5px; }
+    #athletica-payroll h3 { font-size:16px; font-weight:600; }
+    #athletica-payroll .p-shell { display:grid; grid-template-columns:164px minmax(0,1fr); background:var(--p-bg); border:1px solid var(--p-line); border-radius:12px; overflow:clip; }
+    #athletica-payroll .p-sidebar { padding:24px 12px; background:var(--p-surface); border-right:1px solid var(--p-line); }
+    #athletica-payroll .p-brand { font-weight:650; letter-spacing:-.4px; font-size:18px; padding:0 10px; }
+    #athletica-payroll .p-org { color:var(--p-muted); padding:3px 10px 28px; font-size:12px; }
+    #athletica-payroll .p-navitem { display:flex; gap:10px; align-items:center; padding:10px; margin-bottom:3px; border-radius:7px; color:var(--p-muted); }
+    #athletica-payroll .p-active { color:var(--p-brand); background:var(--p-soft); font-weight:600; }
+    #athletica-payroll .p-navitem i { width:17px; }
+    #athletica-payroll .p-top { min-height:54px; padding:14px 24px; border-bottom:1px solid var(--p-line); display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap; color:var(--p-muted); font-size:12px; }
+    #athletica-payroll .p-main { min-width:0; }
+    #athletica-payroll .p-content { padding:24px; min-height:700px; }
+    #athletica-payroll .p-heading, #athletica-payroll .p-toolbar, #athletica-payroll .p-between { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    #athletica-payroll .p-muted { color:var(--p-muted); }
+    #athletica-payroll .p-small { font-size:12px; }
+    #athletica-payroll .p-tabs { display:flex; flex-wrap:wrap; gap:4px; border-bottom:1px solid var(--p-line); margin:20px 0; }
+    #athletica-payroll .p-tab { border:0; border-bottom:2px solid transparent; background:transparent; color:var(--p-muted); padding:10px 12px; }
+    #athletica-payroll .p-tab[aria-selected=true] { color:var(--p-brand); border-bottom-color:var(--p-brand); }
+    #athletica-payroll .p-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:8px 12px; border:1px solid var(--p-line); border-radius:7px; background:var(--p-surface); color:var(--p-text); text-decoration:none; }
+    #athletica-payroll .p-button:hover { background:var(--p-soft); }
+    #athletica-payroll .p-button:disabled { opacity:.5; cursor:default; }
+    #athletica-payroll .p-primary { background:var(--p-brand); border-color:var(--p-brand); color:var(--p-onbrand); }
+    #athletica-payroll .p-primary:hover { background:var(--p-brand); filter:brightness(.96); }
+    #athletica-payroll .p-link { background:transparent; border:0; color:var(--p-brand); padding:4px 0; text-align:left; text-decoration:underline; text-underline-offset:3px; }
+    #athletica-payroll .p-chip { font-size:12px; border-radius:5px; padding:3px 8px; background:var(--p-soft); color:var(--p-brand); white-space:nowrap; }
+    #athletica-payroll .p-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    #athletica-payroll .p-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:20px 0; gap:10px; }
+    #athletica-payroll .p-stat { background:var(--p-surface); border:1px solid var(--p-line); border-radius:9px; padding:14px; }
+    #athletica-payroll .p-value { display:block; font-size:23px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:4px; }
+    #athletica-payroll .p-warning { background:var(--p-warn); color:var(--p-warntext); border-radius:8px; padding:12px 14px; margin-bottom:16px; }
+    #athletica-payroll .p-warning button { color:inherit; }
+    #athletica-payroll .p-warning summary { font-weight:500; }
+    #athletica-payroll .p-warning ul { margin:8px 0 0; padding-left:18px; }
+    #athletica-payroll .p-employee { background:var(--p-surface); border:1px solid var(--p-line); border-radius:9px; margin-top:12px; }
+    #athletica-payroll .p-employee > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px; flex-wrap:wrap; list-style:none; }
+    #athletica-payroll .p-employee > summary::-webkit-details-marker { display:none; }
+    #athletica-payroll .p-person { display:flex; align-items:center; gap:10px; }
+    #athletica-payroll .p-avatar { width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:var(--p-soft); color:var(--p-brand); font-size:12px; font-weight:600; flex:none; }
+    #athletica-payroll .p-amounts { display:flex; gap:20px; font-variant-numeric:tabular-nums; }
+    #athletica-payroll .p-amounts small { display:block; color:var(--p-muted); font-size:11px; }
+    #athletica-payroll .p-details { padding:0 16px 16px; border-top:1px solid var(--p-line); }
+    #athletica-payroll .p-section { margin-top:16px; }
+    #athletica-payroll .p-table-wrap { overflow-x:auto; }
+    #athletica-payroll table { border-collapse:collapse; width:100%; font-size:12px; }
+    #athletica-payroll th { text-align:left; color:var(--p-muted); font-weight:500; }
+    #athletica-payroll td, #athletica-payroll th { padding:11px 8px; border-bottom:1px solid var(--p-line); vertical-align:top; }
+    #athletica-payroll .p-number { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    #athletica-payroll .p-detail-line { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--p-line); }
+    #athletica-payroll .p-detail-line > :last-child { white-space:nowrap; font-variant-numeric:tabular-nums; }
+    #athletica-payroll .p-actions { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; }
+    #athletica-payroll .p-input { width:100%; min-width:0; border:1px solid var(--p-line); border-radius:6px; padding:8px 10px; background:var(--p-surface); color:var(--p-text); }
+    #athletica-payroll select.p-input { width:auto; max-width:100%; }
+    #athletica-payroll .p-form { display:grid; gap:14px; }
+    #athletica-payroll label { display:grid; gap:5px; }
+    #athletica-payroll .p-methods { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    #athletica-payroll .p-methods button { text-align:left; justify-content:flex-start; min-height:52px; }
+    #athletica-payroll .p-methods button[aria-pressed=true] { border-color:var(--p-brand); background:var(--p-soft); color:var(--p-brand); }
+    #athletica-payroll .p-panel { background:var(--p-surface); border:1px solid var(--p-line); border-radius:9px; padding:18px; margin-top:16px; }
+    #athletica-payroll .p-inline { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:16px; }
+    #athletica-payroll .p-inline input { width:90px; }
+    #athletica-payroll .p-example { background:var(--p-bg); border-radius:8px; padding:16px; margin-top:18px; }
+    #athletica-payroll input[type=range] { width:100%; accent-color:var(--p-brand); margin:12px 0; }
+    #athletica-payroll .p-special { border-bottom:1px solid var(--p-line); padding:12px 0; }
+    #athletica-payroll .p-special summary { display:flex; gap:12px; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+    #athletica-payroll .p-special[open] summary { margin-bottom:10px; }
+    #athletica-payroll .p-rate-list { display:grid; gap:10px; margin-top:16px; }
+    #athletica-payroll .p-rate { background:var(--p-surface); border:1px solid var(--p-line); border-radius:8px; padding:16px; }
+    #athletica-payroll .p-message { padding:9px 0; color:var(--p-brand); min-height:22px; }
+    #athletica-payroll .p-error { color:var(--p-danger); font-size:12px; }
+    #athletica-payroll .p-dialog { margin:18px 0; padding:20px; border:1px solid var(--p-brand); border-radius:10px; background:var(--p-surface); max-width:520px; }
+    #athletica-payroll .p-dialog h3 { margin-bottom:14px; }
+    #athletica-payroll .p-empty { padding:70px 16px; text-align:center; color:var(--p-muted); }
+    #athletica-payroll .p-personal-notice { padding:12px 0; color:var(--p-muted); }
+    @media(max-width:850px) { #athletica-payroll .p-sidebar { display:none; } #athletica-payroll .p-shell { grid-template-columns:minmax(0,1fr); } }
+    @media(max-width:480px) { #athletica-payroll .p-content { padding:16px; } #athletica-payroll .p-top { padding:12px 16px; } #athletica-payroll .p-stats { grid-template-columns:1fr; gap:7px; } #athletica-payroll .p-stat { padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; } #athletica-payroll .p-value { font-size:20px; margin:0; } #athletica-payroll .p-methods { grid-template-columns:1fr; } #athletica-payroll .p-amounts { width:100%; justify-content:space-between; gap:8px; } #athletica-payroll .p-tab { padding:10px 8px; } #athletica-payroll .p-panel { padding:12px; } }
+    @media(pointer:coarse) { #athletica-payroll button, #athletica-payroll select, #athletica-payroll summary { min-height:44px; } #athletica-payroll input, #athletica-payroll textarea, #athletica-payroll select { font-size:16px; } }
+  </style>
+  <div class="p-shell">
+    <aside class="p-sidebar" aria-label="Основные разделы">
+      <div class="p-brand">Athletica<span style="color:var(--p-brand)">CRM</span></div><div class="p-org">Спортивная школа</div>
+      <div class="p-navitem">Главная</div><div class="p-navitem">Расписание</div><div class="p-navitem">Клиенты</div><div class="p-navitem">Сообщения</div><div class="p-navitem">Группы</div><div class="p-navitem">Сотрудники</div><div class="p-navitem p-active">Зарплата</div><div class="p-navitem">Задачи</div><div class="p-navitem">Настройки</div>
+    </aside>
+    <div class="p-main">
+      <header class="p-top"><span>Спортивная школа · Все филиалы</span><span id="p-account">Мария Смирнова · Управляющий</span></header>
+      <main class="p-content">
+        <div class="p-heading"><div><h2>Зарплата</h2><p class="p-muted p-small" id="p-subtitle">Начисления и выплаты сотрудникам</p></div><span class="p-chip">Макет · Демо-данные</span></div>
+        <nav class="p-tabs" role="tablist" aria-label="Экраны зарплаты">
+          <button class="p-tab cursor-interaction" id="p-tab-statement" role="tab" aria-selected="true" aria-controls="p-statement" data-screen="statement">Ведомость</button>
+          <button class="p-tab cursor-interaction" id="p-tab-rates" role="tab" aria-selected="false" aria-controls="p-rates" data-screen="rates">Ставки</button>
+          <button class="p-tab cursor-interaction" id="p-tab-mine" role="tab" aria-selected="false" aria-controls="p-mine" data-screen="mine">Моя зарплата</button>
+        </nav>
+        <section id="p-statement" role="tabpanel" aria-labelledby="p-tab-statement">
+          <div class="p-toolbar"><div class="p-row"><h3>Октябрь 2026</h3><span class="p-chip" id="p-status">Черновик</span></div><div class="p-row"><button class="p-button cursor-interaction" id="p-recalculate">Пересчитать</button><button class="p-button p-primary cursor-interaction" id="p-approve">Утвердить</button></div></div>
+          <p class="p-muted p-small" style="margin-top:8px">Ведомость всей организации · 3 занятия в расчёте</p>
+          <div class="p-stats"><div class="p-stat"><span class="p-muted p-small">Начислено</span><strong class="p-value" id="p-total-earned">35 760 ₽</strong></div><div class="p-stat"><span class="p-muted p-small">Выплачено</span><strong class="p-value">16 500 ₽</strong></div><div class="p-stat"><span class="p-muted p-small">К выплате</span><strong class="p-value" id="p-total-due">19 260 ₽</strong></div></div>
+          <details class="p-warning" open><summary class="cursor-interaction">Есть данные, которые не вошли в расчёт</summary><ul><li><button class="p-link cursor-interaction" data-warning="sessions">3 прошедших занятия не закрыты</button></li><li><button class="p-link cursor-interaction" data-warning="rates">Сидоров: 4 занятия без ставки</button></li></ul></details>
+          <details class="p-employee" open><summary class="cursor-interaction"><div class="p-person"><span class="p-avatar">АИ</span><div><strong>Алексей Иванов</strong><div class="p-muted p-small">Тренер · 3 занятия <span aria-hidden="true">⌄</span></div></div></div><div class="p-amounts"><span><small>Начислено</small><span id="p-ivan-earned">5 760 ₽</span></span><span><small>Выплачено</small>1 500 ₽</span><span><small>К выплате</small><strong id="p-ivan-due">4 260 ₽</strong></span></div></summary>
+            <div class="p-details"><h3 class="p-section">Занятия</h3><div class="p-table-wrap"><table><thead><tr><th>Дата и группа</th><th>Расчёт</th><th class="p-number">Сумма</th><th><span class="p-muted">Действие</span></th></tr></thead><tbody>
+              <tr><td>02.10 · 18:00<br>Дети 7–9</td><td>500 + 8 × 120<br><span class="p-muted">Стандарт · версия с 01.10</span></td><td class="p-number">1 460 ₽</td><td><button class="p-link cursor-interaction p-edit-action" data-edit="0">Исправить</button></td></tr>
+              <tr><td>07.10 · 18:00<br>Дети 7–9</td><td>500 + 8 × 120<br><span class="p-muted" id="p-override-reason">Двойная длительность</span></td><td class="p-number"><s class="p-muted">1 460 ₽</s><br><strong id="p-override-amount">1 800 ₽</strong></td><td><button class="p-link cursor-interaction p-edit-action" data-edit="1">Исправить</button></td></tr>
+              <tr><td>14.10 · 18:00<br>Дети 7–9</td><td>500 + 2 × 120 = 740<br><span class="p-chip">Гарантия 1 000 ₽</span></td><td class="p-number">1 000 ₽</td><td><button class="p-link cursor-interaction p-edit-action" data-edit="2">Исправить</button></td></tr>
+            </tbody></table></div><h3 class="p-section">Премии и штрафы</h3><div class="p-detail-line"><span>Премия · Пробные перешли на абонемент</span><span class="p-number">+2 000 ₽</span></div><div class="p-detail-line"><span>Штраф · Опоздание</span><span class="p-number">−500 ₽</span></div><h3 class="p-section">Выплаты</h3><div class="p-detail-line"><span>15.10 · Перевод · Аванс</span><span class="p-number">1 500 ₽</span></div><div class="p-actions"><button class="p-button p-primary cursor-interaction" id="p-pay">Выдать</button></div></div>
+          </details>
+          <details class="p-employee"><summary class="cursor-interaction"><div class="p-person"><span class="p-avatar">ЕП</span><div><strong>Елена Петрова</strong><div class="p-muted p-small">Администратор · Оклад <span aria-hidden="true">⌄</span></div></div></div><div class="p-amounts"><span><small>Начислено</small>30 000 ₽</span><span><small>Выплачено</small>15 000 ₽</span><span><small>К выплате</small><strong>15 000 ₽</strong></span></div></summary><div class="p-details"><h3 class="p-section">Оклад</h3><div class="p-detail-line"><span>01–31 октября · 31 из 31 дня</span><span>30 000 ₽</span></div><h3 class="p-section">Выплаты</h3><div class="p-detail-line"><span>15.10 · Перевод · Аванс</span><span>15 000 ₽</span></div></div></details>
+          <div class="p-message" id="p-statement-message" aria-live="polite"></div>
+        </section>
+        <section id="p-rates" role="tabpanel" aria-labelledby="p-tab-rates" hidden>
+          <div id="p-rate-list"><div class="p-toolbar"><h3>Ставки оплаты</h3><button class="p-button p-primary cursor-interaction" id="p-new-rate">Создать ставку</button></div><div class="p-rate-list">
+            <div class="p-rate"><div class="p-between"><h3>Тренер — стандарт</h3><button class="p-button cursor-interaction" data-rate="combined">Настроить</button></div><p class="p-muted">500 ₽ за занятие + 120 ₽ за ученика · гарантия 1 000 ₽</p><p class="p-small" style="margin-top:10px">Алексей Иванов · действует с 01.10.2026</p></div>
+            <div class="p-rate"><div class="p-between"><h3>Администратор</h3><button class="p-button cursor-interaction" data-rate="salary">Настроить</button></div><p class="p-muted">Оклад 30 000 ₽ в месяц</p><p class="p-small" style="margin-top:10px">Елена Петрова · действует с 01.10.2026</p></div>
+            <div class="p-rate"><div class="p-between"><h3>Тренер — процент</h3><button class="p-button cursor-interaction" data-rate="percent">Настроить</button></div><p class="p-muted">30 % от стоимости посещений · гарантия 1 000 ₽</p><p class="p-small" style="margin-top:10px">Нет назначенных сотрудников</p></div>
+          </div><p class="p-warning p-small" style="margin-top:16px">Дмитрий Сидоров · Ставка не назначена</p></div>
+          <div id="p-editor" hidden><div class="p-toolbar"><div><h3 id="p-editor-title">Тренер — стандарт</h3><p class="p-muted p-small">Новая версия ставки</p></div><button class="p-button cursor-interaction" id="p-editor-close">К списку ставок</button></div>
+            <div class="p-panel"><div class="p-form"><label>Название<input class="p-input" id="p-rate-name" value="Тренер — стандарт" required></label><div class="p-methods" aria-label="Способ оплаты"><button class="p-button cursor-interaction" data-method="session" aria-pressed="false">За занятие</button><button class="p-button cursor-interaction" data-method="combined" aria-pressed="true">За занятие и учеников</button><button class="p-button cursor-interaction" data-method="percent" aria-pressed="false">Процент от посещений</button><button class="p-button cursor-interaction" data-method="salary" aria-pressed="false">Оклад</button></div>
+              <div class="p-inline"><label id="p-base-field"><span class="p-small p-muted" id="p-base-label">За занятие, ₽</span><input class="p-input" id="p-base" type="number" min="0" value="500"></label><label id="p-student-field"><span class="p-small p-muted">За ученика, ₽</span><input class="p-input" id="p-per-student" type="number" min="0" value="120"></label><label id="p-percent-field" hidden><span class="p-small p-muted">Процент, %</span><input class="p-input" id="p-percent" type="number" min="0" max="100" value="30"></label><label id="p-min-field"><span class="p-small p-muted">Не меньше, ₽</span><input class="p-input" id="p-minimum" type="number" min="0" value="1000"></label></div>
+            </div><div class="p-example" id="p-example"><div class="p-between"><label for="p-count">Пришли <strong id="p-count-value">8 учеников</strong></label><strong class="p-value" id="p-example-value">1 460 ₽</strong></div><input id="p-count" aria-label="Число пришедших учеников" type="range" min="0" max="20" value="8"><label id="p-visit-field" hidden>Стоимость одного посещения, ₽<input class="p-input" id="p-visit-price" type="number" min="0" value="400"></label><div class="p-muted p-small" id="p-example-formula" aria-live="polite">500 + 8 × 120 = 1 460 ₽</div></div>
+            <div id="p-specials"><h3 class="p-section">Особые случаи</h3><details class="p-special"><summary class="cursor-interaction"><span>Пробное</span><span class="p-muted">Как обычный ученик · Изменить</span></summary><label>Правило метки<select class="p-input" id="p-trial"><option value="regular">Как обычный ученик</option><option value="exclude">Не учитывать</option><option value="custom">Своя цена — 200 ₽</option></select></label><label style="margin-top:8px">Пробных среди пришедших<input class="p-input" id="p-trial-count" type="number" min="0" max="20" value="0"></label></details>
+              <details class="p-special"><summary class="cursor-interaction"><span>Неоплаченные посещения</span><span class="p-muted">Учитываются · Изменить</span></summary><label>Правило<select class="p-input" id="p-unpaid"><option value="include">Учитывать</option><option value="exclude">Не учитывать</option></select></label><label style="margin-top:8px">Неоплаченных среди обычных учеников<input class="p-input" id="p-unpaid-count" type="number" min="0" max="20" value="0"></label></details>
+              <details class="p-special"><summary class="cursor-interaction"><span>Если никто не пришёл</span><span class="p-muted">Платим только за занятие · Изменить</span></summary><label>Оплата пустого занятия<select class="p-input" id="p-empty"><option value="base">Базовая сумма</option><option value="none">Не платить</option></select></label></details>
+              <div class="p-special p-between"><span>Шкала по размеру группы</span><span class="p-muted">Нет</span></div><div class="p-special p-between"><span>Отдельные условия для групп</span><span class="p-muted">Нет</span></div>
+            </div><div class="p-actions"><button class="p-button p-primary cursor-interaction" id="p-preview">Продолжить</button></div><p class="p-error" id="p-editor-error" role="alert" hidden></p></div>
+            <section class="p-panel" id="p-preview-panel" hidden aria-label="Предпросмотр изменения ставки"><h3>Как изменится начисление</h3><p class="p-muted p-small" style="margin:6px 0 16px">Пример на занятиях октября. Ручные правки, премии и выплаты не участвуют.</p><label>Начало действия<input class="p-input" type="date" id="p-effective" value="2026-12-01" required></label><div class="p-table-wrap" style="margin-top:12px"><table><thead><tr><th>Сотрудник</th><th class="p-number">Сейчас</th><th class="p-number">Новая версия</th><th class="p-number">Разница</th></tr></thead><tbody><tr><td>Алексей Иванов</td><td class="p-number">3 920 ₽</td><td class="p-number" id="p-preview-next">3 920 ₽</td><td class="p-number" id="p-preview-delta">0 ₽</td></tr></tbody></table></div><div class="p-actions"><button class="p-button p-primary cursor-interaction" id="p-save-rate">Подтвердить версию</button><button class="p-button cursor-interaction" id="p-preview-cancel">Вернуться к условиям</button></div></section>
+            <div id="p-rate-message" class="p-message" aria-live="polite"></div>
+          </div>
+        </section>
+        <section id="p-mine" role="tabpanel" aria-labelledby="p-tab-mine" hidden><div class="p-toolbar"><div><h3>Алексей Иванов</h3><p class="p-muted p-small">Мои начисления</p></div><label><span class="p-small p-muted">Месяц</span><select class="p-input" id="p-mine-month"><option value="october">Октябрь 2026</option><option value="november">Ноябрь 2026</option></select></label></div><div id="p-mine-data"><p class="p-personal-notice"><span class="p-chip" id="p-mine-status">Черновик</span> <span id="p-mine-notice">Суммы могут измениться до утверждения.</span></p><div class="p-stats"><div class="p-stat"><span class="p-muted p-small">Начислено</span><strong class="p-value" id="p-mine-earned">5 760 ₽</strong></div><div class="p-stat"><span class="p-muted p-small">Выплачено</span><strong class="p-value">1 500 ₽</strong></div><div class="p-stat"><span class="p-muted p-small">К выплате</span><strong class="p-value" id="p-mine-due">4 260 ₽</strong></div></div><div class="p-panel"><h3>Занятия · 3</h3><div class="p-detail-line"><span>02.10 · Дети 7–9<br><span class="p-small p-muted">500 + 8 × 120 · версия с 01.10</span></span><span class="p-number">1 460 ₽</span></div><div class="p-detail-line"><span>07.10 · Дети 7–9<br><span class="p-small p-muted" id="p-mine-reason">Двойная длительность</span></span><span class="p-number"><s class="p-muted">1 460 ₽</s><br><strong id="p-mine-override">1 800 ₽</strong></span></div><div class="p-detail-line"><span>14.10 · Дети 7–9<br><span class="p-small p-muted">2 ученика · гарантия</span></span><span class="p-number">1 000 ₽</span></div><h3 class="p-section">Премии и штрафы</h3><div class="p-detail-line"><span>Пробные перешли на абонемент</span><span>+2 000 ₽</span></div><div class="p-detail-line"><span>Опоздание</span><span>−500 ₽</span></div><h3 class="p-section">Выплаты</h3><div class="p-detail-line"><span>15.10 · Перевод · Аванс</span><span>1 500 ₽</span></div></div></div><div class="p-empty" id="p-mine-empty" hidden><h3>Начисления ещё не рассчитаны</h3><p>Ведомость за ноябрь пока не создана.</p></div></section>
+        <section class="p-dialog" id="p-action-panel" hidden aria-labelledby="p-action-title"><h3 id="p-action-title"></h3><form class="p-form" id="p-action-form"><div id="p-action-fields"></div><div class="p-error" id="p-action-error" role="alert" hidden></div><div class="p-actions"><button class="p-button p-primary cursor-interaction" type="submit" id="p-action-submit">Подтвердить</button><button class="p-button cursor-interaction" type="button" id="p-action-cancel">Отмена</button></div></form></section>
+      </main>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('athletica-payroll');
+      const $ = id => root.querySelector('#p-' + id);
+      const money = value => new Intl.NumberFormat('ru-RU', { maximumFractionDigits:2 }).format(value) + ' ₽';
+      let screen = 'statement', approved = false, method = 'combined', override = 1800, action = '', origin = null;
+      let rateMode = 'combined';
+      const setText = (id, text) => { $(id).textContent = text; };
+      function persist() {
+        window.openai?.setWidgetState?.({ modelContent:{screen, approved}, privateContent:{month:$('mine-month').value} }).catch(() => {});
+      }
+      function selectScreen(next) {
+        screen = ['statement','rates','mine'].includes(next) ? next : 'statement';
+        root.querySelectorAll('[data-screen]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.screen === screen)));
+        ['statement','rates','mine'].forEach(id => { $(id).hidden = id !== screen; });
+        $('action-panel').hidden = true;
+        setText('account', screen === 'mine' ? 'Алексей Иванов · Тренер' : 'Мария Смирнова · Управляющий');
+        setText('subtitle', screen === 'mine' ? 'Личный экран тренера' : 'Начисления и выплаты сотрудникам');
+      }
+      function updateTotals() {
+        const earned = 1460 + override + 1000 + 2000 - 500;
+        for (const id of ['ivan-earned','mine-earned']) setText(id,money(earned));
+        for (const id of ['ivan-due','mine-due']) setText(id,money(earned - 1500));
+        setText('total-earned',money(earned + 30000)); setText('total-due',money(earned + 30000 - 16500));
+        for (const id of ['override-amount','mine-override']) setText(id,money(override));
+        setText('status',approved ? 'Утверждена' : 'Черновик'); setText('mine-status',approved ? 'Утверждена' : 'Черновик');
+        setText('mine-notice',approved ? 'Начисления зафиксированы.' : 'Суммы могут измениться до утверждения.');
+        setText('approve',approved ? 'Вернуть в черновик' : 'Утвердить');
+        $('recalculate').hidden = approved;
+        root.querySelectorAll('.p-edit-action').forEach(button => { button.hidden = approved; });
+      }
+      function amount(terms,count,trial=0,unpaid=0) {
+        const counted = Math.max(0,count - (terms.trialRule === 'regular' ? 0 : trial) - (terms.unpaidRule === 'exclude' ? unpaid : 0));
+        const custom = terms.trialRule === 'custom' ? trial * 200 : 0;
+        if (counted === 0 && custom === 0) return terms.empty === 'none' ? 0 : terms.base;
+        const raw = terms.method === 'percent' ? Math.max(0,counted-unpaid*(terms.unpaidRule === 'include' ? 1 : 0)) * terms.visit * terms.percent / 100 + custom : terms.base + (terms.method === 'combined' ? counted * terms.student : 0) + custom;
+        return terms.method === 'session' ? raw : Math.max(raw,terms.minimum);
+      }
+      const sampleTerms = {method:'combined',base:500,student:120,minimum:1000,visit:400,percent:30,trialRule:'regular',unpaidRule:'include',empty:'base'};
+      console.assert(amount(sampleTerms,8) === 1460 && amount(sampleTerms,2) === 1000 && amount(sampleTerms,0) === 500,'Пример: обычная оплата, гарантия и пустое занятие');
+      function terms() {
+        return {method,base:method === 'percent' ? 0 : Number($('base').value),student:Number($('per-student').value),minimum:Number($('minimum').value),percent:Number($('percent').value),visit:Number($('visit-price').value),trialRule:$('trial').value,unpaidRule:$('unpaid').value,empty:$('empty').value};
+      }
+      function renderExample() {
+        const t = terms(), count = Number($('count').value), trial = Math.min(count,Math.max(0,Number($('trial-count').value))), unpaid = Math.min(count-trial,Math.max(0,Number($('unpaid-count').value)));
+        setText('count-value',count + ' учеников');
+        setText('example-value',money(amount(t,count,trial,unpaid)));
+        const special = trial > 0 || unpaid > 0;
+        const raw = method === 'percent' ? count * t.visit * t.percent / 100 : t.base + (method === 'combined' ? count * t.student : 0);
+        setText('example-formula', count === 0 ? (t.empty === 'none' ? 'Пустое занятие не оплачивается' : 'Пустое занятие · только базовая сумма, без гарантии') : special ? 'С учётом выбранных правил пробных и неоплаченных посещений' : (method === 'percent' ? count + ' × ' + t.visit + ' × ' + t.percent + ' %' : method === 'session' ? money(t.base) + ' за занятие' : t.base + ' + ' + count + ' × ' + t.student) + (method !== 'session' && raw < t.minimum ? ' → гарантия ' + money(t.minimum) : ' = ' + money(raw)));
+        for (const [id,text] of [['trial',{'regular':'Как обычный ученик','exclude':'Не учитывается','custom':'Своя цена 200 ₽'}[$('trial').value]],['unpaid',$('unpaid').value === 'include' ? 'Учитываются' : 'Не учитываются'],['empty',$('empty').value === 'base' ? 'Платим только за занятие' : 'Не платим']]) {
+          $(id).closest('details').querySelector('summary .p-muted').textContent = text + ' · Изменить';
+        }
+      }
+      function selectMethod(next) {
+        const previous = method;
+        if (previous === 'salary' && next !== 'salary') $('base').value = '500';
+        if (next === 'salary' && previous !== 'salary') $('base').value = '30000';
+        method = next;
+        root.querySelectorAll('[data-method]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.method === method)));
+        $('student-field').hidden = method !== 'combined'; $('percent-field').hidden = method !== 'percent'; $('base-field').hidden = method === 'percent';
+        $('min-field').hidden = method !== 'combined' && method !== 'percent'; $('specials').hidden = method === 'salary'; $('example').hidden = method === 'salary';
+        setText('base-label',method === 'salary' ? 'Оклад в месяц, ₽' : 'За занятие, ₽');
+        $('preview-panel').hidden = true;
+        renderExample();
+      }
+      function openEditor(next,create=false) {
+        $('rate-list').hidden = true; $('editor').hidden = false; rateMode = create ? 'new' : next;
+        const name = create ? '' : next === 'salary' ? 'Администратор' : next === 'percent' ? 'Тренер — процент' : 'Тренер — стандарт';
+        $('rate-name').value = name; setText('editor-title',create ? 'Новая ставка' : name);
+        selectMethod(next); setText('rate-message',''); $('editor-error').hidden = true;
+      }
+      root.querySelectorAll('[data-screen]').forEach(button => button.addEventListener('click',() => { selectScreen(button.dataset.screen); persist(); }));
+      root.querySelector('[role="tablist"]').addEventListener('keydown',event => {
+        const tabs = Array.from(root.querySelectorAll('[data-screen]')), index = tabs.indexOf(document.activeElement);
+        if (index < 0 || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[next].focus(); tabs[next].click();
+      });
+      root.querySelectorAll('[data-rate]').forEach(button => button.addEventListener('click',() => openEditor(button.dataset.rate)));
+      root.querySelectorAll('[data-method]').forEach(button => button.addEventListener('click',() => selectMethod(button.dataset.method)));
+      $('new-rate').addEventListener('click',() => openEditor('combined',true));
+      $('editor-close').addEventListener('click',() => { $('editor').hidden = true; $('rate-list').hidden = false; });
+      $('editor').querySelectorAll('input,select').forEach(input => input.addEventListener('input',() => { if (!input.closest('#p-preview-panel')) { $('preview-panel').hidden = true; renderExample(); } }));
+      $('preview').addEventListener('click',() => {
+        const invalid = Array.from($('editor').querySelectorAll('input')).find(input => !input.closest('[hidden]') && !input.checkValidity());
+        if (invalid || !$('rate-name').value.trim()) { setText('editor-error','Укажите название и допустимые неотрицательные суммы. Процент — от 0 до 100.'); $('editor-error').hidden = false; return; }
+        $('editor-error').hidden = true;
+        if (rateMode !== 'combined' || method === 'salary') { setText('rate-message','Предпросмотр в этом макете показан для ставки «Тренер — стандарт».'); return; }
+        const t = terms();
+        const next = [8,8,2].reduce((sum,n) => sum + amount(t,n),0);
+        setText('preview-next',money(next)); setText('preview-delta',(next > 3920 ? '+' : '') + money(next-3920));
+        $('preview-panel').hidden = false;
+      });
+      $('preview-cancel').addEventListener('click',() => { $('preview-panel').hidden = true; });
+      $('save-rate').addEventListener('click',() => { if (!$('effective').checkValidity()) { $('effective').reportValidity(); return; } $('preview-panel').hidden = true; setText('rate-message','Демо: версия подтверждена с ' + $('effective').value.split('-').reverse().join('.') + '. Данные в CRM не сохраняются.'); });
+      $('mine-month').addEventListener('change',() => { $('mine-data').hidden = $('mine-month').value !== 'october'; $('mine-empty').hidden = $('mine-month').value === 'october'; persist(); });
+      function openAction(kind,trigger) {
+        action = kind; origin = trigger; $('action-panel').hidden = false; $('action-error').hidden = true;
+        const fields = $('action-fields'); fields.replaceChildren();
+        setText('action-title',kind === 'approve' ? (approved ? 'Вернуть ведомость в черновик?' : 'Утвердить ведомость за октябрь?') : kind === 'edit' ? 'Правка начисления · 07.10' : kind === 'warning' ? 'Незакрытые занятия' : 'Выплата · Алексей Иванов');
+        if (kind === 'edit') fields.innerHTML = '<label>Новая сумма, ₽<input class="p-input" name="amount" type="number" min="0" step="0.01" required></label><label style="margin-top:12px">Причина<textarea class="p-input" name="reason" rows="2" required></textarea></label>';
+        else if (kind === 'pay') fields.innerHTML = '<label>Сумма, ₽<input class="p-input" name="amount" type="number" min="0.01" step="0.01" required></label><label style="margin-top:12px">Дата<input class="p-input" name="date" type="date" value="2026-11-14" required></label><label style="margin-top:12px">Способ<select class="p-input" name="method"><option>Перевод</option><option>Наличные</option></select></label><label style="margin-top:12px">Комментарий<input class="p-input" name="comment" value="Зарплата за октябрь"></label>';
+        else if (kind === 'warning') fields.innerHTML = '<p>19.10 · Дети 7–9 · 18:00</p><p>21.10 · Дети 7–9 · 18:00</p><p>26.10 · Дети 7–9 · 18:00</p>';
+        else fields.textContent = approved ? 'Правки и пересчёт снова станут доступны. Выплаты сохранятся.' : 'Начисления будут зафиксированы. После утверждения доступны выплаты и возврат в черновик.';
+        const amountInput = fields.querySelector('[name="amount"]'); if (amountInput) amountInput.value = kind === 'edit' ? String(override) : String(Math.max(0,1460+override+1000+2000-500-1500));
+        const reasonInput = fields.querySelector('[name="reason"]'); if (reasonInput) reasonInput.value = $('override-reason').textContent;
+        setText('action-submit',kind === 'warning' ? 'Понятно' : kind === 'pay' ? 'Записать выплату' : 'Подтвердить');
+        $('action-panel').scrollIntoView({block:'nearest'}); (fields.querySelector('input') || $('action-submit')).focus();
+      }
+      $('approve').addEventListener('click',event => openAction('approve',event.currentTarget));
+      $('pay').addEventListener('click',event => openAction('pay',event.currentTarget));
+      root.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click',event => { if (button.dataset.edit === '1') openAction('edit',event.currentTarget); else setText('statement-message','В макете редактируется строка 07.10 с ручной правкой.'); }));
+      root.querySelectorAll('[data-warning]').forEach(button => button.addEventListener('click',event => { if (button.dataset.warning === 'rates') selectScreen('rates'); else openAction('warning',event.currentTarget); }));
+      const closeAction = () => { $('action-panel').hidden = true; origin?.focus(); };
+      $('action-cancel').addEventListener('click',closeAction);
+      $('action-form').addEventListener('submit',event => {
+        event.preventDefault();
+        if (action === 'approve') { approved = !approved; updateTotals(); persist(); }
+        if (action === 'edit') {
+          const form = new FormData(event.currentTarget), reason = String(form.get('reason') || '').trim();
+          if (!reason) { setText('action-error','Укажите причину'); $('action-error').hidden = false; return; }
+          override = Number(form.get('amount')); setText('override-reason',reason); setText('mine-reason',reason); updateTotals();
+        }
+        if (action === 'pay') setText('statement-message','Демо: форма выплаты проверена. Данные в CRM не сохраняются.');
+        closeAction();
+      });
+      $('recalculate').addEventListener('click',() => { updateTotals(); setText('statement-message','Демо: пересчитаны 3 занятия. Ручная правка, премии, штрафы и аванс сохранены.'); });
+      root.addEventListener('keydown',event => { if (event.key === 'Escape' && !$('action-panel').hidden) closeAction(); });
+      function restore(saved) {
+        if (!saved) return;
+        approved = saved.modelContent?.approved === true; selectScreen(saved.modelContent?.screen);
+        $('mine-month').value = saved.privateContent?.month === 'november' ? 'november' : 'october';
+        $('mine-data').hidden = $('mine-month').value !== 'october'; $('mine-empty').hidden = $('mine-month').value === 'october'; updateTotals();
+      }
+      renderExample(); restore(window.openai?.widgetState);
+      window.addEventListener('openai:set_globals',event => restore(event.detail?.globals?.widgetState));
+    })();
+  </script>
+</div>
+
+</body></html>

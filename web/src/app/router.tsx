@@ -69,10 +69,31 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
   notFoundComponent: NotFoundPage,
 });
 
+/**
+ * Уводит пользователя с действующей сессией со страницы для гостей на [target] — путь
+ * веб-клиента без базового адреса, допустимо с query. Сессию всегда проверяет запрос к серверу:
+ * данные в кэше могли устареть, и проверка по ним закольцевала бы переходы между входом
+ * и приложением. Если проверить сессию не удалось (её нет, сервер недоступен), страница
+ * показывается как есть.
+ */
+async function leaveGuestPageIfAuthenticated(
+  { api, queryClient }: RouterContext,
+  target: string,
+): Promise<void> {
+  const result = await api.call("auth/me");
+  if (result.ok) {
+    queryClient.setQueryData(sessionQuery(api).queryKey, result.value);
+    throw redirect({ href: target, replace: true });
+  }
+}
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   validateSearch: LoginSearchSchema,
+  beforeLoad: async ({ context, search }) => {
+    await leaveGuestPageIfAuthenticated(context, search.redirect ?? "/");
+  },
   component: function LoginRoute() {
     const { api } = loginRoute.useRouteContext();
     const { redirect: target } = loginRoute.useSearch();
@@ -91,6 +112,9 @@ const loginRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sign-up",
+  beforeLoad: async ({ context }) => {
+    await leaveGuestPageIfAuthenticated(context, "/");
+  },
   component: function SignUpRoute() {
     const { api } = signUpRoute.useRouteContext();
     const authApi = useMemo(() => createAuthApi(api), [api]);
@@ -666,11 +690,20 @@ export function isStaticAppPath(path: string): path is StaticAppPath {
   return Object.hasOwn(staticAppPaths, path);
 }
 
+/**
+ * Страницы только для гостей: с действующей сессией они ведут в приложение,
+ * а потеря сессии на них не уводит на вход.
+ */
+const guestPaths: ReadonlySet<string> = new Set<StaticAppPath>(["/login", "/sign-up"]);
+
 /** Маршрутизация приложения: элемент для рендера и переход на вход при потере сессии. */
 export interface AppRouting {
   /** `RouterProvider` с роутером приложения. */
   readonly element: ReactElement;
-  /** Открывает вход с адресом возврата на текущую страницу, если вход ещё не открыт. */
+  /**
+   * Открывает вход с адресом возврата на текущую страницу. На гостевых страницах (вход,
+   * регистрация) ничего не делает: гость остаётся на своей странице, адрес возврата не затирается.
+   */
   readonly redirectToLogin: () => void;
 }
 
@@ -681,7 +714,7 @@ export function createAppRouting(context: RouterContext, history?: RouterHistory
     element: <RouterProvider router={router} />,
     redirectToLogin: () => {
       const { pathname, href } = router.latestLocation;
-      if (pathname !== "/login") {
+      if (!guestPaths.has(pathname)) {
         void router.navigate({ to: "/login", search: { redirect: href }, replace: true });
       }
     },

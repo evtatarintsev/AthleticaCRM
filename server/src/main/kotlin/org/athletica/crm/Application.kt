@@ -178,10 +178,10 @@ fun Application.configureServer() {
     }
     context(di.database, di.audit) {
         routing {
-            // Webhook ЮKassa — ВНЕ JWT-авторизации: вызывается платёжным шлюзом напрямую
-            checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
-
             route("/api") {
+                // Webhook ЮKassa — ВНЕ JWT-авторизации: вызывается платёжным шлюзом напрямую
+                checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
+
                 context(di.jwtConfig) {
                     authRoutes(di.auth)
                 }

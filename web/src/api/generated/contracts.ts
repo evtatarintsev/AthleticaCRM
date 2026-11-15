@@ -3379,6 +3379,32 @@ export const UploadInfoRequestSchema = z
   .readonly();
 export type UploadInfoRequest = z.output<typeof UploadInfoRequestSchema>;
 
+export const YookassaAmountSchema = z
+  .object({
+    value: z.string(),
+    currency: z.string(),
+  })
+  .readonly();
+export type YookassaAmount = z.output<typeof YookassaAmountSchema>;
+
+export const YookassaWebhookPaymentSchema = z
+  .object({
+    id: z.string(),
+    status: z.string(),
+    amount: YookassaAmountSchema,
+  })
+  .readonly();
+export type YookassaWebhookPayment = z.output<typeof YookassaWebhookPaymentSchema>;
+
+export const YookassaWebhookSchema = z
+  .object({
+    type: z.string(),
+    event: z.string(),
+    object: YookassaWebhookPaymentSchema,
+  })
+  .readonly();
+export type YookassaWebhook = z.output<typeof YookassaWebhookSchema>;
+
 /** Все эндпоинты API: путь без `/api/` → метод, формат запроса и ответа. */
 export const endpoints = {
   "assistant/dialogs/create": {
@@ -3623,6 +3649,13 @@ export const endpoints = {
     method: "POST",
     in: "body",
     request: UpdateChannelIntegrationRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "checkout/yookassa": {
+    method: "POST",
+    in: "body",
+    request: YookassaWebhookSchema,
     out: "empty",
     response: z.undefined(),
   },

@@ -1,7 +1,14 @@
-# HTTP: перенаправление на HTTPS + ACME challenge для Let's Encrypt
+# Раскладка хостов (openspec public-site):
+#   ${DOMAIN}              — публичный лендинг
+#   app.${DOMAIN}          — CRM: SPA + REST API
+#   www.${DOMAIN}          — 301 на ${DOMAIN}
+#   любой другой хост      — 301 на тот же путь в app.${DOMAIN} (старые домены продукта)
+# Все имена, включая прочие домены, должны быть в SAN сертификата ${DOMAIN}.
+
+# HTTP: ACME challenge для Let's Encrypt, всё остальное — на HTTPS того же хоста
 server {
-    listen 80;
-    server_name ${DOMAIN} www.${DOMAIN} minio.${DOMAIN} console.minio.${DOMAIN};
+    listen 80 default_server;
+    server_name _;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -12,15 +19,71 @@ server {
     }
 }
 
-# HTTPS: основной домен — SPA + REST API
+# HTTPS: прочие хосты — перенаправление в CRM
 server {
-    listen 443 ssl;
-    server_name ${DOMAIN} www.${DOMAIN};
+    listen 443 ssl default_server;
+    server_name _;
 
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     include             /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://app.${DOMAIN}$request_uri;
+}
+
+# HTTPS: www — на основной домен
+server {
+    listen 443 ssl;
+    server_name www.${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://${DOMAIN}$request_uri;
+}
+
+# HTTPS: основной домен — публичный лендинг
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Вход и регистрация живут в CRM
+    location = /login {
+        return 302 https://app.${DOMAIN}$request_uri;
+    }
+
+    location = /sign-up {
+        return 302 https://app.${DOMAIN}$request_uri;
+    }
+
+    location / {
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://frontend:8081;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+    }
+}
+
+# HTTPS: CRM — SPA + REST API (включая webhook ЮKassa /api/checkout/yookassa)
+server {
+    listen 443 ssl;
+    server_name app.${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # CRM закрыта от поисковиков целиком
+    add_header X-Robots-Tag "noindex, nofollow" always;
 
     location /api/assistant/ {
         resolver           127.0.0.11 valid=10s;

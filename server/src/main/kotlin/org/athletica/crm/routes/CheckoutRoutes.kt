@@ -24,8 +24,9 @@ private val logger = KtorSimpleLogger("org.athletica.crm.routes.CheckoutRoutes")
 private val webhookJson = Json { ignoreUnknownKeys = true }
 
 /**
- * Маршруты webhook-уведомлений от платёжных шлюзов.
- * ВАЖНО: регистрировать ВНЕ блока `authenticate("auth-jwt")` — вызываются ЮKassa напрямую, без JWT.
+ * Маршруты webhook-уведомлений от платёжных шлюзов (ЮKassa — `POST /api/checkout/yookassa`).
+ * ВАЖНО: регистрировать внутри `route("/api")`, но ВНЕ блока `authenticate("auth-jwt")` —
+ * вызываются ЮKassa напрямую, без JWT.
  */
 fun Route.checkoutRoutes(
     db: Database,

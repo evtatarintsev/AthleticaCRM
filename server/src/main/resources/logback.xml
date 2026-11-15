@@ -14,6 +14,9 @@
         <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
     </appender>
 
+    <!-- Koog пишет аргументы tools и ошибки провайдера; диагностику без данных ведёт assistant. -->
+    <logger name="ai.koog" level="OFF"/>
+
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="Sentry"/>

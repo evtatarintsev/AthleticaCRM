@@ -8,6 +8,10 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
+import org.athletica.crm.assistant.AssistantService
+import org.athletica.crm.assistant.provider.AssistantConnection
+import org.athletica.crm.assistant.storage.AssistantStorage
+import org.athletica.crm.assistant.tools.ClientDrafts
 import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AuditAttendanceLabels
 import org.athletica.crm.domain.attendance.DbAttendanceLabels
@@ -161,6 +165,7 @@ data class Di(
     val yookassaConfig: YookassaConfig,
     val payments: Payments,
     val paymentGateway: PaymentGateway,
+    val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
 ) {
     val users = DbUsers(passwordHasher)
@@ -187,6 +192,8 @@ data class Di(
     val halls: Halls = AuditHalls(DbHalls(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val clientContacts = DbClientContacts()
+    val assistantStorage = AssistantStorage(orgCalendar)
+    val assistant = AssistantService(database, assistantConnection, assistantStorage, ClientDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions), employees, customFieldDefinitions)
     val views = ReadViews()
     val participations: Participations = DbParticipations()
     val debitReconciliation: DebitReconciliation =
@@ -261,6 +268,7 @@ fun Application.di(): Di {
         payments = DbPayments(),
         paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
         telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
+        assistantConnection = AssistantConnection.from(environment.config),
     )
 }
 

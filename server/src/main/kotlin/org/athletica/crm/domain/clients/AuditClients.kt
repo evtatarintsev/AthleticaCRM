@@ -2,6 +2,8 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.NonBlankName
@@ -11,6 +13,7 @@ import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.audit.AuditLog
+import org.athletica.crm.domain.audit.logCreate
 import org.athletica.crm.storage.Transaction
 
 /** Декоратор [Clients], оборачивающий выдаваемых клиентов в [AuditActiveClient]. */
@@ -31,5 +34,13 @@ class AuditClients(private val delegate: Clients, private val audit: AuditLog) :
         gender: Gender,
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
-    ) = AuditActiveClient(delegate.new(id, name, avatarId, birthday, gender, leadSourceId, customFields), audit)
+    ) = AuditActiveClient(delegate.new(id, name, avatarId, birthday, gender, leadSourceId, customFields), audit).also {
+        audit.logCreate(
+            "client", id,
+            buildJsonObject {
+                put("id", id.toString())
+                put("name", name.value)
+            }.toString(),
+        )
+    }
 }

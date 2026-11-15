@@ -15,6 +15,16 @@ class EmployeePermissionTest {
             permissions = permissions.toSet(),
         )
 
+    /** Новое право не выдаётся автоматически; персональный отзыв перекрывает роль и выдачу. */
+    @Test
+    fun assistantPermissionFollowsExistingRules() {
+        val permission = UserPermission.CAN_USE_ASSISTANT
+        assertFalse(EmployeePermission().hasPermission(permission))
+        assertTrue(EmployeePermission(listOf(role(permission)), emptySet(), emptySet()).hasPermission(permission))
+        assertTrue(EmployeePermission(emptyList(), setOf(permission), emptySet()).hasPermission(permission))
+        assertFalse(EmployeePermission(listOf(role(permission)), setOf(permission), setOf(permission)).hasPermission(permission))
+    }
+
     // ─── нет прав ────────────────────────────────────────────────────────────
 
     @Test

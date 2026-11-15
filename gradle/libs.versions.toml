@@ -20,6 +20,9 @@ angus-mail = "2.0.5"
 sentry = "8.56.0"
 commons-csv = "1.14.1"
 clikt = "5.1.0"
+koog = "1.3.0"
+# Адаптер DeepSeek выпускается отдельно с суффиксом beta.
+koog-deepseek = "1.3.0-beta"
 
 [libraries]
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
@@ -57,6 +60,12 @@ angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-mai
 sentry-logback = { module = "io.sentry:sentry-logback", version.ref = "sentry" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commons-csv" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+koog-agents-core = { module = "ai.koog:agents-core", version.ref = "koog" }
+koog-http = { module = "ai.koog:http-client-java", version.ref = "koog" }
+koog-openai = { module = "ai.koog:prompt-executor-openai-client", version.ref = "koog" }
+koog-deepseek = { module = "ai.koog:prompt-executor-deepseek-client", version.ref = "koog-deepseek" }
+koog-anthropic = { module = "ai.koog:prompt-executor-anthropic-client", version.ref = "koog" }
+koog-openrouter = { module = "ai.koog:prompt-executor-openrouter-client", version.ref = "koog" }
 
 [plugins]
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

@@ -12,15 +12,35 @@
 
 | Переменная | Значение |
 | --- | --- |
-| `AI_PROVIDER` | `openai`, `anthropic` или `openrouter` |
+| `AI_PROVIDER` | `openai`, `anthropic`, `openrouter` или `deepseek` |
 | `AI_MODEL` | Идентификатор модели с поддержкой tool calling у выбранного провайдера |
 | `AI_API_KEY` | Серверный ключ общего аккаунта провайдера |
 
-Заполните все три параметра в окружении сервера (для production — `.env.prod`).
+Заполните все три параметра в окружении сервера (для production — `.env` рядом с Compose).
 Compose передаёт их в `application.conf`. Ключ и модель не возвращаются через API
 и не вводятся в интерфейсе организации. При изменении подключения перезапустите
 сервер. Оператор оплачивает общее подключение; квота сообщений ограничивает
 использование, но не является финансовым лимитом провайдера.
+
+Для прямого подключения DeepSeek с ключом из https://platform.deepseek.com/api_keys:
+
+```dotenv
+AI_PROVIDER=deepseek
+AI_MODEL=deepseek-flash
+AI_API_KEY=<ваш ключ DeepSeek>
+```
+
+Запросы идут в `https://api.deepseek.com/chat/completions` через штатный клиент
+DeepSeek в Koog. Режим рассуждений отключён, чтобы сохранить бюджет короткого хода
+и ответов с вызовами инструментов. Модель можно заменить на `deepseek-v4-pro`.
+Актуальные модели и параметры: https://api-docs.deepseek.com/.
+
+Для локального запуска добавьте эти переменные с `export` в игнорируемый `.envrc`,
+загрузите его (`source .envrc`) и запустите `./gradlew server:run --args=serve`.
+В production внесите их в `.env` на сервере и пересоздайте контейнер:
+`docker compose -f docker-compose.prod.yaml up -d server`.
+Если используете `.env.prod`, передайте `--env-file .env.prod` явно.
+Файлы с настоящим ключом не добавляйте в Git.
 
 ## Включение организации
 

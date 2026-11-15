@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.koog.agents.core)
     implementation(libs.koog.http)
     implementation(libs.koog.openai)
+    implementation(libs.koog.deepseek)
     implementation(libs.koog.anthropic)
     implementation(libs.koog.openrouter)
     testImplementation(libs.ktor.server.testHost)

@@ -29,7 +29,7 @@ class AssistantConnectionTest {
     /** Каждый поддерживаемый провайдер создаёт ровно одно закрываемое подключение. */
     @Test
     fun selectsConfiguredProvider() {
-        mapOf("openai" to LLMProvider.OpenAI, "anthropic" to LLMProvider.Anthropic, "openrouter" to LLMProvider.OpenRouter)
+        mapOf("openai" to LLMProvider.OpenAI, "anthropic" to LLMProvider.Anthropic, "openrouter" to LLMProvider.OpenRouter, "deepseek" to LLMProvider.DeepSeek)
             .forEach { (provider, expected) ->
                 AssistantConnection.create(provider, "chosen-model", "test-key").use { connection ->
                     assertTrue(connection.available)

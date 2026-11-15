@@ -1,8 +1,13 @@
 package org.athletica.crm.assistant.provider
 
+import ai.koog.http.client.KoogHttpClient
+import ai.koog.http.client.java.JavaKoogHttpClient
 import ai.koog.prompt.executor.clients.anthropic.AnthropicClientSettings
 import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekClientSettings
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
+import ai.koog.prompt.executor.clients.openai.base.AbstractOpenAILLMClient
 import ai.koog.prompt.executor.clients.openrouter.OpenRouterLLMClient
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
@@ -10,6 +15,7 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import io.ktor.server.config.ApplicationConfig
+import kotlin.reflect.KClass
 
 /** Общее подключение сервера; секрет остаётся только внутри клиента Koog. */
 class AssistantConnection internal constructor(
@@ -50,6 +56,7 @@ class AssistantConnection internal constructor(
                     "openai" -> LLMProvider.OpenAI
                     "anthropic" -> LLMProvider.Anthropic
                     "openrouter" -> LLMProvider.OpenRouter
+                    "deepseek" -> LLMProvider.DeepSeek
                     else -> return unavailable()
                 }
             val languageModel =
@@ -65,12 +72,30 @@ class AssistantConnection internal constructor(
                     "openai" -> OpenAILLMClient(apiKey)
                     "anthropic" -> AnthropicLLMClient(apiKey, AnthropicClientSettings(modelVersionsMap = mapOf(languageModel to languageModel.id)))
                     "openrouter" -> OpenRouterLLMClient(apiKey)
+                    "deepseek" -> deepSeekClient(apiKey)
                     else -> return unavailable()
                 }
             return AssistantConnection(
                 MultiLLMPromptExecutor(client.llmProvider() to client),
                 languageModel,
             )
+        }
+
+        /** Koog 1.3 отправляет готовый JSON как text/plain; DeepSeek требует application/json. */
+        internal fun deepSeekClient(apiKey: String, settings: DeepSeekClientSettings = DeepSeekClientSettings()): DeepSeekLLMClient {
+            val http = AbstractOpenAILLMClient.createConfiguredHttpClient(apiKey, settings, JavaKoogHttpClient.Factory(), "DeepSeekLLMClient")
+            val jsonHttp =
+                object : KoogHttpClient by http {
+                    override suspend fun <T : Any, R : Any> post(
+                        path: String,
+                        requestBody: T,
+                        requestBodyType: KClass<T>,
+                        responseType: KClass<R>,
+                        parameters: Map<String, String>,
+                        headers: Map<String, String>,
+                    ): R = http.post(path, requestBody, requestBodyType, responseType, parameters, headers + ("Content-Type" to "application/json"))
+                }
+            return DeepSeekLLMClient(settings, jsonHttp)
         }
     }
 }

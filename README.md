@@ -17,17 +17,18 @@
 
 ---
 
-### 🚀 Локальный запуск через https://athletica.crm
+### 🚀 Локальный запуск через https://app.athletica.crm
 
-Dev-nginx (`docker-compose.dev.yaml`) проксирует фронт (Vite, :5173), API (Ktor, :8080) и RustFS
-по HTTPS на самоподписанном сертификате. HTTPS нужен, чтобы страница была secure context
+Dev-nginx (`docker-compose.dev.yaml`) отдаёт лендинг на `athletica.crm` и проксирует CRM на
+`app.athletica.crm` — фронт (Vite, :5173) и API (Ktor, :8080), — а также RustFS по HTTPS на самоподписанном сертификате. HTTPS нужен, чтобы страница была secure context
 (без него в браузере нет `crypto.randomUUID`, `navigator.clipboard` и т.п.).
 
 1. Хосты в `/etc/hosts`:
    ```
-   127.0.0.1 athletica.crm minio.athletica.crm console.minio.athletica.crm
+   127.0.0.1 athletica.crm app.athletica.crm minio.athletica.crm console.minio.athletica.crm
    ```
-2. Сертификат (один раз; кладётся в `nginx/certs/`, в git не попадает):
+2. Сертификат (кладётся в `nginx/certs/`, в git не попадает; перевыпустить, если в нём нет
+   `app.athletica.crm`):
    ```bash
    ./nginx/gen-dev-cert.sh
    ```
@@ -52,7 +53,7 @@ Dev-nginx (`docker-compose.dev.yaml`) проксирует фронт (Vite, :51
    ```bash
    cd web && npm ci && npm run dev
    ```
-7. Открыть https://athletica.crm/.
+7. Открыть https://app.athletica.crm/ (CRM) или https://athletica.crm/ (лендинг).
 
 ---
 

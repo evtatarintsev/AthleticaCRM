@@ -33,6 +33,7 @@ import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 import org.slf4j.LoggerFactory
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
@@ -94,7 +95,11 @@ class AssistantService(
             context(access()) { drafts.save(drafts.dialogOf(client), client) }
         }
 
-    /** Принимает сообщение атомарно, затем выполняет ограниченный ход без открытой транзакции. */
+    /**
+     * Принимает сообщение атомарно, затем выполняет ограниченный ход без открытой транзакции.
+     * Ход модели заканчивается раньше срока хода в БД, чтобы успеть сохранить ответ.
+     * В журнал попадает только тип сбоя провайдера: его сообщение может содержать данные клиента.
+     */
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     suspend fun send(dialog: Uuid, text: String): AssistantDialogResponse {
         val (message, history, fields) =
@@ -142,7 +147,7 @@ class AssistantService(
         var answer = ""
         var exchange = "[]"
         try {
-            val result = withTimeout(45_000) { AssistantRunner(connection).run(text, ctx.lang.code, history, registry, fields) }
+            val result = withTimeout(AssistantStorage.TURN_DEADLINE - 5.seconds) { AssistantRunner(connection).run(text, ctx.lang.code, history, registry, fields) }
             answer = result.text
             exchange = result.history
         } catch (_: TimeoutCancellationException) {
@@ -152,8 +157,9 @@ class AssistantService(
                 db.transaction { storage.finish(dialog, message, "", blocks, "[]", "ASSISTANT_INTERRUPTED") }
             }
             throw cancelled
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
             error = "ASSISTANT_PROVIDER_FAILURE"
+            logger.warn("assistant turn={} failure={}", message, failure.message.takeIf { it in LIMIT_CODES } ?: failure::class.qualifiedName)
         }
         val response =
             db.transaction {
@@ -191,5 +197,8 @@ class AssistantService(
 
     private companion object {
         val logger = LoggerFactory.getLogger(AssistantService::class.java)
+
+        /** Собственные коды ограничений [AssistantRunner]; безопасны для журнала. */
+        val LIMIT_CODES = setOf("ASSISTANT_STEPS", "ASSISTANT_OUTPUT")
     }
 }

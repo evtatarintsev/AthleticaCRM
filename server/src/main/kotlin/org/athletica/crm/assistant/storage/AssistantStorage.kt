@@ -118,11 +118,7 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
             raise(assistantError("DISABLED"))
         }
         lockDialog(dialogId)
-        if (tr.sql("SELECT id FROM assistant_messages WHERE dialog_id = :dialog AND org_id = :org AND status = 'processing'")
-                .bind("dialog", dialogId).bind("org", ctx.orgId).firstOrNull { it.asUuid("id") } != null
-        ) {
-            raise(assistantError("BUSY"))
-        }
+        requireIdle(dialogId)
         val date = calendar.today()
         val reserved =
             tr.sql("INSERT INTO assistant_usage(org_id,local_date,accepted_messages) VALUES (:org,:date,1) ON CONFLICT (org_id,local_date) DO UPDATE SET accepted_messages = assistant_usage.accepted_messages + 1 WHERE assistant_usage.accepted_messages < :limit RETURNING accepted_messages")
@@ -136,6 +132,16 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
         return id
     }
 
+    /** Отклоняет действие, пока в диалоге идёт ход; вызывается под блокировкой [lockDialog]. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun requireIdle(dialog: Uuid) {
+        if (tr.sql("SELECT id FROM assistant_messages WHERE dialog_id = :dialog AND org_id = :org AND status = 'processing'")
+                .bind("dialog", dialog).bind("org", ctx.orgId).firstOrNull { it.asUuid("id") } != null
+        ) {
+            raise(assistantError("BUSY"))
+        }
+    }
+
     /** Записывает одно сообщение принятого хода. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun insertMessage(
@@ -146,7 +152,7 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
         status: String,
     ) {
         tr.sql("INSERT INTO assistant_messages(id,dialog_id,org_id,role,text,status,deadline) VALUES (:id,:dialog,:org,:role,:text,:status,:deadline)")
-            .bind("id", id).bind("dialog", dialog).bind("org", ctx.orgId).bind("role", role).bind("text", text).bind("status", status).bind("deadline", clock.now() + 45.seconds).execute()
+            .bind("id", id).bind("dialog", dialog).bind("org", ctx.orgId).bind("role", role).bind("text", text).bind("status", status).bind("deadline", clock.now() + TURN_DEADLINE).execute()
     }
 
     /** Последние целые успешные обмены, без незавершённых tool call/result. */
@@ -182,5 +188,10 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
         tr.sql("UPDATE assistant_messages SET text = :text, blocks = :blocks::jsonb, provider_history = :history::jsonb, status = :status, error_code = :error WHERE id = :id AND dialog_id = :dialog AND org_id = :org AND status = 'processing' AND deadline > :now")
             .bind("id", message).bind("dialog", dialog).bind("org", ctx.orgId).bind("text", text).bind("blocks", Json.encodeToString(blocks))
             .bind("history", history).bind("status", if (error == null) "completed" else "failed").bind("error", error).bind("now", clock.now()).execute()
+    }
+
+    companion object {
+        /** Срок жизни хода от приёма сообщения; после него ответ модели не сохраняется. */
+        val TURN_DEADLINE = 45.seconds
     }
 }

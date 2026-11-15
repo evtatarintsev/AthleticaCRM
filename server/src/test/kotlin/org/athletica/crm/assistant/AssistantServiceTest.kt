@@ -154,6 +154,40 @@ class AssistantServiceTest {
             }
         }
 
+    /** Кнопка «ОК» не сохраняет карточку, пока в диалоге обрабатывается следующее сообщение. */
+    @Test
+    fun confirmWaitsForProcessingTurn(): Unit =
+        orThrow {
+            runBlocking {
+                context(owner) {
+                    di.assistant.updateSettings(AssistantSettingsRequest(true, 100))
+                    val dialog = di.assistant.current()
+                    fake.respond = { prompt ->
+                        if (prompt.messages.last().parts.any { it is MessagePart.Tool.Result }) {
+                            FakeAssistant.answer("Проверьте карточку")
+                        } else {
+                            FakeAssistant.call("prepare_client", """{"name":"Иванов Иван","gender":"MALE"}""")
+                        }
+                    }
+                    val card = di.assistant.send(dialog.id, "добавь клиента Иванов Иван").messages.last().blocks.filterIsInstance<AssistantBlock.ClientDraft>().single()
+                    val entered = CompletableDeferred<Unit>()
+                    val release = CompletableDeferred<Unit>()
+                    fake.respond = {
+                        entered.complete(Unit)
+                        release.await()
+                        FakeAssistant.answer("Уточните исправление")
+                    }
+                    val turn = async { either { di.assistant.send(dialog.id, "исправь телефон") } }
+                    entered.await()
+                    assertEquals("ASSISTANT_BUSY", assertIs<Either.Left<AppError>>(either { di.assistant.confirm(card.clientId) }).value.code)
+                    release.complete(Unit)
+                    assertIs<Either.Right<*>>(turn.await())
+                    assertEquals(0, count("clients"))
+                    assertEquals(Either.Right(AssistantBlock.ClientCreated(card.clientId)), either { di.assistant.confirm(card.clientId) })
+                }
+            }
+        }
+
     /** Ошибки неизвестного tool и типизации возвращаются модели; никаких доменных записей нет. */
     @Test
     fun unsupportedAndInvalidToolsStayControlled(): Unit =
@@ -236,6 +270,7 @@ class AssistantServiceTest {
                         assertFalse(rendered.contains("private-client"))
                         assertFalse(rendered.contains("private-provider"))
                         assertTrue(rendered.contains("assistant turn="))
+                        assertTrue(rendered.contains("failure="))
                     } finally {
                         root.detachAppender(logs)
                         logs.stop()

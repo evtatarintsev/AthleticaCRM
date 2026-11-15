@@ -103,7 +103,10 @@ class ClientDrafts(
             .bind("client", client).bind("org", ctx.orgId).bind("employee", ctx.employee.id).firstOrNull { it.asUuid("id") }
             ?: raise(assistantError("DIALOG_UNAVAILABLE"))
 
-    /** Повтор возвращает ту же квитанцию; вся запись выполняется в транзакции вызывающего кода. */
+    /**
+     * Повтор возвращает ту же квитанцию; вся запись выполняется в транзакции вызывающего кода.
+     * Прямое подтверждение без [currentMessage] отклоняется, пока в диалоге идёт ход: он может заменить карточку.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save(dialog: Uuid, client: ClientId, currentMessage: Uuid? = null): AssistantBlock.ClientCreated {
         storage.lockDialog(dialog)
@@ -120,6 +123,9 @@ class ClientDrafts(
         }
         if (draft.first != "pending") {
             raise(assistantError("DRAFT_SUPERSEDED"))
+        }
+        if (currentMessage == null) {
+            storage.requireIdle(dialog)
         }
         if (draft.third.first != "completed" || draft.third.second == currentMessage) {
             raise(assistantError("CONFIRMATION_REQUIRED"))

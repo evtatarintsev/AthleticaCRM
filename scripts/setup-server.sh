@@ -139,7 +139,10 @@ ok "Доступ к серверу есть"
 
 step "Параметры установки"
 
-DOMAIN=$(ask_required "Домен (без https:// и без слеша), например athletictools.ru")
+DOMAIN=$(ask_required "Основной домен (без https:// и без слеша), например athleticacrm.ru")
+hint "Лендинг откроется на $DOMAIN, CRM — на app.$DOMAIN."
+hint "Прочие домены продукта (например, прежний) перенаправляются в CRM; им тоже нужны A-записи и место в сертификате."
+EXTRA_DOMAINS=$(ask "Дополнительные домены через пробел, например athletictools.ru www.athletictools.ru" "")
 ACME_EMAIL=$(ask_required "E-mail для Let's Encrypt (уведомления об истечении сертификата)" "admin@$DOMAIN")
 
 GIT_REMOTE=$(git config --get remote.origin.url 2>/dev/null || true)
@@ -166,7 +169,7 @@ done
 # Docker Compose называет тома по имени каталога проекта.
 VOLUME_LETSENCRYPT="${PROJECT_NAME}_letsencrypt"
 
-CERT_DOMAINS="$DOMAIN www.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN"
+CERT_DOMAINS="$DOMAIN www.$DOMAIN app.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN $EXTRA_DOMAINS"
 
 printf '\n'
 ok "Том с сертификатами будет называться: $VOLUME_LETSENCRYPT"
@@ -256,7 +259,7 @@ if [ "$REUSE_ENV" = "no" ]; then
     YOOKASSA_SHOP_ID=$(ask "shopId ЮKassa" "")
     YOOKASSA_SECRET_KEY=$(ask_secret "Секретный ключ ЮKassa (можно пустым)")
     if confirm "Тестовый режим ЮKassa?" y; then YOOKASSA_TEST_MODE=true; else YOOKASSA_TEST_MODE=false; fi
-    YOOKASSA_RETURN_URL="https://$DOMAIN/payment/complete"
+    YOOKASSA_RETURN_URL="https://app.$DOMAIN/settings/org-balance/complete"
 
     printf '\n'
     hint "Sentry/GlitchTip DSN — сбор ошибок сервера. Необязательно, можно оставить пустым."
@@ -486,17 +489,15 @@ $COMPOSE down --remove-orphans >/dev/null 2>&1 || true
 
 # Проверку делаем через compose, а не docker run: так том letsencrypt создаётся
 # самим compose и получает его метки. Том, созданный мимо compose, ломает up.
-if $COMPOSE run --rm --entrypoint sh certbot -c "test -d /etc/letsencrypt/live/$DOMAIN" </dev/null >/dev/null 2>&1; then
-    echo "  · сертификат для $DOMAIN уже есть, пропускаю выпуск"
-else
-    echo "  · запрашиваю сертификат Let's Encrypt"
-    CERT_ARGS=""
-    for d in $CERT_DOMAINS; do CERT_ARGS="$CERT_ARGS -d $d"; done
-    # shellcheck disable=SC2086
-    $COMPOSE run --rm -p 80:80 certbot certonly --standalone \
-        $CERT_ARGS \
-        --email "$ACME_EMAIL" --agree-tos --no-eff-email --non-interactive </dev/null
-fi
+# --keep-until-expiring: при тех же именах сертификат не перевыпускается;
+# --expand: новые имена (app., дополнительные домены) добавляются в существующий сертификат.
+echo "  · запрашиваю сертификат Let's Encrypt (или оставляю действующий)"
+CERT_ARGS=""
+for d in $CERT_DOMAINS; do CERT_ARGS="$CERT_ARGS -d $d"; done
+# shellcheck disable=SC2086
+$COMPOSE run --rm -p 80:80 certbot certonly --standalone \
+    $CERT_ARGS --expand --keep-until-expiring \
+    --email "$ACME_EMAIL" --agree-tos --no-eff-email --non-interactive </dev/null
 
 echo "  · дополняю том letsencrypt файлами для nginx"
 docker run --rm \
@@ -583,7 +584,7 @@ fi
 step "Проверка"
 
 sleep 5
-for url in "https://$DOMAIN/" "https://$DOMAIN/api/"; do
+for url in "https://$DOMAIN/" "https://app.$DOMAIN/" "https://app.$DOMAIN/api/"; do
     printf '%-40s ' "$url"
     CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url" || echo "---")
     case "$CODE" in
@@ -594,8 +595,12 @@ for url in "https://$DOMAIN/" "https://$DOMAIN/api/"; do
 done
 
 printf '\n%s━━━ Готово%s\n\n' "$B$GRN" "$N"
-info "Сайт:      https://$DOMAIN"
+info "Лендинг:   https://$DOMAIN"
+info "CRM:       https://app.$DOMAIN"
 info "MinIO:     https://console.minio.$DOMAIN"
+printf '\n'
+info "Адрес уведомлений ЮKassa (панель ЮKassa → Интеграция → HTTP-уведомления):"
+info "           https://app.$DOMAIN/api/checkout/yookassa"
 printf '\n'
 info "Дальше автодеплой работает сам: push в master собирает образы и обновляет сервер."
 printf '\n'

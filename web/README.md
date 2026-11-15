@@ -14,9 +14,9 @@ npm run format    # prettier --write
 npm run build     # сборка в dist/
 ```
 
-Открыть: http://localhost:5173/ или, через dev-nginx (`docker-compose.dev.yaml`), https://athletica.crm/.
+Открыть: http://localhost:5173/ или, через dev-nginx (`docker-compose.dev.yaml`), https://app.athletica.crm/ (лендинг — https://athletica.crm/).
 Dev-nginx работает по HTTPS на самоподписанном сертификате — настройка в корневом
-[README](../README.md#-локальный-запуск-через-httpsathleticacrm).
+[README](../README.md#-локальный-запуск-через-httpsappathleticacrm).
 
 ## Устройство
 
@@ -136,7 +136,13 @@ const api = { call: vi.fn<ApiClient["call"]>() } satisfies ApiClient;
 ## Деплой
 
 `Dockerfile` собирает статику и кладёт её в nginx под корнем. В проде это сервис `frontend`
-в `docker-compose.prod.yaml`; внешний nginx проксирует на него `/`, а старый префикс
-`/web/...` перенаправляет без него (`nginx/prod.conf.template`).
+в `docker-compose.prod.yaml`; внешний nginx (`nginx/prod.conf.template`) проксирует на него `/`
+хоста CRM `app.<домен>`.
+
+Тот же образ отдаёт публичный лендинг — `landing/index.html`, статичный HTML без React и сборки.
+Внутренний nginx (`nginx.conf`) обслуживает его на порту `8081`, внешний проксирует туда корень
+основного домена и перенаправляет `/login` и `/sign-up` на `app.<домен>`, поэтому ссылки в лендинге
+относительные. Строки лендинга написаны прямо в HTML, а не берутся из `src/i18n/`: словари — часть
+React-приложения, а у лендинга пока один язык.
 Образ `ghcr.io/<repo>/frontend` собирает CI на push в `master`;
 для стенда — `./deploy_to_stand.sh <ip> --only frontend`.

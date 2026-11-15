@@ -178,8 +178,8 @@ docker compose -f $COMPOSE_FILE ps"
 
 DOMAIN=$(ssh_do "grep -E '^DOMAIN=' '$DEPLOY_PATH/.env' | tail -1 | cut -d= -f2-" | tr -d '"'"'"' \r')
 if [ -n "$DOMAIN" ]; then
-    printf 'Проверяю https://%s/api/ … ' "$DOMAIN"
-    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$DOMAIN/api/" || true)
+    printf 'Проверяю https://app.%s/api/ … ' "$DOMAIN"
+    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://app.$DOMAIN/api/" || true)
     case "$CODE" in
         2*|3*|4*) printf '%sHTTP %s%s\n' "$GREEN" "$CODE" "$OFF" ;;
         *) printf '%sHTTP %s%s\n' "$YELLOW" "${CODE:-нет ответа}" "$OFF"

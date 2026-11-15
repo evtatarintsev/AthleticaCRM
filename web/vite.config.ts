@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 /**
- * Веб-фронтенд отдаётся с корня; исторический префикс `/web` сохраняется временными 301 в nginx.
+ * Веб-фронтенд отдаётся с корня хоста CRM (`app.<домен>`).
  * В dev-режиме /api проксируется на локальный Ktor: по умолчанию порт 8080,
  * другой адрес задаётся переменной окружения API_PROXY.
  */
@@ -21,7 +21,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    allowedHosts: ["athletica.crm"],
+    allowedHosts: ["app.athletica.crm"],
     proxy: {
       "/api": process.env["API_PROXY"] ?? "http://localhost:8080",
     },

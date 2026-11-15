@@ -12,6 +12,7 @@
 3. [Что получилось на сервере](#3-что-получилось-на-сервере)
 4. [Автодеплой](#4-автодеплой)
 5. [Переезд на другой сервер](#5-переезд-на-другой-сервер)
+   - [Смена основного домена](#смена-основного-домена)
 6. [Обслуживание](#6-обслуживание)
 7. [Диагностика](#7-диагностика)
 8. [Ручная установка без скрипта](#8-ручная-установка-без-скрипта)
@@ -45,12 +46,18 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub root@<IP сервера>
 
 A-записи на IP сервера. Все имена нужны для одного общего TLS-сертификата:
 
-| Запись | Тип |
-|--------|-----|
-| `yourdomain.com` | A |
-| `www.yourdomain.com` | A |
-| `minio.yourdomain.com` | A |
-| `console.minio.yourdomain.com` | A |
+| Запись | Тип | Что там |
+|--------|-----|---------|
+| `yourdomain.com` | A | публичный лендинг |
+| `www.yourdomain.com` | A | перенаправление на `yourdomain.com` |
+| `app.yourdomain.com` | A | CRM: веб-клиент и API |
+| `minio.yourdomain.com` | A | S3 API хранилища (ссылки на файлы) |
+| `console.minio.yourdomain.com` | A | веб-консоль хранилища |
+
+Прочие домены продукта (например, прежний основной) можно направить на тот же сервер:
+nginx перенаправляет любой незнакомый хост на тот же путь в `app.yourdomain.com`.
+Скрипт спросит их список и добавит в сертификат — без этого браузер покажет ошибку TLS
+до перенаправления.
 
 Распространение занимает 5–30 минут. Скрипт проверит записи через `dig` и предупредит о расхождениях.
 
@@ -69,6 +76,11 @@ Docker-образы приватные, серверу нужен PAT с пра�
 и, опционально, `shopId` с секретным ключом ЮKassa (панель ЮKassa → Настройки → Магазин).
 Приём платежей можно отложить: оставить поля пустыми и включить тестовый режим.
 
+В панели ЮKassa (Интеграция → HTTP-уведомления) указать адрес уведомлений
+`https://app.yourdomain.com/api/checkout/yookassa` и событие `payment.succeeded`.
+Без этого платёж проходит, но баланс организации не пополняется. Адрес возврата после оплаты
+(`YOOKASSA_RETURN_URL`) скрипт задаёт сам: `https://app.yourdomain.com/settings/org-balance/complete`.
+
 Пароли PostgreSQL, S3-хранилища и JWT-секрет скрипт генерирует сам — вводить их не нужно.
 
 ---
@@ -82,14 +94,16 @@ Docker-образы приватные, серверу нужен PAT с пра�
 ```
 
 Скрипт идемпотентен — повторный запуск безопасен: существующие пользователь, ключ,
-сертификат, `.env` и cron-задача не перезаписываются.
+`.env` и cron-задача не перезаписываются. Сертификат перевыпускается, только если
+изменился список имён (`certbot --expand --keep-until-expiring`), — так повторный запуск
+добавляет в него новые имена.
 
 Порядок шагов:
 
 | Шаг | Что происходит |
 |-----|----------------|
 | 1 | Проверка SSH-доступа к серверу под root |
-| 2 | Домен, e-mail для Let's Encrypt, репозиторий, пользователь и каталог деплоя |
+| 2 | Основной и дополнительные домены, e-mail для Let's Encrypt, репозиторий, пользователь и каталог деплоя |
 | 3 | Проверка A-записей через `dig` |
 | 4 | Генерация паролей, вопросы про SMTP/ЮKassa/Sentry, GitHub PAT |
 | 5 | Создание `~/.ssh/athletica_deploy` и алиаса в `~/.ssh/config` |
@@ -97,7 +111,7 @@ Docker-образы приватные, серверу нужен PAT с пра�
 | 7 | Копирование `docker-compose.prod.yaml`, `nginx/prod.conf.template`, `postgres/init/`, `.env` |
 | 8 | Логин в ghcr.io, выпуск сертификата, файлы TLS, `pull` + `up -d`, cron автопродления |
 | 9 | Запись секретов в GitHub (через `gh`, либо инструкция для ручного ввода) |
-| 10 | Проверка `https://домен/` и `https://домен/api/` |
+| 10 | Проверка `https://домен/`, `https://app.домен/` и `https://app.домен/api/` |
 
 Копия `.env` с сгенерированными паролями сохраняется локально в `~/.athletica-crm/<домен>.env`
 с правами 600. **Не теряйте этот файл** — восстановить пароль к базе иначе неоткуда.
@@ -178,6 +192,25 @@ docker compose -f docker-compose.prod.yaml exec -T postgres pg_dump -U athletica
 # на новом
 gunzip -c dump.sql.gz | docker compose -f docker-compose.prod.yaml exec -T postgres psql -U athletica athletica
 ```
+
+### Смена основного домена
+
+Основной домен задаёт только `DOMAIN` в `.env` (и производные от него значения) — код и
+шаблоны менять не нужно.
+
+1. A-записи нового домена: сам домен, `www.`, `app.`, `minio.`, `console.minio.`.
+2. Прогнать `./scripts/setup-server.sh` с новым основным доменом; прежний указать в
+   дополнительных доменах (`old.ru www.old.ru`), чтобы старые адреса перенаправлялись в CRM.
+   Сертификат выпускается заново: его каталог называется по основному домену.
+   Существующий `.env` скрипт предлагает оставить как есть (новые пароли сломали бы доступ к базе),
+   поэтому в `/opt/athletica-crm/.env` поправить руками: `DOMAIN`, `MINIO_PUBLIC_ENDPOINT=https://minio.<домен>`,
+   `YOOKASSA_RETURN_URL=https://app.<домен>/settings/org-balance/complete`
+   (`SMTP_FROM_ADDRESS` — только когда почта для нового домена настроена у провайдера).
+3. `docker compose -f docker-compose.prod.yaml up -d && docker compose -f docker-compose.prod.yaml restart nginx`.
+4. Сменить адрес HTTP-уведомлений в панели ЮKassa на `https://app.<домен>/api/checkout/yookassa`.
+5. Проверить: лендинг на `https://<домен>/`, вход на `https://app.<домен>/login`,
+   `curl -I https://old.ru/clients` → `301` на `https://app.<домен>/clients`, тестовый платёж
+   с зачислением на баланс.
 
 ---
 
@@ -297,7 +330,8 @@ scp .env.prod.example               deploy@SERVER:/opt/athletica-crm/.env   # з
 cd /opt/athletica-crm
 echo "<PAT>" | docker login ghcr.io -u <github-user> --password-stdin
 docker compose -f docker-compose.prod.yaml run --rm -p 80:80 certbot certonly --standalone \
-  -d yourdomain.com -d www.yourdomain.com -d minio.yourdomain.com -d console.minio.yourdomain.com \
+  -d yourdomain.com -d www.yourdomain.com -d app.yourdomain.com \
+  -d minio.yourdomain.com -d console.minio.yourdomain.com \
   --email admin@yourdomain.com --agree-tos --no-eff-email --non-interactive
 docker run --rm -v athletica-crm_letsencrypt:/le -v /opt/athletica-crm/ssl:/src:ro alpine sh -c '
   cp /src/options-ssl-nginx.conf /le/options-ssl-nginx.conf

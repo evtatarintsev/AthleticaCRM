@@ -3,11 +3,13 @@ import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient, type ApiClientOptions } from "@/api/client";
+import { AuthMeResponseSchema } from "@/api/generated/contracts";
 import { I18nProvider } from "@/i18n/I18nProvider";
 import { ru } from "@/i18n/ru";
 import { createQueryClient } from "@/query/queries";
 import { createAppRouting, isStaticAppPath } from "./router";
 import { sections } from "./sections";
+import * as fake from "@/test/app";
 
 const me = {
   id: "0199a0b2-7c3e-7d2a-9f10-000000000001",
@@ -161,5 +163,128 @@ describe("раскладка", () => {
     sections.forEach((section) => {
       expect(isStaticAppPath(section.path)).toBe(true);
     });
+  });
+});
+
+/** Ответ сервера «нет сессии». */
+function unauthorized(): Response {
+  return fake.json({ code: "UNAUTHORIZED", message: "" }, 401);
+}
+
+/** Сервер гостя: сессии нет, обновить её нельзя. */
+function guestServer() {
+  return fake.fakeServer({ "auth/me": unauthorized, "auth/refresh-token": unauthorized });
+}
+
+describe("страницы для гостей", () => {
+  it("вошедшего пользователя вход ведёт на главную и не оставляет себя в истории", async () => {
+    const api = fake.appServer({});
+    const { history } = fake.openApp("/login", api.fetch);
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/");
+    });
+    expect(screen.queryByRole("heading", { name: ru["auth.loginTitle"] })).not.toBeInTheDocument();
+    expect(history.length).toBe(1);
+    expect(api.to("auth/me")).toHaveLength(1);
+  });
+
+  it("вошедшего пользователя вход ведёт на адрес возврата вместе с его query", async () => {
+    const api = fake.appServer({});
+    const search = new URLSearchParams({ redirect: "/clients?sort=balance" });
+    const { history } = fake.openApp(`/login?${search.toString()}`, api.fetch);
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/clients");
+    });
+    expect(new URLSearchParams(history.location.search).get("sort")).toBe("balance");
+  });
+
+  it("подменённый адрес возврата ведёт вошедшего пользователя на главную", async () => {
+    const api = fake.appServer({});
+    const search = new URLSearchParams({ redirect: "https://evil.example/" });
+    const { history } = fake.openApp(`/login?${search.toString()}`, api.fetch);
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/");
+    });
+  });
+
+  it("вошедшего пользователя регистрация ведёт на главную", async () => {
+    const api = fake.appServer({});
+    const { history } = fake.openApp("/sign-up", api.fetch);
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/");
+    });
+    expect(
+      screen.queryByRole("heading", { name: ru["auth.registerTitle"] }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("истёк только токен доступа — сессия обновляется, вход ведёт на главную", async () => {
+    let accessValid = false;
+    const api = fake.appServer({
+      "auth/me": () => (accessValid ? fake.json(fake.session()) : unauthorized()),
+      "auth/refresh-token": () => {
+        accessValid = true;
+        return fake.json({});
+      },
+    });
+    const { history } = fake.openApp("/login", api.fetch);
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/");
+    });
+    expect(api.to("auth/refresh-token")).toHaveLength(1);
+  });
+
+  it("гость видит форму входа, адрес возврата сохраняется", async () => {
+    const api = guestServer();
+    const { history } = fake.openApp("/login?redirect=%2Fclients", api.fetch);
+
+    expect(await screen.findByRole("heading", { name: ru["auth.loginTitle"] })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.to("auth/refresh-token")).toHaveLength(1);
+    });
+    expect(history.location.pathname).toBe("/login");
+    expect(new URLSearchParams(history.location.search).get("redirect")).toBe("/clients");
+  });
+
+  it("гость остаётся на странице регистрации", async () => {
+    const api = guestServer();
+    const { history } = fake.openApp("/sign-up", api.fetch);
+
+    expect(
+      await screen.findByRole("heading", { name: ru["auth.registerTitle"] }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.to("auth/refresh-token")).toHaveLength(1);
+    });
+    expect(history.location.pathname).toBe("/sign-up");
+  });
+
+  it("устаревшая сессия в кэше не уводит со входа и не зацикливает переходы", async () => {
+    const api = guestServer();
+    const { history } = fake.openApp(
+      "/login",
+      api.fetch,
+      AuthMeResponseSchema.parse(fake.session()),
+    );
+
+    expect(await screen.findByRole("heading", { name: ru["auth.loginTitle"] })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.to("auth/refresh-token")).toHaveLength(1);
+    });
+    expect(history.location.pathname).toBe("/login");
+    expect(api.to("auth/me")).toHaveLength(1);
+  });
+
+  it("сервер недоступен — показывается форма входа", async () => {
+    const fetch = vi.fn<ApiClientOptions["fetch"]>(() => Promise.reject(new TypeError("offline")));
+    const { history } = fake.openApp("/login", fetch);
+
+    expect(await screen.findByRole("heading", { name: ru["auth.loginTitle"] })).toBeInTheDocument();
+    expect(history.location.pathname).toBe("/login");
   });
 });

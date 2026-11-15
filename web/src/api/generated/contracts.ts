@@ -526,6 +526,16 @@ export const ClientBalanceHistoryResponseSchema = z
   .readonly();
 export type ClientBalanceHistoryResponse = z.output<typeof ClientBalanceHistoryResponseSchema>;
 
+export const ClientCardSectionsResponseSchema = z
+  .object({
+    tasks: z.boolean(),
+    notes: z.boolean(),
+    chat: z.boolean(),
+    documents: z.boolean(),
+  })
+  .readonly();
+export type ClientCardSectionsResponse = z.output<typeof ClientCardSectionsResponseSchema>;
+
 export const ContactTypeSchema = z.enum(["PHONE", "EMAIL", "TELEGRAM", "VK", "FACEBOOK"]);
 export type ContactType = z.output<typeof ContactTypeSchema>;
 
@@ -915,6 +925,13 @@ export const ClientNotesListResponseSchema = z
   })
   .readonly();
 export type ClientNotesListResponse = z.output<typeof ClientNotesListResponseSchema>;
+
+export const ClientUnpaidSessionsRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type ClientUnpaidSessionsRequest = z.output<typeof ClientUnpaidSessionsRequestSchema>;
 
 export const JsonValueSchema = z.json();
 export type JsonValue = z.output<typeof JsonValueSchema>;
@@ -3163,6 +3180,16 @@ export const UpdateChannelIntegrationRequestSchema = z
   .readonly();
 export type UpdateChannelIntegrationRequest = z.output<typeof UpdateChannelIntegrationRequestSchema>;
 
+export const UpdateClientCardSectionsRequestSchema = z
+  .object({
+    tasks: z.boolean(),
+    notes: z.boolean(),
+    chat: z.boolean(),
+    documents: z.boolean(),
+  })
+  .readonly();
+export type UpdateClientCardSectionsRequest = z.output<typeof UpdateClientCardSectionsRequestSchema>;
+
 export const UpdateDisciplineRequestSchema = z
   .object({
     id: DisciplineIdSchema,
@@ -3639,6 +3666,13 @@ export const endpoints = {
     out: "empty",
     response: z.undefined(),
   },
+  "clients/unpaid-sessions": {
+    method: "POST",
+    in: "body",
+    request: ClientUnpaidSessionsRequestSchema,
+    out: "json",
+    response: UnpaidSessionsResponseSchema,
+  },
   "custom-fields/list": {
     method: "GET",
     in: "query",
@@ -4058,6 +4092,20 @@ export const endpoints = {
     request: UpdateAttendanceControlSettingsRequestSchema,
     out: "json",
     response: AttendanceControlSettingsResponseSchema,
+  },
+  "org/client-card": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ClientCardSectionsResponseSchema,
+  },
+  "org/client-card/update": {
+    method: "POST",
+    in: "body",
+    request: UpdateClientCardSectionsRequestSchema,
+    out: "json",
+    response: ClientCardSectionsResponseSchema,
   },
   "org/settings": {
     method: "GET",

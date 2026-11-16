@@ -17,7 +17,7 @@ case "$*" in
     *'nginx printenv DOMAIN') printf '%s\n' "${TEST_DOMAIN-example.com}" ;;
     *'certbot certificates --cert-name example.com')
         [ "${TEST_FAIL:-}" != list ] || exit 1
-        printf '  Certificate Name: example.com\n    Domains: %s\n' "${TEST_DOMAINS-example.com www.example.com minio.example.com console.minio.example.com old.example.org}"
+        printf '  Certificate Name: example.com\n    %s: %s\n' "${TEST_CERT_LABEL-Identifiers}" "${TEST_DOMAINS-example.com www.example.com minio.example.com console.minio.example.com old.example.org}"
         ;;
     *'certbot certonly '*) [ "${TEST_FAIL:-}" != issue ] ;;
     *'nginx nginx -t') [ "${TEST_FAIL:-}" != config ] ;;
@@ -79,12 +79,17 @@ done
 
 for variable in TEST_DOMAIN TEST_DOMAINS; do
     : > "$TEST_STATE/docker.log"
-    if env "$variable=" bash scripts/renew-certificates.sh; then
+    if env "$variable=" bash scripts/renew-certificates.sh 2> "$TEST_STATE/error.log"; then
         echo "Expected failure for empty $variable" >&2; exit 1
     fi
     ! grep -qF 'certbot certonly' "$TEST_STATE/docker.log"
 done
+grep -qF 'Вывод Certbot:' "$TEST_STATE/error.log"
+grep -qF 'Certificate Name: example.com' "$TEST_STATE/error.log"
+grep -qF 'run --rm -T certbot certificates' "$TEST_STATE/error.log"
+! grep -qF 'setup-server.sh' "$TEST_STATE/error.log"
 
 bash scripts/renew-certificates.sh --dry-run
 grep -qF -- '--dry-run' "$TEST_STATE/docker.log"
+TEST_CERT_LABEL=Domains bash scripts/renew-certificates.sh --dry-run
 printf '%s\n' 'Certificate renewal checks passed'

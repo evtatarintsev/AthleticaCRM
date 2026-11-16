@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ClientDetailResponseSchema,
+  UnpaidSessionSchemaSchema,
   LocalDateSchema,
   TaskListItemSchemaSchema,
 } from "@/api/generated/contracts";
@@ -8,7 +9,6 @@ import { activeState, testMembership } from "@/test/memberships";
 import { clientAlerts, nextBirthday } from "./clientCardAlerts";
 
 const today = LocalDateSchema.parse("2026-10-13");
-const now = new Date("2026-10-13T12:00:00Z");
 
 const client = ClientDetailResponseSchema.parse({
   id: "0199a0b2-7c3e-7d2a-9f10-000000000501",
@@ -66,9 +66,9 @@ describe("предупреждения карточки клиента", () => {
     const alerts = clientAlerts({
       client,
       memberships: [inTerm],
-      tasks: [overdueTask],
+      overdue: { tasks: [overdueTask], total: 1 },
+      unpaid: [],
       today,
-      now,
     });
     expect(alerts.map((alert) => alert.type)).toEqual(["debt", "overdueTasks", "birthday"]);
   });
@@ -77,20 +77,31 @@ describe("предупреждения карточки клиента", () => {
     const alerts = clientAlerts({
       client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
       memberships: [],
-      tasks: [],
+      overdue: undefined,
+      unpaid: [],
       today,
-      now,
     });
     expect(alerts.map((alert) => alert.type)).toEqual(["noActiveSubscription"]);
+  });
+
+  it("пока неоплаченные посещения не загружены, предупреждения об абонементе нет", () => {
+    const alerts = clientAlerts({
+      client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
+      memberships: [],
+      overdue: undefined,
+      unpaid: undefined,
+      today,
+    });
+    expect(alerts).toEqual([]);
   });
 
   it("будущий абонемент считается действующим — предупреждения об абонементе нет", () => {
     const alerts = clientAlerts({
       client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
       memberships: [notStarted],
-      tasks: [],
+      overdue: undefined,
+      unpaid: [],
       today,
-      now,
     });
     expect(alerts).toEqual([]);
   });
@@ -99,10 +110,52 @@ describe("предупреждения карточки клиента", () => {
     const alerts = clientAlerts({
       client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
       memberships: [closePending],
-      tasks: [],
+      overdue: undefined,
+      unpaid: [],
       today,
-      now,
     });
     expect(alerts.map((alert) => alert.type)).toEqual(["noActiveSubscription"]);
+  });
+});
+
+it("partial repayment respects groups and remaining sessions; unlimited covers all", () => {
+  const sessions = [1, 2, 3].map((n) =>
+    UnpaidSessionSchemaSchema.parse({
+      sessionId: `0199a0b2-7c3e-7d2a-9f10-00000000000${String(n)}`,
+      groupId: n === 3 ? "0199a0b2-7c3e-7d2a-9f10-000000000999" : client.groups[0]?.id,
+      groupName: "Group",
+      date: today,
+      startTime: "10:00",
+    }),
+  );
+  const source = { client, unpaid: sessions, overdue: undefined, today };
+  expect(
+    clientAlerts({
+      ...source,
+      memberships: [{ ...inTerm, sessionsRemaining: 1, sessionsTotal: 8 }],
+    })[0],
+  ).toMatchObject({ type: "debt", repayLimit: 1 });
+  expect(clientAlerts({ ...source, memberships: [inTerm] })[0]).toMatchObject({
+    type: "debt",
+    repayLimit: 2,
+  });
+  expect(
+    clientAlerts({
+      ...source,
+      memberships: [
+        {
+          ...inTerm,
+          groups: [
+            ...inTerm.groups,
+            { id: UnpaidSessionSchemaSchema.parse(sessions[2]).groupId, name: "Other" },
+          ],
+        },
+      ],
+    })[0],
+  ).toMatchObject({ type: "debt", repayLimit: 3 });
+  expect(clientAlerts({ ...source, unpaid: [], memberships: [inTerm] })[0]).toMatchObject({
+    type: "debt",
+    membership: null,
+    repayLimit: 0,
   });
 });

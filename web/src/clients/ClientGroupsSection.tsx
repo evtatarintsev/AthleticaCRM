@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { PlusIcon, UsersIcon, XIcon } from "lucide-react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
@@ -10,7 +10,8 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
-import { BlockRow, BlockStatus, ClientCardBlock } from "./card/ClientCardBlock";
+import { todayLocalDate } from "@/lib/localDate";
+import { BlockStatus, ClientCardBlock } from "./card/ClientCardBlock";
 
 /**
  * Блок групп клиента: список групп со ссылками и удалением, запись сразу в несколько групп
@@ -23,16 +24,22 @@ export function ClientGroupsSection({
   clientId,
   groups,
   onChanged,
+  open,
+  onOpenChange,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly groups: readonly ClientGroup[];
   readonly onChanged: () => Promise<void>;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const sheetOpen = open ?? localOpen;
+  const setSheetOpen = onOpenChange ?? setLocalOpen;
   const allGroups = useQuery({
     ...apiQuery(api, branchId, "groups/list-for-select"),
     enabled: sheetOpen,
@@ -70,25 +77,26 @@ export function ClientGroupsSection({
     return null;
   };
 
+  const details = useQueries({
+    queries: groups.map((group) => apiQuery(api, branchId, "groups/detail", { id: group.id })),
+  });
   const memberIds = new Set(groups.map((group) => group.id));
 
   return (
     <>
       <ClientCardBlock
-        icon={<UsersIcon aria-hidden />}
         title={t("clientCard.block.groups")}
         count={groups.length}
         actions={
           <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t("clients.detail.addToGroup")}
-            title={t("clients.detail.addToGroup")}
+            variant="link"
+            size="sm"
             onClick={() => {
               setSheetOpen(true);
             }}
           >
             <PlusIcon aria-hidden />
+            {t("clients.detail.addToGroup")}
           </Button>
         }
       >
@@ -99,14 +107,43 @@ export function ClientGroupsSection({
           empty={t("clients.detail.noGroups")}
         />
         {groups.length > 0 && (
-          <ul className="divide-y">
-            {groups.map((group) => (
-              <BlockRow
-                key={group.id}
-                aside={
+          <ul className="flex flex-wrap gap-2 px-4 py-3.5">
+            {groups.map((group, index) => {
+              const detail = details[index]?.data;
+              const days = [
+                ...new Set(
+                  detail?.schedule
+                    .filter(
+                      (slot) =>
+                        slot.validity === null ||
+                        (slot.validity.from <= todayLocalDate() &&
+                          (slot.validity.to === null || slot.validity.to > todayLocalDate())),
+                    )
+                    .map((slot) => t(`day.${slot.dayOfWeek}`)),
+                ),
+              ].join(" ");
+              const sub = [detail?.disciplines.map((d) => d.name).join(", ") ?? "", days]
+                .filter((part) => part !== "")
+                .join(" · ");
+              return (
+                <li
+                  key={group.id}
+                  className="inline-flex min-h-[34px] max-w-full items-center gap-2 rounded-[10px] border bg-muted/50 py-1 pr-1.5 pl-3 text-sm"
+                >
+                  <Link
+                    to="/groups/$groupId"
+                    params={{ groupId: group.id }}
+                    className="truncate font-medium text-primary hover:underline"
+                  >
+                    {group.name}
+                  </Link>
+                  {sub !== "" && (
+                    <span className="truncate text-xs text-muted-foreground">{sub}</span>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon-xs"
+                    className="shrink-0 text-muted-foreground"
                     aria-label={t("clients.detail.removeFromGroupAria", { name: group.name })}
                     title={t("clients.detail.removeFromGroupAria", { name: group.name })}
                     onClick={() => {
@@ -115,17 +152,9 @@ export function ClientGroupsSection({
                   >
                     <XIcon aria-hidden />
                   </Button>
-                }
-              >
-                <Link
-                  to="/groups/$groupId"
-                  params={{ groupId: group.id }}
-                  className="font-medium text-primary hover:underline"
-                >
-                  {group.name}
-                </Link>
-              </BlockRow>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </ClientCardBlock>

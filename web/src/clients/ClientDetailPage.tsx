@@ -1,14 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
-import type {
-  BranchId,
-  ClientDetailResponse,
-  ClientId,
-  MembershipId,
-  TaskId,
-} from "@/api/generated/contracts";
+import type { ClientId, MembershipId, TaskId } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { ConversationSheet } from "@/messaging/ConversationSheet";
@@ -20,19 +14,24 @@ import { hasPermission, useSession } from "@/query/session";
 import { TaskCreateSheet } from "@/tasks/TaskCreateSheet";
 import { TaskSheet } from "@/tasks/TaskSheet";
 import { PageHeader } from "@/ui/PageHeader";
-import { ClientMessagesSection, ClientTasksSection } from "./ClientActivitySections";
+import { ClientTasksSection } from "./ClientActivitySections";
 import { ClientBalanceSheet } from "./ClientBalanceSheet";
 import { ClientDocumentsSection } from "./ClientDocumentsSection";
-import { ClientGroupsSection } from "./ClientGroupsSection";
+import { ClientOverviewTab } from "./ClientOverviewTab";
+import { ClientSessionsTab } from "./ClientSessionsTab";
+import { ClientCardSectionsSheet } from "./ClientCardSectionsSheet";
+import { RepayDebtSheet } from "./membership/RepayDebt";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CLIENT_TABS, currentMemberships, type ClientTab } from "./card/clientOverview";
 import { ClientNotesSection } from "./ClientNotesSection";
-import { ClientAttendanceSection, ClientUpcomingSection } from "./ClientScheduleSections";
 import { ClientSubscriptionsSection } from "./ClientSubscriptionsSection";
 import { IssueSubscriptionSheet } from "./IssueSubscriptionSheet";
 import { MembershipSheet } from "./membership/MembershipSheet";
 import {
-  attendanceWith,
+  clientCardSectionsQuery,
+  clientUnpaidSessionsQuery,
+  clientTaskSummaryQuery,
   clientAttendanceQuery,
-  clientTasksQuery,
   clientUpcomingQuery,
   membershipsQuery,
   upcomingSessions,
@@ -40,29 +39,32 @@ import {
 import { ClientCardQuickInfo } from "./card/ClientCardQuickInfo";
 import { clientCustomFieldsQuery } from "./clientsQueries";
 import { clientAlerts } from "./card/clientCardAlerts";
-import { defaultTemplate, visibleBlocks, type ClientCardBlock } from "./card/clientCardBlocks";
 import { ClientCardHeader } from "./card/ClientCardHeader";
 import { ClientCardProfile } from "./card/ClientCardProfile";
 
-/**
- * Карточка клиента: шапка с действиями и предупреждениями, слева — контакты и анкета,
- * справа — лента блоков (занятия, абонементы, группы, посещения, задачи, сообщения,
- * заметки, документы) в порядке шаблона карточки. «Выдать абонемент» открывает панель выдачи;
- * плитка баланса открывает панель «Баланс», если у сотрудника есть право `CAN_VIEW_CLIENT_BALANCE`.
- * Создание и карточка задачи клиента, а также «Чат» с клиентом открываются панелями поверх карточки.
- */
+/** Карточка клиента: обзор и вкладки; изменения открываются в существующих панелях. */
 export function ClientDetailPage({
   api,
   clientId,
+  tab,
+  onTabChange,
 }: {
   readonly api: ApiClient;
   readonly clientId: ClientId;
+  readonly tab: ClientTab;
+  /** Переключает вкладку; [replace] — заменить запись истории, а не добавить новую. */
+  readonly onTabChange: (tab: ClientTab, replace?: boolean) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const session = useSession(api);
   const branchId = session.currentBranch.id;
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
+  const changeTab = onTabChange;
+  const requestedTab = tab;
+  const [sectionsOpen, setSectionsOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [repayId, setRepayId] = useState<MembershipId | null>(null);
   const [balanceOpen, setBalanceOpen] = useState(false);
   const [membershipId, setMembershipId] = useState<MembershipId | null>(null);
   const [membershipOpen, setMembershipOpen] = useState(false);
@@ -75,7 +77,32 @@ export function ClientDetailPage({
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
   const leadSources = useQuery(apiQuery(api, branchId, "lead-sources/list"));
   const memberships = useQuery(membershipsQuery(api, branchId, clientId));
-  const tasks = useQuery(clientTasksQuery(api, branchId, clientId));
+  const sections = useQuery(clientCardSectionsQuery(api, branchId));
+  const flags = sections.data;
+  const unpaid = useQuery(clientUnpaidSessionsQuery(api, branchId, clientId));
+  const unfinished = useQuery({
+    ...clientTaskSummaryQuery(api, branchId, clientId, false),
+    enabled: flags?.tasks === true,
+  });
+  const overdue = useQuery({
+    ...clientTaskSummaryQuery(api, branchId, clientId, true),
+    enabled: flags?.tasks === true,
+  });
+  const notes = useQuery({
+    ...apiQuery(api, branchId, "clients/notes/list", { clientId }),
+    enabled: flags?.notes === true,
+  });
+  const activeTab =
+    (requestedTab === "tasks" && flags?.tasks !== true) ||
+    (requestedTab === "notes" && flags?.notes !== true)
+      ? "overview"
+      : requestedTab;
+  useEffect(() => {
+    if (sections.data !== undefined && requestedTab !== activeTab) {
+      changeTab("overview", true);
+    }
+  }, [sections.data, requestedTab, activeTab, changeTab]);
+
   const attendance = useQuery(clientAttendanceQuery(api, branchId, clientId));
   const upcoming = useQuery(clientUpcomingQuery(api, branchId, client.data?.groups ?? []));
 
@@ -98,73 +125,49 @@ export function ClientDetailPage({
     toast.success(t(archived ? "clients.archivedToast" : "clients.restoredToast"));
   };
 
-  if (client.data === undefined) {
+  if (client.data === undefined)
     return (
       <section className="max-w-6xl">
         <PageHeader title={t("clients.title")} />
-        {client.isPending && (
-          <div className="space-y-4">
-            <Skeleton className="h-36 w-full" />
-            <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-          </div>
-        )}
+        {client.isPending && <Skeleton className="h-64 w-full" />}
         {client.isError && <FormAlert message={t("clients.loadClientError")} />}
       </section>
     );
-  }
-
   const data = client.data;
   const leadSourceName =
     leadSources.data?.leadSources.find((source) => source.id === data.leadSourceId)?.name ?? null;
-  const today = todayLocalDate();
   const alerts = clientAlerts({
     client: data,
     memberships: memberships.data?.memberships,
-    tasks: tasks.data?.tasks,
-    today,
-    now: new Date(),
+    unpaid: unpaid.data?.sessions,
+    overdue: flags?.tasks === true ? overdue.data : undefined,
+    today: todayLocalDate(),
   });
   const openMembership = (id: MembershipId) => {
     setMembershipId(id);
     setMembershipOpen(true);
   };
-
   return (
-    <section className="max-w-6xl space-y-4 pb-16">
+    <section className="max-w-6xl space-y-4 pb-24 sm:pb-16">
       <ClientCardHeader
         api={api}
         client={data}
         leadSourceName={leadSourceName}
-        quickInfo={
-          <ClientCardQuickInfo
-            balance={data.balance}
-            onBalanceClick={
-              canViewBalance
-                ? () => {
-                    setBalanceOpen(true);
-                  }
-                : undefined
-            }
-            memberships={memberships.data?.memberships}
-            onMembershipOpen={openMembership}
-            lastVisit={
-              attendance.data === undefined
-                ? undefined
-                : (attendanceWith(attendance.data.items, "PRESENT")[0] ?? null)
-            }
-            nextSession={
-              data.groups.length === 0
-                ? null
-                : upcoming.data === undefined
-                  ? undefined
-                  : (upcomingSessions(upcoming.data.sessions)[0] ?? null)
-            }
-          />
+        chatEnabled={flags?.chat === true}
+        onTaskCreate={
+          flags?.tasks === true
+            ? () => {
+                setTaskCreateOpen(true);
+              }
+            : undefined
         }
-        alerts={alerts}
+        onAddGroup={() => {
+          setGroupOpen(true);
+          changeTab("overview");
+        }}
+        onSections={() => {
+          setSectionsOpen(true);
+        }}
         onToggleArchived={(archived) => {
           void toggleArchived(archived);
         }}
@@ -175,38 +178,183 @@ export function ClientDetailPage({
           setChatOpen(true);
         }}
       />
-
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
-        <aside className="lg:sticky lg:top-4">
+      {(sections.isError || unpaid.isError) && <FormAlert message={t("clients.loadClientError")} />}
+      <Tabs
+        className="gap-4"
+        value={activeTab}
+        onValueChange={(value) => {
+          const next = CLIENT_TABS.find((item) => item === value);
+          if (next !== undefined) changeTab(next);
+        }}
+      >
+        <div className="sticky top-14 z-30 -mx-4 overflow-x-auto border-b bg-background px-4 [scrollbar-width:none] sm:static sm:mx-0 sm:px-0">
+          <TabsList variant="line" className="h-11">
+            {CLIENT_TABS.filter(
+              (item) =>
+                (item !== "tasks" || flags?.tasks === true) &&
+                (item !== "notes" || flags?.notes === true),
+            ).map((item) => (
+              <TabsTrigger
+                key={item}
+                value={item}
+                className="flex-none px-3"
+                onFocus={(event) => {
+                  event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+                }}
+              >
+                {t(`clientOverview.tab.${item}`)}
+                {item === "memberships" && (
+                  <TabCount>{currentMemberships(memberships.data?.memberships).length}</TabCount>
+                )}
+                {item === "tasks" && <TabCount>{unfinished.data?.total ?? 0}</TabCount>}
+                {item === "tasks" && (overdue.data?.total ?? 0) > 0 && (
+                  <span className="size-1.5 rounded-full bg-destructive">
+                    <span className="sr-only">{t("clientOverview.overdueMark")}</span>
+                  </span>
+                )}
+                {item === "notes" && <TabCount>{notes.data?.notes.length ?? 0}</TabCount>}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+        <TabsContent value="overview">
+          <ClientOverviewTab
+            api={api}
+            branchId={branchId}
+            client={data}
+            alerts={alerts}
+            chat={flags?.chat === true}
+            notes={flags?.notes === true}
+            onChanged={refreshDetail}
+            onChat={() => {
+              setChatOpen(true);
+            }}
+            onNotes={() => {
+              changeTab("notes");
+            }}
+            onIssue={() => {
+              setIssueOpen(true);
+            }}
+            onBalance={
+              canViewBalance
+                ? () => {
+                    setBalanceOpen(true);
+                  }
+                : undefined
+            }
+            onRepay={setRepayId}
+            onTask={setOpenTaskId}
+            onTasks={() => {
+              changeTab("tasks");
+            }}
+            groupOpen={groupOpen}
+            onGroupOpen={setGroupOpen}
+            quickInfo={
+              <ClientCardQuickInfo
+                balance={data.balance}
+                memberships={memberships.data?.memberships}
+                attendance={attendance.data?.items}
+                nextSession={
+                  data.groups.length === 0
+                    ? null
+                    : upcoming.data === undefined
+                      ? undefined
+                      : (upcomingSessions(upcoming.data.sessions)[0] ?? null)
+                }
+                onBalanceClick={
+                  canViewBalance
+                    ? () => {
+                        setBalanceOpen(true);
+                      }
+                    : undefined
+                }
+                onMembershipOpen={openMembership}
+                onMemberships={() => {
+                  changeTab("memberships");
+                }}
+                onSessions={() => {
+                  changeTab("sessions");
+                }}
+              />
+            }
+          />
+        </TabsContent>
+        <TabsContent value="memberships">
+          <ClientSubscriptionsSection
+            api={api}
+            branchId={branchId}
+            clientId={clientId}
+            limit={100}
+            onOpen={openMembership}
+          />
+        </TabsContent>
+        <TabsContent value="sessions">
+          <ClientSessionsTab
+            api={api}
+            branchId={branchId}
+            clientId={clientId}
+            groups={data.groups}
+          />
+        </TabsContent>
+        {flags?.tasks === true && (
+          <TabsContent value="tasks">
+            <ClientTasksSection
+              api={api}
+              branchId={branchId}
+              clientId={clientId}
+              limit={50}
+              onCreate={() => {
+                setTaskCreateOpen(true);
+              }}
+              onOpen={setOpenTaskId}
+            />
+          </TabsContent>
+        )}
+        {flags?.notes === true && (
+          <TabsContent value="notes">
+            <ClientNotesSection
+              api={api}
+              branchId={branchId}
+              clientId={clientId}
+              currentEmployeeId={session.employeeId}
+              limit={100}
+            />
+          </TabsContent>
+        )}
+        <TabsContent value="profile">
           <ClientCardProfile
             client={data}
             leadSourceName={leadSourceName}
             customFieldDefs={customFieldDefs.data ?? []}
             editable={data.state === "ACTIVE"}
           />
-        </aside>
-        <div className="space-y-4">
-          {visibleBlocks(defaultTemplate()).map((block) => (
-            <FeedBlock
-              key={block.id}
-              block={block}
+          {flags?.documents === true && (
+            <ClientDocumentsSection
               api={api}
-              branchId={branchId}
-              client={data}
-              currentEmployeeId={session.employeeId}
+              clientId={clientId}
+              docs={data.docs}
               onChanged={refreshDetail}
-              onMembershipOpen={openMembership}
-              onTaskCreate={() => {
-                setTaskCreateOpen(true);
-              }}
-              onTaskOpen={setOpenTaskId}
-              onChatOpen={() => {
-                setChatOpen(true);
-              }}
             />
-          ))}
-        </div>
-      </div>
+          )}
+        </TabsContent>
+      </Tabs>
+      <ClientCardSectionsSheet api={api} open={sectionsOpen} onOpenChange={setSectionsOpen} />
+      {repayId !== null && (
+        <RepayDebtSheet
+          api={api}
+          branchId={branchId}
+          clientId={clientId}
+          membershipId={repayId}
+          remaining={
+            memberships.data?.memberships.find((item) => item.id === repayId)?.sessionsRemaining ??
+            null
+          }
+          open
+          onOpenChange={(open) => {
+            if (!open) setRepayId(null);
+          }}
+        />
+      )}
 
       <MembershipSheet
         membership={
@@ -258,122 +406,7 @@ export function ClientDetailPage({
   );
 }
 
-/**
- * Блок ленты по его типу. [onTaskCreate] и [onTaskOpen] открывают панели задач,
- * [onChatOpen] — панель «Чат» поверх карточки.
- */
-function FeedBlock({
-  block,
-  api,
-  branchId,
-  client,
-  currentEmployeeId,
-  onChanged,
-  onMembershipOpen,
-  onTaskCreate,
-  onTaskOpen,
-  onChatOpen,
-}: {
-  readonly block: ClientCardBlock;
-  readonly api: ApiClient;
-  readonly branchId: BranchId;
-  readonly client: ClientDetailResponse;
-  readonly currentEmployeeId: string;
-  readonly onChanged: () => Promise<void>;
-  readonly onMembershipOpen: (id: MembershipId) => void;
-  readonly onTaskCreate: () => void;
-  readonly onTaskOpen: (taskId: TaskId) => void;
-  readonly onChatOpen: () => void;
-}) {
-  const clientId = client.id;
-  switch (block.type) {
-    case "upcoming":
-      return (
-        <ClientUpcomingSection
-          api={api}
-          branchId={branchId}
-          groups={client.groups}
-          limit={block.limit}
-        />
-      );
-    case "subscriptions":
-      return (
-        <ClientSubscriptionsSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          limit={block.limit}
-          onOpen={onMembershipOpen}
-        />
-      );
-    case "groups":
-      return (
-        <ClientGroupsSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          groups={client.groups}
-          onChanged={onChanged}
-        />
-      );
-    case "visits":
-      return (
-        <ClientAttendanceSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          presence="PRESENT"
-          limit={block.limit}
-        />
-      );
-    case "missed":
-      return (
-        <ClientAttendanceSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          presence="ABSENT"
-          limit={block.limit}
-        />
-      );
-    case "tasks":
-      return (
-        <ClientTasksSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          limit={block.limit}
-          onCreate={onTaskCreate}
-          onOpen={onTaskOpen}
-        />
-      );
-    case "messages":
-      return (
-        <ClientMessagesSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          onOpen={onChatOpen}
-        />
-      );
-    case "notes":
-      return (
-        <ClientNotesSection
-          api={api}
-          branchId={branchId}
-          clientId={clientId}
-          currentEmployeeId={currentEmployeeId}
-          limit={block.limit}
-        />
-      );
-    case "documents":
-      return (
-        <ClientDocumentsSection
-          api={api}
-          clientId={clientId}
-          docs={client.docs}
-          onChanged={onChanged}
-        />
-      );
-  }
+/** Счётчик записей во вкладке [children]. */
+function TabCount({ children }: { readonly children: number }) {
+  return <span className="text-xs tabular-nums opacity-60">{children}</span>;
 }

@@ -1,5 +1,4 @@
-import { ChevronDownIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
@@ -7,18 +6,16 @@ import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 /**
- * Каркас блока ленты карточки клиента: иконка, заголовок, счётчик записей, действия справа
- * и сворачивание. Содержимое — [children]; [footer] — строка под содержимым (например «Все»).
+ * Каркас карточки клиента: заголовок, счётчик записей и действия справа.
+ * Содержимое — [children]; [footer] — строка под содержимым (например «Все»).
  */
 export function ClientCardBlock({
-  icon,
   title,
   count,
   actions,
   footer,
   children,
 }: {
-  readonly icon: ReactNode;
   readonly title: string;
   /** Количество записей в блоке; `null` — счётчик не показывается. */
   readonly count: number | null;
@@ -26,42 +23,22 @@ export function ClientCardBlock({
   readonly footer?: ReactNode;
   readonly children: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(true);
   return (
-    <section className="rounded-lg border bg-card">
-      <div className="flex items-center gap-1 py-1.5 pr-2 pl-4">
-        <button
-          type="button"
-          aria-expanded={expanded}
-          onClick={() => {
-            setExpanded(!expanded);
-          }}
-          className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
-        >
-          <span className="text-muted-foreground [&_svg]:size-4">{icon}</span>
-          <h2 className="truncate font-medium">{title}</h2>
+    <section className="min-w-0 rounded-xl border bg-card shadow-xs">
+      <div className="flex min-h-13 items-center justify-between gap-2.5 border-b py-2 pr-2 pl-4">
+        <h2 className="truncate font-semibold">
+          {title}
           {count !== null && count > 0 && (
-            <span className="rounded-full bg-secondary px-1.5 text-xs text-secondary-foreground tabular-nums">
+            <span aria-hidden className="ml-1.5 font-medium text-muted-foreground tabular-nums">
               {count}
             </span>
           )}
-          <ChevronDownIcon
-            aria-hidden
-            className={cn(
-              "ml-auto size-4 text-muted-foreground transition-transform",
-              !expanded && "-rotate-90",
-            )}
-          />
-        </button>
+        </h2>
         {actions}
       </div>
-      {expanded && (
-        <div className="border-t">
-          {children}
-          {footer !== undefined && footer !== null && (
-            <div className="border-t px-2 py-1">{footer}</div>
-          )}
-        </div>
+      {children}
+      {footer !== undefined && footer !== null && (
+        <div className="border-t px-2 py-1">{footer}</div>
       )}
     </section>
   );

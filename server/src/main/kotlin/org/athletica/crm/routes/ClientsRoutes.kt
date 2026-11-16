@@ -21,12 +21,14 @@ import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.ClientSortField
 import org.athletica.crm.api.schemas.clients.ClientState
+import org.athletica.crm.api.schemas.clients.ClientUnpaidSessionsRequest
 import org.athletica.crm.api.schemas.clients.CreateClientRequest
 import org.athletica.crm.api.schemas.clients.DeleteClientDocRequest
 import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.field
+import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.customfields.CustomFieldDefinition
@@ -70,6 +72,10 @@ fun RouteWithContext.clientsRoutes(
     definitions: CustomFieldDefinitions,
     contacts: ClientContacts,
 ) {
+    post<ClientUnpaidSessionsRequest, UnpaidSessionsResponse>("/clients/unpaid-sessions") { request ->
+        db.transaction { views.unpaidSessions.byClient(request.clientId) }
+    }
+
     post<ClientListRequest, ClientListResponse>("/clients/list") { request ->
         db.transaction {
             views.clientList.page(request.toQuery())

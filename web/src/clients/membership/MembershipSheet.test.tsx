@@ -102,17 +102,26 @@ function membershipsServer(
   initial: readonly MembershipSchema[],
   revokeError?: string,
   extendError?: string,
+  showClientDebt = false,
 ) {
   let memberships = [...initial];
+  let debt = showClientDebt ? unpaidSessions : [];
   const entries: unknown[] = [issuedEntry];
   return appServer({
     "custom-fields/list": () => json([]),
-    "clients/detail": () => json(client),
+    "clients/detail": () =>
+      json(
+        showClientDebt ? { ...client, balance: { minorUnits: -10000, currency: "RUB" } } : client,
+      ),
+    "clients/unpaid-sessions": () => json({ sessions: debt }),
     "clients/notes/list": () => json({ notes: [] }),
     "memberships/list": () => json({ memberships }),
     "memberships/history": () => json({ entries }),
     "memberships/unpaid-sessions": () => json({ sessions: unpaidSessions }),
-    "memberships/repay-debt": () => empty(),
+    "memberships/repay-debt": () => {
+      debt = [];
+      return empty();
+    },
     "memberships/close": () => {
       memberships = memberships.map((membership) =>
         membership.state.type === "active"
@@ -194,17 +203,15 @@ async function tileButton(name: string) {
 }
 
 describe("абонементы в карточке клиента", () => {
-  it("показывает плитку на каждый действующий абонемент и выделяет причину с сервера", async () => {
+  it("показывает основной абонемент и переход к остальным и выделяет причину с сервера", async () => {
     openApp(`/clients/${client.id}`, membershipsServer([ending, upcoming, closed]).fetch);
 
     const endingTile = within(await tileButton("1111"));
     expect(endingTile.getByText("Осталось 12 из 12")).not.toHaveClass("text-amber-700");
     expect(endingTile.getByText(/^до /)).toHaveClass("text-amber-700");
 
-    const upcomingTile = within(await tileButton("Борьба"));
-    expect(upcomingTile.getByText(/^с /)).toBeInTheDocument();
-
-    expect(screen.getAllByText(ru["clientCard.quick.subscription"])).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /Открыть остальные абонементы: 1/ })).toBeVisible();
+    expect(screen.getAllByText(ru["clientCard.quick.subscription"])).toHaveLength(1);
     expect(screen.queryByRole("list", { name: ru["clientCard.alerts"] })).not.toBeInTheDocument();
   });
 
@@ -213,7 +220,10 @@ describe("абонементы в карточке клиента", () => {
 
     expect(await screen.findByText(ru["clientCard.quick.noSubscription"])).toBeInTheDocument();
     expect(screen.getAllByText(ru["clientCard.quick.subscription"])).toHaveLength(1);
-    const alerts = within(screen.getByRole("list", { name: ru["clientCard.alerts"] }));
+    const alerts = within(
+      screen.getByRole("heading", { name: ru["clientOverview.attention"] }).closest("section") ??
+        document.body,
+    );
     expect(alerts.getByText(ru["clientCard.alert.noActiveSubscription"])).toBeInTheDocument();
   });
 
@@ -257,7 +267,7 @@ describe("абонементы в карточке клиента", () => {
   });
 
   it("у закрытого абонемента действий нет", async () => {
-    openApp(`/clients/${client.id}`, membershipsServer([closed]).fetch);
+    openApp(`/clients/${client.id}?tab=memberships`, membershipsServer([closed]).fetch);
     const user = userEvent.setup();
 
     await user.click(
@@ -410,7 +420,7 @@ describe("абонементы в карточке клиента", () => {
 
     const tile = await tileButton("Замороженный");
     expect(within(tile).getByText(/Заморожен до/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Заморожен до/).length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/Заморожен до/)).toHaveLength(1);
     await user.click(tile);
     const sheet = within(await screen.findByRole("dialog", { name: "Замороженный" }));
     expect(sheet.getByText(/болезнь/)).toBeInTheDocument();
@@ -529,4 +539,64 @@ describe("абонементы в карточке клиента", () => {
     ).toBeDisabled();
     expect(repay.getByText(ru["membership.repay.tooMany"].replace("{count}", "1"))).toBeVisible();
   });
+});
+
+it("+N is a separate keyboard control and opens the list without the primary sheet", async () => {
+  openApp(`/clients/${client.id}`, membershipsServer([ending, upcoming]).fetch);
+  const user = userEvent.setup();
+  const more = await screen.findByRole("button", { name: /Открыть остальные абонементы: 1/ });
+  expect(more.closest("button")?.parentElement?.closest("button")).toBeNull();
+  for (let i = 0; i < 35 && document.activeElement !== more; i++) await user.tab();
+  expect(more).toHaveFocus();
+  expect(more.className).toContain("focus-visible:ring");
+  await user.keyboard(" ");
+  expect(await screen.findByRole("tab", { name: /^Абонементы/ })).toHaveAttribute(
+    "data-state",
+    "active",
+  );
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(await screen.findByRole("button", { name: /Борьба/ })).toBeVisible();
+});
+
+it("extending a non-primary membership updates its row and recalculates the overview", async () => {
+  const later = {
+    ...ending,
+    id: upcoming.id,
+    name: "Другой",
+    state: activeState("2026-10-01", "2026-11-30"),
+  };
+  openApp(`/clients/${client.id}?tab=memberships`, membershipsServer([ending, later]).fetch);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: /Другой/ }));
+  const sheet = within(await screen.findByRole("dialog", { name: "Другой" }));
+  await user.click(sheet.getByRole("button", { name: ru["membership.extend.action"] }));
+  const form = within(await screen.findByRole("dialog", { name: ru["membership.extend.title"] }));
+  const end = form.getByLabelText(ru["membership.extend.end"]);
+  await user.clear(end);
+  await user.type(end, "2099-12-31");
+  await user.type(form.getByLabelText(ru["membership.extend.reason"]), "Запрос клиента");
+  await user.click(form.getByRole("button", { name: ru["membership.extend.action"] }));
+  await waitFor(() => {
+    expect(sheet.getByText(/2099/)).toBeVisible();
+  });
+  await user.keyboard("{Escape}");
+  await user.click(screen.getByRole("tab", { name: "Обзор" }));
+  expect(await tileButton("1111")).toBeVisible();
+  expect(screen.queryByText(/2099/)).toBeNull();
+});
+
+it("repayment refreshes client unpaid sessions and keeps the negative balance alert", async () => {
+  const api = membershipsServer([ending], undefined, undefined, true);
+  openApp(`/clients/${client.id}`, api.fetch);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: ru["membership.repay.action"] }));
+  const repay = within(await screen.findByRole("dialog", { name: ru["membership.repay.title"] }));
+  await user.click(await repay.findByRole("button", { name: /Списать занятия: 3/ }));
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  expect(api.to("clients/unpaid-sessions").length).toBeGreaterThan(1);
+  expect(screen.queryByText(/3 неоплаченных занятия/)).toBeNull();
+  expect(screen.getByRole("heading", { name: ru["clientOverview.attention"] })).toBeVisible();
+  expect(screen.getByText(/Долг/)).toBeVisible();
 });

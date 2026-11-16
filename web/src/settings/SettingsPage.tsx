@@ -1,3 +1,4 @@
+import { ClientCardSectionsSheet } from "@/clients/ClientCardSectionsSheet";
 import { Link } from "@tanstack/react-router";
 import {
   AlarmClockIcon,
@@ -163,6 +164,12 @@ const SETTINGS: readonly SettingSection[] = [
     label: "settings.sectionClients",
     items: [
       {
+        title: "clientOverview.settingsTitle",
+        subtitle: "clientOverview.sectionsHint",
+        icon: TableIcon,
+        target: panel("client-card"),
+      },
+      {
         title: "settings.itemClientDisplay",
         subtitle: "settings.itemClientDisplaySubtitle",
         icon: TableIcon,
@@ -265,6 +272,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   "client-import": ClientImportSheet,
   tariffs: TariffsSheet,
   "attendance-control": AttendanceControlSheet,
+  "client-card": ClientCardSectionsSheet,
 };
 
 /**

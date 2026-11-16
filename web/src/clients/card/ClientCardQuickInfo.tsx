@@ -1,4 +1,6 @@
-import { ChevronRightIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { attendanceSummary, currentMemberships } from "./clientOverview";
+import { CheckIcon, ChevronRightIcon, ClockIcon, TicketIcon, WalletIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ClientAttendanceItemSchema,
@@ -13,60 +15,315 @@ import { cn } from "@/lib/utils";
 import { FreezeNote, MembershipTerms } from "../membership/MembershipParts";
 import { isCurrentMembership, membershipView } from "../membership/membershipView";
 
-/**
- * Быстрая информация в шапке карточки: баланс, плитки действующих абонементов, последнее посещение
- * и ближайшее занятие из данных сервера; статус, ответственный и скидка — заглушки до появления
- * этих полей в анкете. `undefined` во входных данных — значение ещё загружается.
- * Если задан [onBalanceClick], плитка баланса кликабельна и открывает историю баланса;
- * плитка абонемента открывает его панель через [onMembershipOpen].
- */
+/** Четыре плитки обзора; undefined означает загрузку. */
 export function ClientCardQuickInfo({
   balance,
   memberships,
-  lastVisit,
+  attendance,
   nextSession,
   onBalanceClick,
   onMembershipOpen,
+  onMemberships,
+  onSessions,
 }: {
   readonly balance: Money;
   readonly memberships: readonly MembershipSchema[] | undefined;
-  /** Последнее посещение; `null` — посещений не было. */
-  readonly lastVisit: ClientAttendanceItemSchema | null | undefined;
-  /** Ближайшее занятие; `null` — занятий нет. */
+  readonly attendance: readonly ClientAttendanceItemSchema[] | undefined;
   readonly nextSession: ScheduleSessionSchema | null | undefined;
-  /** Открывает историю баланса; `undefined` — плитка баланса некликабельна. */
   readonly onBalanceClick: (() => void) | undefined;
-  /** Открывает панель абонемента по его идентификатору. */
   readonly onMembershipOpen: (id: MembershipId) => void;
+  readonly onMemberships: () => void;
+  readonly onSessions: () => void;
 }) {
   const { t, format } = useI18n();
-
+  const summary = attendanceSummary(attendance);
+  const current = currentMemberships(memberships);
+  const main = current[0];
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-      <BalanceTile balance={balance} onClick={onBalanceClick} />
-      <MembershipTiles memberships={memberships} onOpen={onMembershipOpen} />
-      <LastVisitTile lastVisit={lastVisit} />
-      <Tile label={t("clientCard.quick.nextSession")}>
-        {nextSession === undefined ? (
-          <Skeleton className="h-5 w-24" />
-        ) : nextSession === null ? (
-          <Muted>{t("clientCard.quick.none")}</Muted>
+    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 min-[1000px]:grid-cols-4">
+      <div className="relative min-w-0 max-sm:col-span-2 max-sm:-order-2">
+        {memberships === undefined ? (
+          <TileSkeleton />
+        ) : main === undefined ? (
+          <div className={tileClass()}>
+            <TileLabel icon={<TicketIcon />}>{t("clientCard.quick.subscription")}</TileLabel>
+            <span className="text-muted-foreground">{t("clientCard.quick.noSubscription")}</span>
+          </div>
         ) : (
-          <>
-            <span className="block font-medium">
-              {format.date(nextSession.date)}, {format.time(nextSession.startTime)}
-            </span>
-            <Sub>{nextSession.group.name}</Sub>
-          </>
+          <MembershipOverviewTile
+            membership={main}
+            more={current.length > 1}
+            onOpen={() => {
+              onMembershipOpen(main.id);
+            }}
+          />
         )}
-      </Tile>
-      <Tile label={t("clientCard.quick.status")} stub>
-        <Muted>{t("clientCard.quick.stub")}</Muted>
-      </Tile>
-      <Tile label={t("clientCard.quick.responsible")} stub>
-        <Muted>{t("clientCard.quick.stub")}</Muted>
-      </Tile>
-    </dl>
+        {current.length > 1 && (
+          <button
+            type="button"
+            className="absolute top-3 right-3 z-10 h-[22px] rounded-full bg-primary/10 px-2 text-xs font-semibold text-primary hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            onClick={onMemberships}
+            aria-label={t("clientOverview.moreMemberships", { count: current.length - 1 })}
+          >
+            +{current.length - 1}
+          </button>
+        )}
+      </div>
+
+      {onBalanceClick === undefined ? (
+        <div className={tileClass()}>
+          <BalanceOverviewContent balance={balance} go={false} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={cn(tileClass(), INTERACTIVE)}
+          aria-haspopup="dialog"
+          aria-label={t("clientCard.balanceOpen", { amount: format.money(balance) })}
+          onClick={onBalanceClick}
+        >
+          <BalanceOverviewContent balance={balance} go />
+        </button>
+      )}
+
+      <div className="min-w-0 max-sm:col-span-2 max-sm:-order-1">
+        {nextSession === undefined ? (
+          <TileSkeleton />
+        ) : nextSession === null ? (
+          <div className={tileClass()}>
+            <TileLabel icon={<ClockIcon />}>{t("clientOverview.nextSession")}</TileLabel>
+            <span className="text-muted-foreground">{t("clientCard.quick.none")}</span>
+          </div>
+        ) : (
+          <Link
+            className={cn(tileClass("brand"), INTERACTIVE, "hover:bg-primary/90")}
+            to="/sessions/$sessionId"
+            params={{ sessionId: nextSession.id }}
+            aria-label={t("clientOverview.openSession", { name: nextSession.group.name })}
+          >
+            <TileLabel icon={<ClockIcon />} go brand>
+              {t("clientOverview.nextSession")}
+            </TileLabel>
+            <TileValue>
+              {format.date(nextSession.date)}, {format.time(nextSession.startTime)}
+            </TileValue>
+            <span className="text-sm text-primary-foreground/85">
+              <span className="block truncate">{nextSession.group.name}</span>
+              <span className="block truncate">
+                {[nextSession.hall.name, ...nextSession.coaches.map((c) => c.name)].join(" · ")}
+              </span>
+            </span>
+          </Link>
+        )}
+      </div>
+
+      <button
+        type="button"
+        className={cn(tileClass(), INTERACTIVE)}
+        aria-label={t("clientOverview.openSessions")}
+        onClick={onSessions}
+      >
+        <TileLabel icon={<CheckIcon />} go>
+          {t("clientOverview.attendance")}
+        </TileLabel>
+        {attendance === undefined ? (
+          <Skeleton className="h-6 w-24" />
+        ) : summary.recent.length === 0 ? (
+          <span className="text-muted-foreground">{t("clientOverview.noAttendance")}</span>
+        ) : (
+          <TileValue>
+            {t("clientOverview.ratio", {
+              count: summary.present,
+              total: summary.recent.length,
+            })}
+          </TileValue>
+        )}
+        {summary.lastVisit !== null && (
+          <span className="text-sm text-foreground/80">
+            {t("clientOverview.lastVisit", { date: format.date(summary.lastVisit.date) })}
+          </span>
+        )}
+        {summary.recent.length > 0 && (
+          <span className="mt-auto flex gap-1" aria-hidden>
+            {summary.recent.toReversed().map((item) => (
+              <span
+                key={item.sessionId}
+                className={cn(
+                  "h-2 flex-1 rounded-[3px]",
+                  item.presence === "PRESENT"
+                    ? "bg-primary"
+                    : "shadow-[inset_0_0_0_1.5px_var(--border)]",
+                )}
+              />
+            ))}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/** Общее оформление плиток обзора: одинаковая высота, [tone] `brand` — акцентная заливка. */
+function tileClass(tone: "default" | "brand" = "default") {
+  return cn(
+    "flex h-full min-h-33 w-full min-w-0 flex-col gap-1.5 rounded-xl border p-4 text-left max-sm:min-h-30 max-sm:p-3.5",
+    tone === "brand" ? "border-transparent bg-primary text-primary-foreground" : "bg-card",
+  );
+}
+
+/** Признаки нажимаемой плитки: наведение и фокус. */
+const INTERACTIVE =
+  "cursor-pointer transition-colors hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+
+/** Подпись плитки [children] с иконкой [icon]; [go] — стрелка перехода, [brand] — на акцентной заливке. */
+function TileLabel({
+  icon,
+  go = false,
+  brand = false,
+  children,
+}: {
+  readonly icon: ReactNode;
+  readonly go?: boolean;
+  readonly brand?: boolean;
+  readonly children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1.5 text-xs font-medium [&_svg]:size-4 [&_svg]:shrink-0",
+        brand ? "text-primary-foreground/85" : "text-muted-foreground",
+      )}
+    >
+      <span aria-hidden className="contents">
+        {icon}
+      </span>
+      {children}
+      {go && <ChevronRightIcon aria-hidden className="ml-auto" />}
+    </span>
+  );
+}
+
+/** Крупное значение плитки [children]. */
+function TileValue({ children }: { readonly children: ReactNode }) {
+  return (
+    <span className="text-xl leading-tight font-bold tracking-tight tabular-nums sm:text-[22px]">
+      {children}
+    </span>
+  );
+}
+
+/** Заглушка плитки на время загрузки. */
+function TileSkeleton() {
+  return <Skeleton className="h-full min-h-33 rounded-xl max-sm:min-h-30" />;
+}
+
+/** Содержимое плитки «Баланс» [balance]; [go] — стрелка перехода. */
+function BalanceOverviewContent({
+  balance,
+  go,
+}: {
+  readonly balance: Money;
+  readonly go: boolean;
+}) {
+  const { t, format } = useI18n();
+  return (
+    <>
+      <TileLabel icon={<WalletIcon />} go={go}>
+        {t("clientCard.balance")}
+      </TileLabel>
+      <span
+        className={cn(
+          balance.minorUnits < 0 && "text-destructive",
+          balance.minorUnits > 0 && "text-emerald-700 dark:text-emerald-400",
+        )}
+      >
+        <TileValue>{format.money(balance)}</TileValue>
+      </span>
+    </>
+  );
+}
+
+/**
+ * Плитка основного абонемента [membership]: кольцо остатка, название, срок и выделение
+ * «Заканчивается». Нажатие — [onOpen]; при [more] справа сверху стоит отдельная кнопка «+N».
+ */
+function MembershipOverviewTile({
+  membership,
+  more,
+  onOpen,
+}: {
+  readonly membership: MembershipSchema;
+  readonly more: boolean;
+  readonly onOpen: () => void;
+}) {
+  const { t } = useI18n();
+  const view = membershipView(membership);
+  const ending = view.phase === "ending";
+  return (
+    <button
+      type="button"
+      className={cn(tileClass(), INTERACTIVE)}
+      aria-haspopup="dialog"
+      aria-label={t("clientCard.membership.open", { name: membership.name })}
+      onClick={onOpen}
+    >
+      <TileLabel icon={<TicketIcon />} go={!more}>
+        {t("clientCard.quick.subscription")}
+      </TileLabel>
+      <span className={cn("flex items-center gap-3", view.phase === "upcoming" && "opacity-60")}>
+        <RemainingRing membership={membership} ending={ending} />
+        <span className="min-w-0">
+          <span className="line-clamp-2 font-semibold" title={membership.name}>
+            {membership.name}
+          </span>
+          <span className="block text-sm text-foreground/80">
+            <MembershipTerms membership={membership} view={view} />
+          </span>
+        </span>
+      </span>
+      <span className="block text-xs text-sky-700 dark:text-sky-400">
+        <FreezeNote membership={membership} />
+      </span>
+      {ending && (
+        <span className="mt-auto inline-flex h-[22px] items-center self-start rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {t("clientCard.subscriptionEnding")}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Кольцо остатка занятий [membership] с числом в центре; безлимит — «∞». */
+function RemainingRing({
+  membership,
+  ending,
+}: {
+  readonly membership: MembershipSchema;
+  readonly ending: boolean;
+}) {
+  const total = membership.sessionsTotal;
+  const left = membership.sessionsRemaining ?? 0;
+  const share = total === null ? 1 : total > 0 ? left / total : 0;
+  return (
+    <span aria-hidden className="relative inline-flex size-11 shrink-0">
+      <svg viewBox="0 0 44 44" className="size-11 -rotate-90">
+        <circle cx="22" cy="22" r="18" fill="none" strokeWidth="4" className="stroke-border" />
+        <circle
+          cx="22"
+          cy="22"
+          r="18"
+          fill="none"
+          strokeWidth="4"
+          strokeLinecap="round"
+          pathLength="100"
+          strokeDasharray={`${String(100 * share)} 100`}
+          className={ending ? "stroke-amber-600" : "stroke-primary"}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold">
+        {total === null ? "∞" : left}
+      </span>
+    </span>
   );
 }
 
@@ -146,12 +403,39 @@ export function MembershipTiles({
       }
       actionLabel={t("clientCard.membership.open", { name: membership.name })}
     >
+      {membership.sessionsTotal !== null && membership.sessionsTotal > 0 && (
+        <svg aria-hidden viewBox="0 0 36 36" className="float-right ml-2 size-9 -rotate-90">
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            className="text-secondary"
+          />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            pathLength="100"
+            strokeDasharray={`${String((100 * (membership.sessionsRemaining ?? 0)) / membership.sessionsTotal)} 100`}
+            className="text-primary"
+          />
+        </svg>
+      )}
       <span className="block truncate font-medium" title={membership.name}>
         {membership.name}
       </span>
       <span className="block text-xs text-muted-foreground">
         <MembershipTerms membership={membership} view={view} />
       </span>
+      {view.phase === "ending" && (
+        <span className="text-xs text-amber-700">{t("clientCard.subscriptionEnding")}</span>
+      )}
       <span className="block text-xs text-sky-700 dark:text-sky-400">
         <FreezeNote membership={membership} />
       </span>
@@ -186,37 +470,32 @@ export function LastVisitTile({
 }
 
 /**
- * Плитка быстрой информации; [stub] — поле ещё не поддержано, рамка пунктиром;
+ * Плитка быстрой информации;
  * [muted] — значение приглушено (например, абонемент ещё не начался).
  * С [onClick] плитка кликабельна целиком: значение — кнопка с доступным именем [actionLabel],
  * зона нажатия растянута на всю плитку, справа от подписи — стрелка перехода.
  */
 function Tile({
   label,
-  stub = false,
   muted = false,
   onClick,
   actionLabel,
   children,
 }: {
   readonly label: string;
-  readonly stub?: boolean;
   readonly muted?: boolean;
   readonly onClick?: (() => void) | undefined;
   readonly actionLabel?: string;
   readonly children: ReactNode;
 }) {
-  const { t } = useI18n();
   const clickable = onClick !== undefined;
   return (
     <div
       className={cn(
         "relative min-w-0 rounded-md border bg-background/40 px-3 py-2",
-        stub && "border-dashed",
         clickable &&
           "group transition-colors hover:border-foreground/20 hover:bg-accent has-[:active]:bg-accent/70 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
       )}
-      title={stub ? t("clientCard.quick.stubHint") : undefined}
     >
       <dt className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
         {label}

@@ -7,7 +7,6 @@ import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { customFieldDisplay } from "../clientCells";
 import { customFieldValueOf } from "../customFieldValues";
-import { ClientContactList } from "./ClientContactList";
 
 /** Поле анкеты: подпись и значение; `null` — значение не указано. */
 interface ProfileField {
@@ -16,7 +15,7 @@ interface ProfileField {
 }
 
 /**
- * Профиль клиента — левая колонка карточки: контакты и анкета, разбитая на сворачиваемые
+ * Анкета клиента, разбитая на сворачиваемые
  * разделы («Основное», «Дополнительные поля» организации).
  */
 export function ClientCardProfile({
@@ -48,11 +47,6 @@ export function ClientCardProfile({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card">
-        <h2 className="border-b px-4 py-3 font-medium">{t("clients.contacts")}</h2>
-        <ClientContactList contacts={client.contacts} />
-      </div>
-
       <div className="rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b py-2 pr-2 pl-4">
           <h2 className="font-medium">{t("clientCard.profile")}</h2>

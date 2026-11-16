@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
@@ -21,7 +22,7 @@ import {
 } from "@/api/generated/contracts";
 import { createAuthApi } from "@/auth/authApi";
 import { ClientsPage } from "@/clients/ClientsPage";
-import { ClientComingSoonPage } from "@/clients/ClientComingSoonPage";
+import { CLIENT_TABS } from "@/clients/card/clientOverview";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
 import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
@@ -46,7 +47,6 @@ import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
 import { SignUpPage } from "@/auth/SignUpPage";
 import { BASE_PATH } from "@/config";
-import { useI18n } from "@/i18n/context";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
 import { HomePage } from "@/home/HomePage";
@@ -505,10 +505,22 @@ const clientRoute = createRoute({
     },
     stringify: ({ clientId }) => ({ clientId }),
   },
+  validateSearch: z.object({ tab: z.enum(CLIENT_TABS).catch("overview").default("overview") }),
   component: function ClientRoute() {
     const { api } = clientRoute.useRouteContext();
     const { clientId } = clientRoute.useParams();
-    return <ClientDetailPage api={api} clientId={clientId} />;
+    const { tab } = clientRoute.useSearch();
+    const navigate = clientRoute.useNavigate();
+    return (
+      <ClientDetailPage
+        api={api}
+        clientId={clientId}
+        tab={tab}
+        onTabChange={(next, replace) => {
+          void navigate({ search: { tab: next }, replace: replace === true });
+        }}
+      />
+    );
   },
 });
 
@@ -541,28 +553,8 @@ const clientVisitHistoryRoute = createRoute({
     },
     stringify: ({ clientId }) => ({ clientId }),
   },
-  component: function ClientVisitHistoryRoute() {
-    const { clientId } = clientVisitHistoryRoute.useParams();
-    const { t } = useI18n();
-    return <ClientComingSoonPage clientId={clientId} title={t("clients.detail.visitHistory")} />;
-  },
-});
-
-/** История платежей клиента [clientId] (заглушка, как и в KMP-клиенте). */
-const clientPaymentHistoryRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/clients/$clientId/payments",
-  params: {
-    parse: ({ clientId }): { clientId: ClientId } | false => {
-      const parsed = ClientIdSchema.safeParse(clientId);
-      return parsed.success ? { clientId: parsed.data } : false;
-    },
-    stringify: ({ clientId }) => ({ clientId }),
-  },
-  component: function ClientPaymentHistoryRoute() {
-    const { clientId } = clientPaymentHistoryRoute.useParams();
-    const { t } = useI18n();
-    return <ClientComingSoonPage clientId={clientId} title={t("clients.detail.paymentHistory")} />;
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/clients/$clientId", params, search: { tab: "sessions" } });
   },
 });
 
@@ -624,7 +616,6 @@ const routeTree = rootRoute.addChildren([
     clientRoute,
     clientEditRoute,
     clientVisitHistoryRoute,
-    clientPaymentHistoryRoute,
     tasksRoute,
   ]),
 ]);

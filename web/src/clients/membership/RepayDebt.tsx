@@ -15,6 +15,7 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import {
+  clientUnpaidSessionsQuery,
   membershipHistoryQuery,
   membershipsQuery,
   unpaidSessionsQuery,
@@ -65,6 +66,9 @@ export function RepayDebtChoice({
       return;
     }
     await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: clientUnpaidSessionsQuery(api, branchId, clientId).queryKey,
+      }),
       queryClient.invalidateQueries({
         queryKey: membershipsQuery(api, branchId, clientId).queryKey,
       }),

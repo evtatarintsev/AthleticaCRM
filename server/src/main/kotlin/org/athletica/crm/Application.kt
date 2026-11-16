@@ -221,7 +221,7 @@ fun Application.configureServer() {
                         groupsRoutes(di.groups, di.employees, di.groupSchedule, di.notifications, di.views)
                         sessionsRoutes(di.sessions, di.employees, di.views)
                         attendanceRoutes(di.attendanceLabels, di.sessionJournals, di.sessions, di.views)
-                        orgRoutes(di.organizations, di.attendanceControls)
+                        orgRoutes(di.organizations, di.attendanceControls, di.clientCardSections)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
                         homeRoutes(di.views)

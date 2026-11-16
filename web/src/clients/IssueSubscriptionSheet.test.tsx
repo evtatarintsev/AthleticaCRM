@@ -102,7 +102,7 @@ const PRICE = ru["clients.detail.subscriptionPrice"].replace("{currency}", "RUB"
 
 /** Открывает карточку Даны и панель выдачи; возвращает панель и пользователя. */
 async function openIssue(api: ReturnType<typeof issueServer>) {
-  openApp(`/clients/${dana.id}`, api.fetch);
+  openApp(`/clients/${dana.id}?tab=memberships`, api.fetch);
   const user = userEvent.setup();
   await user.click(
     await screen.findByRole("button", { name: ru["clients.detail.issueSubscription"] }),

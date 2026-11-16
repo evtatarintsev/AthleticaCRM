@@ -84,6 +84,17 @@ describe("предупреждения карточки клиента", () => {
     expect(alerts.map((alert) => alert.type)).toEqual(["noActiveSubscription"]);
   });
 
+  it("пока неоплаченные посещения не загружены, предупреждения об абонементе нет", () => {
+    const alerts = clientAlerts({
+      client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },
+      memberships: [],
+      overdue: undefined,
+      unpaid: undefined,
+      today,
+    });
+    expect(alerts).toEqual([]);
+  });
+
   it("будущий абонемент считается действующим — предупреждения об абонементе нет", () => {
     const alerts = clientAlerts({
       client: { ...client, birthday: null, balance: { minorUnits: 0, currency: "RUB" } },

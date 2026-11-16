@@ -516,8 +516,8 @@ const clientRoute = createRoute({
         api={api}
         clientId={clientId}
         tab={tab}
-        onTabChange={(next) => {
-          void navigate({ search: { tab: next } });
+        onTabChange={(next, replace) => {
+          void navigate({ search: { tab: next }, replace: replace === true });
         }}
       />
     );

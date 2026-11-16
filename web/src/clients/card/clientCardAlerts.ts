@@ -47,27 +47,28 @@ export interface ClientAlertSources {
 export function clientAlerts({
   client,
   memberships,
-  unpaid = [],
+  unpaid,
   overdue,
   today,
 }: ClientAlertSources): readonly ClientAlert[] {
   const alerts: ClientAlert[] = [];
   const current = currentMemberships(memberships);
-  if (unpaid.length > 0 || client.balance.minorUnits < 0) {
+  const sessions = unpaid ?? [];
+  if (sessions.length > 0 || client.balance.minorUnits < 0) {
     const membership =
       current.find(
         (item) =>
           item.state.type === "active" &&
           (item.sessionsRemaining === null || item.sessionsRemaining > 0) &&
-          unpaid.some((session) => item.groups.some((group) => group.id === session.groupId)),
+          sessions.some((session) => item.groups.some((group) => group.id === session.groupId)),
       ) ?? null;
-    const covered = unpaid.filter(
+    const covered = sessions.filter(
       (session) => membership?.groups.some((group) => group.id === session.groupId) === true,
     ).length;
     alerts.push({
       type: "debt",
       amount: client.balance,
-      sessions: unpaid,
+      sessions,
       membership,
       repayLimit: Math.min(covered, membership?.sessionsRemaining ?? covered),
     });
@@ -77,9 +78,10 @@ export function clientAlerts({
     current.length === 0 &&
     client.groups.length > 0 &&
     client.state === "ACTIVE" &&
-    unpaid.length === 0
-  )
+    unpaid?.length === 0
+  ) {
     alerts.push({ type: "noActiveSubscription" });
+  }
   if (overdue !== undefined && overdue.total > 0)
     alerts.push({ type: "overdueTasks", count: overdue.total, first: overdue.tasks[0] });
   if (client.birthday !== null) {

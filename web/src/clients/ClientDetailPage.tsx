@@ -52,7 +52,8 @@ export function ClientDetailPage({
   readonly api: ApiClient;
   readonly clientId: ClientId;
   readonly tab: ClientTab;
-  readonly onTabChange: (tab: ClientTab) => void;
+  /** Переключает вкладку; [replace] — заменить запись истории, а не добавить новую. */
+  readonly onTabChange: (tab: ClientTab, replace?: boolean) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -97,7 +98,9 @@ export function ClientDetailPage({
       ? "overview"
       : requestedTab;
   useEffect(() => {
-    if (sections.data !== undefined && requestedTab !== activeTab) changeTab("overview");
+    if (sections.data !== undefined && requestedTab !== activeTab) {
+      changeTab("overview", true);
+    }
   }, [sections.data, requestedTab, activeTab, changeTab]);
 
   const attendance = useQuery(clientAttendanceQuery(api, branchId, clientId));
@@ -175,7 +178,7 @@ export function ClientDetailPage({
           setChatOpen(true);
         }}
       />
-      {sections.isError && <FormAlert message={t("clients.loadClientError")} />}
+      {(sections.isError || unpaid.isError) && <FormAlert message={t("clients.loadClientError")} />}
       <Tabs
         value={activeTab}
         onValueChange={(value) => {

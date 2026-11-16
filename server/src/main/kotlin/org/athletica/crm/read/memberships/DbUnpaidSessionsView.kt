@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionSchema
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
@@ -20,7 +21,7 @@ import org.athletica.crm.storage.asUuid
 
 /** Реализация [UnpaidSessionsView] одним SQL по журналу, группам абонемента и списаниям. */
 class DbUnpaidSessionsView : UnpaidSessionsView {
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byClient(clientId: ClientId): UnpaidSessionsResponse {
         tr.sql("SELECT 1 FROM clients WHERE id = :id AND org_id = :orgId")
             .bind("id", clientId).bind("orgId", ctx.orgId).firstOrNull { 1 }
@@ -31,7 +32,7 @@ class DbUnpaidSessionsView : UnpaidSessionsView {
                 SELECT s.id, s.date, s.start_time, g.id AS group_id, g.name AS group_name
                 FROM session_attendance a
                 JOIN sessions s ON s.id = a.session_id
-                JOIN groups g ON g.id = s.group_id
+                JOIN groups g ON g.id = s.group_id AND g.branch_id = :branchId
                 WHERE a.client_id = :clientId AND a.presence = 'present'
                   AND s.org_id = :orgId AND s.status = 'completed'
                   AND NOT EXISTS (SELECT 1 FROM membership_debits d
@@ -39,7 +40,7 @@ class DbUnpaidSessionsView : UnpaidSessionsView {
                                     AND d.reversed_at IS NULL)
                 ORDER BY s.date, s.start_time, s.id
                 """.trimIndent(),
-            ).bind("clientId", clientId).bind("orgId", ctx.orgId).list {
+            ).bind("clientId", clientId).bind("orgId", ctx.orgId).bind("branchId", ctx.branchId).list {
                 UnpaidSessionSchema(
                     sessionId = it.asUuid("id").toSessionId(),
                     date = it.asLocalDate("date"),

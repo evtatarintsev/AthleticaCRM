@@ -380,6 +380,12 @@ else
     echo "  · Docker уже установлен: $(docker --version)"
 fi
 
+if ! command -v crontab >/dev/null 2>&1; then
+    apt-get update -qq
+    apt-get install -y -qq cron >/dev/null
+fi
+systemctl enable --now cron
+
 if ! id -u "$DEPLOY_USER" >/dev/null 2>&1; then
     useradd -m -s /bin/bash "$DEPLOY_USER"
     echo "  · создан пользователь $DEPLOY_USER"
@@ -396,7 +402,7 @@ fi
 chmod 600 "$HOME_DIR/.ssh/authorized_keys"
 chown "$DEPLOY_USER:$DEPLOY_USER" "$HOME_DIR/.ssh/authorized_keys"
 
-install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$DEPLOY_PATH" "$DEPLOY_PATH/nginx" "$DEPLOY_PATH/ssl"
+install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$DEPLOY_PATH" "$DEPLOY_PATH/nginx" "$DEPLOY_PATH/ssl" "$DEPLOY_PATH/scripts"
 
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     ufw allow 22/tcp >/dev/null 2>&1 || true
@@ -431,7 +437,9 @@ SCP_OPTS="-o StrictHostKeyChecking=accept-new -i $DEPLOY_KEY -o IdentitiesOnly=y
 scp $SCP_OPTS -q docker-compose.prod.yaml "$DEPLOY_USER@$SERVER_HOST:$DEPLOY_PATH/docker-compose.prod.yaml"
 # shellcheck disable=SC2086
 scp $SCP_OPTS -q nginx/prod.conf.template "$DEPLOY_USER@$SERVER_HOST:$DEPLOY_PATH/nginx/prod.conf.template"
-ok "docker-compose.prod.yaml, nginx/prod.conf.template"
+# shellcheck disable=SC2086
+scp $SCP_OPTS -q scripts/renew-certificates.sh "$DEPLOY_USER@$SERVER_HOST:$DEPLOY_PATH/scripts/renew-certificates.sh"
+ok "docker-compose.prod.yaml, nginx/prod.conf.template, scripts/renew-certificates.sh"
 
 if [ "$REUSE_ENV" = "no" ]; then
     # shellcheck disable=SC2086
@@ -496,7 +504,7 @@ CERT_ARGS=""
 for d in $CERT_DOMAINS; do CERT_ARGS="$CERT_ARGS -d $d"; done
 # shellcheck disable=SC2086
 $COMPOSE run --rm -p 80:80 certbot certonly --standalone \
-    $CERT_ARGS --expand --keep-until-expiring \
+    $CERT_ARGS --cert-name "$DOMAIN" --expand --keep-until-expiring \
     --email "$ACME_EMAIL" --agree-tos --no-eff-email --non-interactive </dev/null
 
 echo "  · дополняю том letsencrypt файлами для nginx"
@@ -519,11 +527,7 @@ echo "  · запускаю стек"
 $COMPOSE up -d
 
 echo "  · настраиваю автопродление сертификата"
-CRON_LINE="0 3 * * * cd $DEPLOY_PATH && docker compose -f docker-compose.prod.yaml run --rm certbot renew --quiet && docker compose -f docker-compose.prod.yaml exec -T nginx nginx -s reload"
-if ! crontab -l 2>/dev/null | grep -qF "certbot renew"; then
-    (crontab -l 2>/dev/null || true; echo "$CRON_LINE") | crontab -
-    echo "    добавлена задача в crontab (каждую ночь в 03:00)"
-fi
+bash scripts/renew-certificates.sh --install-cron
 
 echo "  · проверяю состояние контейнеров"
 sleep 8

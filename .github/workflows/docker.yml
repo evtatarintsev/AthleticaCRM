@@ -83,7 +83,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "docker-compose.prod.yaml,nginx/prod.conf.template"
+          source: "docker-compose.prod.yaml,nginx/prod.conf.template,scripts/renew-certificates.sh"
           target: ${{ secrets.DEPLOY_PATH }}
 
       - name: Deploy to production via SSH
@@ -101,4 +101,5 @@ jobs:
             docker compose -f docker-compose.prod.yaml pull
             docker compose -f docker-compose.prod.yaml up -d --remove-orphans
             docker compose -f docker-compose.prod.yaml restart nginx
+            bash scripts/renew-certificates.sh --install-cron
             docker image prune -f

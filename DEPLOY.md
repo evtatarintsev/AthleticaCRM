@@ -94,9 +94,9 @@ Docker-образы приватные, серверу нужен PAT с пра�
 ```
 
 Скрипт идемпотентен — повторный запуск безопасен: существующие пользователь, ключ,
-`.env` и cron-задача не перезаписываются. Сертификат перевыпускается, только если
-изменился список имён (`certbot --expand --keep-until-expiring`), — так повторный запуск
-добавляет в него новые имена.
+`.env` не перезаписывается, cron-задача обновляется без дубликатов. Сертификат перевыпускается,
+если изменился список имён или наступил срок обновления (`certbot --expand --keep-until-expiring`), —
+так повторный запуск добавляет в него новые имена.
 
 Порядок шагов:
 
@@ -125,6 +125,7 @@ Docker-образы приватные, серверу нужен PAT с пра�
 ├── .env                        секреты и параметры (600, владелец deploy)
 ├── docker-compose.prod.yaml    обновляется автодеплоем
 ├── nginx/prod.conf.template    обновляется автодеплоем
+├── scripts/renew-certificates.sh  автопродление TLS, обновляется автодеплоем
 ├── postgres/init/              init-скрипты БД, копируются только скриптом
 └── ssl/options-ssl-nginx.conf  исходник для тома letsencrypt
 ```
@@ -139,8 +140,8 @@ Docker-образы приватные, серверу нужен PAT с пра�
 | `athletica-crm_certbot_www` | ACME-challenge для продления |
 
 Сервисы: `postgres`, `rustfs` (S3-хранилище файлов), `server`, `frontend` (React-клиент, `/`), `nginx`.
-Сервис `certbot` в профиле `tools` — на `up` не стартует, вызывается только через
-`docker compose run --rm certbot …`.
+Сервис `certbot` в профиле `tools` — на `up` не стартует. Его запускают скрипт первичной
+настройки и cron-задача через `scripts/renew-certificates.sh`.
 
 > `docker-compose.prod.yaml` и `nginx/prod.conf.template` на сервере править нельзя —
 > следующий push в `master` их перезапишет. Единственный источник правды — репозиторий.
@@ -153,7 +154,9 @@ Workflow [`.github/workflows/docker.yml`](.github/workflows/docker.yml) на к�
 
 1. `server` — собирает `Dockerfile.server`, пушит в `ghcr.io/<repo>/server:latest`
 2. `frontend` — собирает `web/Dockerfile` (проверки + сборка Vite), пушит в `ghcr.io/<repo>/frontend:latest`
-3. `deploy` — после обоих: копирует compose и nginx-шаблон на сервер, делает `pull`, `up -d`, перезапускает nginx
+3. `deploy` — после обоих: копирует compose, nginx-шаблон и скрипт автопродления на сервер,
+   делает `pull`, `up -d`, перезапускает nginx, устанавливает cron и проверяет сертификат
+   (при необходимости добавляет `app.`). То же делает `deploy_to_stand.sh`.
 
 Push образов идёт под встроенным `secrets.GITHUB_TOKEN`, отдельный токен для этого не нужен.
 
@@ -234,18 +237,37 @@ docker compose -f docker-compose.prod.yaml down                  # остано�
 docker compose -f docker-compose.prod.yaml down -v               # ВНИМАНИЕ: удалит данные
 ```
 
-Сертификат продлевается cron-задачей пользователя `deploy` каждую ночь в 03:00
-(обновление происходит, когда до истечения остаётся меньше 30 дней):
+Сертификат проверяется cron-задачей пользователя `deploy` в 03:00 и 15:00 по часовому поясу
+сервера. Certbot продлевает его, когда наступает срок обновления. Задача устанавливается
+при первичной настройке и каждом деплое; старый cron с `certbot renew` заменяется.
 
 ```cron
-0 3 * * * cd /opt/athletica-crm && docker compose -f docker-compose.prod.yaml run --rm certbot renew --quiet && docker compose -f docker-compose.prod.yaml exec -T nginx nginx -s reload
+0 3,15 * * * cd /opt/athletica-crm && bash scripts/renew-certificates.sh >> certificates.log 2>&1
 ```
 
-Проверить продление вхолостую:
+Скрипт сохраняет все имена действующего сертификата, добавляет `app.<DOMAIN>` и использует
+`--cert-name <DOMAIN>`, чтобы путь сертификата для nginx остался прежним. Проверка ACME
+проходит через webroot `/var/www/certbot`, nginx продолжает обслуживать сайт. После успеха
+проверяется конфигурация nginx и выполняется reload. Лог: `/opt/athletica-crm/certificates.log`.
+
+На уже работающем сервере после копирования скрипта установить задачу и сразу обновить
+сертификат (от пользователя `deploy`, при работающем nginx):
 
 ```bash
-docker compose -f docker-compose.prod.yaml run --rm certbot renew --dry-run
+cd /opt/athletica-crm
+bash scripts/renew-certificates.sh --install-cron
+crontab -l
 ```
+
+Для `app.<DOMAIN>` должна быть DNS-запись на этот сервер, а порт 80 должен быть доступен
+из интернета. Проверить выпуск вхолостую через тестовый сервер Let's Encrypt:
+
+```bash
+bash scripts/renew-certificates.sh --dry-run
+```
+
+Параметры webroot, расширение имён и выбор сертификата описаны в
+[руководстве Certbot](https://eff-certbot.readthedocs.io/en/stable/using.html#changing-a-certificate-s-domains).
 
 ---
 
@@ -324,6 +346,8 @@ install -d -o deploy -g deploy /opt/athletica-crm /opt/athletica-crm/nginx /opt/
 # 3. Файлы (с локальной машины)
 scp docker-compose.prod.yaml        deploy@SERVER:/opt/athletica-crm/
 scp nginx/prod.conf.template        deploy@SERVER:/opt/athletica-crm/nginx/
+ssh deploy@SERVER 'mkdir -p /opt/athletica-crm/scripts'
+scp scripts/renew-certificates.sh   deploy@SERVER:/opt/athletica-crm/scripts/
 scp .env.prod.example               deploy@SERVER:/opt/athletica-crm/.env   # затем заполнить
 
 # 4. Образы, сертификат, запуск (на сервере, от deploy)
@@ -338,6 +362,7 @@ docker run --rm -v athletica-crm_letsencrypt:/le -v /opt/athletica-crm/ssl:/src:
   apk add --no-cache openssl >/dev/null && openssl dhparam -out /le/ssl-dhparams.pem 2048'
 docker compose -f docker-compose.prod.yaml pull
 docker compose -f docker-compose.prod.yaml up -d
+bash scripts/renew-certificates.sh --install-cron
 ```
 
 Содержимое `ssl/options-ssl-nginx.conf` берётся из `scripts/setup-server.sh`

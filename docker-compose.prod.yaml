@@ -84,8 +84,8 @@ services:
 
   certbot:
     image: certbot/certbot:latest
-    # Сервис вызывается только вручную через `docker compose run certbot ...`
-    # (выпуск и продление сертификата); профиль не даёт ему стартовать на `up`.
+    # Выпуск — setup-server.sh, автопродление — cron через scripts/renew-certificates.sh.
+    # Профиль не даёт одноразовому контейнеру стартовать на `up`.
     profiles: ["tools"]
     volumes:
       - letsencrypt:/etc/letsencrypt

@@ -4,79 +4,87 @@ import {
   type LocalDate,
   type MembershipSchema,
   type Money,
-  type TaskListItemSchema,
+  type TaskListResponse,
+  type UnpaidSessionSchema,
 } from "@/api/generated/contracts";
 import { addDays } from "@/lib/localDate";
-import { isCurrentMembership, membershipView } from "../membership/membershipView";
+import { currentMemberships } from "./clientOverview";
 
-/** За сколько дней до дня рождения показывается предупреждение. */
-const BIRTHDAY_DAYS = 7;
-
-/** Предупреждение в шапке карточки — вычисляемый сигнал, требующий внимания сотрудника. */
 export type ClientAlert =
-  | { readonly type: "archived" }
-  | { readonly type: "debt"; readonly amount: Money }
+  | {
+      readonly type: "debt";
+      readonly amount: Money;
+      readonly sessions: readonly UnpaidSessionSchema[];
+      readonly membership: MembershipSchema | null;
+      readonly repayLimit: number;
+    }
   | { readonly type: "noActiveSubscription" }
-  | { readonly type: "overdueTasks"; readonly count: number }
+  | {
+      readonly type: "overdueTasks";
+      readonly count: number;
+      readonly first: TaskListResponse["tasks"][number] | undefined;
+    }
   | { readonly type: "birthday"; readonly on: LocalDate };
 
-/** Ближайший на дату [today] день рождения по дате рождения [birthday] (29 февраля — 1 марта). */
 export function nextBirthday(birthday: LocalDate, today: LocalDate): LocalDate {
   const year = Number(today.slice(0, 4));
   const thisYear = birthdayIn(birthday, year);
   return thisYear >= today ? thisYear : birthdayIn(birthday, year + 1);
 }
-
-/** День рождения [birthday] в году [year]; несуществующее 29 февраля переносится на 1 марта. */
 function birthdayIn(birthday: LocalDate, year: number): LocalDate {
   const iso = `${String(year)}-${birthday.slice(5)}`;
   const exists = new Date(`${iso}T00:00:00Z`).toISOString().startsWith(iso);
   return LocalDateSchema.parse(exists ? iso : `${String(year)}-03-01`);
 }
-
-/** Исходные данные для предупреждений; `undefined` — данные ещё не загружены или недоступны. */
 export interface ClientAlertSources {
   readonly client: ClientDetailResponse;
   readonly memberships: readonly MembershipSchema[] | undefined;
-  readonly tasks: readonly TaskListItemSchema[] | undefined;
+  readonly unpaid: readonly UnpaidSessionSchema[] | undefined;
+  readonly overdue: TaskListResponse | undefined;
   readonly today: LocalDate;
-  readonly now: Date;
 }
 
-/** Предупреждения карточки по данным [sources] в порядке важности. */
-export function clientAlerts(sources: ClientAlertSources): readonly ClientAlert[] {
-  const { client, memberships, tasks, today, now } = sources;
+export function clientAlerts({
+  client,
+  memberships,
+  unpaid = [],
+  overdue,
+  today,
+}: ClientAlertSources): readonly ClientAlert[] {
   const alerts: ClientAlert[] = [];
-  if (client.state === "ARCHIVED") {
-    alerts.push({ type: "archived" });
-  }
-  if (client.balance.minorUnits < 0) {
-    alerts.push({ type: "debt", amount: client.balance });
-  }
-  if (memberships !== undefined) {
-    const hasCurrent = memberships.some((membership) =>
-      isCurrentMembership(membershipView(membership)),
-    );
-    if (!hasCurrent && client.groups.length > 0 && client.state === "ACTIVE") {
-      alerts.push({ type: "noActiveSubscription" });
-    }
-  }
-  if (tasks !== undefined) {
-    const overdue = tasks.filter(
-      (task) =>
-        task.status !== "COMPLETED" &&
-        task.dueDate !== null &&
-        Date.parse(task.dueDate) < now.getTime(),
+  const current = currentMemberships(memberships);
+  if (unpaid.length > 0 || client.balance.minorUnits < 0) {
+    const membership =
+      current.find(
+        (item) =>
+          item.state.type === "active" &&
+          (item.sessionsRemaining === null || item.sessionsRemaining > 0) &&
+          unpaid.some((session) => item.groups.some((group) => group.id === session.groupId)),
+      ) ?? null;
+    const covered = unpaid.filter(
+      (session) => membership?.groups.some((group) => group.id === session.groupId) === true,
     ).length;
-    if (overdue > 0) {
-      alerts.push({ type: "overdueTasks", count: overdue });
-    }
+    alerts.push({
+      type: "debt",
+      amount: client.balance,
+      sessions: unpaid,
+      membership,
+      repayLimit: Math.min(covered, membership?.sessionsRemaining ?? covered),
+    });
   }
+  if (
+    memberships !== undefined &&
+    current.length === 0 &&
+    client.groups.length > 0 &&
+    client.state === "ACTIVE" &&
+    unpaid.length === 0
+  )
+    alerts.push({ type: "noActiveSubscription" });
+  if (overdue !== undefined && overdue.total > 0)
+    alerts.push({ type: "overdueTasks", count: overdue.total, first: overdue.tasks[0] });
   if (client.birthday !== null) {
     const on = nextBirthday(client.birthday, today);
-    if (on <= addDays(today, BIRTHDAY_DAYS)) {
-      alerts.push({ type: "birthday", on });
-    }
+    if (on <= addDays(today, 7)) alerts.push({ type: "birthday", on });
   }
   return alerts;
 }

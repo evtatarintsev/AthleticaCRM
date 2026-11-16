@@ -38,6 +38,8 @@ import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientbalance.AuditClientBalances
 import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.domain.clientcard.ClientCardSectionSettings
+import org.athletica.crm.domain.clientcard.DbClientCardSectionSettings
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.clientnotes.ClientNotes
 import org.athletica.crm.domain.clientnotes.DbClientNotes
@@ -193,6 +195,7 @@ data class Di(
         DebitReconciliation(database, memberships, participations, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
     val membershipScheduler: MembershipScheduler =
         MembershipScheduler(database, memberships, notifications, employees, orgCalendar, views.unpaidSessions, tasks)
+    val clientCardSections: ClientCardSectionSettings = DbClientCardSectionSettings()
     val attendanceControls: AttendanceControls = DbAttendanceControls()
     val overdueJournalScheduler: OverdueJournalScheduler = OverdueJournalScheduler(database, tasks)
     val channelBindings: ChannelBindings = DbChannelBindings()

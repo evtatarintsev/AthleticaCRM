@@ -75,6 +75,8 @@ function detailServer(
   let client = initial;
   let currentNotes = notes;
   return appServer({
+    "org/client-card": () => json({ tasks: true, notes: true, chat: true, documents: true }),
+    "clients/unpaid-sessions": () => json({ sessions: [] }),
     "custom-fields/list": () => json(customFieldDefs),
     "clients/detail": () => json(client),
     "clients/archive": () => {
@@ -146,10 +148,11 @@ describe("карточка клиента", () => {
     const user = userEvent.setup();
 
     await screen.findByRole("heading", { name: alice.name });
-    expect(screen.getByText(alice.contacts[0]?.value ?? "")).toBeInTheDocument();
+    expect(screen.getAllByText(alice.contacts[0]?.value ?? "")).toHaveLength(2);
     expect(screen.getByText(alice.contacts[1]?.value ?? "")).toBeInTheDocument();
     expect(screen.getByText("Утренняя группа")).toBeInTheDocument();
 
+    await user.click(await screen.findByRole("tab", { name: /^Заметки/ }));
     await user.type(
       screen.getByLabelText(ru["clients.detail.noteFieldLabel"]),
       "Перезвонить завтра",
@@ -163,7 +166,7 @@ describe("карточка клиента", () => {
 
     await user.click(screen.getByRole("button", { name: ru["clientCard.action.more"] }));
     await user.click(await screen.findByRole("menuitem", { name: ru["action.archive"] }));
-    await screen.findByText(ru["clients.detail.archivedBanner"]);
+    await screen.findByText(ru["clients.view.archived"]);
     expect(api.to("clients/archive").at(-1)?.body).toEqual({ clientIds: [alice.id] });
     expect(screen.queryByRole("link", { name: ru["action.edit"] })).not.toBeInTheDocument();
   });
@@ -177,7 +180,7 @@ describe("карточка клиента", () => {
       updatedAt: null,
     };
     const api = detailServer(alice, [note]);
-    openApp(`/clients/${alice.id}`, api.fetch);
+    openApp(`/clients/${alice.id}?tab=notes`, api.fetch);
     const user = userEvent.setup();
 
     await screen.findByText("исходный текст");
@@ -203,6 +206,7 @@ describe("карточка клиента", () => {
     openApp(`/clients/${alice.id}`, api.fetch);
     const user = userEvent.setup();
 
+    await user.click(await screen.findByRole("tab", { name: "Анкета" }));
     await screen.findByText(ru["clients.detail.noDocuments"]);
     const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
     if (fileInput === null) {
@@ -246,7 +250,7 @@ describe("карточка клиента", () => {
       originalName: "scan.jpg",
       contentType: "image/jpeg",
     };
-    openApp(`/clients/${alice.id}`, detailServer(withDoc, [], scan).fetch);
+    openApp(`/clients/${alice.id}?tab=profile`, detailServer(withDoc, [], scan).fetch);
     const user = userEvent.setup();
 
     const tile = await screen.findByRole("button", { name: "Открыть «Справка от врача»" });
@@ -270,7 +274,7 @@ describe("карточка клиента", () => {
       customFields: [{ type: "text", fieldKey: "notes", value: "аллергия на пыль" }],
     });
     const api = detailServer(withField);
-    openApp(`/clients/${withField.id}`, api.fetch);
+    openApp(`/clients/${withField.id}?tab=profile`, api.fetch);
 
     await screen.findByText("аллергия на пыль");
     const section = screen.getByText(ru["clients.additionalFields"]).closest("div");
@@ -350,15 +354,21 @@ describe("карточка клиента", () => {
     });
     openApp(`/clients/${alice.id}`, api.fetch);
 
-    await screen.findByText("Большой зал");
-    expect(await screen.findAllByText("Посещённая группа")).toHaveLength(2);
-    expect(screen.getByText("Пропущенная группа")).toBeInTheDocument();
+    await screen.findByText(/Большой зал/);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: "Занятия" }));
+    expect(await screen.findAllByText(/Посещённая группа/)).toHaveLength(1);
+    expect(screen.getByText(/Пропущенная группа/)).toBeInTheDocument();
     expect(screen.getByText("Болезнь")).toBeInTheDocument();
-    expect(await screen.findByText("Напомнить о продлении")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Обзор" }));
+    expect(await screen.findByText(/Напомнить о продлении/)).toBeInTheDocument();
 
-    const alerts = within(screen.getByRole("list", { name: ru["clientCard.alerts"] }));
+    const alerts = within(
+      screen.getByRole("heading", { name: ru["clientOverview.attention"] }).closest("section") ??
+        document.body,
+    );
     expect(alerts.getByText(ru["clientCard.alert.noActiveSubscription"])).toBeInTheDocument();
-    expect(alerts.getByText("1 просроченная задача")).toBeInTheDocument();
+    expect(alerts.getByText(/1 просроченная задача/)).toBeInTheDocument();
 
     const schedule = ScheduleListRequestSchema.parse(api.to("schedule/list").at(-1)?.body);
     expect(schedule.groupIds).toEqual([group.id]);
@@ -428,7 +438,7 @@ const taskCreateSheet = async () =>
 describe("задачи в карточке клиента", () => {
   it("создаёт задачу для клиента в панели, не уходя со страницы", async () => {
     const api = tasksServer();
-    const { history } = openApp(`/clients/${alice.id}`, api.fetch);
+    const { history } = openApp(`/clients/${alice.id}?tab=tasks`, api.fetch);
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: ru["tasks.create"] }));
@@ -449,11 +459,11 @@ describe("задачи в карточке клиента", () => {
     expect(request.clientId).toBe(alice.id);
     expect(await screen.findByRole("button", { name: "Отправить договор" })).toBeVisible();
     expect(history.location.pathname).toBe(`/clients/${alice.id}`);
-    expect(history.location.search).toBe("");
+    expect(history.location.search).toBe("?tab=tasks");
   });
 
   it("закрывает пустую форму создания без подтверждения", async () => {
-    openApp(`/clients/${alice.id}`, tasksServer().fetch);
+    openApp(`/clients/${alice.id}?tab=tasks`, tasksServer().fetch);
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: ru["tasks.create"] }));
@@ -467,7 +477,7 @@ describe("задачи в карточке клиента", () => {
   });
 
   it("открывает карточку задачи поверх карточки клиента", async () => {
-    const { history } = openApp(`/clients/${alice.id}`, tasksServer().fetch);
+    const { history } = openApp(`/clients/${alice.id}?tab=tasks`, tasksServer().fetch);
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: aliceTask.title }));
@@ -475,7 +485,7 @@ describe("задачи в карточке клиента", () => {
     const sheet = within(await screen.findByRole("dialog", { name: aliceTask.title }));
     expect(await sheet.findByText(aliceTask.description)).toBeVisible();
     expect(history.location.pathname).toBe(`/clients/${alice.id}`);
-    expect(history.location.search).toBe("");
+    expect(history.location.search).toBe("?tab=tasks");
 
     await user.keyboard("{Escape}");
     await waitFor(() => {
@@ -555,7 +565,7 @@ describe("чат в карточке клиента", () => {
       expect(input).toHaveFocus();
     });
     expect(history.location.pathname).toBe(`/clients/${alice.id}`);
-    expect(history.location.search).toBe("");
+    expect(history.location.search).toBe("?tab=overview");
 
     await user.type(input, "Да, конечно{Enter}");
 
@@ -614,5 +624,112 @@ describe("чат в карточке клиента", () => {
       expect(screen.queryByRole("dialog", { name: ru["messaging.title"] })).toBeNull();
     });
     expect(screen.queryByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeNull();
+  });
+});
+
+describe("вкладки и разделы карточки", () => {
+  it("простой набор скрывает разделы и их запросы; выключенная вкладка возвращается на обзор", async () => {
+    const api = detailServer(alice, [], passport, {
+      "org/client-card": () => json({ tasks: false, notes: false, chat: false, documents: false }),
+    });
+    const { history } = openApp(`/clients/${alice.id}?tab=notes`, api.fetch);
+    await screen.findByRole("heading", { name: alice.name });
+    await waitFor(() => {
+      expect(history.location.search).toBe("?tab=overview");
+    });
+    expect(screen.queryByRole("tab", { name: /^Заметки/ })).toBeNull();
+    expect(screen.queryByRole("tab", { name: /^Задачи/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: ru["messaging.open"] })).toBeNull();
+    expect(api.to("tasks/list")).toHaveLength(0);
+    expect(api.to("clients/notes/list")).toHaveLength(0);
+    expect(api.to("messaging/conversation")).toHaveLength(0);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Анкета" }));
+    expect(screen.queryByText(ru["clients.detail.noDocuments"])).toBeNull();
+  });
+  it("невалидная вкладка открывает обзор, visits перенаправляет к занятиям", async () => {
+    const api = detailServer(alice);
+    const { history } = openApp(`/clients/${alice.id}?tab=unknown`, api.fetch);
+    expect(await screen.findByRole("tab", { name: "Обзор" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    history.push(`/clients/${alice.id}/visits`);
+    await waitFor(() => {
+      expect(history.location.search).toBe("?tab=sessions");
+    });
+    expect(await screen.findByRole("tab", { name: "Занятия" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+  });
+  it("сохранение разделов из меню включает вкладку и сохраняет данные", async () => {
+    let enabled = false;
+    const api = detailServer(alice, [], passport, {
+      "org/client-card": () =>
+        json({ tasks: enabled, notes: false, chat: false, documents: false }),
+      "org/client-card/update": () => {
+        enabled = true;
+        return json({ tasks: true, notes: false, chat: false, documents: false });
+      },
+    });
+    openApp(`/clients/${alice.id}`, api.fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: ru["clientCard.action.more"] }));
+    await user.click(await screen.findByRole("menuitem", { name: ru["clientOverview.sections"] }));
+    const sheet = within(
+      await screen.findByRole("dialog", { name: ru["clientOverview.sections"] }),
+    );
+    await user.click(await sheet.findByRole("checkbox", { name: /Задачи/ }));
+    await user.click(sheet.getByRole("button", { name: ru["action.save"] }));
+    expect(await screen.findByRole("tab", { name: /^Задачи/ })).toBeVisible();
+    expect(api.to("org/client-card/update")[0]?.body).toEqual({
+      tasks: true,
+      notes: false,
+      chat: false,
+      documents: false,
+    });
+  });
+});
+
+it("attendance and next session tiles support keyboard and expose their action", async () => {
+  const nextId = "0199a0b2-7c3e-7d2a-9f10-000000000c01";
+  const api = detailServer(alice, [], passport, {
+    "schedule/list": () =>
+      json({
+        sessions: [
+          {
+            id: nextId,
+            group: alice.groups[0],
+            date: addDays(todayLocalDate(), 1),
+            startTime: "18:00",
+            endTime: "19:00",
+            hall: { id: "0199a0b2-7c3e-7d2a-9f10-000000000d01", name: "Зал" },
+            coaches: [],
+            disciplines: [],
+            status: "SCHEDULED",
+            colorKey: "GREEN",
+          },
+        ],
+      }),
+  });
+  const { history } = openApp(`/clients/${alice.id}`, api.fetch);
+  const user = userEvent.setup();
+  const attendance = await screen.findByRole("button", { name: ru["clientOverview.openSessions"] });
+  for (let i = 0; i < 35 && document.activeElement !== attendance; i++) await user.tab();
+  expect(attendance).toHaveFocus();
+  expect(attendance.closest("dl > div")?.className).toContain("focus-visible");
+  expect(attendance).not.toHaveAttribute("aria-haspopup");
+  await user.keyboard("{Enter}");
+  expect(screen.getByRole("tab", { name: "Занятия" })).toHaveAttribute("data-state", "active");
+  await user.click(screen.getByRole("tab", { name: "Обзор" }));
+  const next = await screen.findByRole("link", { name: /Открыть занятие: Утренняя группа/ });
+  for (let i = 0; i < 35 && document.activeElement !== next; i++) await user.tab();
+  expect(next).toHaveFocus();
+  expect(next.className).toContain("focus-visible:ring");
+  expect(next).toHaveTextContent("→");
+  await user.keyboard("{Enter}");
+  await waitFor(() => {
+    expect(history.location.pathname).toBe(`/sessions/${nextId}`);
   });
 });

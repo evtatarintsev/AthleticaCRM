@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { PlusIcon, UsersIcon, XIcon } from "lucide-react";
 import { useState } from "react";
@@ -10,6 +10,7 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
+import { todayLocalDate } from "@/lib/localDate";
 import { BlockRow, BlockStatus, ClientCardBlock } from "./card/ClientCardBlock";
 
 /**
@@ -23,16 +24,22 @@ export function ClientGroupsSection({
   clientId,
   groups,
   onChanged,
+  open,
+  onOpenChange,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly groups: readonly ClientGroup[];
   readonly onChanged: () => Promise<void>;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const sheetOpen = open ?? localOpen;
+  const setSheetOpen = onOpenChange ?? setLocalOpen;
   const allGroups = useQuery({
     ...apiQuery(api, branchId, "groups/list-for-select"),
     enabled: sheetOpen,
@@ -70,6 +77,9 @@ export function ClientGroupsSection({
     return null;
   };
 
+  const details = useQueries({
+    queries: groups.map((group) => apiQuery(api, branchId, "groups/detail", { id: group.id })),
+  });
   const memberIds = new Set(groups.map((group) => group.id));
 
   return (
@@ -99,8 +109,8 @@ export function ClientGroupsSection({
           empty={t("clients.detail.noGroups")}
         />
         {groups.length > 0 && (
-          <ul className="divide-y">
-            {groups.map((group) => (
+          <ul className="flex flex-wrap gap-2 p-3">
+            {groups.map((group, index) => (
               <BlockRow
                 key={group.id}
                 aside={
@@ -124,6 +134,23 @@ export function ClientGroupsSection({
                 >
                   {group.name}
                 </Link>
+                <p className="text-xs text-muted-foreground">
+                  {details[index]?.data?.disciplines.map((d) => d.name).join(", ")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {[
+                    ...new Set(
+                      details[index]?.data?.schedule
+                        .filter(
+                          (slot) =>
+                            slot.validity === null ||
+                            (slot.validity.from <= todayLocalDate() &&
+                              (slot.validity.to === null || slot.validity.to > todayLocalDate())),
+                        )
+                        .map((slot) => t(`day.${slot.dayOfWeek}`)),
+                    ),
+                  ].join(", ")}
+                </p>
               </BlockRow>
             ))}
           </ul>

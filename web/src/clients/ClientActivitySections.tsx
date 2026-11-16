@@ -25,7 +25,7 @@ import {
 } from "./card/ClientCardBlock";
 
 /** Сколько последних сообщений показывается в блоке. */
-const MESSAGES_SHOWN = 5;
+const MESSAGES_SHOWN = 3;
 
 /** Порядок задач: незавершённые раньше завершённых, внутри — по сроку, без срока — в конце. */
 function compareTasks(a: TaskListItemSchema, b: TaskListItemSchema): number {

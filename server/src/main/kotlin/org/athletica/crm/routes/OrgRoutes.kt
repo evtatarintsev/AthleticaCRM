@@ -2,11 +2,15 @@ package org.athletica.crm.routes
 
 import org.athletica.crm.api.schemas.attendancecontrol.AttendanceControlSettingsResponse
 import org.athletica.crm.api.schemas.attendancecontrol.UpdateAttendanceControlSettingsRequest
+import org.athletica.crm.api.schemas.org.ClientCardSectionsResponse
 import org.athletica.crm.api.schemas.org.OrgSettingsResponse
+import org.athletica.crm.api.schemas.org.UpdateClientCardSectionsRequest
 import org.athletica.crm.api.schemas.org.UpdateOrgSettingsRequest
 import org.athletica.crm.domain.attendancecontrol.AttendanceControl
 import org.athletica.crm.domain.attendancecontrol.AttendanceControls
 import org.athletica.crm.domain.attendancecontrol.JournalCloseDelay
+import org.athletica.crm.domain.clientcard.ClientCardSectionSettings
+import org.athletica.crm.domain.clientcard.ClientCardSections
 import org.athletica.crm.domain.org.Organization
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.storage.Database
@@ -15,8 +19,22 @@ context(db: Database)
 fun RouteWithContext.orgRoutes(
     organizations: Organizations,
     attendanceControls: AttendanceControls,
+    clientCardSections: ClientCardSectionSettings,
 ) {
     route("/org") {
+        get<Unit, ClientCardSectionsResponse>("/client-card") {
+            db.transaction { clientCardSections.current().toResponse() }
+        }
+
+        post<UpdateClientCardSectionsRequest, ClientCardSectionsResponse>("/client-card/update") { request ->
+            db.transaction {
+                clientCardSections.current()
+                    .withNew(request.tasks, request.notes, request.chat, request.documents)
+                    .apply { save() }
+                    .toResponse()
+            }
+        }
+
         get<Unit, OrgSettingsResponse>("/settings") {
             db.transaction {
                 organizations
@@ -60,3 +78,6 @@ fun Organization.toResponse() = OrgSettingsResponse(name, timezone, currency)
 
 /** Ответ с настройками контроля посещаемости. */
 fun AttendanceControl.toResponse() = AttendanceControlSettingsResponse(overdueTaskEnabled, overdueTaskDelay.minutes)
+
+/** Ответ с включаемыми разделами карточки клиента. */
+fun ClientCardSections.toResponse() = ClientCardSectionsResponse(tasks, notes, chat, documents)

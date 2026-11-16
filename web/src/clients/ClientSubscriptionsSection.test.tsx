@@ -60,7 +60,7 @@ function subscriptionsServer(
 describe("абонементы клиента", () => {
   it("выдаёт индивидуальный абонемент и показывает его в истории", async () => {
     const api = subscriptionsServer(dana);
-    openApp(`/clients/${dana.id}`, api.fetch);
+    openApp(`/clients/${dana.id}?tab=memberships`, api.fetch);
     const user = userEvent.setup();
 
     await screen.findByText(ru["clients.detail.subscriptionsEmpty"]);
@@ -94,7 +94,7 @@ describe("абонементы клиента", () => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
 
-    expect(await screen.findAllByText(ru["clients.detail.subscriptionIndividual"])).toHaveLength(2);
+    expect(await screen.findAllByText(ru["clients.detail.subscriptionIndividual"])).toHaveLength(1);
   });
   it("заканчивается по занятиям — подсвечен остаток, а не дата", async () => {
     const lastSession = testMembership({
@@ -102,7 +102,7 @@ describe("абонементы клиента", () => {
       sessionsRemaining: 1,
       state: activeState("2026-10-01", "2026-10-31", { endingSoon: ["BY_SESSIONS"] }),
     });
-    openApp(`/clients/${dana.id}`, subscriptionsServer(dana, [lastSession]).fetch);
+    openApp(`/clients/${dana.id}?tab=memberships`, subscriptionsServer(dana, [lastSession]).fetch);
 
     const section = within(
       (await screen.findByRole("heading", { name: ru["clients.detail.subscriptions"] })).closest(
@@ -122,7 +122,7 @@ describe("абонементы клиента", () => {
         closePending: true,
       }),
     });
-    openApp(`/clients/${dana.id}`, subscriptionsServer(dana, [pending]).fetch);
+    openApp(`/clients/${dana.id}?tab=memberships`, subscriptionsServer(dana, [pending]).fetch);
 
     expect(await screen.findAllByText(ru["membership.phase.closePending"])).not.toHaveLength(0);
     expect(

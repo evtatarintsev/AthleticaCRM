@@ -1,6 +1,9 @@
+import { queryOptions } from "@tanstack/react-query";
+import { InstantSchema } from "@/api/generated/contracts";
 import type { ApiClient } from "@/api/client";
 import type {
   BranchId,
+  TaskStatus,
   ClientAttendanceItemSchema,
   ClientGroup,
   ClientId,
@@ -8,6 +11,7 @@ import type {
   ScheduleSessionSchema,
 } from "@/api/generated/contracts";
 import { addDays, todayLocalDate } from "@/lib/localDate";
+import { unwrap } from "@/query/apiFailure";
 import { apiQuery } from "@/query/queries";
 
 /** Сколько задач клиента загружается в карточку. */
@@ -77,13 +81,54 @@ export function clientAttendanceQuery(api: ApiClient, branchId: BranchId, client
   });
 }
 
-/** Неотменённые занятия [sessions] по времени начала. */
+/** Неотменённые занятия, которые ещё не начались, по местному времени браузера. */
 export function upcomingSessions(
   sessions: readonly ScheduleSessionSchema[] | undefined,
+  now = new Date(),
 ): readonly ScheduleSessionSchema[] {
   return (sessions ?? [])
-    .filter((session) => session.status !== "CANCELLED")
+    .filter(
+      (session) =>
+        session.status !== "CANCELLED" &&
+        new Date(`${session.date}T${session.startTime}`).getTime() > now.getTime(),
+    )
     .toSorted((a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`));
+}
+
+export function clientCardSectionsQuery(api: ApiClient, branchId: BranchId) {
+  return { ...apiQuery(api, branchId, "org/client-card"), staleTime: 5 * 60 * 1000 };
+}
+
+export function clientUnpaidSessionsQuery(api: ApiClient, branchId: BranchId, clientId: ClientId) {
+  return apiQuery(api, branchId, "clients/unpaid-sessions", { clientId });
+}
+
+/** Время просрочки вычисляется при обновлении, а не включается в ключ каждого рендера. */
+export function clientTaskSummaryQuery(
+  api: ApiClient,
+  branchId: BranchId,
+  clientId: ClientId,
+  overdue: boolean,
+) {
+  const statuses: readonly TaskStatus[] = ["PENDING", "IN_PROGRESS", "PAUSED"];
+  return queryOptions({
+    queryKey: [
+      "api",
+      branchId,
+      "tasks/list",
+      { clientId, summary: overdue ? "overdue" : "unfinished" },
+    ] as const,
+    queryFn: async () => {
+      return unwrap(
+        await api.call("tasks/list", {
+          clientId,
+          statuses,
+          limit: 1,
+          ...(overdue ? { dueDateTo: InstantSchema.parse(new Date().toISOString()) } : {}),
+        }),
+      );
+    },
+  });
 }
 
 /** Отметки [items] с присутствием [presence], от новых к старым. */

@@ -1,13 +1,13 @@
 ## 1. Server: разделы карточки клиента
 
-- [ ] 1.1 Liquibase-миграция: таблица разделов карточки (строка на организацию: `tasks`, `notes`,
+- [x] 1.1 Liquibase-миграция: таблица разделов карточки (строка на организацию: `tasks`, `notes`,
       `chat`, `documents`); в той же миграции — строка «всё включено» для каждой существующей
       организации.
-- [ ] 1.2 Агрегат в `domain/` по образцу `attendancecontrol/`: `current()` (нет строки → простой
+- [x] 1.2 Агрегат в `domain/` по образцу `attendancecontrol/`: `current()` (нет строки → простой
       набор), `withNew(...)`, `save()`.
-- [ ] 1.3 `shared`: `ClientCardSectionsResponse`, `UpdateClientCardSectionsRequest`; маршруты
+- [x] 1.3 `shared`: `ClientCardSectionsResponse`, `UpdateClientCardSectionsRequest`; маршруты
       GET `org/client-card` и POST `org/client-card/update` в `routes/OrgRoutes.kt`.
-- [ ] 1.4 Тесты разделов: простой набор для организации без строки, сохранение, отсутствие
+- [x] 1.4 Тесты разделов: простой набор для организации без строки, сохранение, отсутствие
       удаления данных и изоляция организаций. Миграцию проверить отдельно на изолированной БД:
       применить changelog до нового changeset, создать организацию, затем применить новый
       changeset и проверить четыре включённых флага; организация, созданная после него, получает
@@ -16,29 +16,29 @@
 
 ## 2. Server: неоплаченные занятия клиента
 
-- [ ] 2.1 `UnpaidSessionsView.byClient(clientId)` + SQL в `DbUnpaidSessionsView`: проверка клиента
+- [x] 2.1 `UnpaidSessionsView.byClient(clientId)` + SQL в `DbUnpaidSessionsView`: проверка клиента
       в организации; основа — `session_attendance.client_id`, организация и статус — из
       `sessions`, без join с абонементами. Общим с `byMembership` может быть только `NOT EXISTS`
       действующего списания. Неизвестный или чужой клиент → `CLIENT_NOT_FOUND`.
-- [ ] 2.2 `shared`: `ClientUnpaidSessionsRequest`; маршрут `clients/unpaid-sessions` в
+- [x] 2.2 `shared`: `ClientUnpaidSessionsRequest`; маршрут `clients/unpaid-sessions` в
       `routes/ClientsRoutes.kt`, ответ — `UnpaidSessionsResponse`.
-- [ ] 2.3 DB-тест в `server/src/test/kotlin/org/athletica/crm/read/memberships/` на сценарии
+- [x] 2.3 DB-тест в `server/src/test/kotlin/org/athletica/crm/read/memberships/` на сценарии
       `specs/client-unpaid-sessions/spec.md`.
-- [ ] 2.4 `./gradlew build`, `./gradlew ktlintFormat`, `cd web && npm run contracts`, закоммитить
+- [x] 2.4 `./gradlew build`, `./gradlew ktlintFormat`, `cd web && npm run contracts`, закоммитить
       `web/src/api/generated/`.
 
 ## 3. Web: данные и чистая логика
 
-- [ ] 3.1 В `card/clientCardQueries.ts`: запросы разделов и неоплаченных занятий клиента; два
+- [x] 3.1 В `card/clientCardQueries.ts`: запросы разделов и неоплаченных занятий клиента; два
       запроса сводки задач через фильтры и `total` существующего `tasks/list` по design.md,
       только при включённом разделе. Проверить цифры при более чем 50 задачах и инвалидацию
       списка и обеих сводок после изменений задачи; API и контракты задач не меняются.
-- [ ] 3.2 `card/clientOverview.ts`: основной абонемент и «+N», посещаемость по последним 10
+- [x] 3.2 `card/clientOverview.ts`: основной абонемент и «+N», посещаемость по последним 10
       отметкам, история с фильтром и счётчиками; выбор следующего и ближайших занятий только
       среди неотменённых с началом позже текущего локального времени (общий фильтр
       `upcomingSessions` и оба его потребителя). Unit-тесты: сегодня 15:00, занятия в 10:00,
       15:00, 18:00 и отменённое в 16:00 → следующее 18:00; если будущих нет → пусто.
-- [ ] 3.3 `card/clientCardAlerts.ts`: строки «Требует внимания» с действиями (долг → «Погасить
+- [x] 3.3 `card/clientCardAlerts.ts`: строки «Требует внимания» с действиями (долг → «Погасить
       долг» / «Выдать абонемент» / «Баланс»; нет абонемента; просроченные задачи только при
       включённом разделе, по серверной сводке; день рождения); убрать `archived`; обновить тесты.
       Для частичного погашения — «Погасить часть долга», группы и предел N из M по design.md;
@@ -48,21 +48,21 @@
 
 ## 4. Web: страница и вкладки
 
-- [ ] 4.1 `router.tsx`: zod-схема `tab` у `/clients/$clientId` (невалидное → `overview`),
+- [x] 4.1 `router.tsx`: zod-схема `tab` у `/clients/$clientId` (невалидное → `overview`),
       `/clients/$clientId/visits` → `?tab=sessions`, удалить `/payments` и
       `ClientComingSoonPage.tsx`; тест маршрутов.
-- [ ] 4.2 Переписать `ClientDetailPage.tsx`: шапка (`ClientCardHeader`) без плиток и чипов, меню
+- [x] 4.2 Переписать `ClientDetailPage.tsx`: шапка (`ClientCardHeader`) без плиток и чипов, меню
       «⋯», полоса вкладок со счётчиками и индикатором, выключенная вкладка → `overview`.
-- [ ] 4.3 `ClientOverviewTab.tsx`: плитки (переработанный `ClientCardQuickInfo`), «Требует
+- [x] 4.3 `ClientOverviewTab.tsx`: плитки (переработанный `ClientCardQuickInfo`), «Требует
       внимания», карточки «Группы», «Контакты», «Переписка», «Последняя заметка».
-- [ ] 4.4 `ClientSessionsTab.tsx` (из `ClientScheduleSections`), вкладки «Абонементы», «Задачи»,
+- [x] 4.4 `ClientSessionsTab.tsx` (из `ClientScheduleSections`), вкладки «Абонементы», «Задачи»,
       «Заметки», «Анкета» на существующих секциях; удалить `card/clientCardBlocks.ts` и `FeedBlock`.
-- [ ] 4.5 Панель «Разделы карточки клиента» (`ClientCardSectionsSheet`) из «⋯» и пункт «Карточка
+- [x] 4.5 Панель «Разделы карточки клиента» (`ClientCardSectionsSheet`) из «⋯» и пункт «Карточка
       клиента» в разделе «Клиенты» `SettingsPage.tsx`.
-- [ ] 4.6 Раскладка по design.md: ≥ 1000 px, < 1000 px, телефон (плитки, липкие вкладки с выбранной
+- [x] 4.6 Раскладка по design.md: ≥ 1000 px, < 1000 px, телефон (плитки, липкие вкладки с выбранной
       в зоне видимости, нижняя панель действий, «⋯» в углу шапки); i18n в `ru.ts` / `en.ts` с
       формами множественного числа.
-- [ ] 4.7 Обновить `ClientDetailPage.test.tsx` и тесты секций; тесты на сценарии
+- [x] 4.7 Обновить `ClientDetailPage.test.tsx` и тесты секций; тесты на сценарии
       `specs/web-client/**`. В фикстурах и моках тестов задач, заметок, переписки и документов
       явно включить нужные разделы: организации, созданные после миграции (в том числе в
       `TestPostgres`), получают простой набор. Отдельно проверить выключенные разделы.
@@ -72,5 +72,5 @@
 
 ## 5. Проверки
 
-- [ ] 5.1 `npm run format` и `npm run check` в `web/`; `./gradlew build` и `./gradlew ktlintFormat`
+- [x] 5.1 `npm run format` и `npm run check` в `web/`; `./gradlew build` и `./gradlew ktlintFormat`
       в корне.

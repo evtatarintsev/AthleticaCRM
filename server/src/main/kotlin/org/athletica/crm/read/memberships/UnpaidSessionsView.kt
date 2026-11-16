@@ -3,6 +3,7 @@ package org.athletica.crm.read.memberships
 import arrow.core.raise.context.Raise
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
@@ -14,6 +15,10 @@ import org.athletica.crm.storage.Transaction
  * [RequestContext], включая системный).
  */
 interface UnpaidSessionsView {
+    /** Все неоплаченные посещения клиента в организации, независимо от абонементов и состава групп. */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun byClient(clientId: ClientId): UnpaidSessionsResponse
+
     /**
      * Неоплаченные занятия клиента абонемента [membershipId] в его группах, от старых к новым.
      * Ошибка, если абонемент не найден в организации.

@@ -2,16 +2,11 @@ import { Link } from "@tanstack/react-router";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
-  CakeIcon,
-  ClockAlertIcon,
   MessageSquareIcon,
   MoreHorizontalIcon,
   PencilIcon,
   TicketIcon,
-  TicketXIcon,
-  WalletIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
 import type { ApiClient } from "@/api/client";
 import type { ClientDetailResponse } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
@@ -22,9 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/i18n/context";
-import { cn } from "@/lib/utils";
 import { Avatar } from "@/ui/Avatar";
-import type { ClientAlert } from "./clientCardAlerts";
 
 /** Полных лет на дату [today] при дате рождения [birthday] (`YYYY-MM-DD`). */
 function ageOn(birthday: string, today: Date): number {
@@ -34,17 +27,15 @@ function ageOn(birthday: string, today: Date): number {
   return today.getFullYear() - year - (beforeBirthday ? 1 : 0);
 }
 
-/**
- * Шапка карточки: кто клиент (аватар, имя, пол, возраст, источник), быстрая информация
- * (баланс, абонемент, посещения), основные действия кнопками, остальные — в меню «Ещё»,
- * ниже — предупреждения.
- */
+/** Имя, основные контакты и действия; на телефоне действия закреплены снизу. */
 export function ClientCardHeader({
   api,
   client,
   leadSourceName,
-  quickInfo,
-  alerts,
+  chatEnabled,
+  onTaskCreate,
+  onAddGroup,
+  onSections,
   onToggleArchived,
   onIssueSubscription,
   onOpenChat,
@@ -52,9 +43,10 @@ export function ClientCardHeader({
   readonly api: ApiClient;
   readonly client: ClientDetailResponse;
   readonly leadSourceName: string | null;
-  /** Плитки быстрой информации под именем. */
-  readonly quickInfo: ReactNode;
-  readonly alerts: readonly ClientAlert[];
+  readonly chatEnabled: boolean;
+  readonly onTaskCreate: (() => void) | undefined;
+  readonly onAddGroup: () => void;
+  readonly onSections: () => void;
   readonly onToggleArchived: (archived: boolean) => void;
   /** Открывает панель выдачи абонемента. */
   readonly onIssueSubscription: () => void;
@@ -65,8 +57,9 @@ export function ClientCardHeader({
   const archived = client.state === "ARCHIVED";
   const clientId = client.id;
 
+  const phone = client.contacts.find((contact) => contact.type === "PHONE");
   return (
-    <div className="space-y-4 rounded-lg border bg-card p-4">
+    <div className="relative space-y-4 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-start gap-4">
         <Avatar
           api={api}
@@ -92,46 +85,53 @@ export function ClientCardHeader({
               <span>{t("clientCard.meta.source", { name: leadSourceName })}</span>
             )}
           </p>
+          {phone !== undefined && (
+            <a className="text-sm text-primary hover:underline" href={`tel:${phone.value}`}>
+              {phone.value}
+            </a>
+          )}
         </div>
       </div>
 
-      {quickInfo}
-
-      <div className="flex flex-wrap gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t bg-card p-3 sm:static sm:flex-wrap sm:border-0 sm:p-0">
         {!archived && (
           <Button size="sm" onClick={onIssueSubscription}>
             <TicketIcon aria-hidden />
             {t("clients.detail.issueSubscription")}
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={onOpenChat}>
-          <MessageSquareIcon aria-hidden />
-          {t("messaging.open")}
-        </Button>
-        {!archived && (
-          <Button size="sm" variant="outline" className="max-sm:hidden" asChild>
-            <Link to="/clients/$clientId/edit" params={{ clientId }}>
-              <PencilIcon aria-hidden />
-              {t("action.edit")}
-            </Link>
+        {chatEnabled && (
+          <Button size="sm" variant="outline" onClick={onOpenChat}>
+            <MessageSquareIcon aria-hidden />
+            {t("messaging.open")}
           </Button>
         )}
+      </div>
+      <div className="absolute right-4 top-4 sm:static">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" aria-label={t("clientCard.action.more")}>
               <MoreHorizontalIcon aria-hidden />
-              {t("clientCard.action.more")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {!archived && (
-              <DropdownMenuItem className="sm:hidden" asChild>
+              <DropdownMenuItem asChild>
                 <Link to="/clients/$clientId/edit" params={{ clientId }}>
                   <PencilIcon aria-hidden />
                   {t("action.edit")}
                 </Link>
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem onSelect={onAddGroup}>
+              {t("clients.detail.addToGroup")}
+            </DropdownMenuItem>
+            {onTaskCreate !== undefined && (
+              <DropdownMenuItem onSelect={onTaskCreate}>{t("tasks.create")}</DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={onSections}>
+              {t("clientOverview.sections")}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => {
                 onToggleArchived(!archived);
@@ -143,72 +143,6 @@ export function ClientCardHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
-      {alerts.length > 0 && (
-        <ul className="flex flex-wrap gap-2" aria-label={t("clientCard.alerts")}>
-          {alerts.map((alert) => (
-            <AlertChip key={alert.type} alert={alert} />
-          ))}
-        </ul>
-      )}
     </div>
-  );
-}
-
-/** Важность предупреждения: определяет цвет. */
-type Severity = "danger" | "warning" | "info";
-
-/** Предупреждение в шапке: иконка, текст и цвет по важности. */
-function AlertChip({ alert }: { readonly alert: ClientAlert }) {
-  const { t, format } = useI18n();
-  const view = ((): { severity: Severity; icon: ReactNode; text: string } => {
-    switch (alert.type) {
-      case "archived":
-        return {
-          severity: "info",
-          icon: <ArchiveIcon aria-hidden />,
-          text: t("clients.detail.archivedBanner"),
-        };
-      case "debt":
-        return {
-          severity: "danger",
-          icon: <WalletIcon aria-hidden />,
-          text: t("clientCard.alert.debt", { amount: format.money(alert.amount) }),
-        };
-      case "noActiveSubscription":
-        return {
-          severity: "warning",
-          icon: <TicketXIcon aria-hidden />,
-          text: t("clientCard.alert.noActiveSubscription"),
-        };
-      case "overdueTasks":
-        return {
-          severity: "danger",
-          icon: <ClockAlertIcon aria-hidden />,
-          text: t("clientCard.alert.overdueTasks", { count: alert.count }),
-        };
-      case "birthday":
-        return {
-          severity: "info",
-          icon: <CakeIcon aria-hidden />,
-          text: t("clientCard.alert.birthday", { date: format.date(alert.on) }),
-        };
-    }
-  })();
-  return (
-    <li
-      className={cn(
-        "flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm [&_svg]:size-4 [&_svg]:shrink-0",
-        view.severity === "danger" &&
-          "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300",
-        view.severity === "warning" &&
-          "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
-        view.severity === "info" &&
-          "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200",
-      )}
-    >
-      {view.icon}
-      {view.text}
-    </li>
   );
 }

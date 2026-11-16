@@ -718,7 +718,7 @@ it("attendance and next session tiles support keyboard and expose their action",
   const attendance = await screen.findByRole("button", { name: ru["clientOverview.openSessions"] });
   for (let i = 0; i < 35 && document.activeElement !== attendance; i++) await user.tab();
   expect(attendance).toHaveFocus();
-  expect(attendance.closest("dl > div")?.className).toContain("focus-visible");
+  expect(attendance.className).toContain("focus-visible");
   expect(attendance).not.toHaveAttribute("aria-haspopup");
   await user.keyboard("{Enter}");
   expect(screen.getByRole("tab", { name: "Занятия" })).toHaveAttribute("data-state", "active");
@@ -727,7 +727,7 @@ it("attendance and next session tiles support keyboard and expose their action",
   for (let i = 0; i < 35 && document.activeElement !== next; i++) await user.tab();
   expect(next).toHaveFocus();
   expect(next.className).toContain("focus-visible:ring");
-  expect(next).toHaveTextContent("→");
+  expect(next.querySelector(".lucide-chevron-right")).not.toBeNull();
   await user.keyboard("{Enter}");
   await waitFor(() => {
     expect(history.location.pathname).toBe(`/sessions/${nextId}`);

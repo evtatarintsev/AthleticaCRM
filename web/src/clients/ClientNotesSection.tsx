@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PencilIcon, StickyNoteIcon, TrashIcon } from "lucide-react";
+import { PencilIcon, TrashIcon } from "lucide-react";
 import { useId, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
@@ -94,7 +94,6 @@ export function ClientNotesSection({
 
   return (
     <ClientCardBlock
-      icon={<StickyNoteIcon aria-hidden />}
       title={t("clients.detail.notes")}
       count={count}
       footer={

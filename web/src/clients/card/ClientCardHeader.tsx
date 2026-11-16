@@ -5,6 +5,7 @@ import {
   MessageSquareIcon,
   MoreHorizontalIcon,
   PencilIcon,
+  PhoneIcon,
   TicketIcon,
 } from "lucide-react";
 import type { ApiClient } from "@/api/client";
@@ -59,58 +60,70 @@ export function ClientCardHeader({
 
   const phone = client.contacts.find((contact) => contact.type === "PHONE");
   return (
-    <div className="relative space-y-4 rounded-lg border bg-card p-4">
-      <div className="flex flex-wrap items-start gap-4">
+    <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3">
+      <div className="flex min-w-0 flex-[1_1_360px] items-center gap-3.5 max-sm:pr-12">
         <Avatar
           api={api}
           uploadId={client.avatarId}
           name={client.name}
-          className="size-12 text-base sm:size-16 sm:text-xl"
+          className="size-12 text-base sm:size-14 sm:text-lg"
         />
-        <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{client.name}</h1>
+            <h1 className="text-2xl leading-tight font-bold tracking-tight sm:text-[28px]">
+              {client.name}
+            </h1>
             {archived && (
               <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                 {t("clients.view.archived")}
               </span>
             )}
           </div>
-          <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <span>{t(`gender.${client.gender}`)}</span>
-            {client.birthday !== null && (
-              <span>{t("clientCard.meta.age", { count: ageOn(client.birthday, new Date()) })}</span>
-            )}
+          <p className="mt-1 flex flex-wrap gap-x-3.5 gap-y-1 text-sm text-foreground/80">
+            <span>
+              {[
+                t(`gender.${client.gender}`),
+                ...(client.birthday === null
+                  ? []
+                  : [t("clientCard.meta.age", { count: ageOn(client.birthday, new Date()) })]),
+              ].join(" · ")}
+            </span>
             {leadSourceName !== null && (
-              <span>{t("clientCard.meta.source", { name: leadSourceName })}</span>
+              <span className="text-muted-foreground">
+                {t("clientCard.meta.source", { name: leadSourceName })}
+              </span>
+            )}
+            {phone !== undefined && (
+              <a
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                href={`tel:${phone.value}`}
+              >
+                <PhoneIcon aria-hidden className="size-3.5" />
+                {phone.value}
+              </a>
             )}
           </p>
-          {phone !== undefined && (
-            <a className="text-sm text-primary hover:underline" href={`tel:${phone.value}`}>
-              {phone.value}
-            </a>
-          )}
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t bg-card p-3 sm:static sm:flex-wrap sm:border-0 sm:p-0">
+      <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t bg-card p-3 empty:hidden max-sm:[&>*]:flex-1 sm:static sm:border-0 sm:bg-transparent sm:p-0">
         {!archived && (
-          <Button size="sm" onClick={onIssueSubscription}>
+          <Button onClick={onIssueSubscription}>
             <TicketIcon aria-hidden />
             {t("clients.detail.issueSubscription")}
           </Button>
         )}
         {chatEnabled && (
-          <Button size="sm" variant="outline" onClick={onOpenChat}>
+          <Button variant="outline" onClick={onOpenChat}>
             <MessageSquareIcon aria-hidden />
             {t("messaging.open")}
           </Button>
         )}
       </div>
-      <div className="absolute right-4 top-4 sm:static">
+      <div className="absolute top-0 right-0 sm:static">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" aria-label={t("clientCard.action.more")}>
+            <Button size="icon" variant="outline" aria-label={t("clientCard.action.more")}>
               <MoreHorizontalIcon aria-hidden />
             </Button>
           </DropdownMenuTrigger>

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ExternalLinkIcon, HistoryIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 import type { ApiClient } from "@/api/client";
 import type {
   BranchId,
@@ -196,11 +196,7 @@ function RecentAttendance({ attendance }: { readonly attendance: AttendanceState
     .slice(0, RECENT_ATTENDANCE);
 
   return (
-    <ClientCardBlock
-      icon={<HistoryIcon aria-hidden />}
-      title={t("participantCard.recentAttendance")}
-      count={null}
-    >
+    <ClientCardBlock title={t("participantCard.recentAttendance")} count={null}>
       <BlockStatus
         isPending={attendance.isPending}
         isError={attendance.isError}

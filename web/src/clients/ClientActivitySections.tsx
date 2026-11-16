@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRightIcon, ListChecksIcon, MessagesSquareIcon, PlusIcon } from "lucide-react";
+import { MessageSquareIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import {
@@ -20,7 +20,6 @@ import {
   BlockStatus,
   BlockSub,
   ClientCardBlock,
-  Pill,
   ShowAllButton,
 } from "./card/ClientCardBlock";
 
@@ -65,7 +64,6 @@ export function ClientTasksSection({
 
   return (
     <ClientCardBlock
-      icon={<ListChecksIcon aria-hidden />}
       title={t("tasks.title")}
       count={items.length}
       actions={
@@ -155,13 +153,12 @@ export function ClientMessagesSection({
 
   return (
     <ClientCardBlock
-      icon={<MessagesSquareIcon aria-hidden />}
       title={t("clientCard.block.messages")}
       count={messages.length}
-      footer={
-        <Button variant="ghost" size="sm" onClick={onOpen}>
+      actions={
+        <Button variant="link" size="sm" onClick={onOpen}>
+          <MessageSquareIcon aria-hidden />
           {t("clientCard.openConversation")}
-          <ArrowRightIcon aria-hidden />
         </Button>
       }
     >
@@ -176,19 +173,26 @@ export function ClientMessagesSection({
           {latest.map((message) => {
             const at = InstantSchema.safeParse(message.createdAt);
             return (
-              <BlockRow
-                key={message.id}
-                aside={at.success ? <BlockSub>{format.ago(at.data, now)}</BlockSub> : null}
-              >
-                <Pill tone={message.type === "inbound" ? "blue" : "gray"}>
-                  {t(
-                    message.type === "inbound"
-                      ? "clientCard.messageIncoming"
-                      : "clientCard.messageOutgoing",
+              <li key={message.id} className="flex flex-col gap-0.5 px-4 py-2.5 text-sm">
+                <span className="flex justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {t(
+                      message.type === "inbound"
+                        ? "clientCard.messageIncoming"
+                        : "clientCard.messageOutgoing",
+                    )}
+                  </span>
+                  {at.success && <span>{format.ago(at.data, now)}</span>}
+                </span>
+                <span
+                  className={cn(
+                    "truncate",
+                    message.type === "inbound" ? "text-foreground" : "text-foreground/80",
                   )}
-                </Pill>
-                <div className="mt-1 line-clamp-2">{message.body}</div>
-              </BlockRow>
+                >
+                  {message.body}
+                </span>
+              </li>
             );
           })}
         </ul>

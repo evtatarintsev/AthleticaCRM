@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { CalendarClockIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type { BranchId, ClientGroup } from "@/api/generated/contracts";
@@ -38,7 +37,6 @@ export function ClientUpcomingSection({
 
   return (
     <ClientCardBlock
-      icon={<CalendarClockIcon aria-hidden />}
       title={t("clientOverview.upcoming")}
       count={sessions.length}
       footer={

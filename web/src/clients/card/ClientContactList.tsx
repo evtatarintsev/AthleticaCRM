@@ -50,13 +50,17 @@ function ContactRow({ contact }: { readonly contact: ClientContactSchema }) {
   const { t } = useI18n();
   const view = contactView(contact);
   return (
-    <li className="flex items-center gap-3 px-4 py-2 text-sm">
-      <span className="text-muted-foreground [&_svg]:size-4">{view.icon}</span>
-      <a href={view.href} className="min-w-0 flex-1 truncate text-primary hover:underline">
-        {contact.value}
-      </a>
-      <span className="shrink-0 text-xs text-muted-foreground">
-        {t(`contactType.${contact.type}`)}
+    <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
+      <span className="inline-flex size-7.5 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground [&_svg]:size-4">
+        {view.icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <a href={view.href} className="block truncate font-medium text-primary hover:underline">
+          {contact.value}
+        </a>
+        <span className="block text-xs text-muted-foreground">
+          {t(`contactType.${contact.type}`)}
+        </span>
       </span>
     </li>
   );

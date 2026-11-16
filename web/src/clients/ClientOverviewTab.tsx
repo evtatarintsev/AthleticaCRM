@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import {
+  CakeIcon,
+  ListChecksIcon,
+  PencilIcon,
+  TicketIcon,
+  TriangleAlertIcon,
+  WalletIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
@@ -10,7 +18,9 @@ import type {
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/context";
+import { cn } from "@/lib/utils";
 import { apiQuery } from "@/query/queries";
+import { ClientCardBlock } from "./card/ClientCardBlock";
 import { ClientContactList } from "./card/ClientContactList";
 import type { ClientAlert } from "./card/clientCardAlerts";
 import { ClientGroupsSection } from "./ClientGroupsSection";
@@ -63,20 +73,29 @@ export function ClientOverviewTab({
     <div className="space-y-4">
       {quickInfo}
       {alerts.length > 0 && (
-        <section className="rounded-lg border bg-card p-4">
-          <h2 className="font-medium">{t("clientOverview.attention")}</h2>
+        <section className="rounded-xl border bg-card shadow-xs">
+          <h2 className="flex items-center gap-2.5 border-b px-4 py-3 font-semibold">
+            <span className="inline-flex size-7 items-center justify-center rounded-lg bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 [&_svg]:size-4">
+              <TriangleAlertIcon aria-hidden />
+            </span>
+            {t("clientOverview.attention")}
+            <span aria-hidden className="font-medium text-muted-foreground tabular-nums">
+              {alerts.length}
+            </span>
+          </h2>
           <ul className="divide-y">
             {alerts.map((alert) => (
               <li
                 key={alert.type}
-                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3 text-sm [&>:nth-child(2)]:min-w-0 [&>:nth-child(2)]:flex-[1_1_260px]"
               >
+                <AlertIcon type={alert.type} />
                 {alert.type === "debt" && (
                   <>
-                    <div className="text-destructive">
+                    <div>
                       {alert.sessions.length > 0 && (
                         <>
-                          <p>
+                          <p className="font-semibold">
                             {t("clientOverview.unpaidCount", { count: alert.sessions.length })} ·{" "}
                             {[...new Set(alert.sessions.map((session) => session.groupName))].join(
                               ", ",
@@ -186,20 +205,28 @@ export function ClientOverviewTab({
             />
           )}
           {notes && (
-            <section className="rounded-lg border bg-card p-4">
-              <h2 className="font-medium">{t("clientOverview.latestNote")}</h2>
-              {note !== undefined && (
-                <>
-                  <p className="my-2 whitespace-pre-wrap text-sm">{note.text}</p>
-                  <p className="text-xs text-muted-foreground">
+            <ClientCardBlock
+              title={t("clientOverview.latestNote")}
+              count={null}
+              actions={
+                <Button size="sm" variant="link" onClick={onNotes}>
+                  {t("clientOverview.allNotes")} · {latest.data?.notes.length ?? 0}
+                </Button>
+              }
+            >
+              {note === undefined ? (
+                <p className="px-4 py-3 text-sm text-muted-foreground">
+                  {t("clientOverview.noNotes")}
+                </p>
+              ) : (
+                <div className="px-4 py-3.5 text-sm">
+                  <p className="whitespace-pre-wrap">{note.text}</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     {note.author.name} · {format.dateTime(note.createdAt)}
                   </p>
-                </>
+                </div>
               )}
-              <Button size="sm" variant="ghost" onClick={onNotes}>
-                {t("clientOverview.tab.notes")} →
-              </Button>
-            </section>
+            </ClientCardBlock>
           )}
           {!chat && !notes && <Contacts client={client} />}
         </div>
@@ -207,23 +234,47 @@ export function ClientOverviewTab({
     </div>
   );
 }
+/** Иконка строки «Требует внимания» по типу предупреждения [type]; цвет — по важности. */
+function AlertIcon({ type }: { readonly type: ClientAlert["type"] }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-flex size-7.5 shrink-0 items-center justify-center rounded-lg [&_svg]:size-4",
+        (type === "debt" || type === "overdueTasks") &&
+          "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+        type === "noActiveSubscription" &&
+          "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+        type === "birthday" && "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200",
+      )}
+    >
+      {type === "debt" && <WalletIcon />}
+      {type === "noActiveSubscription" && <TicketIcon />}
+      {type === "overdueTasks" && <ListChecksIcon />}
+      {type === "birthday" && <CakeIcon />}
+    </span>
+  );
+}
+
+/** Карточка «Контакты» клиента [client] со ссылкой на редактирование анкеты. */
 function Contacts({ client }: { readonly client: ClientDetailResponse }) {
   const { t } = useI18n();
   return (
-    <section className="rounded-lg border bg-card">
-      <div className="flex items-center justify-between border-b p-4">
-        <h2 className="font-medium">{t("clients.contacts")}</h2>
-        {client.state === "ACTIVE" && (
-          <Link
-            className="text-sm text-primary hover:underline"
-            to="/clients/$clientId/edit"
-            params={{ clientId: client.id }}
-          >
-            {t("action.edit")}
-          </Link>
-        )}
-      </div>
+    <ClientCardBlock
+      title={t("clients.contacts")}
+      count={null}
+      actions={
+        client.state === "ACTIVE" && (
+          <Button size="sm" variant="link" asChild>
+            <Link to="/clients/$clientId/edit" params={{ clientId: client.id }}>
+              <PencilIcon aria-hidden />
+              {t("action.edit")}
+            </Link>
+          </Button>
+        )
+      }
+    >
       <ClientContactList contacts={client.contacts} />
-    </section>
+    </ClientCardBlock>
   );
 }

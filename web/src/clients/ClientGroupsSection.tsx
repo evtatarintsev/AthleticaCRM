@@ -1,6 +1,6 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { PlusIcon, UsersIcon, XIcon } from "lucide-react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
@@ -85,7 +85,6 @@ export function ClientGroupsSection({
   return (
     <>
       <ClientCardBlock
-        icon={<UsersIcon aria-hidden />}
         title={t("clientCard.block.groups")}
         count={groups.length}
         actions={

@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { TicketIcon } from "lucide-react";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type { BranchId, ClientId, MembershipId, MembershipSchema } from "@/api/generated/contracts";
@@ -75,7 +74,6 @@ export function ClientSubscriptionsSection({
 
   return (
     <ClientCardBlock
-      icon={<TicketIcon aria-hidden />}
       title={t("clients.detail.subscriptions")}
       count={items.length}
       footer={

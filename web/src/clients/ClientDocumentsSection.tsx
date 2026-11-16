@@ -1,5 +1,5 @@
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { FileTextIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import { ClientDocIdSchema, type ClientDoc, type ClientId } from "@/api/generated/contracts";
@@ -86,7 +86,6 @@ export function ClientDocumentsSection({
         }}
       />
       <ClientCardBlock
-        icon={<FileTextIcon aria-hidden />}
         title={t("clients.detail.documents")}
         count={docs.length}
         actions={

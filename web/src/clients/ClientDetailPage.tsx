@@ -180,34 +180,43 @@ export function ClientDetailPage({
       />
       {(sections.isError || unpaid.isError) && <FormAlert message={t("clients.loadClientError")} />}
       <Tabs
+        className="gap-4"
         value={activeTab}
         onValueChange={(value) => {
           const next = CLIENT_TABS.find((item) => item === value);
           if (next !== undefined) changeTab(next);
         }}
       >
-        <TabsList className="sticky top-0 z-10 mb-4 flex w-full justify-start overflow-x-auto bg-background">
-          {CLIENT_TABS.filter(
-            (item) =>
-              (item !== "tasks" || flags?.tasks === true) &&
-              (item !== "notes" || flags?.notes === true),
-          ).map((item) => (
-            <TabsTrigger
-              key={item}
-              value={item}
-              onFocus={(event) => {
-                event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
-              }}
-            >
-              {t(`clientOverview.tab.${item}`)}
-              {item === "memberships" &&
-                ` · ${String(currentMemberships(memberships.data?.memberships).length)}`}
-              {item === "tasks" &&
-                ` · ${String(unfinished.data?.total ?? 0)}${(overdue.data?.total ?? 0) > 0 ? " ●" : ""}`}
-              {item === "notes" && ` · ${String(notes.data?.notes.length ?? 0)}`}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="sticky top-14 z-30 -mx-4 overflow-x-auto border-b bg-background px-4 [scrollbar-width:none] sm:static sm:mx-0 sm:px-0">
+          <TabsList variant="line" className="h-11">
+            {CLIENT_TABS.filter(
+              (item) =>
+                (item !== "tasks" || flags?.tasks === true) &&
+                (item !== "notes" || flags?.notes === true),
+            ).map((item) => (
+              <TabsTrigger
+                key={item}
+                value={item}
+                className="flex-none px-3"
+                onFocus={(event) => {
+                  event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+                }}
+              >
+                {t(`clientOverview.tab.${item}`)}
+                {item === "memberships" && (
+                  <TabCount>{currentMemberships(memberships.data?.memberships).length}</TabCount>
+                )}
+                {item === "tasks" && <TabCount>{unfinished.data?.total ?? 0}</TabCount>}
+                {item === "tasks" && (overdue.data?.total ?? 0) > 0 && (
+                  <span className="size-1.5 rounded-full bg-destructive">
+                    <span className="sr-only">{t("clientOverview.overdueMark")}</span>
+                  </span>
+                )}
+                {item === "notes" && <TabCount>{notes.data?.notes.length ?? 0}</TabCount>}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
         <TabsContent value="overview">
           <ClientOverviewTab
             api={api}
@@ -395,4 +404,9 @@ export function ClientDetailPage({
       )}
     </section>
   );
+}
+
+/** Счётчик записей во вкладке [children]. */
+function TabCount({ children }: { readonly children: number }) {
+  return <span className="text-xs tabular-nums opacity-60">{children}</span>;
 }

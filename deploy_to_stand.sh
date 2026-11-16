@@ -161,10 +161,11 @@ hint "$(docker image inspect "${IMAGES[@]}" --format '{{.RepoTags}} {{.Size}} б
 docker save "${IMAGES[@]}" | gzip -1 | ssh "${SSH_OPTS[@]}" "$REMOTE" "gunzip | docker load"
 
 # ── 5. Инфраструктурные файлы ─────────────────────────────────────────────────
-info "Копирую $COMPOSE_FILE и nginx/prod.conf.template"
+info "Копирую $COMPOSE_FILE, nginx/prod.conf.template и задачу автопродления TLS"
 scp "${SSH_OPTS[@]}" -q "$COMPOSE_FILE" "$REMOTE:$DEPLOY_PATH/$COMPOSE_FILE"
-ssh_do "mkdir -p '$DEPLOY_PATH/nginx'"
+ssh_do "mkdir -p '$DEPLOY_PATH/nginx' '$DEPLOY_PATH/scripts'"
 scp "${SSH_OPTS[@]}" -q nginx/prod.conf.template "$REMOTE:$DEPLOY_PATH/nginx/prod.conf.template"
+scp "${SSH_OPTS[@]}" -q scripts/renew-certificates.sh "$REMOTE:$DEPLOY_PATH/scripts/renew-certificates.sh"
 
 # ── 6. Перезапуск стека ───────────────────────────────────────────────────────
 # Без `pull`: образы уже лежат на сервере, иначе ghcr.io перетрёт их своими.
@@ -173,6 +174,7 @@ ssh_do "set -e
 cd '$DEPLOY_PATH'
 docker compose -f $COMPOSE_FILE up -d
 docker compose -f $COMPOSE_FILE restart nginx
+bash scripts/renew-certificates.sh --install-cron
 docker image prune -f >/dev/null
 docker compose -f $COMPOSE_FILE ps"
 

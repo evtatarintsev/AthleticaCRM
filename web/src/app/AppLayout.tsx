@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Outlet } from "@tanstack/react-router";
 import { MenuIcon } from "lucide-react";
 import { useState } from "react";
+import { AssistantHost } from "@/assistant/AssistantHost";
 import type { ApiClient } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -58,6 +59,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
             <Brand name={me.orgInfo.name} />
           </div>
           <div className="ml-auto flex items-center gap-1">
+            <AssistantHost key={me.employeeId} api={api} employeeId={me.employeeId} />
             <NotificationBell api={api} branchId={me.currentBranch.id} />
             <AccountMenu
               api={api}

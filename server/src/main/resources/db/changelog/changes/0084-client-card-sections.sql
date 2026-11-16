@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset dev:0083-client-card-sections
+--changeset dev:0084-client-card-sections
 CREATE TABLE client_card_sections (
     org_id UUID PRIMARY KEY REFERENCES organizations (id) ON DELETE CASCADE,
     tasks BOOLEAN NOT NULL,

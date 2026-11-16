@@ -19,6 +19,7 @@ captures
 node_modules/
 .envrc
 .env
+.env.prod
 .claude/
 .sdkmanrc
 nginx/certs/

@@ -2,10 +2,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, type RouterHistory } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import { createApiClient, type ApiClientOptions } from "@/api/client";
+import { createApiClient, type ApiClientOptions, type ResponseOf } from "@/api/client";
 import { createAppRouting } from "@/app/router";
 import { I18nProvider } from "@/i18n/I18nProvider";
-import { createQueryClient } from "@/query/queries";
+import { createQueryClient, sessionQuery } from "@/query/queries";
 
 /** Запрос к поддельному серверу: путь без `/api/` и query-строки, тело и query-параметры. */
 export interface FakeRequest {
@@ -67,18 +67,29 @@ export function fakeServer(handlers: Readonly<Record<string, FakeHandler>>) {
   };
 }
 
-/** Открывает приложение на пути [path] поверх `fetch` поддельного сервера. */
+/**
+ * Открывает приложение на пути [path] поверх `fetch` поддельного сервера. Потеря сессии
+ * обрабатывается как в `main.tsx`. [cachedSession] — данные сессии, уже лежащие в кэше
+ * клиента к моменту открытия.
+ */
 export function openApp(
   path: string,
   fetch: ApiClientOptions["fetch"],
+  cachedSession?: ResponseOf<"auth/me">,
 ): { history: RouterHistory } {
   const queryClient = createQueryClient();
   const api = createApiClient({
     fetch,
     language: () => "ru",
-    onSessionExpired: () => undefined,
+    onSessionExpired: () => {
+      queryClient.clear();
+      routing.redirectToLogin();
+    },
     reportContractViolation: () => undefined,
   });
+  if (cachedSession !== undefined) {
+    queryClient.setQueryData(sessionQuery(api).queryKey, cachedSession);
+  }
   const history = createMemoryHistory({ initialEntries: [path] });
   const routing = createAppRouting({ api, queryClient }, history);
   render(
@@ -116,6 +127,7 @@ export function appServer(handlers: Readonly<Record<string, FakeHandler>>) {
   return fakeServer({
     "auth/me": () => json(session()),
     "auth/my-branches": () => json({ branches: [center] }),
+    "assistant/status": () => json({ available: false, enabled: false, permitted: false }),
     notifications: () => json({ notifications: [], unreadCount: 0 }),
     "messaging/inbox/counter": () => json({ count: 0 }),
     ...handlers,

@@ -16,6 +16,7 @@ import {
   MessagesSquareIcon,
   PanelRightOpenIcon,
   SettingsIcon,
+  SparklesIcon,
   ShieldCheckIcon,
   StoreIcon,
   TableIcon,
@@ -32,6 +33,7 @@ import { ProfileSheet } from "@/account/ProfileSheet";
 import { SwitchBranchSheet } from "@/account/SwitchBranchSheet";
 import type { StaticAppPath } from "@/app/router";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import { AssistantSettingsSheet } from "@/assistant/AssistantSettingsSheet";
 import { AttendanceControlSheet } from "./attendanceControl/AttendanceControlSheet";
 import { ClientImportSheet } from "./import/ClientImportSheet";
 import { CustomFieldsSheet } from "./customFields/CustomFieldsSheet";
@@ -231,6 +233,12 @@ const SETTINGS: readonly SettingSection[] = [
     label: "settings.sectionIntegrations",
     items: [
       {
+        title: "assistant.title",
+        subtitle: "assistant.settingsSubtitle",
+        icon: SparklesIcon,
+        target: panel("assistant"),
+      },
+      {
         title: "settings.itemChannels",
         subtitle: "settings.itemChannelsSubtitle",
         icon: MessagesSquareIcon,
@@ -253,6 +261,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   "switch-branch": SwitchBranchSheet,
   "change-password": ChangePasswordSheet,
   basic: OrgSettingsSheet,
+  assistant: AssistantSettingsSheet,
   "org-balance": OrgBalanceSheet,
   branches: (props) => <DirectorySheet {...props} definition={branches} />,
   disciplines: (props) => <DirectorySheet {...props} definition={disciplines} />,

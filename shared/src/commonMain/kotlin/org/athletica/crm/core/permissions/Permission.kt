@@ -16,6 +16,9 @@ enum class UserPermission : Permission {
 
     /** Позволяет создавать и редактировать чужие задачи. */
     CAN_MANAGE_TASKS,
+
+    /** Позволяет использовать AI-помощника организации. */
+    CAN_USE_ASSISTANT,
 }
 
 /**

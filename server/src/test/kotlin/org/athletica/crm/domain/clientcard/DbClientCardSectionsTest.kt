@@ -60,7 +60,7 @@ class DbClientCardSectionsTest {
                 database.liquibaseSchemaName = schema
                 Liquibase("db/changelog/db.changelog-master.yaml", ClassLoaderResourceAccessor(), database).use { liquibase ->
                     val pending = liquibase.listUnrunChangeSets(null, null)
-                    val index = pending.indexOfFirst { it.id == "0083-client-card-sections" }
+                    val index = pending.indexOfFirst { it.id == "0084-client-card-sections" }
                     assertTrue(index > 0)
                     liquibase.update(index, "")
                     connection.createStatement().use { statement ->

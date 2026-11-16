@@ -6,6 +6,7 @@ export const SettingsPanelSchema = z.enum([
   "switch-branch",
   "change-password",
   "basic",
+  "assistant",
   "org-balance",
   "branches",
   "disciplines",

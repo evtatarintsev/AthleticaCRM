@@ -103,6 +103,185 @@ export const AssignTaskRequestSchema = z
   .readonly();
 export type AssignTaskRequest = z.output<typeof AssignTaskRequestSchema>;
 
+export const AssistantBlockClientCreatedSchema = z
+  .object({
+    type: z.literal("client_created"),
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type AssistantBlockClientCreated = z.output<typeof AssistantBlockClientCreatedSchema>;
+
+export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
+export type LocalDate = z.output<typeof LocalDateSchema>;
+
+export const ContactTypeSchema = z.enum(["PHONE", "EMAIL", "TELEGRAM", "VK", "FACEBOOK"]);
+export type ContactType = z.output<typeof ContactTypeSchema>;
+
+export const ClientContactInputSchema = z
+  .object({
+    type: ContactTypeSchema,
+    value: z.string(),
+  })
+  .readonly();
+export type ClientContactInput = z.output<typeof ClientContactInputSchema>;
+
+export const GenderSchema = z.enum(["MALE", "FEMALE"]);
+export type Gender = z.output<typeof GenderSchema>;
+
+export const CustomFieldKeySchema = z.string().regex(/^[a-z_]+$/).brand<"CustomFieldKey">();
+export type CustomFieldKey = z.output<typeof CustomFieldKeySchema>;
+
+export const CustomFieldValueBoolSchema = z
+  .object({
+    type: z.literal("bool"),
+    fieldKey: CustomFieldKeySchema,
+    value: z.boolean(),
+  })
+  .readonly();
+export type CustomFieldValueBool = z.output<typeof CustomFieldValueBoolSchema>;
+
+export const CustomFieldValueDateSchema = z
+  .object({
+    type: z.literal("date"),
+    fieldKey: CustomFieldKeySchema,
+    value: LocalDateSchema,
+  })
+  .readonly();
+export type CustomFieldValueDate = z.output<typeof CustomFieldValueDateSchema>;
+
+export const CustomFieldValueNumberSchema = z
+  .object({
+    type: z.literal("number"),
+    fieldKey: CustomFieldKeySchema,
+    value: z.number(),
+  })
+  .readonly();
+export type CustomFieldValueNumber = z.output<typeof CustomFieldValueNumberSchema>;
+
+export const CustomFieldValueSelectSchema = z
+  .object({
+    type: z.literal("select"),
+    fieldKey: CustomFieldKeySchema,
+    value: z.string(),
+  })
+  .readonly();
+export type CustomFieldValueSelect = z.output<typeof CustomFieldValueSelectSchema>;
+
+export const CustomFieldValueTextSchema = z
+  .object({
+    type: z.literal("text"),
+    fieldKey: CustomFieldKeySchema,
+    value: z.string(),
+  })
+  .readonly();
+export type CustomFieldValueText = z.output<typeof CustomFieldValueTextSchema>;
+
+export const CustomFieldValueSchema = z.discriminatedUnion("type", [CustomFieldValueBoolSchema, CustomFieldValueDateSchema, CustomFieldValueNumberSchema, CustomFieldValueSelectSchema, CustomFieldValueTextSchema]);
+export type CustomFieldValue = z.output<typeof CustomFieldValueSchema>;
+
+export const AssistantClientPayloadSchema = z
+  .object({
+    name: z.string(),
+    gender: GenderSchema,
+    birthday: LocalDateSchema.nullable(),
+    contacts: z.array(ClientContactInputSchema).readonly(),
+    customFields: z.array(CustomFieldValueSchema).readonly(),
+    customFieldLabels: z.record(z.string(), z.string()).readonly(),
+  })
+  .readonly();
+export type AssistantClientPayload = z.output<typeof AssistantClientPayloadSchema>;
+
+export const AssistantDraftStatusSchema = z.enum(["pending", "executed", "superseded"]);
+export type AssistantDraftStatus = z.output<typeof AssistantDraftStatusSchema>;
+
+export const AssistantBlockClientDraftSchema = z
+  .object({
+    type: z.literal("client_draft"),
+    clientId: ClientIdSchema,
+    payload: AssistantClientPayloadSchema,
+    status: AssistantDraftStatusSchema,
+  })
+  .readonly();
+export type AssistantBlockClientDraft = z.output<typeof AssistantBlockClientDraftSchema>;
+
+export const AssistantBlockSchema = z.discriminatedUnion("type", [AssistantBlockClientCreatedSchema, AssistantBlockClientDraftSchema]);
+export type AssistantBlock = z.output<typeof AssistantBlockSchema>;
+
+export const AssistantConfirmRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type AssistantConfirmRequest = z.output<typeof AssistantConfirmRequestSchema>;
+
+export const AssistantConfirmResponseSchema = z
+  .object({
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type AssistantConfirmResponse = z.output<typeof AssistantConfirmResponseSchema>;
+
+export const AssistantMessageRoleSchema = z.enum(["user", "assistant"]);
+export type AssistantMessageRole = z.output<typeof AssistantMessageRoleSchema>;
+
+export const AssistantMessageStatusSchema = z.enum(["processing", "completed", "failed"]);
+export type AssistantMessageStatus = z.output<typeof AssistantMessageStatusSchema>;
+
+export const AssistantMessageSchema = z
+  .object({
+    id: z.uuid(),
+    role: AssistantMessageRoleSchema,
+    text: z.string(),
+    status: AssistantMessageStatusSchema,
+    blocks: z.array(AssistantBlockSchema).readonly(),
+    errorCode: z.string().nullable(),
+  })
+  .readonly();
+export type AssistantMessage = z.output<typeof AssistantMessageSchema>;
+
+export const AssistantDialogResponseSchema = z
+  .object({
+    id: z.uuid(),
+    messages: z.array(AssistantMessageSchema).readonly(),
+  })
+  .readonly();
+export type AssistantDialogResponse = z.output<typeof AssistantDialogResponseSchema>;
+
+export const AssistantSendRequestSchema = z
+  .object({
+    dialogId: z.uuid(),
+    text: z.string(),
+  })
+  .readonly();
+export type AssistantSendRequest = z.output<typeof AssistantSendRequestSchema>;
+
+export const AssistantSettingsRequestSchema = z
+  .object({
+    enabled: z.boolean(),
+    dailyMessageLimit: z.int32(),
+  })
+  .readonly();
+export type AssistantSettingsRequest = z.output<typeof AssistantSettingsRequestSchema>;
+
+export const AssistantSettingsResponseSchema = z
+  .object({
+    available: z.boolean(),
+    enabled: z.boolean(),
+    dailyMessageLimit: z.int32(),
+    acceptedMessages: z.int32(),
+  })
+  .readonly();
+export type AssistantSettingsResponse = z.output<typeof AssistantSettingsResponseSchema>;
+
+export const AssistantStatusResponseSchema = z
+  .object({
+    available: z.boolean(),
+    enabled: z.boolean(),
+    permitted: z.boolean(),
+  })
+  .readonly();
+export type AssistantStatusResponse = z.output<typeof AssistantStatusResponseSchema>;
+
 export const ClientDocIdSchema = z.uuid().brand<"ClientDocId">();
 export type ClientDocId = z.output<typeof ClientDocIdSchema>;
 
@@ -187,9 +366,6 @@ export const AttendanceMarkSchemaSchema = z
   })
   .readonly();
 export type AttendanceMarkSchema = z.output<typeof AttendanceMarkSchemaSchema>;
-
-export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
-export type LocalDate = z.output<typeof LocalDateSchema>;
 
 export const LocalTimeSchema = z.iso.time().brand<"LocalTime">();
 export type LocalTime = z.output<typeof LocalTimeSchema>;
@@ -306,7 +482,7 @@ export const OrgInfoSchema = z
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS"]);
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT"]);
 export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const AuthMeResponseSchema = z
@@ -536,9 +712,6 @@ export const ClientCardSectionsResponseSchema = z
   .readonly();
 export type ClientCardSectionsResponse = z.output<typeof ClientCardSectionsResponseSchema>;
 
-export const ContactTypeSchema = z.enum(["PHONE", "EMAIL", "TELEGRAM", "VK", "FACEBOOK"]);
-export type ContactType = z.output<typeof ContactTypeSchema>;
-
 export const ClientContactIdSchema = z.uuid().brand<"ClientContactId">();
 export type ClientContactId = z.output<typeof ClientContactIdSchema>;
 
@@ -576,14 +749,6 @@ export const ClientChannelsResponseSchema = z
   .readonly();
 export type ClientChannelsResponse = z.output<typeof ClientChannelsResponseSchema>;
 
-export const ClientContactInputSchema = z
-  .object({
-    type: ContactTypeSchema,
-    value: z.string(),
-  })
-  .readonly();
-export type ClientContactInput = z.output<typeof ClientContactInputSchema>;
-
 export const ClientDetailRequestSchema = z
   .object({
     id: ClientIdSchema,
@@ -611,60 +776,6 @@ export type ClientGroup = z.output<typeof ClientGroupSchema>;
 
 export const ClientStateSchema = z.enum(["ACTIVE", "ARCHIVED"]);
 export type ClientState = z.output<typeof ClientStateSchema>;
-
-export const GenderSchema = z.enum(["MALE", "FEMALE"]);
-export type Gender = z.output<typeof GenderSchema>;
-
-export const CustomFieldKeySchema = z.string().regex(/^[a-z_]+$/).brand<"CustomFieldKey">();
-export type CustomFieldKey = z.output<typeof CustomFieldKeySchema>;
-
-export const CustomFieldValueBoolSchema = z
-  .object({
-    type: z.literal("bool"),
-    fieldKey: CustomFieldKeySchema,
-    value: z.boolean(),
-  })
-  .readonly();
-export type CustomFieldValueBool = z.output<typeof CustomFieldValueBoolSchema>;
-
-export const CustomFieldValueDateSchema = z
-  .object({
-    type: z.literal("date"),
-    fieldKey: CustomFieldKeySchema,
-    value: LocalDateSchema,
-  })
-  .readonly();
-export type CustomFieldValueDate = z.output<typeof CustomFieldValueDateSchema>;
-
-export const CustomFieldValueNumberSchema = z
-  .object({
-    type: z.literal("number"),
-    fieldKey: CustomFieldKeySchema,
-    value: z.number(),
-  })
-  .readonly();
-export type CustomFieldValueNumber = z.output<typeof CustomFieldValueNumberSchema>;
-
-export const CustomFieldValueSelectSchema = z
-  .object({
-    type: z.literal("select"),
-    fieldKey: CustomFieldKeySchema,
-    value: z.string(),
-  })
-  .readonly();
-export type CustomFieldValueSelect = z.output<typeof CustomFieldValueSelectSchema>;
-
-export const CustomFieldValueTextSchema = z
-  .object({
-    type: z.literal("text"),
-    fieldKey: CustomFieldKeySchema,
-    value: z.string(),
-  })
-  .readonly();
-export type CustomFieldValueText = z.output<typeof CustomFieldValueTextSchema>;
-
-export const CustomFieldValueSchema = z.discriminatedUnion("type", [CustomFieldValueBoolSchema, CustomFieldValueDateSchema, CustomFieldValueNumberSchema, CustomFieldValueSelectSchema, CustomFieldValueTextSchema]);
-export type CustomFieldValue = z.output<typeof CustomFieldValueSchema>;
 
 export const LeadSourceIdSchema = z.uuid().brand<"LeadSourceId">();
 export type LeadSourceId = z.output<typeof LeadSourceIdSchema>;
@@ -3323,6 +3434,55 @@ export type YookassaWebhook = z.output<typeof YookassaWebhookSchema>;
 
 /** Все эндпоинты API: путь без `/api/` → метод, формат запроса и ответа. */
 export const endpoints = {
+  "assistant/dialogs/create": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: AssistantDialogResponseSchema,
+  },
+  "assistant/dialogs/current": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: AssistantDialogResponseSchema,
+  },
+  "assistant/drafts/confirm": {
+    method: "POST",
+    in: "body",
+    request: AssistantConfirmRequestSchema,
+    out: "json",
+    response: AssistantConfirmResponseSchema,
+  },
+  "assistant/messages/send": {
+    method: "POST",
+    in: "body",
+    request: AssistantSendRequestSchema,
+    out: "json",
+    response: AssistantDialogResponseSchema,
+  },
+  "assistant/settings": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: AssistantSettingsResponseSchema,
+  },
+  "assistant/settings/update": {
+    method: "POST",
+    in: "body",
+    request: AssistantSettingsRequestSchema,
+    out: "json",
+    response: AssistantSettingsResponseSchema,
+  },
+  "assistant/status": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: AssistantStatusResponseSchema,
+  },
   "attendance-labels/archive": {
     method: "POST",
     in: "body",

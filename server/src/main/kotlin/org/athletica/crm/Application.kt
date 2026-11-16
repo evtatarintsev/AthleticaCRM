@@ -36,6 +36,7 @@ import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 import org.athletica.crm.admin.athleticaCommand
 import org.athletica.crm.api.schemas.ErrorResponse
+import org.athletica.crm.assistant.assistantRoutes
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.orThrow
@@ -139,6 +140,7 @@ fun Application.module() {
  */
 context(di: Di)
 fun Application.configureServer() {
+    monitor.subscribe(ApplicationStopped) { di.assistantConnection.close() }
     install(CallLogging)
 
     install(StatusPages) {
@@ -185,6 +187,7 @@ fun Application.configureServer() {
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
+                        assistantRoutes(di.assistant)
                         logout(di.auth)
                         context(di.jwtConfig) {
                             switchBranchRoute(di.auth)

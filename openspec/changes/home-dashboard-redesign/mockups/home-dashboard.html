@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Главная — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>:root{
+  --background:oklch(.984 .003 247.858);--foreground:oklch(.129 .042 264.695);--card:#fff;
+  --muted-foreground:oklch(.554 .046 257.417);--accent:oklch(.968 .007 247.896);--border:oklch(.929 .013 255.508);
+  --primary:oklch(.52 .2 262);--destructive:oklch(.577 .245 27.325);--chrome:#e9e9ec;
+  --shadow:0 1px 2px rgba(16,16,32,.04),0 6px 20px -8px rgba(16,16,32,.08);
+  --blue-bg:oklch(.95 .03 262);--blue-fg:oklch(.48 .2 262);
+  --red-bg:oklch(.95 .03 25);--red-fg:oklch(.53 .2 25);
+  --pink-bg:oklch(.95 .035 345);--pink-fg:oklch(.55 .19 345);
+  --amber-bg:oklch(.96 .05 85);--amber-fg:oklch(.5 .12 65);
+  --green-bg:oklch(.95 .04 155);--green-fg:oklch(.5 .13 155);
+}
+@media (prefers-color-scheme:dark){:root{
+  --background:oklch(.129 .042 264.695);--foreground:oklch(.984 .003 247.858);--card:oklch(.208 .042 265.755);
+  --muted-foreground:oklch(.704 .04 256.788);--accent:oklch(.279 .041 260.031);--border:oklch(1 0 0 / 10%);
+  --primary:oklch(.62 .19 262);--destructive:oklch(.704 .191 22.216);--chrome:#05060a;--shadow:none;
+  --blue-bg:oklch(.3 .08 262);--blue-fg:oklch(.8 .1 262);
+  --red-bg:oklch(.3 .07 25);--red-fg:oklch(.8 .1 25);
+  --pink-bg:oklch(.3 .07 345);--pink-fg:oklch(.82 .1 345);
+  --amber-bg:oklch(.32 .06 75);--amber-fg:oklch(.85 .1 80);
+  --green-bg:oklch(.3 .06 155);--green-fg:oklch(.82 .1 155);
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--chrome);color:var(--foreground);font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.caption{max-width:1280px;margin:24px auto 8px;padding:0 16px;font-size:13px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em}
+.frame{max-width:1280px;margin:0 auto 32px;background:var(--background);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.frame.phone{max-width:390px;border:8px solid var(--foreground);border-radius:32px}
+.shell{display:grid;grid-template-columns:15rem minmax(0,1fr);min-height:680px}
+.side{background:var(--card);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:24px}
+.org{display:flex;gap:8px;align-items:center;padding:0 4px;font-weight:600;letter-spacing:-.01em}
+.logo{width:26px;height:26px;border-radius:7px;background:var(--primary);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;gap:10px;align-items:center;height:36px;padding:0 10px;border-radius:8px;font-weight:500;color:var(--muted-foreground)}
+.nav a:hover,.nav a.on{background:var(--accent);color:var(--foreground)}
+.top{height:56px;display:flex;align-items:center;gap:8px;padding:0 32px;border-bottom:1px solid var(--border)}
+.top .sp{flex:1}
+.branch{font-weight:500}
+.ib{width:36px;height:36px;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:var(--muted-foreground)}
+.burger{display:none}
+.me{width:30px;height:30px;border-radius:99px;background:var(--pink-bg);color:var(--pink-fg);display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600}
+.main-area{padding:28px 32px 48px;max-width:72rem}
+
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:24px}
+.date{font-size:13px;font-weight:500;color:var(--muted-foreground)}
+.ph h1{margin:2px 0 0;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.lead{margin:6px 0 0;color:var(--muted-foreground)}
+.btn-icon{width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;color:var(--foreground);flex:none}
+.btn-icon:hover{background:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;min-width:0;box-shadow:var(--shadow);overflow:hidden}
+.tone-blue{--t-bg:var(--blue-bg);--t-fg:var(--blue-fg)}
+.tone-red{--t-bg:var(--red-bg);--t-fg:var(--red-fg)}
+.tone-pink{--t-bg:var(--pink-bg);--t-fg:var(--pink-fg)}
+.tone-amber{--t-bg:var(--amber-bg);--t-fg:var(--amber-fg)}
+.ch{display:flex;align-items:center;gap:10px;padding:12px 8px 12px 14px}
+.ic{width:32px;height:32px;border-radius:10px;background:var(--t-bg);color:var(--t-fg);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ch h2{margin:0;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cnt{min-width:22px;height:22px;padding:0 7px;border-radius:99px;background:var(--accent);color:var(--muted-foreground);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.ch .sp{flex:1}
+.gear{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted-foreground);display:inline-flex;align-items:center;justify-content:center;opacity:.6}
+.card:hover .gear{opacity:1}
+.gear:hover{background:var(--accent);color:var(--foreground)}
+
+.list{list-style:none;margin:0;padding:0 6px 6px}
+.row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px;min-width:0}
+.row:hover{background:var(--accent)}
+.row .main{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;flex-direction:column}
+.row .main small{font-size:12.5px;font-weight:400;color:var(--muted-foreground)}
+.row .aside{flex:none;color:var(--muted-foreground);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:13px}
+.money{flex:none;font-variant-numeric:tabular-nums;font-weight:600;color:var(--destructive);white-space:nowrap}
+.av{width:32px;height:32px;border-radius:99px;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600}
+
+.srow .time{width:46px;flex:none;display:flex;flex-direction:column;line-height:1.25;font-variant-numeric:tabular-nums}
+.srow .time b{font-weight:600}
+.srow .time small{font-size:12px;color:var(--muted-foreground)}
+.srow .main{flex-direction:row;align-items:center;gap:8px;padding-left:12px;border-left:3px solid var(--border);min-height:34px}
+.srow.past{opacity:.55}
+.srow.live{background:var(--blue-bg)}
+.srow.live .main{border-left-color:var(--blue-fg)}
+.srow.next .main{border-left-color:color-mix(in oklch,var(--blue-fg) 40%,transparent)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;flex:none}
+.pill.live{background:var(--blue-fg);color:#fff}
+.pill.live i{width:6px;height:6px;border-radius:99px;background:currentColor;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.pill.soft{background:var(--blue-bg);color:var(--blue-fg)}
+.pill.pink{background:var(--pink-bg);color:var(--pink-fg)}
+.pill.amber{background:var(--amber-bg);color:var(--amber-fg)}
+.bday-today{background:linear-gradient(90deg,var(--pink-bg),transparent 85%)}
+
+.foot{display:block;margin:0 6px 6px;padding:8px 10px;border-radius:10px;text-align:center;color:var(--primary);font-weight:500}
+.foot:hover{background:var(--accent)}
+.empty{display:flex;align-items:center;gap:10px;padding:6px 16px 18px;color:var(--muted-foreground)}
+.empty .ok{width:28px;height:28px;border-radius:99px;background:var(--green-bg);color:var(--green-fg);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.empty .ok svg{width:15px;height:15px}
+
+.phone .shell{grid-template-columns:1fr;min-height:0}
+.phone .side{display:none}
+.phone .burger{display:inline-flex}
+.phone .top{padding:0 12px}
+.phone .main-area{padding:20px 12px 32px}
+.phone .ph{padding:0 4px;margin-bottom:16px}
+.phone .ph h1{font-size:22px}
+.phone .grid{grid-template-columns:1fr;gap:12px}
+@media (max-width:760px){
+  .frame:not(.phone) .shell{grid-template-columns:1fr}
+  .frame:not(.phone) .side{display:none}
+  .frame:not(.phone) .burger{display:inline-flex}
+  .frame:not(.phone) .grid{grid-template-columns:1fr}
+  .frame:not(.phone) .main-area,.frame:not(.phone) .top{padding-left:12px;padding-right:12px}
+}
+
+.toc{max-width:1280px;margin:20px auto 0;padding:0 16px;display:flex;flex-wrap:wrap;gap:8px}
+.toc a{height:30px;padding:0 12px;border-radius:99px;border:1px solid var(--border);background:var(--card);display:inline-flex;align-items:center;font-size:13px;font-weight:500}
+.toc a:hover{background:var(--accent)}
+.caption b{color:var(--foreground);margin-right:6px}
+.caption span{text-transform:none;letter-spacing:0;font-weight:400}
+
+/* C */
+.tl-card{margin-bottom:16px}
+.tl{padding:0 16px 14px}
+.lane{display:grid;grid-template-columns:56px minmax(0,1fr);height:58px;border-top:1px solid var(--border)}
+.lane.axis{height:26px;border-top:0}
+.lab{align-self:center;font-size:12.5px;font-weight:500;color:var(--muted-foreground)}
+.track{position:relative;background:repeating-linear-gradient(90deg,var(--border) 0 1px,transparent 1px calc(100% / 12))}
+.axis .track{background:none}
+.hr{position:absolute;top:4px;transform:translateX(-50%);font-size:11.5px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.hr:first-child{transform:none}.hr:last-of-type{transform:translateX(-100%)}
+.nowlab{position:absolute;top:2px;transform:translateX(-50%);height:20px;padding:0 6px;border-radius:6px;background:var(--blue-fg);color:#fff;font-size:11.5px;font-weight:600;line-height:20px;font-variant-numeric:tabular-nums;z-index:2}
+.now{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--blue-fg);z-index:2}
+.blk{position:absolute;top:6px;bottom:6px;margin-left:2px;border-radius:8px;padding:4px 8px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;line-height:1.2;min-width:0}
+.blk b,.blk small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.blk b{font-size:12.5px;font-weight:600}
+.blk.short b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.blk.short small{display:none}
+.grid3 .ch h2{font-size:14px}
+.blk small{font-size:11.5px;opacity:.8;font-variant-numeric:tabular-nums}
+.blk.past{background:var(--accent);color:var(--muted-foreground)}
+.blk.live{background:var(--blue-fg);color:#fff;box-shadow:0 4px 12px -4px color-mix(in oklch,var(--blue-fg) 60%,transparent)}
+.blk.next{background:var(--blue-bg);color:var(--blue-fg);box-shadow:inset 0 0 0 1.5px var(--blue-fg)}
+.blk.later{background:var(--blue-bg);color:var(--blue-fg)}
+.blk:hover{filter:brightness(.97)}
+.blk .dot{display:inline-block;width:6px;height:6px;border-radius:99px;background:currentColor;margin-right:5px;vertical-align:middle;animation:pulse 1.6s ease-in-out infinite}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+
+/* D */
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+.dcol{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.dh{display:flex;align-items:center;gap:8px;padding:10px 6px 10px 12px;background:var(--t-bg);color:var(--t-fg)}
+.dh h2{margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dh .sp{flex:1}
+.dic{display:inline-flex;flex:none}
+.dcnt{font-size:12px;font-weight:700;padding:0 7px;height:20px;border-radius:99px;background:var(--card);display:inline-flex;align-items:center;font-variant-numeric:tabular-nums}
+.dh .gear{color:inherit}
+.dlist{list-style:none;margin:0;padding:6px}
+.drow{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;min-width:0}
+.drow:hover{background:var(--accent)}
+.drow .av{width:28px;height:28px;font-size:10.5px}
+.drow .dt{font-weight:600;font-variant-numeric:tabular-nums;width:40px;flex:none;align-self:flex-start;padding-top:1px}
+.drow .dm{display:flex;flex-direction:column;min-width:0;flex:1;align-items:flex-start}
+.drow .dm b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.drow .dm small{font-size:12.5px;color:var(--muted-foreground);white-space:nowrap}
+.drow .dm small.neg{color:var(--destructive);font-weight:600}
+.drow .pill.sm{height:20px;font-size:11.5px;margin-top:4px}
+.drow.past{opacity:.55}
+.drow.live{background:var(--blue-bg)}
+.live-t{color:var(--blue-fg);font-weight:600;display:inline-flex;gap:4px;align-items:center}
+.live-t i{width:6px;height:6px;border-radius:99px;background:currentColor;animation:pulse 1.6s ease-in-out infinite}
+.next-t{color:var(--blue-fg);font-weight:500}
+.pink-t{color:var(--pink-fg);font-weight:600}
+.drow.today{background:linear-gradient(90deg,var(--pink-bg),transparent 90%)}
+.dfoot{display:block;margin:0 6px 6px;padding:7px;border-radius:10px;text-align:center;color:var(--primary);font-weight:500;font-size:13px}
+.dfoot:hover{background:var(--accent)}
+
+/* E */
+.band{position:relative;display:flex;justify-content:space-between;gap:16px;margin-bottom:20px;padding:24px 24px 22px;border-radius:20px;color:#fff;overflow:hidden;
+  background:radial-gradient(120% 140% at 100% 0%,oklch(.62 .2 300 / .9) 0%,transparent 55%),linear-gradient(120deg,oklch(.5 .2 262),oklch(.56 .21 280));
+  box-shadow:0 10px 30px -12px oklch(.5 .2 262 / .55)}
+.band:after{content:"";position:absolute;right:-60px;bottom:-90px;width:260px;height:260px;border-radius:50%;border:40px solid rgba(255,255,255,.07)}
+.band .date{color:rgba(255,255,255,.8)}
+.band h1{margin:2px 0 0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;position:relative;z-index:1}
+.chip{display:inline-flex;gap:6px;align-items:center;height:32px;padding:0 12px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff;font-size:13.5px;font-weight:500;backdrop-filter:blur(4px)}
+.chip b{font-weight:700;font-variant-numeric:tabular-nums}
+.chip:hover{background:rgba(255,255,255,.26)}
+.band-gear{position:relative;z-index:1;width:36px;height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.16);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.band-gear:hover{background:rgba(255,255,255,.26)}
+@media (prefers-color-scheme:dark){.band{background:radial-gradient(120% 140% at 100% 0%,oklch(.45 .15 300 / .9) 0%,transparent 55%),linear-gradient(120deg,oklch(.36 .14 262),oklch(.4 .15 280))}}
+
+/* F */
+.ph.compact{align-items:center;margin-bottom:16px}
+.ph.compact > div{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.ph.compact h1{font-size:20px;margin:0}
+.ph.compact .date{order:2}
+.fcard .ch{padding:8px 6px 8px 12px;gap:8px}
+.fcard .ic{width:26px;height:26px;border-radius:8px}
+.fcard .ch h2{font-size:14px}
+.fcard .cnt{height:20px;min-width:20px;font-size:11.5px}
+.fcard .gear{width:28px;height:28px}
+.flist{padding:0 4px 4px}
+.frow{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;border-radius:8px;font-size:13.5px;min-width:0}
+.frow:hover{background:var(--accent)}
+.frow .av{width:22px;height:22px;font-size:9.5px}
+.frow .ft{width:92px;flex:none;white-space:nowrap;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.frow .fm{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow .fa{flex:none;color:var(--muted-foreground);font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.frow .pill{height:20px;font-size:11.5px}
+.frow.past{opacity:.55}
+.frow.live{background:var(--blue-bg)}
+.frow.live .ft{color:var(--blue-fg);font-weight:600}
+.frow.bday-today{background:linear-gradient(90deg,var(--pink-bg),transparent 85%)}
+.fcard .foot{margin:0 4px 4px;padding:6px;font-size:13px}
+
+.srow.next .main{border-left-color:color-mix(in oklch,var(--blue-fg) 55%,transparent)}
+.srow.next .time b{color:var(--blue-fg)}
+.srow.next .main{font-weight:600}
+.band{align-items:flex-start;padding:22px 24px}
+.phone .band{padding:18px;border-radius:16px;margin-bottom:12px}
+.phone .band h1{font-size:22px}
+.phone .srow .main{flex-wrap:wrap;row-gap:4px;white-space:normal;padding-top:2px;padding-bottom:2px}
+.phone .band:after{width:180px;height:180px;right:-50px;bottom:-80px;border-width:28px}
+</style></head><body>
+<div class="caption">Компьютер <span>— вт 18 ноября, 17:40</span></div><div class="frame"><div class="shell">
+  <aside class="side"><div class="org"><span class="logo">A</span>Атлетика</div>
+    <nav class="nav"><a href="#" class="on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3Z"/><path d="M9 21v-7h6v7"/></svg>Главная</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Расписание</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>Клиенты</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7Z"/></svg>Входящие</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Группы</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M14 10h4M14 14h4"/></svg>Сотрудники</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>Задачи</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Настройки</a></nav></aside>
+  <div class="body">
+    <header class="top"><button class="ib burger" aria-label="Открыть меню"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="branch">Центральный</span><span class="sp"></span><button class="ib" aria-label="Уведомления"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><span class="me">АИ</span></header>
+    <main class="main-area"><div class="band">
+  <div class="band-txt"><div class="date">Вторник, 18 ноября</div><h1>Добрый вечер, Анна</h1>
+  </div>
+  <button class="band-gear" aria-label="Настройки главной"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+</div><div class="grid"><section class="card tone-blue ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><h2>Занятия сегодня</h2><span class="cnt">4</span><span class="sp"></span><button class="gear" aria-label="Настройки: Занятия сегодня"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list day"><li><a href="#" class="row srow past">
+  <span class="time"><b>16:00</b><small>17:00</small></span>
+  <span class="main">Мини-футбол 6–8 лет</span>
+  <span class="aside">Зал 1</span></a></li><li><a href="#" class="row srow live">
+  <span class="time"><b>17:00</b><small>18:30</small></span>
+  <span class="main">Гимнастика, старшая<span class="pill live"><i></i>идёт</span></span>
+  <span class="aside">Зал 2</span></a></li><li><a href="#" class="row srow next">
+  <span class="time"><b>18:00</b><small>19:30</small></span>
+  <span class="main">Каратэ 10–14 лет</span>
+  <span class="aside">Зал 1</span></a></li><li><a href="#" class="row srow ">
+  <span class="time"><b>19:30</b><small>21:00</small></span>
+  <span class="main">Функциональный тренинг</span>
+  <span class="aside">Зал 3</span></a></li></ul>
+</section><section class="card tone-red ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 9h-5a3 3 0 0 0 0 6h5Z"/></svg></span><h2>Должники</h2><span class="cnt">7</span><span class="sp"></span><button class="gear" aria-label="Настройки: Должники"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list"><li><a href="#" class="row"><span class="av" style="background:#ffedd5;color:#9a3412" aria-hidden="true">МС</span><span class="main">Марк Соколов</span><span class="money">−4 800 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#f3e8ff;color:#6b21a8" aria-hidden="true">НЛ</span><span class="main">Никита Лосев</span><span class="money">−2 400 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#fce7f3;color:#9d174d" aria-hidden="true">АФ</span><span class="main">Артём Фёдоров</span><span class="money">−1 800 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#e0f2fe;color:#075985" aria-hidden="true">УТ</span><span class="main">Ульяна Тихонова</span><span class="money">−1 200 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#dcfce7;color:#166534" aria-hidden="true">ГХ</span><span class="main">Глеб Хохлов</span><span class="money">−600 ₽</span></a></li></ul><a href="#" class="foot">Показать всех (7)</a>
+</section><section class="card tone-pink ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8"/><path d="M4 16s1.5-1 4-1 2.5 2 4 2 2.5-2 4-2 4 1 4 1"/><path d="M2 21h20M7 8v3M12 8v3M17 8v3"/><path d="M7 4h.01M12 4h.01M17 4h.01"/></svg></span><h2>Дни рождения</h2><span class="cnt">4</span><span class="sp"></span><button class="gear" aria-label="Настройки: Дни рождения"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list"><li><a href="#" class="row bday-today"><span class="av" style="background:#fce7f3;color:#9d174d" aria-hidden="true">ЕК</span><span class="main">Ева Кузнецова<small>9 лет</small></span><span class="pill pink"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8"/><path d="M4 16s1.5-1 4-1 2.5 2 4 2 2.5-2 4-2 4 1 4 1"/><path d="M2 21h20M7 8v3M12 8v3M17 8v3"/><path d="M7 4h.01M12 4h.01M17 4h.01"/></svg>сегодня</span></a></li><li><a href="#" class="row "><span class="av" style="background:#e0e7ff;color:#3730a3" aria-hidden="true">ЛО</span><span class="main">Лев Орлов<small>12 лет</small></span><span class="aside">20 ноября</span></a></li><li><a href="#" class="row "><span class="av" style="background:#dcfce7;color:#166534" aria-hidden="true">МЗ</span><span class="main">Мария Зайцева<small>34 лет</small></span><span class="aside">22 ноября</span></a></li><li><a href="#" class="row "><span class="av" style="background:#e0f2fe;color:#075985" aria-hidden="true">ПА</span><span class="main">Платон Абрамов<small>7 лет</small></span><span class="aside">23 ноября</span></a></li></ul>
+</section><section class="card tone-amber ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h6"/></svg></span><h2>Незакрытые журналы</h2><span class="cnt">3</span><span class="sp"></span><button class="gear" aria-label="Настройки: Незакрытые журналы"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list"><li><a href="#" class="row">
+  <span class="main">Мини-футбол 6–8 лет<small>сегодня, 16:00–17:00 · Зал 1</small></span></a></li><li><a href="#" class="row">
+  <span class="main">Каратэ 6–9 лет<small>пн 17.11, 17:00–18:00 · Зал 1</small></span><span class="pill amber">вчера</span></a></li><li><a href="#" class="row">
+  <span class="main">Гимнастика, младшая<small>пт 14.11, 16:00–17:00 · Зал 2</small></span><span class="pill amber">4 дня назад</span></a></li></ul>
+</section></div></main>
+  </div>
+</div></div>
+<div class="caption">Телефон</div><div class="frame phone"><div class="shell">
+  <aside class="side"><div class="org"><span class="logo">A</span>Атлетика</div>
+    <nav class="nav"><a href="#" class="on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3Z"/><path d="M9 21v-7h6v7"/></svg>Главная</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Расписание</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>Клиенты</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7Z"/></svg>Входящие</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Группы</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M14 10h4M14 14h4"/></svg>Сотрудники</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>Задачи</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Настройки</a></nav></aside>
+  <div class="body">
+    <header class="top"><button class="ib burger" aria-label="Открыть меню"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="branch">Центральный</span><span class="sp"></span><button class="ib" aria-label="Уведомления"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><span class="me">АИ</span></header>
+    <main class="main-area"><div class="band">
+  <div class="band-txt"><div class="date">Вторник, 18 ноября</div><h1>Добрый вечер, Анна</h1>
+  </div>
+  <button class="band-gear" aria-label="Настройки главной"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+</div><div class="grid"><section class="card tone-blue ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><h2>Занятия сегодня</h2><span class="cnt">4</span><span class="sp"></span><button class="gear" aria-label="Настройки: Занятия сегодня"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list day"><li><a href="#" class="row srow past">
+  <span class="time"><b>16:00</b><small>17:00</small></span>
+  <span class="main">Мини-футбол 6–8 лет</span>
+  <span class="aside">Зал 1</span></a></li><li><a href="#" class="row srow live">
+  <span class="time"><b>17:00</b><small>18:30</small></span>
+  <span class="main">Гимнастика, старшая<span class="pill live"><i></i>идёт</span></span>
+  <span class="aside">Зал 2</span></a></li><li><a href="#" class="row srow next">
+  <span class="time"><b>18:00</b><small>19:30</small></span>
+  <span class="main">Каратэ 10–14 лет</span>
+  <span class="aside">Зал 1</span></a></li><li><a href="#" class="row srow ">
+  <span class="time"><b>19:30</b><small>21:00</small></span>
+  <span class="main">Функциональный тренинг</span>
+  <span class="aside">Зал 3</span></a></li></ul>
+</section><section class="card tone-red ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 9h-5a3 3 0 0 0 0 6h5Z"/></svg></span><h2>Должники</h2><span class="cnt">7</span><span class="sp"></span><button class="gear" aria-label="Настройки: Должники"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list"><li><a href="#" class="row"><span class="av" style="background:#ffedd5;color:#9a3412" aria-hidden="true">МС</span><span class="main">Марк Соколов</span><span class="money">−4 800 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#f3e8ff;color:#6b21a8" aria-hidden="true">НЛ</span><span class="main">Никита Лосев</span><span class="money">−2 400 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#fce7f3;color:#9d174d" aria-hidden="true">АФ</span><span class="main">Артём Фёдоров</span><span class="money">−1 800 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#e0f2fe;color:#075985" aria-hidden="true">УТ</span><span class="main">Ульяна Тихонова</span><span class="money">−1 200 ₽</span></a></li><li><a href="#" class="row"><span class="av" style="background:#dcfce7;color:#166534" aria-hidden="true">ГХ</span><span class="main">Глеб Хохлов</span><span class="money">−600 ₽</span></a></li></ul><a href="#" class="foot">Показать всех (7)</a>
+</section><section class="card tone-pink ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8"/><path d="M4 16s1.5-1 4-1 2.5 2 4 2 2.5-2 4-2 4 1 4 1"/><path d="M2 21h20M7 8v3M12 8v3M17 8v3"/><path d="M7 4h.01M12 4h.01M17 4h.01"/></svg></span><h2>Дни рождения</h2><span class="cnt">4</span><span class="sp"></span><button class="gear" aria-label="Настройки: Дни рождения"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list"><li><a href="#" class="row bday-today"><span class="av" style="background:#fce7f3;color:#9d174d" aria-hidden="true">ЕК</span><span class="main">Ева Кузнецова<small>9 лет</small></span><span class="pill pink"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8"/><path d="M4 16s1.5-1 4-1 2.5 2 4 2 2.5-2 4-2 4 1 4 1"/><path d="M2 21h20M7 8v3M12 8v3M17 8v3"/><path d="M7 4h.01M12 4h.01M17 4h.01"/></svg>сегодня</span></a></li><li><a href="#" class="row "><span class="av" style="background:#e0e7ff;color:#3730a3" aria-hidden="true">ЛО</span><span class="main">Лев Орлов<small>12 лет</small></span><span class="aside">20 ноября</span></a></li><li><a href="#" class="row "><span class="av" style="background:#dcfce7;color:#166534" aria-hidden="true">МЗ</span><span class="main">Мария Зайцева<small>34 лет</small></span><span class="aside">22 ноября</span></a></li><li><a href="#" class="row "><span class="av" style="background:#e0f2fe;color:#075985" aria-hidden="true">ПА</span><span class="main">Платон Абрамов<small>7 лет</small></span><span class="aside">23 ноября</span></a></li></ul>
+</section><section class="card tone-amber ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h6"/></svg></span><h2>Незакрытые журналы</h2><span class="cnt">3</span><span class="sp"></span><button class="gear" aria-label="Настройки: Незакрытые журналы"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <ul class="list"><li><a href="#" class="row">
+  <span class="main">Мини-футбол 6–8 лет<small>сегодня, 16:00–17:00 · Зал 1</small></span></a></li><li><a href="#" class="row">
+  <span class="main">Каратэ 6–9 лет<small>пн 17.11, 17:00–18:00 · Зал 1</small></span><span class="pill amber">вчера</span></a></li><li><a href="#" class="row">
+  <span class="main">Гимнастика, младшая<small>пт 14.11, 16:00–17:00 · Зал 2</small></span><span class="pill amber">4 дня назад</span></a></li></ul>
+</section></div></main>
+  </div>
+</div></div>
+<div class="caption">Спокойный день</div><div class="frame"><div class="shell">
+  <aside class="side"><div class="org"><span class="logo">A</span>Атлетика</div>
+    <nav class="nav"><a href="#" class="on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3Z"/><path d="M9 21v-7h6v7"/></svg>Главная</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Расписание</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>Клиенты</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7Z"/></svg>Входящие</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Группы</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M14 10h4M14 14h4"/></svg>Сотрудники</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>Задачи</a><a href="#" class=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Настройки</a></nav></aside>
+  <div class="body">
+    <header class="top"><button class="ib burger" aria-label="Открыть меню"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="branch">Центральный</span><span class="sp"></span><button class="ib" aria-label="Уведомления"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button><span class="me">АИ</span></header>
+    <main class="main-area"><div class="band">
+  <div class="band-txt"><div class="date">Вторник, 18 ноября</div><h1>Добрый вечер, Анна</h1>
+  </div>
+  <button class="band-gear" aria-label="Настройки главной"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+</div><div class="grid"><section class="card tone-blue ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><h2>Занятия сегодня</h2><span class="sp"></span><button class="gear" aria-label="Настройки: Занятия сегодня"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <div class="empty"><span class="ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Сегодня занятий нет</div>
+</section><section class="card tone-red ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 9h-5a3 3 0 0 0 0 6h5Z"/></svg></span><h2>Должники</h2><span class="sp"></span><button class="gear" aria-label="Настройки: Должники"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <div class="empty"><span class="ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Должников нет</div>
+</section><section class="card tone-pink ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8"/><path d="M4 16s1.5-1 4-1 2.5 2 4 2 2.5-2 4-2 4 1 4 1"/><path d="M2 21h20M7 8v3M12 8v3M17 8v3"/><path d="M7 4h.01M12 4h.01M17 4h.01"/></svg></span><h2>Дни рождения</h2><span class="sp"></span><button class="gear" aria-label="Настройки: Дни рождения"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <div class="empty"><span class="ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Дней рождения нет</div>
+</section><section class="card tone-amber ">
+  <div class="ch"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h6"/></svg></span><h2>Незакрытые журналы</h2><span class="sp"></span><button class="gear" aria-label="Настройки: Незакрытые журналы"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div>
+  <div class="empty"><span class="ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Все журналы закрыты</div>
+</section></div></main>
+  </div>
+</div></div>
+</body></html>

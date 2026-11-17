@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Расписание — неделя</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f7f8; --surface:#fff; --surface-2:#fafafa; --line:#ececef; --line-strong:#dcdce0;
+  --text:#111113; --text-2:#3f3f46; --muted:#6b6b74;
+  --brand:#2f55d4; --brand-hover:#2443b0; --brand-soft:#eef2ff; --brand-ink:#2443b0;
+  --warn-soft:#fff4dc; --warn-ink:#8a4b00; --bad-soft:#ffe9e9; --bad-ink:#a3171b; --good-ink:#15803d;
+  --info-soft:#e8f4fd; --info-ink:#075985;
+  --shadow:0 1px 2px rgba(16,16,20,.04),0 4px 16px rgba(16,16,20,.04);
+  --pop:0 12px 32px rgba(16,16,20,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e0e11; --surface:#17171b; --surface-2:#1c1c21; --line:#26262c; --line-strong:#34343b;
+    --text:#f4f4f6; --text-2:#cfcfd6; --muted:#9a9aa5;
+    --brand:#5b7cf0; --brand-hover:#7591f3; --brand-soft:#1d2440; --brand-ink:#a9bbff;
+    --warn-soft:#3a2a0c; --warn-ink:#f5c46b; --bad-soft:#3b1515; --bad-ink:#ff9b9b; --good-ink:#6ee7a0;
+    --info-soft:#0c2a3d; --info-ink:#8fd0f5;
+    --shadow:none; --pop:0 12px 32px rgba(0,0,0,.5);
+  }
+}
+/* Палитра карточек: ключи SessionColorKey с сервера */
+.k-CYAN{--k-bg:#e3f6fa;--k-ink:#0e7490;--k-bar:#0891b2}
+.k-ORANGE{--k-bg:#fff0e0;--k-ink:#9a3412;--k-bar:#ea7a1c}
+.k-PURPLE{--k-bg:#f3ecfd;--k-ink:#6b21a8;--k-bar:#9333ea}
+.k-STEEL{--k-bg:#eaeef3;--k-ink:#334155;--k-bar:#64748b}
+.k-GREEN{--k-bg:#e5f6ea;--k-ink:#166534;--k-bar:#22a35a}
+.k-LIME{--k-bg:#f0f7dc;--k-ink:#4d6b0f;--k-bar:#84b81a}
+.k-LILAC{--k-bg:#eeecfd;--k-ink:#4c3fb0;--k-bar:#7c6cf0}
+.k-GREY{--k-bg:#efeff1;--k-ink:#3f3f46;--k-bar:#8b8b95}
+@media (prefers-color-scheme: dark){
+  .k-CYAN{--k-bg:#0c262c;--k-ink:#7dd3e6;--k-bar:#22b8d6}
+  .k-ORANGE{--k-bg:#2e1d0d;--k-ink:#fdba74;--k-bar:#f08a35}
+  .k-PURPLE{--k-bg:#241634;--k-ink:#d8b4fe;--k-bar:#a855f7}
+  .k-STEEL{--k-bg:#1b2129;--k-ink:#cbd5e1;--k-bar:#7c8ba1}
+  .k-GREEN{--k-bg:#0f2618;--k-ink:#86efac;--k-bar:#34c06e}
+  .k-LIME{--k-bg:#1d2610;--k-ink:#bef264;--k-bar:#9acd32}
+  .k-LILAC{--k-bg:#1d1a36;--k-ink:#c4bcff;--k-bar:#8b7cf5}
+  .k-GREY{--k-bg:#1f1f24;--k-ink:#d4d4d8;--k-bar:#71717a}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none}a:hover{color:var(--brand-hover)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 16px 96px;display:flex;flex-direction:column;gap:18px}
+@media (min-width:720px){.wrap{padding:36px 32px 96px}}
+.sub{color:var(--muted)}
+
+/* Шапка */
+.ctop{display:flex;flex-wrap:wrap;gap:14px 16px;align-items:center;justify-content:space-between}
+.ctop h1{margin:0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-.02em}
+.ctop .meta{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-size:14px;color:var(--text-2)}
+.ctop .meta .dim{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow);transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn-icon{width:40px;padding:0;justify-content:center}
+.btn-sm{height:32px;padding:0 12px;font-size:13px;border-radius:8px;box-shadow:none}
+.btn-sm.btn-icon{width:32px;padding:0}
+.btn .n{display:inline-flex;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--brand);color:#fff;font-size:11.5px;font-weight:600;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.btn.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-ink)}
+.lnk{border:0;background:transparent;color:var(--brand);font-size:13.5px;font-weight:500;padding:0;display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+.lnk svg{width:14px;height:14px}
+.seg{display:inline-flex;padding:3px;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.seg button{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;font-size:13.5px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.badge{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.b-warn{background:var(--warn-soft);color:var(--warn-ink)}
+.b-bad{background:var(--bad-soft);color:var(--bad-ink)}
+.b-ok{background:var(--brand-soft);color:var(--brand-ink)}
+.b-info{background:var(--info-soft);color:var(--info-ink)}
+.b-mute{background:var(--surface-2);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* Панель инструментов */
+.tb{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center}
+.wnav{display:flex;align-items:center;gap:6px}
+.range{font-size:16px;font-weight:600;letter-spacing:-.01em;padding:0 6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.gchip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 4px 0 12px;border-radius:10px;border:1px solid var(--brand);background:var(--brand-soft);color:var(--brand-ink);font-size:13px;font-weight:500}
+.gchip button{width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:inherit;display:inline-flex;align-items:center;justify-content:center}
+.gchip button:hover{background:rgba(47,85,212,.12)}
+
+/* Карточки */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:0}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.ch h2{margin:0;font-size:15.5px;font-weight:600;display:flex;gap:10px;align-items:center}
+.ch .cnt{color:var(--muted);font-weight:500}
+
+/* Недельная сетка */
+.gw{overflow-x:auto;border-radius:14px}
+.wk{display:grid}
+.corner{border-bottom:1px solid var(--line)}
+.dh{display:flex;align-items:center;gap:8px;padding:10px 8px 10px 12px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);min-width:0}
+.dh .dn{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.dh .dd{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:26px;min-width:26px;text-align:center}
+.dh .dc{font-size:12px;color:var(--muted);white-space:nowrap}
+.dh.today .dd{background:var(--brand);color:#fff;border-radius:8px;padding:0 6px}
+.dh.today .dn{color:var(--brand-ink)}
+.dh.past .dd,.dh.past .dn{color:var(--muted)}
+.dh .add{margin-left:auto;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;opacity:.35;transition:opacity .15s,background .15s}
+.dh:hover .add,.dh .add:focus-visible{opacity:1}
+.dh .add:hover{background:var(--surface-2);color:var(--text)}
+.hl{padding:10px 10px 0 0;text-align:right;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;border-top:1px solid var(--line)}
+.cell{padding:6px;border-top:1px solid var(--line);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
+.hdr-row>.dh:nth-child(2),.wk>.dh:nth-child(2){border-left:1px solid var(--line)}
+.today-col{background:color-mix(in srgb,var(--brand-soft) 55%,transparent)}
+.wk .empty{grid-column:1/-1;padding:56px 16px;text-align:center;color:var(--muted);border-top:1px solid var(--line)}
+.wk .empty b{display:block;color:var(--text);font-weight:600;margin-bottom:4px}
+
+/* Карточка занятия */
+.sc{display:flex;flex-direction:column;gap:1px;width:100%;text-align:left;padding:7px 9px 8px 12px;border:0;border-radius:9px;background:var(--k-bg);color:var(--text);font-size:12.5px;line-height:1.35;box-shadow:inset 3px 0 0 var(--k-bar);min-width:0;transition:filter .12s,transform .12s}
+.sc:hover{filter:brightness(.97)}
+@media (prefers-color-scheme: dark){.sc:hover{filter:brightness(1.15)}}
+.sc .st{font-weight:600;font-variant-numeric:tabular-nums;color:var(--k-ink);display:flex;flex-wrap:wrap;column-gap:6px;align-items:baseline;white-space:nowrap}
+.sc .st .du{font-weight:500;opacity:.75;font-size:11.5px}
+.sc .sg{font-weight:600;font-size:13px}
+.sc .sm{color:var(--text-2)}
+.sc .sg,.sc .sm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc.past{opacity:.55}
+.sc.cancelled{opacity:.7;background:repeating-linear-gradient(135deg,var(--k-bg) 0 7px,var(--surface) 7px 14px)}
+.sc.cancelled .st,.sc.cancelled .sg{text-decoration:line-through}
+.sc.live{box-shadow:inset 3px 0 0 var(--k-bar),0 0 0 2px var(--brand)}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.tag{display:inline-flex;align-items:center;gap:3px;height:19px;padding:0 7px;border-radius:99px;font-size:11px;font-weight:600;background:var(--surface);color:var(--muted);white-space:nowrap}
+.tag svg{width:11px;height:11px}
+.tag.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.tag.bad{background:var(--bad-soft);color:var(--bad-ink)}
+.tag.info{background:var(--info-soft);color:var(--info-ink)}
+.tag.brand{background:var(--brand);color:#fff}
+
+/* Полоса дней и список (вид «День», телефон) */
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.days button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 0 8px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.days button:hover{border-color:var(--line-strong)}
+.days .dn{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.days .dd{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.days .dots{display:flex;gap:3px;height:6px;align-items:center}
+.days .dots i{width:5px;height:5px;border-radius:99px;background:var(--k-bar)}
+.days button.today .dd{color:var(--brand)}
+.days button[aria-pressed="true"]{background:var(--text);border-color:var(--text);color:var(--surface)}
+.days button[aria-pressed="true"] .dn,.days button[aria-pressed="true"].today .dd{color:inherit;opacity:.85}
+.lh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:2px 0 8px}
+.lh h2{margin:0;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.lrow{display:grid;grid-template-columns:64px minmax(0,1.4fr) minmax(0,.5fr) minmax(0,1fr);gap:16px;align-items:center;width:100%;padding:13px 18px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;font-size:14px}
+.lrow:first-child{border-top:0}
+.lrow:hover{background:var(--surface-2)}
+.lrow .lt{font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3}
+.lrow .lt .sub{display:block;font-weight:400;font-size:12.5px}
+.lrow .lb{border-left:3px solid var(--k-bar);padding-left:11px;min-width:0}
+.lrow .lb b{font-weight:600;display:block}
+.lrow .lb .sub{display:block;font-size:13px}
+.lrow .lc{font-size:14px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .m-only{display:none}
+.lrow.past{opacity:.6}
+.lrow.cancelled b{text-decoration:line-through}
+.nowline{display:flex;align-items:center;gap:10px;padding:0 18px;height:26px;font-size:12px;font-weight:600;color:var(--brand);border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.nowline::after{content:'';flex:1;height:2px;background:var(--brand);border-radius:2px}
+.agenda{display:flex;flex-direction:column;gap:18px}
+.dlink{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;padding:2px 6px;margin-left:-6px;border-radius:8px}
+.dlink:hover{background:var(--surface-2)}
+.lempty{padding:40px 16px;text-align:center;color:var(--muted);font-size:14px}
+
+.mob{display:none;flex-direction:column;gap:14px}
+.only-sm{display:none}
+.dock{display:none}
+@media (max-width:767px){
+  .desk,.hide-sm{display:none!important}
+  .mob{display:flex}
+  .only-sm{display:inline-flex}
+  .ctop h1{font-size:23px}
+  .lrow{grid-template-columns:50px minmax(0,1fr);gap:12px;align-items:start;padding:12px 16px}
+  .lrow .d-only{display:none}
+  .lrow .m-only{display:inline}
+  .nowline{padding:0 16px}
+  .wnav{width:100%}
+  .wnav .range{flex:1;text-align:center;font-size:15px}
+  .dock{display:flex;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+  .dock .btn{flex:1;justify-content:center}
+}
+
+/* Боковая панель */
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(10,10,14,.35);animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{position:fixed;top:0;right:0;bottom:0;z-index:51;width:min(440px,100%);background:var(--surface);box-shadow:var(--pop);display:flex;flex-direction:column;animation:slide .18s ease-out}
+@keyframes slide{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.sheet .sh-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.sheet .sh-head h2{margin:0;font-size:18px;line-height:1.25}
+.sheet .sh-body{padding:4px 0 8px;overflow:auto;flex:1}
+.sheet .grp{padding:14px 20px 6px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.sheet .sh-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:14px 20px;border-top:1px solid var(--line)}
+.sheet .sh-foot .left{margin-right:auto}
+.opt{display:flex;gap:12px;align-items:center;padding:10px 20px;cursor:pointer;font-size:14.5px}
+.opt:hover{background:var(--surface-2)}
+.opt .ot{flex:1}
+.opt .ot .sub{font-size:12.5px;margin-left:6px}
+.cb{width:18px;height:18px;border-radius:6px;box-shadow:inset 0 0 0 1.5px var(--line-strong);flex:none;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.cb.on{background:var(--brand);box-shadow:none}
+.form{display:flex;flex-direction:column;gap:14px;padding:16px 20px}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)}
+.fld input,.fld select,.fld textarea{height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:400;color:var(--text)}
+.fld textarea{height:72px;padding:10px 12px;resize:vertical}
+.fld :focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+.modebar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:12px;border:1px dashed var(--line-strong);font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:var(--text);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:var(--pop);animation:pop .14s ease-out;max-width:calc(100% - 32px)}
+@keyframes pop{from{opacity:0;transform:translate(-50%,4px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (max-width:767px){.toast{bottom:84px}}
+.errbox{padding:28px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;color:var(--text-2)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const sv = (d, w = 16) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {
+  left: sv('<path d="m15 18-6-6 6-6"/>'),
+  right: sv('<path d="m9 18 6-6-6-6"/>'),
+  plus: sv('<path d="M12 5v14M5 12h14"/>'),
+  x: sv('<path d="M18 6 6 18M6 6l12 12"/>', 14),
+  filter: sv('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
+  check12: sv('<path d="M20 6 9 17l-5-5"/>', 12),
+  alert: sv('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>'),
+  cal: sv('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  move: sv('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+};
+
+/* ---------- Данные ---------- */
+const TODAY = '2026-11-17';
+const NOW_MIN = 16 * 60 + 40;
+const BASE_MON = '2026-11-16';
+const HALLS = ['Зал 1', 'Зал 2', 'Зал 3'];
+const SLOTS = [
+  { g:'Младшая группа', d:'Плавание', c:'CYAN', h:'Зал 1', coach:['Анна Иванова'], days:[0,2,4], s:'18:00', e:'19:30', n:10 },
+  { g:'Младшая группа', d:'Плавание', c:'CYAN', h:'Зал 2', coach:['Анна Иванова'], days:[5], s:'10:00', e:'11:30', n:10 },
+  { g:'Старшая группа', d:'Плавание', c:'PURPLE', h:'Зал 1', coach:['Анна Иванова'], days:[0,2], s:'19:30', e:'21:00', n:14 },
+  { g:'Гимнастика 5–7 лет', d:'Гимнастика', c:'GREEN', h:'Зал 2', coach:['Екатерина Смирнова'], days:[0,2,4], s:'17:00', e:'18:00', n:9 },
+  { g:'ОФП дети', d:'ОФП', c:'ORANGE', h:'Зал 3', coach:['Сергей Петров'], days:[1,3], s:'17:00', e:'18:00', n:12 },
+  { g:'ОФП дети', d:'ОФП', c:'ORANGE', h:'Зал 3', coach:['Сергей Петров'], days:[5], s:'11:00', e:'12:00', n:12 },
+  { g:'Единоборства', d:'Дзюдо', c:'STEEL', h:'Зал 2', coach:['Дмитрий Волков','Игорь Лебедев'], days:[1,3], s:'18:30', e:'20:00', n:16 },
+  { g:'Йога для взрослых', d:'Йога', c:'LILAC', h:'Зал 3', coach:['Мария Козлова'], days:[1,3], s:'09:00', e:'10:00', n:12 },
+  { g:'Йога для взрослых', d:'Йога', c:'LILAC', h:'Зал 3', coach:['Мария Козлова'], days:[5], s:'09:00', e:'10:00', n:12 },
+];
+const CATALOG = {
+  d: ['Гимнастика','Дзюдо','Йога','Лёгкая атлетика','ОФП','Плавание'],
+  h: [...HALLS, 'Малый зал'],
+  coach: ['Анна Иванова','Дмитрий Волков','Екатерина Смирнова','Игорь Лебедев','Мария Козлова','Ольга Кравец','Павел Орлов','Сергей Петров'],
+};
+const FILTER_TITLES = { d:'Дисциплины', h:'Залы', coach:'Тренеры' };
+
+const D = s => { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const addDays = (s, n) => { const d = D(s); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const fmt = (s, o) => new Intl.DateTimeFormat('ru', { timeZone:'UTC', ...o }).format(D(s));
+const toMin = t => +t.slice(0, 2) * 60 + +t.slice(3);
+const DOW = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const duration = (s, e) => { const m = toMin(e) - toMin(s), h = Math.floor(m / 60), r = m % 60; return [h ? `${h} ч` : '', r ? `${r} мин` : ''].filter(Boolean).join(' '); };
+const dayShort = s => fmt(s, { weekday:'short', day:'numeric', month:'long' });
+const dayLong = s => fmt(s, { weekday:'long', day:'numeric', month:'long' });
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+
+function weekSessions(w){
+  const mon = addDays(BASE_MON, 7 * w);
+  let list = [];
+  SLOTS.forEach((sl, si) => sl.days.forEach(dw => list.push({
+    id:`${w}-${si}-${dw}`, ...sl, coach:[...sl.coach], date:addDays(mon, dw), dow:dw, status:'PLANNED',
+  })));
+  if (w === 0) {
+    Object.assign(list.find(s => s.g === 'ОФП дети' && s.dow === 3), { status:'CANCELLED' });
+    Object.assign(list.find(s => s.g === 'Младшая группа' && s.dow === 2), { coach:['Ольга Кравец'], override:true });
+    Object.assign(list.find(s => s.g === 'Гимнастика 5–7 лет' && s.dow === 4), { date:addDays(mon, 5), dow:5, s:'12:00', e:'13:00', moved:'пт, 20.11, 17:00' });
+    list.push({ id:'0-mc', g:'Старшая группа', d:'Плавание', c:'PURPLE', h:'Зал 1', coach:['Анна Иванова'], date:addDays(mon, 6), dow:6, s:'11:00', e:'12:30', n:14, status:'PLANNED', manual:'Мастер-класс: старт и повороты' });
+  }
+  return list.sort((a, b) => a.date.localeCompare(b.date) || toMin(a.s) - toMin(b.s));
+}
+function phase(s){
+  if (s.status === 'CANCELLED') return 'cancelled';
+  const ended = s.date < TODAY || (s.date === TODAY && toMin(s.e) <= NOW_MIN);
+  const started = s.date < TODAY || (s.date === TODAY && toMin(s.s) <= NOW_MIN);
+  if (ended) return 'past';
+  if (started) return 'live';
+  return 'planned';
+}
+const soonMin = s => s.date === TODAY && phase(s) === 'planned' && toMin(s.s) - NOW_MIN <= 60 ? toMin(s.s) - NOW_MIN : null;
+
+/* ---------- Состояние ---------- */
+const EMPTY_F = () => ({ d:[], h:[], coach:[], group:null });
+const state = { w:0, day:1, view: matchMedia('(max-width:767px)').matches ? 'day' : 'week', f:EMPTY_F(), mode:'normal', sheet:null, toast:'' };
+const nf = () => state.f.d.length + state.f.h.length + state.f.coach.length + (state.f.group ? 1 : 0);
+function visible(){
+  if (state.mode === 'empty') return [];
+  const f = state.f;
+  return weekSessions(state.w).filter(s =>
+    (!f.d.length || f.d.includes(s.d)) && (!f.h.length || f.h.includes(s.h)) &&
+    (!f.coach.length || s.coach.some(c => f.coach.includes(c))) && (!f.group || s.g === f.group));
+}
+
+/* ---------- Отрисовка ---------- */
+function tags(s){
+  const p = phase(s), out = [];
+  if (p === 'cancelled') out.push(`<span class="tag bad">отменено</span>`);
+  if (p === 'live') out.push(`<span class="tag brand">идёт сейчас</span>`);
+  const soon = soonMin(s); if (soon !== null) out.push(`<span class="tag info">через ${soon} мин</span>`);
+  if (s.moved) out.push(`<span class="tag info">${I.move.replace(/16/g,'11')}перенос</span>`);
+  if (s.manual) out.push(`<span class="tag">разовое</span>`);
+  if (s.override) out.push(`<span class="tag warn">замена тренера</span>`);
+  return out.length ? `<span class="tags">${out.join('')}</span>` : '';
+}
+function card(s){
+  const p = phase(s);
+  return `<button class="sc k-${s.c} ${p}" data-act="open" data-v="${dayShort(s.date)}, ${s.s} · ${s.manual || s.g}">
+    <span class="st">${s.s}–${s.e}<span class="du">${duration(s.s, s.e)}</span></span>
+    <span class="sg">${s.manual || s.g}</span>
+    ${s.manual ? `<span class="sm">${s.g}</span>` : ''}
+    <span class="sm">${s.coach.join(', ')}</span>
+    <span class="sm">${s.h} · ${s.d}</span>
+    ${tags(s)}
+  </button>`;
+}
+function emptyMsg(){
+  return nf() ? `<b>Под фильтр ничего не подходит</b>Измените фильтры или <button class="lnk" data-act="reset">сбросьте их</button>`
+              : `<b>На этой неделе занятий нет</b>Добавьте разовое занятие кнопкой «+» у дня или настройте расписание группы`;
+}
+function weekGrid(list){
+  const mon = addDays(BASE_MON, 7 * state.w);
+  const hours = [...new Set(list.map(s => +s.s.slice(0, 2)))].sort((a, b) => a - b);
+  const dates = DOW.map((_, i) => addDays(mon, i));
+  const head = dates.map((d, i) => {
+    const cnt = list.filter(s => s.date === d && s.status !== 'CANCELLED').length;
+    const cls = d === TODAY ? 'today today-col' : d < TODAY ? 'past' : '';
+    return `<div class="dh ${cls}"><button class="dlink" data-act="openday" data-v="${i}" aria-label="Открыть день: ${dayLong(d)}"><span class="dn">${DOW[i]}</span><span class="dd">${D(d).getUTCDate()}</span></button>${cnt ? `<span class="dc">${cnt}</span>` : ''}<button class="add" data-act="create" data-v="${d}" aria-label="Добавить занятие, ${dayShort(d)}">${I.plus}</button></div>`;
+  }).join('');
+  const rows = hours.length ? hours.map(h => `<div class="hl">${String(h).padStart(2, '0')}:00</div>` + dates.map(d =>
+    `<div class="cell ${d === TODAY ? 'today-col' : ''}">${list.filter(s => s.date === d && +s.s.slice(0, 2) === h).map(card).join('')}</div>`).join('')).join('')
+    : `<div class="empty">${emptyMsg()}</div>`;
+  return `<div class="card gw"><div class="wk" style="grid-template-columns:56px repeat(7,minmax(146px,1fr));min-width:${56 + 7 * 146}px"><div class="corner"></div>${head}${rows}</div></div>`;
+}
+function dayStrip(all){
+  const mon = addDays(BASE_MON, 7 * state.w);
+  return `<div class="days" role="group" aria-label="День недели">${DOW.map((n, i) => {
+    const d = addDays(mon, i), day = all.filter(s => s.date === d && s.status !== 'CANCELLED');
+    return `<button aria-pressed="${state.day === i}" class="${d === TODAY ? 'today' : ''}" data-act="day" data-v="${i}"><span class="dn">${n}</span><span class="dd">${D(d).getUTCDate()}</span><span class="dots">${day.slice(0, 4).map(s => `<i class="k-${s.c}"></i>`).join('')}</span></button>`;
+  }).join('')}</div>`;
+}
+function row(s){
+  return `<button class="lrow k-${s.c} ${phase(s)}" data-act="open" data-v="${dayShort(s.date)}, ${s.s} · ${s.manual || s.g}">
+    <span class="lt">${s.s}<span class="sub">${s.e}</span></span>
+    <span class="lb"><b>${s.manual || s.g}</b><span class="sub">${s.manual ? `${s.g} · ` : ''}${s.d}<span class="m-only"> · ${s.h} · ${s.coach.join(', ')}</span></span>${tags(s)}</span>
+    <span class="lc d-only">${s.h}</span>
+    <span class="lc d-only">${s.coach.join(', ')}</span>
+  </button>`;
+}
+function rows(day, date){
+  const out = day.map(row);
+  if (date === TODAY) {
+    const i = day.findIndex(s => toMin(s.s) > NOW_MIN);
+    out.splice(i < 0 ? out.length : i, 0, `<div class="nowline">16:40</div>`);
+  }
+  return out.join('');
+}
+function dayView(list){
+  const date = addDays(BASE_MON, 7 * state.w + state.day);
+  const day = list.filter(s => s.date === date);
+  return `${dayStrip(list)}<section class="card">${day.length ? rows(day, date) : `<div class="lempty">${nf() ? 'Под фильтр ничего не подходит' : 'В этот день занятий нет'}<br><button class="lnk" data-act="create" data-v="${date}" style="margin-top:8px">${I.plus}Добавить занятие</button></div>`}</section>`;
+}
+function agenda(list){
+  const mon = addDays(BASE_MON, 7 * state.w);
+  const dates = DOW.map((_, i) => addDays(mon, i)).filter(d => list.some(s => s.date === d));
+  if (!dates.length) return `<section class="card"><div class="lempty">${nf() ? 'Под фильтр ничего не подходит' : 'На этой неделе занятий нет'}</div></section>`;
+  return `<div class="agenda">${dates.map(d => {
+    const day = list.filter(s => s.date === d), n = day.filter(s => s.status !== 'CANCELLED').length;
+    return `<div><div class="lh"><h2>${dayShort(d)}${d === TODAY ? ' · сегодня' : ''}</h2><span class="sub" style="font-size:13px">${n} ${plural(n,'занятие','занятия','занятий')}</span></div><section class="card">${rows(day, d)}</section></div>`;
+  }).join('')}</div>`;
+}
+function toolbar(){
+  const mon = addDays(BASE_MON, 7 * state.w), sun = addDays(mon, 6);
+  const range = D(mon).getUTCMonth() === D(sun).getUTCMonth()
+    ? `${D(mon).getUTCDate()} – ${fmt(sun, { day:'numeric', month:'long' })} ${D(sun).getUTCFullYear()}`
+    : `${fmt(mon, { day:'numeric', month:'long' })} – ${fmt(sun, { day:'numeric', month:'long' })} ${D(sun).getUTCFullYear()}`;
+  const pill = k => `<button class="btn btn-sm ${state.f[k].length ? 'on' : ''}" data-act="filters" data-v="${k}">${FILTER_TITLES[k]}${state.f[k].length ? `<span class="n">${state.f[k].length}</span>` : ''}</button>`;
+  const total = state.f.d.length + state.f.h.length + state.f.coach.length;
+  const isDay = state.view === 'day', cur = addDays(mon, state.day);
+  const label = isDay ? `${dayLong(cur)}${cur === TODAY ? ' · сегодня' : ''}` : range;
+  const away = isDay ? cur !== TODAY : state.w !== 0;
+  return `<div class="tb">
+    <div class="wnav">
+      <button class="btn btn-sm btn-icon" data-act="step" data-v="-1" aria-label="${isDay ? 'Предыдущий день' : 'Предыдущая неделя'}">${I.left}</button>
+      <span class="range">${label}</span>
+      <button class="btn btn-sm btn-icon" data-act="step" data-v="1" aria-label="${isDay ? 'Следующий день' : 'Следующая неделя'}">${I.right}</button>
+      ${away ? `<button class="btn btn-sm" data-act="today">Сегодня</button>` : ''}
+    </div>
+    <div class="seg"><button aria-pressed="${isDay}" data-act="view" data-v="day">День</button><button aria-pressed="${!isDay}" data-act="view" data-v="week">Неделя</button></div>
+    <div class="fl">
+      ${state.f.group ? `<span class="gchip">Группа: ${state.f.group}<button data-act="ungroup" aria-label="Снять фильтр по группе">${I.x}</button></span>` : ''}
+      <span class="hide-sm" style="display:contents">${pill('d')}${pill('h')}${pill('coach')}</span>
+      <button class="btn btn-sm only-sm ${total ? 'on' : ''}" data-act="filters" data-v="d">${I.filter}Фильтры${total ? `<span class="n">${total}</span>` : ''}</button>
+      ${nf() ? `<button class="lnk" data-act="reset">Сбросить</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function filterSheet(){
+  const dr = state.sheet.draft;
+  const sec = k => `<div class="grp">${FILTER_TITLES[k]}</div>${CATALOG[k].map(v => `<div class="opt" data-act="fopt" data-k="${k}" data-v="${v}" role="checkbox" aria-checked="${dr[k].includes(v)}" tabindex="0"><span class="cb ${dr[k].includes(v) ? 'on' : ''}">${dr[k].includes(v) ? I.check12 : ''}</span><span class="ot">${v}</span></div>`).join('')}`;
+  const order = [state.sheet.focus, ...['d','h','coach'].filter(k => k !== state.sheet.focus)];
+  return `<div class="scrim" data-act="close"></div><aside class="sheet" role="dialog" aria-label="Фильтры">
+    <div class="sh-head"><h2>Фильтры</h2><button class="btn btn-sm btn-icon" data-act="close" aria-label="Закрыть">${I.x}</button></div>
+    <div class="sh-body"><p class="hint" style="padding:12px 20px 0">Внутри раздела — любое из отмеченного, между разделами — всё сразу. Списки — из справочников филиала, а не из этой недели.</p>${order.map(sec).join('')}</div>
+    <div class="sh-foot"><button class="btn left" data-act="fclear">Очистить</button><button class="btn" data-act="close">Отмена</button><button class="btn btn-primary" data-act="fapply">Применить</button></div>
+  </aside>`;
+}
+function createSheet(){
+  const date = state.sheet.date;
+  const groups = [...new Set(SLOTS.map(s => s.g))];
+  return `<div class="scrim" data-act="close"></div><aside class="sheet" role="dialog" aria-label="Новое занятие">
+    <div class="sh-head"><div><h2>Новое занятие</h2><div class="sub" style="font-size:13.5px">разовое — в расписание группы не попадает</div></div><button class="btn btn-sm btn-icon" data-act="close" aria-label="Закрыть">${I.x}</button></div>
+    <div class="sh-body"><div class="form">
+      <label class="fld"><span>Группа</span><select><option>Выберите…</option>${groups.map(g => `<option>${g}</option>`).join('')}</select></label>
+      <label class="fld"><span>Дата</span><input type="date" value="${date}"></label>
+      <div class="row2"><label class="fld"><span>Начало</span><input type="time" value="18:00"></label><label class="fld"><span>Окончание</span><input type="time" value="19:00"></label></div>
+      <label class="fld"><span>Зал</span><select>${HALLS.map(h => `<option>${h}</option>`).join('')}</select></label>
+      <label class="fld"><span>Тренеры</span><select><option>Как в группе</option>${CATALOG.coach.map(c => `<option>${c}</option>`).join('')}</select></label>
+      <label class="fld"><span>Название <span class="sub" style="font-weight:400">— необязательно</span></span><input placeholder="Например, мастер-класс"></label>
+      <p class="hint">Клиенты группы будут записаны автоматически.</p>
+    </div></div>
+    <div class="sh-foot"><button class="btn" data-act="close">Отмена</button><button class="btn btn-primary" data-act="created">Создать</button></div>
+  </aside>`;
+}
+
+function draw(){
+  const list = visible();
+    const curDate = addDays(BASE_MON, 7 * state.w + state.day);
+  const scope = state.view === 'day' ? list.filter(s => s.date === curDate) : list;
+  const n = scope.filter(s => s.status !== 'CANCELLED').length;
+  const cx = scope.filter(s => s.status === 'CANCELLED').length;
+  const body = state.mode === 'error'
+    ? `<section class="card errbox">${I.alert}<div><b>Не удалось загрузить расписание</b><div class="sub" style="font-size:14px">Проверьте соединение и попробуйте ещё раз</div></div><button class="btn" data-act="mode" data-v="normal">Повторить</button></section>`
+    : state.view === 'day'
+      ? `<div style="display:flex;flex-direction:column;gap:14px">${dayView(list)}</div>`
+      : `<div class="desk">${weekGrid(list)}</div><div class="mob">${agenda(list)}</div>`;
+  const mode = (id, label) => `<button aria-pressed="${state.mode === id}" data-act="mode" data-v="${id}">${label}</button>`;
+  document.getElementById('app').innerHTML = `<div class="wrap">
+    <div class="modebar"><span>Только в макете — сейчас вт, 17 ноября, 16:40. Состояние:</span><div class="seg">${mode('normal','Обычная неделя')}${mode('empty','Нет занятий')}${mode('error','Ошибка')}</div><button class="lnk" data-act="fromgroup">Открыть по ссылке из карточки группы</button></div>
+    <div class="ctop">
+      <div><h1>Расписание</h1>
+        <div class="meta"><span>Филиал «Центральный»</span>${state.mode === 'normal' ? `<span class="dim">${n} ${plural(n,'занятие','занятия','занятий')} ${state.view === 'day' ? 'за день' : 'на неделе'}${cx ? ` · ${cx} ${plural(cx,'отменено','отменено','отменено')}` : ''}</span>` : ''}</div>
+      </div>
+      <button class="btn btn-primary hide-sm" data-act="create" data-v="${addDays(BASE_MON, 7 * state.w + state.day)}">${I.plus}Добавить занятие</button>
+    </div>
+    ${toolbar()}
+    ${body}
+  </div>
+  <div class="dock"><button class="btn btn-primary" data-act="create" data-v="${addDays(BASE_MON, 7 * state.w + state.day)}">${I.plus}Добавить занятие</button></div>
+  ${state.sheet ? { filters:filterSheet, create:createSheet }[state.sheet.kind]() : ''}
+  ${state.toast ? `<div class="toast" role="status">${state.toast}</div>` : ''}`;
+}
+let toastTimer;
+const toast = v => { state.toast = v; clearTimeout(toastTimer); toastTimer = setTimeout(() => { state.toast = ''; draw(); }, 2400); };
+document.addEventListener('click', e => {
+  if (e.target.closest('a')) e.preventDefault();
+  const t = e.target.closest('[data-act]');
+  if (!t) return;
+  e.preventDefault();
+  const a = t.dataset.act, v = t.dataset.v;
+  if (a === 'step') {
+    if (state.view === 'week') { state.w += +v; }
+    else { let d = state.day + +v; if (d < 0) { state.w--; d = 6; } if (d > 6) { state.w++; d = 0; } state.day = d; }
+  }
+  if (a === 'view') state.view = v;
+  if (a === 'openday') { state.view = 'day'; state.day = +v; }
+  if (a === 'today') { state.w = 0; state.day = 1; }
+  if (a === 'day') state.day = +v;
+  if (a === 'mode') state.mode = v;
+  if (a === 'open') toast(`Переход на страницу занятия: ${v}`);
+  if (a === 'close') state.sheet = null;
+  if (a === 'create') state.sheet = { kind:'create', date:v };
+  if (a === 'created') { state.sheet = null; toast('Занятие создано'); }
+  if (a === 'filters') state.sheet = { kind:'filters', focus:v, draft:{ d:[...state.f.d], h:[...state.f.h], coach:[...state.f.coach] } };
+  if (a === 'fopt') { const arr = state.sheet.draft[t.dataset.k]; const i = arr.indexOf(v); i < 0 ? arr.push(v) : arr.splice(i, 1); }
+  if (a === 'fclear') state.sheet.draft = { d:[], h:[], coach:[] };
+  if (a === 'fapply') { Object.assign(state.f, state.sheet.draft); state.sheet = null; }
+  if (a === 'reset') state.f = EMPTY_F();
+  if (a === 'ungroup') state.f.group = null;
+  if (a === 'fromgroup') state.f.group = 'Младшая группа';
+  if (a === 'toast') toast(v);
+  draw();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.sheet) { state.sheet = null; draw(); } });
+draw();
+</script>
+</body>
+</html>

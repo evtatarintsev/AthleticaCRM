@@ -363,6 +363,10 @@ export const en: Messages<typeof ru> = {
 
   "home.title": "Home",
   "home.todaySessionsTitle": "Today's sessions",
+  "home.sessionLive": "live",
+  "home.today": "today",
+  "home.yesterday": "yesterday",
+  "home.daysAgo": { one: "{count} day ago", other: "{count} days ago" },
   "home.todaySessionsEmpty": "No sessions today",
   "home.todaySessionsError": "Failed to load sessions",
   "home.hallLabel": "Hall: {name}",
@@ -372,7 +376,7 @@ export const en: Messages<typeof ru> = {
   "home.birthdaysTitle": "Birthdays",
   "home.birthdaysEmpty": "No birthdays",
   "home.birthdaysError": "Failed to load the list",
-  "home.birthdaysAge": "{age} y.o.",
+  "home.birthdaysAge": { other: "{count} y.o." },
   "home.widgetShowAll": "Show all ({total})",
   "home.dashboardSettingsTitle": "Home settings",
   "home.dashboardSettingsDescription": "Widget order and visibility",
@@ -388,7 +392,6 @@ export const en: Messages<typeof ru> = {
   "home.unclosedSessionsTitle": "Unclosed journals",
   "home.unclosedSessionsEmpty": "No unclosed journals",
   "home.unclosedSessionsError": "Failed to load sessions",
-  "home.unclosedSessionsTotal": "Unclosed in total: {total}",
 
   "notFound.title": "Page not found",
   "notFound.text": "Check the address or go back home.",

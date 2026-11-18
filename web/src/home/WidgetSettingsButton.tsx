@@ -17,7 +17,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { useI18n } from "@/i18n/context";
 import {
   clampWidgetLimit,
-  defaultTitleKey,
+  resolveTitle,
   hideWidget,
   replaceWidget,
   updateDashboardSettings,
@@ -36,7 +36,7 @@ export function WidgetSettingsButton({
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const title = t(defaultTitleKey(widget.type));
+  const title = resolveTitle(t, widget);
 
   const updateWidget = (update: (widget: DashboardWidget) => DashboardWidget): void => {
     updateDashboardSettings(api, queryClient, settings, (current) => {

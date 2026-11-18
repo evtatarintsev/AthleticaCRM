@@ -229,7 +229,7 @@ describe("индивидуальные настройки виджетов гл�
     await user.click(visibility);
     await user.keyboard("{Escape}");
     expect(await screen.findByRole("heading", { name: "Журналы" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Настройки: Незакрытые журналы" }));
+    await user.click(screen.getByRole("button", { name: "Настройки: Журналы" }));
     expect(within(screen.getByRole("dialog")).getByText("Показывать: 11")).toBeInTheDocument();
   });
 
@@ -353,8 +353,8 @@ describe("индивидуальные настройки виджетов гл�
       "Моя команда",
       "Незакрытые журналы",
     ]);
-    await user.click(screen.getByRole("button", { name: "Настройки: Дни рождения" }));
-    const restoredDialog = screen.getByRole("dialog", { name: "Настройки: Дни рождения" });
+    await user.click(screen.getByRole("button", { name: "Настройки: Моя команда" }));
+    const restoredDialog = screen.getByRole("dialog", { name: "Настройки: Моя команда" });
     expect(within(restoredDialog).getByRole("textbox", { name: "Название виджета" })).toHaveValue(
       "Моя команда",
     );

@@ -475,7 +475,10 @@ document.addEventListener('click', e => {
     if (state.view === 'week') { state.w += +v; }
     else { let d = state.day + +v; if (d < 0) { state.w--; d = 6; } if (d > 6) { state.w++; d = 0; } state.day = d; }
   }
-  if (a === 'view') state.view = v;
+  if (a === 'view') {
+    if (state.view === 'week' && v === 'day') state.day = state.w === 0 ? (D(TODAY).getUTCDay() + 6) % 7 : 0;
+    state.view = v;
+  }
   if (a === 'openday') { state.view = 'day'; state.day = +v; }
   if (a === 'today') { state.w = 0; state.day = 1; }
   if (a === 'day') state.day = +v;

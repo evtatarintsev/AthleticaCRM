@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DashboardWidgetIdSchema,
   DisplaySettingsSchema,
@@ -47,6 +47,10 @@ function server(unclosed: () => Response) {
   });
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("виджет «Незакрытые журналы»", () => {
   it("показывает занятия со ссылкой на карточку и общее число сверх лимита", async () => {
     const api = server(() =>
@@ -67,7 +71,8 @@ describe("виджет «Незакрытые журналы»", () => {
     const { history } = openApp("/", api.fetch);
     const user = userEvent.setup();
 
-    expect(await screen.findByText("Всего незакрытых: 3")).toBeVisible();
+    expect(await screen.findByText("3")).toBeVisible();
+    expect(screen.queryByText(/Всего незакрытых/)).not.toBeInTheDocument();
     expect(api.to("home/unclosed-sessions")[0]?.query.get("limit")).toBe("1");
     await user.click(screen.getByText("Йога"));
     expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
@@ -94,5 +99,30 @@ describe("виджет «Незакрытые журналы»", () => {
 
     expect(completed.widgets.at(-1)?.type).toBe("unclosedSessions");
     expect(completed.layout.at(-1)).toBe(completed.widgets.at(-1)?.id);
+  });
+  it("показывает возраст журналов: сегодня, вчера и четыре дня назад", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 18, 17, 40));
+    openApp(
+      "/",
+      server(() =>
+        json({
+          sessions: [18, 17, 14].map((day) => ({
+            sessionId: `0199a0b2-7c3e-7d2a-9f10-0000000008${String(day)}`,
+            groupName: `Группа ${String(day)}`,
+            date: `2026-11-${String(day)}`,
+            startTime: "16:00",
+            endTime: "17:00",
+            hallName: "Зал А",
+          })),
+          total: 3,
+        }),
+      ).fetch,
+    );
+    expect(await screen.findByText("вчера")).toBeVisible();
+    expect(screen.getByText("4 дня назад")).toBeVisible();
+    const today = screen.getByRole("link", { name: /Группа 18/ });
+    expect(today).toHaveTextContent("сегодня, 16:00–17:00");
+    expect(today).not.toHaveTextContent(/назад|вчера/);
   });
 });

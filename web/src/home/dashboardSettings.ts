@@ -242,11 +242,6 @@ function addDaysUtc(date: LocalDate, days: number): LocalDate {
   return LocalDateSchema.parse(shifted.toISOString().slice(0, 10));
 }
 
-/** Год даты [date] вида `2025-01-31`. */
-export function yearOf(date: LocalDate): number {
-  return Number(date.slice(0, 4));
-}
-
 /** Search-параметры страницы клиентов для «Показать всех» виджета должников. */
 export function debtorsShowAllSearch(): ClientListSearch {
   return { debt: true };

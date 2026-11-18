@@ -383,6 +383,15 @@ export const ru = {
 
   "home.title": "Главная",
   "home.todaySessionsTitle": "Занятия сегодня",
+  "home.sessionLive": "идёт",
+  "home.today": "сегодня",
+  "home.yesterday": "вчера",
+  "home.daysAgo": {
+    one: "{count} день назад",
+    few: "{count} дня назад",
+    many: "{count} дней назад",
+    other: "{count} дня назад",
+  },
   "home.todaySessionsEmpty": "Сегодня занятий нет",
   "home.todaySessionsError": "Не удалось загрузить занятия",
   "home.hallLabel": "Зал: {name}",
@@ -392,7 +401,12 @@ export const ru = {
   "home.birthdaysTitle": "Дни рождения",
   "home.birthdaysEmpty": "Дней рождения нет",
   "home.birthdaysError": "Не удалось загрузить список",
-  "home.birthdaysAge": "{age} лет",
+  "home.birthdaysAge": {
+    one: "{count} год",
+    few: "{count} года",
+    many: "{count} лет",
+    other: "{count} года",
+  },
   "home.widgetShowAll": "Показать всех ({total})",
   "home.dashboardSettingsTitle": "Настройки главной",
   "home.dashboardSettingsDescription": "Порядок и видимость виджетов",
@@ -408,7 +422,6 @@ export const ru = {
   "home.unclosedSessionsTitle": "Незакрытые журналы",
   "home.unclosedSessionsEmpty": "Незакрытых журналов нет",
   "home.unclosedSessionsError": "Не удалось загрузить занятия",
-  "home.unclosedSessionsTotal": "Всего незакрытых: {total}",
 
   "notFound.title": "Страница не найдена",
   "notFound.text": "Проверьте адрес или вернитесь на главную.",

@@ -305,6 +305,11 @@ object Messages {
         override val en = { day: String, time: LocalTime -> "Duplicate schedule slot: $day $time" }
     }
 
+    object InvalidClientSort : LocalizationKey {
+        override val ru = "Некорректная сортировка: поля не должны повторяться, а сортировка по ближайшему дню рождения требует фильтр по дню рождения"
+        override val en = "Invalid sort: fields must not repeat, and sorting by next birthday requires a birthday filter"
+    }
+
     object InvalidSchedulePeriod : LocalizationKey {
         override val ru = "Дата окончания периода не может быть раньше даты начала"
         override val en = "Period end date cannot precede its start date"

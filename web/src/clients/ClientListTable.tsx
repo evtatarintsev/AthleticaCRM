@@ -42,7 +42,7 @@ const columns = helper.columns([helper.accessor("name", {})]);
 
 /** Сортировка таблицы клиентов: колонка и направление. */
 export interface ClientSortState {
-  readonly column: ClientSortColumn;
+  readonly column: ClientSortColumn | "nextBirthday";
   readonly dir: "asc" | "desc";
 }
 

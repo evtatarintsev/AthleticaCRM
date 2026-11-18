@@ -197,8 +197,8 @@ function WindowSelector({
       }}
     >
       <option value="TODAY">{t("clients.filter.birthdayToday")}</option>
-      <option value="TOMORROW">{t("clients.filter.birthdayTomorrow")}</option>
-      <option value="WEEK">{t("clients.filter.birthdayWeek")}</option>
+      <option value="TOMORROW">{t("clients.filter.birthdayTodayTomorrow")}</option>
+      <option value="WEEK">{t("clients.filter.birthdayWeekAhead")}</option>
     </NativeSelect>
   );
 }

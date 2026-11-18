@@ -277,7 +277,11 @@ export function ClientsPage({
                     ? "clients.filter.chipBirthdayToday"
                     : filters.birthday === "tomorrow"
                       ? "clients.filter.chipBirthdayTomorrow"
-                      : "clients.filter.chipBirthdayWeek",
+                      : filters.birthday === "todayTomorrow"
+                        ? "clients.filter.chipBirthdayTodayTomorrow"
+                        : filters.birthday === "weekAhead"
+                          ? "clients.filter.chipBirthdayWeekAhead"
+                          : "clients.filter.chipBirthdayWeek",
                 )}
                 onRemove={() => {
                   setFilters({ ...filters, birthday: "none" });

@@ -156,6 +156,19 @@ class AssistantGuardTest {
             }
         }
 
+    /** Деактивированный владелец не управляет настройками, даже если контекст ещё активен. */
+    @Test
+    fun deactivatedOwnerCannotManageSettings(): Unit =
+        orThrow {
+            runBlocking {
+                di.database.sql("UPDATE employees SET is_active = false WHERE id = :id").bind("id", owner.employee.id).execute()
+                context(owner) {
+                    assertEquals("ASSISTANT_FORBIDDEN", assertIs<Either.Left<AppError>>(either { di.assistant.settings() }).value.code)
+                    assertEquals("ASSISTANT_FORBIDDEN", assertIs<Either.Left<AppError>>(either { di.assistant.updateSettings(AssistantSettingsRequest(false, 100)) }).value.code)
+                }
+            }
+        }
+
     /** Готовит карточку через настоящий цикл Koog. */
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private suspend fun prepareCard(): AssistantBlock.ClientDraft {

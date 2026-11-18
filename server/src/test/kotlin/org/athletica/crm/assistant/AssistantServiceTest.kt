@@ -66,6 +66,27 @@ class AssistantServiceTest {
             }
         }
 
+    /** `permitted` считается по сотруднику из контекста: активность и право использования. */
+    @Test
+    fun statusPermittedFromContextEmployee(): Unit =
+        orThrow {
+            runBlocking {
+                context(owner) {
+                    val assistantRight = EmployeePermissionSelection(grantedPermissions = setOf(org.athletica.crm.core.permissions.UserPermission.CAN_USE_ASSISTANT))
+                    val withRight = di.database.transaction { di.employees.new(EmployeeId.new(), testName("With right"), null, null, null, assistantRight) }
+                    val withoutRight = di.database.transaction { di.employees.new(EmployeeId.new(), testName("Without right"), null, null, null, EmployeePermissionSelection()) }
+                    context(owner.copy(employee = withRight)) { assertFalse(di.assistant.status().permitted) }
+                    di.database.transaction {
+                        withRight.invite(org.athletica.crm.core.EmailAddress("with-right@example.com"), "password123")
+                        withoutRight.invite(org.athletica.crm.core.EmailAddress("without-right@example.com"), "password123")
+                    }
+                    val (activeWithRight, activeWithoutRight) = di.database.transaction { di.employees.byId(withRight.id) to di.employees.byId(withoutRight.id) }
+                    context(owner.copy(employee = activeWithRight)) { assertTrue(di.assistant.status().permitted) }
+                    context(owner.copy(employee = activeWithoutRight)) { assertFalse(di.assistant.status().permitted) }
+                }
+            }
+        }
+
     /** Фраза, исправление, «да» и повторный «ОК» создают одного клиента с одним аудитом. */
     @Test
     fun prepareCorrectSaveAndRepeat(): Unit =

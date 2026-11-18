@@ -97,6 +97,60 @@ function table() {
 }
 
 describe("список клиентов", () => {
+  it("из виджета сохраняет режим, показывает фильтр и меняет сортировку с клавиатуры", async () => {
+    const api = clientsServer([alice, bob]);
+    const { history } = openApp("/clients?birthday=todayTomorrow&sort=nextBirthday", api.fetch);
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    expect(screen.getByText("ДР · Сегодня и завтра")).toBeVisible();
+    expect(ClientListRequestSchema.parse(api.to("clients/list").at(-1)?.body).sort).toEqual([
+      { field: "NEXT_BIRTHDAY", direction: "Asc" },
+      { field: "NAME", direction: "Asc" },
+    ]);
+    expect(
+      table()
+        .getAllByRole("columnheader")
+        .filter((head) => head.getAttribute("aria-sort") === "ascending"),
+    ).toHaveLength(0);
+    const name = table().getByRole("button", { name: /Сортировать по.*Имя/ });
+    name.focus();
+    expect(name).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => {
+      expect(ClientListRequestSchema.parse(api.to("clients/list").at(-1)?.body)).toMatchObject({
+        sortField: "NAME",
+        sortDirection: "Asc",
+      });
+    });
+    expect(history.location.search).toContain("birthday=todayTomorrow");
+    expect(history.location.search).not.toContain("nextBirthday");
+  });
+
+  it("панель показывает период виджета, позволяет заменить его и снять фильтр", async () => {
+    const api = clientsServer([alice]);
+    const { history } = openApp("/clients?birthday=weekAhead&sort=nextBirthday", api.fetch);
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: /Фильтры/ }));
+    const sheet = screen.getByRole("dialog", { name: ru["clients.filters"] });
+    expect(within(sheet).getByRole("button", { name: "На неделю вперёд" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Завтра" }));
+    await user.click(within(sheet).getByRole("button", { name: ru["clients.filter.apply"] }));
+    expect(await screen.findByText("ДР · Завтра")).toBeVisible();
+    expect(history.location.search).toContain("birthday=tomorrow");
+    await user.click(screen.getByRole("button", { name: /ДР · Завтра/ }));
+    await waitFor(() => {
+      const request = ClientListRequestSchema.parse(api.to("clients/list").at(-1)?.body);
+      expect(request.birthday).toBeUndefined();
+      expect(request.sort).toBeUndefined();
+      expect(request.sortField).toBe("NAME");
+    });
+    expect(history.location.search).not.toContain("birthday");
+  });
+
   it("показывает клиентов с числом найденного", async () => {
     openApp("/clients", clientsServer([alice, bob]).fetch);
 

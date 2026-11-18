@@ -9,6 +9,8 @@ export interface Formatters {
   money: (money: Money) => string;
   /** Календарная дата [date] без сдвига по часовому поясу. */
   date: (date: LocalDate) => string;
+  /** День и месяц календарной даты без года и сдвига по часовому поясу. */
+  dayMonth: (date: LocalDate) => string;
   /** Время суток [time]. */
   time: (time: LocalTime) => string;
   /** Момент [instant] в часовом поясе браузера. */
@@ -24,6 +26,11 @@ export interface Formatters {
 export function createFormatters(locale: string): Formatters {
   const numbers = new Intl.NumberFormat(locale);
   const dates = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
+  const dayMonths = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
   const times = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" });
   const dateTimes = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const localDates = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
@@ -40,6 +47,7 @@ export function createFormatters(locale: string): Formatters {
       }).format(toNumericLiteral(decimalString(money.minorUnits, digits)));
     },
     date: (date) => dates.format(Date.UTC(...dateParts(date))),
+    dayMonth: (date) => dayMonths.format(Date.UTC(...dateParts(date))),
     time: (time) => times.format(Date.UTC(1970, 0, 1, ...timeParts(time))),
     dateTime: (instant) => dateTimes.format(new Date(instant)),
     ago: (instant, now) => {

@@ -2,6 +2,8 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
@@ -9,7 +11,6 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.entityids.toUserId
@@ -27,12 +28,20 @@ import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
-private data class PermissionOverrides(
-    val granted: Set<UserPermission>,
-    val revoked: Set<UserPermission>,
+/** Роль сотрудника с правами в JSONB-агрегате [DbEmployees.byIds]. */
+@Serializable
+private class RoleRow(
+    /** Идентификатор роли. */
+    val id: Uuid,
+    /** Название роли. */
+    val name: String,
+    /** Права роли. */
+    val permissions: Set<UserPermission>,
 )
 
+/** Репозиторий сотрудников поверх PostgreSQL; [roles] — каталог ролей для назначений при записи. */
 class DbEmployees(private val users: Users, private val roles: Roles) : Employees {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
@@ -113,25 +122,14 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         if (distinctIds.isEmpty()) {
             return emptyList()
         }
-        val rolesByEmployee = rolesByEmployeeIds(distinctIds)
-        val permissionsByEmployee = permissionsByEmployeeIds(distinctIds)
-        val branchIdsByEmployee = branchIdsByEmployeeIds(distinctIds)
         val result =
             tr
-                .sql(
-                    """
-                    SELECT id, user_id, name, avatar_id, is_owner, is_active, joined_at, phone_no, email, all_branches_access
-                    FROM employees
-                    WHERE id = ANY(:ids) AND org_id = :orgId
-                    """.trimIndent(),
-                )
+                .sql(BY_IDS_SQL)
                 .bind("ids", distinctIds)
                 .bind("orgId", ctx.orgId)
                 .list { row ->
-                    val employeeId = row.asUuid("id").toEmployeeId()
-                    val overrides = permissionsByEmployee[employeeId] ?: PermissionOverrides(emptySet(), emptySet())
                     DbEmployee(
-                        id = employeeId,
+                        id = row.asUuid("id").toEmployeeId(),
                         userId = row.asUuidOrNull("user_id")?.toUserId(),
                         name = row.asString("name"),
                         avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
@@ -145,56 +143,25 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                         orgId = ctx.orgId,
                         permissionSettings =
                             EmployeePermission(
-                                roles = rolesByEmployee[employeeId] ?: emptyList(),
-                                grantedPermissions = overrides.granted,
-                                revokedPermissions = overrides.revoked,
+                                roles =
+                                    Json.decodeFromString<List<RoleRow>>(row.asString("roles")).map {
+                                        EmployeeRole(it.id, NonBlankName.from(it.name), it.permissions)
+                                    },
+                                grantedPermissions = Json.decodeFromString<Set<UserPermission>>(row.asString("granted")),
+                                revokedPermissions = Json.decodeFromString<Set<UserPermission>>(row.asString("revoked")),
                             ),
-                        availableBranches = toAvailableBranches(row.asBoolean("all_branches_access"), branchIdsByEmployee[employeeId]),
+                        availableBranches =
+                            if (row.asBoolean("all_branches_access")) {
+                                EmployeeBranchAccess.All
+                            } else {
+                                EmployeeBranchAccess.Selected(Json.decodeFromString<List<BranchId>>(row.asString("branch_ids")))
+                            },
                     )
                 }
         if (result.size != distinctIds.size) {
             raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
         }
         return result
-    }
-
-    private fun toAvailableBranches(allBranchesAccess: Boolean, branchIds: List<BranchId>?): EmployeeBranchAccess =
-        if (allBranchesAccess) {
-            EmployeeBranchAccess.All
-        } else {
-            EmployeeBranchAccess.Selected(branchIds ?: emptyList())
-        }
-
-    context(tr: Transaction, raise: Raise<AppError>)
-    private suspend fun permissionsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, PermissionOverrides> {
-        data class Row(val employeeId: EmployeeId, val permission: UserPermission, val isGranted: Boolean)
-
-        val rows =
-            tr
-                .sql(
-                    """
-                    SELECT po.employee_id, po.permission_key, po.is_granted
-                    FROM employee_permission_overrides po
-                    WHERE po.employee_id = ANY(:ids)
-                    """.trimIndent(),
-                )
-                .bind("ids", ids)
-                .list { row ->
-                    Row(
-                        employeeId = row.asUuid("employee_id").toEmployeeId(),
-                        permission = UserPermission.valueOf(row.asString("permission_key")),
-                        isGranted = row.asBoolean("is_granted"),
-                    )
-                }
-
-        return rows
-            .groupBy { it.employeeId }
-            .mapValues { (_, overrides) ->
-                PermissionOverrides(
-                    granted = overrides.filter { it.isGranted }.map { it.permission }.toSet(),
-                    revoked = overrides.filter { !it.isGranted }.map { it.permission }.toSet(),
-                )
-            }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -219,38 +186,35 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             .bind("branchId", branchId)
             .list { row -> row.asUuid("id").toEmployeeId() }
 
-    context(tr: Transaction, raise: Raise<AppError>)
-    private suspend fun branchIdsByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<BranchId>> =
-        tr
-            .sql(
-                """
-                SELECT eb.employee_id, eb.branch_id
-                FROM employee_branches eb
-                WHERE eb.employee_id = ANY(:ids)
-                """.trimIndent(),
-            )
-            .bind("ids", ids)
-            .list { row ->
-                row.asUuid("employee_id").toEmployeeId() to row.asUuid("branch_id").toBranchId()
-            }
-            .groupBy({ it.first }, { it.second })
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    private suspend fun rolesByEmployeeIds(ids: List<EmployeeId>): Map<EmployeeId, List<EmployeeRole>> {
-        val rolesById = roles.list().associateBy { it.id }
-        return tr
-            .sql(
-                """
-                SELECT er.employee_id, er.role_id
-                FROM employee_roles er
-                WHERE er.employee_id = ANY(:ids)
-                """.trimIndent(),
-            )
-            .bind("ids", ids)
-            .list { row ->
-                row.asUuid("employee_id").toEmployeeId() to row.asUuid("role_id")
-            }
-            .groupBy({ it.first }, { rolesById[it.second] })
-            .mapValues { (_, roles) -> roles.filterNotNull() }
+    private companion object {
+        /**
+         * Сотрудники организации с ролями, правами, выдачами/отзывами и филиалами одним запросом.
+         * Коллекции — независимые коррелированные агрегаты, чтобы не перемножать строки.
+         */
+        val BY_IDS_SQL =
+            """
+            SELECT
+                e.id, e.user_id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at,
+                e.phone_no, e.email, e.all_branches_access,
+                (SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                            'id', r.id,
+                            'name', r.name,
+                            'permissions', (SELECT COALESCE(jsonb_agg(rp.permission_key), '[]'::jsonb)
+                                              FROM role_permissions rp
+                                             WHERE rp.role_id = r.id))), '[]'::jsonb)
+                   FROM employee_roles er JOIN roles r ON r.id = er.role_id AND r.org_id = e.org_id
+                  WHERE er.employee_id = e.id) AS roles,
+                (SELECT COALESCE(jsonb_agg(po.permission_key), '[]'::jsonb)
+                   FROM employee_permission_overrides po
+                  WHERE po.employee_id = e.id AND po.is_granted) AS granted,
+                (SELECT COALESCE(jsonb_agg(po.permission_key), '[]'::jsonb)
+                   FROM employee_permission_overrides po
+                  WHERE po.employee_id = e.id AND NOT po.is_granted) AS revoked,
+                (SELECT COALESCE(jsonb_agg(eb.branch_id), '[]'::jsonb)
+                   FROM employee_branches eb
+                  WHERE eb.employee_id = e.id) AS branch_ids
+            FROM employees e
+            WHERE e.org_id = :orgId AND e.id = ANY(:ids)
+            """.trimIndent()
     }
 }

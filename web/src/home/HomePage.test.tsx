@@ -1,4 +1,4 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -46,6 +46,75 @@ afterEach(() => {
 });
 
 describe("главная", () => {
+  it.each([
+    ["TOMORROW", "todayTomorrow", "2026-11-19", "ДР · Сегодня и завтра"],
+    ["WEEK", "weekAhead", "2026-11-25", "ДР · На неделю вперёд"],
+  ] as const)(
+    "Показать всех для %s сохраняет период и порядок после перезагрузки",
+    async (window, filter, to, chip) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 18, 12));
+      const widget = defaultDashboardSettings().widgets.find((item) => item.type === "birthdays");
+      if (widget?.type !== "birthdays") throw new Error("Нет виджета дней рождения");
+      const first = ClientListItemSchema.parse({
+        id: "0199a0b2-7c3e-7d2a-9f10-000000000901",
+        name: "Яна",
+        birthday: "2000-11-18",
+        avatarId: null,
+        gender: "FEMALE",
+        groups: [],
+        contacts: [],
+        customFields: [],
+        state: "ACTIVE",
+        balance: { minorUnits: 0, currency: "RUB" },
+      });
+      const last = {
+        ...first,
+        id: "0199a0b2-7c3e-7d2a-9f10-000000000902",
+        name: "Анна",
+        birthday: `1990-${to.slice(5)}`,
+      };
+      const fake = appServer({
+        "display-settings": () =>
+          json({
+            ...displaySettings,
+            dashboard: { widgets: [{ ...widget, window, limit: 1 }], layout: [widget.id] },
+          }),
+        "custom-fields/list": () => json([]),
+        "clients/list": ({ body }) => {
+          const request = ClientListRequestSchema.parse(body);
+          return json({ clients: request.limit === 1 ? [first] : [first, last], total: 2 });
+        },
+      });
+      const user = userEvent.setup();
+      const { history } = openApp("/", fake.fetch);
+      await user.click(await screen.findByRole("link", { name: /Показать всех/ }));
+      await screen.findByRole("table");
+      expect(history.location.pathname).toBe("/clients");
+      expect(history.location.search).toContain(`birthday=${filter}`);
+      expect(history.location.search).toContain("sort=nextBirthday");
+      expect(screen.getByText(chip)).toBeVisible();
+      expect(within(screen.getByRole("table")).getByText("Анна")).toBeVisible();
+      const request = ClientListRequestSchema.parse(fake.to("clients/list").at(-1)?.body);
+      expect(request).toMatchObject({
+        birthday: { from: "2026-11-18", to },
+        sort: [
+          { field: "NEXT_BIRTHDAY", direction: "Asc" },
+          { field: "NAME", direction: "Asc" },
+        ],
+      });
+      const address = history.location.href;
+      cleanup();
+      openApp(address, fake.fetch);
+      await screen.findByRole("table");
+      await waitFor(() => {
+        expect(ClientListRequestSchema.parse(fake.to("clients/list").at(-1)?.body)).toEqual(
+          request,
+        );
+      });
+      expect(screen.getByText(chip)).toBeVisible();
+    },
+  );
   it("клик по занятию в блоке «Сегодня» открывает его карточку", async () => {
     const { history } = openApp("/", server().fetch);
     const user = userEvent.setup();
@@ -218,5 +287,15 @@ describe("главная", () => {
       { from: "2026-11-18", to: "2026-11-25" },
       { from: "2026-11-19", to: "2026-11-26" },
     ]);
+    expect(
+      requests.every(
+        (request) =>
+          JSON.stringify(request.sort) ===
+          JSON.stringify([
+            { field: "NEXT_BIRTHDAY", direction: "Asc" },
+            { field: "NAME", direction: "Asc" },
+          ]),
+      ),
+    ).toBe(true);
   });
 });

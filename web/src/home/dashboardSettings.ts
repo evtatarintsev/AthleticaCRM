@@ -2,7 +2,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { ApiClient } from "@/api/client";
 import {
   DashboardWidgetIdSchema,
-  LocalDateSchema,
   type BirthdayWindow,
   type ClientListRequest,
   type DashboardSettings,
@@ -10,11 +9,14 @@ import {
   type DashboardWidgetBirthdays,
   type DashboardWidgetDebtors,
   type DashboardWidgetId,
-  type DateRange,
   type DisplaySettings,
   type LocalDate,
 } from "@/api/generated/contracts";
-import type { ClientListSearch } from "@/clients/clientListSearch";
+import {
+  clientListFilters,
+  clientListRequest,
+  type ClientListSearch,
+} from "@/clients/clientListSearch";
 import { displaySettingsKey } from "@/clients/clientsQueries";
 import type { PlainMessageKey } from "@/i18n/context";
 
@@ -215,31 +217,12 @@ export function birthdaysRequest(
   widget: DashboardWidgetBirthdays,
   today: LocalDate,
 ): ClientListRequest {
-  return { birthday: birthdayRange(widget.window, today), limit: widget.limit };
-}
-
-/**
- * Диапазон дней рождения для окна [window] от дня [today] (буквальный порт
- * `BirthdayWindow.dateRange()` KMP-клиента, включая `WEEK` = `[today, today + 7]`).
- */
-function birthdayRange(window: BirthdayWindow, today: LocalDate): DateRange {
-  switch (window) {
-    case "TODAY":
-      return { from: today, to: today };
-    case "TOMORROW": {
-      const tomorrow = addDaysUtc(today, 1);
-      return { from: tomorrow, to: tomorrow };
-    }
-    case "WEEK":
-      return { from: today, to: addDaysUtc(today, 7) };
-  }
-}
-
-/** Дата [date] плюс [days] дней, без сдвига по часовому поясу. */
-function addDaysUtc(date: LocalDate, days: number): LocalDate {
-  const [year = 1970, month = 1, day = 1] = date.split("-").map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1, day) + days * 86_400_000);
-  return LocalDateSchema.parse(shifted.toISOString().slice(0, 10));
+  return clientListRequest(
+    clientListFilters(birthdaysShowAllSearch(widget.window)),
+    today,
+    widget.limit,
+    0,
+  );
 }
 
 /** Search-параметры страницы клиентов для «Показать всех» виджета должников. */
@@ -251,10 +234,10 @@ export function debtorsShowAllSearch(): ClientListSearch {
 export function birthdaysShowAllSearch(window: BirthdayWindow): ClientListSearch {
   switch (window) {
     case "TODAY":
-      return { birthday: "today" };
+      return { birthday: "today", sort: "nextBirthday" };
     case "TOMORROW":
-      return { birthday: "tomorrow" };
+      return { birthday: "todayTomorrow", sort: "nextBirthday" };
     case "WEEK":
-      return { birthday: "week" };
+      return { birthday: "weekAhead", sort: "nextBirthday" };
   }
 }

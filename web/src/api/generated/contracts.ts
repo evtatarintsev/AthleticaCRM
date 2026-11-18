@@ -970,11 +970,19 @@ export const ClientListItemSchema = z
   .readonly();
 export type ClientListItem = z.output<typeof ClientListItemSchema>;
 
-export const ClientSortFieldSchema = z.enum(["NAME", "BALANCE", "BIRTHDAY"]);
+export const ClientSortFieldSchema = z.enum(["NAME", "BALANCE", "BIRTHDAY", "NEXT_BIRTHDAY"]);
 export type ClientSortField = z.output<typeof ClientSortFieldSchema>;
 
 export const SortDirectionSchemaSchema = z.enum(["Asc", "Desc"]);
 export type SortDirectionSchema = z.output<typeof SortDirectionSchemaSchema>;
+
+export const ClientSortSchema = z
+  .object({
+    field: ClientSortFieldSchema,
+    direction: SortDirectionSchemaSchema.optional(),
+  })
+  .readonly();
+export type ClientSort = z.output<typeof ClientSortSchema>;
 
 export const DateRangeSchema = z
   .object({
@@ -997,6 +1005,7 @@ export const ClientListRequestSchema = z
     noGroup: z.boolean().optional(),
     groupId: GroupIdSchema.nullable().optional(),
     birthday: DateRangeSchema.nullable().optional(),
+    sort: z.array(ClientSortSchema).readonly().nullable().optional(),
   })
   .readonly();
 export type ClientListRequest = z.output<typeof ClientListRequestSchema>;

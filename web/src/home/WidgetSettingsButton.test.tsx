@@ -266,6 +266,18 @@ describe("индивидуальные настройки виджетов гл�
     const dialog = screen.getByRole("dialog", { name: "Настройки: Дни рождения" });
     const title = within(dialog).getByRole("textbox", { name: "Название виджета" });
     await user.type(title, "Юбилеи");
+    const period = within(dialog).getByRole("combobox", { name: "День рождения" });
+    expect(
+      within(period)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Сегодня", "Сегодня и завтра", "На неделю вперёд"]);
+    await user.selectOptions(period, "TOMORROW");
+    await waitFor(() => {
+      expect(
+        fake.display().dashboard.widgets.find((item) => item.type === "birthdays"),
+      ).toMatchObject({ title: "Юбилеи", window: "TOMORROW", limit: 10 });
+    });
     await user.selectOptions(
       within(dialog).getByRole("combobox", { name: "День рождения" }),
       "WEEK",
@@ -277,6 +289,11 @@ describe("индивидуальные настройки виджетов гл�
       expect(widget).toMatchObject({ title: "Юбилеи", window: "WEEK", limit: 11 });
     });
     expect(fake.to("display-settings/update").length).toBeGreaterThan(1);
+    await user.keyboard("{Escape}");
+    cleanup();
+    openApp("/", fake.fetch);
+    await user.click(await screen.findByRole("button", { name: "Настройки: Юбилеи" }));
+    expect(screen.getByRole("combobox", { name: "День рождения" })).toHaveValue("WEEK");
   });
 
   it("из шестерёнки должников меняет название и лимит", async () => {

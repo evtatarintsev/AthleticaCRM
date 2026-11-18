@@ -1,0 +1,40 @@
+# Окружение разработки: `mise trust && mise install`, дальше `mise run <задача>` (список — `mise tasks`).
+
+[tools]
+java = "temurin-25"
+node = "24"
+
+[env]
+_.path = ["{{config_root}}/bin"]
+
+[tasks.build]
+description = "Сборка и проверки сервера и веб-клиента"
+run = ["./gradlew build", "cd web && npm ci && npm run check"]
+
+[tasks.test]
+description = "Тесты сервера"
+run = "./gradlew test"
+
+[tasks.format]
+description = "Форматирование Kotlin и TypeScript"
+run = ["./gradlew ktlintFormat", "cd web && npm run format"]
+
+[tasks.contracts]
+description = "Перегенерировать контракты API веб-клиента"
+dir = "web"
+run = "npm run contracts"
+
+[tasks.server]
+description = "Запустить веб-сервер"
+run = "athletica serve"
+quiet = true
+
+[tasks.admin]
+description = "Административные команды: mise run admin org find ЦР (для --help: mise run admin -- --help)"
+run = "athletica admin"
+quiet = true
+
+[tasks.web]
+description = "Dev-сервер фронтенда"
+dir = "web"
+run = "npm run dev"

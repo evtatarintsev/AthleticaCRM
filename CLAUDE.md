@@ -62,14 +62,13 @@ Both files must be updated in the same commit as the `application.conf` change.
 - Database migrations via Liquibase in `server/src/main/resources/db/changelog/`
 - No manual migration needed for tests; TestContainers manage DB lifecycle
 
-### Running the Server
+### Running the Server and CLI
+Tooling (Java 25, Node 24) and tasks live in `mise.toml`; `mise tasks` lists them.
 ```bash
-# Development mode (with -Ddevelopment=true)
-./gradlew server:run
-
-# Production mode
-./gradlew server:run -x -Ddevelopment=false
+mise run server              # = bin/athletica serve
+mise run admin org find ЦР   # = bin/athletica admin org find ЦР
 ```
+`bin/athletica` quietly rebuilds `athletica.jar` and runs it (see `docs/cli.md`).
 
 ## Project Structure
 

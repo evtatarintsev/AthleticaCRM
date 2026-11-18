@@ -1,0 +1,5 @@
+#!/bin/sh
+# Пересобирает athletica.jar (молча, если всё актуально) и запускает его с переданными аргументами.
+root="$(cd "$(dirname "$0")/.." && pwd)"
+"$root/gradlew" -p "$root" -q --console=plain :server:shadowJar >&2 || exit 1
+exec java -jar "$root/server/build/libs/athletica.jar" "$@"

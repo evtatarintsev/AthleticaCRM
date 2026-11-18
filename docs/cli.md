@@ -32,16 +32,18 @@ docker compose -f docker-compose.prod.yaml exec server java -jar athletica.jar a
 
 ### Локально
 
-```bash
-./gradlew :server:shadowJar
-java -jar server/build/libs/athletica.jar admin org find ЦР
-```
-
-Веб-сервер локально удобнее запускать через Gradle:
+Скрипт `bin/athletica` молча пересобирает `athletica.jar` и запускает его с переданными
+аргументами. Через [mise](https://mise.jdx.dev) (`mise.toml` в корне) `bin/` добавляется в `PATH`,
+и нужная версия Java ставится автоматически:
 
 ```bash
-./gradlew :server:run --args="serve"
+athletica serve
+athletica admin org find ЦР
 ```
+
+То же самое через задачи mise: `mise run server`, `mise run admin org find ЦР`
+(`--help` передаётся после `--`: `mise run admin -- --help`). Без mise скрипт вызывается
+как `./bin/athletica ...`, но тогда в `PATH` должна быть Java 25.
 
 ### Переменные окружения
 

@@ -2853,6 +2853,9 @@ export const ScheduleSessionSchemaSchema = z
     disciplines: z.array(ScheduleDisciplineSchemaSchema).readonly(),
     status: SessionStatusSchema,
     colorKey: SessionColorKeySchema,
+    coachesOverridden: z.boolean(),
+    rescheduledFrom: LocalDateSchema.nullable(),
+    isManual: z.boolean(),
   })
   .readonly();
 export type ScheduleSessionSchema = z.output<typeof ScheduleSessionSchemaSchema>;

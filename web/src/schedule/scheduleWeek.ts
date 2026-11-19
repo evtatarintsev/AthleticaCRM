@@ -12,11 +12,21 @@ import {
   type LocalDate,
   type ScheduleListRequest,
 } from "@/api/generated/contracts";
-import { addDays, mondayOf, todayLocalDate } from "@/lib/localDate";
+import { addDays, mondayOf } from "@/lib/localDate";
 
-/** Search-параметры адреса `/schedule`: неделя и фильтры. Отсутствие поля — неделя с сегодняшним днём и без фильтра. */
+/** Режим отображения расписания. */
+export const ScheduleViewSchema = z.enum(["day", "week"]);
+
+/** Режим отображения расписания: день или неделя. */
+export type ScheduleView = z.output<typeof ScheduleViewSchema>;
+
+/**
+ * Search-параметры адреса `/schedule`: режим, дата отображаемого периода и фильтры.
+ * Отсутствие режима — режим по ширине экрана, отсутствие даты — период с сегодняшним днём.
+ */
 export const ScheduleSearchSchema = z.object({
-  weekStart: LocalDateSchema.optional().catch(undefined),
+  view: ScheduleViewSchema.optional().catch(undefined),
+  date: LocalDateSchema.optional().catch(undefined),
   disciplineIds: z.array(DisciplineIdSchema).optional().catch(undefined),
   hallIds: z.array(HallIdSchema).optional().catch(undefined),
   employeeIds: z.array(EmployeeIdSchema).optional().catch(undefined),
@@ -35,9 +45,41 @@ export interface ScheduleFilters {
   readonly groupIds: readonly GroupId[];
 }
 
-/** Понедельник отображаемой недели из search-параметров [search]; по умолчанию — текущая неделя. */
-export function weekStartOf(search: ScheduleSearch): LocalDate {
-  return search.weekStart ?? mondayOf(todayLocalDate());
+/** Режим и дата отображаемого периода — то, что вместе с фильтрами пишется в адрес. */
+export interface SchedulePeriod {
+  readonly view?: ScheduleView | undefined;
+  readonly date?: LocalDate | undefined;
+}
+
+/** Выбранная дата из search-параметров [search]; без даты — сегодняшний день [today] организации. */
+export function selectedDateOf(search: ScheduleSearch, today: LocalDate): LocalDate {
+  return search.date ?? today;
+}
+
+/** Режим из адреса [search]; без него — «Неделя» на широком экране [wide], иначе «День». */
+export function scheduleViewOf(search: ScheduleSearch, wide: boolean): ScheduleView {
+  return search.view ?? (wide ? "week" : "day");
+}
+
+/** Дата периода [date] режима [view], сдвинутая на [step] дней или недель. */
+export function shiftedDate(view: ScheduleView, date: LocalDate, step: number): LocalDate {
+  return view === "day" ? addDays(date, step) : addDays(mondayOf(date), step * 7);
+}
+
+/**
+ * Дата при смене режима [from] → [to] для выбранной даты [date]: неделя → день открывает
+ * сегодняшний день [today], если он в неделе, иначе понедельник; день → неделя — неделю этого дня.
+ */
+export function dateForView(
+  from: ScheduleView,
+  to: ScheduleView,
+  date: LocalDate,
+  today: LocalDate,
+): LocalDate {
+  if (from === "week" && to === "day") {
+    return mondayOf(today) === mondayOf(date) ? today : mondayOf(date);
+  }
+  return date;
 }
 
 /** Фильтры из search-параметров [search] с подставленными значениями по умолчанию. */
@@ -50,10 +92,14 @@ export function scheduleFiltersOf(search: ScheduleSearch): ScheduleFilters {
   };
 }
 
-/** Search-параметры для недели [weekStart] и фильтров [filters]: только отличия от умолчания. */
-export function scheduleSearchOf(weekStart: LocalDate, filters: ScheduleFilters): ScheduleSearch {
+/**
+ * Search-параметры периода [period] и фильтров [filters]. Выбранная дата сохраняется всегда,
+ * даже сегодняшняя: ссылка на день должна открывать тот же день и завтра. Пустые фильтры опускаются.
+ */
+export function scheduleSearchOf(period: SchedulePeriod, filters: ScheduleFilters): ScheduleSearch {
   return {
-    ...(weekStart === mondayOf(todayLocalDate()) ? {} : { weekStart }),
+    ...(period.view === undefined ? {} : { view: period.view }),
+    ...(period.date === undefined ? {} : { date: period.date }),
     ...(filters.disciplineIds.length === 0 ? {} : { disciplineIds: [...filters.disciplineIds] }),
     ...(filters.hallIds.length === 0 ? {} : { hallIds: [...filters.hallIds] }),
     ...(filters.employeeIds.length === 0 ? {} : { employeeIds: [...filters.employeeIds] }),

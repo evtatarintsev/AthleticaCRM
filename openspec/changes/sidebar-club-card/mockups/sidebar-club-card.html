@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карточка клуба — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>:root{
+  --background:#f8fafc;--foreground:#0f172a;--card:#fff;--muted:#64748b;--accent:#f1f5f9;--border:#e2e8f0;
+  --primary:#3159d8;--chrome:#e9e9ec;--scrim:rgba(15,23,42,.4);
+  --club-blue:#3159d8;--club-teal:#0f766e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--chrome);color:var(--foreground);font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.caption{max-width:1280px;margin:28px auto 8px;padding:0 16px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.note{max-width:1280px;margin:0 auto 10px;padding:0 16px;font-size:13px;color:var(--muted)}
+.frame{max-width:1280px;margin:0 auto 32px;background:var(--background);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative}
+.phones{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;max-width:1280px;margin:0 auto 32px}
+.phone{width:390px;height:760px;background:var(--background);border:8px solid var(--foreground);border-radius:32px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:600px}
+.side{background:var(--card);border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:16px}
+.ws{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:0 1px 2px rgba(16,16,32,.05);text-align:left;font:inherit;color:inherit}
+.ws.static{border-color:transparent;box-shadow:none;background:var(--background)}
+.mono{width:32px;height:32px;flex:none;border-radius:8px;background:var(--club-blue);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.names{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.org{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.br{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;font-weight:500;color:var(--muted);text-decoration:none}
+.nav a.on{background:var(--accent);color:var(--foreground)}
+.badge{margin-left:auto;padding:0 6px;border-radius:99px;background:var(--primary);color:#fff;font-size:12px;font-weight:600}
+.prod{margin-top:auto;display:flex;align-items:center;gap:8px;padding:10px;font-size:12px;color:var(--muted);border-top:1px solid var(--border)}
+.pm{width:18px;height:18px;border-radius:5px;background:var(--primary);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.top{height:56px;display:flex;align-items:center;gap:4px;padding:0 32px;border-bottom:1px solid var(--border)}
+.sp{flex:1}
+.ib{width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.av{width:28px;height:28px;border-radius:99px;background:#fce7f3;color:#9d174d;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+.main{padding:28px 32px}
+.date{font-size:13px;font-weight:500;color:var(--muted)}
+h1{margin:2px 0 0;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.menu{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(16,16,32,.04),0 12px 32px -8px rgba(16,16,32,.18);padding:6px;z-index:5}
+.mi{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;border-radius:8px}
+.mi.cur{background:#eef3ff;font-weight:600}
+.sep{height:1px;background:var(--border);margin:6px 4px}
+.check{margin-left:auto;color:var(--primary)}
+.ptop{height:60px;flex:none;display:flex;align-items:center;gap:2px;padding:0 8px;border-bottom:1px solid var(--border)}
+.pib{width:40px;height:40px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.chip{flex:1;min-width:0;height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 6px;border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:0 1px 2px rgba(16,16,32,.05)}
+.chip .mono{width:30px;height:30px;font-size:11px}
+.pmain{padding:20px 16px}
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:4}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-radius:20px 20px 0 0;padding:8px 12px 24px}
+.handle{width:40px;height:4px;border-radius:99px;background:#cbd5e1;margin:4px auto 14px}
+.sheet .mi{min-height:48px;font-size:15px}
+.drawer{position:absolute;top:0;bottom:0;left:0;width:300px;z-index:5;background:var(--card);padding:14px 12px 12px;display:flex;flex-direction:column;gap:14px}
+.drawer .nav a{height:44px;font-size:15px}
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;padding:24px}
+.state b{display:block;font-size:14px}
+.state span.d{display:block;font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.mini{width:240px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.panel{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--card);box-shadow:-8px 0 32px -8px rgba(16,16,32,.25);display:flex;flex-direction:column;z-index:5}
+.fld{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.lbl{font-size:13px;font-weight:500}
+.inp{height:38px;border:1px solid var(--border);border-radius:8px;padding:0 12px;display:flex;align-items:center}
+.pal{display:grid;grid-template-columns:repeat(10,32px);justify-content:space-between}
+.sw{width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.sw.sel{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--club-blue)}
+.btn{height:38px;padding:0 16px;border-radius:8px;font-weight:500;display:inline-flex;align-items:center}
+</style></head>
+<body>
+
+<div class="caption">Компьютер — открыт список филиалов</div>
+<p class="note">Карточка клуба в рамке; цвет клуба по умолчанию — синий. Стрелки и список — только при двух доступных филиалах и больше.</p>
+<div class="frame"><div class="shell">
+  <aside class="side">
+    <div class="ws" style="background:var(--background)"><span class="mono" aria-hidden="true">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span aria-hidden="true" style="color:var(--muted)">&#8597;</span></div>
+    <nav class="nav"><a class="on">Главная</a><a>Расписание</a><a>Клиенты</a><a>Входящие<span class="badge">3</span></a><a>Группы</a><a>Сотрудники</a><a>Задачи</a><a>Настройки</a></nav>
+    <div class="prod"><span class="pm" aria-hidden="true">A</span>Athletica</div>
+  </aside>
+  <div>
+    <div class="top"><span class="sp"></span><span class="ib">&#10022;</span><span class="ib">&#128276;&#xFE0E;</span><span class="av">АИ</span><span style="margin-left:8px;font-weight:500">Анна Иванова</span></div>
+    <div class="main"><div class="date">Вторник, 17 ноября</div><h1>Добрый день, Анна</h1></div>
+  </div>
+  <div class="menu" style="top:74px;left:12px;width:272px">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 10px"><span class="mono" style="width:28px;height:28px;font-size:11px">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">4 филиала</span></span></div>
+    <div class="sep" style="margin-top:0"></div>
+    <div class="mi cur">Центральный<span class="check">&#10003;</span></div>
+    <div class="mi">Северный</div>
+    <div class="mi">На Ленинском</div>
+    <div class="mi" title="Детский центр на Ленинском проспекте"><span class="org" style="font-weight:400">Детский центр на Ленинском проспекте</span></div>
+    <div class="sep"></div>
+    <div class="mi" style="color:#475569">&#9881;&#xFE0E; Управление филиалами</div>
+  </div>
+</div></div>
+
+<div class="caption">Телефон</div>
+<p class="note">Слева — смена филиала шторкой; в центре — выезжающее меню; справа — меню аккаунта с ассистентом и без смены филиала.</p>
+<div class="phones">
+  <div class="phone">
+    <div class="ptop"><span class="pib">&#9776;</span><span class="chip"><span class="mono">ФЛ</span><span class="names"><span class="org" style="font-size:13px">Фитнес Лайф</span><span class="br" style="font-size:12px">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></span><span class="pib">&#128276;&#xFE0E;</span><span class="pib"><span class="av" style="width:30px;height:30px">АИ</span></span></div>
+    <div class="pmain"><div class="date">Вторник, 17 ноября</div><h1 style="font-size:24px">Добрый день, Анна</h1></div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="handle"></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:0 12px 12px"><span class="mono" style="width:40px;height:40px;border-radius:11px;font-size:14px">ФЛ</span><span class="names"><span class="org" style="font-size:17px">Фитнес Лайф</span><span class="br" style="font-size:13px">Выберите филиал</span></span></div>
+      <div class="mi cur">Центральный<span class="check">&#10003;</span></div>
+      <div class="mi">Северный</div>
+      <div class="mi">На Ленинском</div>
+      <div class="mi"><span class="org" style="font-weight:400">Детский центр на Ленинском проспекте</span></div>
+      <div class="sep"></div>
+      <div class="mi" style="color:#475569">&#9881;&#xFE0E; Управление филиалами</div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="ptop"></div>
+    <div class="pmain"><div class="date">Вторник, 17 ноября</div><h1 style="font-size:24px">Добрый день, Анна</h1></div>
+    <div class="scrim"></div>
+    <div class="drawer">
+      <div style="display:flex;align-items:center;gap:6px"><div class="ws"><span class="mono" aria-hidden="true">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div><span class="pib">&#10005;</span></div>
+      <nav class="nav"><a class="on">Главная</a><a>Расписание</a><a>Клиенты</a><a>Входящие<span class="badge">3</span></a><a>Группы</a><a>Сотрудники</a><a>Задачи</a><a>Настройки</a></nav>
+      <div class="prod"><span class="pm" aria-hidden="true">A</span>Athletica</div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="ptop"><span class="pib">&#9776;</span><span class="chip"><span class="mono">ФЛ</span><span class="names"><span class="org" style="font-size:13px">Фитнес Лайф</span><span class="br" style="font-size:12px">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></span><span class="pib">&#128276;&#xFE0E;</span><span class="pib" style="background:var(--accent);border-radius:8px"><span class="av" style="width:30px;height:30px">АИ</span></span></div>
+    <div class="pmain"><div class="date">Вторник, 17 ноября</div><h1 style="font-size:24px">Добрый день, Анна</h1></div>
+    <div class="menu" style="top:62px;right:8px;width:288px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 10px"><span class="av" style="width:36px;height:36px;font-size:12px">АИ</span><span class="names"><span class="org">Анна Иванова</span><span class="br">anna@fitnesslife.ru</span></span></div>
+      <div class="sep" style="margin-top:0"></div>
+      <div class="mi" style="min-height:44px"><span style="color:var(--primary)">&#10022;</span> Ассистент</div>
+      <div class="mi" style="min-height:44px">Профиль</div>
+      <div class="mi" style="min-height:52px;flex-direction:column;align-items:flex-start;justify-content:center;gap:0"><span>Баланс организации</span><span class="br">[БАЛАНС] ₽</span></div>
+      <div class="sep"></div>
+      <div style="padding:4px 10px;font-size:12px;color:var(--muted)">Язык</div>
+      <div class="mi" style="min-height:44px;font-weight:600">Русский<span class="check">&#10003;</span></div>
+      <div class="mi" style="min-height:44px" lang="en">English</div>
+      <div class="sep"></div>
+      <div class="mi" style="min-height:44px">Выйти</div>
+    </div>
+  </div>
+</div>
+
+<div class="caption">Состояния карточки</div>
+<div class="frame"><div class="states">
+  <div class="state"><b>Несколько филиалов</b><span class="d">Кнопка со стрелками</span>
+    <div class="mini"><div class="ws"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div></div></div>
+  <div class="state"><b>Один филиал</b><span class="d">Без рамки и стрелок, не нажимается</span>
+    <div class="mini"><div class="ws static"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span></div></div></div>
+  <div class="state"><b>Свой цвет</b><span class="d">Клуб выбрал бирюзовый в настройках</span>
+    <div class="mini"><div class="ws static"><span class="mono" style="background:var(--club-teal)">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span></div></div></div>
+  <div class="state"><b>Длинные названия</b><span class="d">Каждая строка обрезается, полное — в подсказке</span>
+    <div class="mini"><div class="ws"><span class="mono">ФХ</span><span class="names"><span class="org">Федерация художественной гимнастики</span><span class="br">Детский центр на Ленинском проспекте</span></span><span style="color:var(--muted)">&#8597;</span></div></div></div>
+</div></div>
+
+<div class="caption">Настройки организации — цвет клуба</div>
+<p class="note">Палитра из 10 цветов, белые буквы читаются на каждом; синий — по умолчанию. Предпросмотр до сохранения.</p>
+<div class="frame"><div class="shell" style="min-height:640px">
+  <aside class="side">
+    <div class="ws"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div>
+    <nav class="nav"><a>Главная</a><a>Расписание</a><a>Клиенты</a><a>Группы</a><a class="on">Настройки</a></nav>
+    <div class="prod"><span class="pm">A</span>Athletica</div>
+  </aside>
+  <div><div class="top"></div><div class="main"><h1>Настройки</h1></div></div>
+  <div class="scrim" style="background:rgba(15,23,42,.35)"></div>
+  <section class="panel">
+    <div style="padding:20px 24px 8px;font-size:18px;font-weight:600">Настройки организации</div>
+    <div style="flex:1;padding:12px 24px">
+      <div class="fld"><span class="lbl">Название</span><span class="inp">Фитнес Лайф</span></div>
+      <div class="fld"><span class="lbl">Часовой пояс</span><span class="inp">Москва (UTC+3)</span></div>
+      <div class="fld"><span class="lbl">Цвет клуба</span><span style="font-size:12.5px;color:var(--muted)">Цвет знака клуба в меню. Буквы на нём всегда белые.</span>
+        <div class="pal">
+          <span class="sw sel" style="background:#3159d8" title="Синий">&#10003;</span><span class="sw" style="background:#0369a1" title="Голубой"></span><span class="sw" style="background:#0f766e" title="Бирюзовый"></span><span class="sw" style="background:#15803d" title="Зелёный"></span><span class="sw" style="background:#7c3aed" title="Фиолетовый"></span><span class="sw" style="background:#a21caf" title="Пурпурный"></span><span class="sw" style="background:#be185d" title="Розовый"></span><span class="sw" style="background:#dc2626" title="Красный"></span><span class="sw" style="background:#c2410c" title="Оранжевый"></span><span class="sw" style="background:#334155" title="Графитовый"></span>
+        </div>
+        <span style="font-size:13px;color:#475569">Выбран: <b>Синий</b> (по умолчанию)</span>
+      </div>
+      <div class="fld"><span class="lbl">Так будет в меню</span>
+        <div style="background:var(--accent);border-radius:12px;padding:16px;display:flex;justify-content:center"><div class="ws" style="width:216px"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border)"><span class="btn" style="border:1px solid var(--border)">Отмена</span><span class="btn" style="background:var(--primary);color:#fff">Сохранить</span></div>
+  </section>
+</div></div>
+
+</body></html>

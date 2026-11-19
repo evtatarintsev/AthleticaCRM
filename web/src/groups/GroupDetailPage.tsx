@@ -27,6 +27,7 @@ import { todayLocalDate } from "@/lib/localDate";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
+import { BackLink } from "@/ui/BackLink";
 import { employeeChecklistItem } from "./employeeChecklistItem";
 import { GroupClientsTab } from "./GroupClientsTab";
 import { GroupJournalTab } from "./GroupJournalTab";
@@ -165,6 +166,7 @@ export function GroupDetailPage({
   if (group.isPending) {
     return (
       <section className="max-w-3xl space-y-4">
+        <BackLink to="/groups" />
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-24 w-full" />
       </section>
@@ -172,7 +174,8 @@ export function GroupDetailPage({
   }
   if (group.data === undefined) {
     return (
-      <section className="max-w-3xl">
+      <section className="max-w-3xl space-y-4">
+        <BackLink to="/groups" />
         <FormAlert message={t("groups.detail.loadError")} />
       </section>
     );
@@ -189,6 +192,9 @@ export function GroupDetailPage({
 
   return (
     <section className="max-w-6xl pb-24 sm:pb-16">
+      <div className="mb-4">
+        <BackLink to="/groups" />
+      </div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{detail.name}</h1>
         {detail.disciplines.length > 0 && (

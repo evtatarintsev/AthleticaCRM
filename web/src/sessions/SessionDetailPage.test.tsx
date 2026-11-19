@@ -260,6 +260,51 @@ const labelGroup = (name: string) =>
   within(row(name)).getByRole("group", { name: `Метки: ${name}` });
 
 describe("карточка занятия", () => {
+  it.each([false, true])("возврат виден при загрузке и после ответа (ошибка: %s)", async (fail) => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const server = journalServer(journalOf([]));
+    const { history } = openApp(`/sessions/${sessionId}`, async (input, init) => {
+      if (new URL(input, "http://localhost").pathname === "/api/sessions/journal") {
+        await pending;
+        if (fail)
+          return json({ code: "SESSION_NOT_FOUND", message: "Не найдено", fields: null }, 404);
+      }
+      return server.fetch(input, init);
+    });
+    const back = await screen.findByRole("link", { name: ru["action.back"] });
+    expect(back).toBeVisible();
+    expect(back).toHaveAttribute("href", "/schedule");
+    expect(screen.queryByText(ru["sessionDetail.loadError"])).not.toBeInTheDocument();
+    release?.();
+    if (fail) await screen.findByText(ru["sessionDetail.loadError"]);
+    else await screen.findByRole("heading", { name: /Юниоры У8/ });
+    expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
+    await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/schedule");
+      expect(history.location.search).toBe("");
+    });
+  });
+
+  it("открывает расписание с клавиатуры при прямом открытии карточки", async () => {
+    const { history } = openApp(`/sessions/${sessionId}`, journalServer(journalOf([])).fetch);
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: /Юниоры У8/ });
+    const back = screen.getByRole("link", { name: ru["action.back"] });
+    back.focus();
+    await user.tab({ shift: true });
+    await user.tab();
+    expect(back).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/schedule");
+      expect(history.location.search).toBe("");
+    });
+  });
+
   it("клик по тренеру открывает его карточку панелью, после закрытия остаётся занятие", async () => {
     const server = journalServer(journalOf([participant("1", "Аня")]));
     const { history } = openApp(`/sessions/${sessionId}`, server.fetch);

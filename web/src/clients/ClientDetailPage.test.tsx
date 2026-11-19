@@ -142,6 +142,53 @@ function detailServer(
 }
 
 describe("карточка клиента", () => {
+  it.each([false, true])("возврат виден при загрузке и после ответа (ошибка: %s)", async (fail) => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const server = detailServer(alice);
+    const { history } = openApp(`/clients/${alice.id}`, async (input, init) => {
+      if (new URL(input, "http://localhost").pathname === "/api/clients/detail") {
+        await pending;
+        if (fail)
+          return json({ code: "CLIENT_NOT_FOUND", message: "Не найдено", fields: null }, 404);
+      }
+      return server.fetch(input, init);
+    });
+    const back = await screen.findByRole("link", { name: ru["action.back"] });
+    expect(back).toBeVisible();
+    expect(back).toHaveAttribute("href", "/clients");
+    expect(screen.queryByRole("heading", { name: alice.name })).not.toBeInTheDocument();
+    release?.();
+    if (fail) await screen.findByText(ru["clients.loadClientError"]);
+    else await screen.findByRole("heading", { name: alice.name });
+    expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
+    await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/clients");
+      expect(history.location.search).toBe("");
+    });
+  });
+
+  it("возвращается в список с клавиатуры после переключения вкладки", async () => {
+    const { history } = openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: /^Анкета/ }));
+    expect(history.location.search).toBe("?tab=profile");
+    const back = screen.getByRole("link", { name: ru["action.back"] });
+    expect(back).toHaveAttribute("href", "/clients");
+    back.focus();
+    await user.tab({ shift: true });
+    await user.tab();
+    expect(back).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/clients");
+      expect(history.location.search).toBe("");
+    });
+  });
+
   it("показывает сведения, добавляет заметку и переносит клиента в архив", async () => {
     const api = detailServer(alice);
     openApp(`/clients/${alice.id}`, api.fetch);

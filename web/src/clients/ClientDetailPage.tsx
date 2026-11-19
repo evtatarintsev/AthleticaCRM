@@ -14,6 +14,7 @@ import { hasPermission, useSession } from "@/query/session";
 import { TaskCreateSheet } from "@/tasks/TaskCreateSheet";
 import { TaskSheet } from "@/tasks/TaskSheet";
 import { PageHeader } from "@/ui/PageHeader";
+import { BackLink } from "@/ui/BackLink";
 import { ClientTasksSection } from "./ClientActivitySections";
 import { ClientBalanceSheet } from "./ClientBalanceSheet";
 import { ClientDocumentsSection } from "./ClientDocumentsSection";
@@ -127,7 +128,8 @@ export function ClientDetailPage({
 
   if (client.data === undefined)
     return (
-      <section className="max-w-6xl">
+      <section className="max-w-6xl space-y-4">
+        <BackLink to="/clients" />
         <PageHeader title={t("clients.title")} />
         {client.isPending && <Skeleton className="h-64 w-full" />}
         {client.isError && <FormAlert message={t("clients.loadClientError")} />}
@@ -149,6 +151,7 @@ export function ClientDetailPage({
   };
   return (
     <section className="max-w-6xl space-y-4 pb-24 sm:pb-16">
+      <BackLink to="/clients" />
       <ClientCardHeader
         api={api}
         client={data}

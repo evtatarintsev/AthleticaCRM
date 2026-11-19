@@ -35,6 +35,9 @@ interface Employee : UserActor {
     /** Доступ к филиалам организации: ко всем (включая будущие) либо к явному набору. */
     val availableBranches: EmployeeBranchAccess
 
+    /** Есть ли доступ к филиалу организации, независимо от способа его назначения. */
+    fun hasAccessTo(branchId: BranchId): Boolean = availableBranches.contains(branchId)
+
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 

@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
@@ -50,9 +51,7 @@ class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
                 .execute()
         }
         employees.forEach { employee ->
-            if (!employee.availableBranches.contains(ctx.branchId)) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
+            ensure(employee.hasAccessTo(ctx.branchId)) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
             tr
                 .sql(
                     "INSERT INTO group_employees (group_id, employee_id) VALUES (:groupId, :employeeId)",

@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
@@ -79,9 +80,7 @@ internal data class DbGroup(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewEmployees(employees: List<Employee>): Group {
         employees.forEach { employee ->
-            if (!employee.availableBranches.contains(branchId)) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
+            ensure(employee.hasAccessTo(branchId)) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
         }
         return copy(employeeIds = employees.map { it.id }, syncEmployees = true)
     }

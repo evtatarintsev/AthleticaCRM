@@ -30,3 +30,11 @@ export function useScheduleEmployees(api: ApiClient, branchId: BranchId) {
 export function useScheduleGroups(api: ApiClient, branchId: BranchId, enabled: boolean) {
   return useQuery({ ...apiQuery(api, branchId, "groups/list-for-select"), enabled });
 }
+
+/**
+ * Часовой пояс организации из `org/settings`: в нём расписание считает «сейчас» и «сегодня».
+ * Пока пояс не получен, страница показывает загрузку, при ошибке — повтор.
+ */
+export function useOrgTimeZone(api: ApiClient, branchId: BranchId) {
+  return useQuery({ ...apiQuery(api, branchId, "org/settings"), select: (r) => r.timezone });
+}

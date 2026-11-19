@@ -367,7 +367,7 @@ const employeesRoute = createRoute({
   },
 });
 
-/** Расписание: неделя и фильтры в search-параметрах адреса. */
+/** Расписание: режим, дата и фильтры в search-параметрах адреса. */
 const scheduleRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/schedule",

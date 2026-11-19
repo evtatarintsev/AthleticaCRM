@@ -19,7 +19,7 @@ import { DashboardSettingsDialog } from "./DashboardSettingsDialog";
 import { DebtorsWidgetCard } from "./DebtorsWidgetCard";
 import { SessionsWidgetCard } from "./SessionsWidgetCard";
 import { UnclosedSessionsWidgetCard } from "./UnclosedSessionsWidgetCard";
-import { useNow } from "./useNow";
+import { useNow } from "@/lib/useNow";
 
 /** Главная: настраиваемая сетка виджетов с общими часами браузера. */
 export function HomePage({ api }: { readonly api: ApiClient }) {

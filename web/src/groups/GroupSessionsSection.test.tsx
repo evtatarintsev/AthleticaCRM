@@ -73,6 +73,7 @@ function server(
     "employees/list": () => json({ employees: [], total: 0 }),
     "halls/list": () => json({ halls: [] }),
     "groups/list-for-select": () => json([{ id: group.id, name: group.name }]),
+    "org/settings": () => json({ name: "Лига", timezone: "Europe/Moscow", currency: "RUB" }),
     "schedule/list": () => json({ sessions: [] }),
     "groups/sessions": ({ query }) => {
       if (fail) {

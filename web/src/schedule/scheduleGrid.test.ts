@@ -29,6 +29,9 @@ function session(dateValue: string, startTime: string, endTime: string): Schedul
     disciplines: [],
     status: "SCHEDULED",
     colorKey: "ORANGE",
+    coachesOverridden: false,
+    rescheduledFrom: null,
+    isManual: false,
   };
 }
 

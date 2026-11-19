@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-/** Общие часы главной, обновляемые на границе минуты. */
+/** Текущий момент, обновляемый на границе минуты: часы главной и расписания. */
 export function useNow(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {

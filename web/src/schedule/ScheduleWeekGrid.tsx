@@ -8,8 +8,8 @@ import { WEEK_DAYS } from "@/lib/localDate";
 import { cn } from "@/lib/utils";
 import { durationLabel, occupiedHours, sessionsAt } from "./scheduleGrid";
 import { scheduleCardColors } from "./scheduleColors";
-import { ScheduleSessionTags } from "./ScheduleSessionTags";
-import { sessionPhaseOf, utcDate, type OrgNow } from "./scheduleTime";
+import { ScheduleSessionTags, ScheduleTag } from "./ScheduleSessionTags";
+import { longDayLabel, sessionPhaseOf, utcDate, type OrgNow } from "./scheduleTime";
 import type { ScheduleSearch } from "./scheduleWeek";
 
 /**
@@ -41,41 +41,59 @@ export function ScheduleWeekGrid({
   });
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
       <div
         className="grid"
         style={{
-          gridTemplateColumns: "64px repeat(7, minmax(150px, 1fr))",
-          minWidth: "calc(64px + 7 * 150px)",
+          gridTemplateColumns: "56px repeat(7, minmax(136px, 1fr))",
+          minWidth: "calc(56px + 7 * 136px)",
         }}
       >
-        <div className="border-b border-r bg-muted/40" />
+        <div className="border-b" />
         {weekDates.map((date, index) => {
           const day = WEEK_DAYS[index];
-          const label = `${day === undefined ? "" : t(`day.${day}`)} ${dayFormat.format(utcDate(date))}`;
+          const weekDay = day === undefined ? "" : t(`day.${day}`);
+          const label = `${weekDay} ${dayFormat.format(utcDate(date))}`;
           const today = date === now.date;
+          const count = sessions.filter((s) => s.date === date && s.status !== "CANCELLED").length;
           return (
             <div
               key={date}
               data-today={today || undefined}
               className={cn(
-                "flex items-center justify-center gap-1 border-b border-r px-2 py-1 text-sm font-medium last:border-r-0",
-                today && "bg-primary/10 text-primary",
-                date < now.date && "text-muted-foreground",
+                "group flex min-w-0 items-center gap-2 border-b border-l py-2 pr-2 pl-3",
+                today && "bg-primary/5",
               )}
             >
               <Link
                 to="/schedule"
                 search={dayLink(date)}
-                aria-label={t("schedule.openDay", { day: label })}
-                className={cn("rounded-md px-1.5 py-0.5 hover:bg-accent", today && "font-semibold")}
+                aria-label={t("schedule.openDay", { day: longDayLabel(locale, date) })}
+                className="-ml-1.5 inline-flex items-center gap-2 rounded-lg px-1.5 py-0.5 hover:bg-accent"
               >
-                {label}
+                <span
+                  className={cn(
+                    "text-xs font-semibold tracking-wide text-muted-foreground uppercase",
+                    today && "text-primary",
+                  )}
+                >
+                  {weekDay}
+                </span>
+                <span
+                  className={cn(
+                    "min-w-[26px] text-center text-lg leading-[26px] font-bold tabular-nums",
+                    today && "rounded-lg bg-primary px-1.5 text-primary-foreground",
+                    date < now.date && "text-muted-foreground",
+                  )}
+                >
+                  {utcDate(date).getUTCDate()}
+                </span>
               </Link>
+              {count > 0 && <span className="text-xs text-muted-foreground">{count}</span>}
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground"
+                className="ml-auto size-7 text-muted-foreground opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
                 aria-label={t("schedule.addSession", { day: label })}
                 onClick={() => {
                   onAddSession(date);
@@ -88,20 +106,20 @@ export function ScheduleWeekGrid({
         })}
 
         {hours.length === 0 && (
-          <p className="col-span-full py-12 text-center text-muted-foreground">{emptyText}</p>
+          <p className="col-span-full py-14 text-center text-muted-foreground">{emptyText}</p>
         )}
 
         {hours.map((hour) => (
           <Fragment key={`hour-${hour.toString()}`}>
-            <div className="border-r px-2 py-2 text-right text-xs text-muted-foreground">
+            <div className="border-t pt-2.5 pr-2.5 text-right text-xs text-muted-foreground tabular-nums">
               {hour.toString().padStart(2, "0")}:00
             </div>
             {weekDates.map((date) => (
               <div
                 key={`${date}-${hour.toString()}`}
                 className={cn(
-                  "space-y-1 border-r border-b p-1 last:border-r-0",
-                  date === now.date && "bg-primary/10",
+                  "flex min-w-0 flex-col gap-1.5 border-t border-l p-1.5",
+                  date === now.date && "bg-primary/5",
                 )}
               >
                 {sessionsAt(sessions, date, hour).map((session) => (
@@ -136,35 +154,41 @@ function SessionCard({
       to="/sessions/$sessionId"
       params={{ sessionId: session.id }}
       className={cn(
-        "relative block space-y-0.5 overflow-hidden rounded-md border py-1.5 pr-2 pl-3 text-xs hover:brightness-95",
-        colors.container,
-        colors.text,
+        "relative flex min-w-0 flex-col gap-px overflow-hidden rounded-[9px] py-[7px] pr-[9px] pl-3 text-[12.5px] leading-[1.35] text-foreground transition-[filter] hover:brightness-[.97] dark:hover:brightness-110",
+        colors.tint,
         phase.kind === "past" && "opacity-55",
         phase.kind === "live" && "ring-2 ring-primary",
         cancelled &&
-          "bg-[repeating-linear-gradient(135deg,transparent_0_7px,var(--color-background)_7px_14px)] opacity-70",
+          "bg-[repeating-linear-gradient(135deg,transparent_0_7px,var(--color-card)_7px_14px)] opacity-70",
       )}
     >
-      <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1", colors.bar)} />
-      <p className={cn("font-semibold tabular-nums", cancelled && "line-through")}>
-        {session.startTime}–{session.endTime}{" "}
-        <span className="font-normal opacity-75">
+      <span aria-hidden className={cn("absolute inset-y-0 left-0 w-[3px]", colors.bar)} />
+      <span
+        className={cn(
+          "flex flex-wrap items-baseline gap-x-1.5 font-semibold whitespace-nowrap tabular-nums",
+          colors.ink,
+          cancelled && "line-through",
+        )}
+      >
+        {session.startTime}–{session.endTime}
+        <span className="text-[11.5px] font-medium opacity-75">
           {durationLabel(t, session.startTime, session.endTime)}
         </span>
-      </p>
-      <p className={cn("truncate font-semibold", cancelled && "line-through")}>
-        {session.group.name}
-      </p>
-      {session.coaches.length > 0 && (
-        <p className="truncate">{session.coaches.map((c) => c.name).join(", ")}</p>
-      )}
-      <p className="truncate">
-        {[session.hall.name, ...session.disciplines.map((d) => d.name)].join(" · ")}
-      </p>
-      <ScheduleSessionTags session={session} phase={phase} />
-      <span className="inline-block rounded-full bg-background/60 px-1.5 py-0.5 text-[10px]">
-        {t("schedule.freeSeatsStub")}
       </span>
+      <span className={cn("truncate text-[13px] font-semibold", cancelled && "line-through")}>
+        {session.group.name}
+      </span>
+      {session.coaches.length > 0 && (
+        <span className="truncate text-foreground/75">
+          {session.coaches.map((c) => c.name).join(", ")}
+        </span>
+      )}
+      <span className="truncate text-foreground/75">
+        {[session.hall.name, ...session.disciplines.map((d) => d.name)].join(" · ")}
+      </span>
+      <ScheduleSessionTags session={session} phase={phase}>
+        <ScheduleTag tone="mute">{t("schedule.freeSeatsStub")}</ScheduleTag>
+      </ScheduleSessionTags>
     </Link>
   );
 }

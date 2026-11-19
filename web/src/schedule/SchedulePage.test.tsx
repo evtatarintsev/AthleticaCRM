@@ -442,22 +442,21 @@ describe("режимы «День» и «Неделя»", () => {
 });
 
 describe("недельная сетка", () => {
-  /** Ссылка на день недели [weekDay] в шапке сетки. */
-  const dayHeader = (weekDay: string) =>
-    screen.findByRole("link", { name: new RegExp(`^Открыть день: ${weekDay}`) });
+  /** Ссылка на день [day] («среда, 18 ноября») в шапке сетки. */
+  const dayHeader = (day: string) => screen.findByRole("link", { name: `Открыть день: ${day}` });
 
   it("выделяет сегодняшний день", async () => {
     openApp("/schedule", server().fetch);
 
-    expect((await dayHeader("Ср")).closest("[data-today]")).not.toBeNull();
-    expect((await dayHeader("Пн")).closest("[data-today]")).toBeNull();
+    expect((await dayHeader("среда, 18 ноября")).closest("[data-today]")).not.toBeNull();
+    expect((await dayHeader("понедельник, 16 ноября")).closest("[data-today]")).toBeNull();
   });
 
   it("день в шапке открывает режим «День» на сегодняшней дате с фильтрами", async () => {
     const { history } = openApp(groupFilterPath, server().fetch);
     const user = userEvent.setup();
 
-    await user.click(await dayHeader("Ср"));
+    await user.click(await dayHeader("среда, 18 ноября"));
 
     await waitFor(() => {
       expect(history.location.search).toContain("view=day&date=2026-11-18");

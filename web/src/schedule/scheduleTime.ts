@@ -49,6 +49,26 @@ export function longDayLabel(locale: string, date: LocalDate): string {
   }).format(utcDate(date));
 }
 
+/**
+ * Подпись недели с понедельника [monday] на языке [locale]: «16 – 22 ноября 2026», а при смене
+ * месяца — «30 ноября – 6 декабря 2026».
+ */
+export function weekRangeLabel(locale: string, monday: LocalDate): string {
+  const sunday = utcDate(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  const dayMonth = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  const start = utcDate(monday);
+  const from =
+    start.getUTCMonth() === sunday.getUTCMonth()
+      ? String(start.getUTCDate())
+      : dayMonth.format(start);
+  return `${from} – ${dayMonth.format(sunday)} ${String(sunday.getUTCFullYear())}`;
+}
+
 /** Минуты от начала суток времени [time] вида `HH:MM` или `HH:MM:SS`. */
 export function minutesOf(time: LocalTime): number {
   const [hours = 0, minutes = 0] = time.split(":").map(Number);

@@ -46,7 +46,7 @@ export function ScheduleSessionRow({
       to="/sessions/$sessionId"
       params={{ sessionId: session.id }}
       className={cn(
-        "grid grid-cols-[50px_minmax(0,1fr)] items-start gap-3 px-4 py-3 text-sm hover:bg-accent",
+        "grid grid-cols-[50px_minmax(0,1fr)] items-start gap-3 px-4 py-3 text-sm hover:bg-accent md:px-[18px] md:py-[13px]",
         "md:grid-cols-[64px_minmax(0,1.4fr)_minmax(0,0.5fr)_minmax(0,1fr)] md:items-center md:gap-4",
         phase.kind === "past" && "opacity-60",
       )}
@@ -68,8 +68,8 @@ export function ScheduleSessionRow({
         </span>
         <ScheduleSessionTags session={session} phase={phase} />
       </span>
-      <span className="hidden truncate text-muted-foreground md:block">{session.hall.name}</span>
-      <span className="hidden truncate text-muted-foreground md:block">{coaches}</span>
+      <span className="hidden truncate text-foreground/75 md:block">{session.hall.name}</span>
+      <span className="hidden truncate text-foreground/75 md:block">{coaches}</span>
     </Link>
   );
 }
@@ -184,7 +184,7 @@ export function ScheduleDayView({
           );
         })}
       </nav>
-      <section className="rounded-md border">
+      <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
         {day.length === 0 ? (
           <div className="space-y-2 px-4 py-10 text-center text-sm text-muted-foreground">
             <p>{emptyText}</p>
@@ -227,7 +227,7 @@ export function ScheduleWeekList({
     .filter((day) => day.sessions.length > 0);
   if (days.length === 0) {
     return (
-      <p className="rounded-md border px-4 py-10 text-center text-sm text-muted-foreground">
+      <p className="rounded-xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground shadow-sm">
         {emptyText}
       </p>
     );
@@ -246,7 +246,7 @@ export function ScheduleWeekList({
                 {t("schedule.sessionCount", { count: activeCount(day.sessions) })}
               </span>
             </div>
-            <div className="rounded-md border">
+            <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
               <SessionRows sessions={day.sessions} date={day.date} now={now} />
             </div>
           </section>

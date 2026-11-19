@@ -892,12 +892,21 @@ export const en: Messages<typeof ru> = {
   "groups.schedule.saveError": "Failed to save schedule",
 
   "schedule.title": "Schedule",
-  "schedule.weekRange": "{from} – {to}",
   "schedule.prevWeek": "Previous week",
   "schedule.nextWeek": "Next week",
   "schedule.prevDay": "Previous day",
   "schedule.nextDay": "Next day",
   "schedule.today": "Today",
+  "schedule.branch": "Branch “{name}”",
+  "schedule.meta.week": {
+    one: "{count} session this week",
+    other: "{count} sessions this week",
+  },
+  "schedule.meta.day": {
+    one: "{count} session this day",
+    other: "{count} sessions this day",
+  },
+  "schedule.meta.cancelled": "{count} cancelled",
   "schedule.dayLabelToday": "{day} · today",
   "schedule.view": "View",
   "schedule.view.day": "Day",

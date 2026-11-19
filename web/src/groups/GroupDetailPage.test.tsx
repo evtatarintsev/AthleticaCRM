@@ -272,6 +272,46 @@ const section = (title: string) => {
 };
 
 describe("вкладки карточки группы", () => {
+  it.each([false, true])("возврат виден при загрузке и после ответа (ошибка: %s)", async (fail) => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const server = groupServer(juniors);
+    const { history } = openApp(`/groups/${juniors.id}`, async (input, init) => {
+      if (new URL(input, "http://localhost").pathname === "/api/groups/detail") {
+        await pending;
+        if (fail) return groupNotFound();
+      }
+      return server.fetch(input, init);
+    });
+    const back = await screen.findByRole("link", { name: ru["action.back"] });
+    expect(back).toBeVisible();
+    expect(back).toHaveAttribute("href", "/groups");
+    expect(screen.queryByRole("heading", { name: juniors.name })).not.toBeInTheDocument();
+    release?.();
+    if (fail) await screen.findByText(ru["groups.detail.loadError"]);
+    else await screen.findByRole("heading", { name: juniors.name });
+    expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
+    await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/groups");
+      expect(history.location.search).toBe("");
+    });
+  });
+
+  it("после смены вкладки возвращает в список без параметров карточки", async () => {
+    const { history } = openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: ru["groups.tabs.journal"] }));
+    expect(history.location.search).toBe("?tab=journal");
+    await user.click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/groups");
+      expect(history.location.search).toBe("");
+    });
+  });
+
   it("без параметра активна вкладка «Обзор»", async () => {
     openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
 

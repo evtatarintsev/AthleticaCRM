@@ -1,6 +1,4 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient, ApiResult } from "@/api/client";
@@ -35,6 +33,7 @@ import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
+import { BackLink } from "@/ui/BackLink";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
 import { ChoiceSheet } from "@/ui/ChoiceSheet";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
@@ -82,6 +81,7 @@ export function SessionDetailPage({
   if (journal.isPending) {
     return (
       <section className="max-w-6xl space-y-4">
+        <BackLink link={{ to: "/schedule" }} />
         <Skeleton className="h-8 w-24" />
         <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
           <Skeleton className="h-96 w-full" />
@@ -93,6 +93,7 @@ export function SessionDetailPage({
   if (journal.data === undefined) {
     return (
       <section className="max-w-6xl space-y-4">
+        <BackLink link={{ to: "/schedule" }} />
         <FormAlert message={t("sessionDetail.loadError")} />
       </section>
     );
@@ -199,12 +200,7 @@ function SessionJournalCard({
 
   return (
     <section className="max-w-6xl space-y-4 pb-16">
-      <Button variant="ghost" size="sm" asChild className="-ml-2">
-        <Link to="/schedule">
-          <ArrowLeftIcon aria-hidden />
-          {t("action.back")}
-        </Link>
-      </Button>
+      <BackLink link={{ to: "/schedule", search: { date: journal.date } }} />
 
       <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <aside className="lg:sticky lg:top-4">

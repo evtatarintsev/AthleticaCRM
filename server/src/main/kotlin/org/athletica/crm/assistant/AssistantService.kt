@@ -46,12 +46,14 @@ class AssistantService(
     private val employees: Employees,
     private val definitions: CustomFieldDefinitions,
 ) {
-    /** Статус доступен с сессией, даже без AI-ключа и права использования. */
+    /**
+     * Статус доступен с сессией, даже без AI-ключа и права использования.
+     * `permitted` — снимок сотрудника из контекста запроса; команды перепроверяют доступ в [access].
+     */
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     suspend fun status(): AssistantStatusResponse =
         db.transaction {
-            val employee = employees.byId(ctx.employee.id)
-            AssistantStatusResponse(connection.available, storage.settings(connection.available).enabled, employee.isActive && employee.hasPermission(UserPermission.CAN_USE_ASSISTANT))
+            AssistantStatusResponse(connection.available, storage.settings(connection.available).enabled, ctx.employee.isActive && ctx.employee.hasPermission(UserPermission.CAN_USE_ASSISTANT))
         }
 
     /** Только владелец получает настройки и расход организации. */

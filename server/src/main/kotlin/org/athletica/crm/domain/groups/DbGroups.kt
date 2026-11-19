@@ -1,17 +1,16 @@
 package org.athletica.crm.domain.groups
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.core.branchIdOrNull
 import org.athletica.crm.core.entityids.DisciplineId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toDisciplineId
 import org.athletica.crm.core.entityids.toEmployeeId
-import org.athletica.crm.core.entityids.toGroupId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.employees.Employee
@@ -52,9 +51,7 @@ class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
                 .execute()
         }
         employees.forEach { employee ->
-            if (!employee.availableBranches.contains(ctx.branchId)) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
+            ensure(employee.hasAccessTo(ctx.branchId)) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
             tr
                 .sql(
                     "INSERT INTO group_employees (group_id, employee_id) VALUES (:groupId, :employeeId)",
@@ -64,76 +61,6 @@ class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
                 .execute()
         }
         return DbGroup(id, ctx.branchId, name.value, disciplineIds, employees.map { it.id }, sync)
-    }
-
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun list(): List<Group> {
-        val branchId = ctx.branchIdOrNull
-        val branchFilter = if (branchId != null) "AND g.branch_id = :branchId" else ""
-        val groups =
-            tr
-                .sql(
-                    """
-                    SELECT g.id, g.branch_id, g.name FROM groups g
-                    WHERE g.org_id = :orgId $branchFilter
-                    ORDER BY g.name
-                    """.trimIndent(),
-                )
-                .bind("orgId", ctx.orgId)
-                .let { q -> if (branchId != null) q.bind("branchId", branchId) else q }
-                .list { row ->
-                    Triple(
-                        row.asUuid("id").toGroupId(),
-                        row.asUuid("branch_id").toBranchId(),
-                        row.asString("name"),
-                    )
-                }
-
-        if (groups.isEmpty()) {
-            return emptyList()
-        }
-
-        val groupIds = groups.map { it.first.value }
-
-        val disciplinesByGroup =
-            tr
-                .sql(
-                    """
-                    SELECT group_id, discipline_id
-                    FROM group_disciplines
-                    WHERE group_id = ANY(:ids)
-                    """.trimIndent(),
-                )
-                .bind("ids", groupIds)
-                .list { row ->
-                    row.asUuid("group_id").toGroupId() to row.asUuid("discipline_id").toDisciplineId()
-                }
-                .groupBy({ it.first }, { it.second })
-
-        val employeeIdsByGroup =
-            tr
-                .sql(
-                    """
-                    SELECT group_id, employee_id
-                    FROM group_employees
-                    WHERE group_id = ANY(:ids)
-                    """.trimIndent(),
-                ).bind("ids", groupIds)
-                .list { row ->
-                    row.asUuid("group_id").toGroupId() to row.asUuid("employee_id").toEmployeeId()
-                }
-                .groupBy({ it.first }, { it.second })
-
-        return groups.map { (id, branchId, name) ->
-            DbGroup(
-                id = id,
-                branchId = branchId,
-                name = name,
-                disciplines = disciplinesByGroup[id] ?: emptyList(),
-                employeeIds = employeeIdsByGroup[id] ?: emptyList(),
-                sync = sync,
-            )
-        }
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)

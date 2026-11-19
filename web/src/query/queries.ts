@@ -45,6 +45,8 @@ export function sessionQuery(api: ApiClient) {
     queryKey: ["session", "auth/me"] as const,
     queryFn: async () => unwrap(await api.call("auth/me")),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: (query) =>
+      query.state.data?.emailVerificationPending === true ? "always" : true,
   });
 }
 

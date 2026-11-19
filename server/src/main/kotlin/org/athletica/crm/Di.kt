@@ -27,6 +27,8 @@ import org.athletica.crm.domain.auth.AuditAuth
 import org.athletica.crm.domain.auth.Auth
 import org.athletica.crm.domain.auth.DbAuth
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.auth.EmailVerificationConfig
+import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
@@ -62,6 +64,8 @@ import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
+import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.domain.enrollments.AuditEnrollments
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollments
@@ -169,15 +173,16 @@ data class Di(
     val paymentGateway: PaymentGateway,
     val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
-) {
-    val users = DbUsers(passwordHasher)
-    val roles = DbRoles()
-    val employees =
+    val roles: Roles = DbRoles(),
+    val emailVerificationConfig: EmailVerificationConfig = EmailVerificationConfig("http://localhost:5173"),
+    val employees: Employees =
         AuditEmployees(
-            EmailEmployees(DbEmployees(users, roles), orgEmails),
+            EmailEmployees(DbEmployees(DbUsers(passwordHasher), roles), orgEmails),
             audit,
-        )
-    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings), audit)
+        ),
+) {
+    val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
+    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
@@ -272,6 +277,7 @@ fun Application.di(): Di {
         paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
         telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
         assistantConnection = AssistantConnection.from(environment.config),
+        emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
     )
 }
 

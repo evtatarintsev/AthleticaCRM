@@ -18,7 +18,9 @@ import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.read.SessionSql
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asLocalDate
+import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asLocalTime
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -37,7 +39,10 @@ class DbScheduleView : ScheduleView {
                     """
                     SELECT s.id, s.group_id, g.name AS group_name, s.date, s.start_time, s.end_time,
                            s.status::text AS status, h.id AS hall_id, h.name AS hall_name,
-                           ${SessionSql.COACHES_JSON} AS coaches, $DISCIPLINES_JSON AS disciplines
+                           ${SessionSql.COACHES_JSON} AS coaches, $DISCIPLINES_JSON AS disciplines,
+                           ${SessionSql.COACHES_OVERRIDDEN} AS coaches_overridden,
+                           ${SessionSql.RESCHEDULED_FROM} AS rescheduled_from,
+                           ${SessionSql.IS_MANUAL} AS is_manual
                     FROM sessions s
                     JOIN groups g ON g.id = s.group_id AND g.org_id = s.org_id AND g.branch_id = :branchId
                     JOIN halls h ON h.id = s.hall_id
@@ -99,6 +104,9 @@ class DbScheduleView : ScheduleView {
             disciplines = disciplines,
             status = SessionStatus.valueOf(asString("status").uppercase()),
             colorKey = colorKeyFor(groupId, disciplines.firstOrNull()?.id),
+            coachesOverridden = asBoolean("coaches_overridden"),
+            rescheduledFrom = asLocalDateOrNull("rescheduled_from"),
+            isManual = asBoolean("is_manual"),
         )
     }
 

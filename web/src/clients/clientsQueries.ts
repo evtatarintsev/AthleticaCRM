@@ -48,10 +48,10 @@ export function useClientPages(api: ApiClient, branchId: BranchId, filters: Clie
 }
 
 /** Сегодняшний день в часовом поясе браузера. */
-export function todayLocalDate(): LocalDate {
+export function todayLocalDate(now = new Date()): LocalDate {
   return LocalDateSchema.parse(
     new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(
-      new Date(),
+      now,
     ),
   );
 }

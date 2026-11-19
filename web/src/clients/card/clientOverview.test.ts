@@ -28,6 +28,9 @@ describe("client overview", () => {
         coaches: [],
         disciplines: [],
         colorKey: "GREEN",
+        coachesOverridden: false,
+        rescheduledFrom: null,
+        isManual: false,
         status,
       });
     const future = session("18:00");

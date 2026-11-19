@@ -3,14 +3,18 @@ package org.athletica.crm.admin
 import com.github.ajalt.clikt.command.test
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.PasswordHash
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
+import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
@@ -168,6 +172,137 @@ class AthleticaCliTest {
             assertTrue(result.statusCode != 0)
             assertContains(result.stderr, "Организация не найдена: нетсовпадений")
             assertEquals("", result.stdout)
+        }
+
+    private val hasher = PasswordHasher()
+
+    private suspend fun insertUser(login: String, password: String): Uuid =
+        orThrow {
+            val userId = Uuid.random()
+            TestPostgres.db.sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId).bind("login", login).bind("hash", hasher.hash(password).value).execute()
+            return userId
+        }
+
+    private suspend fun insertEmployee(userId: Uuid, orgName: String) =
+        orThrow {
+            val orgId = Uuid.random()
+            TestPostgres.db.sql("INSERT INTO organizations (id, name) VALUES (:id, :name)")
+                .bind("id", orgId).bind("name", orgName).execute()
+            TestPostgres.db
+                .sql("INSERT INTO employees (id, user_id, org_id, name, is_owner) VALUES (:id, :userId, :orgId, :name, false)")
+                .bind("id", Uuid.random()).bind("userId", userId).bind("orgId", orgId).bind("name", "Сотрудник").execute()
+        }
+
+    private suspend fun passwordHash(login: String): PasswordHash =
+        orThrow {
+            TestPostgres.db.sql("SELECT password_hash FROM users WHERE login = :login")
+                .bind("login", login)
+                .firstOrNull { PasswordHash(it.asString("password_hash")) }
+                ?: error("пользователь $login не найден")
+        }
+
+    @Test
+    fun `admin user reset-password заменяет пароль`() =
+        runTest {
+            insertUser("trainer@example.com", "старый-пароль")
+
+            val result =
+                cli().test(
+                    listOf("admin", "user", "reset-password", "trainer@example.com"),
+                    stdin = "новый-пароль\nновый-пароль\n",
+                )
+
+            assertEquals(0, result.statusCode, result.stderr)
+            assertContains(result.stdout, "Пароль пользователя trainer@example.com изменён")
+            assertFalse(result.stdout.contains("новый-пароль"))
+            assertFalse(result.stderr.contains("новый-пароль"))
+            val hash = passwordHash("trainer@example.com")
+            assertTrue(hasher.verify("новый-пароль", hash))
+            assertFalse(hasher.verify("старый-пароль", hash))
+        }
+
+    @Test
+    fun `сброс пароля сотрудника нескольких организаций`() =
+        runTest {
+            val userId = insertUser("shared@example.com", "старый-пароль")
+            insertEmployee(userId, "Клуб Один")
+            insertEmployee(userId, "Клуб Два")
+
+            val result =
+                cli().test(
+                    listOf("admin", "user", "reset-password", "shared@example.com"),
+                    stdin = "новый-пароль\nновый-пароль\n",
+                )
+
+            assertEquals(0, result.statusCode, result.stderr)
+            assertTrue(hasher.verify("новый-пароль", passwordHash("shared@example.com")))
+        }
+
+    @Test
+    fun `сброс пароля неизвестного пользователя завершается ненулевым кодом`() =
+        runTest {
+            val result =
+                cli().test(
+                    listOf("admin", "user", "reset-password", "nobody@example.com"),
+                    stdin = "новый-пароль\nновый-пароль\n",
+                )
+
+            assertTrue(result.statusCode != 0)
+            assertContains(result.stderr, "Пользователь с логином \"nobody@example.com\" не найден")
+            assertEquals("", result.stdout)
+        }
+
+    @Test
+    fun `пустой пароль отклоняется`() =
+        runTest {
+            insertUser("trainer@example.com", "старый-пароль")
+
+            val result =
+                cli().test(listOf("admin", "user", "reset-password", "trainer@example.com"), stdin = "\n\n")
+
+            assertTrue(result.statusCode != 0)
+            assertContains(result.stderr, "Пароль не может быть пустым")
+            assertTrue(hasher.verify("старый-пароль", passwordHash("trainer@example.com")))
+        }
+
+    @Test
+    fun `несовпадающие пароли отклоняются`() =
+        runTest {
+            insertUser("trainer@example.com", "старый-пароль")
+
+            val result =
+                cli().test(
+                    listOf("admin", "user", "reset-password", "trainer@example.com"),
+                    stdin = "новый-пароль\nдругой-пароль\n",
+                )
+
+            assertTrue(result.statusCode != 0)
+            assertContains(result.stderr, "Пароли не совпадают")
+            assertTrue(hasher.verify("старый-пароль", passwordHash("trainer@example.com")))
+        }
+
+    @Test
+    fun `пароль нельзя передать аргументом`() =
+        runTest {
+            val result =
+                athleticaCommand(
+                    adminDi = { AdminDi { error("БД не должна открываться при ошибке разбора") } },
+                    startServer = { error("сервер не должен запускаться") },
+                ).test(listOf("admin", "user", "reset-password", "trainer@example.com", "пароль"))
+
+            assertTrue(result.statusCode != 0)
+            assertContains(result.stderr, "unexpected extra argument")
+            assertEquals("", result.stdout)
+        }
+
+    @Test
+    fun `справка admin user перечисляет reset-password`() =
+        runTest {
+            val result = cli().test(listOf("admin", "user", "--help"))
+
+            assertEquals(0, result.statusCode)
+            assertContains(result.stdout, "reset-password")
         }
 
     @Test

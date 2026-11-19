@@ -30,6 +30,7 @@ import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.testName
 import org.junit.Before
@@ -362,6 +363,110 @@ class DbEmployeesTest {
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
+    @Test
+    fun `byIds загружает сотрудников одним SQL, пустой набор не обращается к БД`() =
+        runTest {
+            val first = EmployeeId.new()
+            val second = EmployeeId.new()
+            either {
+                val role = EmployeeRole(Uuid.random(), testName("Тренер"), setOf(UserPermission.CAN_MANAGE_TASKS))
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        roles.new(role)
+                        employees.new(first, testName("Первый"), null, null, null, EmployeePermissionSelection(listOf(role.id), setOf(UserPermission.CAN_VIEW_ALL_TASKS)))
+                        employees.new(second, testName("Второй"), null, null, null, emptyPermission, EmployeeBranchAccess.Selected(emptyList()))
+                    }
+                }
+
+                TestPostgres.db.transaction {
+                    val counting = CountingTransaction(this)
+                    context(ctx, counting) {
+                        assertEquals(2, employees.byIds(listOf(first, second, first)).size)
+                        assertEquals(1, counting.statements)
+                        assertEquals(emptyList(), employees.byIds(emptyList()))
+                        assertEquals(1, counting.statements)
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
+    @Test
+    fun `byIds не смешивает роли, права и филиалы разных сотрудников`() =
+        runTest {
+            val first = EmployeeId.new()
+            val second = EmployeeId.new()
+            val third = EmployeeId.new()
+            val branchA = BranchId.new()
+            val branchB = BranchId.new()
+            val manager = EmployeeRole(Uuid.random(), testName("Менеджер"), setOf(UserPermission.CAN_MANAGE_TASKS))
+            val empty = EmployeeRole(Uuid.random(), testName("Без прав"), emptySet())
+            val trainer = EmployeeRole(Uuid.random(), testName("Тренер"), setOf(UserPermission.CAN_VIEW_ALL_TASKS))
+            either {
+                TestPostgres.db.transaction {
+                    listOf(branchA, branchB).forEach {
+                        sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                            .bind("id", it)
+                            .bind("orgId", orgId)
+                            .bind("name", "Филиал $it")
+                            .execute()
+                    }
+                    context(ctx) {
+                        listOf(manager, empty, trainer).forEach { roles.new(it) }
+                        employees.new(
+                            first,
+                            testName("Первый"),
+                            null,
+                            null,
+                            null,
+                            EmployeePermissionSelection(listOf(manager.id, empty.id), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)),
+                            EmployeeBranchAccess.Selected(listOf(branchA, branchB)),
+                        )
+                        employees.new(second, testName("Второй"), null, null, null, EmployeePermissionSelection(listOf(trainer.id)), EmployeeBranchAccess.Selected(emptyList()))
+                        employees.new(third, testName("Третий"), null, null, null, emptyPermission, EmployeeBranchAccess.All)
+                    }
+                }
+
+                val loaded = TestPostgres.db.transaction { context(ctx) { employees.byIds(listOf(first, second, third, second)) } }
+                assertEquals(listOf(first, second, third).sortedBy { it.toString() }, loaded.map { it.id }.sortedBy { it.toString() })
+                val byId = loaded.associateBy { it.id }
+
+                val firstEmployee = byId.getValue(first)
+                assertEquals(setOf(manager, empty), firstEmployee.roles.toSet())
+                assertEquals(setOf(branchA, branchB), assertIs<EmployeeBranchAccess.Selected>(firstEmployee.availableBranches).ids.toSet())
+                assertTrue(firstEmployee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+                assertTrue(firstEmployee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                assertFalse(firstEmployee.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+
+                val secondEmployee = byId.getValue(second)
+                assertEquals(listOf(trainer), secondEmployee.roles)
+                assertEquals(EmployeeBranchAccess.Selected(emptyList()), secondEmployee.availableBranches)
+                assertTrue(secondEmployee.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+                assertFalse(secondEmployee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+                assertFalse(secondEmployee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+
+                val thirdEmployee = byId.getValue(third)
+                assertEquals(emptyList(), thirdEmployee.roles)
+                assertEquals(EmployeeBranchAccess.All, thirdEmployee.availableBranches)
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
+    @Test
+    fun `byIds возвращает EMPLOYEE_NOT_FOUND для частично найденного набора`() =
+        runTest {
+            val id = EmployeeId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { employees.new(id, testName("Сотрудник"), null, null, null, emptyPermission) }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+
+            val result =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { employees.byIds(listOf(id, EmployeeId.new(), id)) } }
+                }
+            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
+        }
+
     // ─── save ─────────────────────────────────────────────────────────────────
 
     @Test
@@ -629,4 +734,16 @@ class DbEmployeesTest {
     /** Возвращает [Employee] с теми же данными и новой настройкой прав [permissions]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun Employee.withNewPermissions(permissions: EmployeePermissionSelection): Employee = withNew(testName(name), permissions, avatarId, phoneNo, email, availableBranches)
+
+    /** Считает вызовы [Transaction.sql], делегируя их транзакции [delegate]. */
+    private class CountingTransaction(private val delegate: Transaction) : Transaction {
+        /** Число SQL-запросов, построенных через эту транзакцию. */
+        var statements = 0
+            private set
+
+        override fun sql(sql: String): QueryBuilder {
+            statements++
+            return delegate.sql(sql)
+        }
+    }
 }

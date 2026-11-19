@@ -27,6 +27,13 @@ describe("выбор языка", () => {
 });
 
 describe("перевод", () => {
+  it("различает накопительные периоды и прежние фильтры дней рождения", () => {
+    const t = createTranslator<typeof ru>("en", en);
+    expect(t("clients.filter.birthdayTodayTomorrow")).toBe("Today and tomorrow");
+    expect(t("clients.filter.birthdayWeekAhead")).toBe("A week ahead");
+    expect(t("clients.filter.birthdayTomorrow")).toBe("Tomorrow");
+    expect(t("clients.filter.birthdayWeek")).toBe("This week");
+  });
   it("подставляет параметры", () => {
     expect(createTranslator<typeof ru>("ru", ru)("branch.switched", { name: "Центр" })).toBe(
       "Филиал «Центр»",
@@ -92,6 +99,8 @@ describe("форматирование", () => {
 
   it("календарная дата не сдвигается часовым поясом", () => {
     expect(enFormat.date(LocalDateSchema.parse("2025-01-31"))).toBe("Jan 31, 2025");
+    expect(ruFormat.dayMonth(LocalDateSchema.parse("1995-11-20"))).toBe("20 ноября");
+    expect(enFormat.dayMonth(LocalDateSchema.parse("1995-11-20"))).toBe("November 20");
   });
 
   it("время суток и момент времени", () => {

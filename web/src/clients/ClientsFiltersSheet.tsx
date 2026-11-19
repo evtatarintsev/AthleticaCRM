@@ -88,6 +88,18 @@ export function ClientsFiltersSheet({
               { value: "today", label: t("clients.filter.birthdayToday") },
               { value: "tomorrow", label: t("clients.filter.birthdayTomorrow") },
               { value: "week", label: t("clients.filter.birthdayWeek") },
+              ...(draft.birthday === "todayTomorrow" || draft.birthday === "weekAhead"
+                ? [
+                    {
+                      value: draft.birthday,
+                      label: t(
+                        draft.birthday === "todayTomorrow"
+                          ? "clients.filter.birthdayTodayTomorrow"
+                          : "clients.filter.birthdayWeekAhead",
+                      ),
+                    },
+                  ]
+                : []),
             ]}
             selected={draft.birthday}
             onSelect={(birthday) => {

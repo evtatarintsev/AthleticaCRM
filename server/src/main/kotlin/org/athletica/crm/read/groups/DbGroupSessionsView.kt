@@ -50,10 +50,10 @@ class DbGroupSessionsView : GroupSessionsView {
                 'id', s.id, 'date', s.date, 'startTime', s.start_time, 'endTime', s.end_time,
                 'hall', jsonb_build_object('id', h.id, 'name', h.name),
                 'coaches', ${SessionSql.COACHES_JSON},
-                'coachesOverridden', s.is_employee_assignment_overridden,
+                'coachesOverridden', ${SessionSql.COACHES_OVERRIDDEN},
                 'status', upper(s.status::text),
-                'rescheduledFrom', CASE WHEN s.is_rescheduled AND s.origin_date <> s.date THEN s.origin_date END,
-                'isManual', s.origin_slot_id IS NULL,
+                'rescheduledFrom', ${SessionSql.RESCHEDULED_FROM},
+                'isManual', ${SessionSql.IS_MANUAL},
                 'attendance', CASE WHEN s.status = 'completed' THEN
                     (SELECT jsonb_build_object('present', COUNT(*) FILTER (WHERE a.presence = 'present'), 'total', COUNT(*))
                        FROM session_attendance a

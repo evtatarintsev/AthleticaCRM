@@ -12,10 +12,14 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.sessions.SessionStatus
+import org.athletica.crm.read.groups.DbGroupSessionsView
+import org.athletica.crm.read.groups.GroupSessionsQuery
 import org.athletica.crm.schedule.ScheduleFixture
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
@@ -292,5 +296,56 @@ class DbScheduleViewTest {
 
                 assertTrue(list(ScheduleQuery(monday, sunday, groupIds = listOf(otherGroup))).sessions.isEmpty())
             }
+        }
+
+    @Test
+    fun `признаки переноса, разового занятия и замены тренера совпадают с занятиями группы`() =
+        runTest {
+            val group = fixture.insertGroup()
+            val hall = fixture.insertHall()
+            val slot =
+                fixture.insertSlot(group, hall, org.athletica.crm.core.DayOfWeek.MONDAY, LocalTime(10, 0), LocalTime(11, 0), from = monday)
+            val moved =
+                fixture.insertSession(
+                    group,
+                    hall,
+                    LocalDate(2026, 3, 17),
+                    LocalTime(10, 0),
+                    LocalTime(11, 0),
+                    originSlotId = slot,
+                    originDate = monday,
+                    isRescheduled = true,
+                )
+            val manual = session(group, hall, date = LocalDate(2026, 3, 18))
+            val replaced =
+                fixture.insertSession(
+                    group,
+                    hall,
+                    LocalDate(2026, 3, 19),
+                    LocalTime(10, 0),
+                    LocalTime(11, 0),
+                    originSlotId = slot,
+                    isEmployeeAssignmentOverridden = true,
+                )
+            val regular = fixture.insertSession(group, hall, sunday, LocalTime(10, 0), LocalTime(11, 0), originSlotId = slot)
+
+            val rows = list().sessions.associateBy { it.id }
+
+            assertEquals(monday, rows.getValue(moved).rescheduledFrom)
+            assertFalse(rows.getValue(moved).isManual)
+            assertTrue(rows.getValue(manual).isManual)
+            assertNull(rows.getValue(manual).rescheduledFrom)
+            assertTrue(rows.getValue(replaced).coachesOverridden)
+            assertFalse(rows.getValue(replaced).isManual)
+            val plain = rows.getValue(regular)
+            assertNull(plain.rescheduledFrom)
+            assertFalse(plain.isManual)
+            assertFalse(plain.coachesOverridden)
+
+            val groupRows = fixture.inContext { DbGroupSessionsView().list(GroupSessionsQuery(group, monday, sunday)) }.sessions
+            assertEquals(
+                groupRows.associate { it.id to Triple(it.coachesOverridden, it.rescheduledFrom, it.isManual) },
+                rows.mapValues { (_, it) -> Triple(it.coachesOverridden, it.rescheduledFrom, it.isManual) },
+            )
         }
 }

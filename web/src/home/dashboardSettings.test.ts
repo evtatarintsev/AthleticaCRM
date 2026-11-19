@@ -1,13 +1,55 @@
 import { describe, expect, it } from "vitest";
-import { DashboardWidgetIdSchema, type DashboardSettings } from "@/api/generated/contracts";
+import {
+  DashboardWidgetIdSchema,
+  LocalDateSchema,
+  type DashboardSettings,
+  type DashboardWidgetBirthdays,
+} from "@/api/generated/contracts";
 import {
   defaultDashboardSettings,
+  birthdaysRequest,
   hideWidget,
   moveWidget,
   normalizeDashboardOrder,
   orderedVisible,
   showWidget,
 } from "./dashboardSettings";
+
+describe("периоды дней рождения", () => {
+  const saved: DashboardWidgetBirthdays = {
+    type: "birthdays",
+    id: DashboardWidgetIdSchema.parse("0199a0b2-7c3e-7d2a-9f10-000000000901"),
+    title: "Команда",
+    window: "TOMORROW",
+    limit: 5,
+  };
+  it.each([
+    ["TODAY", "2026-11-18", "2026-11-18"],
+    ["TOMORROW", "2026-11-18", "2026-11-19"],
+    ["WEEK", "2026-11-18", "2026-11-25"],
+    ["TOMORROW", "2026-12-31", "2027-01-01"],
+    ["WEEK", "2026-12-30", "2027-01-06"],
+    ["TOMORROW", "2028-02-28", "2028-02-29"],
+  ] as const)("%s от %s до %s включительно", (window, from, to) => {
+    expect(birthdaysRequest({ ...saved, window }, LocalDateSchema.parse(from))).toEqual({
+      birthday: { from, to },
+      limit: 5,
+      offset: 0,
+      sort: [
+        { field: "NEXT_BIRTHDAY", direction: "Asc" },
+        { field: "NAME", direction: "Asc" },
+      ],
+    });
+  });
+  it("сохранённый TOMORROW включает сегодня без сброса параметров", () => {
+    const settings: DashboardSettings = { widgets: [saved], layout: [saved.id] };
+    expect(normalizeDashboardOrder(settings)).toEqual(settings);
+    expect(birthdaysRequest(saved, LocalDateSchema.parse("2026-11-18")).birthday).toEqual({
+      from: "2026-11-18",
+      to: "2026-11-19",
+    });
+  });
+});
 
 function fixture() {
   const [a, b, c, d] = defaultDashboardSettings().widgets;

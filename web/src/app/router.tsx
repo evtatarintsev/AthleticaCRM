@@ -8,9 +8,10 @@ import {
   redirect,
   RouterProvider,
   useRouter,
+  useLocation,
   type RouterHistory,
 } from "@tanstack/react-router";
-import { useMemo, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   ClientIdSchema,
@@ -46,6 +47,7 @@ import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
 import { SignUpPage } from "@/auth/SignUpPage";
+import { ConfirmEmailPage } from "@/auth/ConfirmEmailPage";
 import { BASE_PATH } from "@/config";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
@@ -106,6 +108,23 @@ const loginRoute = createRoute({
         }}
       />
     );
+  },
+});
+
+const confirmEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/confirm-email",
+  component: function ConfirmEmailRoute() {
+    const { api } = confirmEmailRoute.useRouteContext();
+    const hash = useLocation({ select: (location) => location.hash });
+    const navigate = confirmEmailRoute.useNavigate();
+    const incomingToken = new URLSearchParams(hash).get("token") ?? "";
+    const [token, setToken] = useState(incomingToken);
+    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
+    useEffect(() => {
+      if (hash !== "") void navigate({ hash: "", replace: true });
+    }, [hash, navigate]);
+    return <ConfirmEmailPage key={token} api={api} token={token} />;
   },
 });
 
@@ -367,7 +386,7 @@ const employeesRoute = createRoute({
   },
 });
 
-/** Расписание: неделя и фильтры в search-параметрах адреса. */
+/** Расписание: режим, дата и фильтры в search-параметрах адреса. */
 const scheduleRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/schedule",
@@ -588,6 +607,7 @@ const tasksRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
+  confirmEmailRoute,
   appRoute.addChildren([
     homeRoute,
     settingsRoute,
@@ -652,6 +672,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/": true,
   "/login": true,
   "/sign-up": true,
+  "/confirm-email": true,
   "/settings": true,
   "/settings/edit-profile": true,
   "/settings/change-password": true,

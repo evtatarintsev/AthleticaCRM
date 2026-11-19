@@ -2,11 +2,16 @@ package org.athletica.crm
 
 import kotlinx.coroutines.runBlocking
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.DbAuth
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.auth.EmailVerificationConfig
+import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
+import org.athletica.crm.domain.mail.DbOrgEmails
+import org.athletica.crm.domain.notifications.DbNotifications
 import org.athletica.crm.domain.org.DbOrganizations
 import org.athletica.crm.domain.settings.DbUserDisplaySettings
 import org.athletica.crm.security.PasswordHasher
@@ -29,7 +34,10 @@ object TestPostgres {
 
     val auth =
         PasswordHasher().let { hasher ->
-            DbAuth(hasher, DbEmployees(DbUsers(hasher), DbRoles()), DbOrganizations(), DbBranches(), DbUserDisplaySettings())
+            DbAuth(
+                hasher, DbEmployees(DbUsers(hasher), DbRoles()), DbOrganizations(), DbBranches(), DbUserDisplaySettings(),
+                EmailVerifications(DbOrgEmails(), DbNotifications(), PostgresAuditLog(), EmailVerificationConfig("http://localhost:5173")),
+            )
         }
 
     /**

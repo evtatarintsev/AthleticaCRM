@@ -89,4 +89,7 @@ tasks.register<JavaExec>("generateWebContracts") {
 
 tasks.named<Jar>("shadowJar") {
     archiveFileName.set("athletica.jar")
+    manifest {
+        attributes("Enable-Native-Access" to "ALL-UNNAMED")
+    }
 }

@@ -41,6 +41,10 @@ fun athleticaCommand(
                             CreditCommand(),
                             DebitCommand(),
                         ),
+                    UserCommand()
+                        .subcommands(
+                            ResetPasswordCommand(),
+                        ),
                     EventsCommand()
                         .subcommands(
                             RetryFailedCommand(),

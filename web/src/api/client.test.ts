@@ -31,6 +31,36 @@ function urls(fetchMock: ReturnType<typeof vi.fn<ApiClientOptions["fetch"]>>): s
 }
 
 describe("типы вызова", () => {
+  it("старый профиль без признака подтверждения остаётся совместимым", async () => {
+    const { api } = client(() =>
+      Promise.resolve(
+        json({
+          id: "0199a0b2-7c3e-7d2a-9f10-000000000001",
+          employeeId: "0199a0b2-7c3e-7d2a-9f10-000000000002",
+          username: "legacy@example.com",
+          name: "Owner",
+          avatarId: null,
+          orgInfo: { name: "Club", balance: null },
+          currentBranch: { id: "0199a0b2-7c3e-7d2a-9f10-000000000003", name: "Center" },
+          permissions: [],
+        }),
+      ),
+    );
+    expect(await api.call("auth/me")).toMatchObject({
+      ok: true,
+      value: { emailVerificationPending: false },
+    });
+  });
+
+  it("публичное подтверждение не обновляет и не завершает чужую сессию при 401", async () => {
+    const { api, options } = client(() => Promise.resolve(json({}, 401)));
+    expect(await api.call("auth/confirm-email", { token: "token" })).toEqual({
+      ok: false,
+      error: { kind: "unauthenticated" },
+    });
+    expect(urls(options.fetch)).toEqual(["/api/auth/confirm-email"]);
+    expect(options.onSessionExpired).not.toHaveBeenCalled();
+  });
   it("идентификаторы разных сущностей не взаимозаменяемы", () => {
     expectTypeOf<RequestOf<"clients/detail">>().toEqualTypeOf<Readonly<{ id: ClientId }>>();
     expectTypeOf<GroupId>().not.toExtend<ClientId>();

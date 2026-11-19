@@ -35,4 +35,13 @@ data class ClientListRequest(
     val groupId: GroupId? = null,
     /** Фильтр по дню рождения (диапазон дат, сравнение по месяцу и дню без учёта года). `null` — без фильтра. */
     val birthday: DateRange? = null,
+    /** Критерии по приоритету. Непустой список заменяет [sortField]/[sortDirection]; null и пустой список используют старые поля. */
+    val sort: List<ClientSort>? = null,
+)
+
+/** Один критерий серверной сортировки клиентов. */
+@Serializable
+data class ClientSort(
+    val field: ClientSortField,
+    val direction: SortDirectionSchema = SortDirectionSchema.Asc,
 )

@@ -183,7 +183,7 @@ fun Application.configureServer() {
                 checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
 
                 context(di.jwtConfig) {
-                    authRoutes(di.auth)
+                    authRoutes(di.auth, di.emailVerifications)
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
@@ -233,7 +233,7 @@ fun Application.configureServer() {
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles, di.views)
-                        profileRoutes(di.auth, di.organizations, di.orgBalances)
+                        profileRoutes(di.auth, di.organizations, di.orgBalances, di.emailVerifications)
                         orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {
                             uploadRoutes()

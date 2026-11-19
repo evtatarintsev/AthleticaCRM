@@ -28,6 +28,7 @@ import {
   type ClientColumn,
   type ClientFieldKey,
 } from "./clientColumns";
+import { ClientBalance } from "./ClientBalance";
 import { clientFieldValue, contactValues, customFieldDisplay, sortableField } from "./clientCells";
 import type { ClientSortColumn } from "./clientListSearch";
 
@@ -69,7 +70,7 @@ export interface ClientListTableProps {
  * Клик по строке и карточке открывает карточку клиента, чекбоксы выбирают строки.
  */
 export function ClientListTable(props: ClientListTableProps) {
-  const { t, format } = useI18n();
+  const { t } = useI18n();
   const table = useTable({
     features,
     columns,
@@ -83,10 +84,10 @@ export function ClientListTable(props: ClientListTableProps) {
 
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-md border md:block">
+      <div className="hidden overflow-x-auto rounded-xl border bg-card shadow-xs md:block">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-muted/50 text-muted-foreground">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-10">
                 <input
                   type="checkbox"
@@ -117,7 +118,11 @@ export function ClientListTable(props: ClientListTableProps) {
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.id} className="relative">
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+                className="relative data-[state=selected]:bg-primary/5"
+              >
                 <TableCell className="w-10">
                   <input
                     type="checkbox"
@@ -166,9 +171,16 @@ export function ClientListTable(props: ClientListTableProps) {
           </TableBody>
         </Table>
       </div>
-      <ul className="divide-y rounded-md border md:hidden">
+      <ul
+        aria-label={t("clients.title")}
+        className="divide-y overflow-hidden rounded-xl border bg-card shadow-xs md:hidden"
+      >
         {rows.map((row) => (
-          <li key={row.id} className="relative flex items-center gap-3 px-4 py-3">
+          <li
+            key={row.id}
+            data-state={row.getIsSelected() ? "selected" : undefined}
+            className="relative flex items-center gap-3 px-3.5 py-3 data-[state=selected]:bg-primary/5"
+          >
             <input
               type="checkbox"
               checked={row.getIsSelected()}
@@ -201,25 +213,9 @@ export function ClientListTable(props: ClientListTableProps) {
                 </span>
               )}
             </Link>
-            <span
-              className={cn(
-                "text-sm",
-                row.original.balance.minorUnits < 0 ? "text-destructive" : undefined,
-              )}
-            >
-              {format.money(row.original.balance)}
+            <span className="shrink-0 text-sm">
+              <ClientBalance balance={row.original.balance} />
             </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              asChild
-              className="relative z-10 shrink-0"
-              aria-label={t("clients.editClient", { name: row.original.name })}
-            >
-              <Link to="/clients/$clientId/edit" params={{ clientId: row.original.id }}>
-                <PencilIcon aria-hidden />
-              </Link>
-            </Button>
           </li>
         ))}
       </ul>
@@ -227,14 +223,19 @@ export function ClientListTable(props: ClientListTableProps) {
   );
 }
 
-/** Заголовок с кнопкой сортировки по колонке [column] и текущим состоянием [sort]. */
+/**
+ * Заголовок с кнопкой сортировки по колонке [column] и текущим состоянием [sort];
+ * [className] — выравнивание заголовка по содержимому колонки.
+ */
 function SortHead({
   label,
   column,
   sort,
   onSort,
+  className,
 }: {
   readonly label: string;
+  readonly className?: string | undefined;
   readonly column: ClientSortColumn;
   readonly sort: ClientSortState;
   readonly onSort: (column: ClientSortColumn) => void;
@@ -242,7 +243,10 @@ function SortHead({
   const { t } = useI18n();
   const active = sort.column === column;
   return (
-    <TableHead aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+    <TableHead
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      className={className}
+    >
       <button
         type="button"
         onClick={() => {
@@ -280,6 +284,7 @@ function ColumnHead({
           column={sortable}
           sort={sort}
           onSort={onSort}
+          className={column.field === "balance" ? "text-right" : undefined}
         />
       );
     }
@@ -349,11 +354,13 @@ function StandardColumnCell({
         </div>
       );
     case "balance":
-      return <BalanceCell client={client} />;
-    case "groups": {
-      const names = client.groups.map((group) => group.name).join(", ");
-      return <div className="max-w-48 truncate">{names === "" ? "—" : names}</div>;
-    }
+      return (
+        <div className="text-right">
+          <ClientBalance balance={client.balance} />
+        </div>
+      );
+    case "groups":
+      return <GroupChips client={client} />;
   }
 }
 
@@ -363,17 +370,38 @@ function GenderCell({ client }: { readonly client: ClientListItem }) {
   return t(`gender.${client.gender}`);
 }
 
-/** Баланс клиента с подсветкой отрицательного. */
-function BalanceCell({ client }: { readonly client: ClientListItem }) {
-  const { format } = useI18n();
+/** Сколько групп клиента показывается чипами; остальные сворачиваются в «+N». */
+const VISIBLE_GROUPS = 2;
+
+/** Группы клиента [client] чипами-ссылками на страницу группы; лишние — чипом «+N» с подсказкой. */
+function GroupChips({ client }: { readonly client: ClientListItem }) {
+  const { t } = useI18n();
+  if (client.groups.length === 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  const hidden = client.groups.slice(VISIBLE_GROUPS);
+  const chip =
+    "relative z-10 inline-block h-6.5 max-w-36 truncate rounded-lg border bg-muted/50 px-2.5 text-xs leading-6 font-medium";
   return (
-    <div
-      className={cn(
-        "text-right tabular-nums",
-        client.balance.minorUnits < 0 ? "text-destructive" : undefined,
+    <div className="flex gap-1.5">
+      {client.groups.slice(0, VISIBLE_GROUPS).map((group) => (
+        <Link
+          key={group.id}
+          to="/groups/$groupId"
+          params={{ groupId: group.id }}
+          className={cn(chip, "text-primary hover:border-foreground/20")}
+        >
+          {group.name}
+        </Link>
+      ))}
+      {hidden.length > 0 && (
+        <span
+          title={hidden.map((group) => group.name).join(", ")}
+          className={cn(chip, "text-muted-foreground")}
+        >
+          {t("clients.groupsMore", { count: hidden.length })}
+        </span>
       )}
-    >
-      {format.money(client.balance)}
     </div>
   );
 }

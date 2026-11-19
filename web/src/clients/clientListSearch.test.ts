@@ -3,6 +3,8 @@ import { LocalDateSchema } from "@/api/generated/contracts";
 import { birthdaysShowAllSearch } from "@/home/dashboardSettings";
 import {
   birthdayRange,
+  clearedFilters,
+  clientListEmptyState,
   clientListFilters,
   clientListRequest,
   ClientListSearchSchema,
@@ -66,5 +68,34 @@ describe("дни рождения в адресе списка клиентов"
         ClientListSearchSchema.parse({ birthday: "invalid", sort: "nextBirthday" }),
       ),
     ).toMatchObject({ birthday: "none", sort: "name", dir: "asc" });
+  });
+});
+
+describe("пустое состояние списка клиентов", () => {
+  it.each([
+    ["вид «Все» без поиска", {}, "no-clients"],
+    ["пустой вид «Должники»", { debt: true }, "view-empty"],
+    ["пустой вид «Без группы»", { noGroup: true }, "view-empty"],
+    ["пустой вид «Архив»", { archived: true }, "view-empty"],
+    ["вид «Без группы» и фильтр «Женский»", { noGroup: true, gender: "female" }, "no-results"],
+    ["поиск «зз»", { q: "зз" }, "no-results"],
+    ["поиск в виде «Должники»", { q: "зз", debt: true }, "no-results"],
+  ] as const)("%s", (_, search, expected) => {
+    expect(clientListEmptyState(clientListFilters(search))).toBe(expected);
+  });
+});
+
+describe("сброс фильтров списка клиентов", () => {
+  it("оставляет в адресе только сортировку", () => {
+    const filters = clientListFilters({
+      q: "зз",
+      gender: "female",
+      noGroup: true,
+      birthday: "today",
+      archived: true,
+      sort: "balance",
+      dir: "desc",
+    });
+    expect(searchOf(clearedFilters(filters))).toEqual({ sort: "balance", dir: "desc" });
   });
 });

@@ -124,6 +124,32 @@ export function viewOf(filters: ClientListFilters): ClientViewId | null {
   return CLIENT_VIEW_IDS.find((id) => isSameFilters(views[id], filtersOnly)) ?? null;
 }
 
+/**
+ * Пустое состояние списка клиентов: клиентов нет вовсе, пуст выбранный системный вид
+ * или ничего не нашлось по поиску и фильтрам.
+ */
+export type ClientListEmptyState = "no-clients" | "view-empty" | "no-results";
+
+/**
+ * Какое пустое состояние показать, если по фильтрам [filters] клиентов нет: без поиска
+ * вид «Все» — `no-clients`, другой системный вид — `view-empty`, иначе — `no-results`.
+ */
+export function clientListEmptyState(filters: ClientListFilters): ClientListEmptyState {
+  if (filters.q !== "") {
+    return "no-results";
+  }
+  const view = viewOf(filters);
+  if (view === null) {
+    return "no-results";
+  }
+  return view === "all" ? "no-clients" : "view-empty";
+}
+
+/** Сброс фильтров [filters]: вид «Все» с пустым поиском и прежней сортировкой. */
+export function clearedFilters(filters: ClientListFilters): ClientListFilters {
+  return { ...clientListFilters({}), sort: filters.sort, dir: filters.dir };
+}
+
 /** Системные виды списка клиентов в устойчивом порядке. */
 export const CLIENT_VIEW_IDS: readonly ClientViewId[] = ["all", "debt", "no-group", "archived"];
 

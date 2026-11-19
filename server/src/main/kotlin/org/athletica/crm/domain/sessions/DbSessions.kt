@@ -59,9 +59,7 @@ class DbSessions(private val events: DomainEvents) : Sessions {
                 ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
         val distinctEmployees = employees.distinctBy { it.id }
         distinctEmployees.forEach { employee ->
-            if (!employee.availableBranches.contains(branchId)) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
+            ensure(employee.hasAccessTo(branchId)) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
         }
         requireHallInGroupBranch(groupId, hallId)
         tr

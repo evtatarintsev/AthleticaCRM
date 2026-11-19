@@ -495,6 +495,7 @@ export const AuthMeResponseSchema = z
     orgInfo: OrgInfoSchema,
     currentBranch: BranchDetailResponseSchema,
     permissions: z.array(UserPermissionSchema).readonly(),
+    emailVerificationPending: z.boolean(),
   })
   .readonly();
 export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;
@@ -1124,6 +1125,23 @@ export const CompleteSessionRequestSchema = z
   })
   .readonly();
 export type CompleteSessionRequest = z.output<typeof CompleteSessionRequestSchema>;
+
+export const ConfirmEmailRequestSchema = z
+  .object({
+    token: z.string(),
+  })
+  .readonly();
+export type ConfirmEmailRequest = z.output<typeof ConfirmEmailRequestSchema>;
+
+export const EmailConfirmationStatusSchema = z.enum(["confirmed", "already_confirmed"]);
+export type EmailConfirmationStatus = z.output<typeof EmailConfirmationStatusSchema>;
+
+export const ConfirmEmailResponseSchema = z
+  .object({
+    status: EmailConfirmationStatusSchema,
+  })
+  .readonly();
+export type ConfirmEmailResponse = z.output<typeof ConfirmEmailResponseSchema>;
 
 export const ConversationRequestSchema = z
   .object({
@@ -2780,6 +2798,17 @@ export const RescheduleSessionRequestSchema = z
   .readonly();
 export type RescheduleSessionRequest = z.output<typeof RescheduleSessionRequestSchema>;
 
+export const ResendEmailStatusSchema = z.enum(["queued", "already_confirmed", "rate_limited"]);
+export type ResendEmailStatus = z.output<typeof ResendEmailStatusSchema>;
+
+export const ResendEmailConfirmationResponseSchema = z
+  .object({
+    status: ResendEmailStatusSchema,
+    retryAfterSeconds: z.int32(),
+  })
+  .readonly();
+export type ResendEmailConfirmationResponse = z.output<typeof ResendEmailConfirmationResponseSchema>;
+
 export const RestoreClientRequestSchema = z
   .object({
     clientIds: z.array(ClientIdSchema).readonly(),
@@ -3565,6 +3594,13 @@ export const endpoints = {
     out: "json",
     response: AuthBranchesResponseSchema,
   },
+  "auth/confirm-email": {
+    method: "POST",
+    in: "body",
+    request: ConfirmEmailRequestSchema,
+    out: "json",
+    response: ConfirmEmailResponseSchema,
+  },
   "auth/login": {
     method: "POST",
     in: "body",
@@ -3592,6 +3628,13 @@ export const endpoints = {
     request: ChangePasswordRequestSchema,
     out: "empty",
     response: z.undefined(),
+  },
+  "auth/me/resend-email-confirmation": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ResendEmailConfirmationResponseSchema,
   },
   "auth/me/update": {
     method: "POST",

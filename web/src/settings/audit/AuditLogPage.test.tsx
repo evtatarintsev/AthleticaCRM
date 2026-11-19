@@ -8,6 +8,16 @@ const clientId = "0199a0b2-7c3e-7d2a-9f10-000000000021";
 const documentId = "0199a0b2-7c3e-7d2a-9f10-000000000031";
 
 describe("журнал действий", () => {
+  it("показывает подтверждение email в фильтре действий", async () => {
+    const api = appServer({
+      "audit/log/users": () => json({ items: [] }),
+      "audit/log": () => json({ items: [], total: 0, page: 0, pageSize: 50 }),
+    });
+    openApp("/settings/activity-log", api.fetch);
+    const user = userEvent.setup();
+    await user.selectOptions(await screen.findByLabelText("Действие"), "auth_verify_email");
+    expect(api.to("audit/log").at(-1)?.query.get("actionType")).toBe("auth_verify_email");
+  });
   it("показывает описание, ведёт документ к клиенту и фильтрует по автору", async () => {
     const api = appServer({
       "audit/log/users": () => json({ items: [{ id: actorId, username: "Анна" }] }),

@@ -119,6 +119,7 @@ export function session(
     orgInfo: { name: "Лига", balance: { minorUnits: 150000, currency: "RUB" } },
     currentBranch: branch,
     permissions,
+    emailVerificationPending: false,
   };
 }
 

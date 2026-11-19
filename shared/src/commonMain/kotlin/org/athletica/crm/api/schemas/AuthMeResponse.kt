@@ -27,6 +27,8 @@ data class AuthMeResponse(
     val currentBranch: BranchDetailResponse,
     /** Права, выданные сотруднику (эффективно, с учётом ролей и точечных правок). */
     val permissions: Set<UserPermission> = emptySet(),
+    /** Новый аккаунт ожидает подтверждения email; не ограничивает доступ. */
+    val emailVerificationPending: Boolean = false,
 )
 
 @Serializable

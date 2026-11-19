@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
+import jakarta.mail.internet.InternetAddress
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
@@ -42,6 +43,7 @@ class DbAuth(
     private val organizations: Organizations,
     private val branches: Branches,
     private val userSettings: UserDisplaySettings,
+    private val emailVerifications: EmailVerifications,
 ) : Auth {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun login(
@@ -130,6 +132,16 @@ class DbAuth(
     /** Регистрирует организацию и владельца, создаёт локализованные настройки по умолчанию. */
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser {
+        val validEmail =
+            request.login.length <= 254 &&
+                request.login.none { it == '\r' || it == '\n' } &&
+                runCatching {
+                    InternetAddress(request.login, true).also {
+                        it.validate()
+                        require(it.address == request.login)
+                    }
+                }.isSuccess
+        if (!validEmail) raise(CommonDomainError("INVALID_EMAIL", Messages.InvalidRegistrationEmail.localize(lang)))
         val orgId = OrgId.new()
         val userId = UserId.new()
         val employeeId = EmployeeId.new()
@@ -173,7 +185,9 @@ class DbAuth(
         DefaultLeadSources.createFor(orgId, lang)
 
         userSettings.new(userId)
-        return AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)
+        val user = AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)
+        emailVerifications.register(user, request.userName.value, lang)
+        return user
     }
 
     context(tr: Transaction, raise: Raise<AppError>)

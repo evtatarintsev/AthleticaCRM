@@ -1,5 +1,9 @@
 package org.athletica.crm.routes
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.athletica.crm.api.schemas.audit.AuditLogItem
 import org.athletica.crm.api.schemas.audit.AuditLogListRequest
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
@@ -71,7 +75,13 @@ private fun ActivityLogEntry.toAuditLogItem(): AuditLogItem {
             subjectTitle == null -> "${Messages.auditEntity(entityType, ctx.lang)} ${Messages.AuditSubjectUnavailable.localize(ctx.lang)}"
             else -> "${Messages.auditEntity(entityType, ctx.lang)} «${subject.title}»"
         }
-    val details = listOfNotNull(action, subjectText).joinToString(" ")
+    val verifiedEmail =
+        if (actionType == AuditActionType.AUTH_VERIFY_EMAIL) {
+            data?.let { runCatching { Json.parseToJsonElement(it).jsonObject["email"]?.jsonPrimitive?.contentOrNull }.getOrNull() }
+        } else {
+            null
+        }
+    val details = listOfNotNull(action, subjectText, verifiedEmail).joinToString(" ")
 
     return AuditLogItem(
         id = id,

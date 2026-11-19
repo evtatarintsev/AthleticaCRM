@@ -100,12 +100,12 @@ describe("cardErrors", () => {
     expect(cardErrors([card]).get(0)).toContain("noHall");
   });
 
-  it("окончание раньше начала — ошибка", () => {
+  it.each(["15:00", "17:00"])("окончание %s не позже начала — ошибка", (endAt) => {
     const card: SlotCard = {
       id: 0,
       days: new Set([day("MONDAY")]),
       startAt: "17:00",
-      endAt: "15:00",
+      endAt,
       hallId: hallA,
     };
     expect(cardErrors([card]).get(0)).toContain("endNotAfterStart");

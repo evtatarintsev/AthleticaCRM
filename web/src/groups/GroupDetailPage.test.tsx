@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
@@ -906,6 +906,26 @@ describe("расписание в карточке группы", () => {
     expect(within(sheet).getByText(ru["groups.schedule.errorNoDays"])).toBeVisible();
     expect(within(sheet).getByRole("button", { name: ru["action.save"] })).toBeDisabled();
   });
+
+  it.each(["14:00", "15:00"])(
+    "окончание %s не позже начала запрещает сохранение без запроса",
+    async (endAt) => {
+      const server = groupServer(scheduled);
+      openApp(`/groups/${scheduled.id}`, server.fetch);
+      const user = userEvent.setup();
+
+      const sheet = await openSchedule(user);
+      fireEvent.change(within(sheet).getByLabelText(ru["groups.schedule.endTime"]), {
+        target: { value: endAt },
+      });
+
+      expect(within(sheet).getByText(ru["groups.schedule.errorEndBeforeStart"])).toBeVisible();
+      const save = within(sheet).getByRole("button", { name: ru["action.save"] });
+      expect(save).toBeDisabled();
+      await user.click(save);
+      expect(server.to("groups/set-schedule")).toHaveLength(0);
+    },
+  );
 
   it("«Отмена» после правки просит подтверждение и не меняет расписание", async () => {
     const server = groupServer(scheduled);

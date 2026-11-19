@@ -2,6 +2,7 @@ package org.athletica.crm.schedule
 
 import arrow.core.Either
 import arrow.core.raise.context.either
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -17,6 +18,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.configureServer
@@ -96,13 +98,14 @@ class GroupScheduleRouteTest {
     private suspend fun ApplicationTestBuilder.postJson(path: String, body: String) =
         client.post(path) {
             header(HttpHeaders.Authorization, "Bearer $token")
+            header(HttpHeaders.AcceptLanguage, "ru")
             contentType(ContentType.Application.Json)
             setBody(body)
         }
 
     private suspend fun ApplicationTestBuilder.createGroup(id: GroupId) = postJson("/api/groups/create", """{"id":"$id","name":"Йога"}""")
 
-    private fun slotsJson() = """[{"dayOfWeek":"MONDAY","startAt":"10:00","endAt":"11:00","hallId":"$hallId"}]"""
+    private fun slotsJson(endAt: String = "11:00") = """[{"dayOfWeek":"MONDAY","startAt":"10:00","endAt":"$endAt","hallId":"$hallId"}]"""
 
     @Test
     fun `расписание с будущей датой не действует сегодня и объявлено как изменение`() =
@@ -162,6 +165,43 @@ class GroupScheduleRouteTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status)
                 assertTrue(response.bodyAsText().contains("SCHEDULE_EFFECTIVE_FROM_IN_PAST"))
+            }
+        }
+
+    @Test
+    fun `некорректное время возвращает 400 и сохраняет текущее и отложенное расписание`() =
+        runTest {
+            signUpWithHall()
+            val groupId = GroupId.new()
+            testApplication {
+                application { context(di) { configureServer() } }
+                assertEquals(HttpStatusCode.OK, createGroup(groupId).status)
+                val initial = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
+                assertEquals(HttpStatusCode.OK, initial.status)
+                val effectiveFrom = today.plusDays(30)
+                val planned =
+                    postJson(
+                        "/api/groups/set-schedule",
+                        """{"groupId":"$groupId","effectiveFrom":"$effectiveFrom","slots":${slotsJson("12:00")}}""",
+                    )
+                assertEquals(HttpStatusCode.OK, planned.status)
+                val before = json.decodeFromString<GroupDetailResponse>(planned.bodyAsText())
+                assertEquals(effectiveFrom, before.scheduleChangeAt)
+
+                listOf("09:00", "10:00").forEach { endAt ->
+                    val response = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson(endAt)}}""")
+
+                    assertEquals(HttpStatusCode.BadRequest, response.status)
+                    val error = json.decodeFromString<ErrorResponse>(response.bodyAsText())
+                    assertEquals("INVALID_SCHEDULE_TIME", error.code)
+                    assertEquals("Время окончания должно быть позже времени начала: 10:00 – $endAt", error.message)
+                    val detail =
+                        client.get("/api/groups/detail?id=$groupId") {
+                            header(HttpHeaders.Authorization, "Bearer $token")
+                        }
+                    assertEquals(HttpStatusCode.OK, detail.status)
+                    assertEquals(before, json.decodeFromString<GroupDetailResponse>(detail.bodyAsText()))
+                }
             }
         }
 

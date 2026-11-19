@@ -129,7 +129,7 @@ export function ClientDetailPage({
   if (client.data === undefined)
     return (
       <section className="max-w-6xl space-y-4">
-        <BackLink to="/clients" />
+        <BackLink link={{ to: "/clients" }} />
         <PageHeader title={t("clients.title")} />
         {client.isPending && <Skeleton className="h-64 w-full" />}
         {client.isError && <FormAlert message={t("clients.loadClientError")} />}
@@ -151,7 +151,7 @@ export function ClientDetailPage({
   };
   return (
     <section className="max-w-6xl space-y-4 pb-24 sm:pb-16">
-      <BackLink to="/clients" />
+      <BackLink link={{ to: "/clients" }} />
       <ClientCardHeader
         api={api}
         client={data}

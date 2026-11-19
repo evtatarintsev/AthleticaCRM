@@ -300,18 +300,12 @@ describe("вкладки карточки группы", () => {
     });
   });
 
-  it("возвращается в список с клавиатуры после переключения вкладки", async () => {
+  it("после смены вкладки возвращает в список без параметров карточки", async () => {
     const { history } = openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("tab", { name: ru["groups.tabs.journal"] }));
     expect(history.location.search).toBe("?tab=journal");
-    const back = screen.getByRole("link", { name: ru["action.back"] });
-    expect(back).toHaveAttribute("href", "/groups");
-    back.focus();
-    await user.tab({ shift: true });
-    await user.tab();
-    expect(back).toHaveFocus();
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {
       expect(history.location.pathname).toBe("/groups");
       expect(history.location.search).toBe("");

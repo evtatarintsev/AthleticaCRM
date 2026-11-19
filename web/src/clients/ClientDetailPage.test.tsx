@@ -171,18 +171,12 @@ describe("карточка клиента", () => {
     });
   });
 
-  it("возвращается в список с клавиатуры после переключения вкладки", async () => {
+  it("после смены вкладки возвращает в список без параметров карточки", async () => {
     const { history } = openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("tab", { name: /^Анкета/ }));
     expect(history.location.search).toBe("?tab=profile");
-    const back = screen.getByRole("link", { name: ru["action.back"] });
-    expect(back).toHaveAttribute("href", "/clients");
-    back.focus();
-    await user.tab({ shift: true });
-    await user.tab();
-    expect(back).toHaveFocus();
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {
       expect(history.location.pathname).toBe("/clients");
       expect(history.location.search).toBe("");

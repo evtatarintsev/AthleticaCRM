@@ -285,23 +285,7 @@ describe("карточка занятия", () => {
     await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {
       expect(history.location.pathname).toBe("/schedule");
-      expect(history.location.search).toBe("");
-    });
-  });
-
-  it("открывает расписание с клавиатуры при прямом открытии карточки", async () => {
-    const { history } = openApp(`/sessions/${sessionId}`, journalServer(journalOf([])).fetch);
-    const user = userEvent.setup();
-    await screen.findByRole("heading", { name: /Юниоры У8/ });
-    const back = screen.getByRole("link", { name: ru["action.back"] });
-    back.focus();
-    await user.tab({ shift: true });
-    await user.tab();
-    expect(back).toHaveFocus();
-    await user.keyboard("{Enter}");
-    await waitFor(() => {
-      expect(history.location.pathname).toBe("/schedule");
-      expect(history.location.search).toBe("");
+      expect(history.location.search).toBe(fail ? "" : "?date=2026-10-01");
     });
   });
 

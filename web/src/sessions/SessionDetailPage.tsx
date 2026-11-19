@@ -81,7 +81,7 @@ export function SessionDetailPage({
   if (journal.isPending) {
     return (
       <section className="max-w-6xl space-y-4">
-        <BackLink to="/schedule" />
+        <BackLink link={{ to: "/schedule" }} />
         <Skeleton className="h-8 w-24" />
         <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
           <Skeleton className="h-96 w-full" />
@@ -93,7 +93,7 @@ export function SessionDetailPage({
   if (journal.data === undefined) {
     return (
       <section className="max-w-6xl space-y-4">
-        <BackLink to="/schedule" />
+        <BackLink link={{ to: "/schedule" }} />
         <FormAlert message={t("sessionDetail.loadError")} />
       </section>
     );
@@ -200,7 +200,7 @@ function SessionJournalCard({
 
   return (
     <section className="max-w-6xl space-y-4 pb-16">
-      <BackLink to="/schedule" />
+      <BackLink link={{ to: "/schedule", search: { date: journal.date } }} />
 
       <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <aside className="lg:sticky lg:top-4">

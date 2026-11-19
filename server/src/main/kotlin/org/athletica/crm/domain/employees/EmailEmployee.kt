@@ -34,7 +34,6 @@ class EmailEmployee(private val delegate: Employee, private val orgEmails: OrgEm
             """.trimIndent()
 
         orgEmails.schedule(
-            orgId = ctx.orgId,
             to = listOf(email),
             subject = "Доступ в AthleticaCRM",
             textBody = textBody,

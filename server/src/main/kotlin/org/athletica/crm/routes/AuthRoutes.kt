@@ -15,6 +15,8 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.post
 import org.athletica.crm.api.schemas.auth.AuthBranchesRequest
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
+import org.athletica.crm.api.schemas.auth.ConfirmEmailRequest
+import org.athletica.crm.api.schemas.auth.ConfirmEmailResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
@@ -28,6 +30,7 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
@@ -35,7 +38,14 @@ import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
 context(db: Database, jwtConfig: JwtConfig)
-fun Route.authRoutes(auth: Auth) {
+fun Route.authRoutes(auth: Auth, emailVerifications: EmailVerifications) {
+    post("/auth/confirm-email") {
+        either {
+            val request = call.body<ConfirmEmailRequest>()
+            db.transaction { emailVerifications.confirm(request.token, call.langFromRequest(), call.clientIp()) }
+        }.fold({ call.respondError(it) }, { call.respond(it) })
+    }.contract(postContract<ConfirmEmailRequest, ConfirmEmailResponse>())
+
     post("/auth/branches") {
         val request = call.receive<AuthBranchesRequest>()
         either {

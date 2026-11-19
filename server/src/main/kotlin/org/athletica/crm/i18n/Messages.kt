@@ -84,6 +84,61 @@ interface PluralKey {
 }
 
 object Messages {
+    object RegistrationEmailTitle : LocalizationKey {
+        override val ru = "Добро пожаловать в AthleticaCRM"
+        override val en = "Welcome to AthleticaCRM"
+    }
+
+    object EmailGreeting : LocalizationTemplate1<String> {
+        override val ru = { name: String -> "Здравствуйте, $name!" }
+        override val en = { name: String -> "Hello, $name!" }
+    }
+
+    object RegistrationEmailBody : LocalizationKey {
+        override val ru = "Спасибо за регистрацию! Подтвердите ваш email. Вы уже можете работать в CRM без ограничений."
+        override val en = "Thank you for signing up! Please confirm your email. You can already use the CRM without restrictions."
+    }
+
+    object EmailConfirmationExpiry : LocalizationKey {
+        override val ru = "Ссылка действует 24 часа. Если кнопка не работает, откройте ссылку ниже."
+        override val en = "The link expires in 24 hours. If the button does not work, open the link below."
+    }
+
+    object ConfirmEmailAction : LocalizationKey {
+        override val ru = "Подтвердить email"
+        override val en = "Confirm email"
+    }
+
+    object RegistrationEmailFooter : LocalizationKey {
+        override val ru = "Вы получили письмо, потому что этот адрес указан при регистрации в AthleticaCRM. Если это были не вы, просто проигнорируйте письмо."
+        override val en = "You received this email because this address was used to sign up for AthleticaCRM. If this was not you, simply ignore this email."
+    }
+
+    object EmailConfirmedTitle : LocalizationKey {
+        override val ru = "Email подтверждён"
+        override val en = "Email confirmed"
+    }
+
+    object EmailConfirmedBody : LocalizationTemplate1<String> {
+        override val ru = { email: String -> "Адрес $email успешно подтверждён." }
+        override val en = { email: String -> "The address $email has been confirmed." }
+    }
+
+    object InvalidEmailConfirmation : LocalizationKey {
+        override val ru = "Ссылка недействительна или срок её действия истёк. Войдите в CRM и запросите новое письмо."
+        override val en = "The link is invalid or expired. Sign in to the CRM and request a new email."
+    }
+
+    object InvalidRegistrationEmail : LocalizationKey {
+        override val ru = "Укажите корректный email"
+        override val en = "Enter a valid email"
+    }
+
+    object EmailVerificationUnavailable : LocalizationKey {
+        override val ru = "Подтверждение email для этого аккаунта не запрашивалось"
+        override val en = "Email confirmation was not requested for this account"
+    }
+
     /** Короткое название типа действия для описания события журнала. */
     fun auditAction(action: AuditActionType, lang: Lang): String =
         when (lang) {
@@ -95,6 +150,7 @@ object Messages {
                     AuditActionType.AUTH_LOGIN -> "вход в систему"
                     AuditActionType.AUTH_LOGOUT -> "выход из системы"
                     AuditActionType.AUTH_SIGNUP -> "регистрация"
+                    AuditActionType.AUTH_VERIFY_EMAIL -> "подтверждение email"
                     AuditActionType.MESSAGE_SEND -> "отправка сообщения"
                     AuditActionType.EXPORT -> "экспорт данных"
                     AuditActionType.IMPORT -> "импорт данных"
@@ -109,6 +165,7 @@ object Messages {
                     AuditActionType.AUTH_LOGIN -> "signed in"
                     AuditActionType.AUTH_LOGOUT -> "signed out"
                     AuditActionType.AUTH_SIGNUP -> "signed up"
+                    AuditActionType.AUTH_VERIFY_EMAIL -> "confirmed email"
                     AuditActionType.MESSAGE_SEND -> "sent a message"
                     AuditActionType.EXPORT -> "exported data"
                     AuditActionType.IMPORT -> "imported data"

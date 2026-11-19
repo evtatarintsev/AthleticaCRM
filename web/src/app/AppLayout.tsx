@@ -4,6 +4,7 @@ import { MenuIcon } from "lucide-react";
 import { useState } from "react";
 import { AssistantHost } from "@/assistant/AssistantHost";
 import type { ApiClient } from "@/api/client";
+import { EmailVerificationBanner } from "@/auth/EmailVerificationBanner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useI18n } from "@/i18n/context";
@@ -70,6 +71,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
             />
           </div>
         </header>
+        {me.emailVerificationPending && <EmailVerificationBanner api={api} email={me.username} />}
         <main className="min-w-0 flex-1 px-4 py-6 lg:px-8">
           <Outlet />
         </main>

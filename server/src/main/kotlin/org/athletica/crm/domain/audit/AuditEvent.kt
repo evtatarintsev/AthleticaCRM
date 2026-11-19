@@ -17,6 +17,7 @@ enum class AuditActionType(val code: String) {
     AUTH_LOGIN("auth_login"),
     AUTH_LOGOUT("auth_logout"),
     AUTH_SIGNUP("auth_signup"),
+    AUTH_VERIFY_EMAIL("auth_verify_email"),
     MESSAGE_SEND("message_send"),
     EXPORT("export"),
     IMPORT("import"),

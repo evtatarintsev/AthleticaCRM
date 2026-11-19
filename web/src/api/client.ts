@@ -69,6 +69,7 @@ const WITHOUT_REFRESH: ReadonlySet<EndpointPath> = new Set<EndpointPath>([
   "auth/login",
   "auth/branches",
   "auth/sign-up",
+  "auth/confirm-email",
   "auth/refresh-token",
 ]);
 
@@ -179,9 +180,15 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     }
     const { response } = sent;
     if (response.ok) {
+      const payload = await body(response, endpoints[path].out);
       const decoded = z.safeParse(
         endpoints[path].response,
-        await body(response, endpoints[path].out),
+        path === "auth/me" &&
+          typeof payload === "object" &&
+          payload !== null &&
+          !Array.isArray(payload)
+          ? { emailVerificationPending: false, ...payload }
+          : payload,
       );
       if (!decoded.success) {
         const issues = decoded.error.issues.map(

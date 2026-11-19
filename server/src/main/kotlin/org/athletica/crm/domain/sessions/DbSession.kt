@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.sessions
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -166,9 +167,7 @@ class DbSession(
                 ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
         val distinctEmployees = employees.distinctBy { it.id }
         distinctEmployees.forEach { employee ->
-            if (!employee.availableBranches.contains(branchId)) {
-                raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
-            }
+            ensure(employee.hasAccessTo(branchId)) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
         }
         tr
             .sql("DELETE FROM session_employees WHERE session_id = :sessionId")

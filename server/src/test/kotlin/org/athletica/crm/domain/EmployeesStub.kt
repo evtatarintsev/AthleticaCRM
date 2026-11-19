@@ -103,5 +103,5 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
     override suspend fun byIds(ids: List<EmployeeId>): List<Employee> = employees.filter { it.id in ids }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> = employees.filter { it.isActive && it.availableBranches.contains(branchId) }.map { it.id }
+    override suspend fun activeIdsWithAccessTo(branchId: BranchId): List<EmployeeId> = employees.filter { it.isActive && it.hasAccessTo(branchId) }.map { it.id }
 }

@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.auth
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.ChangePasswordRequest
@@ -85,9 +86,7 @@ class DbAuth(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun switchBranch(branchId: BranchId): AuthenticatedUser {
-        if (!ctx.employee.availableBranches.contains(branchId)) {
-            raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
-        }
+        ensure(ctx.employee.hasAccessTo(branchId)) { CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied") }
         return userById(ctx.userId, branchId)
     }
 

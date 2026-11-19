@@ -1,8 +1,15 @@
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { Columns3Icon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CheckIcon,
+  Columns3Icon,
+  PlusIcon,
+  SearchIcon,
+  SlidersHorizontalIcon,
+  UsersIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
 import { PageHeader } from "@/ui/PageHeader";
@@ -20,6 +28,8 @@ import { ClientExportDialog } from "./ClientExportDialog";
 import {
   activeFilterCount,
   CLIENT_VIEW_IDS,
+  clearedFilters,
+  clientListEmptyState,
   clientListFilters,
   searchOf,
   viewOf,
@@ -153,16 +163,17 @@ export function ClientsPage({
 
   const view = viewOf(filters);
   const filterCount = activeFilterCount(filters);
-  const filtered = filters.q !== "" || filterCount > 0;
 
   return (
     <section className="pb-24">
       <PageHeader
         title={t("clients.title")}
+        description={pages.data === undefined ? undefined : t("clients.count", { count: total })}
         actions={
-          <>
+          <div className="flex gap-2">
             <Button
               variant="outline"
+              className="hidden md:inline-flex"
               onClick={() => {
                 setColumnsOpen(true);
               }}
@@ -170,18 +181,18 @@ export function ClientsPage({
               <Columns3Icon aria-hidden />
               {t("clients.columns")}
             </Button>
-            <Button asChild>
+            <Button asChild className="max-md:w-9 max-md:has-[>svg]:px-0">
               <Link to="/clients/new">
                 <PlusIcon aria-hidden />
-                {t("clients.create")}
+                <span className="sr-only md:not-sr-only">{t("clients.create")}</span>
               </Link>
             </Button>
-          </>
+          </div>
         }
       />
 
       <div className="mb-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <SearchIcon
               aria-hidden
@@ -200,12 +211,13 @@ export function ClientsPage({
           </div>
           <Button
             variant="outline"
+            className="max-md:has-[>svg]:px-2.5"
             onClick={() => {
               setFiltersOpen(true);
             }}
           >
             <SlidersHorizontalIcon aria-hidden />
-            {t("clients.filters")}
+            <span className="sr-only md:not-sr-only">{t("clients.filters")}</span>
             {filterCount > 0 && (
               <span className="rounded-full bg-primary text-primary-foreground px-2 text-xs tabular-nums">
                 {filterCount}
@@ -214,10 +226,11 @@ export function ClientsPage({
           </Button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {t("clients.count", { count: total })}
-          </span>
+        <div
+          role="group"
+          aria-label={t("clients.viewsLabel")}
+          className="sticky top-14 z-30 -mx-4 flex gap-2 overflow-x-auto bg-background px-4 py-2 [scrollbar-width:none] md:static md:mx-0 md:flex-wrap md:p-0"
+        >
           {CLIENT_VIEW_IDS.map((id) => (
             <button
               key={id}
@@ -228,8 +241,8 @@ export function ClientsPage({
               }}
               className={
                 view === id
-                  ? "rounded-full border border-primary bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-                  : "rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
+                  ? "shrink-0 rounded-full border border-primary bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                  : "shrink-0 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
               }
             >
               {t(viewLabelKey(id))}
@@ -293,17 +306,21 @@ export function ClientsPage({
       </div>
 
       {pages.isPending && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
+        <div className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
         </div>
       )}
       {pages.isError && <FormAlert message={t("clients.loadError")} />}
       {pages.data !== undefined && clients.length === 0 && (
-        <p className="py-12 text-center text-muted-foreground">
-          {t(filtered ? "clients.noResults" : "clients.empty")}
-        </p>
+        <ClientListEmpty
+          filters={filters}
+          onReset={() => {
+            setFilters(clearedFilters(filters));
+          }}
+        />
       )}
       {clients.length > 0 && (
         <ClientListTable
@@ -386,6 +403,93 @@ export function ClientsPage({
       />
     </section>
   );
+}
+
+/**
+ * Пустой список по фильтрам [filters]: приглашение создать первого клиента, пустой
+ * системный вид или «ничего не найдено» с действием [onReset].
+ */
+function ClientListEmpty({
+  filters,
+  onReset,
+}: {
+  readonly filters: ClientListFilters;
+  readonly onReset: () => void;
+}) {
+  const { t } = useI18n();
+  const view = viewOf(filters);
+  switch (clientListEmptyState(filters)) {
+    case "no-clients":
+      return (
+        <EmptyCard icon={<UsersIcon aria-hidden className="size-5" />} text={t("clients.empty")}>
+          <Button asChild size="sm">
+            <Link to="/clients/new">
+              <PlusIcon aria-hidden />
+              {t("clients.create")}
+            </Link>
+          </Button>
+        </EmptyCard>
+      );
+    case "view-empty":
+      return (
+        <EmptyCard
+          icon={<CheckIcon aria-hidden className="size-5" />}
+          iconClassName="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+          text={view === null || view === "all" ? "" : t(emptyViewKey(view))}
+        />
+      );
+    case "no-results":
+      return (
+        <EmptyCard
+          icon={<SearchIcon aria-hidden className="size-5" />}
+          text={t("clients.noResults")}
+        >
+          <Button variant="outline" size="sm" onClick={onReset}>
+            {t("clients.resetFilters")}
+          </Button>
+        </EmptyCard>
+      );
+  }
+}
+
+/** Карточка пустого списка: значок [icon] в круге [iconClassName], текст [text] и действие [children]. */
+function EmptyCard({
+  icon,
+  iconClassName = "bg-muted",
+  text,
+  children,
+}: {
+  readonly icon: ReactNode;
+  readonly iconClassName?: string;
+  readonly text: string;
+  readonly children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2.5 rounded-xl border bg-card px-4 py-12 text-center text-sm text-muted-foreground shadow-xs">
+      <span
+        className={cn(
+          "inline-flex size-11 items-center justify-center rounded-full",
+          iconClassName,
+        )}
+      >
+        {icon}
+      </span>
+      {text}
+      {children}
+    </div>
+  );
+}
+
+/** Ключ текста пустого системного вида [view] в словаре. */
+function emptyViewKey(view: Exclude<ClientViewId, "all">): PlainMessageKey {
+  switch (view) {
+    case "debt":
+      return "clients.emptyView.debt";
+    case "no-group":
+      return "clients.emptyView.noGroup";
+    case "archived":
+      return "clients.emptyView.archived";
+  }
 }
 
 /** Ключ подписи системного вида [view] в словаре. */

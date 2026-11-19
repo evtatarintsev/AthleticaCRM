@@ -117,7 +117,7 @@ a.gchip:hover{border-color:var(--line-strong)}
   .wrap{gap:14px}
   .hide-sm{display:none !important}
   .show-sm{display:revert}
-  .tabs{position:sticky;top:0;z-index:4;margin:0 -16px;padding:0 10px}
+  .views{position:sticky;top:0;z-index:4;margin:0 -16px;padding:0 10px;background:var(--bg)}
   .row.head{display:none}
   .card{border-radius:12px}
   .row{grid-template-columns:20px minmax(0,1fr) auto;gap:4px 12px;padding:12px 14px}
@@ -172,6 +172,12 @@ const VIEWS = {
 
 const state = { phone:false, view:'all', q:'', female:false, sel:new Set() };
 
+function filteredClients() {
+  return CLIENTS.filter(VIEWS[state.view].test)
+    .filter(c => !state.female || c.g === 'Женский')
+    .filter(c => c.name.toLowerCase().includes(state.q.toLowerCase()));
+}
+
 function groups(c) {
   if (!c.groups.length) { return '<span class="dash">—</span>'; }
   const shown = c.groups.slice(0, 2).map(g => `<a href="#" class="gchip" data-act="toast" data-v="Страница группы «${g}»">${g}</a>`).join('');
@@ -212,9 +218,7 @@ function render() {
       <div class="grp"><span>Экран:</span><div class="seg">${[['0','Компьютер'],['1','Телефон']].map(([k, l]) => `<button aria-pressed="${state.phone === (k === '1')}" data-act="phone" data-v="${k}">${l}</button>`).join('')}</div></div>
     </div>`;
 
-  const list = CLIENTS.filter(VIEWS[state.view].test)
-    .filter(c => !state.female || c.g === 'Женский')
-    .filter(c => c.name.toLowerCase().includes(state.q.toLowerCase()));
+  const list = filteredClients();
   const allSel = list.length > 0 && list.every(c => state.sel.has(c.id));
   const head = `<div class="row head"><input type="checkbox" data-act="selall" ${allSel ? 'checked' : ''} aria-label="Выбрать всех"><button class="sort">Имя ${I.up}</button><button class="sort" style="justify-self:center">Дата рождения</button><span class="c">Пол</span><span>Группы</span><button class="sort r">Баланс</button><span></span></div>`;
   const body = list.length ? head + list.map(row).join('') : emptyState();
@@ -234,7 +238,7 @@ function render() {
       <label class="search">${I.search}<input type="search" id="q" placeholder="Поиск по клиентам" value="${state.q}"></label>
       <button class="btn" data-act="female" aria-label="Фильтры">${I.sliders}<span class="hide-sm">Фильтры</span>${state.female ? '<span class="cnt-pill">1</span>' : ''}</button>
     </div>
-    <div>
+    <div class="views">
       <div class="tabs">${Object.entries(VIEWS).map(([k, v]) => `<button aria-pressed="${state.view === k && !state.female}" data-act="view" data-v="${k}">${v.label}</button>`).join('')}</div>
       ${state.female ? `<div class="fchips" style="margin-top:12px"><button class="fchip" data-act="female">Женский<span>${I.x}</span></button></div>` : ''}
     </div>
@@ -266,7 +270,7 @@ document.addEventListener('click', e => {
   if (act === 'view') { state.view = v; state.female = false; state.sel.clear(); }
   if (act === 'female') { state.female = !state.female; }
   if (act === 'reset') { state.q = ''; state.female = false; state.view = 'all'; }
-  if (act === 'selall') { const list = CLIENTS.filter(VIEWS[state.view].test); const all = list.every(c => state.sel.has(c.id)); list.forEach(c => all ? state.sel.delete(c.id) : state.sel.add(c.id)); }
+  if (act === 'selall') { const list = filteredClients(); const all = list.every(c => state.sel.has(c.id)); list.forEach(c => all ? state.sel.delete(c.id) : state.sel.add(c.id)); }
   if (act === 'toast') { toast(v); return; }
   render();
 });

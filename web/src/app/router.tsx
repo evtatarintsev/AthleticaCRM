@@ -118,11 +118,13 @@ const confirmEmailRoute = createRoute({
     const { api } = confirmEmailRoute.useRouteContext();
     const hash = useLocation({ select: (location) => location.hash });
     const navigate = confirmEmailRoute.useNavigate();
-    const [token] = useState(() => new URLSearchParams(hash).get("token") ?? "");
+    const incomingToken = new URLSearchParams(hash).get("token") ?? "";
+    const [token, setToken] = useState(incomingToken);
+    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
     useEffect(() => {
       if (hash !== "") void navigate({ hash: "", replace: true });
     }, [hash, navigate]);
-    return <ConfirmEmailPage api={api} token={token} />;
+    return <ConfirmEmailPage key={token} api={api} token={token} />;
   },
 });
 

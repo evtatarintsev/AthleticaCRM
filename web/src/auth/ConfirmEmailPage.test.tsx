@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { AuthMeResponseSchema } from "@/api/generated/contracts";
@@ -60,6 +60,51 @@ describe("подтверждение email", () => {
     expect(history.location.pathname).toBe("/confirm-email");
     expect(api.requests.map((request) => request.path)).toEqual(["auth/confirm-email"]);
   });
+
+  it.each(["expired", "confirmed"] as const)(
+    "новая ссылка в той же вкладке заменяет токен и сбрасывает результат: %s",
+    async (previousResult) => {
+      let expired = previousResult === "expired";
+      const api = fakeServer({
+        "auth/confirm-email": () =>
+          expired
+            ? json(
+                {
+                  code: "INVALID_EMAIL_CONFIRMATION",
+                  message: ru["emailVerification.invalidLink"],
+                  fields: null,
+                },
+                400,
+              )
+            : json({ status: "confirmed" }),
+      });
+      const { history } = openApp("/confirm-email#token=old-link", api.fetch);
+      const user = userEvent.setup();
+      await user.click(
+        await screen.findByRole("button", { name: ru["emailVerification.confirm"] }),
+      );
+      await screen.findByRole(expired ? "alert" : "status");
+
+      expired = false;
+      act(() => {
+        history.push("/confirm-email#token=replacement-link");
+      });
+      await waitFor(() => {
+        expect(history.location.hash).toBe("");
+      });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(api.to("auth/confirm-email")).toHaveLength(1);
+      await user.click(screen.getByRole("button", { name: ru["emailVerification.confirm"] }));
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        ru["emailVerification.confirmed"],
+      );
+      expect(api.to("auth/confirm-email").map((request) => request.body)).toEqual([
+        { token: "old-link" },
+        { token: "replacement-link" },
+      ]);
+    },
+  );
 
   it("отсутствующая ссылка не вызывает API", async () => {
     const api = fakeServer({});

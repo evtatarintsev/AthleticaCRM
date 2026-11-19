@@ -184,7 +184,7 @@ function ScheduleBody({
           >
             <ChevronLeftIcon aria-hidden />
           </Button>
-          <span className="flex-1 px-1.5 text-center font-semibold whitespace-nowrap tabular-nums md:flex-none">
+          <span className="min-w-0 flex-1 px-1.5 text-center font-semibold tabular-nums md:flex-none md:whitespace-nowrap">
             {periodLabel}
           </span>
           <Button

@@ -226,9 +226,10 @@ export function ClientsPage({
           </Button>
         </div>
 
-        <nav
+        <div
+          role="group"
           aria-label={t("clients.viewsLabel")}
-          className="sticky top-14 z-30 -mx-4 flex gap-1 overflow-x-auto border-b bg-background px-4 [scrollbar-width:none] md:static md:mx-0 md:px-0"
+          className="sticky top-14 z-30 -mx-4 flex gap-2 overflow-x-auto bg-background px-4 py-2 [scrollbar-width:none] md:static md:mx-0 md:flex-wrap md:p-0"
         >
           {CLIENT_VIEW_IDS.map((id) => (
             <button
@@ -238,12 +239,16 @@ export function ClientsPage({
               onClick={() => {
                 applyView(id);
               }}
-              className="relative h-11 shrink-0 px-3 text-sm font-medium whitespace-nowrap text-foreground/60 outline-none after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-foreground after:opacity-0 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:text-foreground aria-pressed:after:opacity-100"
+              className={
+                view === id
+                  ? "shrink-0 rounded-full border border-primary bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                  : "shrink-0 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
+              }
             >
               {t(viewLabelKey(id))}
             </button>
           ))}
-        </nav>
+        </div>
 
         {(filters.gender !== "all" ||
           filters.debt ||

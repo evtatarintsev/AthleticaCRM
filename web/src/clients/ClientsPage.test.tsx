@@ -160,9 +160,7 @@ describe("список клиентов", () => {
     const heading = screen.getByRole("heading", { level: 1, name: ru["clients.title"] });
     expect(heading.parentElement).toHaveTextContent("2 клиента");
     expect(
-      within(screen.getByRole("navigation", { name: ru["clients.viewsLabel"] })).queryByText(
-        /клиент/,
-      ),
+      within(screen.getByRole("group", { name: ru["clients.viewsLabel"] })).queryByText(/клиент/),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: ru["clients.create"] })).toHaveAttribute(
       "href",

@@ -23,6 +23,8 @@ Dev-nginx (`docker-compose.dev.yaml`) отдаёт лендинг на `athletic
 `app.athletica.crm` — фронт (Vite, :5173) и API (Ktor, :8080), — а также RustFS по HTTPS на самоподписанном сертификате. HTTPS нужен, чтобы страница была secure context
 (без него в браузере нет `crypto.randomUUID`, `navigator.clipboard` и т.п.).
 
+0. Java и Node ставит [mise](https://mise.jdx.dev): `mise trust && mise install`
+   (список задач — `mise tasks`).
 1. Хосты в `/etc/hosts`:
    ```
    127.0.0.1 athletica.crm app.athletica.crm minio.athletica.crm console.minio.athletica.crm
@@ -47,11 +49,11 @@ Dev-nginx (`docker-compose.dev.yaml`) отдаёт лендинг на `athletic
 5. Бэкенд с `MINIO_PUBLIC_ENDPOINT=https://minio.athletica.crm` (`MINIO_ENDPOINT` остаётся
    `http://localhost:9000`):
    ```bash
-   ./gradlew server:run
+   mise run server
    ```
 6. Фронтенд:
    ```bash
-   cd web && npm ci && npm run dev
+   cd web && npm ci && cd .. && mise run web
    ```
 7. Открыть https://app.athletica.crm/ (CRM) или https://athletica.crm/ (лендинг).
 

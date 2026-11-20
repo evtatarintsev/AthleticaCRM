@@ -62,7 +62,7 @@
 
 ## 10. Интеграционная проверка
 
-- [ ] 10.1 `./gradlew build`, `./gradlew ktlintFormat`, в `web/` — `npm run format` и `npm run check` проходят; `web/src/api/generated/` закоммичен
+- [x] 10.1 `./gradlew build`, `./gradlew ktlintFormat`, в `web/` — `npm run format` и `npm run check` проходят; `web/src/api/generated/` закоммичен
 - [x] 10.2 Сквозной прогон в браузере: выдать абонемент с оплатой и переплатой, оплатить услугу с аванса, сделать возврат с выплатой, внести расход и перевод, сверить остатки касс, баланс клиента и ДДС за месяц
 
 ## Workflow follow-up

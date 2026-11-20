@@ -23,6 +23,7 @@ import { parseMoney } from "@/lib/money";
 import { uuidv7 } from "@/lib/uuid";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery, myBranchesQuery } from "@/query/queries";
+import { useSession } from "@/query/session";
 import { EditSheet } from "@/ui/EditSheet";
 import { FinanceForm } from "./FinanceForm";
 
@@ -150,7 +151,8 @@ function CashAccountForm({
   const [kind, setKind] = useState(initial?.kind ?? "CASH");
   const [branch, setBranch] = useState<string>(initial?.branchId ?? "");
   const [opening, setOpening] = useState("0");
-  const [date, setDate] = useState<string>(todayLocalDate());
+  const today = todayLocalDate(useSession(api).orgInfo.timezone);
+  const [date, setDate] = useState<string>(today);
   const [invalid, setInvalid] = useState(false);
   return (
     <FinanceForm
@@ -159,7 +161,7 @@ function CashAccountForm({
         kind !== (initial?.kind ?? "CASH") ||
         branch !== (initial?.branchId ?? "") ||
         opening !== "0" ||
-        date !== todayLocalDate()
+        date !== today
       }
       onSaved={onSaved}
       submit={() => {
@@ -248,7 +250,7 @@ function CashAccountForm({
             <Input
               type="date"
               value={date}
-              max={todayLocalDate()}
+              max={today}
               onChange={(e) => {
                 setDate(e.target.value);
               }}

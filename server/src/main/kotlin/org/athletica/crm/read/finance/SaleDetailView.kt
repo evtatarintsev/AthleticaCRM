@@ -58,7 +58,7 @@ class DbSaleDetailView : SaleDetailView {
                     'fromAdvance', ${moneyJsonSql("t.advance_used")},
                     'performedBy', CASE WHEN actor.id IS NULL THEN NULL ELSE jsonb_build_object('id', actor.id, 'name', actor.name) END,
                     'comment', t.comment, 'reversed', EXISTS (SELECT 1 FROM ledger_transactions r WHERE r.reverses_id = t.id),
-                    'canReverse', $TRANSACTION_CASH_ACCESS_SQL AND NOT EXISTS (SELECT 1 FROM ledger_transactions r WHERE r.reverses_id = t.id) AND (
+                    'canReverse', $TRANSACTION_CASH_ACCESS_SQL AND (t.kind <> 'payment' OR NOT $SALE_HAS_RETURN_SQL) AND NOT EXISTS (SELECT 1 FROM ledger_transactions r WHERE r.reverses_id = t.id) AND (
                         (:canManage AND t.kind IN ('payment', 'payout')) OR
                         (:canAccept AND t.kind = 'payment' AND t.created_by = :actor AND
                             (t.created_at AT TIME ZONE (SELECT timezone FROM organizations WHERE id = :org))::date =
@@ -71,3 +71,10 @@ class DbSaleDetailView : SaleDetailView {
             """.trimIndent()
     }
 }
+
+/** Возврат закрывает возможность исправить одну оплату отдельно от продажи. */
+internal const val SALE_HAS_RETURN_SQL = """EXISTS (
+    SELECT 1 FROM ledger_transactions returned WHERE returned.sale_id = t.sale_id
+    AND returned.org_id = t.org_id AND returned.kind = 'sale_return'
+    AND NOT EXISTS (SELECT 1 FROM ledger_transactions r WHERE r.reverses_id = returned.id)
+)"""

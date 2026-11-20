@@ -25,8 +25,8 @@ export const FinanceSearchSchema = z.object({
   includeReversed: z.boolean().catch(true).default(true),
 });
 export type FinanceSearch = z.output<typeof FinanceSearchSchema>;
-export function financePeriod(search: FinanceSearch) {
-  const today = todayLocalDate();
+export function financePeriod(search: FinanceSearch, timezone: string) {
+  const today = todayLocalDate(timezone);
   return {
     from: search.from ?? LocalDateSchema.parse(`${today.slice(0, 7)}-01`),
     to: search.to ?? today,

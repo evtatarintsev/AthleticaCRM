@@ -14,12 +14,15 @@ function dateParts(date: LocalDate): [number, number, number] {
   return [year, month - 1, day];
 }
 
-/** Сегодняшний день в часовом поясе браузера. */
-export function todayLocalDate(): LocalDate {
+/** Сегодняшний день в [timeZone]; без параметра используется часовой пояс браузера. */
+export function todayLocalDate(timeZone?: string): LocalDate {
   return LocalDateSchema.parse(
-    new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(
-      new Date(),
-    ),
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
   );
 }
 

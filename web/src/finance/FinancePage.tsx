@@ -95,7 +95,7 @@ function FinanceCashFlow({
   readonly onSearchChange: (search: FinanceSearch) => void;
 }) {
   const { t, format } = useI18n();
-  const period = financePeriod(search);
+  const period = financePeriod(search, useSession(api).orgInfo.timezone);
   const accounts = useQuery(apiQuery(api, branchId, "finance/cash-accounts"));
   const query = { ...period, cashAccountIds: search.cash };
   const data = useQuery(apiQuery(api, branchId, "finance/cash-flow", query));

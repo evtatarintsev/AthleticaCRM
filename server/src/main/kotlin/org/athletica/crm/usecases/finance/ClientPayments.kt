@@ -12,6 +12,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LedgerTransactionId
 import org.athletica.crm.core.entityids.SaleId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.sum
 import org.athletica.crm.core.permissions.UserPermission.CAN_ACCEPT_PAYMENTS
@@ -36,6 +37,7 @@ import org.athletica.crm.domain.ledger.ledgerError
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.org.OrgCalendar
 import org.athletica.crm.domain.sales.Sales
+import org.athletica.crm.i18n.LocalizationKey
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asUuidOrNull
@@ -131,7 +133,32 @@ class ClientPayments(
         val allowed = ctx.hasPermission(CAN_MANAGE_FINANCE) || (ctx.hasPermission(CAN_ACCEPT_PAYMENTS) && original.first == "payment" && original.second == ctx.employee.id.value && original.third == calendar.today())
         ensure(allowed) { ledgerError("ACCESS_DENIED") }
         ensure(original.first in setOf("payment", "payout", "adjustment")) { ledgerError("FINANCE_OPERATION_CANNOT_REVERSE") }
+        if (original.first == "payment") {
+            tr.sql(
+                """
+                SELECT c.id FROM ledger_transactions t
+                JOIN sales s ON s.id = t.sale_id AND s.org_id = t.org_id
+                JOIN clients c ON c.id = s.client_id AND c.org_id = s.org_id
+                WHERE t.id = :id AND t.org_id = :org FOR UPDATE OF c
+                """.trimIndent(),
+            ).bind("id", id).bind("org", ctx.orgId).firstOrNull { 1 }
+            val hasReturn =
+                tr.sql(
+                    """
+                    SELECT 1 FROM ledger_transactions t WHERE t.id = :id AND t.org_id = :org
+                    AND EXISTS (SELECT 1 FROM ledger_transactions returned WHERE returned.sale_id = t.sale_id
+                        AND returned.org_id = t.org_id AND returned.kind = 'sale_return'
+                        AND NOT EXISTS (SELECT 1 FROM ledger_transactions r WHERE r.reverses_id = returned.id))
+                    """.trimIndent(),
+                ).bind("id", id).bind("org", ctx.orgId).firstOrNull { 1 } != null
+            ensure(!hasReturn) { CommonDomainError("PAYMENT_HAS_RETURN", PaymentHasReturn.localize()) }
+        }
         requireTransactionCashAccess(listOf(id), cashAccounts)
         return ledger.reverse(id, reason)
     }
+}
+
+private object PaymentHasReturn : LocalizationKey {
+    override val ru = "По продаже уже оформлен возврат. Отменить её оплату нельзя."
+    override val en = "This sale already has a return. Its payment cannot be reversed."
 }

@@ -66,7 +66,8 @@ function SaleCreateForm({ api, branchId, client, onSaved }: Parameters<typeof Sa
   const [items, setItems] = useState(() => [{ key: uuidv7(), name: "", quantity: "1", price: "" }]);
   const [draft, setDraft] = useState(initialPayment);
   const [payNow, setPayNow] = useState(true);
-  const [date, setDate] = useState<string>(todayLocalDate());
+  const today = todayLocalDate(session.orgInfo.timezone);
+  const [date, setDate] = useState<string>(today);
   const [invalid, setInvalid] = useState(false);
   const queries = useQueryClient();
   const total = {
@@ -136,7 +137,7 @@ function SaleCreateForm({ api, branchId, client, onSaved }: Parameters<typeof Sa
         <Input
           type="date"
           value={date}
-          max={todayLocalDate()}
+          max={today}
           onChange={(e) => {
             setDate(e.target.value);
           }}

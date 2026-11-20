@@ -37,7 +37,7 @@ fun RouteWithContext.profileRoutes(
                     { orgBalances.current() },
                     { organizations.current() },
                 ) { balance, org ->
-                    OrgInfo(org.name, balance.totalAmount)
+                    OrgInfo(org.name, balance.totalAmount, org.timezone)
                 }
             }
 

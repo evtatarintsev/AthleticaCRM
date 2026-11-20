@@ -6,8 +6,10 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.TestPostgres
@@ -26,8 +28,10 @@ import org.athletica.crm.core.entityids.CashArticleId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.SaleId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.finance.CashAccountKind
 import org.athletica.crm.core.finance.CashDirection
+import org.athletica.crm.core.finance.LedgerKind
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.permissions.UserPermission
@@ -36,6 +40,7 @@ import org.athletica.crm.domain.casharticles.CashArticles
 import org.athletica.crm.domain.casharticles.seedCashArticles
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.clients.activeById
+import org.athletica.crm.domain.clients.lockForWrite
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.domain.org.DbOrgCalendar
@@ -48,6 +53,8 @@ import org.athletica.crm.read.finance.DbCashJournalView
 import org.athletica.crm.read.finance.DbClientLedgerView
 import org.athletica.crm.read.finance.DbSaleDetailView
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBooleanOrNull
+import org.athletica.crm.storage.asInt
 import org.athletica.crm.usecases.finance.CashOperations
 import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.crm.usecases.finance.SaleActions
@@ -210,6 +217,110 @@ class FinanceTest {
             assertEquals(1, results.count { it is Either.Right })
             assertEquals(1, results.count { it is Either.Left })
             assertEquals(rub(200), tx { DbClientLedgerView().byClient(client) }.advance)
+        }
+
+    @Test
+    fun `возврат с выплатой и одновременная оплата клиента не блокируют друг друга`() =
+        runBlocking {
+            val id = sale(1000)
+            tx { payments.pay(id, client, cashPayment(1000), today) }
+            val clientLocked = CompletableDeferred<Unit>()
+            val proceed = CompletableDeferred<Unit>()
+            val returnPid = CompletableDeferred<Int>()
+            val payment =
+                async {
+                    tx {
+                        clients.activeById(client).lockForWrite()
+                        clientLocked.complete(Unit)
+                        proceed.await()
+                        payments.pay(null, client, cashPayment(100), today)
+                    }
+                }
+            clientLocked.await()
+            val refund =
+                async {
+                    tx {
+                        val pid = checkNotNull(contextOf<Transaction>().sql("SELECT pg_backend_pid() AS pid").firstOrNull { it.asInt("pid") })
+                        returnPid.complete(pid)
+                        actions.returnSale(id, rub(500), "Concurrent return", cash)
+                    }
+                }
+            val pid = returnPid.await()
+            withTimeout(5000) {
+                while (tx { contextOf<Transaction>().sql("SELECT wait_event_type = 'Lock' AS waiting FROM pg_stat_activity WHERE pid = :pid").bind("pid", pid).firstOrNull { it.asBooleanOrNull("waiting") == true } } != true) {
+                    delay(10)
+                }
+            }
+            proceed.complete(Unit)
+            payment.await()
+            refund.await()
+            assertEquals(rub(100), tx { DbClientLedgerView().byClient(client) }.advance)
+            assertEquals(rub(600), tx { DbCashAccountBalancesView().all() }.total)
+        }
+
+    @Test
+    fun `после полного и частичного возврата с выплатой и без неё оплата отдельно не отменяется`() =
+        runTest {
+            listOf(500L to null, 1000L to null, 500L to cash, 1000L to cash).forEach { (amount, payout) ->
+                val id = sale(1000)
+                val payment = tx { payments.pay(id, client, cashPayment(1000), today) }
+                tx { actions.returnSale(id, rub(amount), "Return", payout) }
+                val before = tx { DbClientLedgerView().byClient(client) }
+                val cashBefore = tx { DbCashAccountBalancesView().all() }
+                val result = assertIs<Either.Left<AppError>>(attempt { payments.reverse(payment, "Wrong payment") })
+                assertEquals("PAYMENT_HAS_RETURN", assertIs<CommonDomainError>(result.value).code)
+                assertEquals(before, tx { DbClientLedgerView().byClient(client) })
+                assertEquals(cashBefore, tx { DbCashAccountBalancesView().all() })
+                val detail = tx { DbSaleDetailView().byId(id) }
+                assertEquals(rub(1000), detail.paid)
+                assertEquals(rub(amount), detail.returned)
+                assertEquals(rub(0), detail.debt)
+                assertFalse(detail.operations.single { it.id == payment }.canReverse)
+                assertFalse(tx { DbCashJournalView().page(CashJournalRequest(today, today)) }.entries.single { it.id == payment }.canReverse)
+                if (payout != null) assertTrue(detail.operations.single { it.kind == LedgerKind.PAYOUT }.canReverse)
+                tx { actions.cancel(id, "Wrong sale", fixture.memberships) }
+                assertTrue(tx { DbSaleDetailView().byId(id) }.cancelledAt != null)
+                assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.balance)
+                assertEquals(rub(0), tx { DbCashAccountBalancesView().all() }.total)
+            }
+        }
+
+    @Test
+    fun `после расходования возвращённого аванса исходная оплата не отменяется`() =
+        runTest {
+            val id = sale(1000)
+            val payment = tx { payments.pay(id, client, cashPayment(1000), today) }
+            tx { actions.returnSale(id, rub(1000), "Return", null) }
+            val other = sale(1000)
+            tx { payments.pay(other, client, PaymentInput(fromAdvance = rub(1000)), today) }
+            assertIs<Either.Left<AppError>>(attempt { payments.reverse(payment, "Wrong payment") })
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(id) }.debt)
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(other) }.debt)
+            assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.advance)
+        }
+
+    @Test
+    fun `одновременные возврат и отмена оплаты не создают лишний долг`() =
+        runTest {
+            val id = sale(1000)
+            val payment = tx { payments.pay(id, client, cashPayment(1000), today) }
+            val gate = CompletableDeferred<Unit>()
+            val reversal =
+                async {
+                    gate.await()
+                    attempt { payments.reverse(payment, "Wrong payment") }
+                }
+            val refund =
+                async {
+                    gate.await()
+                    attempt { actions.returnSale(id, rub(1000), "Return", null) }
+                }
+            gate.complete(Unit)
+            val reversed = reversal.await() is Either.Right
+            assertIs<Either.Right<*>>(refund.await())
+            val detail = tx { DbSaleDetailView().byId(id) }
+            assertEquals(maxOf(detail.total - detail.returned - detail.paid, rub(0)), detail.debt)
+            assertEquals(rub(if (reversed) 0 else 1000), tx { DbClientLedgerView().byClient(client) }.advance)
         }
 
     @Test

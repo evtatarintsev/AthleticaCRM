@@ -29,6 +29,7 @@ import { parseMoney } from "@/lib/money";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { unwrap } from "@/query/apiFailure";
 import { apiQuery } from "@/query/queries";
+import { useSession } from "@/query/session";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import { CancellationForm } from "./CancellationForm";
 import { FinanceForm } from "./FinanceForm";
@@ -56,7 +57,7 @@ export function FinanceOperations({
   const accounts = useQuery(apiQuery(api, branchId, "finance/cash-accounts"));
   const articles = useQuery(apiQuery(api, branchId, "finance/cash-articles"));
   const request = {
-    ...financePeriod(search),
+    ...financePeriod(search, useSession(api).orgInfo.timezone),
     cashAccountIds: search.cash,
     articleIds: search.article,
     kinds: search.kind === undefined ? [] : [search.kind],
@@ -75,12 +76,18 @@ export function FinanceOperations({
     },
   });
   const [creating, setCreating] = useState<"income" | "expense" | "transfer" | null>(null);
-  const [selected, setSelected] = useState<CashJournalEntry | null>(null);
+  const [selection, setSelected] = useState<Pick<CashJournalEntry, "id" | "cashAccountId"> | null>(
+    null,
+  );
   const [cancelling, setCancelling] = useState(false);
   const [saleId, setSaleId] = useState<SaleId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const entries = data.data?.pages.flatMap((page) => page.entries) ?? [];
+  const selected =
+    entries.find(
+      (entry) => entry.id === selection?.id && entry.cashAccountId === selection.cashAccountId,
+    ) ?? null;
   const first = data.data?.pages[0];
   const refresh = async () => {
     await queries.invalidateQueries({ queryKey: ["api", branchId] });
@@ -366,7 +373,7 @@ export function JournalFilters({
         : async () => unwrap(await api.call("clients/detail", { id: selectedClient })),
   });
   const [picker, setPicker] = useState(false);
-  const period = financePeriod(search);
+  const period = financePeriod(search, useSession(api).orgInfo.timezone);
   return (
     <div className="space-y-3 rounded-lg border p-3">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -556,7 +563,8 @@ function CashOperationForm({
   const [toId, setToId] = useState<string>(available[1]?.id ?? "");
   const [articleId, setArticleId] = useState<string>(selectable[0]?.id ?? "");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState<string>(todayLocalDate());
+  const today = todayLocalDate(useSession(api).orgInfo.timezone);
+  const [date, setDate] = useState<string>(today);
   const [counterparty, setCounterparty] = useState("");
   const [employee, setEmployee] = useState("");
   const [comment, setComment] = useState("");
@@ -568,7 +576,7 @@ function CashOperationForm({
         counterparty !== "" ||
         employee !== "" ||
         comment !== "" ||
-        date !== todayLocalDate() ||
+        date !== today ||
         cashId !== available[0]?.id ||
         toId !== available[1]?.id ||
         articleId !== selectable[0]?.id
@@ -679,7 +687,7 @@ function CashOperationForm({
         <Input
           type="date"
           value={date}
-          max={todayLocalDate()}
+          max={today}
           onChange={(e) => {
             setDate(e.target.value);
           }}

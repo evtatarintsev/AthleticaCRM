@@ -51,6 +51,7 @@ class DbCashJournalView : CashJournalView {
                     (SELECT c2.name FROM ledger_postings p2 JOIN ledger_accounts a2 ON a2.id = p2.account_id AND a2.kind = 'cash'
                         JOIN visible_cash c2 ON c2.id = a2.cash_account_id WHERE p2.transaction_id = t.id AND c2.id <> c.id LIMIT 1) AS counter_cash_name,
                     $TRANSACTION_CASH_ACCESS_SQL AS cash_accessible,
+                    $SALE_HAS_RETURN_SQL AS sale_has_return,
                     row_number() OVER (PARTITION BY t.id ORDER BY p.amount DESC, p.id) AS cash_rank
                 FROM visible_cash c JOIN ledger_accounts a ON a.cash_account_id = c.id AND a.org_id = :org AND a.kind = 'cash'
                 JOIN ledger_postings p ON p.account_id = a.id JOIN ledger_transactions t ON t.id = p.transaction_id AND t.org_id = :org
@@ -79,7 +80,7 @@ class DbCashJournalView : CashJournalView {
                     'clientId', client_id, 'clientName', client_name, 'saleId', sale_id, 'counterparty', counterparty, 'comment', comment,
                     'performedBy', CASE WHEN actor_name IS NULL THEN NULL ELSE jsonb_build_object('id', created_by, 'name', actor_name) END,
                     'reversed', reversal_id IS NOT NULL, 'reversalReason', reversal_reason,
-                    'canReverse', cash_accessible AND reversal_id IS NULL AND ((:canManage AND kind IN ('income', 'expense', 'transfer', 'payment', 'payout')) OR
+                    'canReverse', cash_accessible AND (kind <> 'payment' OR NOT sale_has_return) AND reversal_id IS NULL AND ((:canManage AND kind IN ('income', 'expense', 'transfer', 'payment', 'payout')) OR
                         (:canAccept AND kind = 'payment' AND created_by = :employee AND
                         (created_at AT TIME ZONE (SELECT timezone FROM organizations WHERE id = :org))::date =
                         (CURRENT_TIMESTAMP AT TIME ZONE (SELECT timezone FROM organizations WHERE id = :org))::date)),

@@ -3,16 +3,121 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
   CashJournalRequestSchema,
+  SaleDetailResponseSchema,
   SaveCashAccountRequestSchema,
   SaveCashArticleRequestSchema,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
 import { empty, json, openApp } from "@/test/app";
-import { cashAccount, financeServer, rentArticle, receiptsArticle } from "@/test/finance";
+import { cashAccount, financeServer, rentArticle, receiptsArticle, testSale } from "@/test/finance";
 
 const path = "/finance?from=2026-10-01&to=2026-10-31";
 
 describe("раздел Финансы", () => {
+  it("после возврата скрывает отмену оплаты в продаже и уже открытой операции", async () => {
+    const paymentId = "0199a0b2-7c3e-7d2a-9f10-000000001501";
+    let returned = false;
+    let sale = SaleDetailResponseSchema.parse({
+      ...testSale,
+      paid: testSale.total,
+      debt: cashAccount.balance,
+      paymentState: "PAID",
+      operations: [
+        {
+          id: paymentId,
+          kind: "PAYMENT",
+          occurredOn: testSale.soldOn,
+          amount: testSale.total,
+          cash: [
+            {
+              cashAccountId: cashAccount.id,
+              cashAccountName: cashAccount.name,
+              amount: testSale.total,
+            },
+          ],
+          fromAdvance: cashAccount.balance,
+          performedBy: testSale.performedBy,
+          comment: null,
+          reversed: false,
+          canReverse: true,
+        },
+      ],
+    });
+    const api = financeServer({
+      "sales/detail": () => json(sale),
+      "sales/return": () => {
+        returned = true;
+        sale = {
+          ...sale,
+          returned: { minorUnits: 100000, currency: "RUB" },
+          operations: sale.operations.map((operation) => ({ ...operation, canReverse: false })),
+        };
+        return empty();
+      },
+      "finance/journal": () =>
+        json({
+          entries: [
+            {
+              id: paymentId,
+              kind: "PAYMENT",
+              occurredOn: testSale.soldOn,
+              cashAccountId: cashAccount.id,
+              cashAccountName: cashAccount.name,
+              articleId: receiptsArticle.id,
+              articleName: receiptsArticle.name,
+              amount: testSale.total,
+              clientId: testSale.clientId,
+              clientName: "Клиент",
+              saleId: testSale.id,
+              counterparty: null,
+              comment: null,
+              performedBy: testSale.performedBy,
+              reversed: false,
+              reversalReason: null,
+              reversedBy: null,
+              counterCashAccountId: null,
+              counterCashAccountName: null,
+              canReverse: !returned,
+            },
+          ],
+          count: 1,
+          receipts: testSale.total,
+          expenses: cashAccount.balance,
+        }),
+    });
+    openApp(path, api.fetch);
+    const user = userEvent.setup();
+    const table = await screen.findByRole("table");
+    await user.click(
+      await within(table).findByRole("button", { name: ru["finance.kind.PAYMENT"] }),
+    );
+    const operation = await screen.findByRole("dialog", { name: ru["finance.operations"] });
+    expect(
+      within(operation).getByRole("button", { name: ru["finance.cancelOperation"] }),
+    ).toBeInTheDocument();
+    await user.click(within(operation).getByRole("button", { name: ru["finance.sale"] }));
+    const panel = await screen.findByRole("dialog", { name: ru["finance.sale"] });
+    await user.click(await within(panel).findByRole("button", { name: ru["finance.return"] }));
+    const form = await screen.findByRole("dialog", { name: ru["finance.return"] });
+    await user.type(within(form).getByLabelText(ru["finance.amount"]), "1000");
+    await user.type(within(form).getByLabelText(ru["finance.reason"]), "Возврат товара");
+    await user.click(within(form).getByRole("button", { name: ru["action.save"] }));
+    await waitFor(() => {
+      expect(form).not.toBeInTheDocument();
+    });
+    expect(
+      within(panel).queryByRole("button", { name: ru["finance.cancelOperation"] }),
+    ).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(panel).not.toBeInTheDocument();
+    });
+    expect(
+      within(operation).queryByRole("button", { name: ru["finance.cancelOperation"] }),
+    ).not.toBeInTheDocument();
+    expect(api.to("finance/journal").length).toBeGreaterThan(1);
+  });
+
   it("без права скрывает навигацию и не загружает данные при прямом переходе", async () => {
     const api = financeServer({}, []);
     openApp(path, api.fetch);

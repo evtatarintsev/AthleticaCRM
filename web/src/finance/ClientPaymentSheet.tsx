@@ -15,6 +15,7 @@ import { useI18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
 import { moneyEditText, parseMoney } from "@/lib/money";
 import { apiQuery } from "@/query/queries";
+import { useSession } from "@/query/session";
 import { EditSheet } from "@/ui/EditSheet";
 import { FinanceForm } from "./FinanceForm";
 import { PaymentBlock } from "./PaymentBlock";
@@ -70,7 +71,8 @@ function ClientPaymentForm({
   const [amount, setAmount] = useState(mode === "payout" ? moneyEditText(summary.advance) : "");
   const [direction, setDirection] = useState("credit");
   const [comment, setComment] = useState("");
-  const [date, setDate] = useState<string>(todayLocalDate());
+  const today = todayLocalDate(useSession(api).orgInfo.timezone);
+  const [date, setDate] = useState<string>(today);
   const [invalid, setInvalid] = useState(false);
   const debt = summary.salesWithDebt.find((s) => s.saleId === destination);
   const due = debt?.debt ?? { ...summary.balance, minorUnits: 0 };
@@ -78,7 +80,7 @@ function ClientPaymentForm({
     amount !== (mode === "payout" ? moneyEditText(summary.advance) : "") ||
     direction !== "credit" ||
     comment !== "" ||
-    date !== todayLocalDate() ||
+    date !== today ||
     cashId !== "" ||
     destination !== (saleId ?? summary.salesWithDebt[0]?.saleId ?? "advance") ||
     draft.fromAdvance !== "" ||
@@ -233,7 +235,7 @@ function ClientPaymentForm({
           <Input
             type="date"
             value={date}
-            max={todayLocalDate()}
+            max={today}
             onChange={(e) => {
               setDate(e.target.value);
             }}

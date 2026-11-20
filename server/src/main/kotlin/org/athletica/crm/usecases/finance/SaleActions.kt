@@ -43,6 +43,8 @@ class SaleActions(
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun lockSale(id: SaleId): Sale {
         val sale = sales.byId(id)
+        tr.sql("SELECT id FROM clients WHERE id = :client AND org_id = :org FOR UPDATE")
+            .bind("client", sale.clientId).bind("org", ctx.orgId).firstOrNull { 1 }
         ledger.lock(listOf(ledger.account(LedgerOwner.Advance(sale.clientId)), ledger.account(LedgerOwner.Receivable(id, sale.clientId))))
         return sales.byId(id).also { ensure(!it.cancelled) { ledgerError("SALE_CANCELLED") } }
     }

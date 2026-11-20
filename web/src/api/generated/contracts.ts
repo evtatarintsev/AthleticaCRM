@@ -500,6 +500,7 @@ export const OrgInfoSchema = z
   .object({
     name: z.string(),
     balance: MoneySchema.nullable(),
+    timezone: z.string(),
   })
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;

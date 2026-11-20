@@ -5,7 +5,7 @@
 <style>:root{
   --background:#f8fafc;--foreground:#0f172a;--card:#fff;--muted:#64748b;--accent:#f1f5f9;--border:#e2e8f0;
   --primary:#3159d8;--chrome:#e9e9ec;--scrim:rgba(15,23,42,.4);
-  --club-blue:#3159d8;--club-teal:#0f766e;
+  --club-blue:#3159d8;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--chrome);color:var(--foreground);font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -55,19 +55,11 @@ h1{margin:2px 0 0;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:
 .state b{display:block;font-size:14px}
 .state span.d{display:block;font-size:12.5px;color:var(--muted);margin-bottom:10px}
 .mini{width:240px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
-.panel{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--card);box-shadow:-8px 0 32px -8px rgba(16,16,32,.25);display:flex;flex-direction:column;z-index:5}
-.fld{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
-.lbl{font-size:13px;font-weight:500}
-.inp{height:38px;border:1px solid var(--border);border-radius:8px;padding:0 12px;display:flex;align-items:center}
-.pal{display:grid;grid-template-columns:repeat(10,32px);justify-content:space-between}
-.sw{width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;color:#fff}
-.sw.sel{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--club-blue)}
-.btn{height:38px;padding:0 16px;border-radius:8px;font-weight:500;display:inline-flex;align-items:center}
 </style></head>
 <body>
 
 <div class="caption">Компьютер — открыт список филиалов</div>
-<p class="note">Карточка клуба в рамке; цвет клуба по умолчанию — синий. Стрелки и список — только при двух доступных филиалах и больше.</p>
+<p class="note">Карточка клуба в рамке; монограмма — на основном цвете системы. Стрелки и список — только при двух доступных филиалах и больше.</p>
 <div class="frame"><div class="shell">
   <aside class="side">
     <div class="ws" style="background:var(--background)"><span class="mono" aria-hidden="true">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span aria-hidden="true" style="color:var(--muted)">&#8597;</span></div>
@@ -145,39 +137,8 @@ h1{margin:2px 0 0;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:
     <div class="mini"><div class="ws"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div></div></div>
   <div class="state"><b>Один филиал</b><span class="d">Без рамки и стрелок, не нажимается</span>
     <div class="mini"><div class="ws static"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span></div></div></div>
-  <div class="state"><b>Свой цвет</b><span class="d">Клуб выбрал бирюзовый в настройках</span>
-    <div class="mini"><div class="ws static"><span class="mono" style="background:var(--club-teal)">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span></div></div></div>
   <div class="state"><b>Длинные названия</b><span class="d">Каждая строка обрезается, полное — в подсказке</span>
     <div class="mini"><div class="ws"><span class="mono">ФХ</span><span class="names"><span class="org">Федерация художественной гимнастики</span><span class="br">Детский центр на Ленинском проспекте</span></span><span style="color:var(--muted)">&#8597;</span></div></div></div>
-</div></div>
-
-<div class="caption">Настройки организации — цвет клуба</div>
-<p class="note">Палитра из 10 цветов, белые буквы читаются на каждом; синий — по умолчанию. Предпросмотр до сохранения.</p>
-<div class="frame"><div class="shell" style="min-height:640px">
-  <aside class="side">
-    <div class="ws"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div>
-    <nav class="nav"><a>Главная</a><a>Расписание</a><a>Клиенты</a><a>Группы</a><a class="on">Настройки</a></nav>
-    <div class="prod"><span class="pm">A</span>Athletica</div>
-  </aside>
-  <div><div class="top"></div><div class="main"><h1>Настройки</h1></div></div>
-  <div class="scrim" style="background:rgba(15,23,42,.35)"></div>
-  <section class="panel">
-    <div style="padding:20px 24px 8px;font-size:18px;font-weight:600">Настройки организации</div>
-    <div style="flex:1;padding:12px 24px">
-      <div class="fld"><span class="lbl">Название</span><span class="inp">Фитнес Лайф</span></div>
-      <div class="fld"><span class="lbl">Часовой пояс</span><span class="inp">Москва (UTC+3)</span></div>
-      <div class="fld"><span class="lbl">Цвет клуба</span><span style="font-size:12.5px;color:var(--muted)">Цвет знака клуба в меню. Буквы на нём всегда белые.</span>
-        <div class="pal">
-          <span class="sw sel" style="background:#3159d8" title="Синий">&#10003;</span><span class="sw" style="background:#0369a1" title="Голубой"></span><span class="sw" style="background:#0f766e" title="Бирюзовый"></span><span class="sw" style="background:#15803d" title="Зелёный"></span><span class="sw" style="background:#7c3aed" title="Фиолетовый"></span><span class="sw" style="background:#a21caf" title="Пурпурный"></span><span class="sw" style="background:#be185d" title="Розовый"></span><span class="sw" style="background:#dc2626" title="Красный"></span><span class="sw" style="background:#c2410c" title="Оранжевый"></span><span class="sw" style="background:#334155" title="Графитовый"></span>
-        </div>
-        <span style="font-size:13px;color:#475569">Выбран: <b>Синий</b> (по умолчанию)</span>
-      </div>
-      <div class="fld"><span class="lbl">Так будет в меню</span>
-        <div style="background:var(--accent);border-radius:12px;padding:16px;display:flex;justify-content:center"><div class="ws" style="width:216px"><span class="mono">ФЛ</span><span class="names"><span class="org">Фитнес Лайф</span><span class="br">Центральный</span></span><span style="color:var(--muted)">&#8597;</span></div></div>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border)"><span class="btn" style="border:1px solid var(--border)">Отмена</span><span class="btn" style="background:var(--primary);color:#fff">Сохранить</span></div>
-  </section>
 </div></div>
 
 </body></html>

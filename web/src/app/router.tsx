@@ -7,6 +7,7 @@ import {
   Outlet,
   redirect,
   RouterProvider,
+  useCanGoBack,
   useRouter,
   useLocation,
   type RouterHistory,
@@ -426,7 +427,21 @@ const sessionRoute = createRoute({
   component: function SessionRoute() {
     const { api } = sessionRoute.useRouteContext();
     const { sessionId } = sessionRoute.useParams();
-    return <SessionDetailPage api={api} sessionId={sessionId} />;
+    const router = useRouter();
+    const canGoBack = useCanGoBack();
+    return (
+      <SessionDetailPage
+        api={api}
+        sessionId={sessionId}
+        onBack={
+          canGoBack
+            ? () => {
+                router.history.back();
+              }
+            : undefined
+        }
+      />
+    );
   },
 });
 

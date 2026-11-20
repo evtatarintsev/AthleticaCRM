@@ -289,6 +289,32 @@ describe("карточка занятия", () => {
     });
   });
 
+  it("возврат ведёт на предыдущую страницу, а адрес ссылки остаётся расписанием", async () => {
+    const server = journalServer(journalOf([]));
+    const { history } = openApp("/clients?tab=all", server.fetch);
+    history.push(`/sessions/${sessionId}`);
+    await screen.findByRole("heading", { name: /Юниоры У8/ });
+    const back = screen.getByRole("link", { name: ru["action.back"] });
+    expect(back).toHaveAttribute("href", "/schedule?date=2026-10-01");
+    await userEvent.setup().click(back);
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/clients");
+      expect(history.location.search).toBe("?tab=all");
+    });
+  });
+
+  it("клик с Ctrl по возврату оставляет браузеру открыть расписание в новой вкладке", async () => {
+    const server = journalServer(journalOf([]));
+    const { history } = openApp("/clients", server.fetch);
+    history.push(`/sessions/${sessionId}`);
+    await screen.findByRole("heading", { name: /Юниоры У8/ });
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}");
+    await user.click(screen.getByRole("link", { name: ru["action.back"] }));
+    await user.keyboard("{/Control}");
+    expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
+  });
+
   it("клик по тренеру открывает его карточку панелью, после закрытия остаётся занятие", async () => {
     const server = journalServer(journalOf([participant("1", "Аня")]));
     const { history } = openApp(`/sessions/${sessionId}`, server.fetch);

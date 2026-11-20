@@ -234,7 +234,7 @@ describe("смена филиала", () => {
     expect(api.to("auth/switch-branch").map((r) => r.body)).toEqual([{ branchId: north.id }]);
   });
 
-  it("из меню аккаунта: данные раздела перезагружаются для нового филиала", async () => {
+  it("из карточки клуба: данные раздела перезагружаются для нового филиала", async () => {
     const api = twoBranches();
     openApp("/", api.fetch);
     const user = userEvent.setup();
@@ -242,14 +242,12 @@ describe("смена филиала", () => {
     await waitFor(() => {
       expect(api.to("notifications")).toHaveLength(1);
     });
-    await user.click(await screen.findByRole("button", { name: ru["account.menu"] }));
-    const branchMenu = await screen.findByRole("menuitem", {
-      name: `${ru["account.switchBranch"]}: Центр`,
-    });
-    branchMenu.focus();
-    await user.keyboard("{ArrowRight}");
+    const card = ru["clubCard.label"].replace("{org}", "Лига").replace("{branch}", "Центр");
+    await user.click(
+      await within(screen.getByRole("complementary")).findByRole("button", { name: card }),
+    );
     expect(await screen.findByRole("menuitemradio", { name: "Центр" })).toBeChecked();
-    await user.keyboard("{ArrowDown}{Enter}");
+    await user.click(screen.getByRole("menuitemradio", { name: "Север" }));
 
     await waitFor(() => {
       expect(api.to("notifications")).toHaveLength(2);

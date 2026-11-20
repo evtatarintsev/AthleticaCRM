@@ -65,13 +65,16 @@ const DEBIT_REFRESH_DELAY_MS = 2000;
  * приходят с сервера — состав, отметки, проведение занятия, массовая отметка отсутствующих,
  * разовые участники. Отмена, перенос, смена зала и тренеров и заметка пока меняют только
  * локальное состояние страницы (см. `sessionDetailMock.ts`).
+ * «Назад» вызывает [onBack], если он задан, иначе ведёт в расписание на неделю занятия.
  */
 export function SessionDetailPage({
   api,
   sessionId,
+  onBack,
 }: {
   readonly api: ApiClient;
   readonly sessionId: SessionId;
+  readonly onBack?: (() => void) | undefined;
 }) {
   const { t } = useI18n();
   const branchId = useSession(api).currentBranch.id;
@@ -81,7 +84,7 @@ export function SessionDetailPage({
   if (journal.isPending) {
     return (
       <section className="max-w-6xl space-y-4">
-        <BackLink link={{ to: "/schedule" }} />
+        <BackLink link={{ to: "/schedule" }} onBack={onBack} />
         <Skeleton className="h-8 w-24" />
         <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
           <Skeleton className="h-96 w-full" />
@@ -93,7 +96,7 @@ export function SessionDetailPage({
   if (journal.data === undefined) {
     return (
       <section className="max-w-6xl space-y-4">
-        <BackLink link={{ to: "/schedule" }} />
+        <BackLink link={{ to: "/schedule" }} onBack={onBack} />
         <FormAlert message={t("sessionDetail.loadError")} />
       </section>
     );
@@ -104,6 +107,7 @@ export function SessionDetailPage({
       branchId={branchId}
       journal={journal.data}
       journalKey={journalQuery.queryKey}
+      onBack={onBack}
     />
   );
 }
@@ -114,11 +118,13 @@ function SessionJournalCard({
   branchId,
   journal,
   journalKey,
+  onBack,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly journal: SessionJournalResponse;
   readonly journalKey: ReturnType<typeof apiQuery<"sessions/journal">>["queryKey"];
+  readonly onBack: (() => void) | undefined;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -200,7 +206,7 @@ function SessionJournalCard({
 
   return (
     <section className="max-w-6xl space-y-4 pb-16">
-      <BackLink link={{ to: "/schedule", search: { date: journal.date } }} />
+      <BackLink link={{ to: "/schedule", search: { date: journal.date } }} onBack={onBack} />
 
       <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <aside className="lg:sticky lg:top-4">

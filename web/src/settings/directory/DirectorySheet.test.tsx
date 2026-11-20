@@ -168,7 +168,7 @@ describe("справочник", () => {
     expect(within(dialog).queryByLabelText(ru["directory.description"])).not.toBeInTheDocument();
   });
 
-  it("новый филиал сразу доступен для переключения в меню аккаунта", async () => {
+  it("новый филиал сразу доступен для переключения в карточке клуба", async () => {
     const north = { id: "0199a0b2-7c3e-7d2a-9f10-000000000104", name: "Север" };
     let list = [center];
     const api = appServer({
@@ -181,10 +181,9 @@ describe("справочник", () => {
     });
     openApp("/settings", api.fetch);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: ru["account.menu"] }));
-    expect(await screen.findByText(ru["account.currentBranch"])).toBeVisible();
-    expect(screen.queryByRole("menuitem", { name: /Центр/ })).not.toBeInTheDocument();
-    await user.keyboard("{Escape}");
+    const card = ru["clubCard.label"].replace("{org}", "Лига").replace("{branch}", "Центр");
+    expect((await screen.findAllByText("Лига")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: card })).not.toBeInTheDocument();
 
     await user.click(
       await screen.findByRole("link", { name: new RegExp(ru["settings.itemBranches"]) }),
@@ -199,10 +198,7 @@ describe("справочник", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: ru["branches.title"] })).not.toBeInTheDocument();
     });
-    await user.click(screen.getByRole("button", { name: ru["account.menu"] }));
-    expect(
-      await screen.findByRole("menuitem", { name: `${ru["account.switchBranch"]}: Центр` }),
-    ).toBeVisible();
+    expect((await screen.findAllByRole("button", { name: card })).length).toBeGreaterThan(0);
   });
 });
 

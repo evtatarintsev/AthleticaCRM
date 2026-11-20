@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { ApiClient, ApiError } from "@/api/client";
-import type { EmployeeId } from "@/api/generated/contracts";
+import type { AssistantStatusResponse, EmployeeId } from "@/api/generated/contracts";
 import type { I18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { unwrap } from "@/query/apiFailure";
@@ -12,6 +12,11 @@ export function assistantStatusQuery(api: ApiClient, employee: EmployeeId) {
     queryFn: async () => unwrap(await api.call("assistant/status")),
     refetchInterval: 30_000,
   });
+}
+
+/** Помощник доступен сотруднику: подключён, включён в организации и разрешён ему ([status]). */
+export function assistantAllowed(status: AssistantStatusResponse | undefined): boolean {
+  return status?.available === true && status.enabled && status.permitted;
 }
 
 /** Читается только личный текущий диалог; повтор чтения никогда не вызывает модель. */

@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { ChevronDownIcon, LogOutIcon, StoreIcon, UserIcon, WalletIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronDownIcon, LogOutIcon, SparklesIcon, UserIcon, WalletIcon } from "lucide-react";
 import type { ApiClient } from "@/api/client";
 import type { AuthMeResponse } from "@/api/generated/contracts";
 import { ProfileSheet } from "@/account/ProfileSheet";
 import { OrgBalanceSheet } from "@/settings/org/OrgBalanceSheet";
-import { useSwitchBranch } from "@/account/useSwitchBranch";
+import { assistantAllowed, assistantStatusQuery } from "@/assistant/assistantQueries";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,30 +15,32 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/i18n/context";
 import { LocaleSchema } from "@/i18n/locale";
-import { myBranchesQuery } from "@/query/queries";
 import { Avatar } from "@/ui/Avatar";
 
 /**
- * Меню аккаунта пользователя [me]: профиль, баланс организации, смена филиала, язык и выход
- * ([onLogout]). Профиль и баланс открываются панелью поверх текущей страницы.
+ * Меню аккаунта пользователя [me]: профиль, баланс организации, язык и выход ([onLogout]).
+ * Профиль и баланс открываются панелью поверх текущей страницы. На узком экране первым
+ * пунктом идёт помощник ([onOpenAssistant]), если он доступен сотруднику. Помощник открывается
+ * после того, как меню вернуло фокус на свою кнопку: туда же панель вернёт его при закрытии.
  */
 export function AccountMenu({
   api,
   me,
   onLogout,
+  onOpenAssistant,
 }: {
   api: ApiClient;
   me: AuthMeResponse;
   onLogout: () => void;
+  onOpenAssistant: () => void;
 }) {
   const { t, format, locale, setLocale } = useI18n();
+  const assistant = useQuery(assistantStatusQuery(api, me.employeeId));
+  const assistantRequested = useRef(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
   return (
@@ -51,11 +53,31 @@ export function AccountMenu({
             <ChevronDownIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent
+          align="end"
+          className="w-64"
+          onCloseAutoFocus={() => {
+            if (assistantRequested.current) {
+              assistantRequested.current = false;
+              onOpenAssistant();
+            }
+          }}
+        >
           <DropdownMenuLabel className="space-y-0.5">
             <div className="truncate">{me.name}</div>
             <div className="truncate text-xs font-normal text-muted-foreground">{me.username}</div>
           </DropdownMenuLabel>
+          {assistantAllowed(assistant.data) && (
+            <DropdownMenuItem
+              className="lg:hidden"
+              onSelect={() => {
+                assistantRequested.current = true;
+              }}
+            >
+              <SparklesIcon aria-hidden className="text-primary" />
+              {t("assistant.title")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onSelect={() => {
               setProfileOpen(true);
@@ -81,7 +103,6 @@ export function AccountMenu({
               </span>
             )}
           </DropdownMenuItem>
-          <BranchSwitcher api={api} me={me} />
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
             {t("account.language")}
@@ -111,58 +132,5 @@ export function AccountMenu({
       <ProfileSheet api={api} open={profileOpen} onOpenChange={setProfileOpen} />
       <OrgBalanceSheet api={api} open={balanceOpen} onOpenChange={setBalanceOpen} />
     </>
-  );
-}
-
-/**
- * Текущий филиал пользователя [me] и подменю выбора другого. Список филиалов загружается
- * при открытии меню аккаунта; если филиал один, подменю не показывается.
- */
-function BranchSwitcher({ api, me }: { api: ApiClient; me: AuthMeResponse }) {
-  const { t } = useI18n();
-  const { data } = useQuery(myBranchesQuery(api));
-  const switching = useSwitchBranch(api);
-  const current = (
-    <span className="flex min-w-0 flex-col">
-      <span className="text-xs text-muted-foreground">{t("account.currentBranch")}</span>
-      <span className="truncate">{me.currentBranch.name}</span>
-    </span>
-  );
-  if (data === undefined || data.branches.length < 2) {
-    return (
-      <DropdownMenuLabel className="flex items-center gap-2 font-normal">
-        <StoreIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        {current}
-      </DropdownMenuLabel>
-    );
-  }
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger
-        className="gap-2"
-        aria-label={`${t("account.switchBranch")}: ${me.currentBranch.name}`}
-        disabled={switching.isPending}
-      >
-        <StoreIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        {current}
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="max-w-64">
-        <DropdownMenuRadioGroup
-          value={me.currentBranch.id}
-          onValueChange={(value) => {
-            const branch = data.branches.find((b) => b.id === value);
-            if (branch !== undefined && branch.id !== me.currentBranch.id) {
-              switching.mutate(branch);
-            }
-          }}
-        >
-          {data.branches.map((branch) => (
-            <DropdownMenuRadioItem key={branch.id} value={branch.id}>
-              <span className="truncate">{branch.name}</span>
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
   );
 }

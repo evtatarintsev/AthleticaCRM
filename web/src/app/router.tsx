@@ -22,6 +22,8 @@ import {
   type SessionId,
 } from "@/api/generated/contracts";
 import { createAuthApi } from "@/auth/authApi";
+import { FinancePage } from "@/finance/FinancePage";
+import { FinanceSearchSchema, type FinanceSearch } from "@/finance/financeSearch";
 import { ClientsPage } from "@/clients/ClientsPage";
 import { CLIENT_TABS } from "@/clients/card/clientOverview";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
@@ -480,6 +482,26 @@ const groupRoute = createRoute({
 });
 
 /** Список клиентов: фильтры и сортировка в search-параметрах адреса. */
+const financeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/finance",
+  validateSearch: FinanceSearchSchema,
+  component: function FinanceRoute() {
+    const { api } = financeRoute.useRouteContext();
+    const search = financeRoute.useSearch();
+    const navigate = financeRoute.useNavigate();
+    return (
+      <FinancePage
+        api={api}
+        search={search}
+        onSearchChange={(next: FinanceSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
 const clientsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/clients",
@@ -632,6 +654,7 @@ const routeTree = rootRoute.addChildren([
     groupRoute,
     employeesRoute,
     clientsRoute,
+    financeRoute,
     clientNewRoute,
     clientRoute,
     clientEditRoute,
@@ -693,6 +716,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/groups": true,
   "/employees": true,
   "/clients": true,
+  "/finance": true,
   "/clients/new": true,
   "/tasks": true,
 };

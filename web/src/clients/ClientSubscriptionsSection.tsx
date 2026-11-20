@@ -135,6 +135,11 @@ function MembershipRow({
         <div className="space-y-1">
           <div className="font-medium tabular-nums">{format.money(membership.price)}</div>
           <MembershipPill phase={view.phase} />
+          {membership.sale.debt.minorUnits > 0 && (
+            <p className="text-xs text-destructive">
+              {t(`finance.state.${membership.sale.paymentState}`)}
+            </p>
+          )}
         </div>
       }
     >

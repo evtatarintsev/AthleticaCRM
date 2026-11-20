@@ -12,7 +12,7 @@
 - ⚡ [`docs/QUICK_REFERENCE.md`](./docs/QUICK_REFERENCE.md) — быстрая справка для разработчиков
 
 **Другие документы**:
-- [`docs/client-balance.md`](./docs/client-balance.md) — учет баланса клиентов
+- [`docs/ledger.md`](./docs/ledger.md) — главная книга, кассы, продажи и баланс клиентов
 - [`docs/employee-access-flow.md`](./docs/employee-access-flow.md) — доступы сотрудников
 
 ---

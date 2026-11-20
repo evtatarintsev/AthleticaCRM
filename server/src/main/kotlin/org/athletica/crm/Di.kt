@@ -41,9 +41,6 @@ import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
-import org.athletica.crm.domain.clientbalance.AuditClientBalances
-import org.athletica.crm.domain.clientbalance.ClientBalances
-import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clientcard.ClientCardSectionSettings
 import org.athletica.crm.domain.clientcard.DbClientCardSectionSettings
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
@@ -127,6 +124,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.crm.usecases.memberships.DebitReconciliation
 import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.crm.usecases.messaging.InboundStores
@@ -160,7 +158,7 @@ data class Di(
     val emailDispatcher: EmailDispatcher,
     val orgBalances: OrgBalances,
     val organizations: Organizations,
-    val clientBalances: ClientBalances,
+    val clientPayments: ClientPayments,
     val clients: Clients,
     val clientNotes: ClientNotes = DbClientNotes(),
     val branches: Branches,
@@ -267,7 +265,7 @@ fun Application.di(): Di {
         emailDispatcher = DbEmailDispatcher(db, orgEmails, mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
         organizations = LocMemCachedOrganizations(DbOrganizations()),
-        clientBalances = AuditClientBalances(DbClientBalances(), audit),
+        clientPayments = ClientPayments(audit = audit),
         clients = AuditClients(DbClients(), audit),
         branches = AuditBranches(DbBranches(), audit),
         customFieldDefinitions = DbCustomFieldDefinitions(),

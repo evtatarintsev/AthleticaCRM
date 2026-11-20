@@ -26,6 +26,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.attendance.DefaultAttendanceLabels
 import org.athletica.crm.domain.branch.Branches
+import org.athletica.crm.domain.casharticles.seedCashArticles
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.leadSource.DefaultLeadSources
 import org.athletica.crm.domain.org.Organizations
@@ -183,6 +184,7 @@ class DbAuth(
 
         DefaultAttendanceLabels.createFor(orgId, lang)
         DefaultLeadSources.createFor(orgId, lang)
+        seedCashArticles(orgId, lang)
 
         userSettings.new(userId)
         val user = AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)

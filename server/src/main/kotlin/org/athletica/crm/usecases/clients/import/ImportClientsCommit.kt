@@ -23,7 +23,6 @@ import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.toMoney
-import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -35,6 +34,7 @@ import org.athletica.crm.read.uploads.uploadById
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.usecases.finance.ClientPayments
 
 private const val MAX_CSV_SIZE_BYTES = 10L * 1024 * 1024
 
@@ -49,7 +49,7 @@ context(db: Database, minio: MinioService, ctx: EmployeeRequestContext, raise: R
 suspend fun importClientsCommit(
     request: ClientImportCommitRequest,
     clients: Clients,
-    balances: ClientBalances,
+    balances: ClientPayments,
     leadSources: LeadSources,
     definitions: CustomFieldDefinitions,
 ): ClientImportCommitResponse {
@@ -235,7 +235,7 @@ private suspend fun processRow(
     customDefs: Map<String, CustomFieldDefinition>,
     leadSourceIdByCsvValue: Map<String, LeadSourceId>,
     clients: Clients,
-    balances: ClientBalances,
+    balances: ClientPayments,
     balanceNote: String,
 ): RowResult {
     val errors = mutableListOf<String>()

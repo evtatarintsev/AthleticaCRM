@@ -8,7 +8,9 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SaleId
 import org.athletica.crm.core.entityids.TariffPlanId
+import org.athletica.crm.core.finance.SalePaymentState
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.CloseMode
@@ -51,6 +53,8 @@ data class MembershipSchema(
     val groups: List<MembershipGroupSchema>,
     /** Сохранённое состояние и выводимые на сегодня свойства. */
     val state: MembershipStateSchema,
+    /** Продажа абонемента и состояние её оплаты. */
+    val sale: MembershipSaleSchema,
 )
 
 /** Группа абонемента. */
@@ -132,3 +136,12 @@ data class RevokedMembershipStateSchema(
     /** Дата окончания, если абонемент был активирован до отзыва. */
     val endDate: LocalDate?,
 ) : MembershipStateSchema
+
+/** Состояние оплаты продажи абонемента. */
+@Serializable
+data class MembershipSaleSchema(
+    val saleId: SaleId,
+    val paid: Money,
+    val debt: Money,
+    val paymentState: SalePaymentState,
+)

@@ -11,6 +11,15 @@ enum class UserPermission : Permission {
     CAN_MANAGE_ORG_BALANCE,
     CAN_VIEW_CLIENT_BALANCE,
 
+    /** Позволяет принимать оплаты клиентов и отменять свои сегодняшние оплаты. */
+    CAN_ACCEPT_PAYMENTS,
+
+    /** Позволяет управлять кассами, статьями и финансовыми операциями организации. */
+    CAN_MANAGE_FINANCE,
+
+    /** Позволяет просматривать кассовый журнал, остатки касс и отчёт ДДС. */
+    CAN_VIEW_FINANCE,
+
     /** Позволяет видеть задачи всех сотрудников, а не только свои. */
     CAN_VIEW_ALL_TASKS,
 

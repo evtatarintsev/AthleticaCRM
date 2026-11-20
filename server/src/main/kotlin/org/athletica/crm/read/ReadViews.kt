@@ -10,9 +10,7 @@ import org.athletica.crm.read.audit.ActivityLogView
 import org.athletica.crm.read.audit.DbActivityLogView
 import org.athletica.crm.read.channels.ChannelListView
 import org.athletica.crm.read.channels.DbChannelListView
-import org.athletica.crm.read.clients.ClientBalanceHistoryView
 import org.athletica.crm.read.clients.ClientListView
-import org.athletica.crm.read.clients.DbClientBalanceHistoryView
 import org.athletica.crm.read.clients.DbClientListView
 import org.athletica.crm.read.employees.DbEmployeeDetailView
 import org.athletica.crm.read.employees.DbEmployeeListView
@@ -66,7 +64,7 @@ data class ReadViews(
     /** Список клиентов с фильтрами, сортировкой и пагинацией. */
     val clientList: ClientListView = DbClientListView(),
     /** Журнал операций по личному счёту клиента. */
-    val clientBalanceHistory: ClientBalanceHistoryView = DbClientBalanceHistoryView(),
+    val clientBalance: org.athletica.crm.read.finance.ClientBalanceView = org.athletica.crm.read.finance.DbClientBalanceView(),
     /** Список групп с расписанием и тренерами. */
     val groupList: GroupListView = DbGroupListView(),
     /** Карточка группы с расписанием, дисциплинами, тренерами и участниками. */

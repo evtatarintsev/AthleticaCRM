@@ -28,7 +28,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-card px-3 py-4 lg:flex">
         <Brand name={me.orgInfo.name} />
-        <Navigation badges={badges} />
+        <Navigation badges={badges} canViewFinance={me.permissions.includes("CAN_VIEW_FINANCE")} />
       </aside>
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur lg:px-8">
@@ -49,6 +49,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
                 <Brand name={me.orgInfo.name} />
               </div>
               <Navigation
+                canViewFinance={me.permissions.includes("CAN_VIEW_FINANCE")}
                 badges={badges}
                 onNavigate={() => {
                   setMenuOpen(false);

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
-  AdjustBalanceRequestSchema,
+  AdjustAdvanceRequestSchema,
   ClientDetailResponseSchema,
   type ClientDetailResponse,
 } from "@/api/generated/contracts";
@@ -48,11 +48,11 @@ function balanceServer(
     "custom-fields/list": () => json([]),
     "clients/detail": () => json(client),
     "clients/notes/list": () => json({ notes: [] }),
-    "clients/balance/adjust": ({ body }) => {
+    "finance/advance/adjust": ({ body }) => {
       if (adjustFails) {
         return json({ code: "BALANCE_LOCKED", message: "Баланс заблокирован", fields: null }, 409);
       }
-      const request = AdjustBalanceRequestSchema.parse(body);
+      const request = AdjustAdvanceRequestSchema.parse(body);
       client = {
         ...client,
         balance: {
@@ -60,17 +60,25 @@ function balanceServer(
           minorUnits: client.balance.minorUnits + request.amount.minorUnits,
         },
       };
-      return json(client);
+      return new Response(null, { status: 200 });
     },
-    "clients/balance/history": () =>
+    "finance/client-ledger": () =>
       json({
+        balance: client.balance,
+        advance: client.balance,
+        debt: { minorUnits: 0, currency: "RUB" },
+        salesWithDebt: [],
         entries: [
           {
             id: "0199a0b2-7c3e-7d2a-9f10-000000000601",
             amount: { minorUnits: -5000, currency: "RUB" },
             balanceAfter: { minorUnits: 10000, currency: "RUB" },
-            operationType: "admin_debit",
-            note: "Долг за май",
+            kind: "ADJUSTMENT",
+            occurredOn: "2024-01-01",
+            fromAdvance: { minorUnits: 0, currency: "RUB" },
+            saleId: null,
+            reversed: false,
+            comment: "Долг за май",
             performedBy: { id: session().employeeId, name: "Иванова" },
             createdAt: "2024-01-01T10:00:00Z",
           },
@@ -100,7 +108,7 @@ describe("баланс клиента", () => {
   });
 
   it("журнала баланса нет в ленте, он открывается панелью по клику на плитку", async () => {
-    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"]);
+    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE", "CAN_MANAGE_FINANCE"]);
     openApp(`/clients/${bob.id}`, api.fetch);
     const user = userEvent.setup();
 
@@ -111,16 +119,14 @@ describe("баланс клиента", () => {
     await user.click(tile);
     const panel = await screen.findByRole("dialog", { name: ru["clientCard.balance"] });
     expect(await within(panel).findByText("Долг за май")).toBeInTheDocument();
-    expect(within(panel).getByText(ru["clientCard.operation.admin_debit"])).toBeInTheDocument();
+    expect(within(panel).getByText(ru["finance.kind.ADJUSTMENT"])).toBeInTheDocument();
     expect(within(panel).getByText(/Иванова/)).toBeInTheDocument();
     expect(within(panel).getByText("остаток 100,00 ₽")).toBeInTheDocument();
-    expect(
-      within(panel).getByRole("button", { name: ru["clients.detail.balanceAdjust"] }),
-    ).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: ru["finance.adjust"] })).toBeInTheDocument();
   });
 
   it("панель открывается с клавиатуры и возвращает фокус на плитку при закрытии", async () => {
-    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"]);
+    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE", "CAN_MANAGE_FINANCE"]);
     openApp(`/clients/${bob.id}`, api.fetch);
     const user = userEvent.setup();
 
@@ -137,80 +143,88 @@ describe("баланс клиента", () => {
   });
 
   it("корректирует баланс во вложенной панели и обновляет плитку, панель и журнал", async () => {
-    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"]);
+    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE", "CAN_MANAGE_FINANCE"]);
     const { user, panel } = await openBalance(api);
 
-    await user.click(
-      within(panel).getByRole("button", { name: ru["clients.detail.balanceAdjust"] }),
-    );
+    await user.click(within(panel).getByRole("button", { name: ru["finance.adjust"] }));
     const form = await screen.findByRole("dialog", {
-      name: ru["clients.detail.balanceAdjustTitle"],
+      name: ru["finance.adjust"],
     });
-    await user.click(within(form).getByLabelText(ru["clients.detail.balanceDebit"]));
-    await user.type(within(form).getByLabelText(ru["clients.detail.balanceAmount"]), "50");
-    await user.type(within(form).getByLabelText(ru["clients.detail.balanceNote"]), "Списание");
+    await user.selectOptions(
+      within(form).getByLabelText(ru["clients.detail.balanceDirection"]),
+      "debit",
+    );
+    await user.type(within(form).getByLabelText(ru["finance.amount"]), "50");
+    await user.type(within(form).getByLabelText(ru["finance.comment"]), "Списание");
     await user.click(within(form).getByRole("button", { name: ru["action.save"] }));
 
     await waitFor(() => {
       expect(form).not.toBeInTheDocument();
     });
-    const request = AdjustBalanceRequestSchema.parse(api.to("clients/balance/adjust").at(-1)?.body);
+    const request = AdjustAdvanceRequestSchema.parse(api.to("finance/advance/adjust").at(-1)?.body);
     expect(request.amount).toEqual({ minorUnits: -5000, currency: "RUB" });
-    expect(request.note).toBe("Списание");
+    expect(request.comment).toBe("Списание");
 
     expect(
       screen.getByRole("button", { name: tileName("50,00 ₽"), hidden: true }),
     ).toBeInTheDocument();
-    expect(within(panel).getByText("50,00 ₽")).toBeInTheDocument();
+    expect(within(panel).getAllByText("50,00 ₽")[0]).toBeInTheDocument();
     await waitFor(() => {
-      expect(api.to("clients/balance/history").length).toBeGreaterThan(1);
+      expect(api.to("finance/client-ledger").length).toBeGreaterThan(1);
     });
   });
 
   it("некорректная сумма не отправляется", async () => {
-    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"]);
+    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE", "CAN_MANAGE_FINANCE"]);
     const { user, panel } = await openBalance(api);
 
-    await user.click(
-      within(panel).getByRole("button", { name: ru["clients.detail.balanceAdjust"] }),
-    );
+    await user.click(within(panel).getByRole("button", { name: ru["finance.adjust"] }));
     const form = await screen.findByRole("dialog", {
-      name: ru["clients.detail.balanceAdjustTitle"],
+      name: ru["finance.adjust"],
     });
-    await user.type(within(form).getByLabelText(ru["clients.detail.balanceAmount"]), "0");
-    await user.type(within(form).getByLabelText(ru["clients.detail.balanceNote"]), "Ошибка");
+    await user.type(within(form).getByLabelText(ru["finance.amount"]), "0");
+    await user.type(within(form).getByLabelText(ru["finance.comment"]), "Ошибка");
     await user.click(within(form).getByRole("button", { name: ru["action.save"] }));
 
     expect(await within(form).findByText(ru["error.invalidAmount"])).toBeInTheDocument();
-    expect(api.to("clients/balance/adjust")).toHaveLength(0);
+    expect(api.to("finance/advance/adjust")).toHaveLength(0);
   });
 
   it("при ошибке сервера вложенная панель остаётся открытой с введёнными значениями", async () => {
-    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"], true);
+    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE", "CAN_MANAGE_FINANCE"], true);
     const { user, panel } = await openBalance(api);
 
-    await user.click(
-      within(panel).getByRole("button", { name: ru["clients.detail.balanceAdjust"] }),
-    );
+    await user.click(within(panel).getByRole("button", { name: ru["finance.adjust"] }));
     const form = await screen.findByRole("dialog", {
-      name: ru["clients.detail.balanceAdjustTitle"],
+      name: ru["finance.adjust"],
     });
-    await user.type(within(form).getByLabelText(ru["clients.detail.balanceAmount"]), "50");
-    await user.type(within(form).getByLabelText(ru["clients.detail.balanceNote"]), "Пополнение");
+    await user.type(within(form).getByLabelText(ru["finance.amount"]), "50");
+    await user.type(within(form).getByLabelText(ru["finance.comment"]), "Пополнение");
     await user.click(within(form).getByRole("button", { name: ru["action.save"] }));
 
     expect(await within(form).findByText("Баланс заблокирован")).toBeInTheDocument();
-    expect(within(form).getByLabelText(ru["clients.detail.balanceAmount"])).toHaveValue("50");
-    expect(within(form).getByLabelText(ru["clients.detail.balanceNote"])).toHaveValue("Пополнение");
+    expect(within(form).getByLabelText(ru["finance.amount"])).toHaveValue("50");
+    expect(within(form).getByLabelText(ru["finance.comment"])).toHaveValue("Пополнение");
   });
 
   it("для клиента в архиве журнал виден, а корректировки нет", async () => {
-    const api = balanceServer({ ...bob, state: "ARCHIVED" }, ["CAN_VIEW_CLIENT_BALANCE"]);
+    const api = balanceServer({ ...bob, state: "ARCHIVED" }, [
+      "CAN_VIEW_CLIENT_BALANCE",
+      "CAN_MANAGE_FINANCE",
+    ]);
     const { panel } = await openBalance(api);
 
     expect(await within(panel).findByText("Долг за май")).toBeInTheDocument();
     expect(
-      within(panel).queryByRole("button", { name: ru["clients.detail.balanceAdjust"] }),
+      within(panel).queryByRole("button", { name: ru["finance.adjust"] }),
+    ).not.toBeInTheDocument();
+  });
+  it("просмотр истории не даёт права на корректировку", async () => {
+    const api = balanceServer(bob, ["CAN_VIEW_CLIENT_BALANCE"]);
+    const { panel } = await openBalance(api);
+    expect(await within(panel).findByText("Долг за май")).toBeInTheDocument();
+    expect(
+      within(panel).queryByRole("button", { name: ru["finance.adjust"] }),
     ).not.toBeInTheDocument();
   });
 });

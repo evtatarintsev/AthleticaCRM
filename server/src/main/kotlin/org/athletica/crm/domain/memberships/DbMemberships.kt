@@ -16,6 +16,7 @@ import org.athletica.crm.core.actingEmployeeId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SaleItemId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.entityids.toClientId
@@ -26,7 +27,6 @@ import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.entityids.toTariffPlanId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.ActivationReason
 import org.athletica.crm.core.subscription.CloseMode
@@ -62,11 +62,16 @@ class DbMemberships(private val participations: Participations = DbParticipation
         sessions: PositiveInt?,
         groupIds: List<GroupId>,
         duration: MembershipDuration,
-        price: Money,
+        saleItemId: SaleItemId,
         activation: Activation,
         closeMode: CloseMode,
         issuedOn: LocalDate,
     ): Membership {
+        if (tr.sql("SELECT i.id FROM sale_items i JOIN sales s ON s.id = i.sale_id WHERE i.id = :id AND s.org_id = :org AND s.client_id = :client AND i.kind = 'membership' AND s.cancelled_at IS NULL")
+                .bind("id", saleItemId).bind("org", ctx.orgId).bind("client", clientId).firstOrNull { 1 } == null
+        ) {
+            raise(CommonDomainError("SALE_ITEM_NOT_FOUND", Messages.MembershipNotFound.localize()))
+        }
         val outcome = issueOutcome(activation, closeMode, sessions?.value, groupIds, issuedOn)
         val startDate = (outcome as? IssueOutcome.Active)?.startDate
         val endDate = startDate?.let { duration.endDateFrom(it) }
@@ -76,10 +81,10 @@ class DbMemberships(private val participations: Participations = DbParticipation
                 """
                 INSERT INTO memberships
                     (id, org_id, client_id, tariff_plan_id, name, sessions_total, sessions_remaining,
-                     start_date, end_date, price, issued_by, state, activation_mode, activate_on,
+                     start_date, end_date, sale_item_id, issued_by, state, activation_mode, activate_on,
                      activation_deadline, duration_value, duration_unit, close_mode, issued_on)
                 VALUES (:id, :orgId, :clientId, :tariffPlanId, :name, :sessions, :sessions,
-                        :startDate, :endDate, :price, :issuedBy, :state, :activationMode, :activateOn,
+                        :startDate, :endDate, :saleItemId, :issuedBy, :state, :activationMode, :activateOn,
                         :deadline, :durationValue, :durationUnit, :closeMode, :issuedOn)
                 """.trimIndent(),
             )
@@ -91,7 +96,7 @@ class DbMemberships(private val participations: Participations = DbParticipation
             .bind("sessions", sessions?.value)
             .bind("startDate", startDate)
             .bind("endDate", endDate)
-            .bind("price", price)
+            .bind("saleItemId", saleItemId)
             .bind("issuedBy", ctx.actingEmployeeId)
             .bind("state", state.name)
             .bind("activationMode", activation.mode.name)
@@ -334,7 +339,7 @@ class DbMemberships(private val participations: Participations = DbParticipation
         const val SELECT_MEMBERSHIP =
             """
             SELECT id, client_id, tariff_plan_id, name, sessions_total, sessions_remaining,
-                   start_date, end_date, price, issued_by, state, activation_mode, activate_on,
+                   start_date, end_date, (SELECT i.amount FROM sale_items i WHERE i.id = m.sale_item_id) AS price, issued_by, state, activation_mode, activate_on,
                    activation_deadline, duration_value, duration_unit, close_mode, issued_on,
                    close_notified_at, closed_on, close_reason, freeze_start, freeze_end, freeze_reason, freeze_by,
                    (SELECT COALESCE(json_agg(json_build_object('id', g.id, 'name', g.name) ORDER BY g.name, g.id), '[]')::text

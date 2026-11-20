@@ -24,7 +24,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.clientbalance.DbClientBalances
+import org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
@@ -34,6 +34,7 @@ import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asDouble
 import org.athletica.crm.storage.asString
 import org.athletica.crm.testName
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -113,7 +114,7 @@ class ImportClientsCommitTest {
             username = "user@example.com",
             clientIp = "127.0.0.1",
             currency = Currency.RUB,
-            permissions = EmployeePermission(),
+            permissions = EmployeePermission(emptyList(), setOf(CAN_MANAGE_FINANCE), emptySet()),
         )
 
     private suspend fun runImport(
@@ -125,7 +126,7 @@ class ImportClientsCommitTest {
                 importClientsCommit(
                     request = request,
                     clients = DbClients(),
-                    balances = DbClientBalances(),
+                    balances = ClientPayments(),
                     leadSources = DbLeadSources(),
                     definitions = DbCustomFieldDefinitions(),
                 )
@@ -257,9 +258,11 @@ class ImportClientsCommitTest {
                     TestPostgres.db
                         .sql(
                             """
-                            SELECT j.amount, j.operation_type
-                            FROM client_balance_journal j
-                            JOIN clients c ON c.id = j.client_id
+                            SELECT -j.amount AS amount, t.kind AS operation_type
+                            FROM ledger_postings j
+                            JOIN ledger_accounts a ON a.id = j.account_id AND a.kind = 'advance'
+                            JOIN ledger_transactions t ON t.id = j.transaction_id
+                            JOIN clients c ON c.id = a.client_id
                             WHERE c.name = :name AND c.org_id = :orgId
                             """.trimIndent(),
                         ).bind("name", "Иванов")
@@ -267,15 +270,17 @@ class ImportClientsCommitTest {
                         .firstOrNull { row ->
                             row.asDouble("amount") to row.asString("operation_type")
                         }
-                assertEquals(3056.0 to "admin_credit", ivanovBalance)
+                assertEquals(3056.0 to "adjustment", ivanovBalance)
 
                 val petrovBalance =
                     TestPostgres.db
                         .sql(
                             """
-                            SELECT j.amount, j.operation_type
-                            FROM client_balance_journal j
-                            JOIN clients c ON c.id = j.client_id
+                            SELECT -j.amount AS amount, t.kind AS operation_type
+                            FROM ledger_postings j
+                            JOIN ledger_accounts a ON a.id = j.account_id AND a.kind = 'advance'
+                            JOIN ledger_transactions t ON t.id = j.transaction_id
+                            JOIN clients c ON c.id = a.client_id
                             WHERE c.name = :name AND c.org_id = :orgId
                             """.trimIndent(),
                         ).bind("name", "Петров")
@@ -283,15 +288,16 @@ class ImportClientsCommitTest {
                         .firstOrNull { row ->
                             row.asDouble("amount") to row.asString("operation_type")
                         }
-                assertEquals(-266.0 to "admin_debit", petrovBalance)
+                assertEquals(-266.0 to "adjustment", petrovBalance)
 
                 val sidorovJournalCount =
                     TestPostgres.db
                         .sql(
                             """
                             SELECT COUNT(*)::text as c
-                            FROM client_balance_journal j
-                            JOIN clients c ON c.id = j.client_id
+                            FROM ledger_postings j
+                            JOIN ledger_accounts a ON a.id = j.account_id AND a.kind = 'advance'
+                            JOIN clients c ON c.id = a.client_id
                             WHERE c.name = :name
                             """.trimIndent(),
                         ).bind("name", "Сидоров")

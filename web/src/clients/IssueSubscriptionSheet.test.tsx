@@ -7,8 +7,9 @@ import {
   IssueMembershipRequestSchema,
   UpdateTariffPlanRequestSchema,
 } from "@/api/generated/contracts";
+import { cashAccount, bankAccount, clientLedger } from "@/test/finance";
 import { ru } from "@/i18n/ru";
-import { appServer, empty, json, openApp } from "@/test/app";
+import { appServer, empty, json, openApp, session } from "@/test/app";
 
 const dana = ClientDetailResponseSchema.parse({
   id: "0199a0b2-7c3e-7d2a-9f10-000000000504",
@@ -58,9 +59,27 @@ const summer = {
 function issueServer({
   failIssue = false,
   unpaid = [],
-}: { failIssue?: boolean; unpaid?: readonly Record<string, unknown>[] } = {}) {
+  acceptPayments = false,
+}: {
+  failIssue?: boolean;
+  unpaid?: readonly Record<string, unknown>[];
+  acceptPayments?: boolean;
+} = {}) {
   let tariffs: readonly Record<string, unknown>[] = [monthly, unlimited, summer];
   return appServer({
+    "auth/me": () =>
+      json(session(undefined, undefined, undefined, acceptPayments ? ["CAN_ACCEPT_PAYMENTS"] : [])),
+    "finance/cash-accounts": () =>
+      json({ accounts: [cashAccount, bankAccount], total: cashAccount.balance }),
+    "finance/client-payment-options": () =>
+      json({
+        ...clientLedger,
+        balance: cashAccount.balance,
+        advance: { minorUnits: 100000, currency: "RUB" },
+        debt: cashAccount.balance,
+        entries: [],
+        salesWithDebt: [],
+      }),
     "custom-fields/list": () => json([]),
     "org/settings": () => json({ name: "Лига", timezone: "Europe/Moscow", currency: "RUB" }),
     "clients/detail": () => json(dana),
@@ -398,5 +417,55 @@ describe("выдача абонемента", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
+  });
+  it("сумма оплаты следует за стоимостью а часть с аванса уменьшает кассовую часть", async () => {
+    const api = issueServer({ acceptPayments: true });
+    const { user, dialog, panel } = await openIssue(api);
+    await user.click(await pick(dialog, "Месяц"));
+    const price = panel.getByLabelText(PRICE);
+    await user.clear(price);
+    await user.type(price, "3500");
+    const fromAdvance = await panel.findByLabelText(new RegExp(ru["finance.fromAdvance"]));
+    await user.type(fromAdvance, "1000");
+    expect(panel.getByLabelText(ru["finance.amount"])).toHaveValue("2500");
+    await user.click(panel.getByRole("button", { name: ru["clients.issue.submit"] }));
+    await waitFor(() => {
+      expect(api.to("memberships/issue")).toHaveLength(1);
+    });
+    expect(
+      IssueMembershipRequestSchema.parse(api.to("memberships/issue")[0]?.body).payment,
+    ).toMatchObject({
+      fromAdvance: { minorUnits: 100000, currency: "RUB" },
+      cash: [{ cashAccountId: cashAccount.id, amount: { minorUnits: 250000, currency: "RUB" } }],
+    });
+  });
+
+  it("оплату при выдаче можно отключить", async () => {
+    const api = issueServer({ acceptPayments: true });
+    const { user, dialog, panel } = await openIssue(api);
+    await user.click(await pick(dialog, "Месяц"));
+    await user.click(await panel.findByLabelText(ru["finance.payNow"]));
+    expect(panel.queryByLabelText(ru["finance.amount"])).not.toBeInTheDocument();
+    await user.click(panel.getByRole("button", { name: ru["clients.issue.submit"] }));
+    await waitFor(() => {
+      expect(api.to("memberships/issue")).toHaveLength(1);
+    });
+    expect(
+      IssueMembershipRequestSchema.parse(api.to("memberships/issue")[0]?.body).payment,
+    ).toBeNull();
+  });
+
+  it("изменение оплаты требует подтверждения закрытия панели", async () => {
+    const api = issueServer({ acceptPayments: true });
+    const { user, dialog, panel } = await openIssue(api);
+    await user.click(await pick(dialog, "Месяц"));
+    const amount = await panel.findByLabelText(ru["finance.amount"]);
+    await user.clear(amount);
+    await user.type(amount, "5000");
+    await user.click(panel.getByRole("button", { name: ru["action.close"] }));
+    expect(
+      await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] }),
+    ).toBeInTheDocument();
+    expect(api.to("memberships/issue")).toHaveLength(0);
   });
 });

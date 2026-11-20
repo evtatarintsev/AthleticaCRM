@@ -53,6 +53,7 @@ import org.athletica.crm.routes.customFieldsRoutes
 import org.athletica.crm.routes.disciplinesRoutes
 import org.athletica.crm.routes.displaySettingsRoutes
 import org.athletica.crm.routes.employeesRoutes
+import org.athletica.crm.routes.financeRoutes
 import org.athletica.crm.routes.groupsRoutes
 import org.athletica.crm.routes.hallsRoutes
 import org.athletica.crm.routes.homeRoutes
@@ -198,12 +199,12 @@ fun Application.configureServer() {
                         clientsRoutes(
                             di.clients,
                             di.views,
-                            di.clientBalances,
                             di.employees,
                             di.enrollments,
                             di.customFieldDefinitions,
                             di.clientContacts,
                         )
+                        financeRoutes(di.clientPayments, di.clients, di.memberships)
                         clientNotesRoutes(di.clientNotes)
                         channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
                         messagingRoutes(
@@ -216,7 +217,7 @@ fun Application.configureServer() {
                             di.views,
                         )
                         context(di.minio) {
-                            clientImportRoutes(di.clients, di.clientBalances, di.leadSources, di.customFieldDefinitions)
+                            clientImportRoutes(di.clients, di.clientPayments, di.leadSources, di.customFieldDefinitions)
                         }
                         groupsRoutes(di.groups, di.employees, di.groupSchedule, di.notifications, di.views)
                         sessionsRoutes(di.sessions, di.employees, di.views)
@@ -229,7 +230,7 @@ fun Application.configureServer() {
                         disciplinesRoutes(di.disciplines)
                         sportCatalogRoutes()
                         tariffsRoutes(di.tariffPlans)
-                        membershipsRoutes(di.memberships, di.orgCalendar, di.views)
+                        membershipsRoutes(di.memberships, di.orgCalendar, di.views, di.clientPayments)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles, di.views)

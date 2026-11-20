@@ -126,13 +126,18 @@ export const en: Messages<typeof ru> = {
   "nav.tasks": "Tasks",
   "nav.settings": "Settings",
 
+  "clubCard.label": "{org}, branch {branch}. Switch branch",
+  "clubCard.branchCount": {
+    one: "{count} branch",
+    other: "{count} branches",
+  },
+  "clubCard.manageBranches": "Manage branches",
+  "clubCard.product": "Athletica",
   "account.menu": "Account menu",
   "account.profile": "Profile",
-  "account.switchBranch": "Switch branch",
   "account.language": "Language",
   "account.logout": "Log out",
   "account.orgBalance": "Organisation balance: {amount}",
-  "account.currentBranch": "Current branch",
 
   "language.ru": "Русский",
   "language.en": "English",

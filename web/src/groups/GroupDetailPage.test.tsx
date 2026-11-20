@@ -18,6 +18,7 @@ import {
   SetGroupEmployeesRequestSchema,
   SetGroupScheduleRequestSchema,
   type ClientId,
+  type EmployeeAccessStatus,
   type GroupAttendanceResponse,
   type GroupDetailResponse,
   type GroupRosterClient,
@@ -50,13 +51,15 @@ const vera = client(2, "Вера Котова");
 const gleb = client(3, "Глеб Носов");
 
 /** Сотрудник списка с порядковым номером [n] и именем [name]. */
-const employee = (n: number, name: string, isActive = true) =>
+const employee = (n: number, name: string, status: EmployeeAccessStatus = "ACTIVE") =>
   EmployeeListItemSchema.parse({
     id: `0199a0b2-0000-7000-8000-70000000000${String(n)}`,
     name,
     avatarId: null,
     isOwner: false,
-    isActive,
+    status,
+    lastSeenAt: null,
+    online: false,
     joinedAt: "2026-01-01T00:00:00Z",
     roles: [],
     phoneNo: null,
@@ -64,7 +67,7 @@ const employee = (n: number, name: string, isActive = true) =>
   });
 
 const ivanov = employee(1, "Иванов");
-const kozlov = employee(2, "Козлов", false);
+const kozlov = employee(2, "Козлов", "NO_ACCESS");
 const sidorova = employee(3, "Сидорова");
 
 const boxing = GroupDisciplineSchema.parse({

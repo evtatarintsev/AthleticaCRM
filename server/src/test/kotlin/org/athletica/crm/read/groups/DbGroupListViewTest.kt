@@ -105,8 +105,8 @@ class DbGroupListViewTest {
             TestPostgres.db
                 .sql(
                     """
-                    INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
-                    VALUES (:id, :orgId, :name, true, true, NOW())
+                    INSERT INTO employees (id, org_id, name, all_branches_access, joined_at)
+                    VALUES (:id, :orgId, :name, true, NOW())
                     """.trimIndent(),
                 )
                 .bind("id", id).bind("orgId", orgId).bind("name", name)

@@ -4,11 +4,11 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import kotlinx.serialization.json.Json
+import org.athletica.crm.api.schemas.employees.EmployeeAccessStatus
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.BranchId
-import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.AppError
@@ -18,6 +18,7 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
@@ -29,10 +30,11 @@ import org.athletica.crm.storage.asUuidOrNull
  */
 class DbEmployeeDetailView : EmployeeDetailView {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun byId(id: EmployeeId): EmployeeDetailResponse =
+    override suspend fun byId(query: EmployeeDetailQuery): EmployeeDetailResponse =
         tr
             .sql(SQL)
-            .bind("id", id)
+            .bind("id", query.id)
+            .bind("now", query.now)
             .bind("orgId", ctx.orgId)
             .firstOrNull { row -> row.toDetailResponse() }
             ?: raise(CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()))
@@ -45,7 +47,9 @@ class DbEmployeeDetailView : EmployeeDetailView {
             name = asString("name"),
             avatarId = asUuidOrNull("avatar_id")?.toUploadId(),
             isOwner = asBoolean("is_owner"),
-            isActive = asBoolean("is_active"),
+            status = EmployeeAccessStatus.valueOf(asString("status")),
+            lastSeenAt = asInstantOrNull("last_seen_at"),
+            online = asBoolean("online"),
             joinedAt = asInstant("joined_at"),
             roles = Json.decodeFromString<List<EmployeeRole>>(asString("roles")),
             phoneNo = asStringOrNull("phone_no"),
@@ -66,7 +70,8 @@ class DbEmployeeDetailView : EmployeeDetailView {
         val SQL =
             """
             SELECT
-                e.id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at,
+                e.id, e.name, e.avatar_id, e.is_owner, e.joined_at, e.last_seen_at,
+                ${DbEmployeeListView.ACCESS_COLUMNS}
                 e.phone_no, e.email, e.all_branches_access,
                 (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name) ORDER BY r.name), '[]'::jsonb)
                    FROM employee_roles er JOIN roles r ON r.id = er.role_id AND r.org_id = e.org_id

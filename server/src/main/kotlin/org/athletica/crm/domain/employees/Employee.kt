@@ -26,7 +26,12 @@ interface Employee : UserActor {
     val name: String
     val avatarId: UploadId?
     val isOwner: Boolean
-    val isActive: Boolean
+
+    /** Момент блокировки сотрудника; `null` — не заблокирован. */
+    val blockedAt: Instant?
+
+    /** Может ли сотрудник работать в системе: логин выдан и сотрудник не заблокирован. */
+    val isActive: Boolean get() = userId != null && blockedAt == null
     val joinedAt: Instant
     val phoneNo: String?
     val email: EmailAddress?
@@ -41,8 +46,17 @@ interface Employee : UserActor {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
+    /** Выдаёт сотруднику логин [email] с паролем [password]; повторная выдача отклоняется. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun invite(email: EmailAddress, password: String)
+
+    /** Блокирует сотрудника; владельца и самого себя заблокировать нельзя, повторная блокировка ничего не меняет. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun block()
+
+    /** Снимает блокировку с сотрудника. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun unblock()
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNew(

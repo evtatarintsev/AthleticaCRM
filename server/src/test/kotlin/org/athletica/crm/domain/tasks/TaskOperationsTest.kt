@@ -118,7 +118,7 @@ class TaskOperationsTest {
             override val name = "Stub"
             override val avatarId: UploadId? = null
             override val isOwner = false
-            override val isActive = true
+            override val blockedAt: Instant? = null
             override val joinedAt: Instant = Clock.System.now()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
@@ -132,6 +132,12 @@ class TaskOperationsTest {
 
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun invite(email: EmailAddress, password: String) = Unit
+
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun block() = Unit
+
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun unblock() = Unit
 
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun withNew(

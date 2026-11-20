@@ -322,6 +322,21 @@ object Messages {
         override val en = "Employee not found"
     }
 
+    object EmployeeAccessAlreadySent : LocalizationKey {
+        override val ru = "Доступ сотруднику уже выдан"
+        override val en = "Employee access has already been granted"
+    }
+
+    object EmployeeOwnerCannotBeBlocked : LocalizationKey {
+        override val ru = "Владельца организации нельзя заблокировать"
+        override val en = "The organization owner cannot be blocked"
+    }
+
+    object EmployeeCannotBlockSelf : LocalizationKey {
+        override val ru = "Нельзя заблокировать самого себя"
+        override val en = "You cannot block yourself"
+    }
+
     object DisciplineNotFound : LocalizationKey {
         override val ru = "Дисциплина не найдена"
         override val en = "Discipline not found"

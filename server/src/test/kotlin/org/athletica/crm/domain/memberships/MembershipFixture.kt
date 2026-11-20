@@ -75,9 +75,10 @@ class MembershipFixture(
                 .bind("currency", currency.name)
                 .execute()
             TestPostgres.db
-                .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, 'Админ', true)")
+                .sql("INSERT INTO employees (id, org_id, user_id, name, is_owner) VALUES (:id, :orgId, :userId, 'Админ', true)")
                 .bind("id", employeeId)
                 .bind("orgId", orgId)
+                .bind("userId", ctx.userId)
                 .execute()
             TestPostgres.db
                 .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")

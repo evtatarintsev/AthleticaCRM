@@ -161,8 +161,8 @@ class CreateSessionTest {
                 TestPostgres.db
                     .sql(
                         """
-                        INSERT INTO employees (id, org_id, name, is_active, all_branches_access, joined_at)
-                        VALUES (:id, :orgId, 'Чужой', true, false, NOW())
+                        INSERT INTO employees (id, org_id, name, all_branches_access, joined_at)
+                        VALUES (:id, :orgId, 'Чужой', false, NOW())
                         """.trimIndent(),
                     )
                     .bind("id", stranger)

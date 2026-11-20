@@ -37,7 +37,7 @@ suspend fun profile(): UserProfile =
             FROM users u
             JOIN employees e ON e.user_id = u.id AND e.org_id = :orgId
             JOIN branches b ON b.id = :branchId AND b.org_id = e.org_id
-            WHERE u.id = :id AND e.is_active = true
+            WHERE u.id = :id AND e.blocked_at IS NULL
             """.trimIndent(),
         )
         .bind("id", ctx.userId)

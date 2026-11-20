@@ -25,6 +25,18 @@ class AuditEmployee(private val delegate: Employee, private val audit: AuditLog)
         }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun block() =
+        delegate.block().also {
+            audit.logUpdate("employee", id, """{"blocked":true}""")
+        }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun unblock() =
+        delegate.unblock().also {
+            audit.logUpdate("employee", id, """{"blocked":false}""")
+        }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNew(
         newName: NonBlankName,
         newPermissions: EmployeePermissionSelection,

@@ -9,25 +9,28 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { useI18n } from "@/i18n/context";
 import { useInboxCounter } from "@/messaging/inboxQueries";
 import { sessionQuery } from "@/query/queries";
-import { Logo } from "@/ui/AuthLayout";
 import { AccountMenu } from "./AccountMenu";
+import { ClubCard } from "./ClubCard";
 import { Navigation } from "./Navigation";
 import { NotificationBell } from "./NotificationBell";
 
 /**
- * Раскладка страниц за логином. На экранах от 1024 px навигация — боковая панель,
- * на узких — выезжающее меню. [api] загружает сессию, [onLogout] завершает её.
+ * Раскладка страниц за логином. На экранах от 1024 px навигация — боковая панель с карточкой
+ * клуба, на узких — выезжающее меню, а карточка клуба стоит в верхней полосе.
+ * [api] загружает сессию, [onLogout] завершает её.
  */
 export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => Promise<void> }) {
   const { t } = useI18n();
   const { data: me } = useSuspenseQuery(sessionQuery(api));
   const [menuOpen, setMenuOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const badges = { inbox: useInboxCounter(api, me.currentBranch.id) };
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-card px-3 py-4 lg:flex">
-        <Brand name={me.orgInfo.name} />
+        <ClubCard api={api} me={me} variant="menu" className="w-full" />
         <Navigation badges={badges} />
+        <ProductMark />
       </aside>
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur lg:px-8">
@@ -45,7 +48,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
             <SheetContent side="left" closeLabel={t("action.close")} className="w-72 px-3 py-4">
               <SheetTitle className="sr-only">{t("nav.label")}</SheetTitle>
               <div className="pr-10">
-                <Brand name={me.orgInfo.name} />
+                <ClubCard api={api} me={me} variant="sheet" className="w-full" />
               </div>
               <Navigation
                 badges={badges}
@@ -53,19 +56,27 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
                   setMenuOpen(false);
                 }}
               />
+              <ProductMark />
             </SheetContent>
           </Sheet>
-          <div className="min-w-0 lg:hidden">
-            <Brand name={me.orgInfo.name} />
-          </div>
-          <div className="ml-auto flex items-center gap-1">
-            <AssistantHost key={me.employeeId} api={api} employeeId={me.employeeId} />
+          <ClubCard api={api} me={me} variant="sheet" className="h-11 flex-1 py-1 lg:hidden" />
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <AssistantHost
+              key={me.employeeId}
+              api={api}
+              employeeId={me.employeeId}
+              open={assistantOpen}
+              onOpenChange={setAssistantOpen}
+            />
             <NotificationBell api={api} branchId={me.currentBranch.id} />
             <AccountMenu
               api={api}
               me={me}
               onLogout={() => {
                 void onLogout();
+              }}
+              onOpenAssistant={() => {
+                setAssistantOpen(true);
               }}
             />
           </div>
@@ -78,12 +89,18 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
   );
 }
 
-/** Знак приложения и название организации [name]. */
-function Brand({ name }: { name: string }) {
+/** Тихая подпись продукта внизу меню: знак и название, не ссылка. */
+function ProductMark() {
+  const { t } = useI18n();
   return (
-    <div className="flex min-w-0 items-center gap-2 px-1">
-      <Logo />
-      <span className="truncate font-semibold tracking-tight">{name}</span>
+    <div className="mt-auto flex items-center gap-2 border-t px-2 pt-3 text-xs text-muted-foreground">
+      <span
+        aria-hidden
+        className="grid size-[18px] place-items-center rounded-[5px] bg-primary text-[10px] font-bold text-primary-foreground"
+      >
+        A
+      </span>
+      {t("clubCard.product")}
     </div>
   );
 }

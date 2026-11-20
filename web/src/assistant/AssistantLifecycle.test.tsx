@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "@/api/client";
 import { EmployeeIdSchema } from "@/api/generated/contracts";
@@ -8,7 +9,15 @@ import { I18nProvider } from "@/i18n/I18nProvider";
 import { ru } from "@/i18n/ru";
 import { createQueryClient } from "@/query/queries";
 import { fakeServer, json } from "@/test/app";
+import type { ApiClient } from "@/api/client";
+import type { EmployeeId } from "@/api/generated/contracts";
 import { AssistantHost } from "./AssistantHost";
+
+/** Помощник с открытием, которым в приложении управляет раскладка. */
+function Host({ api, employeeId }: { api: ApiClient; employeeId: EmployeeId }) {
+  const [open, setOpen] = useState(false);
+  return <AssistantHost api={api} employeeId={employeeId} open={open} onOpenChange={setOpen} />;
+}
 
 const employee = EmployeeIdSchema.parse("0199a0b2-7c3e-7d2a-9f10-000000000002");
 const other = EmployeeIdSchema.parse("0199a0b2-7c3e-7d2a-9f10-000000000003");
@@ -30,7 +39,7 @@ describe("жизненный цикл помощника", () => {
     const tree = (id: typeof employee) => (
       <QueryClientProvider client={cache}>
         <I18nProvider initialLocale="ru">
-          <AssistantHost key={id} api={api} employeeId={id} />
+          <Host key={id} api={api} employeeId={id} />
         </I18nProvider>
       </QueryClientProvider>
     );
@@ -76,7 +85,7 @@ describe("жизненный цикл помощника", () => {
     const view = render(
       <QueryClientProvider client={cache}>
         <I18nProvider initialLocale="ru">
-          <AssistantHost api={api} employeeId={employee} />
+          <Host api={api} employeeId={employee} />
         </I18nProvider>
       </QueryClientProvider>,
     );

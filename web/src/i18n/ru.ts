@@ -131,13 +131,20 @@ export const ru = {
   "nav.tasks": "Задачи",
   "nav.settings": "Настройки",
 
+  "clubCard.label": "{org}, филиал {branch}. Сменить филиал",
+  "clubCard.branchCount": {
+    one: "{count} филиал",
+    few: "{count} филиала",
+    many: "{count} филиалов",
+    other: "{count} филиала",
+  },
+  "clubCard.manageBranches": "Управление филиалами",
+  "clubCard.product": "Athletica",
   "account.menu": "Меню аккаунта",
   "account.profile": "Профиль",
-  "account.switchBranch": "Сменить филиал",
   "account.language": "Язык",
   "account.logout": "Выйти",
   "account.orgBalance": "Баланс организации: {amount}",
-  "account.currentBranch": "Текущий филиал",
 
   "language.ru": "Русский",
   "language.en": "English",

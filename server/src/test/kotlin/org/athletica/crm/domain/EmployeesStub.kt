@@ -23,7 +23,7 @@ import kotlin.time.Instant
 
 /**
  * Сотрудник в памяти для тестов: права проверяются по настройке [permissionSettings],
- * команды `save`/`invite` ничего не делают.
+ * команды `save`/`invite`/`block`/`unblock` ничего не делают.
  */
 data class EmployeeStub(
     override val id: EmployeeId = EmployeeId.new(),
@@ -31,7 +31,7 @@ data class EmployeeStub(
     override val name: String = "Сотрудник",
     override val avatarId: UploadId? = null,
     override val isOwner: Boolean = false,
-    override val isActive: Boolean = true,
+    override val blockedAt: Instant? = null,
     override val joinedAt: Instant = Clock.System.now(),
     /** Роли, персональные выдачи и отзывы прав сотрудника. */
     val permissionSettings: EmployeePermission = EmployeePermission(),
@@ -49,6 +49,14 @@ data class EmployeeStub(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: arrow.core.raise.Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) {
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun block() {
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun unblock() {
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -84,9 +92,7 @@ class EmployeesStub(employees: List<EmployeeStub>, private val clock: Clock) : E
     ): Employee =
         EmployeeStub(
             id = id,
-            userId = ctx.userId,
             isOwner = false,
-            isActive = false,
             joinedAt = clock.now(),
             name = name.value,
             phoneNo = phoneNo,

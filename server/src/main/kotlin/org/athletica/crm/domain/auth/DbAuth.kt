@@ -79,7 +79,7 @@ class DbAuth(
             SELECT u.id, u.login, e.id AS employee_id, e.org_id
             FROM users u
             JOIN employees e ON e.user_id = u.id
-            WHERE u.id = :id AND e.is_active = true
+            WHERE u.id = :id AND e.blocked_at IS NULL
             """.trimIndent(),
         )
             .bind("id", id)
@@ -198,7 +198,7 @@ class DbAuth(
                 SELECT u.id, u.login, u.password_hash, e.id AS employee_id, e.org_id
                 FROM users u
                 JOIN employees e ON e.user_id = u.id
-                WHERE u.login = :username AND e.is_active = true
+                WHERE u.login = :username AND e.blocked_at IS NULL
                 """.trimIndent(),
             )
                 .bind("username", username)

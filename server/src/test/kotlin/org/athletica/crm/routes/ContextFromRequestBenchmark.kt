@@ -94,7 +94,7 @@ class ContextFromRequestBenchmark {
                     authenticate("auth-jwt") {
                         get("/bench/context") {
                             val started = TimeSource.Monotonic.markNow()
-                            call.contextFromRequest(di.database, di.employees, di.organizations)
+                            call.contextFromRequest(di.database, di.employees, di.organizations, di.employeePresence)
                             samples += started.elapsedNow()
                             call.respond(HttpStatusCode.NoContent)
                         }

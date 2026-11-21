@@ -482,7 +482,7 @@ class DbEmployeesTest {
                 TestPostgres.db.transaction {
                     context(this, ctx) {
                         (employee as DbEmployee)
-                            .copy(name = "Новое имя", phoneNo = "+79001112233", isActive = true)
+                            .copy(name = "Новое имя", phoneNo = "+79001112233")
                             .save()
                     }
                 }
@@ -490,7 +490,6 @@ class DbEmployeesTest {
                 val updated = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
                 assertEquals("Новое имя", updated.name)
                 assertEquals("+79001112233", updated.phoneNo)
-                assertEquals(true, updated.isActive)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -746,4 +745,87 @@ class DbEmployeesTest {
             return delegate.sql(sql)
         }
     }
+
+    // ─── block / unblock ──────────────────────────────────────────────────────
+
+    /** Создаёт сотрудника [id] и выдаёт ему доступ с логином [login]. */
+    private suspend fun invitedEmployee(id: EmployeeId, login: String): Employee =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) {
+                    employees.new(id, testName("Сотрудник"), null, null, null, emptyPermission).invite(login.toEmailAddress(), "secret123")
+                }
+            }
+            TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+        }.getOrElse { fail("Unexpected error: $it") }
+
+    /** Выполняет [block] в транзакции под контекстом [ctx] и возвращает результат либо ошибку. */
+    private suspend fun <T> attempt(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
+        arrow.core.raise.either {
+            val raise: Raise<AppError> = this
+            TestPostgres.db.transaction { block(ctx, this, raise) }
+        }
+
+    @Test
+    fun `block блокирует сотрудника, повторная блокировка не меняет дату`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "block@example.com")
+
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+            val blocked = assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value
+            val blockedAt = assertNotNull(blocked.blockedAt)
+            assertFalse(blocked.isActive)
+
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+            assertEquals(blockedAt, assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.blockedAt)
+        }
+
+    @Test
+    fun `block владельца отклоняется`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "owner-block@example.com")
+            markOwner(id)
+
+            val result = attempt { employees.byId(id).block() }
+
+            assertEquals("EMPLOYEE_OWNER_CANNOT_BE_BLOCKED", assertIs<Either.Left<AppError>>(result).value.code)
+            assertNull(assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.blockedAt)
+        }
+
+    @Test
+    fun `block самого себя отклоняется`() =
+        runTest {
+            invitedEmployee(employeeId, "self-block@example.com")
+
+            val result = attempt { employees.byId(employeeId).block() }
+
+            assertEquals("EMPLOYEE_CANNOT_BLOCK_SELF", assertIs<Either.Left<AppError>>(result).value.code)
+        }
+
+    @Test
+    fun `unblock снимает блокировку`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "unblock@example.com")
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).unblock() })
+
+            val employee = assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value
+            assertNull(employee.blockedAt)
+            assertTrue(employee.isActive)
+        }
+
+    @Test
+    fun `повторная выдача доступа отклоняется`() =
+        runTest {
+            val id = EmployeeId.new()
+            val employee = invitedEmployee(id, "twice@example.com")
+
+            val result = attempt { employee.invite("twice-again@example.com".toEmailAddress(), "secret123") }
+
+            assertEquals("EMPLOYEE_ACCESS_ALREADY_SENT", assertIs<Either.Left<AppError>>(result).value.code)
+        }
 }

@@ -25,6 +25,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 /** Тесты read-проекции карточки сотрудника: поля, роли, выдачи и отзывы прав, филиалы. */
@@ -78,7 +79,7 @@ class DbEmployeeDetailViewTest {
 
     private suspend fun detail(id: EmployeeId): Either<AppError, EmployeeDetailResponse> =
         either {
-            TestPostgres.db.transaction { context(ctx) { view.byId(id) } }
+            TestPostgres.db.transaction { context(ctx) { view.byId(EmployeeDetailQuery(id, Clock.System.now())) } }
         }
 
     @Test

@@ -4,6 +4,7 @@ import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import com.auth0.jwt.interfaces.Payload
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -36,11 +37,14 @@ import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
+import org.athletica.crm.core.errors.EmployeeBlocked
 import org.athletica.crm.core.errors.UnhandledAppError
+import org.athletica.crm.domain.employees.EmployeePresence
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
+import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 class RouteWithContext(val di: Di, val router: Route) {
@@ -114,7 +118,7 @@ class RouteWithContext(val di: Di, val router: Route) {
     ): Route =
         router.route(path, method) {
             handle {
-                context(call.contextFromRequest(di.database, di.employees, di.organizations)) {
+                context(call.contextFromRequest(di.database, di.employees, di.organizations, di.employeePresence)) {
                     either {
                         body(call)
                     }.onLeft { call.respondError(it) }
@@ -181,11 +185,14 @@ fun RoutingCall.langFromRequest(): Lang {
  * Собирает [EmployeeRequestContext] из JWT-токена и заголовков запроса.
  * Извлекает [UserId], [EmployeeId] и [OrgId] из claims токена, язык — из `Accept-Language`,
  * IP-адрес клиента — из `X-Forwarded-For` или прямого подключения.
+ * Заблокированный сотрудник получает [EmployeeBlocked] (HTTP 401); активность сотрудника
+ * отмечается в [presence] в транзакции контекста, независимо от исхода самого запроса.
  */
 suspend fun RoutingCall.contextFromRequest(
     db: Database,
     employees: Employees,
     organizations: Organizations,
+    presence: EmployeePresence,
 ): EmployeeRequestContext =
     either {
         val principal = principal<JWTPrincipal>()!!
@@ -196,7 +203,10 @@ suspend fun RoutingCall.contextFromRequest(
         val (currency, employee) =
             db.transaction {
                 context(SystemContexts.forOrg(orgId)) {
-                    organizations.current().currency to employees.byId(employeeId)
+                    val employee = employees.byId(employeeId)
+                    ensure(employee.blockedAt == null) { EmployeeBlocked }
+                    presence.touch(employeeId, Clock.System.now())
+                    organizations.current().currency to employee
                 }
             }
         EmployeeRequestContext(
@@ -209,7 +219,7 @@ suspend fun RoutingCall.contextFromRequest(
             currency = currency,
             employee = employee,
         )
-    }.getOrElse { throw RuntimeException("Error getting context from request: $it") }
+    }.getOrElse { throw UnhandledAppError(it) }
 
 fun Payload.claimAsUuid(claim: String) = Uuid.parse(getClaim(claim).asString())
 

@@ -104,25 +104,28 @@ class ImportClientsCommitTest {
             return uploadId
         }
 
-    private fun ctx(org: TestOrg) =
-        employeeContext(
-            lang = Lang.EN,
-            userId = UserId(org.userId),
-            orgId = OrgId(org.orgId),
-            branchId = BranchId.new(),
-            employeeId = EmployeeId(org.employeeId),
-            username = "user@example.com",
-            clientIp = "127.0.0.1",
-            currency = Currency.RUB,
-            permissions = EmployeePermission(emptyList(), setOf(CAN_MANAGE_FINANCE), emptySet()),
-        )
+    private fun ctx(
+        org: TestOrg,
+        permissions: EmployeePermission = EmployeePermission(emptyList(), setOf(CAN_MANAGE_FINANCE), emptySet()),
+    ) = employeeContext(
+        lang = Lang.EN,
+        userId = UserId(org.userId),
+        orgId = OrgId(org.orgId),
+        branchId = BranchId.new(),
+        employeeId = EmployeeId(org.employeeId),
+        username = "user@example.com",
+        clientIp = "127.0.0.1",
+        currency = Currency.RUB,
+        permissions = permissions,
+    )
 
     private suspend fun runImport(
         org: TestOrg,
         request: ClientImportCommitRequest,
+        permissions: EmployeePermission = EmployeePermission(emptyList(), setOf(CAN_MANAGE_FINANCE), emptySet()),
     ): Either<AppError, ClientImportCommitResponse> =
         either {
-            context(TestPostgres.db, TestMinio.minioService, ctx(org)) {
+            context(TestPostgres.db, TestMinio.minioService, ctx(org, permissions)) {
                 importClientsCommit(
                     request = request,
                     clients = DbClients(),
@@ -303,6 +306,32 @@ class ImportClientsCommitTest {
                         ).bind("name", "Сидоров")
                         .firstOrNull { it.asString("c") }
                 assertEquals("0", sidorovJournalCount)
+            }
+        }
+
+    @Test
+    fun `колонка баланса без права управления финансами отклоняет импорт целиком`() =
+        orThrow {
+            runTest {
+                val org = setupOrg()
+                val uploadId = uploadCsv(org, "ФИО;Баланс\nИванов;3056.00")
+                val response =
+                    runImport(
+                        org = org,
+                        request =
+                            ClientImportCommitRequest(
+                                uploadId = uploadId,
+                                columnMapping = listOf(ColumnMapping("ФИО", ImportTarget.Name), ColumnMapping("Баланс", ImportTarget.Balance)),
+                                defaultGender = Gender.MALE,
+                                dryRun = false,
+                            ),
+                        permissions = EmployeePermission(emptyList(), emptySet(), emptySet()),
+                    )
+                assertEquals("PERMISSION_DENIED", assertIs<Either.Left<AppError>>(response).value.code)
+                val clients =
+                    TestPostgres.db.sql("SELECT COUNT(*)::text AS c FROM clients WHERE org_id = :orgId")
+                        .bind("orgId", org.orgId).firstOrNull { it.asString("c") }
+                assertEquals("0", clients)
             }
         }
 

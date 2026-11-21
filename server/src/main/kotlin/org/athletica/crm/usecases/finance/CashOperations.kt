@@ -22,7 +22,9 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
+/** Прочие приходы, расходы и переводы между кассами и их отмена. */
 class CashOperations(private val ledger: Ledger = Ledger(), private val accounts: CashAccounts = CashAccounts(), private val articles: CashArticles = CashArticles()) {
+    /** Записывает приход или расход [direction] по статье из [request]; системные статьи недоступны. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun record(request: CashOperationRequest, direction: CashDirection): LedgerTransactionId {
         requireFinancePermission(CAN_MANAGE_FINANCE)
@@ -38,6 +40,7 @@ class CashOperations(private val ledger: Ledger = Ledger(), private val accounts
         )
     }
 
+    /** Переводит деньги между двумя разными активными кассами из [request]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun transfer(request: TransferCashRequest): LedgerTransactionId {
         requireFinancePermission(CAN_MANAGE_FINANCE)
@@ -48,20 +51,26 @@ class CashOperations(private val ledger: Ledger = Ledger(), private val accounts
         return ledger.record(LedgerEntries.cash(LedgerKind.TRANSFER, ledger.account(LedgerOwner.Cash(request.toCashAccountId)), ledger.account(LedgerOwner.Cash(request.fromCashAccountId)), request.amount), request.occurredOn, comment = request.comment)
     }
 
+    /** Сторнирует приход, расход или перевод [id] с причиной [reason]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverse(id: LedgerTransactionId, reason: String): LedgerTransactionId {
         requireFinancePermission(CAN_MANAGE_FINANCE)
-        val kind = tr.sql("SELECT kind FROM ledger_transactions WHERE id = :id AND org_id = :org").bind("id", id).bind("org", ctx.orgId).firstOrNull { it.asString("kind") }
-        ensure(kind in setOf("income", "expense", "transfer")) { ledgerError("FINANCE_OPERATION_CANNOT_REVERSE") }
+        val kind = tr.sql("SELECT kind FROM ledger_transactions WHERE id = :id AND org_id = :org").bind("id", id).bind("org", ctx.orgId).firstOrNull { LedgerKind.valueOf(it.asString("kind").uppercase()) }
+        ensure(kind in setOf(LedgerKind.INCOME, LedgerKind.EXPENSE, LedgerKind.TRANSFER)) { ledgerError("FINANCE_OPERATION_CANNOT_REVERSE") }
         requireTransactionCashAccess(listOf(id), accounts)
         return ledger.reverse(id, reason)
     }
 }
 
-/** Сторно доступно и для архивной кассы, но не для кассы недоступного филиала. */
+/**
+ * Проверяет доступ сотрудника ко всем кассам транзакций [ids]: сторно доступно и для архивной
+ * кассы, но не для кассы недоступного филиала.
+ */
 context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
 internal suspend fun requireTransactionCashAccess(ids: List<LedgerTransactionId>, accounts: CashAccounts) {
-    if (ids.isEmpty()) return
+    if (ids.isEmpty()) {
+        return
+    }
     val cashIds =
         tr.sql(
             """

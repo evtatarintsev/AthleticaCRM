@@ -70,7 +70,7 @@ class DbMemberships(private val participations: Participations = DbParticipation
         if (tr.sql("SELECT i.id FROM sale_items i JOIN sales s ON s.id = i.sale_id WHERE i.id = :id AND s.org_id = :org AND s.client_id = :client AND i.kind = 'membership' AND s.cancelled_at IS NULL")
                 .bind("id", saleItemId).bind("org", ctx.orgId).bind("client", clientId).firstOrNull { 1 } == null
         ) {
-            raise(CommonDomainError("SALE_ITEM_NOT_FOUND", Messages.MembershipNotFound.localize()))
+            raise(CommonDomainError("SALE_ITEM_NOT_FOUND", Messages.MembershipSaleItemNotFound.localize()))
         }
         val outcome = issueOutcome(activation, closeMode, sessions?.value, groupIds, issuedOn)
         val startDate = (outcome as? IssueOutcome.Active)?.startDate

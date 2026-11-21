@@ -17,20 +17,28 @@ import java.math.BigInteger
 
 /** Владелец задаёт вид счёта и исключает невалидные сочетания аналитик. */
 sealed interface LedgerOwner {
+    /** Касса [id]. */
     data class Cash(val id: CashAccountId) : LedgerOwner
 
+    /** Аванс клиента [clientId]; остаток кредитовый, то есть отрицательный. */
     data class Advance(val clientId: ClientId) : LedgerOwner
 
+    /** Долг клиента [clientId] по продаже [saleId]. */
     data class Receivable(val saleId: SaleId, val clientId: ClientId) : LedgerOwner
 
+    /** Прочий приход по статье [articleId]. */
     data class Income(val articleId: CashArticleId) : LedgerOwner
 
+    /** Прочий расход по статье [articleId]. */
     data class Expense(val articleId: CashArticleId) : LedgerOwner
 
+    /** Выручка от продаж организации. */
     data object Revenue : LedgerOwner
 
+    /** Корректировки лицевых счетов клиентов. */
     data object Adjustment : LedgerOwner
 
+    /** Начальные остатки касс. */
     data object Opening : LedgerOwner
 }
 
@@ -43,6 +51,10 @@ data class LedgerPosting(val account: LedgerAccount, val amount: Money, val arti
 /** Проверенная двойная запись. Нулевые свёрнутые суммы удаляет шаблон операции до создания. */
 class LedgerEntry private constructor(val kind: LedgerKind, val postings: List<LedgerPosting>) {
     companion object {
+        /**
+         * Запись вида [kind] из проводок [postings]: не меньше двух, ненулевые, в валюте организации,
+         * с нулевой суммой; кассовые проводки, кроме перевода и начального остатка, — со статьёй.
+         */
         context(ctx: RequestContext, raise: Raise<AppError>)
         fun of(kind: LedgerKind, postings: List<LedgerPosting>): LedgerEntry {
             ensure(kind != LedgerKind.REVERSAL && postings.size >= 2) { ledgerError("LEDGER_POSTINGS_REQUIRED") }

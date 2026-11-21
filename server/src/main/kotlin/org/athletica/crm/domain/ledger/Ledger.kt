@@ -27,6 +27,10 @@ import org.athletica.crm.storage.asUuidOrNull
 
 /** Запись главной книги: счета создаются лениво, остатки вычисляются по проводкам. */
 class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
+    /**
+     * Счёт главной книги владельца [owner] в организации из [ctx]; создаётся при первом обращении.
+     * Владелец другой организации даёт ошибку, а не чужой счёт.
+     */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun account(owner: LedgerOwner): LedgerAccount {
         val cash = (owner as? LedgerOwner.Cash)?.id
@@ -73,17 +77,23 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
         return LedgerAccount(id, owner)
     }
 
-    /** Единый порядок блокировок аванса и долга предотвращает гонки и взаимные блокировки. */
+    /**
+     * Блокирует счета аванса и долга из [accounts] в порядке идентификаторов: единый порядок
+     * предотвращает гонки проверок остатка и взаимные блокировки. Прочие счета не блокируются.
+     */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun lock(accounts: List<LedgerAccount>) {
         val ids = accounts.filter { it.owner is LedgerOwner.Advance || it.owner is LedgerOwner.Receivable }.map { it.id }.distinct()
-        if (ids.isEmpty()) return
+        if (ids.isEmpty()) {
+            return
+        }
         val locked =
             tr.sql("SELECT id FROM ledger_accounts WHERE org_id = :org AND id = ANY(:ids) ORDER BY id FOR UPDATE")
                 .bind("org", ctx.orgId).bind("ids", ids).list { it.asUuid("id") }
         ensure(locked.size == ids.size) { ledgerError("LEDGER_ACCOUNT_NOT_FOUND") }
     }
 
+    /** Остаток счёта [account] по проводкам с датой операции не позже [on]. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun balance(account: LedgerAccount, on: LocalDate): Money =
         tr.sql(
@@ -96,6 +106,12 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
         ).bind("id", account.id).bind("org", ctx.orgId).bind("on", on)
             .firstOrNull { it.asMoney("amount", ctx.currency) } ?: raise(ledgerError("LEDGER_ACCOUNT_NOT_FOUND"))
 
+    /**
+     * Записывает проверенную запись [entry] датой [occurredOn] с аналитикой: продажа [saleId],
+     * комментарий [comment], контрагент-сотрудник [counterpartyEmployeeId] или текстом
+     * [counterpartyText], использованный аванс [advanceUsed]. Кроме корректировки, запись
+     * не может увести аванс клиента в минус.
+     */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun record(
         entry: LedgerEntry,
@@ -106,23 +122,30 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
         counterpartyText: String? = null,
         advanceUsed: Money? = null,
     ): LedgerTransactionId {
-        if (entry.kind != LedgerKind.ADJUSTMENT) validateAdvance(entry.postings)
+        if (entry.kind != LedgerKind.ADJUSTMENT) {
+            validateAdvance(entry.postings)
+        }
         return persist(entry, occurredOn, saleId, comment, null, counterpartyEmployeeId, counterpartyText, advanceUsed)
     }
 
+    /** Текущий остаток счёта [account] на сегодняшнюю дату организации. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun balance(account: LedgerAccount): Money = balance(account, calendar.today())
 
-    /** Сторно датируется сегодня. При отмене продажи аванс проверяется по итоговому набору сторно. */
+    /** Сторнирует транзакцию [id] сегодняшней датой с причиной [reason]. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverse(id: LedgerTransactionId, reason: String): LedgerTransactionId = reverseAll(listOf(id), reason).single()
 
+    /**
+     * Сторнирует транзакции [ids] сегодняшней датой с причиной [reason] одной операцией.
+     * Аванс проверяется по итоговому набору сторно, поэтому порядок транзакций не важен.
+     */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverseAll(ids: List<LedgerTransactionId>, reason: String): List<LedgerTransactionId> {
         ensure(reason.isNotBlank()) { ledgerError("FINANCE_REASON_REQUIRED") }
         val plans = ids.distinct().map { reversalPlan(it) }
         lock(plans.flatMap { it.entry.postings }.map { it.account })
-        for (plan in plans) {
+        plans.forEach { plan ->
             ensure(
                 tr.sql("SELECT id FROM ledger_transactions WHERE reverses_id = :id AND org_id = :org")
                     .bind("id", plan.id).bind("org", ctx.orgId).firstOrNull { it.asUuid("id") } == null,
@@ -132,8 +155,10 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
         return plans.map { persist(it.entry, calendar.today(), it.saleId, reason.trim(), it.id) }
     }
 
+    /** Сторно транзакции [id]: обратная запись [entry] и продажа [saleId] исходной операции. */
     private data class ReversalPlan(val id: LedgerTransactionId, val entry: LedgerEntry, val saleId: SaleId?)
 
+    /** Готовит сторно транзакции [id]: те же счета с обратными суммами. Сторно сторно запрещено. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun reversalPlan(id: LedgerTransactionId): ReversalPlan {
         val original =
@@ -165,16 +190,20 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
         return ReversalPlan(id, LedgerEntry.of(original.first, postings), original.second)
     }
 
+    /** Под блокировкой проверяет, что проводки [postings] не уводят аванс клиента в минус. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun validateAdvance(postings: List<LedgerPosting>) {
-        val accounts = postings.map { it.account }
-        lock(accounts)
-        for ((account, changes) in postings.filter { it.account.owner is LedgerOwner.Advance }.groupBy { it.account }) {
+        lock(postings.map { it.account })
+        postings.filter { it.account.owner is LedgerOwner.Advance }.groupBy { it.account }.forEach { (account, changes) ->
             val after = changes.fold(balance(account)) { sum, posting -> sum + posting.amount }
             ensure(!after.isPositive) { ledgerError("FINANCE_INSUFFICIENT_ADVANCE") }
         }
     }
 
+    /**
+     * Сохраняет транзакцию и проводки записи [entry]; [reversesId] задаёт исходную транзакцию сторно.
+     * Дата [occurredOn] не может быть в будущем, счета проводок должны принадлежать организации.
+     */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun persist(
         entry: LedgerEntry,
@@ -205,7 +234,7 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
             .bind("on", occurredOn).bind("sale", saleId).bind("reverses", reversesId).bind("comment", comment)
             .bind("advanceUsed", advanceUsed ?: Money.zero(ctx.currency)).bind("actor", ctx.actingEmployeeId).bind("employee", counterpartyEmployeeId).bind("text", counterpartyText)
             .onViolation("ledger_transactions_reverses_id_key") { ledgerError("LEDGER_ALREADY_REVERSED") }.execute()
-        for (p in entry.postings) {
+        entry.postings.forEach { p ->
             tr.sql("INSERT INTO ledger_postings (transaction_id, account_id, amount, article_id) VALUES (:id, :account, :amount, :article)")
                 .bind("id", id).bind("account", p.account.id).bind("amount", p.amount).bind("article", p.articleId).execute()
         }
@@ -213,6 +242,7 @@ class Ledger(private val calendar: OrgCalendar = DbOrgCalendar()) {
     }
 }
 
+/** Вид счёта владельца в колонке `ledger_accounts.kind`. */
 private fun LedgerOwner.kind(): String =
     when (this) {
         is LedgerOwner.Cash -> "cash"

@@ -30,7 +30,10 @@ import org.athletica.crm.domain.sales.SaleLine
 import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.storage.Transaction
 
-/** Продажа и абонемент записываются одной транзакцией вызывающего usecase. */
+/**
+ * Выдаёт абонемент [id] клиенту [clientId] и оформляет его продажу [saleId] на цену [price]
+ * одной транзакцией вызывающего. Остальные параметры — условия абонемента, как в [Memberships.issue].
+ */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
 suspend fun issueMembership(
     memberships: Memberships,
@@ -45,9 +48,10 @@ suspend fun issueMembership(
     activation: Activation,
     closeMode: CloseMode,
     issuedOn: LocalDate,
+    saleId: SaleId = SaleId.new(),
     sales: Sales = Sales(),
 ): Membership {
-    val itemId = sales.create(SaleId.new(), clientId, issuedOn, listOf(SaleLine(name, 1, price)), SaleItemKind.MEMBERSHIP).single()
+    val itemId = sales.create(saleId, clientId, issuedOn, listOf(SaleLine(name, 1, price)), SaleItemKind.MEMBERSHIP).single()
     return memberships.issue(id, clientId, tariffPlanId, name, sessions, groupIds, duration, itemId, activation, closeMode, issuedOn)
 }
 

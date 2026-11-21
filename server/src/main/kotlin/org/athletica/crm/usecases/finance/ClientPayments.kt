@@ -13,10 +13,12 @@ import org.athletica.crm.core.entityids.LedgerTransactionId
 import org.athletica.crm.core.entityids.SaleId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.finance.LedgerKind
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.sum
 import org.athletica.crm.core.permissions.UserPermission.CAN_ACCEPT_PAYMENTS
 import org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE
+import org.athletica.crm.core.permissions.financeAccessDenied
 import org.athletica.crm.core.permissions.requireFinancePermission
 import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
@@ -40,6 +42,7 @@ import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.i18n.LocalizationKey
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
+import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuidOrNull
 
 /** Команды оплаты, аванса и выплат: проверки остатков выполняются под блокировкой счетов. */
@@ -52,6 +55,11 @@ class ClientPayments(
     private val calendar: OrgCalendar = DbOrgCalendar(),
     private val audit: AuditLog = PostgresAuditLog(),
 ) {
+    /**
+     * Принимает оплату [input] от клиента [clientId] датой [occurredOn] с комментарием [comment].
+     * С продажей [saleId] оплата гасит её долг, переплата зачисляется на аванс; без продажи —
+     * пополняет аванс. Аванс можно потратить только на долг продажи.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun pay(
         saleId: SaleId?,
@@ -87,6 +95,7 @@ class ClientPayments(
         return ledger.record(LedgerEntries.payment(cash, advance, receivable, fromAdvance, debt), occurredOn, saleId, comment, advanceUsed = fromAdvance)
     }
 
+    /** Выплачивает клиенту [clientId] [amount] с аванса из кассы [cashAccountId]; [saleId] — продажа возврата. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun payout(
         clientId: ClientId,
@@ -106,6 +115,7 @@ class ClientPayments(
         return ledger.record(LedgerEntries.payout(advance, ledger.account(LedgerOwner.Cash(cashAccountId)), amount, articles.system("client_refunds")), occurredOn, saleId, comment)
     }
 
+    /** Корректирует аванс клиента [client] на [amount] с обязательным комментарием [note]; аванс может уйти в минус. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun adjust(client: ActiveClient, amount: Money, note: String) {
         requireFinancePermission(CAN_MANAGE_FINANCE)
@@ -123,17 +133,22 @@ class ClientPayments(
         )
     }
 
+    /**
+     * Сторнирует оплату, выплату или корректировку [id] с причиной [reason]. Управляющий финансами
+     * отменяет любую, кассир — только свою оплату, записанную сегодня. Оплату продажи с возвратом
+     * отдельно не отменить.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun reverse(id: LedgerTransactionId, reason: String): LedgerTransactionId {
         val original =
             tr.sql("SELECT kind, created_by, (created_at AT TIME ZONE (SELECT timezone FROM organizations WHERE id = :org))::date AS created_on FROM ledger_transactions WHERE id = :id AND org_id = :org")
                 .bind("id", id).bind("org", ctx.orgId).firstOrNull {
-                    Triple(it.get("kind", String::class.java)!!, it.asUuidOrNull("created_by"), it.asLocalDate("created_on"))
+                    Triple(LedgerKind.valueOf(it.asString("kind").uppercase()), it.asUuidOrNull("created_by"), it.asLocalDate("created_on"))
                 } ?: raise(ledgerError("LEDGER_TRANSACTION_NOT_FOUND"))
-        val allowed = ctx.hasPermission(CAN_MANAGE_FINANCE) || (ctx.hasPermission(CAN_ACCEPT_PAYMENTS) && original.first == "payment" && original.second == ctx.employee.id.value && original.third == calendar.today())
-        ensure(allowed) { ledgerError("ACCESS_DENIED") }
-        ensure(original.first in setOf("payment", "payout", "adjustment")) { ledgerError("FINANCE_OPERATION_CANNOT_REVERSE") }
-        if (original.first == "payment") {
+        val allowed = ctx.hasPermission(CAN_MANAGE_FINANCE) || (ctx.hasPermission(CAN_ACCEPT_PAYMENTS) && original.first == LedgerKind.PAYMENT && original.second == ctx.employee.id.value && original.third == calendar.today())
+        ensure(allowed) { financeAccessDenied() }
+        ensure(original.first in setOf(LedgerKind.PAYMENT, LedgerKind.PAYOUT, LedgerKind.ADJUSTMENT)) { ledgerError("FINANCE_OPERATION_CANNOT_REVERSE") }
+        if (original.first == LedgerKind.PAYMENT) {
             tr.sql(
                 """
                 SELECT c.id FROM ledger_transactions t

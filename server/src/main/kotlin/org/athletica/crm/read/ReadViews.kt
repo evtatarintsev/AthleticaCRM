@@ -16,6 +16,24 @@ import org.athletica.crm.read.employees.DbEmployeeDetailView
 import org.athletica.crm.read.employees.DbEmployeeListView
 import org.athletica.crm.read.employees.EmployeeDetailView
 import org.athletica.crm.read.employees.EmployeeListView
+import org.athletica.crm.read.finance.CashAccountBalancesView
+import org.athletica.crm.read.finance.CashArticlesView
+import org.athletica.crm.read.finance.CashFlowReportView
+import org.athletica.crm.read.finance.CashJournalView
+import org.athletica.crm.read.finance.ClientBalanceView
+import org.athletica.crm.read.finance.ClientLedgerView
+import org.athletica.crm.read.finance.ClientPaymentOptionsView
+import org.athletica.crm.read.finance.DbCashAccountBalancesView
+import org.athletica.crm.read.finance.DbCashArticlesView
+import org.athletica.crm.read.finance.DbCashFlowReportView
+import org.athletica.crm.read.finance.DbCashJournalView
+import org.athletica.crm.read.finance.DbClientBalanceView
+import org.athletica.crm.read.finance.DbClientLedgerView
+import org.athletica.crm.read.finance.DbClientPaymentOptionsView
+import org.athletica.crm.read.finance.DbMembershipSalesView
+import org.athletica.crm.read.finance.DbSaleDetailView
+import org.athletica.crm.read.finance.MembershipSalesView
+import org.athletica.crm.read.finance.SaleDetailView
 import org.athletica.crm.read.groups.DbGroupDetailView
 import org.athletica.crm.read.groups.DbGroupListView
 import org.athletica.crm.read.groups.DbGroupRosterView
@@ -64,7 +82,23 @@ data class ReadViews(
     /** Список клиентов с фильтрами, сортировкой и пагинацией. */
     val clientList: ClientListView = DbClientListView(),
     /** Журнал операций по личному счёту клиента. */
-    val clientBalance: org.athletica.crm.read.finance.ClientBalanceView = org.athletica.crm.read.finance.DbClientBalanceView(),
+    val clientBalance: ClientBalanceView = DbClientBalanceView(),
+    /** Лицевой счёт клиента с историей операций. */
+    val clientLedger: ClientLedgerView = DbClientLedgerView(),
+    /** Аванс и долги клиента для блока оплаты. */
+    val clientPaymentOptions: ClientPaymentOptionsView = DbClientPaymentOptionsView(),
+    /** Остатки касс. */
+    val cashAccountBalances: CashAccountBalancesView = DbCashAccountBalancesView(),
+    /** Справочник статей ДДС. */
+    val cashArticles: CashArticlesView = DbCashArticlesView(),
+    /** Кассовый журнал. */
+    val cashJournal: CashJournalView = DbCashJournalView(),
+    /** Отчёт о движении денежных средств. */
+    val cashFlowReport: CashFlowReportView = DbCashFlowReportView(),
+    /** Документ продажи. */
+    val saleDetail: SaleDetailView = DbSaleDetailView(),
+    /** Состояние оплаты абонементов клиента. */
+    val membershipSales: MembershipSalesView = DbMembershipSalesView(),
     /** Список групп с расписанием и тренерами. */
     val groupList: GroupListView = DbGroupListView(),
     /** Карточка группы с расписанием, дисциплинами, тренерами и участниками. */

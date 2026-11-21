@@ -204,7 +204,7 @@ fun Application.configureServer() {
                             di.customFieldDefinitions,
                             di.clientContacts,
                         )
-                        financeRoutes(di.clientPayments, di.clients, di.memberships)
+                        financeRoutes(di.clientPayments, di.saleActions, di.cashOperations, di.cashAccounts, di.cashArticles, di.sales, di.clients, di.orgCalendar, di.views)
                         clientNotesRoutes(di.clientNotes)
                         channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
                         messagingRoutes(
@@ -230,7 +230,7 @@ fun Application.configureServer() {
                         disciplinesRoutes(di.disciplines)
                         sportCatalogRoutes()
                         tariffsRoutes(di.tariffPlans)
-                        membershipsRoutes(di.memberships, di.orgCalendar, di.views, di.clientPayments)
+                        membershipsRoutes(di.memberships, di.orgCalendar, di.views, di.clientPayments, di.sales)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
                         employeesRoutes(di.employees, di.roles, di.views)

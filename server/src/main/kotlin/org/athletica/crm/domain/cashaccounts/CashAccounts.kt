@@ -21,6 +21,7 @@ import org.athletica.crm.domain.ledger.LedgerOwner
 import org.athletica.crm.domain.ledger.ledgerError
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.i18n.LocalizationKey
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
@@ -28,15 +29,21 @@ import org.athletica.crm.storage.asUuidOrNull
 
 /** Место хранения денег; архив сохраняет остаток и историю. */
 data class CashAccount(
+    /** Идентификатор кассы. */
     val id: CashAccountId,
+    /** Название кассы. */
     val name: String,
+    /** Вид кассы: наличные, банк, эквайринг, онлайн. */
     val kind: CashAccountKind,
+    /** Филиал кассы; `null` — касса всей организации. */
     val branchId: BranchId?,
+    /** Признак архивной кассы. */
     val archived: Boolean,
 )
 
 /** Каталог касс: все команды проверяют организацию и доступ к филиалу. */
 class CashAccounts(private val ledger: Ledger = Ledger(), private val calendar: OrgCalendar = DbOrgCalendar()) {
+    /** Касса [id] организации; касса недоступного сотруднику филиала даёт ошибку. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: CashAccountId): CashAccount {
         val account =
@@ -48,6 +55,7 @@ class CashAccounts(private val ledger: Ledger = Ledger(), private val calendar: 
         return account
     }
 
+    /** Неархивная касса [id], заблокированная от архивации до конца транзакции. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun activeById(id: CashAccountId): CashAccount {
         tr.sql("SELECT id FROM cash_accounts WHERE id = :id AND org_id = :org FOR SHARE")
@@ -55,6 +63,10 @@ class CashAccounts(private val ledger: Ledger = Ledger(), private val calendar: 
         return byId(id).also { ensure(!it.archived) { ledgerError("CASH_ACCOUNT_ARCHIVED") } }
     }
 
+    /**
+     * Создаёт кассу [id] или изменяет существующую: название [name], вид [kind], филиал [branchId].
+     * Начальный остаток [openingBalance] на дату [openingOn] задаётся только при создании.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save(
         id: CashAccountId,
@@ -90,6 +102,7 @@ class CashAccounts(private val ledger: Ledger = Ledger(), private val calendar: 
         }
     }
 
+    /** Переводит кассу [id] в архив или возвращает из него по флагу [archived]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun archive(id: CashAccountId, archived: Boolean) {
         requireFinancePermission(CAN_MANAGE_FINANCE)
@@ -98,6 +111,12 @@ class CashAccounts(private val ledger: Ledger = Ledger(), private val calendar: 
             .bind("archived", archived).bind("id", id).bind("org", ctx.orgId).onViolation("uq_cash_accounts_name") { nameTaken() }.execute()
     }
 
+    /** Ошибка занятого названия кассы. */
     context(ctx: EmployeeRequestContext)
-    private fun nameTaken() = CommonDomainError("CASH_ACCOUNT_NAME_TAKEN", if (ctx.lang == org.athletica.crm.core.Lang.RU) "Название кассы уже занято" else "Cash account name is already taken")
+    private fun nameTaken() = CommonDomainError("CASH_ACCOUNT_NAME_TAKEN", CashAccountNameTaken.localize())
+}
+
+private object CashAccountNameTaken : LocalizationKey {
+    override val ru = "Название кассы уже занято"
+    override val en = "Cash account name is already taken"
 }

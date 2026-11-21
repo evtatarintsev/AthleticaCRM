@@ -13,8 +13,6 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toLocalDateTime
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.finance.CashFlowReportRequest
-import org.athletica.crm.api.schemas.finance.CashJournalRequest
 import org.athletica.crm.api.schemas.finance.CashOperationRequest
 import org.athletica.crm.api.schemas.finance.CashPaymentInput
 import org.athletica.crm.api.schemas.finance.CreateSaleRequest
@@ -46,12 +44,15 @@ import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.employeeContext
+import org.athletica.crm.read.finance.CashFlowReportQuery
+import org.athletica.crm.read.finance.CashJournalQuery
 import org.athletica.crm.read.finance.DbCashAccountBalancesView
 import org.athletica.crm.read.finance.DbCashArticlesView
 import org.athletica.crm.read.finance.DbCashFlowReportView
 import org.athletica.crm.read.finance.DbCashJournalView
 import org.athletica.crm.read.finance.DbClientLedgerView
 import org.athletica.crm.read.finance.DbSaleDetailView
+import org.athletica.crm.read.finance.SaleDetailQuery
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBooleanOrNull
 import org.athletica.crm.storage.asInt
@@ -76,7 +77,7 @@ class FinanceTest {
     private val sales = Sales(ledger, calendar)
     private val clients = DbClients()
     private val payments = ClientPayments(ledger, accounts, articles, sales, clients, calendar)
-    private val actions = SaleActions(ledger, sales, payments, calendar)
+    private val actions = SaleActions(fixture.memberships, ledger, sales, payments, accounts, calendar)
     private val operations = CashOperations(ledger, accounts, articles)
     private lateinit var ctx: EmployeeRequestContext
     private var client = ClientId.new()
@@ -119,6 +120,14 @@ class FinanceTest {
         return id
     }
 
+    private fun journalQuery(
+        from: LocalDate,
+        to: LocalDate,
+        articleIds: List<CashArticleId> = emptyList(),
+        limit: Int = 50,
+        offset: Int = 0,
+    ) = CashJournalQuery(from, to, emptyList(), articleIds, emptyList(), null, null, true, limit, offset, today)
+
     private fun cashPayment(amount: Long) = PaymentInput(listOf(CashPaymentInput(cash, rub(amount))))
 
     @Test
@@ -160,9 +169,9 @@ class FinanceTest {
     fun `продажа смешанная оплата переплата и история`() =
         runTest {
             val id = sale(4500)
-            assertEquals(rub(4500), tx { DbSaleDetailView().byId(id) }.debt)
+            assertEquals(rub(4500), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
             tx { payments.pay(id, client, PaymentInput(listOf(CashPaymentInput(cash, rub(2000)), CashPaymentInput(bank, rub(3000)))), today) }
-            val detail = tx { DbSaleDetailView().byId(id) }
+            val detail = tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }
             assertEquals(rub(4500), detail.paid)
             assertEquals(rub(0), detail.debt)
             val history = tx { DbClientLedgerView().byClient(client) }
@@ -177,7 +186,7 @@ class FinanceTest {
     fun `бесплатная продажа и пустые позиции`() =
         runTest {
             val id = sale(0)
-            assertEquals(rub(0), tx { DbSaleDetailView().byId(id) }.debt)
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
             assertTrue(tx { DbClientLedgerView().byClient(client) }.entries.isEmpty())
             assertIs<Either.Left<AppError>>(attempt { actions.create(CreateSaleRequest(SaleId.new(), client, today, emptyList())) })
         }
@@ -271,15 +280,15 @@ class FinanceTest {
                 assertEquals("PAYMENT_HAS_RETURN", assertIs<CommonDomainError>(result.value).code)
                 assertEquals(before, tx { DbClientLedgerView().byClient(client) })
                 assertEquals(cashBefore, tx { DbCashAccountBalancesView().all() })
-                val detail = tx { DbSaleDetailView().byId(id) }
+                val detail = tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }
                 assertEquals(rub(1000), detail.paid)
                 assertEquals(rub(amount), detail.returned)
                 assertEquals(rub(0), detail.debt)
                 assertFalse(detail.operations.single { it.id == payment }.canReverse)
-                assertFalse(tx { DbCashJournalView().page(CashJournalRequest(today, today)) }.entries.single { it.id == payment }.canReverse)
+                assertFalse(tx { DbCashJournalView().page(journalQuery(today, today)) }.entries.single { it.id == payment }.canReverse)
                 if (payout != null) assertTrue(detail.operations.single { it.kind == LedgerKind.PAYOUT }.canReverse)
-                tx { actions.cancel(id, "Wrong sale", fixture.memberships) }
-                assertTrue(tx { DbSaleDetailView().byId(id) }.cancelledAt != null)
+                tx { actions.cancel(id, "Wrong sale") }
+                assertTrue(tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.cancelledAt != null)
                 assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.balance)
                 assertEquals(rub(0), tx { DbCashAccountBalancesView().all() }.total)
             }
@@ -294,8 +303,8 @@ class FinanceTest {
             val other = sale(1000)
             tx { payments.pay(other, client, PaymentInput(fromAdvance = rub(1000)), today) }
             assertIs<Either.Left<AppError>>(attempt { payments.reverse(payment, "Wrong payment") })
-            assertEquals(rub(0), tx { DbSaleDetailView().byId(id) }.debt)
-            assertEquals(rub(0), tx { DbSaleDetailView().byId(other) }.debt)
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(other, today)) }.debt)
             assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.advance)
         }
 
@@ -318,7 +327,7 @@ class FinanceTest {
             gate.complete(Unit)
             val reversed = reversal.await() is Either.Right
             assertIs<Either.Right<*>>(refund.await())
-            val detail = tx { DbSaleDetailView().byId(id) }
+            val detail = tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }
             assertEquals(maxOf(detail.total - detail.returned - detail.paid, rub(0)), detail.debt)
             assertEquals(rub(if (reversed) 0 else 1000), tx { DbClientLedgerView().byClient(client) }.advance)
         }
@@ -329,7 +338,7 @@ class FinanceTest {
             val id = sale(4500)
             tx { payments.pay(id, client, cashPayment(2000), today) }
             tx { actions.returnSale(id, rub(3000), "Return", null) }
-            assertEquals(rub(0), tx { DbSaleDetailView().byId(id) }.debt)
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
             assertEquals(rub(500), tx { DbClientLedgerView().byClient(client) }.advance)
             assertIs<Either.Left<AppError>>(attempt { actions.returnSale(id, rub(2000), "Too much", null) })
             tx { actions.returnSale(id, rub(1000), "Return and payout", cash) }
@@ -339,17 +348,65 @@ class FinanceTest {
         }
 
     @Test
+    fun `возврат с выплатой по частично оплаченной продаже выплачивает только зачисленное на аванс`() =
+        runTest {
+            tx { payments.pay(null, client, cashPayment(2500), today) }
+            val id = sale(4500)
+            tx { payments.pay(id, client, cashPayment(2000), today) }
+            tx { actions.returnSale(id, rub(3000), "Return and payout", cash) }
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
+            assertEquals(rub(2500), tx { DbClientLedgerView().byClient(client) }.advance)
+            assertEquals(rub(4000), tx { DbCashAccountBalancesView().all() }.total)
+        }
+
+    @Test
+    fun `возврат с выплатой по неоплаченной продаже только гасит долг`() =
+        runTest {
+            val id = sale(4500)
+            tx { actions.returnSale(id, rub(1000), "Return", cash) }
+            assertEquals(rub(3500), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
+            assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.advance)
+            assertEquals(rub(0), tx { DbCashAccountBalancesView().all() }.total)
+        }
+
+    @Test
+    fun `продажа с уже отозванным абонементом отменяется`() =
+        runTest {
+            val membership = fixture.issue(client)
+            val id = tx { DbClientLedgerView().byClient(client) }.entries.single().saleId!!
+            tx { org.athletica.crm.usecases.memberships.revokeMembership(fixture.memberships, membership.id) }
+            tx { actions.cancel(id, "Wrong issue") }
+            assertTrue(tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.cancelledAt != null)
+            assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.balance)
+        }
+
+    @Test
+    fun `направление и признак группы статьи с движениями не меняются`() =
+        runTest {
+            val article = CashArticleId.new()
+            tx { articles.save(article, "Rent", CashDirection.EXPENSE, null, false) }
+            tx { articles.save(article, "Rent", CashDirection.INCOME, null, false) }
+            tx { articles.save(article, "Rent", CashDirection.EXPENSE, null, false) }
+            tx { operations.record(CashOperationRequest(cash, article, rub(100), today), CashDirection.EXPENSE) }
+            val direction = assertIs<Either.Left<AppError>>(attempt { articles.save(article, "Rent", CashDirection.INCOME, null, false) }).value
+            assertEquals("CASH_ARTICLE_HAS_MOVEMENTS", direction.code)
+            val group = assertIs<Either.Left<AppError>>(attempt { articles.save(article, "Rent", CashDirection.EXPENSE, null, true) }).value
+            assertEquals("CASH_ARTICLE_HAS_MOVEMENTS", group.code)
+            tx { articles.save(article, "Office rent", CashDirection.EXPENSE, null, false) }
+        }
+
+    @Test
     fun `отмена продажи сторнирует оплаты и не позволяет потратить переплату дважды`() =
         runTest {
             val id = sale(4500)
             tx { payments.pay(id, client, cashPayment(5000), today) }
             val other = sale(500)
             tx { payments.pay(other, client, PaymentInput(fromAdvance = rub(500)), today) }
-            assertIs<Either.Left<AppError>>(attempt { actions.cancel(id, "Error", fixture.memberships) })
+            assertIs<Either.Left<AppError>>(attempt { actions.cancel(id, "Error") })
             tx { payments.pay(null, client, cashPayment(500), today) }
-            tx { actions.cancel(id, "Error", fixture.memberships) }
-            assertEquals(rub(0), tx { DbSaleDetailView().byId(id) }.debt)
-            assertTrue(tx { DbSaleDetailView().byId(id) }.cancelledAt != null)
+            tx { actions.cancel(id, "Error") }
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.debt)
+            assertTrue(tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.cancelledAt != null)
             assertIs<Either.Left<AppError>>(attempt { payments.pay(id, client, cashPayment(100), today) })
         }
 
@@ -360,21 +417,21 @@ class FinanceTest {
             tx { accounts.save(CashAccountId.new(), "Safe", CashAccountKind.CASH, null, rub(10000), LocalDate(2026, 10, 1)) }
             val expense = tx { operations.record(CashOperationRequest(cash, rent, rub(3000), today), CashDirection.EXPENSE) }
             tx { operations.transfer(TransferCashRequest(cash, bank, rub(2000), today)) }
-            val journal = tx { DbCashJournalView().page(CashJournalRequest(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
+            val journal = tx { DbCashJournalView().page(journalQuery(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
             assertEquals(3, journal.count)
             assertEquals(rub(3000), journal.expenses)
-            val october = tx { DbCashFlowReportView().report(CashFlowReportRequest(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
+            val october = tx { DbCashFlowReportView().report(CashFlowReportQuery(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
             assertEquals(rub(7000), october.closing)
             assertEquals(rub(3000), october.expenses)
             fixture.at(LocalDate(2026, 11, 1))
             tx { operations.reverse(expense, "Duplicate") }
-            val historical = tx { DbCashFlowReportView().report(CashFlowReportRequest(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
+            val historical = tx { DbCashFlowReportView().report(CashFlowReportQuery(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
             assertEquals(october.closing, historical.closing)
-            val november = tx { DbCashFlowReportView().report(CashFlowReportRequest(LocalDate(2026, 11, 1), LocalDate(2026, 11, 30))) }
+            val november = tx { DbCashFlowReportView().report(CashFlowReportQuery(LocalDate(2026, 11, 1), LocalDate(2026, 11, 30))) }
             assertEquals(rub(7000), november.opening)
             assertEquals(rub(10000), november.closing)
             assertEquals(rub(-3000), november.expenses)
-            val updated = tx { DbCashJournalView().page(CashJournalRequest(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
+            val updated = tx { DbCashJournalView().page(journalQuery(LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))) }
             assertEquals(rub(0), updated.expenses)
             assertEquals(1, updated.entries.count { it.reversed })
         }
@@ -384,7 +441,7 @@ class FinanceTest {
         runTest {
             val restricted = ctx.copy(employee = org.athletica.crm.domain.EmployeeStub(id = fixture.employeeId))
             assertIs<Either.Left<AppError>>(attempt(restricted) { payments.pay(null, client, cashPayment(100), today) })
-            assertIs<Either.Left<AppError>>(attempt(restricted) { DbCashJournalView().page(CashJournalRequest(today, today)) })
+            assertIs<Either.Left<AppError>>(attempt(restricted) { DbCashJournalView().page(journalQuery(today, today)) })
             val system = tx { articles.system("client_refunds") }
             assertIs<Either.Left<AppError>>(attempt { operations.record(CashOperationRequest(cash, system, rub(100), today), CashDirection.EXPENSE) })
         }
@@ -402,7 +459,7 @@ class FinanceTest {
                     accounts.save(otherCash, "North cash", CashAccountKind.CASH, otherBranch, rub(5000), today)
                     payments.pay(saleId, client, PaymentInput(listOf(CashPaymentInput(otherCash, rub(100)))), today)
                 }
-            assertEquals("North cash", tx { DbSaleDetailView().byId(saleId) }.operations.single().cash.single().cashAccountName)
+            assertEquals("North cash", tx { DbSaleDetailView().byId(SaleDetailQuery(saleId, today)) }.operations.single().cash.single().cashAccountName)
             tx {
                 contextOf<Transaction>().sql("UPDATE employees SET is_owner = false, all_branches_access = false WHERE id = :id")
                     .bind("id", fixture.employeeId).execute()
@@ -424,9 +481,9 @@ class FinanceTest {
             val balances = attempt(restricted) { DbCashAccountBalancesView().all() }.getOrElse { fail(it.toString()) }
             assertFalse(balances.accounts.any { it.id == otherCash })
             assertEquals(rub(0), balances.total)
-            assertEquals(0, attempt(restricted) { DbCashJournalView().page(CashJournalRequest(today, today)) }.getOrElse { fail(it.toString()) }.count)
-            assertEquals(rub(0), attempt(restricted) { DbCashFlowReportView().report(CashFlowReportRequest(today, today)) }.getOrElse { fail(it.toString()) }.closing)
-            val detail = attempt(restricted) { DbSaleDetailView().byId(saleId) }.getOrElse { fail(it.toString()) }
+            assertEquals(0, attempt(restricted) { DbCashJournalView().page(journalQuery(today, today)) }.getOrElse { fail(it.toString()) }.count)
+            assertEquals(rub(0), attempt(restricted) { DbCashFlowReportView().report(CashFlowReportQuery(today, today)) }.getOrElse { fail(it.toString()) }.closing)
+            val detail = attempt(restricted) { DbSaleDetailView().byId(SaleDetailQuery(saleId, today)) }.getOrElse { fail(it.toString()) }
             assertTrue(detail.operations.isEmpty())
             assertEquals(rub(100), detail.paid)
         }
@@ -473,7 +530,7 @@ class FinanceTest {
             val id = sale(1000)
             tx { payments.pay(id, client, cashPayment(1000), today) }
             assertIs<Either.Left<AppError>>(attempt { actions.returnSale(id, rub(500), "Return", CashAccountId.new()) })
-            assertEquals(rub(0), tx { DbSaleDetailView().byId(id) }.returned)
+            assertEquals(rub(0), tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.returned)
             assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.advance)
         }
 
@@ -483,7 +540,7 @@ class FinanceTest {
             tx { payments.pay(null, client, cashPayment(1000), today) }
             val id = sale(4500)
             tx { payments.pay(id, client, PaymentInput(listOf(CashPaymentInput(cash, rub(5000))), rub(1000)), today) }
-            val detail = tx { DbSaleDetailView().byId(id) }
+            val detail = tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }
             assertEquals(rub(6000), detail.operations.single().amount)
             assertEquals(rub(1000), detail.operations.single().fromAdvance)
             assertEquals(rub(1500), tx { DbClientLedgerView().byClient(client) }.advance)
@@ -501,14 +558,14 @@ class FinanceTest {
                 operations.transfer(TransferCashRequest(cash, bank, rub(200), today))
                 articles.archive(article, true)
             }
-            val report = tx { DbCashFlowReportView().report(CashFlowReportRequest(LocalDate(2026, 9, 15), LocalDate(2026, 11, 5), listOf(cash))) }
+            val report = tx { DbCashFlowReportView().report(CashFlowReportQuery(LocalDate(2026, 9, 15), LocalDate(2026, 11, 5), listOf(cash))) }
             assertEquals(listOf("2026-09", "2026-10", "2026-11"), report.months)
             assertEquals(rub(100), report.rows.single { it.kind == "group" }.total)
             assertEquals(listOf(rub(0), rub(100), rub(0)), report.rows.single { it.articleId == article }.amounts)
             assertEquals(rub(100), report.expenses)
             assertEquals(rub(-200), report.rows.single { it.kind == "transfer" }.total)
             assertEquals(rub(-300), report.closing)
-            val journal = tx { DbCashJournalView().page(CashJournalRequest(today, today, articleIds = listOf(article), limit = 1, offset = 0)) }
+            val journal = tx { DbCashJournalView().page(journalQuery(today, today, articleIds = listOf(article), limit = 1, offset = 0)) }
             assertEquals(1, journal.count)
             assertEquals(rub(100), journal.expenses)
         }
@@ -526,7 +583,7 @@ class FinanceTest {
             val membership = fixture.issue(client)
             val id = tx { DbClientLedgerView().byClient(client) }.entries.single().saleId!!
             tx { payments.pay(id, client, cashPayment(4000), today) }
-            tx { actions.cancel(id, "Wrong issue", fixture.memberships) }
+            tx { actions.cancel(id, "Wrong issue") }
             assertIs<org.athletica.crm.domain.memberships.RevokedMembership>(fixture.reload(membership.id))
             assertEquals(rub(0), tx { DbCashAccountBalancesView().all() }.total)
             assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.balance)
@@ -549,9 +606,9 @@ class FinanceTest {
                 tr.sql("INSERT INTO membership_debits (org_id, membership_id, client_id, session_id, kind) VALUES (:org, :membership, :client, :session, 'REGULAR')")
                     .bind("org", fixture.orgId).bind("membership", membership.id).bind("client", client).bind("session", sessionId).execute()
             }
-            val error = assertIs<Either.Left<AppError>>(attempt { actions.cancel(id, "Error", fixture.memberships) }).value
+            val error = assertIs<Either.Left<AppError>>(attempt { actions.cancel(id, "Error") }).value
             assertEquals("MEMBERSHIP_HAS_DEBITS", error.code)
-            assertFalse(tx { DbSaleDetailView().byId(id) }.cancelledAt != null)
+            assertFalse(tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.cancelledAt != null)
             assertEquals(rub(4000), tx { DbCashAccountBalancesView().all() }.total)
         }
 
@@ -565,6 +622,6 @@ class FinanceTest {
             assertIs<Either.Left<AppError>>(attempt { operations.transfer(TransferCashRequest(cash, cash, rub(100), today)) })
             tx { articles.archive(income, true) }
             assertIs<Either.Left<AppError>>(attempt { operations.record(CashOperationRequest(cash, income, rub(100), today), CashDirection.INCOME) })
-            assertEquals(rub(500), tx { DbCashFlowReportView().report(CashFlowReportRequest(today, today)) }.receipts)
+            assertEquals(rub(500), tx { DbCashFlowReportView().report(CashFlowReportQuery(today, today)) }.receipts)
         }
 }

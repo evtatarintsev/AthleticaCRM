@@ -32,6 +32,8 @@ import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
+import org.athletica.crm.domain.cashaccounts.CashAccounts
+import org.athletica.crm.domain.casharticles.CashArticles
 import org.athletica.crm.domain.channels.AuditChannelIntegrations
 import org.athletica.crm.domain.channels.ChannelBindings
 import org.athletica.crm.domain.channels.ChannelChats
@@ -84,6 +86,7 @@ import org.athletica.crm.domain.inbound.InboundReceipts
 import org.athletica.crm.domain.leadSource.AuditLeadSources
 import org.athletica.crm.domain.leadSource.DbLeadSources
 import org.athletica.crm.domain.leadSource.LeadSources
+import org.athletica.crm.domain.ledger.Ledger
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -107,6 +110,7 @@ import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.domain.payment.DbPayments
 import org.athletica.crm.domain.payment.PaymentGateway
 import org.athletica.crm.domain.payment.Payments
+import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbScheduleSync
 import org.athletica.crm.domain.sessions.DbSessions
@@ -124,7 +128,9 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.finance.CashOperations
 import org.athletica.crm.usecases.finance.ClientPayments
+import org.athletica.crm.usecases.finance.SaleActions
 import org.athletica.crm.usecases.memberships.DebitReconciliation
 import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.crm.usecases.messaging.InboundStores
@@ -185,6 +191,12 @@ data class Di(
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
     val orgCalendar: OrgCalendar = DbOrgCalendar()
+    val ledger: Ledger = Ledger(orgCalendar)
+    val cashAccounts: CashAccounts = CashAccounts(ledger, orgCalendar)
+    val cashArticles: CashArticles = CashArticles()
+    val sales: Sales = Sales(ledger, orgCalendar)
+    val saleActions: SaleActions = SaleActions(memberships, ledger, sales, clientPayments, cashAccounts, orgCalendar)
+    val cashOperations: CashOperations = CashOperations(ledger, cashAccounts, cashArticles)
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
     val scheduleSync: ScheduleSync = DbScheduleSync(orgCalendar)

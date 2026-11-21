@@ -96,7 +96,7 @@ class FinanceRoutesTest {
             application { context(di) { configureServer() } }
             val response = client.post("/api/finance/cash-accounts") { header(HttpHeaders.Authorization, "Bearer ${token()}") }
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertTrue(response.bodyAsText().contains("ACCESS_DENIED"))
+            assertTrue(response.bodyAsText().contains("PERMISSION_DENIED"))
             val history =
                 client.post("/api/finance/client-ledger") {
                     header(HttpHeaders.Authorization, "Bearer ${token()}")

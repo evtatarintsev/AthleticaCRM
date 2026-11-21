@@ -27,16 +27,29 @@ import java.math.BigInteger
 
 /** Суммы оплаты и возврата не хранятся в продаже: их источник — главная книга. */
 data class Sale(
+    /** Идентификатор продажи. */
     val id: SaleId,
+    /** Клиент продажи. */
     val clientId: ClientId,
+    /** Итог продажи — сумма позиций. */
     val total: Money,
+    /** Признак отменённой продажи. */
     val cancelled: Boolean,
 )
 
 /** Позиция продажи до записи: её сумма вычисляется из количества и цены. */
-data class SaleLine(val name: String, val quantity: Int, val unitPrice: Money)
+data class SaleLine(
+    /** Название позиции. */
+    val name: String,
+    /** Количество, положительное целое. */
+    val quantity: Int,
+    /** Цена за единицу, не отрицательная. */
+    val unitPrice: Money,
+)
 
+/** Продажи клиентам: документ продажи и его запись в главную книгу. */
 class Sales(private val ledger: Ledger = Ledger(), private val calendar: OrgCalendar = DbOrgCalendar()) {
+    /** Продажа [id] организации с итогом по позициям; если её нет — ошибка. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: SaleId): Sale =
         tr.sql(
@@ -48,6 +61,10 @@ class Sales(private val ledger: Ledger = Ledger(), private val calendar: OrgCale
             Sale(id, it.asUuid("client_id").toClientId(), it.asMoney("total", ctx.currency), it.asInstantOrNull("cancelled_at") != null)
         } ?: raise(ledgerError("SALE_NOT_FOUND"))
 
+    /**
+     * Оформляет продажу [id] активному клиенту [clientId] датой [soldOn] с позициями [items] вида [kind]
+     * и возвращает идентификаторы позиций. Ненулевой итог записывает долг клиента и выручку.
+     */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun create(
         id: SaleId,
@@ -73,7 +90,9 @@ class Sales(private val ledger: Ledger = Ledger(), private val calendar: OrgCale
                 itemId
             }
         val total = Money(totalMinor.toLong(), ctx.currency)
-        if (!total.isZero) ledger.record(LedgerEntries.sale(ledger.account(LedgerOwner.Receivable(id, clientId)), ledger.account(LedgerOwner.Revenue), total), soldOn, id)
+        if (!total.isZero) {
+            ledger.record(LedgerEntries.sale(ledger.account(LedgerOwner.Receivable(id, clientId)), ledger.account(LedgerOwner.Revenue), total), soldOn, id)
+        }
         return ids
     }
 }

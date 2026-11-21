@@ -10,9 +10,14 @@ import org.athletica.crm.core.money.sum
 
 /** Шаблоны всех денежных событий. Знак остатка аванса обратен видимой клиенту сумме. */
 object LedgerEntries {
+    /** Продажа на [amount]: растёт долг [receivable] и выручка [revenue]. */
     context(ctx: RequestContext, raise: Raise<AppError>)
     fun sale(receivable: LedgerAccount, revenue: LedgerAccount, amount: Money) = LedgerEntry.of(LedgerKind.SALE, listOf(LedgerPosting(receivable, amount), LedgerPosting(revenue, -amount)))
 
+    /**
+     * Оплата кассовыми частями [cash] и с аванса [fromAdvance] при долге [debt]: сначала гасится
+     * долг [receivable], переплата зачисляется на аванс [advance].
+     */
     context(ctx: RequestContext, raise: Raise<AppError>)
     fun payment(
         cash: List<LedgerPosting>,
@@ -33,6 +38,7 @@ object LedgerEntries {
         return LedgerEntry.of(LedgerKind.PAYMENT, postings)
     }
 
+    /** Возврат [amount] при долге [debt]: уменьшает выручку, сначала гасит долг, остаток зачисляет на аванс. */
     context(ctx: RequestContext, raise: Raise<AppError>)
     fun saleReturn(
         revenue: LedgerAccount,
@@ -53,6 +59,7 @@ object LedgerEntries {
         )
     }
 
+    /** Выплата [amount] клиенту с аванса [advance] из кассы [cash] по статье [articleId]. */
     context(ctx: RequestContext, raise: Raise<AppError>)
     fun payout(
         advance: LedgerAccount,
@@ -61,9 +68,11 @@ object LedgerEntries {
         articleId: CashArticleId,
     ) = LedgerEntry.of(LedgerKind.PAYOUT, listOf(LedgerPosting(advance, amount), LedgerPosting(cash, -amount, articleId)))
 
+    /** Корректировка аванса [advance] на [amount] против счёта корректировок; кассы не затрагивает. */
     context(ctx: RequestContext, raise: Raise<AppError>)
     fun adjustment(advance: LedgerAccount, adjustment: LedgerAccount, amount: Money) = LedgerEntry.of(LedgerKind.ADJUSTMENT, listOf(LedgerPosting(advance, -amount), LedgerPosting(adjustment, amount)))
 
+    /** Кассовая операция вида [kind]: [amount] по кассе [cash] против счёта [offset] со статьёй [articleId]. */
     context(ctx: RequestContext, raise: Raise<AppError>)
     fun cash(
         kind: LedgerKind,

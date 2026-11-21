@@ -16,6 +16,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipHistoryRequest
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
 import org.athletica.crm.api.schemas.memberships.MembershipListRequest
 import org.athletica.crm.api.schemas.memberships.MembershipListResponse
+import org.athletica.crm.api.schemas.memberships.MembershipSaleSchema
 import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.api.schemas.memberships.MembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.RepayDebtRequest
@@ -25,6 +26,7 @@ import org.athletica.crm.api.schemas.memberships.UnfreezeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.SaleId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.subscription.ActivationMode
@@ -37,10 +39,11 @@ import org.athletica.crm.domain.memberships.MembershipDuration
 import org.athletica.crm.domain.memberships.Memberships
 import org.athletica.crm.domain.memberships.RevokedMembership
 import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
-import org.athletica.crm.storage.asUuid
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.extendMembership
 import org.athletica.crm.usecases.memberships.freezeMembership
@@ -57,12 +60,13 @@ fun RouteWithContext.membershipsRoutes(
     memberships: Memberships,
     calendar: OrgCalendar,
     views: ReadViews,
-    payments: org.athletica.crm.usecases.finance.ClientPayments,
+    payments: ClientPayments,
+    sales: Sales,
 ) {
     route("/memberships") {
         post<IssueMembershipRequest, Unit>("/issue") { request ->
-            val ctx = contextOf<org.athletica.crm.core.EmployeeRequestContext>()
             db.transaction {
+                val saleId = SaleId.new()
                 issueMembership(
                     memberships = memberships,
                     id = request.id,
@@ -76,23 +80,19 @@ fun RouteWithContext.membershipsRoutes(
                     activation = request.activation(),
                     closeMode = request.closeMode,
                     issuedOn = calendar.today(),
+                    saleId = saleId,
+                    sales = sales,
                 )
-                request.payment?.let { payment ->
-                    val saleId =
-                        sql("SELECT i.sale_id FROM memberships m JOIN sale_items i ON i.id = m.sale_item_id WHERE m.id = :id AND m.org_id = :org")
-                            .bind("id", request.id).bind("org", ctx.orgId)
-                            .firstOrNull { org.athletica.crm.core.entityids.SaleId(it.asUuid("sale_id")) }!!
-                    payments.pay(saleId, request.clientId, payment, calendar.today())
-                }
+                request.payment?.let { payments.pay(saleId, request.clientId, it, calendar.today()) }
             }
         }
 
         post<MembershipListRequest, MembershipListResponse>("/list") { request ->
             db.transaction {
                 val today = calendar.today()
-                val sales = org.athletica.crm.read.finance.DbMembershipSalesView().byClient(request.clientId)
+                val saleStates = views.membershipSales.byClient(request.clientId)
                 memberships.forClient(request.clientId)
-                    .map { it.toSchema(today, checkNotNull(sales[it.id])) }
+                    .map { it.toSchema(today, checkNotNull(saleStates[it.id])) }
                     .let { MembershipListResponse(it) }
             }
         }
@@ -150,7 +150,7 @@ private fun IssueMembershipRequest.activation(): Activation =
     }
 
 /** Преобразует доменный абонемент в схему ответа со свойствами, выведенными на дату [today]. */
-private fun Membership.toSchema(today: LocalDate, sale: org.athletica.crm.api.schemas.memberships.MembershipSaleSchema): MembershipSchema =
+private fun Membership.toSchema(today: LocalDate, sale: MembershipSaleSchema): MembershipSchema =
     MembershipSchema(
         id = id,
         name = name,

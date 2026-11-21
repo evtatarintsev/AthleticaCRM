@@ -23,6 +23,8 @@ import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.toMoney
+import org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE
+import org.athletica.crm.core.permissions.requireFinancePermission
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
@@ -62,6 +64,9 @@ suspend fun importClientsCommit(
     }
 
     validateMapping(request.columnMapping)
+    if (request.columnMapping.any { it.target is ImportTarget.Balance }) {
+        requireFinancePermission(CAN_MANAGE_FINANCE)
+    }
 
     val bytes = minio.downloadObject(upload.objectKey)
     val parsed = CsvReader.parse(bytes)

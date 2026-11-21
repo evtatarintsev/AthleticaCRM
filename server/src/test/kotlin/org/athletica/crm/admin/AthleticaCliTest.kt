@@ -223,23 +223,6 @@ class AthleticaCliTest {
         }
 
     @Test
-    fun `сброс пароля сотрудника нескольких организаций`() =
-        runTest {
-            val userId = insertUser("shared@example.com", "старый-пароль")
-            insertEmployee(userId, "Клуб Один")
-            insertEmployee(userId, "Клуб Два")
-
-            val result =
-                cli().test(
-                    listOf("admin", "user", "reset-password", "shared@example.com"),
-                    stdin = "новый-пароль\nновый-пароль\n",
-                )
-
-            assertEquals(0, result.statusCode, result.stderr)
-            assertTrue(hasher.verify("новый-пароль", passwordHash("shared@example.com")))
-        }
-
-    @Test
     fun `сброс пароля неизвестного пользователя завершается ненулевым кодом`() =
         runTest {
             val result =

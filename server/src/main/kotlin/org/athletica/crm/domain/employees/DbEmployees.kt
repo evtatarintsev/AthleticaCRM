@@ -18,6 +18,8 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.toEmailAddress
+import org.athletica.crm.domain.auth.AuthSessions
+import org.athletica.crm.domain.auth.DbAuthSessions
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
@@ -42,8 +44,15 @@ private class RoleRow(
     val permissions: Set<UserPermission>,
 )
 
-/** Репозиторий сотрудников поверх PostgreSQL; [roles] — каталог ролей для назначений при записи. */
-class DbEmployees(private val users: Users, private val roles: Roles) : Employees {
+/**
+ * Репозиторий сотрудников поверх PostgreSQL; [roles] — каталог ролей для назначений при записи,
+ * [sessions] — сессии входа, которые сотрудник завершает при блокировке.
+ */
+class DbEmployees(
+    private val users: Users,
+    private val roles: Roles,
+    private val sessions: AuthSessions = DbAuthSessions(),
+) : Employees {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun new(
         id: EmployeeId,
@@ -109,6 +118,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
             roleCatalog = roles,
             orgId = ctx.orgId,
             availableBranches = availableBranches,
+            sessions = sessions,
         )
     }
 
@@ -142,6 +152,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                         users = users,
                         roleCatalog = roles,
                         orgId = ctx.orgId,
+                        sessions = sessions,
                         permissionSettings =
                             EmployeePermission(
                                 roles =

@@ -1,5 +1,6 @@
 package org.athletica.crm.core
 
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
@@ -41,6 +42,8 @@ sealed interface RequestContext {
  * [clientIp] — IP-адрес клиента; IPv4 или IPv6; null если определить не удалось.
  * [employee] — сотрудник, выполняющий запрос; загружается при сборке контекста и является
  *   снимком на момент начала запроса (идентификатор, имя, доступные филиалы, права).
+ * [sessionId] — сессия входа, к которой относится токен запроса; `null` только у служебного
+ *   контекста проверки логина и пароля, когда сессии ещё нет.
  */
 data class EmployeeRequestContext(
     override val lang: Lang,
@@ -51,6 +54,7 @@ data class EmployeeRequestContext(
     val username: String,
     val clientIp: String?,
     val employee: Employee,
+    val sessionId: AuthSessionId? = null,
 ) : RequestContext,
     UserActor by employee
 

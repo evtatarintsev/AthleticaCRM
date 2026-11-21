@@ -90,7 +90,7 @@ class AuthMePermissionsTest {
             testApplication {
                 application { context(di) { configureServer() } }
 
-                assertEquals(UserPermission.entries.toSet(), mePermissions(testJwtConfig.makeAccessToken(owner)))
+                assertEquals(UserPermission.entries.toSet(), mePermissions(testJwtConfig.sessionAccessToken(owner)))
             }
         }
 
@@ -100,7 +100,7 @@ class AuthMePermissionsTest {
             val owner = signUpOwner()
             testApplication {
                 application { context(di) { configureServer() } }
-                val ownerToken = testJwtConfig.makeAccessToken(owner)
+                val ownerToken = testJwtConfig.sessionAccessToken(owner)
                 val roleId = Uuid.random()
                 val employeeId = EmployeeId.new()
 

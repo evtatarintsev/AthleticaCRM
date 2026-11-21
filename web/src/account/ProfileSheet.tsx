@@ -15,6 +15,7 @@ import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
 import { AvatarPicker } from "./AvatarPicker";
 import { ChangePasswordSheet } from "./ChangePasswordSheet";
+import { SessionsSheet } from "./SessionsSheet";
 
 /** Значения формы профиля. */
 interface ProfileFormValues {
@@ -51,7 +52,8 @@ export function ProfileSheet({
 
 /**
  * Форма профиля: имя и аватар. После сохранения сессия перечитывается, новое имя с аватаром
- * сразу видны в меню аккаунта, а панель закрывается. Из формы поверх неё открывается смена пароля.
+ * сразу видны в меню аккаунта, а панель закрывается. Из формы поверх неё открываются смена пароля
+ * и активные сеансы.
  */
 function ProfileForm({ api }: { api: ApiClient }) {
   const { t } = useI18n();
@@ -61,6 +63,7 @@ function ProfileForm({ api }: { api: ApiClient }) {
   const schema = useMemo(() => nameSchema(t), [t]);
   const [failure, setFailure] = useState<string | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
 
   const defaultValues: ProfileFormValues = { name: me.name, avatarId: me.avatarId };
   const form = useForm({
@@ -97,7 +100,10 @@ function ProfileForm({ api }: { api: ApiClient }) {
             void form.handleSubmit();
           }}
           nested={
-            <ChangePasswordSheet api={api} open={passwordOpen} onOpenChange={setPasswordOpen} />
+            <>
+              <ChangePasswordSheet api={api} open={passwordOpen} onOpenChange={setPasswordOpen} />
+              <SessionsSheet api={api} open={sessionsOpen} onOpenChange={setSessionsOpen} />
+            </>
           }
         >
           {failure !== null && <FormAlert message={failure} />}
@@ -128,6 +134,16 @@ function ProfileForm({ api }: { api: ApiClient }) {
             }}
           >
             {t("profile.changePassword")}
+          </Button>
+          <Button
+            type="button"
+            variant="link"
+            className="px-0"
+            onClick={() => {
+              setSessionsOpen(true);
+            }}
+          >
+            {t("sessions.title")}
           </Button>
         </EditSheetForm>
       )}

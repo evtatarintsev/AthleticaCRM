@@ -523,6 +523,9 @@ export const AuthMeResponseSchema = z
   .readonly();
 export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;
 
+export const AuthSessionIdSchema = z.uuid().brand<"AuthSessionId">();
+export type AuthSessionId = z.output<typeof AuthSessionIdSchema>;
+
 export const BirthdayWindowSchema = z.enum(["TODAY", "TOMORROW", "WEEK"]);
 export type BirthdayWindow = z.output<typeof BirthdayWindowSchema>;
 
@@ -2004,6 +2007,9 @@ export const DetachTaskUploadRequestSchema = z
   .readonly();
 export type DetachTaskUploadRequest = z.output<typeof DetachTaskUploadRequestSchema>;
 
+export const DevicePlatformSchema = z.enum(["MACOS", "WINDOWS", "LINUX", "IOS", "ANDROID", "OTHER"]);
+export type DevicePlatform = z.output<typeof DevicePlatformSchema>;
+
 export const DisciplineDetailResponseSchema = z
   .object({
     id: DisciplineIdSchema,
@@ -2190,6 +2196,13 @@ export const EmployeeListResponseSchema = z
   })
   .readonly();
 export type EmployeeListResponse = z.output<typeof EmployeeListResponseSchema>;
+
+export const EmployeeSessionsRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+  })
+  .readonly();
+export type EmployeeSessionsRequest = z.output<typeof EmployeeSessionsRequestSchema>;
 
 export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
 export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
@@ -3374,6 +3387,20 @@ export const SessionDetailResponseSchema = z
   .readonly();
 export type SessionDetailResponse = z.output<typeof SessionDetailResponseSchema>;
 
+export const SessionItemSchema = z
+  .object({
+    id: AuthSessionIdSchema,
+    browser: z.string().nullable(),
+    os: z.string().nullable(),
+    platform: DevicePlatformSchema,
+    ip: z.string().nullable(),
+    createdAt: InstantSchema,
+    lastSeenAt: InstantSchema,
+    current: z.boolean(),
+  })
+  .readonly();
+export type SessionItem = z.output<typeof SessionItemSchema>;
+
 export const SessionJournalRequestSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -3396,6 +3423,13 @@ export const SessionJournalResponseSchema = z
   })
   .readonly();
 export type SessionJournalResponse = z.output<typeof SessionJournalResponseSchema>;
+
+export const SessionListResponseSchema = z
+  .object({
+    items: z.array(SessionItemSchema).readonly(),
+  })
+  .readonly();
+export type SessionListResponse = z.output<typeof SessionListResponseSchema>;
 
 export const SetChannelEnabledRequestSchema = z
   .object({
@@ -3595,6 +3629,21 @@ export const TaskListResponseSchema = z
   })
   .readonly();
 export type TaskListResponse = z.output<typeof TaskListResponseSchema>;
+
+export const TerminateEmployeeSessionRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+    sessionId: AuthSessionIdSchema,
+  })
+  .readonly();
+export type TerminateEmployeeSessionRequest = z.output<typeof TerminateEmployeeSessionRequestSchema>;
+
+export const TerminateSessionRequestSchema = z
+  .object({
+    sessionId: AuthSessionIdSchema,
+  })
+  .readonly();
+export type TerminateSessionRequest = z.output<typeof TerminateSessionRequestSchema>;
 
 export const TodaySessionItemSchema = z
   .object({
@@ -4084,6 +4133,27 @@ export const endpoints = {
     out: "json",
     response: LoginResponseSchema,
   },
+  "auth/sessions": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: SessionListResponseSchema,
+  },
+  "auth/sessions/terminate": {
+    method: "POST",
+    in: "body",
+    request: TerminateSessionRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "auth/sessions/terminate-others": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "empty",
+    response: z.undefined(),
+  },
   "auth/sign-up": {
     method: "POST",
     in: "body",
@@ -4410,6 +4480,20 @@ export const endpoints = {
     method: "POST",
     in: "body",
     request: SendEmployeeAccessRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "employees/sessions": {
+    method: "GET",
+    in: "query",
+    request: EmployeeSessionsRequestSchema,
+    out: "json",
+    response: SessionListResponseSchema,
+  },
+  "employees/sessions/terminate": {
+    method: "POST",
+    in: "body",
+    request: TerminateEmployeeSessionRequestSchema,
     out: "empty",
     response: z.undefined(),
   },

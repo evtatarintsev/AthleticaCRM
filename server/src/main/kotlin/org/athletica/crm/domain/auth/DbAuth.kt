@@ -45,6 +45,7 @@ class DbAuth(
     private val branches: Branches,
     private val userSettings: UserDisplaySettings,
     private val emailVerifications: EmailVerifications,
+    private val sessions: AuthSessions = DbAuthSessions(),
 ) : Auth {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun login(
@@ -95,7 +96,7 @@ class DbAuth(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun logout() {
-        // JWT не хранится на сервере. Cookie очищается в HTTP-маршруте.
+        ctx.sessionId?.let { sessions.delete(it, ctx.userId) }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -128,6 +129,7 @@ class DbAuth(
             .bind("hash", passwordHasher.hash(request.newPassword).value)
             .bind("id", ctx.userId)
             .execute()
+        sessions.deleteOthers(ctx.userId, ctx.sessionId)
     }
 
     /** Регистрирует организацию и владельца, создаёт локализованные настройки по умолчанию. */

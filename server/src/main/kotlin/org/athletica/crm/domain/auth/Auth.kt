@@ -26,12 +26,14 @@ interface Auth {
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser
 
+    /** Завершает сессию, в которой выполнен запрос. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun logout()
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun updateMe(request: UpdateMeRequest)
 
+    /** Меняет пароль по запросу [request] и завершает все другие сессии пользователя. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun changePassword(request: ChangePasswordRequest)
 

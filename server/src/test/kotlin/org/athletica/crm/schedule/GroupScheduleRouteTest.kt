@@ -33,6 +33,7 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.notifications.GroupScheduleChanged
 import org.athletica.crm.domain.notifications.NotificationContent
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -85,7 +86,7 @@ class GroupScheduleRouteTest {
                     }
                 }
             user = assertIs<Either.Right<AuthenticatedUser>>(result).value
-            token = testJwtConfig.makeAccessToken(user)
+            token = testJwtConfig.sessionAccessToken(user)
             hallId = HallId.new()
             TestPostgres.db
                 .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")

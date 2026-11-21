@@ -8,6 +8,8 @@ import org.athletica.crm.read.attendance.GroupAttendanceView
 import org.athletica.crm.read.attendance.SessionJournalView
 import org.athletica.crm.read.audit.ActivityLogView
 import org.athletica.crm.read.audit.DbActivityLogView
+import org.athletica.crm.read.auth.DbSessionListView
+import org.athletica.crm.read.auth.SessionListView
 import org.athletica.crm.read.channels.ChannelListView
 import org.athletica.crm.read.channels.DbChannelListView
 import org.athletica.crm.read.clients.ClientListView
@@ -147,4 +149,6 @@ data class ReadViews(
     val sessionDetail: SessionDetailView = DbSessionDetailView(),
     /** Лента диалога с клиентом по всем каналам. */
     val conversation: ConversationView = DbConversationView(),
+    /** Активные сеансы сотрудника для профиля и карточки сотрудника. */
+    val sessionList: SessionListView = DbSessionListView(),
 )

@@ -5,6 +5,7 @@ import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -23,7 +24,7 @@ import kotlin.time.Instant
 
 /**
  * Сотрудник в памяти для тестов: права проверяются по настройке [permissionSettings],
- * команды `save`/`invite`/`block`/`unblock` ничего не делают.
+ * команды `save`/`invite`/`block`/`unblock`/`terminateSession` ничего не делают.
  */
 data class EmployeeStub(
     override val id: EmployeeId = EmployeeId.new(),
@@ -57,6 +58,10 @@ data class EmployeeStub(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unblock() {
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun terminateSession(sessionId: AuthSessionId) {
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

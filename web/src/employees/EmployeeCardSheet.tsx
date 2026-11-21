@@ -4,11 +4,13 @@ import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   EmployeeIdSchema,
+  type AuthSessionId,
   type EmployeeDetailResponse,
   type EmployeeId,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SessionRow } from "@/account/SessionRow";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
@@ -45,7 +47,7 @@ interface EmployeeCardSheetProps {
  * Панель карточки сотрудника [EmployeeCardSheetProps.employeeId] поверх текущей страницы:
  * аватар, статус и последняя активность, контакты, роли и доступ к филиалам. Сотруднику без
  * доступа можно отправить доступ; сотрудника, кроме владельца и себя, можно заблокировать
- * (с подтверждением) и разблокировать; «Редактировать» открывает поверх карточки панель формы сотрудника. От маршрута не зависит:
+ * (с подтверждением) и разблокировать, а его сеансы — завершить; «Редактировать» открывает поверх карточки панель формы сотрудника. От маршрута не зависит:
  * открытием карточки и панели редактирования управляет вызывающий — через search-параметры
  * адреса (раздел «Сотрудники») или локальное состояние (карточка занятия).
  */
@@ -124,6 +126,10 @@ function EmployeeCard({
       }),
       queryClient.invalidateQueries({
         queryKey: apiQuery(api, branchId, "employees/list").queryKey,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: apiQuery(api, branchId, "employees/sessions", { employeeId: employee.id })
+          .queryKey,
       }),
     ]);
 
@@ -239,6 +245,9 @@ function EmployeeCard({
         </section>
       )}
       <BranchAccessSection api={api} employee={employee} />
+      {employee.status !== "NO_ACCESS" && (
+        <EmployeeSessionsSection api={api} employeeId={employee.id} canTerminate={canBlock} />
+      )}
       <ConfirmDialog
         open={blockOpen}
         onOpenChange={setBlockOpen}
@@ -305,6 +314,68 @@ function BranchAccessSection({
             <RoleChip key={branch.id} name={branch.name} />
           ))}
         </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Раздел «Активные сеансы» сотрудника [employeeId] в том же виде, что в профиле.
+ * При [canTerminate] у каждого сеанса есть кнопка завершения; ошибка сервера показывается
+ * над списком.
+ */
+function EmployeeSessionsSection({
+  api,
+  employeeId,
+  canTerminate,
+}: {
+  readonly api: ApiClient;
+  readonly employeeId: EmployeeId;
+  readonly canTerminate: boolean;
+}) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const branchId = useSession(api).currentBranch.id;
+  const query = apiQuery(api, branchId, "employees/sessions", { employeeId });
+  const sessions = useQuery(query);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const terminate = async (sessionId: AuthSessionId) => {
+    setFailure(null);
+    const result = await api.call("employees/sessions/terminate", { employeeId, sessionId });
+    if (!result.ok) {
+      setFailure(apiErrorMessage(t, result.error));
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: query.queryKey });
+  };
+
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <h3 className="mb-1 font-semibold">{t("sessions.title")}</h3>
+      {failure !== null && <FormAlert message={failure} />}
+      {sessions.isPending ? (
+        <Skeleton className="h-14 w-full" />
+      ) : sessions.isError ? (
+        <FormAlert message={t("directory.loadError")} />
+      ) : sessions.data.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("sessions.empty")}</p>
+      ) : (
+        <ul className="divide-y">
+          {sessions.data.items.map((session) => (
+            <SessionRow
+              key={session.id}
+              session={session}
+              onTerminate={
+                canTerminate
+                  ? () => {
+                      void terminate(session.id);
+                    }
+                  : undefined
+              }
+            />
+          ))}
+        </ul>
       )}
     </section>
   );

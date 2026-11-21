@@ -285,6 +285,17 @@ export const ru = {
   "password.confirm": "Подтверждение пароля",
   "password.changed": "Пароль изменён",
 
+  "sessions.title": "Активные сеансы",
+  "sessions.thisDevice": "Это устройство",
+  "sessions.otherSessions": "Активные сеансы",
+  "sessions.terminate": "Завершить сеанс",
+  "sessions.terminateOthers": "Завершить все другие сеансы",
+  "sessions.terminateOthersHint": "Выйдут все устройства, кроме этого.",
+  "sessions.terminateOthersConfirmTitle": "Завершить все другие сеансы?",
+  "sessions.terminateOthersConfirm": "Завершить",
+  "sessions.unknownDevice": "Неизвестное устройство",
+  "sessions.empty": "Нет активных сеансов",
+
   "branch.title": "Сменить филиал",
   "branch.current": "Текущий филиал",
   "branch.loadError": "Не удалось загрузить филиалы",

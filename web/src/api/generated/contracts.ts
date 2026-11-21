@@ -50,14 +50,36 @@ export const MoneySchema = z
   .readonly();
 export type Money = z.output<typeof MoneySchema>;
 
-export const AdjustBalanceRequestSchema = z
+export const AdjustAdvanceRequestSchema = z
   .object({
     clientId: ClientIdSchema,
     amount: MoneySchema,
-    note: z.string(),
+    comment: z.string(),
   })
   .readonly();
-export type AdjustBalanceRequest = z.output<typeof AdjustBalanceRequestSchema>;
+export type AdjustAdvanceRequest = z.output<typeof AdjustAdvanceRequestSchema>;
+
+export const CashAccountIdSchema = z.uuid().brand<"CashAccountId">();
+export type CashAccountId = z.output<typeof CashAccountIdSchema>;
+
+export const ArchiveCashAccountRequestSchema = z
+  .object({
+    id: CashAccountIdSchema,
+    archived: z.boolean(),
+  })
+  .readonly();
+export type ArchiveCashAccountRequest = z.output<typeof ArchiveCashAccountRequestSchema>;
+
+export const CashArticleIdSchema = z.uuid().brand<"CashArticleId">();
+export type CashArticleId = z.output<typeof CashArticleIdSchema>;
+
+export const ArchiveCashArticleRequestSchema = z
+  .object({
+    id: CashArticleIdSchema,
+    archived: z.boolean(),
+  })
+  .readonly();
+export type ArchiveCashArticleRequest = z.output<typeof ArchiveCashArticleRequestSchema>;
 
 export const ArchiveClientRequestSchema = z
   .object({
@@ -478,11 +500,12 @@ export const OrgInfoSchema = z
   .object({
     name: z.string(),
     balance: MoneySchema.nullable(),
+    timezone: z.string(),
   })
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT"]);
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT"]);
 export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const AuthMeResponseSchema = z
@@ -495,36 +518,23 @@ export const AuthMeResponseSchema = z
     orgInfo: OrgInfoSchema,
     currentBranch: BranchDetailResponseSchema,
     permissions: z.array(UserPermissionSchema).readonly(),
+    emailVerificationPending: z.boolean(),
   })
   .readonly();
 export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;
 
-export const InstantSchema = z.iso.datetime({ offset: true }).brand<"Instant">();
-export type Instant = z.output<typeof InstantSchema>;
-
-export const PerformedBySchema = z
-  .object({
-    id: z.uuid(),
-    name: z.string(),
-  })
-  .readonly();
-export type PerformedBy = z.output<typeof PerformedBySchema>;
-
-export const BalanceJournalEntrySchema = z
-  .object({
-    id: z.uuid(),
-    amount: MoneySchema,
-    balanceAfter: MoneySchema,
-    operationType: z.string(),
-    note: z.string().nullable(),
-    performedBy: PerformedBySchema.nullable(),
-    createdAt: InstantSchema,
-  })
-  .readonly();
-export type BalanceJournalEntry = z.output<typeof BalanceJournalEntrySchema>;
+export const AuthSessionIdSchema = z.uuid().brand<"AuthSessionId">();
+export type AuthSessionId = z.output<typeof AuthSessionIdSchema>;
 
 export const BirthdayWindowSchema = z.enum(["TODAY", "TOMORROW", "WEEK"]);
 export type BirthdayWindow = z.output<typeof BirthdayWindowSchema>;
+
+export const BlockEmployeeRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+  })
+  .readonly();
+export type BlockEmployeeRequest = z.output<typeof BlockEmployeeRequestSchema>;
 
 export const BranchCreateRequestSchema = z
   .object({
@@ -555,6 +565,185 @@ export const BulkUpdateTasksResponseSchema = z
   })
   .readonly();
 export type BulkUpdateTasksResponse = z.output<typeof BulkUpdateTasksResponseSchema>;
+
+export const SaleIdSchema = z.uuid().brand<"SaleId">();
+export type SaleId = z.output<typeof SaleIdSchema>;
+
+export const CancelSaleRequestSchema = z
+  .object({
+    saleId: SaleIdSchema,
+    reason: z.string(),
+  })
+  .readonly();
+export type CancelSaleRequest = z.output<typeof CancelSaleRequestSchema>;
+
+export const CashAccountKindSchema = z.enum(["CASH", "BANK", "ACQUIRING", "ONLINE"]);
+export type CashAccountKind = z.output<typeof CashAccountKindSchema>;
+
+export const CashAccountSchemaSchema = z
+  .object({
+    id: CashAccountIdSchema,
+    name: z.string(),
+    kind: CashAccountKindSchema,
+    branchId: BranchIdSchema.nullable(),
+    archived: z.boolean(),
+    balance: MoneySchema,
+  })
+  .readonly();
+export type CashAccountSchema = z.output<typeof CashAccountSchemaSchema>;
+
+export const CashAccountBalancesResponseSchema = z
+  .object({
+    accounts: z.array(CashAccountSchemaSchema).readonly(),
+    total: MoneySchema,
+  })
+  .readonly();
+export type CashAccountBalancesResponse = z.output<typeof CashAccountBalancesResponseSchema>;
+
+export const CashDirectionSchema = z.enum(["INCOME", "EXPENSE"]);
+export type CashDirection = z.output<typeof CashDirectionSchema>;
+
+export const CashArticleSchemaSchema = z
+  .object({
+    id: CashArticleIdSchema,
+    name: z.string(),
+    direction: CashDirectionSchema,
+    parentId: CashArticleIdSchema.nullable(),
+    isGroup: z.boolean(),
+    systemCode: z.string().nullable(),
+    archived: z.boolean(),
+  })
+  .readonly();
+export type CashArticleSchema = z.output<typeof CashArticleSchemaSchema>;
+
+export const CashArticlesResponseSchema = z
+  .object({
+    articles: z.array(CashArticleSchemaSchema).readonly(),
+  })
+  .readonly();
+export type CashArticlesResponse = z.output<typeof CashArticlesResponseSchema>;
+
+export const CashFlowReportRequestSchema = z
+  .object({
+    from: LocalDateSchema,
+    to: LocalDateSchema,
+    cashAccountIds: z.array(CashAccountIdSchema).readonly().optional(),
+  })
+  .readonly();
+export type CashFlowReportRequest = z.output<typeof CashFlowReportRequestSchema>;
+
+export const CashFlowRowSchema = z
+  .object({
+    articleId: CashArticleIdSchema.nullable(),
+    name: z.string(),
+    parentId: CashArticleIdSchema.nullable(),
+    parentName: z.string().nullable(),
+    direction: CashDirectionSchema.nullable(),
+    kind: z.string(),
+    amounts: z.array(MoneySchema).readonly(),
+    total: MoneySchema,
+  })
+  .readonly();
+export type CashFlowRow = z.output<typeof CashFlowRowSchema>;
+
+export const CashFlowReportResponseSchema = z
+  .object({
+    months: z.array(z.string()).readonly(),
+    rows: z.array(CashFlowRowSchema).readonly(),
+    opening: MoneySchema,
+    closing: MoneySchema,
+    receipts: MoneySchema,
+    expenses: MoneySchema,
+  })
+  .readonly();
+export type CashFlowReportResponse = z.output<typeof CashFlowReportResponseSchema>;
+
+export const PerformedBySchema = z
+  .object({
+    id: z.uuid(),
+    name: z.string(),
+  })
+  .readonly();
+export type PerformedBy = z.output<typeof PerformedBySchema>;
+
+export const LedgerTransactionIdSchema = z.uuid().brand<"LedgerTransactionId">();
+export type LedgerTransactionId = z.output<typeof LedgerTransactionIdSchema>;
+
+export const LedgerKindSchema = z.enum(["SALE", "SALE_RETURN", "PAYMENT", "PAYOUT", "ADJUSTMENT", "INCOME", "EXPENSE", "TRANSFER", "OPENING", "REVERSAL"]);
+export type LedgerKind = z.output<typeof LedgerKindSchema>;
+
+export const CashJournalEntrySchema = z
+  .object({
+    id: LedgerTransactionIdSchema,
+    kind: LedgerKindSchema,
+    occurredOn: LocalDateSchema,
+    cashAccountId: CashAccountIdSchema,
+    cashAccountName: z.string(),
+    articleId: CashArticleIdSchema.nullable(),
+    articleName: z.string().nullable(),
+    amount: MoneySchema,
+    clientId: ClientIdSchema.nullable(),
+    clientName: z.string().nullable(),
+    saleId: SaleIdSchema.nullable(),
+    counterparty: z.string().nullable(),
+    comment: z.string().nullable(),
+    performedBy: PerformedBySchema.nullable(),
+    reversed: z.boolean(),
+    reversalReason: z.string().nullable(),
+    reversedBy: PerformedBySchema.nullable(),
+    counterCashAccountId: CashAccountIdSchema.nullable(),
+    counterCashAccountName: z.string().nullable(),
+    canReverse: z.boolean(),
+  })
+  .readonly();
+export type CashJournalEntry = z.output<typeof CashJournalEntrySchema>;
+
+export const CashJournalRequestSchema = z
+  .object({
+    from: LocalDateSchema,
+    to: LocalDateSchema,
+    cashAccountIds: z.array(CashAccountIdSchema).readonly().optional(),
+    articleIds: z.array(CashArticleIdSchema).readonly().optional(),
+    kinds: z.array(LedgerKindSchema).readonly().optional(),
+    clientId: ClientIdSchema.nullable().optional(),
+    employeeId: EmployeeIdSchema.nullable().optional(),
+    includeReversed: z.boolean().optional(),
+    limit: z.int32().optional(),
+    offset: z.int32().optional(),
+  })
+  .readonly();
+export type CashJournalRequest = z.output<typeof CashJournalRequestSchema>;
+
+export const CashJournalResponseSchema = z
+  .object({
+    entries: z.array(CashJournalEntrySchema).readonly(),
+    count: z.int32(),
+    receipts: MoneySchema,
+    expenses: MoneySchema,
+  })
+  .readonly();
+export type CashJournalResponse = z.output<typeof CashJournalResponseSchema>;
+
+export const CashOperationRequestSchema = z
+  .object({
+    cashAccountId: CashAccountIdSchema,
+    articleId: CashArticleIdSchema,
+    amount: MoneySchema,
+    occurredOn: LocalDateSchema,
+    counterpartyEmployeeId: EmployeeIdSchema.nullable().optional(),
+    counterpartyText: z.string().nullable().optional(),
+    comment: z.string().nullable().optional(),
+  })
+  .readonly();
+export type CashOperationRequest = z.output<typeof CashOperationRequestSchema>;
+
+export const CashPaymentInputSchema = z
+  .object({
+    cashAccountId: CashAccountIdSchema,
+    amount: MoneySchema,
+  })
+  .readonly();
+export type CashPaymentInput = z.output<typeof CashPaymentInputSchema>;
 
 export const ChangePasswordRequestSchema = z
   .object({
@@ -688,20 +877,6 @@ export const ClientAttendanceResponseSchema = z
   .readonly();
 export type ClientAttendanceResponse = z.output<typeof ClientAttendanceResponseSchema>;
 
-export const ClientBalanceHistoryRequestSchema = z
-  .object({
-    id: ClientIdSchema,
-  })
-  .readonly();
-export type ClientBalanceHistoryRequest = z.output<typeof ClientBalanceHistoryRequestSchema>;
-
-export const ClientBalanceHistoryResponseSchema = z
-  .object({
-    entries: z.array(BalanceJournalEntrySchema).readonly(),
-  })
-  .readonly();
-export type ClientBalanceHistoryResponse = z.output<typeof ClientBalanceHistoryResponseSchema>;
-
 export const ClientCardSectionsResponseSchema = z
   .object({
     tasks: z.boolean(),
@@ -749,12 +924,24 @@ export const ClientChannelsResponseSchema = z
   .readonly();
 export type ClientChannelsResponse = z.output<typeof ClientChannelsResponseSchema>;
 
+export const ClientDebtSchemaSchema = z
+  .object({
+    saleId: SaleIdSchema,
+    soldOn: LocalDateSchema,
+    debt: MoneySchema,
+  })
+  .readonly();
+export type ClientDebtSchema = z.output<typeof ClientDebtSchemaSchema>;
+
 export const ClientDetailRequestSchema = z
   .object({
     id: ClientIdSchema,
   })
   .readonly();
 export type ClientDetailRequest = z.output<typeof ClientDetailRequestSchema>;
+
+export const InstantSchema = z.iso.datetime({ offset: true }).brand<"Instant">();
+export type Instant = z.output<typeof InstantSchema>;
 
 export const ClientDocSchema = z
   .object({
@@ -954,6 +1141,41 @@ export const ClientImportParseResponseSchema = z
   .readonly();
 export type ClientImportParseResponse = z.output<typeof ClientImportParseResponseSchema>;
 
+export const ClientLedgerEntrySchema = z
+  .object({
+    id: LedgerTransactionIdSchema,
+    kind: LedgerKindSchema,
+    occurredOn: LocalDateSchema,
+    createdAt: InstantSchema,
+    amount: MoneySchema,
+    balanceAfter: MoneySchema,
+    fromAdvance: MoneySchema,
+    performedBy: PerformedBySchema.nullable(),
+    comment: z.string().nullable(),
+    saleId: SaleIdSchema.nullable(),
+    reversed: z.boolean(),
+  })
+  .readonly();
+export type ClientLedgerEntry = z.output<typeof ClientLedgerEntrySchema>;
+
+export const ClientLedgerRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type ClientLedgerRequest = z.output<typeof ClientLedgerRequestSchema>;
+
+export const ClientLedgerResponseSchema = z
+  .object({
+    balance: MoneySchema,
+    advance: MoneySchema,
+    debt: MoneySchema,
+    entries: z.array(ClientLedgerEntrySchema).readonly(),
+    salesWithDebt: z.array(ClientDebtSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientLedgerResponse = z.output<typeof ClientLedgerResponseSchema>;
+
 export const ClientListItemSchema = z
   .object({
     id: ClientIdSchema,
@@ -970,11 +1192,19 @@ export const ClientListItemSchema = z
   .readonly();
 export type ClientListItem = z.output<typeof ClientListItemSchema>;
 
-export const ClientSortFieldSchema = z.enum(["NAME", "BALANCE", "BIRTHDAY"]);
+export const ClientSortFieldSchema = z.enum(["NAME", "BALANCE", "BIRTHDAY", "NEXT_BIRTHDAY"]);
 export type ClientSortField = z.output<typeof ClientSortFieldSchema>;
 
 export const SortDirectionSchemaSchema = z.enum(["Asc", "Desc"]);
 export type SortDirectionSchema = z.output<typeof SortDirectionSchemaSchema>;
+
+export const ClientSortSchema = z
+  .object({
+    field: ClientSortFieldSchema,
+    direction: SortDirectionSchemaSchema.optional(),
+  })
+  .readonly();
+export type ClientSort = z.output<typeof ClientSortSchema>;
 
 export const DateRangeSchema = z
   .object({
@@ -997,6 +1227,7 @@ export const ClientListRequestSchema = z
     noGroup: z.boolean().optional(),
     groupId: GroupIdSchema.nullable().optional(),
     birthday: DateRangeSchema.nullable().optional(),
+    sort: z.array(ClientSortSchema).readonly().nullable().optional(),
   })
   .readonly();
 export type ClientListRequest = z.output<typeof ClientListRequestSchema>;
@@ -1115,6 +1346,23 @@ export const CompleteSessionRequestSchema = z
   })
   .readonly();
 export type CompleteSessionRequest = z.output<typeof CompleteSessionRequestSchema>;
+
+export const ConfirmEmailRequestSchema = z
+  .object({
+    token: z.string(),
+  })
+  .readonly();
+export type ConfirmEmailRequest = z.output<typeof ConfirmEmailRequestSchema>;
+
+export const EmailConfirmationStatusSchema = z.enum(["confirmed", "already_confirmed"]);
+export type EmailConfirmationStatus = z.output<typeof EmailConfirmationStatusSchema>;
+
+export const ConfirmEmailResponseSchema = z
+  .object({
+    status: EmailConfirmationStatusSchema,
+  })
+  .readonly();
+export type ConfirmEmailResponse = z.output<typeof ConfirmEmailResponseSchema>;
 
 export const ConversationRequestSchema = z
   .object({
@@ -1289,6 +1537,34 @@ export const CreateRoleRequestSchema = z
   })
   .readonly();
 export type CreateRoleRequest = z.output<typeof CreateRoleRequestSchema>;
+
+export const PaymentInputSchema = z
+  .object({
+    cash: z.array(CashPaymentInputSchema).readonly().optional(),
+    fromAdvance: MoneySchema.nullable().optional(),
+  })
+  .readonly();
+export type PaymentInput = z.output<typeof PaymentInputSchema>;
+
+export const SaleItemInputSchema = z
+  .object({
+    name: z.string(),
+    quantity: z.int32(),
+    unitPrice: MoneySchema,
+  })
+  .readonly();
+export type SaleItemInput = z.output<typeof SaleItemInputSchema>;
+
+export const CreateSaleRequestSchema = z
+  .object({
+    id: SaleIdSchema,
+    clientId: ClientIdSchema,
+    soldOn: LocalDateSchema,
+    items: z.array(SaleItemInputSchema).readonly(),
+    payment: PaymentInputSchema.nullable().optional(),
+  })
+  .readonly();
+export type CreateSaleRequest = z.output<typeof CreateSaleRequestSchema>;
 
 export const CreateSessionRequestSchema = z
   .object({
@@ -1731,6 +2007,9 @@ export const DetachTaskUploadRequestSchema = z
   .readonly();
 export type DetachTaskUploadRequest = z.output<typeof DetachTaskUploadRequestSchema>;
 
+export const DevicePlatformSchema = z.enum(["MACOS", "WINDOWS", "LINUX", "IOS", "ANDROID", "OTHER"]);
+export type DevicePlatform = z.output<typeof DevicePlatformSchema>;
+
 export const DisciplineDetailResponseSchema = z
   .object({
     id: DisciplineIdSchema,
@@ -1854,6 +2133,9 @@ export const EditGroupRequestSchema = z
   .readonly();
 export type EditGroupRequest = z.output<typeof EditGroupRequestSchema>;
 
+export const EmployeeAccessStatusSchema = z.enum(["NO_ACCESS", "INVITED", "ACTIVE", "BLOCKED"]);
+export type EmployeeAccessStatus = z.output<typeof EmployeeAccessStatusSchema>;
+
 export const EmployeeDetailRequestSchema = z
   .object({
     id: EmployeeIdSchema,
@@ -1875,7 +2157,9 @@ export const EmployeeDetailResponseSchema = z
     name: z.string(),
     avatarId: UploadIdSchema.nullable(),
     isOwner: z.boolean(),
-    isActive: z.boolean(),
+    status: EmployeeAccessStatusSchema,
+    lastSeenAt: InstantSchema.nullable(),
+    online: z.boolean(),
     joinedAt: InstantSchema,
     roles: z.array(EmployeeRoleSchema).readonly(),
     phoneNo: z.string().nullable(),
@@ -1894,7 +2178,9 @@ export const EmployeeListItemSchema = z
     name: z.string(),
     avatarId: UploadIdSchema.nullable(),
     isOwner: z.boolean(),
-    isActive: z.boolean(),
+    status: EmployeeAccessStatusSchema,
+    lastSeenAt: InstantSchema.nullable(),
+    online: z.boolean(),
     joinedAt: InstantSchema,
     roles: z.array(EmployeeRoleSchema).readonly(),
     phoneNo: z.string().nullable(),
@@ -1910,6 +2196,13 @@ export const EmployeeListResponseSchema = z
   })
   .readonly();
 export type EmployeeListResponse = z.output<typeof EmployeeListResponseSchema>;
+
+export const EmployeeSessionsRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+  })
+  .readonly();
+export type EmployeeSessionsRequest = z.output<typeof EmployeeSessionsRequestSchema>;
 
 export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
 export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
@@ -1939,6 +2232,13 @@ export const ExtendMembershipRequestSchema = z
   })
   .readonly();
 export type ExtendMembershipRequest = z.output<typeof ExtendMembershipRequestSchema>;
+
+export const ForgotPasswordRequestSchema = z
+  .object({
+    email: z.string(),
+  })
+  .readonly();
+export type ForgotPasswordRequest = z.output<typeof ForgotPasswordRequestSchema>;
 
 export const FreezeMembershipRequestSchema = z
   .object({
@@ -2294,6 +2594,7 @@ export const IssueMembershipRequestSchema = z
     activateOn: LocalDateSchema.nullable().optional(),
     activationDeadline: LocalDateSchema.nullable().optional(),
     closeMode: CloseModeSchema,
+    payment: PaymentInputSchema.nullable().optional(),
   })
   .readonly();
 export type IssueMembershipRequest = z.output<typeof IssueMembershipRequestSchema>;
@@ -2538,6 +2839,19 @@ export const MembershipListRequestSchema = z
   .readonly();
 export type MembershipListRequest = z.output<typeof MembershipListRequestSchema>;
 
+export const SalePaymentStateSchema = z.enum(["UNPAID", "PARTIAL", "PAID"]);
+export type SalePaymentState = z.output<typeof SalePaymentStateSchema>;
+
+export const MembershipSaleSchemaSchema = z
+  .object({
+    saleId: SaleIdSchema,
+    paid: MoneySchema,
+    debt: MoneySchema,
+    paymentState: SalePaymentStateSchema,
+  })
+  .readonly();
+export type MembershipSaleSchema = z.output<typeof MembershipSaleSchemaSchema>;
+
 export const TermPositionSchema = z.enum(["NOT_STARTED", "IN_TERM", "EXPIRED"]);
 export type TermPosition = z.output<typeof TermPositionSchema>;
 
@@ -2601,6 +2915,7 @@ export const MembershipSchemaSchema = z
     issuedOn: LocalDateSchema,
     groups: z.array(MembershipGroupSchemaSchema).readonly(),
     state: MembershipStateSchemaSchema,
+    sale: MembershipSaleSchemaSchema,
   })
   .readonly();
 export type MembershipSchema = z.output<typeof MembershipSchemaSchema>;
@@ -2737,6 +3052,16 @@ export const ParticipantDebitSchemaSchema = z
   .readonly();
 export type ParticipantDebitSchema = z.output<typeof ParticipantDebitSchemaSchema>;
 
+export const PaySaleRequestSchema = z
+  .object({
+    saleId: SaleIdSchema,
+    occurredOn: LocalDateSchema,
+    payment: PaymentInputSchema,
+    comment: z.string().nullable().optional(),
+  })
+  .readonly();
+export type PaySaleRequest = z.output<typeof PaySaleRequestSchema>;
+
 export const PaymentUrlResponseSchema = z
   .object({
     paymentId: z.uuid(),
@@ -2744,6 +3069,17 @@ export const PaymentUrlResponseSchema = z
   })
   .readonly();
 export type PaymentUrlResponse = z.output<typeof PaymentUrlResponseSchema>;
+
+export const PayoutAdvanceRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    cashAccountId: CashAccountIdSchema,
+    amount: MoneySchema,
+    occurredOn: LocalDateSchema,
+    comment: z.string().nullable().optional(),
+  })
+  .readonly();
+export type PayoutAdvanceRequest = z.output<typeof PayoutAdvanceRequestSchema>;
 
 export const RemoveClientFromGroupRequestSchema = z
   .object({
@@ -2771,12 +3107,49 @@ export const RescheduleSessionRequestSchema = z
   .readonly();
 export type RescheduleSessionRequest = z.output<typeof RescheduleSessionRequestSchema>;
 
+export const ResendEmailStatusSchema = z.enum(["queued", "already_confirmed", "rate_limited"]);
+export type ResendEmailStatus = z.output<typeof ResendEmailStatusSchema>;
+
+export const ResendEmailConfirmationResponseSchema = z
+  .object({
+    status: ResendEmailStatusSchema,
+    retryAfterSeconds: z.int32(),
+  })
+  .readonly();
+export type ResendEmailConfirmationResponse = z.output<typeof ResendEmailConfirmationResponseSchema>;
+
+export const ResetPasswordRequestSchema = z
+  .object({
+    token: z.string(),
+    newPassword: z.string(),
+  })
+  .readonly();
+export type ResetPasswordRequest = z.output<typeof ResetPasswordRequestSchema>;
+
 export const RestoreClientRequestSchema = z
   .object({
     clientIds: z.array(ClientIdSchema).readonly(),
   })
   .readonly();
 export type RestoreClientRequest = z.output<typeof RestoreClientRequestSchema>;
+
+export const ReturnSaleRequestSchema = z
+  .object({
+    saleId: SaleIdSchema,
+    amount: MoneySchema,
+    reason: z.string(),
+    cashAccountId: CashAccountIdSchema.nullable().optional(),
+  })
+  .readonly();
+export type ReturnSaleRequest = z.output<typeof ReturnSaleRequestSchema>;
+
+export const ReverseTransactionRequestSchema = z
+  .object({
+    transactionId: LedgerTransactionIdSchema,
+    reason: z.string(),
+  })
+  .readonly();
+export type ReverseTransactionRequest = z.output<typeof ReverseTransactionRequestSchema>;
 
 export const RevokeMembershipRequestSchema = z
   .object({
@@ -2800,6 +3173,98 @@ export const RoleListResponseSchema = z
   })
   .readonly();
 export type RoleListResponse = z.output<typeof RoleListResponseSchema>;
+
+export const SaleCashPartSchemaSchema = z
+  .object({
+    cashAccountId: CashAccountIdSchema,
+    cashAccountName: z.string(),
+    amount: MoneySchema,
+  })
+  .readonly();
+export type SaleCashPartSchema = z.output<typeof SaleCashPartSchemaSchema>;
+
+export const SaleItemIdSchema = z.uuid().brand<"SaleItemId">();
+export type SaleItemId = z.output<typeof SaleItemIdSchema>;
+
+export const SaleItemKindSchema = z.enum(["MEMBERSHIP", "SERVICE"]);
+export type SaleItemKind = z.output<typeof SaleItemKindSchema>;
+
+export const SaleItemSchemaSchema = z
+  .object({
+    id: SaleItemIdSchema,
+    kind: SaleItemKindSchema,
+    name: z.string(),
+    quantity: z.int32(),
+    unitPrice: MoneySchema,
+    amount: MoneySchema,
+  })
+  .readonly();
+export type SaleItemSchema = z.output<typeof SaleItemSchemaSchema>;
+
+export const SaleOperationSchemaSchema = z
+  .object({
+    id: LedgerTransactionIdSchema,
+    kind: LedgerKindSchema,
+    occurredOn: LocalDateSchema,
+    amount: MoneySchema,
+    cash: z.array(SaleCashPartSchemaSchema).readonly(),
+    fromAdvance: MoneySchema,
+    performedBy: PerformedBySchema.nullable(),
+    comment: z.string().nullable(),
+    reversed: z.boolean(),
+    canReverse: z.boolean(),
+  })
+  .readonly();
+export type SaleOperationSchema = z.output<typeof SaleOperationSchemaSchema>;
+
+export const SaleDetailResponseSchema = z
+  .object({
+    id: SaleIdSchema,
+    clientId: ClientIdSchema,
+    soldOn: LocalDateSchema,
+    performedBy: PerformedBySchema.nullable(),
+    items: z.array(SaleItemSchemaSchema).readonly(),
+    total: MoneySchema,
+    paid: MoneySchema,
+    returned: MoneySchema,
+    debt: MoneySchema,
+    paymentState: SalePaymentStateSchema,
+    cancelledAt: InstantSchema.nullable(),
+    cancelReason: z.string().nullable(),
+    operations: z.array(SaleOperationSchemaSchema).readonly(),
+  })
+  .readonly();
+export type SaleDetailResponse = z.output<typeof SaleDetailResponseSchema>;
+
+export const SaleRequestSchema = z
+  .object({
+    saleId: SaleIdSchema,
+  })
+  .readonly();
+export type SaleRequest = z.output<typeof SaleRequestSchema>;
+
+export const SaveCashAccountRequestSchema = z
+  .object({
+    id: CashAccountIdSchema,
+    name: z.string(),
+    kind: CashAccountKindSchema,
+    branchId: BranchIdSchema.nullable().optional(),
+    openingBalance: MoneySchema.nullable().optional(),
+    openingOn: LocalDateSchema.nullable().optional(),
+  })
+  .readonly();
+export type SaveCashAccountRequest = z.output<typeof SaveCashAccountRequestSchema>;
+
+export const SaveCashArticleRequestSchema = z
+  .object({
+    id: CashArticleIdSchema,
+    name: z.string(),
+    direction: CashDirectionSchema,
+    parentId: CashArticleIdSchema.nullable().optional(),
+    isGroup: z.boolean().optional(),
+  })
+  .readonly();
+export type SaveCashArticleRequest = z.output<typeof SaveCashArticleRequestSchema>;
 
 export const SaveCustomFieldsRequestSchema = z
   .object({
@@ -2844,6 +3309,9 @@ export const ScheduleSessionSchemaSchema = z
     disciplines: z.array(ScheduleDisciplineSchemaSchema).readonly(),
     status: SessionStatusSchema,
     colorKey: SessionColorKeySchema,
+    coachesOverridden: z.boolean(),
+    rescheduledFrom: LocalDateSchema.nullable(),
+    isManual: z.boolean(),
   })
   .readonly();
 export type ScheduleSessionSchema = z.output<typeof ScheduleSessionSchemaSchema>;
@@ -2934,6 +3402,20 @@ export const SessionDetailResponseSchema = z
   .readonly();
 export type SessionDetailResponse = z.output<typeof SessionDetailResponseSchema>;
 
+export const SessionItemSchema = z
+  .object({
+    id: AuthSessionIdSchema,
+    browser: z.string().nullable(),
+    os: z.string().nullable(),
+    platform: DevicePlatformSchema,
+    ip: z.string().nullable(),
+    createdAt: InstantSchema,
+    lastSeenAt: InstantSchema,
+    current: z.boolean(),
+  })
+  .readonly();
+export type SessionItem = z.output<typeof SessionItemSchema>;
+
 export const SessionJournalRequestSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -2956,6 +3438,13 @@ export const SessionJournalResponseSchema = z
   })
   .readonly();
 export type SessionJournalResponse = z.output<typeof SessionJournalResponseSchema>;
+
+export const SessionListResponseSchema = z
+  .object({
+    items: z.array(SessionItemSchema).readonly(),
+  })
+  .readonly();
+export type SessionListResponse = z.output<typeof SessionListResponseSchema>;
 
 export const SetChannelEnabledRequestSchema = z
   .object({
@@ -3156,6 +3645,21 @@ export const TaskListResponseSchema = z
   .readonly();
 export type TaskListResponse = z.output<typeof TaskListResponseSchema>;
 
+export const TerminateEmployeeSessionRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+    sessionId: AuthSessionIdSchema,
+  })
+  .readonly();
+export type TerminateEmployeeSessionRequest = z.output<typeof TerminateEmployeeSessionRequestSchema>;
+
+export const TerminateSessionRequestSchema = z
+  .object({
+    sessionId: AuthSessionIdSchema,
+  })
+  .readonly();
+export type TerminateSessionRequest = z.output<typeof TerminateSessionRequestSchema>;
+
 export const TodaySessionItemSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -3174,6 +3678,27 @@ export const TodaySessionsResponseSchema = z
   })
   .readonly();
 export type TodaySessionsResponse = z.output<typeof TodaySessionsResponseSchema>;
+
+export const TopUpAdvanceRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    occurredOn: LocalDateSchema,
+    payment: PaymentInputSchema,
+    comment: z.string().nullable().optional(),
+  })
+  .readonly();
+export type TopUpAdvanceRequest = z.output<typeof TopUpAdvanceRequestSchema>;
+
+export const TransferCashRequestSchema = z
+  .object({
+    fromCashAccountId: CashAccountIdSchema,
+    toCashAccountId: CashAccountIdSchema,
+    amount: MoneySchema,
+    occurredOn: LocalDateSchema,
+    comment: z.string().nullable().optional(),
+  })
+  .readonly();
+export type TransferCashRequest = z.output<typeof TransferCashRequestSchema>;
 
 export const TriageMessageSchemaSchema = z
   .object({
@@ -3205,6 +3730,13 @@ export const UnassignTaskRequestSchema = z
   })
   .readonly();
 export type UnassignTaskRequest = z.output<typeof UnassignTaskRequestSchema>;
+
+export const UnblockEmployeeRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+  })
+  .readonly();
+export type UnblockEmployeeRequest = z.output<typeof UnblockEmployeeRequestSchema>;
 
 export const UnclosedSessionItemSchema = z
   .object({
@@ -3553,6 +4085,20 @@ export const endpoints = {
     out: "json",
     response: AuthBranchesResponseSchema,
   },
+  "auth/confirm-email": {
+    method: "POST",
+    in: "body",
+    request: ConfirmEmailRequestSchema,
+    out: "json",
+    response: ConfirmEmailResponseSchema,
+  },
+  "auth/forgot-password": {
+    method: "POST",
+    in: "body",
+    request: ForgotPasswordRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "auth/login": {
     method: "POST",
     in: "body",
@@ -3581,6 +4127,13 @@ export const endpoints = {
     out: "empty",
     response: z.undefined(),
   },
+  "auth/me/resend-email-confirmation": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ResendEmailConfirmationResponseSchema,
+  },
   "auth/me/update": {
     method: "POST",
     in: "body",
@@ -3601,6 +4154,34 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: LoginResponseSchema,
+  },
+  "auth/reset-password": {
+    method: "POST",
+    in: "body",
+    request: ResetPasswordRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "auth/sessions": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: SessionListResponseSchema,
+  },
+  "auth/sessions/terminate": {
+    method: "POST",
+    in: "body",
+    request: TerminateSessionRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "auth/sessions/terminate-others": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "empty",
+    response: z.undefined(),
   },
   "auth/sign-up": {
     method: "POST",
@@ -3706,20 +4287,6 @@ export const endpoints = {
     request: ArchiveClientRequestSchema,
     out: "empty",
     response: z.undefined(),
-  },
-  "clients/balance/adjust": {
-    method: "POST",
-    in: "body",
-    request: AdjustBalanceRequestSchema,
-    out: "json",
-    response: ClientDetailResponseSchema,
-  },
-  "clients/balance/history": {
-    method: "GET",
-    in: "query",
-    request: ClientBalanceHistoryRequestSchema,
-    out: "json",
-    response: ClientBalanceHistoryResponseSchema,
   },
   "clients/create": {
     method: "POST",
@@ -3889,6 +4456,13 @@ export const endpoints = {
     out: "json",
     response: DisplaySettingsSchema,
   },
+  "employees/block": {
+    method: "POST",
+    in: "body",
+    request: BlockEmployeeRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "employees/create": {
     method: "POST",
     in: "body",
@@ -3938,10 +4512,171 @@ export const endpoints = {
     out: "empty",
     response: z.undefined(),
   },
+  "employees/sessions": {
+    method: "GET",
+    in: "query",
+    request: EmployeeSessionsRequestSchema,
+    out: "json",
+    response: SessionListResponseSchema,
+  },
+  "employees/sessions/terminate": {
+    method: "POST",
+    in: "body",
+    request: TerminateEmployeeSessionRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "employees/unblock": {
+    method: "POST",
+    in: "body",
+    request: UnblockEmployeeRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "employees/update": {
     method: "POST",
     in: "body",
     request: UpdateEmployeeRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/advance/adjust": {
+    method: "POST",
+    in: "body",
+    request: AdjustAdvanceRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/advance/payout": {
+    method: "POST",
+    in: "body",
+    request: PayoutAdvanceRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/advance/top-up": {
+    method: "POST",
+    in: "body",
+    request: TopUpAdvanceRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/cash-accounts": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: CashAccountBalancesResponseSchema,
+  },
+  "finance/cash-accounts/archive": {
+    method: "POST",
+    in: "body",
+    request: ArchiveCashAccountRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/cash-accounts/save": {
+    method: "POST",
+    in: "body",
+    request: SaveCashAccountRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/cash-articles": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: CashArticlesResponseSchema,
+  },
+  "finance/cash-articles/archive": {
+    method: "POST",
+    in: "body",
+    request: ArchiveCashArticleRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/cash-articles/save": {
+    method: "POST",
+    in: "body",
+    request: SaveCashArticleRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/cash-flow": {
+    method: "POST",
+    in: "body",
+    request: CashFlowReportRequestSchema,
+    out: "json",
+    response: CashFlowReportResponseSchema,
+  },
+  "finance/cash-flow/export": {
+    method: "POST",
+    in: "body",
+    request: CashFlowReportRequestSchema,
+    out: "file",
+    response: z.instanceof(Blob),
+  },
+  "finance/client-ledger": {
+    method: "POST",
+    in: "body",
+    request: ClientLedgerRequestSchema,
+    out: "json",
+    response: ClientLedgerResponseSchema,
+  },
+  "finance/client-payment-options": {
+    method: "POST",
+    in: "body",
+    request: ClientLedgerRequestSchema,
+    out: "json",
+    response: ClientLedgerResponseSchema,
+  },
+  "finance/expense": {
+    method: "POST",
+    in: "body",
+    request: CashOperationRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/income": {
+    method: "POST",
+    in: "body",
+    request: CashOperationRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/journal": {
+    method: "POST",
+    in: "body",
+    request: CashJournalRequestSchema,
+    out: "json",
+    response: CashJournalResponseSchema,
+  },
+  "finance/journal/export": {
+    method: "POST",
+    in: "body",
+    request: CashJournalRequestSchema,
+    out: "file",
+    response: z.instanceof(Blob),
+  },
+  "finance/operations/reverse": {
+    method: "POST",
+    in: "body",
+    request: ReverseTransactionRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/payments/reverse": {
+    method: "POST",
+    in: "body",
+    request: ReverseTransactionRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "finance/transfer": {
+    method: "POST",
+    in: "body",
+    request: TransferCashRequestSchema,
     out: "empty",
     response: z.undefined(),
   },
@@ -4287,6 +5022,41 @@ export const endpoints = {
     request: InitiatePaymentRequestSchema,
     out: "json",
     response: PaymentUrlResponseSchema,
+  },
+  "sales/cancel": {
+    method: "POST",
+    in: "body",
+    request: CancelSaleRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "sales/create": {
+    method: "POST",
+    in: "body",
+    request: CreateSaleRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "sales/detail": {
+    method: "POST",
+    in: "body",
+    request: SaleRequestSchema,
+    out: "json",
+    response: SaleDetailResponseSchema,
+  },
+  "sales/pay": {
+    method: "POST",
+    in: "body",
+    request: PaySaleRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "sales/return": {
+    method: "POST",
+    in: "body",
+    request: ReturnSaleRequestSchema,
+    out: "empty",
+    response: z.undefined(),
   },
   "schedule/list": {
     method: "POST",

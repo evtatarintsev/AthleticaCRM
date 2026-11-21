@@ -28,7 +28,7 @@ class OrgSearch(private val database: Database) {
                     """
                     SELECT o.id, o.name, o.currency, u.login AS owner_login
                     FROM organizations o
-                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
+                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.user_id IS NOT NULL AND e.blocked_at IS NULL
                     JOIN users u     ON u.id = e.user_id
                     WHERE o.name ILIKE '%' || :query || '%'
                        OR u.login ILIKE '%' || :query || '%'
@@ -55,7 +55,7 @@ class OrgSearch(private val database: Database) {
                     """
                     SELECT o.id, o.name, o.currency, u.login AS owner_login
                     FROM organizations o
-                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.is_active = true
+                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.user_id IS NOT NULL AND e.blocked_at IS NULL
                     JOIN users u     ON u.id = e.user_id
                     WHERE o.id = :id
                     """.trimIndent(),

@@ -27,6 +27,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
@@ -70,7 +71,7 @@ class GroupSessionsRouteTest {
                 }
             }
         user = assertIs<Either.Right<AuthenticatedUser>>(result).value
-        token = testJwtConfig.makeAccessToken(user)
+        token = testJwtConfig.sessionAccessToken(user)
     }
 
     /** Создаёт в филиале владельца группу с одним занятием в понедельник; возвращает обе сущности. */

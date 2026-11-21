@@ -27,6 +27,7 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
@@ -66,7 +67,7 @@ class LeadSourcesRoutesTest {
                     )
                 }
             }
-        token = testJwtConfig.makeAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
+        token = testJwtConfig.sessionAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
     }
 
     private suspend fun ApplicationTestBuilder.post(path: String, body: String): HttpResponse =

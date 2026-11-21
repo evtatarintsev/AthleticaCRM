@@ -84,6 +84,96 @@ interface PluralKey {
 }
 
 object Messages {
+    object RegistrationEmailTitle : LocalizationKey {
+        override val ru = "Добро пожаловать в AthleticaCRM"
+        override val en = "Welcome to AthleticaCRM"
+    }
+
+    object EmailGreeting : LocalizationTemplate1<String> {
+        override val ru = { name: String -> "Здравствуйте, $name!" }
+        override val en = { name: String -> "Hello, $name!" }
+    }
+
+    object RegistrationEmailBody : LocalizationKey {
+        override val ru = "Спасибо за регистрацию! Подтвердите ваш email. Вы уже можете работать в CRM без ограничений."
+        override val en = "Thank you for signing up! Please confirm your email. You can already use the CRM without restrictions."
+    }
+
+    object EmailConfirmationExpiry : LocalizationKey {
+        override val ru = "Ссылка действует 24 часа. Если кнопка не работает, откройте ссылку ниже."
+        override val en = "The link expires in 24 hours. If the button does not work, open the link below."
+    }
+
+    object ConfirmEmailAction : LocalizationKey {
+        override val ru = "Подтвердить email"
+        override val en = "Confirm email"
+    }
+
+    object RegistrationEmailFooter : LocalizationKey {
+        override val ru = "Вы получили письмо, потому что этот адрес указан при регистрации в AthleticaCRM. Если это были не вы, просто проигнорируйте письмо."
+        override val en = "You received this email because this address was used to sign up for AthleticaCRM. If this was not you, simply ignore this email."
+    }
+
+    object EmailConfirmedTitle : LocalizationKey {
+        override val ru = "Email подтверждён"
+        override val en = "Email confirmed"
+    }
+
+    object EmailConfirmedBody : LocalizationTemplate1<String> {
+        override val ru = { email: String -> "Адрес $email успешно подтверждён." }
+        override val en = { email: String -> "The address $email has been confirmed." }
+    }
+
+    object InvalidEmailConfirmation : LocalizationKey {
+        override val ru = "Ссылка недействительна или срок её действия истёк. Войдите в CRM и запросите новое письмо."
+        override val en = "The link is invalid or expired. Sign in to the CRM and request a new email."
+    }
+
+    object InvalidRegistrationEmail : LocalizationKey {
+        override val ru = "Укажите корректный email"
+        override val en = "Enter a valid email"
+    }
+
+    object EmailVerificationUnavailable : LocalizationKey {
+        override val ru = "Подтверждение email для этого аккаунта не запрашивалось"
+        override val en = "Email confirmation was not requested for this account"
+    }
+
+    object PasswordResetEmailTitle : LocalizationKey {
+        override val ru = "Сброс пароля AthleticaCRM"
+        override val en = "AthleticaCRM password reset"
+    }
+
+    object PasswordResetEmailBody : LocalizationKey {
+        override val ru = "Мы получили запрос на сброс пароля вашего аккаунта. Чтобы задать новый пароль, нажмите кнопку ниже. После сброса все открытые сеансы будут завершены."
+        override val en = "We received a request to reset the password for your account. To set a new password, press the button below. All open sessions will be signed out after the reset."
+    }
+
+    object PasswordResetExpiry : LocalizationKey {
+        override val ru = "Ссылка действует 1 час и сработает один раз. Если кнопка не работает, откройте ссылку ниже."
+        override val en = "The link expires in 1 hour and works once. If the button does not work, open the link below."
+    }
+
+    object PasswordResetAction : LocalizationKey {
+        override val ru = "Задать новый пароль"
+        override val en = "Set a new password"
+    }
+
+    object PasswordResetEmailFooter : LocalizationKey {
+        override val ru = "Вы получили письмо, потому что для этого адреса запросили сброс пароля в AthleticaCRM. Если это были не вы, просто проигнорируйте письмо — пароль не изменится."
+        override val en = "You received this email because a password reset was requested for this address in AthleticaCRM. If this was not you, simply ignore this email: your password will not change."
+    }
+
+    object InvalidPasswordReset : LocalizationKey {
+        override val ru = "Ссылка недействительна или срок её действия истёк. Запросите новое письмо для сброса пароля."
+        override val en = "The link is invalid or expired. Request a new password reset email."
+    }
+
+    object EmptyNewPassword : LocalizationKey {
+        override val ru = "Введите новый пароль"
+        override val en = "Enter a new password"
+    }
+
     /** Короткое название типа действия для описания события журнала. */
     fun auditAction(action: AuditActionType, lang: Lang): String =
         when (lang) {
@@ -95,10 +185,12 @@ object Messages {
                     AuditActionType.AUTH_LOGIN -> "вход в систему"
                     AuditActionType.AUTH_LOGOUT -> "выход из системы"
                     AuditActionType.AUTH_SIGNUP -> "регистрация"
+                    AuditActionType.AUTH_VERIFY_EMAIL -> "подтверждение email"
                     AuditActionType.MESSAGE_SEND -> "отправка сообщения"
                     AuditActionType.EXPORT -> "экспорт данных"
                     AuditActionType.IMPORT -> "импорт данных"
                     AuditActionType.AUTH_CHANGE_PASSWORD -> "смена пароля"
+                    AuditActionType.AUTH_PASSWORD_RESET -> "сброс пароля"
                     AuditActionType.BALANCE_ADJUST -> "корректировка баланса"
                 }
             Lang.EN ->
@@ -109,10 +201,12 @@ object Messages {
                     AuditActionType.AUTH_LOGIN -> "signed in"
                     AuditActionType.AUTH_LOGOUT -> "signed out"
                     AuditActionType.AUTH_SIGNUP -> "signed up"
+                    AuditActionType.AUTH_VERIFY_EMAIL -> "confirmed email"
                     AuditActionType.MESSAGE_SEND -> "sent a message"
                     AuditActionType.EXPORT -> "exported data"
                     AuditActionType.IMPORT -> "imported data"
                     AuditActionType.AUTH_CHANGE_PASSWORD -> "changed password"
+                    AuditActionType.AUTH_PASSWORD_RESET -> "reset password"
                     AuditActionType.BALANCE_ADJUST -> "adjusted balance for"
                 }
         }
@@ -265,6 +359,31 @@ object Messages {
         override val en = "Employee not found"
     }
 
+    object EmployeeAccessAlreadySent : LocalizationKey {
+        override val ru = "Доступ сотруднику уже выдан"
+        override val en = "Employee access has already been granted"
+    }
+
+    object EmployeeOwnerCannotBeBlocked : LocalizationKey {
+        override val ru = "Владельца организации нельзя заблокировать"
+        override val en = "The organization owner cannot be blocked"
+    }
+
+    object EmployeeCannotBlockSelf : LocalizationKey {
+        override val ru = "Нельзя заблокировать самого себя"
+        override val en = "You cannot block yourself"
+    }
+
+    object AuthSessionNotFound : LocalizationKey {
+        override val ru = "Сеанс не найден"
+        override val en = "Session not found"
+    }
+
+    object CannotTerminateCurrentSession : LocalizationKey {
+        override val ru = "Текущий сеанс завершается выходом"
+        override val en = "Use sign out to end the current session"
+    }
+
     object DisciplineNotFound : LocalizationKey {
         override val ru = "Дисциплина не найдена"
         override val en = "Discipline not found"
@@ -303,6 +422,11 @@ object Messages {
     object DuplicateScheduleSlot : LocalizationTemplate2<String, LocalTime> {
         override val ru = { day: String, time: LocalTime -> "Слот повторяется в расписании: $day $time" }
         override val en = { day: String, time: LocalTime -> "Duplicate schedule slot: $day $time" }
+    }
+
+    object InvalidClientSort : LocalizationKey {
+        override val ru = "Некорректная сортировка: поля не должны повторяться, а сортировка по ближайшему дню рождения требует фильтр по дню рождения"
+        override val en = "Invalid sort: fields must not repeat, and sorting by next birthday requires a birthday filter"
     }
 
     object InvalidSchedulePeriod : LocalizationKey {
@@ -627,6 +751,12 @@ object Messages {
     object MembershipNotFound : LocalizationKey {
         override val ru = "Абонемент не найден"
         override val en = "Membership not found"
+    }
+
+    /** Позиция продажи для абонемента не найдена, отменена или принадлежит другому клиенту. */
+    object MembershipSaleItemNotFound : LocalizationKey {
+        override val ru = "Позиция продажи абонемента не найдена"
+        override val en = "Membership sale item not found"
     }
 
     object MembershipUnlimitedCloseOnLastSession : LocalizationKey {

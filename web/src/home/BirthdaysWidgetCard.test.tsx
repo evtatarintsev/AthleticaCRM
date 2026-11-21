@@ -1,8 +1,9 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ClientListItemSchema,
+  ClientListRequestSchema,
   DashboardWidgetIdSchema,
   DisplaySettingsSchema,
   UploadIdSchema,
@@ -42,7 +43,12 @@ const client = (avatarId: string | null) =>
 function server(avatarId: string | null) {
   return appServer({
     "display-settings": () => json(displaySettings),
-    "clients/list": () => json({ clients: [client(avatarId)], total: 1 }),
+    "clients/list": ({ body }) =>
+      json(
+        ClientListRequestSchema.parse(body).hasDebt === true
+          ? { clients: [], total: 0 }
+          : { clients: [client(avatarId)], total: 1 },
+      ),
     "upload/info": () =>
       json({
         id: uploadId,
@@ -54,24 +60,26 @@ function server(avatarId: string | null) {
   });
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("виджет дней рождения", () => {
-  it("показывает аватар, единый стиль ссылки и обрезает длинное имя в строке", async () => {
+  it("показывает аватар, возраст под именем, дату справа и ссылку на всю строку", async () => {
     const fake = server(uploadId);
     openApp("/", fake.fetch);
 
     const link = await screen.findByRole("link", {
-      name: "Алиса Иванова-Смирнова Длинная-Фамилия",
+      name: /Алиса Иванова-Смирнова Длинная-Фамилия/,
     });
     expect(link).toHaveAttribute("href", `/clients/${clientId}`);
-    expect(link).toHaveClass("font-medium", "hover:underline", "truncate", "min-w-0");
-    expect(link).not.toHaveClass("text-primary");
-    const nameGroup = link.parentElement;
-    if (nameGroup === null) {
-      throw new Error("Имя клиента должно находиться в строке аватара");
-    }
-    expect(nameGroup).toHaveClass("flex", "min-w-0", "flex-1", "items-center", "gap-2");
-    expect(screen.getByText(/\d+ лет/)).toHaveClass("shrink-0", "text-sm");
-    expect(document.querySelector('[class~="lg:flex-row"]')).toBeInTheDocument();
+    expect(screen.getByText("Алиса Иванова-Смирнова Длинная-Фамилия")).toHaveClass(
+      "truncate",
+      "font-medium",
+    );
+    expect(screen.getByText(/^\d+ (год|года|лет)$/)).toHaveClass("block", "text-xs");
+    expect(screen.getByText("16 октября")).toBeVisible();
+    expect(document.querySelector('[class~="md:grid-cols-2"]')).toBeInTheDocument();
     await waitFor(() => {
       expect(document.querySelector(`img[src="${avatarUrl}"]`)).toBeInTheDocument();
     });
@@ -84,7 +92,7 @@ describe("виджет дней рождения", () => {
     const user = userEvent.setup();
 
     const link = await screen.findByRole("link", {
-      name: "Алиса Иванова-Смирнова Длинная-Фамилия",
+      name: /Алиса Иванова-Смирнова Длинная-Фамилия/,
     });
     expect(screen.getByText("АИ")).toBeInTheDocument();
     await user.click(link);
@@ -97,9 +105,11 @@ describe("виджет дней рождения", () => {
     const fake = server(uploadId);
     openApp("/", fake.fetch);
 
-    await screen.findByRole("link", { name: "Алиса Иванова-Смирнова Длинная-Фамилия" });
+    const link = await screen.findByRole("link", {
+      name: /Алиса Иванова-Смирнова Длинная-Фамилия/,
+    });
     const image = await waitFor(() => {
-      const element = document.querySelector("img");
+      const element = link.querySelector("img");
       if (element === null) {
         throw new Error("Аватар ещё не загружен");
       }
@@ -108,8 +118,36 @@ describe("виджет дней рождения", () => {
     fireEvent.error(image);
 
     await waitFor(() => {
-      expect(document.querySelector("img")).not.toBeInTheDocument();
+      expect(link.querySelector("img")).not.toBeInTheDocument();
     });
     expect(screen.getByText("АИ")).toBeInTheDocument();
+  });
+  it("выделяет сегодняшний день рождения с декоративным тортом, остальные показывает датой", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 16, 12));
+    const first = client(null);
+    const fake = appServer({
+      "display-settings": () => json(displaySettings),
+      "clients/list": () =>
+        json({
+          clients: [
+            first,
+            {
+              ...first,
+              id: "0199a0b2-7c3e-7d2a-9f10-000000000904",
+              name: "Лев Орлов",
+              birthday: "2014-10-20",
+            },
+          ],
+          total: 2,
+        }),
+    });
+    openApp("/", fake.fetch);
+    const badge = await screen.findByText("сегодня");
+    expect(badge.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(badge.closest("a")).toHaveClass("from-pink-50");
+    expect(screen.getByText("31 год")).toBeVisible();
+    expect(screen.getByText("12 лет")).toBeVisible();
+    expect(screen.getByText("20 октября")).toBeVisible();
   });
 });

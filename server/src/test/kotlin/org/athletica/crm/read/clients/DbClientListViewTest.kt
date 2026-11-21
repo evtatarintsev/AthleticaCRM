@@ -147,23 +147,7 @@ class DbClientListViewTest {
         createdAt: Instant,
         operationType: String = "admin_credit",
     ) {
-        orThrow {
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, performed_by, created_at)
-                    VALUES (:orgId, :clientId, :amount, :balanceAfter, :type::balance_operation_type, :performedBy, :createdAt)
-                    """.trimIndent(),
-                )
-                .bind("orgId", orgId)
-                .bind("clientId", clientId)
-                .bind("amount", Money(balanceAfter, Currency.RUB))
-                .bind("balanceAfter", Money(balanceAfter, Currency.RUB))
-                .bind("type", operationType)
-                .bind("performedBy", performedBy)
-                .bind("createdAt", createdAt)
-                .execute()
-        }
+        org.athletica.crm.setClientAdvance(OrgId(orgId), clientId, Money(balanceAfter, Currency.RUB))
     }
 
     private suspend fun insertContact(
@@ -336,10 +320,10 @@ class DbClientListViewTest {
             insertJournalEntry(orgId, a, performer, balanceAfter = 1_000, createdAt = baseInstant + 1.seconds)
             insertJournalEntry(orgId, b, performer, balanceAfter = 5_000, createdAt = baseInstant)
 
-            val asc = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.BALANCE, ascending = true))
+            val asc = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.BALANCE, ascending = true))))
             assertEquals(listOf("A", "B"), asc.clients.map { it.name })
 
-            val desc = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.BALANCE, ascending = false))
+            val desc = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.BALANCE, ascending = false))))
             assertEquals(listOf("B", "A"), desc.clients.map { it.name })
         }
 
@@ -350,7 +334,7 @@ class DbClientListViewTest {
             insertClient(orgId, "Анна")
             insertClient(orgId, "Борис")
             insertClient(orgId, "Виктор")
-            val result = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME, ascending = false))
+            val result = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.NAME, ascending = false))))
             assertEquals(listOf("Виктор", "Борис", "Анна"), result.clients.map { it.name })
         }
 
@@ -361,8 +345,104 @@ class DbClientListViewTest {
             insertClient(orgId, "Старший", birthday = LocalDate(1990, 1, 1))
             insertClient(orgId, "Младший", birthday = LocalDate(2000, 1, 1))
             insertClient(orgId, "Без даты", birthday = null)
-            val result = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.BIRTHDAY, ascending = true))
+            val result = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.BIRTHDAY, ascending = true))))
             assertEquals(listOf("Старший", "Младший", "Без даты"), result.clients.map { it.name })
+        }
+
+    @Test
+    fun `ближайшие дни рождения сортируются до лимита с переходом года и стабильным порядком`() =
+        runTest {
+            val orgId = insertOrg()
+            val today = insertClient(orgId, "Яна", birthday = LocalDate(2000, 12, 30))
+            val anna1 = insertClient(orgId, "Анна", birthday = LocalDate(2010, 12, 31))
+            val anna2 = insertClient(orgId, "Анна", birthday = LocalDate(1990, 12, 31))
+            val boris = insertClient(orgId, "Борис", birthday = LocalDate(1980, 12, 31))
+            val january = insertClient(orgId, "Александр", birthday = LocalDate(1970, 1, 1))
+            insertClient(orgId, "Без даты")
+            val annas = listOf(anna1, anna2).sortedBy { it.toString() }
+            val query =
+                ClientListQuery(
+                    birthday = DateRange(LocalDate(2026, 12, 30), LocalDate(2027, 1, 6)),
+                    sort = listOf(ClientSortCriterion(ClientSortColumn.NEXT_BIRTHDAY), ClientSortCriterion(ClientSortColumn.NAME)),
+                    limit = 2,
+                )
+            val first = page(orgId, query)
+            assertEquals(listOf(today, annas.first()), first.clients.map { it.id })
+            assertEquals(5u, first.total)
+            val all = (0..4 step 2).flatMap { page(orgId, query.copy(offset = it)).clients }.map { it.id }
+            assertEquals(listOf(today) + annas + listOf(boris, january), all)
+            assertEquals(
+                listOf(january) + annas + listOf(boris, today),
+                page(
+                    orgId,
+                    query.copy(
+                        sort = listOf(ClientSortCriterion(ClientSortColumn.NEXT_BIRTHDAY, ascending = false), ClientSortCriterion(ClientSortColumn.NAME)),
+                        limit = null,
+                    ),
+                ).clients.map { it.id },
+            )
+        }
+
+    @Test
+    fun `составная сортировка поддерживает разные направления и null в конце`() =
+        runTest {
+            val orgId = insertOrg()
+            val performer = insertEmployee(orgId)
+            val anna = insertClient(orgId, "Анна", birthday = LocalDate(1990, 1, 1))
+            val boris = insertClient(orgId, "Борис", birthday = LocalDate(1990, 1, 1))
+            insertClient(orgId, "Виктор")
+            insertClient(orgId, "Александр")
+            insertJournalEntry(orgId, anna, performer, balanceAfter = 1000, createdAt = baseInstant)
+            insertJournalEntry(orgId, boris, performer, balanceAfter = 1000, createdAt = baseInstant)
+            assertEquals(
+                listOf("Анна", "Борис", "Александр", "Виктор"),
+                page(
+                    orgId,
+                    ClientListQuery(
+                        sort =
+                            listOf(
+                                ClientSortCriterion(ClientSortColumn.BALANCE, ascending = false),
+                                ClientSortCriterion(ClientSortColumn.NAME),
+                            ),
+                    ),
+                ).clients.map { it.name },
+            )
+            assertEquals(
+                listOf("Анна", "Борис", "Александр", "Виктор"),
+                page(
+                    orgId,
+                    ClientListQuery(
+                        sort =
+                            listOf(
+                                ClientSortCriterion(ClientSortColumn.BIRTHDAY, ascending = false),
+                                ClientSortCriterion(ClientSortColumn.NAME),
+                            ),
+                    ),
+                ).clients.map { it.name },
+            )
+            assertEquals(
+                listOf("Александр", "Анна", "Борис", "Виктор"),
+                page(orgId, ClientListQuery(limit = null)).clients.map { it.name },
+            )
+        }
+
+    @Test
+    fun `29 февраля сохраняет точный месяц и день без переноса на март`() =
+        runTest {
+            val orgId = insertOrg()
+            insertClient(orgId, "Последний", birthday = LocalDate(1990, 3, 1))
+            insertClient(orgId, "Первый", birthday = LocalDate(1990, 2, 28))
+            insertClient(orgId, "Второй", birthday = LocalDate(2000, 2, 29))
+            val query =
+                ClientListQuery(
+                    birthday = DateRange(LocalDate(2028, 2, 28), LocalDate(2028, 3, 1)),
+                    sort = listOf(ClientSortCriterion(ClientSortColumn.NEXT_BIRTHDAY)),
+                )
+            assertEquals(listOf("Первый", "Второй", "Последний"), page(orgId, query).clients.map { it.name })
+            assertEquals(
+                listOf("Последний"),
+                page(orgId, query.copy(birthday = DateRange(LocalDate(2027, 3, 1), LocalDate(2027, 3, 1)))).clients.map { it.name },
+            )
         }
 
     @Test
@@ -371,11 +451,11 @@ class DbClientListViewTest {
             val orgId = insertOrg()
             listOf("A", "B", "C", "D", "E").forEach { insertClient(orgId, it) }
 
-            val firstPage = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME, limit = 2, offset = 0))
+            val firstPage = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.NAME)), limit = 2, offset = 0))
             assertEquals(listOf("A", "B"), firstPage.clients.map { it.name })
             assertEquals(5u, firstPage.total)
 
-            val secondPage = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME, limit = 2, offset = 2))
+            val secondPage = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.NAME)), limit = 2, offset = 2))
             assertEquals(listOf("C", "D"), secondPage.clients.map { it.name })
             assertEquals(5u, secondPage.total)
         }
@@ -457,7 +537,7 @@ class DbClientListViewTest {
             insertContact(orgId, a, ContactType.PHONE.name, "+79991112233")
             insertContact(orgId, a, ContactType.EMAIL.name, "a@example.com")
 
-            val result = page(orgId, ClientListQuery(sortColumn = ClientSortColumn.NAME))
+            val result = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.NAME))))
             val itemA = result.clients.first { it.name == "A" }
             val itemB = result.clients.first { it.name == "B" }
             assertEquals(1, itemA.groups.size)

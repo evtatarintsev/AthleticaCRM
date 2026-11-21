@@ -2,6 +2,7 @@ package org.athletica.crm.schedule
 
 import arrow.core.Either
 import arrow.core.raise.context.either
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -17,6 +18,7 @@ import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.groups.GroupDetailResponse
 import org.athletica.crm.configureServer
@@ -25,11 +27,13 @@ import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.HallId
+import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.notifications.GroupScheduleChanged
 import org.athletica.crm.domain.notifications.NotificationContent
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -82,7 +86,7 @@ class GroupScheduleRouteTest {
                     }
                 }
             user = assertIs<Either.Right<AuthenticatedUser>>(result).value
-            token = testJwtConfig.makeAccessToken(user)
+            token = testJwtConfig.sessionAccessToken(user)
             hallId = HallId.new()
             TestPostgres.db
                 .sql("INSERT INTO halls (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, 'Зал')")
@@ -96,13 +100,14 @@ class GroupScheduleRouteTest {
     private suspend fun ApplicationTestBuilder.postJson(path: String, body: String) =
         client.post(path) {
             header(HttpHeaders.Authorization, "Bearer $token")
+            header(HttpHeaders.AcceptLanguage, "ru")
             contentType(ContentType.Application.Json)
             setBody(body)
         }
 
     private suspend fun ApplicationTestBuilder.createGroup(id: GroupId) = postJson("/api/groups/create", """{"id":"$id","name":"Йога"}""")
 
-    private fun slotsJson() = """[{"dayOfWeek":"MONDAY","startAt":"10:00","endAt":"11:00","hallId":"$hallId"}]"""
+    private fun slotsJson(endAt: String = "11:00") = """[{"dayOfWeek":"MONDAY","startAt":"10:00","endAt":"$endAt","hallId":"$hallId"}]"""
 
     @Test
     fun `расписание с будущей датой не действует сегодня и объявлено как изменение`() =
@@ -166,6 +171,43 @@ class GroupScheduleRouteTest {
         }
 
     @Test
+    fun `некорректное время возвращает 400 и сохраняет текущее и отложенное расписание`() =
+        runTest {
+            signUpWithHall()
+            val groupId = GroupId.new()
+            testApplication {
+                application { context(di) { configureServer() } }
+                assertEquals(HttpStatusCode.OK, createGroup(groupId).status)
+                val initial = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson()}}""")
+                assertEquals(HttpStatusCode.OK, initial.status)
+                val effectiveFrom = today.plusDays(30)
+                val planned =
+                    postJson(
+                        "/api/groups/set-schedule",
+                        """{"groupId":"$groupId","effectiveFrom":"$effectiveFrom","slots":${slotsJson("12:00")}}""",
+                    )
+                assertEquals(HttpStatusCode.OK, planned.status)
+                val before = json.decodeFromString<GroupDetailResponse>(planned.bodyAsText())
+                assertEquals(effectiveFrom, before.scheduleChangeAt)
+
+                listOf("09:00", "10:00").forEach { endAt ->
+                    val response = postJson("/api/groups/set-schedule", """{"groupId":"$groupId","slots":${slotsJson(endAt)}}""")
+
+                    assertEquals(HttpStatusCode.BadRequest, response.status)
+                    val error = json.decodeFromString<ErrorResponse>(response.bodyAsText())
+                    assertEquals("INVALID_SCHEDULE_TIME", error.code)
+                    assertEquals("Время окончания должно быть позже времени начала: 10:00 – $endAt", error.message)
+                    val detail =
+                        client.get("/api/groups/detail?id=$groupId") {
+                            header(HttpHeaders.Authorization, "Bearer $token")
+                        }
+                    assertEquals(HttpStatusCode.OK, detail.status)
+                    assertEquals(before, json.decodeFromString<GroupDetailResponse>(detail.bodyAsText()))
+                }
+            }
+        }
+
+    @Test
     fun `сразу после установки расписания занятия существуют`() =
         orThrow {
             runTest {
@@ -186,22 +228,39 @@ class GroupScheduleRouteTest {
             }
         }
 
-    /** Добавляет в организацию сотрудника [name] с признаком активности [isActive] и доступом [allBranches]. */
-    private suspend fun insertColleague(name: String, isActive: Boolean, allBranches: Boolean): EmployeeId =
+    /**
+     * Добавляет в организацию сотрудника [name] с выданным логином и доступом [allBranches];
+     * [blocked] — признак блокировки, [hasAccess] — выдан ли логин.
+     */
+    private suspend fun insertColleague(
+        name: String,
+        allBranches: Boolean,
+        blocked: Boolean = false,
+        hasAccess: Boolean = true,
+    ): EmployeeId =
         orThrow {
             val id = EmployeeId.new()
+            val userId = if (hasAccess) UserId.new() else null
+            if (userId != null) {
+                TestPostgres.db
+                    .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, 'x')")
+                    .bind("id", userId)
+                    .bind("login", "$userId@example.com")
+                    .execute()
+            }
             TestPostgres.db
                 .sql(
                     """
-                    INSERT INTO employees (id, org_id, name, is_owner, is_active, all_branches_access)
-                    VALUES (:id, :orgId, :name, false, :isActive, :allBranches)
+                    INSERT INTO employees (id, org_id, user_id, name, is_owner, all_branches_access, blocked_at)
+                    VALUES (:id, :orgId, :userId, :name, false, :allBranches, CASE WHEN :blocked THEN now() END)
                     """.trimIndent(),
                 )
                 .bind("id", id)
                 .bind("orgId", user.orgId)
+                .bind("userId", userId)
                 .bind("name", name)
-                .bind("isActive", isActive)
                 .bind("allBranches", allBranches)
+                .bind("blocked", blocked)
                 .execute()
             return id
         }
@@ -219,15 +278,16 @@ class GroupScheduleRouteTest {
         orThrow {
             runTest {
                 signUpWithHall()
-                val colleague = insertColleague("Коллега", isActive = true, allBranches = true)
-                val assigned = insertColleague("Сотрудник филиала", isActive = true, allBranches = false)
+                val colleague = insertColleague("Коллега", allBranches = true)
+                val assigned = insertColleague("Сотрудник филиала", allBranches = false)
                 TestPostgres.db
                     .sql("INSERT INTO employee_branches (employee_id, branch_id) VALUES (:employeeId, :branchId)")
                     .bind("employeeId", assigned)
                     .bind("branchId", user.branchId)
                     .execute()
-                insertColleague("Другой филиал", isActive = true, allBranches = false)
-                insertColleague("Неактивный", isActive = false, allBranches = true)
+                insertColleague("Другой филиал", allBranches = false)
+                insertColleague("Заблокированный", allBranches = true, blocked = true)
+                insertColleague("Без доступа", allBranches = true, hasAccess = false)
                 val groupId = GroupId.new()
                 testApplication {
                     application { context(di) { configureServer() } }

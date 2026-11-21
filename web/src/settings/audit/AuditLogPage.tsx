@@ -39,10 +39,12 @@ const ACTION_LABEL_KEYS: Readonly<Record<string, PlainMessageKey>> = {
   auth_login: "audit.action.auth_login",
   auth_logout: "audit.action.auth_logout",
   auth_signup: "audit.action.auth_signup",
+  auth_verify_email: "audit.action.auth_verify_email",
   message_send: "audit.action.message_send",
   export: "audit.action.export",
   import: "audit.action.import",
   auth_change_password: "audit.action.auth_change_password",
+  auth_password_reset: "audit.action.auth_password_reset",
   balance_adjust: "audit.action.balance_adjust",
 };
 

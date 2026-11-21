@@ -62,14 +62,13 @@ Both files must be updated in the same commit as the `application.conf` change.
 - Database migrations via Liquibase in `server/src/main/resources/db/changelog/`
 - No manual migration needed for tests; TestContainers manage DB lifecycle
 
-### Running the Server
+### Running the Server and CLI
+Tooling (Java 25, Node 24) and tasks live in `mise.toml`; `mise tasks` lists them.
 ```bash
-# Development mode (with -Ddevelopment=true)
-./gradlew server:run
-
-# Production mode
-./gradlew server:run -x -Ddevelopment=false
+mise run server              # = bin/athletica serve
+mise run admin org find ЦР   # = bin/athletica admin org find ЦР
 ```
+`bin/athletica` quietly rebuilds `athletica.jar` and runs it (see `docs/cli.md`).
 
 ## Project Structure
 
@@ -93,7 +92,8 @@ Both files must be updated in the same commit as the `application.conf` change.
 │   ├── employees/        # Employee domain (includes EmployeePermissions)
 │   ├── discipline/       # Sport/activity types
 │   ├── groups/           # Class/course groups
-│   ├── clientbalance/    # Client account balance tracking
+│   ├── ledger/           # Главная книга и шаблоны проводок
+│   ├── sales/            # Продажи и позиции
 │   ├── orgbalance/       # Organization-level balance
 │   ├── audit/            # Audit logging
 │   ├── auth/             # Authentication (Users)
@@ -102,7 +102,8 @@ Both files must be updated in the same commit as the `application.conf` change.
 │
 ├── read/                  # Read-проекции (query-модель) под нужды экранов
 │   ├── ReadViews.kt      # Реестр проекций; маршруты принимают его целиком
-│   ├── clients/          # ClientListView, ClientBalanceHistoryView
+│   ├── clients/          # ClientListView
+│   ├── finance/          # Балансы, история клиента, продажи, журнал и ДДС
 │   ├── groups/           # GroupListView, GroupDetailView
 │   ├── tasks/            # TaskListView, TaskDetailView
 │   ├── home/             # TodayScheduleView
@@ -450,7 +451,7 @@ No reflection-based DI framework; all wiring is explicit and visible.
 - **Ubiquitous Language**: See README.md for domain terms (Client, Group, Discipline, etc.)
 - **Architecture Deep Dive**: See `docs/ARCHITECTURE_CORE.md`
 - **Use Cases**: See `docs/USECASES_CORE.md` for all 28+ business flows
-- **Client Balance**: See `docs/client-balance.md` for accounting rules
+- **Finance Ledger**: See `docs/ledger.md` for accounting rules
 - **Quick Reference**: See `docs/QUICK_REFERENCE.md` for developer cheat sheet
 - **CLI**: See `docs/cli.md` for run modes (`serve`) and admin commands (`admin org ...`)
 

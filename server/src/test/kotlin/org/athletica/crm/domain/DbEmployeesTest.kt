@@ -30,6 +30,7 @@ import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.EmployeeRole
 import org.athletica.crm.employeeContext
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.testName
 import org.junit.Before
@@ -362,6 +363,110 @@ class DbEmployeesTest {
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
+    @Test
+    fun `byIds загружает сотрудников одним SQL, пустой набор не обращается к БД`() =
+        runTest {
+            val first = EmployeeId.new()
+            val second = EmployeeId.new()
+            either {
+                val role = EmployeeRole(Uuid.random(), testName("Тренер"), setOf(UserPermission.CAN_MANAGE_TASKS))
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        roles.new(role)
+                        employees.new(first, testName("Первый"), null, null, null, EmployeePermissionSelection(listOf(role.id), setOf(UserPermission.CAN_VIEW_ALL_TASKS)))
+                        employees.new(second, testName("Второй"), null, null, null, emptyPermission, EmployeeBranchAccess.Selected(emptyList()))
+                    }
+                }
+
+                TestPostgres.db.transaction {
+                    val counting = CountingTransaction(this)
+                    context(ctx, counting) {
+                        assertEquals(2, employees.byIds(listOf(first, second, first)).size)
+                        assertEquals(1, counting.statements)
+                        assertEquals(emptyList(), employees.byIds(emptyList()))
+                        assertEquals(1, counting.statements)
+                    }
+                }
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
+    @Test
+    fun `byIds не смешивает роли, права и филиалы разных сотрудников`() =
+        runTest {
+            val first = EmployeeId.new()
+            val second = EmployeeId.new()
+            val third = EmployeeId.new()
+            val branchA = BranchId.new()
+            val branchB = BranchId.new()
+            val manager = EmployeeRole(Uuid.random(), testName("Менеджер"), setOf(UserPermission.CAN_MANAGE_TASKS))
+            val empty = EmployeeRole(Uuid.random(), testName("Без прав"), emptySet())
+            val trainer = EmployeeRole(Uuid.random(), testName("Тренер"), setOf(UserPermission.CAN_VIEW_ALL_TASKS))
+            either {
+                TestPostgres.db.transaction {
+                    listOf(branchA, branchB).forEach {
+                        sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, :name)")
+                            .bind("id", it)
+                            .bind("orgId", orgId)
+                            .bind("name", "Филиал $it")
+                            .execute()
+                    }
+                    context(ctx) {
+                        listOf(manager, empty, trainer).forEach { roles.new(it) }
+                        employees.new(
+                            first,
+                            testName("Первый"),
+                            null,
+                            null,
+                            null,
+                            EmployeePermissionSelection(listOf(manager.id, empty.id), setOf(UserPermission.CAN_VIEW_CLIENT_BALANCE)),
+                            EmployeeBranchAccess.Selected(listOf(branchA, branchB)),
+                        )
+                        employees.new(second, testName("Второй"), null, null, null, EmployeePermissionSelection(listOf(trainer.id)), EmployeeBranchAccess.Selected(emptyList()))
+                        employees.new(third, testName("Третий"), null, null, null, emptyPermission, EmployeeBranchAccess.All)
+                    }
+                }
+
+                val loaded = TestPostgres.db.transaction { context(ctx) { employees.byIds(listOf(first, second, third, second)) } }
+                assertEquals(listOf(first, second, third).sortedBy { it.toString() }, loaded.map { it.id }.sortedBy { it.toString() })
+                val byId = loaded.associateBy { it.id }
+
+                val firstEmployee = byId.getValue(first)
+                assertEquals(setOf(manager, empty), firstEmployee.roles.toSet())
+                assertEquals(setOf(branchA, branchB), assertIs<EmployeeBranchAccess.Selected>(firstEmployee.availableBranches).ids.toSet())
+                assertTrue(firstEmployee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+                assertTrue(firstEmployee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+                assertFalse(firstEmployee.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+
+                val secondEmployee = byId.getValue(second)
+                assertEquals(listOf(trainer), secondEmployee.roles)
+                assertEquals(EmployeeBranchAccess.Selected(emptyList()), secondEmployee.availableBranches)
+                assertTrue(secondEmployee.hasPermission(UserPermission.CAN_VIEW_ALL_TASKS))
+                assertFalse(secondEmployee.hasPermission(UserPermission.CAN_MANAGE_TASKS))
+                assertFalse(secondEmployee.hasPermission(UserPermission.CAN_VIEW_CLIENT_BALANCE))
+
+                val thirdEmployee = byId.getValue(third)
+                assertEquals(emptyList(), thirdEmployee.roles)
+                assertEquals(EmployeeBranchAccess.All, thirdEmployee.availableBranches)
+            }.getOrElse { fail("Unexpected error: $it") }
+        }
+
+    @Test
+    fun `byIds возвращает EMPLOYEE_NOT_FOUND для частично найденного набора`() =
+        runTest {
+            val id = EmployeeId.new()
+            either {
+                TestPostgres.db.transaction {
+                    context(ctx) { employees.new(id, testName("Сотрудник"), null, null, null, emptyPermission) }
+                }
+            }.getOrElse { fail("Setup failed: $it") }
+
+            val result =
+                either {
+                    TestPostgres.db.transaction { context(ctx) { employees.byIds(listOf(id, EmployeeId.new(), id)) } }
+                }
+            assertEquals("EMPLOYEE_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
+        }
+
     // ─── save ─────────────────────────────────────────────────────────────────
 
     @Test
@@ -377,7 +482,7 @@ class DbEmployeesTest {
                 TestPostgres.db.transaction {
                     context(this, ctx) {
                         (employee as DbEmployee)
-                            .copy(name = "Новое имя", phoneNo = "+79001112233", isActive = true)
+                            .copy(name = "Новое имя", phoneNo = "+79001112233")
                             .save()
                     }
                 }
@@ -385,7 +490,6 @@ class DbEmployeesTest {
                 val updated = TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
                 assertEquals("Новое имя", updated.name)
                 assertEquals("+79001112233", updated.phoneNo)
-                assertEquals(true, updated.isActive)
             }.getOrElse { fail("Unexpected error: $it") }
         }
 
@@ -629,4 +733,117 @@ class DbEmployeesTest {
     /** Возвращает [Employee] с теми же данными и новой настройкой прав [permissions]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun Employee.withNewPermissions(permissions: EmployeePermissionSelection): Employee = withNew(testName(name), permissions, avatarId, phoneNo, email, availableBranches)
+
+    /** Считает вызовы [Transaction.sql], делегируя их транзакции [delegate]. */
+    private class CountingTransaction(private val delegate: Transaction) : Transaction {
+        /** Число SQL-запросов, построенных через эту транзакцию. */
+        var statements = 0
+            private set
+
+        override fun sql(sql: String): QueryBuilder {
+            statements++
+            return delegate.sql(sql)
+        }
+    }
+
+    // ─── block / unblock ──────────────────────────────────────────────────────
+
+    /** Создаёт сотрудника [id] и выдаёт ему доступ с логином [login]. */
+    private suspend fun invitedEmployee(id: EmployeeId, login: String): Employee =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) {
+                    employees.new(id, testName("Сотрудник"), null, null, null, emptyPermission).invite(login.toEmailAddress(), "secret123")
+                }
+            }
+            TestPostgres.db.transaction { context(ctx) { employees.byId(id) } }
+        }.getOrElse { fail("Unexpected error: $it") }
+
+    /** Выполняет [block] в транзакции под контекстом [ctx] и возвращает результат либо ошибку. */
+    private suspend fun <T> attempt(block: suspend context(EmployeeRequestContext, Transaction, Raise<AppError>) () -> T): Either<AppError, T> =
+        arrow.core.raise.either {
+            val raise: Raise<AppError> = this
+            TestPostgres.db.transaction { block(ctx, this, raise) }
+        }
+
+    @Test
+    fun `block блокирует сотрудника, повторная блокировка не меняет дату`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "block@example.com")
+
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+            val blocked = assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value
+            val blockedAt = assertNotNull(blocked.blockedAt)
+            assertFalse(blocked.isActive)
+
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+            assertEquals(blockedAt, assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.blockedAt)
+        }
+
+    @Test
+    fun `block владельца отклоняется`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "owner-block@example.com")
+            markOwner(id)
+
+            val result = attempt { employees.byId(id).block() }
+
+            assertEquals("EMPLOYEE_OWNER_CANNOT_BE_BLOCKED", assertIs<Either.Left<AppError>>(result).value.code)
+            assertNull(assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.blockedAt)
+        }
+
+    @Test
+    fun `block самого себя отклоняется`() =
+        runTest {
+            invitedEmployee(employeeId, "self-block@example.com")
+
+            val result = attempt { employees.byId(employeeId).block() }
+
+            assertEquals("EMPLOYEE_CANNOT_BLOCK_SELF", assertIs<Either.Left<AppError>>(result).value.code)
+        }
+
+    @Test
+    fun `unblock снимает блокировку`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "unblock@example.com")
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).unblock() })
+
+            val employee = assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value
+            assertNull(employee.blockedAt)
+            assertTrue(employee.isActive)
+        }
+
+    @Test
+    fun `повторная выдача доступа отклоняется`() =
+        runTest {
+            val id = EmployeeId.new()
+            val employee = invitedEmployee(id, "twice@example.com")
+
+            val result = attempt { employee.invite("twice-again@example.com".toEmailAddress(), "secret123") }
+
+            assertEquals("EMPLOYEE_ACCESS_ALREADY_SENT", assertIs<Either.Left<AppError>>(result).value.code)
+        }
+
+    @Test
+    fun `логин нельзя привязать ко второму сотруднику`() =
+        runTest {
+            val employee = invitedEmployee(EmployeeId.new(), "single@example.com")
+
+            val result =
+                either {
+                    TestPostgres.db
+                        .sql("INSERT INTO employees (id, org_id, user_id, name) VALUES (:id, :orgId, :userId, 'Двойник')")
+                        .bind("id", EmployeeId.new())
+                        .bind("orgId", otherOrgId)
+                        .bind("userId", employee.userId)
+                        .execute()
+                }
+
+            assertIs<Either.Left<AppError>>(result)
+        }
 }

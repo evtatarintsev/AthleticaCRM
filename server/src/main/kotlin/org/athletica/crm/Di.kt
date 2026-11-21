@@ -25,11 +25,18 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.AuditAuth
 import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.AuthSessions
 import org.athletica.crm.domain.auth.DbAuth
+import org.athletica.crm.domain.auth.DbAuthSessions
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.auth.EmailVerificationConfig
+import org.athletica.crm.domain.auth.EmailVerifications
+import org.athletica.crm.domain.auth.PasswordResets
 import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
+import org.athletica.crm.domain.cashaccounts.CashAccounts
+import org.athletica.crm.domain.casharticles.CashArticles
 import org.athletica.crm.domain.channels.AuditChannelIntegrations
 import org.athletica.crm.domain.channels.ChannelBindings
 import org.athletica.crm.domain.channels.ChannelChats
@@ -39,9 +46,6 @@ import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
-import org.athletica.crm.domain.clientbalance.AuditClientBalances
-import org.athletica.crm.domain.clientbalance.ClientBalances
-import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clientcard.ClientCardSectionSettings
 import org.athletica.crm.domain.clientcard.DbClientCardSectionSettings
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
@@ -62,6 +66,9 @@ import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
+import org.athletica.crm.domain.employees.EmployeePresence
+import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.domain.enrollments.AuditEnrollments
 import org.athletica.crm.domain.enrollments.DbEnrollments
 import org.athletica.crm.domain.enrollments.Enrollments
@@ -83,6 +90,7 @@ import org.athletica.crm.domain.inbound.InboundReceipts
 import org.athletica.crm.domain.leadSource.AuditLeadSources
 import org.athletica.crm.domain.leadSource.DbLeadSources
 import org.athletica.crm.domain.leadSource.LeadSources
+import org.athletica.crm.domain.ledger.Ledger
 import org.athletica.crm.domain.mail.DbEmailDispatcher
 import org.athletica.crm.domain.mail.DbOrgEmails
 import org.athletica.crm.domain.mail.EmailDispatcher
@@ -106,6 +114,7 @@ import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.domain.payment.DbPayments
 import org.athletica.crm.domain.payment.PaymentGateway
 import org.athletica.crm.domain.payment.Payments
+import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbScheduleSync
 import org.athletica.crm.domain.sessions.DbSessions
@@ -123,6 +132,9 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.finance.CashOperations
+import org.athletica.crm.usecases.finance.ClientPayments
+import org.athletica.crm.usecases.finance.SaleActions
 import org.athletica.crm.usecases.memberships.DebitReconciliation
 import org.athletica.crm.usecases.memberships.MembershipScheduler
 import org.athletica.crm.usecases.messaging.InboundStores
@@ -156,7 +168,7 @@ data class Di(
     val emailDispatcher: EmailDispatcher,
     val orgBalances: OrgBalances,
     val organizations: Organizations,
-    val clientBalances: ClientBalances,
+    val clientPayments: ClientPayments,
     val clients: Clients,
     val clientNotes: ClientNotes = DbClientNotes(),
     val branches: Branches,
@@ -169,19 +181,29 @@ data class Di(
     val paymentGateway: PaymentGateway,
     val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
-) {
-    val users = DbUsers(passwordHasher)
-    val roles = DbRoles()
-    val employees =
+    val roles: Roles = DbRoles(),
+    val emailVerificationConfig: EmailVerificationConfig = EmailVerificationConfig("http://localhost:5173"),
+    val authSessions: AuthSessions = DbAuthSessions(),
+    val employees: Employees =
         AuditEmployees(
-            EmailEmployees(DbEmployees(users, roles), orgEmails),
+            EmailEmployees(DbEmployees(DbUsers(passwordHasher), roles, authSessions), orgEmails),
             audit,
-        )
-    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings), audit)
+        ),
+) {
+    val employeePresence = EmployeePresence()
+    val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
+    val passwordResets = PasswordResets(orgEmails, authSessions, emailVerifications, audit, passwordHasher, emailVerificationConfig)
+    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
     val orgCalendar: OrgCalendar = DbOrgCalendar()
+    val ledger: Ledger = Ledger(orgCalendar)
+    val cashAccounts: CashAccounts = CashAccounts(ledger, orgCalendar)
+    val cashArticles: CashArticles = CashArticles()
+    val sales: Sales = Sales(ledger, orgCalendar)
+    val saleActions: SaleActions = SaleActions(memberships, ledger, sales, clientPayments, cashAccounts, orgCalendar)
+    val cashOperations: CashOperations = CashOperations(ledger, cashAccounts, cashArticles)
     val leadSources: LeadSources = AuditLeadSources(DbLeadSources(), audit)
     val bus: DomainEventBus = DomainEventBus()
     val scheduleSync: ScheduleSync = DbScheduleSync(orgCalendar)
@@ -262,7 +284,7 @@ fun Application.di(): Di {
         emailDispatcher = DbEmailDispatcher(db, orgEmails, mb, checkEvery = 10.seconds),
         orgBalances = LocMemCachedOrgBalances(DbOrgBalances()),
         organizations = LocMemCachedOrganizations(DbOrganizations()),
-        clientBalances = AuditClientBalances(DbClientBalances(), audit),
+        clientPayments = ClientPayments(audit = audit),
         clients = AuditClients(DbClients(), audit),
         branches = AuditBranches(DbBranches(), audit),
         customFieldDefinitions = DbCustomFieldDefinitions(),
@@ -272,6 +294,7 @@ fun Application.di(): Di {
         paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
         telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
         assistantConnection = AssistantConnection.from(environment.config),
+        emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
     )
 }
 

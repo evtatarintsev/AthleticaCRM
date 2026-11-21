@@ -8,9 +8,10 @@ import type {
 } from "@/api/generated/contracts";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/ui/Avatar";
 import { apiQuery } from "@/query/queries";
 import { debtorsRequest, debtorsShowAllSearch } from "./dashboardSettings";
-import { ListWidgetCard } from "./ListWidgetCard";
+import { WidgetCard } from "./WidgetCard";
 
 /** Виджет главной «Должники»: клиенты с задолженностью, отсортированные по имени. */
 export function DebtorsWidgetCard({
@@ -31,43 +32,57 @@ export function DebtorsWidgetCard({
   const items = query.data?.clients;
   const total = query.data?.total ?? 0;
   return (
-    <ListWidgetCard
+    <WidgetCard
       api={api}
       settings={settings}
       widget={widget}
       title={title}
-      isPending={query.isPending}
-      isError={query.isError}
-      items={items}
+      count={total}
+      state={
+        query.isPending
+          ? "pending"
+          : query.isError
+            ? "error"
+            : (items?.length ?? 0) === 0
+              ? "empty"
+              : "ready"
+      }
       emptyKey="home.debtorsEmpty"
       errorKey="home.debtorsError"
-      renderItem={(client) => (
-        <div className="flex items-center justify-between gap-2 px-2">
-          <Link
-            to="/clients/$clientId"
-            params={{ clientId: client.id }}
-            className="min-w-0 truncate text-primary hover:underline"
-          >
-            {client.name}
-          </Link>
-          <span
-            className={cn("shrink-0 text-sm", client.balance.minorUnits < 0 && "text-destructive")}
-          >
-            {format.money(client.balance)}
-          </span>
-        </div>
-      )}
       footer={
         !query.isPending && !query.isError && total > (items?.length ?? 0) ? (
           <Link
             to="/clients"
             search={debtorsShowAllSearch()}
-            className="block w-full rounded-md px-2 py-1.5 text-center text-sm text-primary hover:bg-accent/50"
+            className="mx-1.5 mb-1.5 block rounded-xl px-2.5 py-2 text-center text-sm font-medium text-primary hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
           >
             {t("home.widgetShowAll", { total })}
           </Link>
         ) : null
       }
-    />
+    >
+      <ul>
+        {items?.map((client) => (
+          <li key={client.id}>
+            <Link
+              to="/clients/$clientId"
+              params={{ clientId: client.id }}
+              className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <Avatar api={api} uploadId={client.avatarId} name={client.name} className="size-8" />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{client.name}</span>
+              <span
+                className={cn(
+                  "shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums",
+                  client.balance.minorUnits < 0 && "text-destructive",
+                )}
+              >
+                {format.money(client.balance)}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </WidgetCard>
   );
 }

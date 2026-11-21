@@ -19,7 +19,9 @@ const anna = {
   name: "Анна Иванова",
   avatarId: null,
   isOwner: true,
-  isActive: true,
+  status: "ACTIVE",
+  lastSeenAt: new Date(Date.now() - 2 * 60_000).toISOString(),
+  online: true,
   joinedAt: "2024-01-01T00:00:00Z",
   roles: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000301", name: "Тренер" }],
   phoneNo: "+79990000000",
@@ -30,11 +32,29 @@ const boris = {
   name: "Борис Петров",
   avatarId: null,
   isOwner: false,
-  isActive: false,
+  status: "NO_ACCESS",
+  lastSeenAt: null,
+  online: false,
   joinedAt: "2024-02-01T00:00:00Z",
   roles: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000302", name: "Администратор" }],
   phoneNo: null,
   email: "boris@example.com",
+};
+
+const vera = {
+  ...boris,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000405",
+  name: "Вера Не входила",
+  status: "INVITED",
+  email: "vera@example.com",
+};
+const gleb = {
+  ...boris,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000406",
+  name: "Глеб Заблокирован",
+  status: "BLOCKED",
+  lastSeenAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
+  email: "gleb@example.com",
 };
 
 /** Детали сотрудника [employee] для ответа `employees/detail`. */
@@ -51,7 +71,7 @@ function detailOf(employee: typeof anna | typeof boris) {
 /** Сервер со списком сотрудников, ролями и филиалами в памяти. */
 function employeesServer() {
   return appServer({
-    "employees/list": () => json({ employees: [anna, boris], total: 2 }),
+    "employees/list": () => json({ employees: [anna, boris, vera, gleb], total: 4 }),
     "employees/roles": () => json({ roles: [] }),
     "branches/list": () => json({ branches: [center] }),
     "employees/detail": ({ query }) => {
@@ -72,7 +92,7 @@ describe("список сотрудников", () => {
     expect((await screen.findAllByText(anna.name))[0]).toBeVisible();
     expect(screen.getAllByText(boris.name)[0]).toBeVisible();
     expect(screen.getAllByText(ru["employees.statusActive"]).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(ru["employees.statusInactive"]).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(ru["employees.statusNoAccess"]).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Администратор").length).toBeGreaterThan(0);
   });
 
@@ -87,7 +107,7 @@ describe("список сотрудников", () => {
       screen.getAllByRole("row").filter((r) => within(r).queryByText(anna.name) !== null),
     );
     const cells = within(row).getAllByRole("cell");
-    expect(within(first(cells.slice(2))).getByText(ru["employees.owner"])).toBeVisible();
+    expect(within(first(cells.slice(3))).getByText(ru["employees.owner"])).toBeVisible();
     expect(screen.queryAllByText("Тренер")).toHaveLength(0);
   });
 
@@ -102,7 +122,7 @@ describe("список сотрудников", () => {
     expect(screen.getAllByText(boris.name)[0]).toBeVisible();
   });
 
-  it("быстрый фильтр «только активные» скрывает неактивных", async () => {
+  it("быстрый фильтр «только активные» скрывает заблокированных и без доступа", async () => {
     openApp("/employees", employeesServer().fetch);
     const user = userEvent.setup();
 
@@ -110,7 +130,22 @@ describe("список сотрудников", () => {
     await user.click(screen.getByRole("button", { name: ru["employees.filterOnlyActive"] }));
 
     expect(screen.queryAllByText(boris.name)).toHaveLength(0);
+    expect(screen.queryAllByText(gleb.name)).toHaveLength(0);
     expect(screen.getAllByText(anna.name)[0]).toBeVisible();
+    expect(screen.getAllByText(vera.name)[0]).toBeVisible();
+  });
+
+  it("показывает четыре статуса, отметку «В сети» и время активности", async () => {
+    openApp("/employees", employeesServer().fetch);
+
+    await screen.findAllByText(anna.name);
+    const rowOf = (name: string) =>
+      first(screen.getAllByRole("row").filter((r) => within(r).queryByText(name) !== null));
+    expect(within(rowOf(anna.name)).getByText(ru["employees.online"])).toBeVisible();
+    expect(within(rowOf(vera.name)).getByText(ru["employees.statusInvited"])).toBeVisible();
+    expect(within(rowOf(vera.name)).queryByText(ru["employees.online"])).toBeNull();
+    expect(within(rowOf(gleb.name)).getByText(ru["employees.statusBlocked"])).toBeVisible();
+    expect(within(rowOf(gleb.name)).getByText("3 часа назад")).toBeVisible();
   });
 
   it("отправляет доступ неактивному сотруднику прямо из списка", async () => {

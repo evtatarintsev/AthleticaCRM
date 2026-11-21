@@ -8,16 +8,34 @@ import org.athletica.crm.read.attendance.GroupAttendanceView
 import org.athletica.crm.read.attendance.SessionJournalView
 import org.athletica.crm.read.audit.ActivityLogView
 import org.athletica.crm.read.audit.DbActivityLogView
+import org.athletica.crm.read.auth.DbSessionListView
+import org.athletica.crm.read.auth.SessionListView
 import org.athletica.crm.read.channels.ChannelListView
 import org.athletica.crm.read.channels.DbChannelListView
-import org.athletica.crm.read.clients.ClientBalanceHistoryView
 import org.athletica.crm.read.clients.ClientListView
-import org.athletica.crm.read.clients.DbClientBalanceHistoryView
 import org.athletica.crm.read.clients.DbClientListView
 import org.athletica.crm.read.employees.DbEmployeeDetailView
 import org.athletica.crm.read.employees.DbEmployeeListView
 import org.athletica.crm.read.employees.EmployeeDetailView
 import org.athletica.crm.read.employees.EmployeeListView
+import org.athletica.crm.read.finance.CashAccountBalancesView
+import org.athletica.crm.read.finance.CashArticlesView
+import org.athletica.crm.read.finance.CashFlowReportView
+import org.athletica.crm.read.finance.CashJournalView
+import org.athletica.crm.read.finance.ClientBalanceView
+import org.athletica.crm.read.finance.ClientLedgerView
+import org.athletica.crm.read.finance.ClientPaymentOptionsView
+import org.athletica.crm.read.finance.DbCashAccountBalancesView
+import org.athletica.crm.read.finance.DbCashArticlesView
+import org.athletica.crm.read.finance.DbCashFlowReportView
+import org.athletica.crm.read.finance.DbCashJournalView
+import org.athletica.crm.read.finance.DbClientBalanceView
+import org.athletica.crm.read.finance.DbClientLedgerView
+import org.athletica.crm.read.finance.DbClientPaymentOptionsView
+import org.athletica.crm.read.finance.DbMembershipSalesView
+import org.athletica.crm.read.finance.DbSaleDetailView
+import org.athletica.crm.read.finance.MembershipSalesView
+import org.athletica.crm.read.finance.SaleDetailView
 import org.athletica.crm.read.groups.DbGroupDetailView
 import org.athletica.crm.read.groups.DbGroupListView
 import org.athletica.crm.read.groups.DbGroupRosterView
@@ -66,7 +84,23 @@ data class ReadViews(
     /** Список клиентов с фильтрами, сортировкой и пагинацией. */
     val clientList: ClientListView = DbClientListView(),
     /** Журнал операций по личному счёту клиента. */
-    val clientBalanceHistory: ClientBalanceHistoryView = DbClientBalanceHistoryView(),
+    val clientBalance: ClientBalanceView = DbClientBalanceView(),
+    /** Лицевой счёт клиента с историей операций. */
+    val clientLedger: ClientLedgerView = DbClientLedgerView(),
+    /** Аванс и долги клиента для блока оплаты. */
+    val clientPaymentOptions: ClientPaymentOptionsView = DbClientPaymentOptionsView(),
+    /** Остатки касс. */
+    val cashAccountBalances: CashAccountBalancesView = DbCashAccountBalancesView(),
+    /** Справочник статей ДДС. */
+    val cashArticles: CashArticlesView = DbCashArticlesView(),
+    /** Кассовый журнал. */
+    val cashJournal: CashJournalView = DbCashJournalView(),
+    /** Отчёт о движении денежных средств. */
+    val cashFlowReport: CashFlowReportView = DbCashFlowReportView(),
+    /** Документ продажи. */
+    val saleDetail: SaleDetailView = DbSaleDetailView(),
+    /** Состояние оплаты абонементов клиента. */
+    val membershipSales: MembershipSalesView = DbMembershipSalesView(),
     /** Список групп с расписанием и тренерами. */
     val groupList: GroupListView = DbGroupListView(),
     /** Карточка группы с расписанием, дисциплинами, тренерами и участниками. */
@@ -115,4 +149,6 @@ data class ReadViews(
     val sessionDetail: SessionDetailView = DbSessionDetailView(),
     /** Лента диалога с клиентом по всем каналам. */
     val conversation: ConversationView = DbConversationView(),
+    /** Активные сеансы сотрудника для профиля и карточки сотрудника. */
+    val sessionList: SessionListView = DbSessionListView(),
 )

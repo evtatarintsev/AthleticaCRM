@@ -197,7 +197,8 @@ class DbMembershipsTest {
             val clientId = fixture.insertClient()
             val result =
                 fixture.attempt {
-                    fixture.memberships.issue(
+                    org.athletica.crm.usecases.memberships.issueMembership(
+                        fixture.memberships,
                         org.athletica.crm.core.entityids.MembershipId.new(),
                         clientId,
                         null,
@@ -251,7 +252,8 @@ class DbMembershipsTest {
     /** Пытается выдать абонемент клиенту [clientId] с группами [groupIds]. */
     private suspend fun runCatchingIssue(clientId: org.athletica.crm.core.entityids.ClientId, groupIds: List<org.athletica.crm.core.entityids.GroupId>) =
         fixture.attempt {
-            fixture.memberships.issue(
+            org.athletica.crm.usecases.memberships.issueMembership(
+                fixture.memberships,
                 org.athletica.crm.core.entityids.MembershipId.new(),
                 clientId,
                 null,

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
@@ -18,6 +18,7 @@ import {
   SetGroupEmployeesRequestSchema,
   SetGroupScheduleRequestSchema,
   type ClientId,
+  type EmployeeAccessStatus,
   type GroupAttendanceResponse,
   type GroupDetailResponse,
   type GroupRosterClient,
@@ -50,13 +51,15 @@ const vera = client(2, "Вера Котова");
 const gleb = client(3, "Глеб Носов");
 
 /** Сотрудник списка с порядковым номером [n] и именем [name]. */
-const employee = (n: number, name: string, isActive = true) =>
+const employee = (n: number, name: string, status: EmployeeAccessStatus = "ACTIVE") =>
   EmployeeListItemSchema.parse({
     id: `0199a0b2-0000-7000-8000-70000000000${String(n)}`,
     name,
     avatarId: null,
     isOwner: false,
-    isActive,
+    status,
+    lastSeenAt: null,
+    online: false,
     joinedAt: "2026-01-01T00:00:00Z",
     roles: [],
     phoneNo: null,
@@ -64,7 +67,7 @@ const employee = (n: number, name: string, isActive = true) =>
   });
 
 const ivanov = employee(1, "Иванов");
-const kozlov = employee(2, "Козлов", false);
+const kozlov = employee(2, "Козлов", "NO_ACCESS");
 const sidorova = employee(3, "Сидорова");
 
 const boxing = GroupDisciplineSchema.parse({
@@ -272,6 +275,46 @@ const section = (title: string) => {
 };
 
 describe("вкладки карточки группы", () => {
+  it.each([false, true])("возврат виден при загрузке и после ответа (ошибка: %s)", async (fail) => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const server = groupServer(juniors);
+    const { history } = openApp(`/groups/${juniors.id}`, async (input, init) => {
+      if (new URL(input, "http://localhost").pathname === "/api/groups/detail") {
+        await pending;
+        if (fail) return groupNotFound();
+      }
+      return server.fetch(input, init);
+    });
+    const back = await screen.findByRole("link", { name: ru["action.back"] });
+    expect(back).toBeVisible();
+    expect(back).toHaveAttribute("href", "/groups");
+    expect(screen.queryByRole("heading", { name: juniors.name })).not.toBeInTheDocument();
+    release?.();
+    if (fail) await screen.findByText(ru["groups.detail.loadError"]);
+    else await screen.findByRole("heading", { name: juniors.name });
+    expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
+    await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/groups");
+      expect(history.location.search).toBe("");
+    });
+  });
+
+  it("после смены вкладки возвращает в список без параметров карточки", async () => {
+    const { history } = openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: ru["groups.tabs.journal"] }));
+    expect(history.location.search).toBe("?tab=journal");
+    await user.click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/groups");
+      expect(history.location.search).toBe("");
+    });
+  });
+
   it("без параметра активна вкладка «Обзор»", async () => {
     openApp(`/groups/${juniors.id}`, groupServer(juniors).fetch);
 
@@ -906,6 +949,26 @@ describe("расписание в карточке группы", () => {
     expect(within(sheet).getByText(ru["groups.schedule.errorNoDays"])).toBeVisible();
     expect(within(sheet).getByRole("button", { name: ru["action.save"] })).toBeDisabled();
   });
+
+  it.each(["14:00", "15:00"])(
+    "окончание %s не позже начала запрещает сохранение без запроса",
+    async (endAt) => {
+      const server = groupServer(scheduled);
+      openApp(`/groups/${scheduled.id}`, server.fetch);
+      const user = userEvent.setup();
+
+      const sheet = await openSchedule(user);
+      fireEvent.change(within(sheet).getByLabelText(ru["groups.schedule.endTime"]), {
+        target: { value: endAt },
+      });
+
+      expect(within(sheet).getByText(ru["groups.schedule.errorEndBeforeStart"])).toBeVisible();
+      const save = within(sheet).getByRole("button", { name: ru["action.save"] });
+      expect(save).toBeDisabled();
+      await user.click(save);
+      expect(server.to("groups/set-schedule")).toHaveLength(0);
+    },
+  );
 
   it("«Отмена» после правки просит подтверждение и не меняет расписание", async () => {
     const server = groupServer(scheduled);

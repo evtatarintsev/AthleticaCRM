@@ -43,7 +43,7 @@ class DbPaymentsTest {
         runTest {
             val orgId = insertOrg()
             val empId = EmployeeId.new()
-            insertEmployee(orgId, userId, empId)
+            insertEmployee(orgId, UserId.new(), empId)
             val ctx = ctx(orgId, empId)
 
             val payment =
@@ -76,7 +76,7 @@ class DbPaymentsTest {
         runTest {
             val orgId = insertOrg()
             val empId = EmployeeId.new()
-            insertEmployee(orgId, userId, empId)
+            insertEmployee(orgId, UserId.new(), empId)
             val ctx = ctx(orgId, empId)
 
             either {
@@ -110,7 +110,7 @@ class DbPaymentsTest {
         runTest {
             val orgId = insertOrg()
             val empId = EmployeeId.new()
-            insertEmployee(orgId, userId, empId)
+            insertEmployee(orgId, UserId.new(), empId)
             val ctx = ctx(orgId, empId)
 
             either {

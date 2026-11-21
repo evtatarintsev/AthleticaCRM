@@ -78,7 +78,9 @@ class AuthMePermissionsTest {
                 header(HttpHeaders.Authorization, "Bearer $token")
             }
         assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
-        return json.decodeFromString<AuthMeResponse>(response.bodyAsText()).permissions
+        val session = json.decodeFromString<AuthMeResponse>(response.bodyAsText())
+        assertEquals("UTC", session.orgInfo.timezone)
+        return session.permissions
     }
 
     @Test
@@ -88,7 +90,7 @@ class AuthMePermissionsTest {
             testApplication {
                 application { context(di) { configureServer() } }
 
-                assertEquals(UserPermission.entries.toSet(), mePermissions(testJwtConfig.makeAccessToken(owner)))
+                assertEquals(UserPermission.entries.toSet(), mePermissions(testJwtConfig.sessionAccessToken(owner)))
             }
         }
 
@@ -98,7 +100,7 @@ class AuthMePermissionsTest {
             val owner = signUpOwner()
             testApplication {
                 application { context(di) { configureServer() } }
-                val ownerToken = testJwtConfig.makeAccessToken(owner)
+                val ownerToken = testJwtConfig.sessionAccessToken(owner)
                 val roleId = Uuid.random()
                 val employeeId = EmployeeId.new()
 

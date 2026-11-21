@@ -110,8 +110,10 @@ function EmployeeSheetContent({
 
 /**
  * Форма сотрудника. При создании доступ ко всем филиалам отправляется выключенным, при
- * редактировании — текущим значением сотрудника: флаг из формы не меняется. У владельца
- * организации роли, права и филиалы не редактируются и уходят на сервер такими, какими пришли.
+ * редактировании — текущим значением сотрудника, пока выбор филиалов не подтверждён во вложенной
+ * панели; после подтверждения флаг выключается и уходят выбранные филиалы. При доступе ко всем
+ * панель выбора открывается со всеми филиалами отмеченными. У владельца организации роли, права
+ * и филиалы не редактируются и уходят на сервер такими, какими пришли.
  */
 function EmployeeForm({
   api,
@@ -131,6 +133,8 @@ function EmployeeForm({
   const schema = useMemo(() => employeeContactSchema(t), [t]);
   const [failure, setFailure] = useState<string | null>(null);
   const [picker, setPicker] = useState<EmployeePicker>(null);
+  const [branchesTouched, setBranchesTouched] = useState(false);
+  const allBranches = employee?.allBranchesAccess === true && !branchesTouched;
 
   const defaultValues: EmployeeFormValues =
     employee === null ? EMPTY_EMPLOYEE_FORM : employeeFormValuesOf(employee);
@@ -162,7 +166,7 @@ function EmployeeForm({
           : await api.call("employees/update", {
               id: employee.id,
               ...input,
-              allBranchesAccess: employee.allBranchesAccess,
+              allBranchesAccess: employee.allBranchesAccess && !branchesTouched,
             });
       if (!result.ok) {
         setFailure(apiErrorMessage(t, result.error));
@@ -268,11 +272,14 @@ function EmployeeForm({
                       onOpenChange={pickerOpenChange("branches")}
                       title={t("employees.sectionBranchAccess")}
                       items={branches}
-                      selected={values.branchIds}
+                      selected={
+                        allBranches ? branches.map((branch) => branch.id) : values.branchIds
+                      }
                       emptyText={t("employees.branchesEmpty")}
                       searchLabel={t("employees.searchBranches")}
                       submitLabel={t("action.done")}
                       onSubmit={(ids) => {
+                        setBranchesTouched(true);
                         form.setFieldValue("branchIds", ids);
                         return Promise.resolve(null);
                       }}
@@ -363,13 +370,14 @@ function EmployeeForm({
                     title={t("employees.sectionBranchAccess")}
                     onEdit={openPicker("branches")}
                   >
-                    {employee?.allBranchesAccess === true && (
+                    {allBranches ? (
                       <p className="text-sm">{t("employees.allBranchesAccess")}</p>
+                    ) : (
+                      <NameChips
+                        items={branches.filter((branch) => branchIds.includes(branch.id))}
+                        emptyText={t("employees.branchesNone")}
+                      />
                     )}
-                    <NameChips
-                      items={branches.filter((branch) => branchIds.includes(branch.id))}
-                      emptyText={t("employees.branchesNone")}
-                    />
                   </FormSection>
                 )}
               </form.Subscribe>

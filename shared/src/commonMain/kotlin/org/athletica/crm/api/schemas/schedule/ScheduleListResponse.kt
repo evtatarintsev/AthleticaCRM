@@ -40,6 +40,12 @@ data class ScheduleSessionSchema(
     val status: SessionStatus,
     /** Ключ палитры карточки. */
     val colorKey: SessionColorKey,
+    /** Состав тренеров изменён вручную на этом занятии. */
+    val coachesOverridden: Boolean,
+    /** Дата, на которую занятие предписывало расписание, если оно перенесено на другой день; иначе `null`. */
+    val rescheduledFrom: LocalDate?,
+    /** Занятие создано вручную, вне расписания группы. */
+    val isManual: Boolean,
 )
 
 /** Группа занятия в расписании. */

@@ -41,6 +41,7 @@ import kotlin.time.Instant
 class MembershipFixture(
     private val timezone: String = "UTC",
     private val currency: Currency = Currency.RUB,
+    private val membershipPrice: Money = Money(4_000_00, currency),
 ) {
     /** Организация теста. */
     val orgId: OrgId = OrgId.new()
@@ -75,9 +76,10 @@ class MembershipFixture(
                 .bind("currency", currency.name)
                 .execute()
             TestPostgres.db
-                .sql("INSERT INTO employees (id, org_id, name, is_owner) VALUES (:id, :orgId, 'Админ', true)")
+                .sql("INSERT INTO employees (id, org_id, user_id, name, is_owner) VALUES (:id, :orgId, :userId, 'Админ', true)")
                 .bind("id", employeeId)
                 .bind("orgId", orgId)
+                .bind("userId", ctx.userId)
                 .execute()
             TestPostgres.db
                 .sql("INSERT INTO branches (id, org_id, name) VALUES (:id, :orgId, 'Центр')")
@@ -144,7 +146,8 @@ class MembershipFixture(
         groupIds: List<GroupId> = listOf(groupId),
     ): Membership =
         tx {
-            memberships.issue(
+            org.athletica.crm.usecases.memberships.issueMembership(
+                memberships,
                 MembershipId.new(),
                 clientId,
                 null,
@@ -152,7 +155,7 @@ class MembershipFixture(
                 sessions?.let(::testPositiveInt),
                 groupIds,
                 duration,
-                Money(4_000_00, currency),
+                membershipPrice,
                 activation,
                 closeMode,
                 issuedOn,

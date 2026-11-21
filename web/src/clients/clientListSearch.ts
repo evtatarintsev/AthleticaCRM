@@ -1,16 +1,13 @@
 import { z } from "zod";
-import {
-  LocalDateSchema,
-  type ClientListRequest,
-  type DateRange,
-  type LocalDate,
-} from "@/api/generated/contracts";
+import type { ClientListRequest, DateRange, LocalDate } from "@/api/generated/contracts";
+import { addDays } from "@/lib/localDate";
 
 /** Колонка сортировки списка клиентов. */
 export type ClientSortColumn = "name" | "balance" | "birthday";
 
 /** Быстрый фильтр по дню рождения. */
-export type ClientBirthdayFilter = "none" | "today" | "tomorrow" | "week";
+export type ClientBirthdayFilter =
+  "none" | "today" | "tomorrow" | "week" | "todayTomorrow" | "weekAhead";
 
 /** Системный сохранённый вид списка клиентов. */
 export type ClientViewId = "all" | "debt" | "no-group" | "archived";
@@ -33,7 +30,7 @@ export interface ClientListFilters {
   /** Режим архива: показывать архивных клиентов вместо активных. */
   readonly archived: boolean;
   /** Колонка сортировки. */
-  readonly sort: ClientSortColumn;
+  readonly sort: ClientSortColumn | "nextBirthday";
   /** Направление сортировки. */
   readonly dir: "asc" | "desc";
 }
@@ -48,9 +45,12 @@ export const ClientListSearchSchema = z.object({
   gender: z.enum(["male", "female"]).optional().catch(undefined),
   debt: z.boolean().optional().catch(undefined),
   noGroup: z.boolean().optional().catch(undefined),
-  birthday: z.enum(["today", "tomorrow", "week"]).optional().catch(undefined),
+  birthday: z
+    .enum(["today", "tomorrow", "week", "todayTomorrow", "weekAhead"])
+    .optional()
+    .catch(undefined),
   archived: z.boolean().optional().catch(undefined),
-  sort: z.enum(["name", "balance", "birthday"]).optional().catch(undefined),
+  sort: z.enum(["name", "balance", "birthday", "nextBirthday"]).optional().catch(undefined),
   dir: z.enum(["asc", "desc"]).optional().catch(undefined),
 });
 
@@ -59,7 +59,7 @@ export type ClientListSearch = z.output<typeof ClientListSearchSchema>;
 
 /** Полное состояние списка из search-параметров [search] с подставленными значениями по умолчанию. */
 export function clientListFilters(search: ClientListSearch): ClientListFilters {
-  return {
+  return normalizeBirthdaySort({
     q: search.q ?? "",
     gender: search.gender ?? "all",
     debt: search.debt ?? false,
@@ -68,11 +68,19 @@ export function clientListFilters(search: ClientListSearch): ClientListFilters {
     archived: search.archived ?? false,
     sort: search.sort ?? "name",
     dir: search.dir ?? "asc",
-  };
+  });
+}
+
+/** Ближайшие дни рождения требуют диапазон и всегда идут от ближайших к дальним. */
+function normalizeBirthdaySort(filters: ClientListFilters): ClientListFilters {
+  return filters.sort === "nextBirthday"
+    ? { ...filters, sort: filters.birthday === "none" ? "name" : "nextBirthday", dir: "asc" }
+    : filters;
 }
 
 /** Search-параметры адреса из состояния [filters]: только отличия от значений по умолчанию. */
-export function searchOf(filters: ClientListFilters): ClientListSearch {
+export function searchOf(input: ClientListFilters): ClientListSearch {
+  const filters = normalizeBirthdaySort(input);
   return {
     ...(filters.q === "" ? {} : { q: filters.q }),
     ...(filters.gender === "all" ? {} : { gender: filters.gender }),
@@ -116,6 +124,32 @@ export function viewOf(filters: ClientListFilters): ClientViewId | null {
   return CLIENT_VIEW_IDS.find((id) => isSameFilters(views[id], filtersOnly)) ?? null;
 }
 
+/**
+ * Пустое состояние списка клиентов: клиентов нет вовсе, пуст выбранный системный вид
+ * или ничего не нашлось по поиску и фильтрам.
+ */
+export type ClientListEmptyState = "no-clients" | "view-empty" | "no-results";
+
+/**
+ * Какое пустое состояние показать, если по фильтрам [filters] клиентов нет: без поиска
+ * вид «Все» — `no-clients`, другой системный вид — `view-empty`, иначе — `no-results`.
+ */
+export function clientListEmptyState(filters: ClientListFilters): ClientListEmptyState {
+  if (filters.q !== "") {
+    return "no-results";
+  }
+  const view = viewOf(filters);
+  if (view === null) {
+    return "no-results";
+  }
+  return view === "all" ? "no-clients" : "view-empty";
+}
+
+/** Сброс фильтров [filters]: вид «Все» с пустым поиском и прежней сортировкой. */
+export function clearedFilters(filters: ClientListFilters): ClientListFilters {
+  return { ...clientListFilters({}), sort: filters.sort, dir: filters.dir };
+}
+
 /** Системные виды списка клиентов в устойчивом порядке. */
 export const CLIENT_VIEW_IDS: readonly ClientViewId[] = ["all", "debt", "no-group", "archived"];
 
@@ -150,32 +184,43 @@ export function birthdayRange(
       return { from: addDays(today, 1), to: addDays(today, 1) };
     case "week":
       return { from: today, to: addDays(today, 6) };
+    case "todayTomorrow":
+      return { from: today, to: addDays(today, 1) };
+    case "weekAhead":
+      return { from: today, to: addDays(today, 7) };
   }
-}
-
-/** Дата [date] плюс [days] дней, без сдвига по часовому поясу. */
-function addDays(date: LocalDate, days: number): LocalDate {
-  const [year = 1970, month = 1, day = 1] = date.split("-").map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1, day) + days * 86_400_000);
-  return LocalDateSchema.parse(shifted.toISOString().slice(0, 10));
 }
 
 /** Запрос `/clients/list` из состояния [filters] со страницей [limit]×[offset] от дня [today]. */
 export function clientListRequest(
-  filters: ClientListFilters,
+  input: ClientListFilters,
   today: LocalDate,
   limit: number,
   offset: number,
 ): ClientListRequest {
+  const filters = normalizeBirthdaySort(input);
   const range = birthdayRange(filters.birthday, today);
   return {
     ...(filters.q === "" ? {} : { name: filters.q }),
     ...(filters.archived ? { archived: true } : {}),
     limit,
     offset,
-    sortField:
-      filters.sort === "name" ? "NAME" : filters.sort === "balance" ? "BALANCE" : "BIRTHDAY",
-    sortDirection: filters.dir === "asc" ? "Asc" : "Desc",
+    ...(filters.sort === "nextBirthday"
+      ? {
+          sort: [
+            { field: "NEXT_BIRTHDAY", direction: "Asc" },
+            { field: "NAME", direction: "Asc" },
+          ] as const,
+        }
+      : {
+          sortField:
+            filters.sort === "name"
+              ? ("NAME" as const)
+              : filters.sort === "balance"
+                ? ("BALANCE" as const)
+                : ("BIRTHDAY" as const),
+          sortDirection: filters.dir === "asc" ? ("Asc" as const) : ("Desc" as const),
+        }),
     ...(filters.gender === "all" ? {} : { gender: filters.gender === "male" ? "MALE" : "FEMALE" }),
     ...(filters.debt ? { hasDebt: true } : {}),
     ...(filters.noGroup ? { noGroup: true } : {}),

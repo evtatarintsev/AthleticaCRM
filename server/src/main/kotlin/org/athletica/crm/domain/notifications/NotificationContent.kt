@@ -34,6 +34,16 @@ sealed interface NotificationContent {
     fun body(lang: Lang): String
 }
 
+@Serializable
+@SerialName("email_confirmed")
+data class EmailConfirmed(val email: String) : NotificationContent {
+    override val subject: NotificationSubject get() = NotificationSubject.None
+
+    override fun title(lang: Lang): String = Messages.EmailConfirmedTitle.localize(lang)
+
+    override fun body(lang: Lang): String = Messages.EmailConfirmedBody.localize(lang, email)
+}
+
 /** Изменено расписание группы. */
 @Serializable
 @SerialName("group_schedule_changed")

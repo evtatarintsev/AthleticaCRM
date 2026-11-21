@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type { ClientId, MembershipId, TaskId } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
+import { SaleCreateSheet } from "@/finance/SaleSheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { ConversationSheet } from "@/messaging/ConversationSheet";
@@ -14,6 +16,7 @@ import { hasPermission, useSession } from "@/query/session";
 import { TaskCreateSheet } from "@/tasks/TaskCreateSheet";
 import { TaskSheet } from "@/tasks/TaskSheet";
 import { PageHeader } from "@/ui/PageHeader";
+import { BackLink } from "@/ui/BackLink";
 import { ClientTasksSection } from "./ClientActivitySections";
 import { ClientBalanceSheet } from "./ClientBalanceSheet";
 import { ClientDocumentsSection } from "./ClientDocumentsSection";
@@ -59,6 +62,7 @@ export function ClientDetailPage({
   const queryClient = useQueryClient();
   const session = useSession(api);
   const branchId = session.currentBranch.id;
+  const [saleCreateOpen, setSaleCreateOpen] = useState(false);
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
   const changeTab = onTabChange;
   const requestedTab = tab;
@@ -127,7 +131,8 @@ export function ClientDetailPage({
 
   if (client.data === undefined)
     return (
-      <section className="max-w-6xl">
+      <section className="max-w-6xl space-y-4">
+        <BackLink link={{ to: "/clients" }} />
         <PageHeader title={t("clients.title")} />
         {client.isPending && <Skeleton className="h-64 w-full" />}
         {client.isError && <FormAlert message={t("clients.loadClientError")} />}
@@ -149,6 +154,7 @@ export function ClientDetailPage({
   };
   return (
     <section className="max-w-6xl space-y-4 pb-24 sm:pb-16">
+      <BackLink link={{ to: "/clients" }} />
       <ClientCardHeader
         api={api}
         client={data}
@@ -179,6 +185,25 @@ export function ClientDetailPage({
         }}
       />
       {(sections.isError || unpaid.isError) && <FormAlert message={t("clients.loadClientError")} />}
+      {data.state === "ACTIVE" && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setSaleCreateOpen(true);
+          }}
+        >
+          {t("finance.sellService")}
+        </Button>
+      )}
+      <SaleCreateSheet
+        api={api}
+        branchId={branchId}
+        client={data}
+        open={saleCreateOpen}
+        onOpenChange={setSaleCreateOpen}
+        onSaved={refreshDetail}
+      />
       <Tabs
         className="gap-4"
         value={activeTab}

@@ -1,8 +1,10 @@
 package org.athletica.crm.domain.auth
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
+import jakarta.mail.internet.InternetAddress
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.api.schemas.auth.SignUpRequest
@@ -24,6 +26,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.DomainError
 import org.athletica.crm.domain.attendance.DefaultAttendanceLabels
 import org.athletica.crm.domain.branch.Branches
+import org.athletica.crm.domain.casharticles.seedCashArticles
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.leadSource.DefaultLeadSources
 import org.athletica.crm.domain.org.Organizations
@@ -41,6 +44,8 @@ class DbAuth(
     private val organizations: Organizations,
     private val branches: Branches,
     private val userSettings: UserDisplaySettings,
+    private val emailVerifications: EmailVerifications,
+    private val sessions: AuthSessions = DbAuthSessions(),
 ) : Auth {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun login(
@@ -76,7 +81,7 @@ class DbAuth(
             SELECT u.id, u.login, e.id AS employee_id, e.org_id
             FROM users u
             JOIN employees e ON e.user_id = u.id
-            WHERE u.id = :id AND e.is_active = true
+            WHERE u.id = :id AND e.blocked_at IS NULL
             """.trimIndent(),
         )
             .bind("id", id)
@@ -85,15 +90,13 @@ class DbAuth(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun switchBranch(branchId: BranchId): AuthenticatedUser {
-        if (!ctx.employee.availableBranches.contains(branchId)) {
-            raise(CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied"))
-        }
+        ensure(ctx.employee.hasAccessTo(branchId)) { CommonDomainError("BRANCH_ACCESS_DENIED", "Access to branch denied") }
         return userById(ctx.userId, branchId)
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun logout() {
-        // JWT не хранится на сервере. Cookie очищается в HTTP-маршруте.
+        ctx.sessionId?.let { sessions.delete(it, ctx.userId) }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -126,11 +129,22 @@ class DbAuth(
             .bind("hash", passwordHasher.hash(request.newPassword).value)
             .bind("id", ctx.userId)
             .execute()
+        sessions.deleteOthers(ctx.userId, ctx.sessionId)
     }
 
     /** Регистрирует организацию и владельца, создаёт локализованные настройки по умолчанию. */
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser {
+        val validEmail =
+            request.login.length <= 254 &&
+                request.login.none { it == '\r' || it == '\n' } &&
+                runCatching {
+                    InternetAddress(request.login, true).also {
+                        it.validate()
+                        require(it.address == request.login)
+                    }
+                }.isSuccess
+        if (!validEmail) raise(CommonDomainError("INVALID_EMAIL", Messages.InvalidRegistrationEmail.localize(lang)))
         val orgId = OrgId.new()
         val userId = UserId.new()
         val employeeId = EmployeeId.new()
@@ -172,9 +186,12 @@ class DbAuth(
 
         DefaultAttendanceLabels.createFor(orgId, lang)
         DefaultLeadSources.createFor(orgId, lang)
+        seedCashArticles(orgId, lang)
 
         userSettings.new(userId)
-        return AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)
+        val user = AuthUser(id = userId, orgId = orgId, branchId = branchId, employeeId = employeeId, username = request.login)
+        emailVerifications.register(user, request.userName.value, lang)
+        return user
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
@@ -185,7 +202,7 @@ class DbAuth(
                 SELECT u.id, u.login, u.password_hash, e.id AS employee_id, e.org_id
                 FROM users u
                 JOIN employees e ON e.user_id = u.id
-                WHERE u.login = :username AND e.is_active = true
+                WHERE u.login = :username AND e.blocked_at IS NULL
                 """.trimIndent(),
             )
                 .bind("username", username)

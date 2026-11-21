@@ -2,9 +2,11 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -13,6 +15,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.domain.auth.AuthSessions
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.i18n.Messages
@@ -25,7 +28,7 @@ data class DbEmployee(
     override val name: String,
     override val avatarId: UploadId?,
     override val isOwner: Boolean,
-    override val isActive: Boolean,
+    override val blockedAt: Instant?,
     override val joinedAt: Instant,
     override val phoneNo: String?,
     override val email: EmailAddress?,
@@ -34,6 +37,7 @@ data class DbEmployee(
     private val users: Users,
     private val roleCatalog: Roles,
     private val orgId: OrgId,
+    private val sessions: AuthSessions,
 ) : Employee {
     override val roles: List<EmployeeRole> get() = permissionSettings.roles
 
@@ -56,7 +60,6 @@ data class DbEmployee(
                 """
                 UPDATE employees
                 SET user_id             = :userId,
-                    is_active           = :isActive,
                     name                = :name,
                     avatar_id           = :avatarId,
                     phone_no            = :phoneNo,
@@ -66,7 +69,6 @@ data class DbEmployee(
                 """.trimIndent(),
             )
                 .bind("userId", userId)
-                .bind("isActive", isActive)
                 .bind("name", name)
                 .bind("avatarId", avatarId)
                 .bind("phoneNo", phoneNo)
@@ -130,8 +132,45 @@ data class DbEmployee(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) {
+        ensure(userId == null) { CommonDomainError("EMPLOYEE_ACCESS_ALREADY_SENT", Messages.EmployeeAccessAlreadySent.localize()) }
         val user = users.new(email.value, password)
-        copy(userId = user.id, isActive = true, email = email).save()
+        copy(userId = user.id, email = email).save()
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun block() {
+        ensureBlockable()
+        updateBlockedAt("COALESCE(blocked_at, now())")
+        userId?.let { sessions.deleteOthers(it, keep = null) }
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun terminateSession(sessionId: AuthSessionId) {
+        ensureBlockable()
+        sessions.delete(sessionId, userId ?: raise(CommonDomainError("AUTH_SESSION_NOT_FOUND", Messages.AuthSessionNotFound.localize())))
+    }
+
+    /** Проверяет, что сотрудник не владелец и не автор запроса: только такого можно блокировать и лишать сессий. */
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
+    private fun ensureBlockable() {
+        ensure(!isOwner) { CommonDomainError("EMPLOYEE_OWNER_CANNOT_BE_BLOCKED", Messages.EmployeeOwnerCannotBeBlocked.localize()) }
+        ensure(id != ctx.employee.id) { CommonDomainError("EMPLOYEE_CANNOT_BLOCK_SELF", Messages.EmployeeCannotBlockSelf.localize()) }
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun unblock() {
+        updateBlockedAt("NULL")
+    }
+
+    /** Записывает в `blocked_at` SQL-выражение [value]. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    private suspend fun updateBlockedAt(value: String) {
+        val updated =
+            tr.sql("UPDATE employees SET blocked_at = $value WHERE id = :id AND org_id = :orgId")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        ensure(updated == 1L) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

@@ -7,10 +7,12 @@ import {
   Outlet,
   redirect,
   RouterProvider,
+  useCanGoBack,
   useRouter,
+  useLocation,
   type RouterHistory,
 } from "@tanstack/react-router";
-import { useMemo, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   ClientIdSchema,
@@ -21,6 +23,8 @@ import {
   type SessionId,
 } from "@/api/generated/contracts";
 import { createAuthApi } from "@/auth/authApi";
+import { FinancePage } from "@/finance/FinancePage";
+import { FinanceSearchSchema, type FinanceSearch } from "@/finance/financeSearch";
 import { ClientsPage } from "@/clients/ClientsPage";
 import { CLIENT_TABS } from "@/clients/card/clientOverview";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
@@ -46,6 +50,9 @@ import { SettingsPage } from "@/settings/SettingsPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
 import { SignUpPage } from "@/auth/SignUpPage";
+import { ConfirmEmailPage } from "@/auth/ConfirmEmailPage";
+import { ForgotPasswordPage } from "@/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/auth/ResetPasswordPage";
 import { BASE_PATH } from "@/config";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
@@ -106,6 +113,53 @@ const loginRoute = createRoute({
         }}
       />
     );
+  },
+});
+
+const confirmEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/confirm-email",
+  component: function ConfirmEmailRoute() {
+    const { api } = confirmEmailRoute.useRouteContext();
+    const hash = useLocation({ select: (location) => location.hash });
+    const navigate = confirmEmailRoute.useNavigate();
+    const incomingToken = new URLSearchParams(hash).get("token") ?? "";
+    const [token, setToken] = useState(incomingToken);
+    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
+    useEffect(() => {
+      if (hash !== "") void navigate({ hash: "", replace: true });
+    }, [hash, navigate]);
+    return <ConfirmEmailPage key={token} api={api} token={token} />;
+  },
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  beforeLoad: async ({ context }) => {
+    await leaveGuestPageIfAuthenticated(context, "/");
+  },
+  component: function ForgotPasswordRoute() {
+    const { api } = forgotPasswordRoute.useRouteContext();
+    return <ForgotPasswordPage api={api} />;
+  },
+});
+
+/** Страница ссылки сброса: токен берётся из фрагмента и сразу убирается из адреса и истории. */
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: function ResetPasswordRoute() {
+    const { api } = resetPasswordRoute.useRouteContext();
+    const hash = useLocation({ select: (location) => location.hash });
+    const navigate = resetPasswordRoute.useNavigate();
+    const incomingToken = new URLSearchParams(hash).get("token") ?? "";
+    const [token, setToken] = useState(incomingToken);
+    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
+    useEffect(() => {
+      if (hash !== "") void navigate({ hash: "", replace: true });
+    }, [hash, navigate]);
+    return <ResetPasswordPage key={token} api={api} token={token} />;
   },
 });
 
@@ -367,7 +421,7 @@ const employeesRoute = createRoute({
   },
 });
 
-/** Расписание: неделя и фильтры в search-параметрах адреса. */
+/** Расписание: режим, дата и фильтры в search-параметрах адреса. */
 const scheduleRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/schedule",
@@ -405,7 +459,21 @@ const sessionRoute = createRoute({
   component: function SessionRoute() {
     const { api } = sessionRoute.useRouteContext();
     const { sessionId } = sessionRoute.useParams();
-    return <SessionDetailPage api={api} sessionId={sessionId} />;
+    const router = useRouter();
+    const canGoBack = useCanGoBack();
+    return (
+      <SessionDetailPage
+        api={api}
+        sessionId={sessionId}
+        onBack={
+          canGoBack
+            ? () => {
+                router.history.back();
+              }
+            : undefined
+        }
+      />
+    );
   },
 });
 
@@ -461,6 +529,26 @@ const groupRoute = createRoute({
 });
 
 /** Список клиентов: фильтры и сортировка в search-параметрах адреса. */
+const financeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/finance",
+  validateSearch: FinanceSearchSchema,
+  component: function FinanceRoute() {
+    const { api } = financeRoute.useRouteContext();
+    const search = financeRoute.useSearch();
+    const navigate = financeRoute.useNavigate();
+    return (
+      <FinancePage
+        api={api}
+        search={search}
+        onSearchChange={(next: FinanceSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
 const clientsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/clients",
@@ -588,6 +676,9 @@ const tasksRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
+  confirmEmailRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   appRoute.addChildren([
     homeRoute,
     settingsRoute,
@@ -612,6 +703,7 @@ const routeTree = rootRoute.addChildren([
     groupRoute,
     employeesRoute,
     clientsRoute,
+    financeRoute,
     clientNewRoute,
     clientRoute,
     clientEditRoute,
@@ -652,6 +744,9 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/": true,
   "/login": true,
   "/sign-up": true,
+  "/confirm-email": true,
+  "/forgot-password": true,
+  "/reset-password": true,
   "/settings": true,
   "/settings/edit-profile": true,
   "/settings/change-password": true,
@@ -672,6 +767,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/groups": true,
   "/employees": true,
   "/clients": true,
+  "/finance": true,
   "/clients/new": true,
   "/tasks": true,
 };
@@ -682,18 +778,24 @@ export function isStaticAppPath(path: string): path is StaticAppPath {
 }
 
 /**
- * Страницы только для гостей: с действующей сессией они ведут в приложение,
- * а потеря сессии на них не уводит на вход.
+ * Публичные страницы авторизации: потеря сессии на них не уводит на вход,
+ * в том числе при предварительной загрузке ссылки на страницу входа.
  */
-const guestPaths: ReadonlySet<string> = new Set<StaticAppPath>(["/login", "/sign-up"]);
+const publicAuthPaths: ReadonlySet<string> = new Set<StaticAppPath>([
+  "/login",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+  "/confirm-email",
+]);
 
 /** Маршрутизация приложения: элемент для рендера и переход на вход при потере сессии. */
 export interface AppRouting {
   /** `RouterProvider` с роутером приложения. */
   readonly element: ReactElement;
   /**
-   * Открывает вход с адресом возврата на текущую страницу. На гостевых страницах (вход,
-   * регистрация) ничего не делает: гость остаётся на своей странице, адрес возврата не затирается.
+   * Открывает вход с адресом возврата на текущую страницу. На публичных страницах авторизации
+   * ничего не делает: пользователь остаётся на своей странице, адрес возврата не затирается.
    */
   readonly redirectToLogin: () => void;
 }
@@ -705,7 +807,7 @@ export function createAppRouting(context: RouterContext, history?: RouterHistory
     element: <RouterProvider router={router} />,
     redirectToLogin: () => {
       const { pathname, href } = router.latestLocation;
-      if (!guestPaths.has(pathname)) {
+      if (!publicAuthPaths.has(pathname)) {
         void router.navigate({ to: "/login", search: { redirect: href }, replace: true });
       }
     },

@@ -49,13 +49,22 @@ class DbClientListView : ClientListView {
     /** Загружает элементы текущей страницы согласно [query]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun fetchItems(query: ClientListQuery): List<ClientListItem> {
-        val orderColumn =
-            when (query.sortColumn) {
-                ClientSortColumn.NAME -> "c.name"
-                ClientSortColumn.BALANCE -> "balance"
-                ClientSortColumn.BIRTHDAY -> "c.birthday"
-            }
-        val direction = if (query.ascending) "ASC" else "DESC"
+        val order =
+            query.sort.flatMap { criterion ->
+                val direction = if (criterion.ascending) "ASC" else "DESC"
+                val columns =
+                    when (criterion.column) {
+                        ClientSortColumn.NAME -> listOf("c.name")
+                        ClientSortColumn.BALANCE -> listOf("balance")
+                        ClientSortColumn.BIRTHDAY -> listOf("c.birthday")
+                        ClientSortColumn.NEXT_BIRTHDAY ->
+                            listOf(
+                                "($BIRTHDAY_MD < :birthdayFromMd::int)",
+                                BIRTHDAY_MD,
+                            )
+                    }
+                columns.map { "$it $direction NULLS LAST" }
+            }.plus("c.id ASC").joinToString(", ")
 
         val sql =
             """
@@ -70,7 +79,7 @@ class DbClientListView : ClientListView {
                    FROM client_contacts cc
                   WHERE cc.client_id = c.id AND cc.org_id = c.org_id) AS contacts
             $FROM_WHERE
-            ORDER BY $orderColumn $direction NULLS LAST, c.id ASC
+            ORDER BY $order
             ${if (query.limit != null) "LIMIT :limit OFFSET :offset" else ""}
             """.trimIndent()
 
@@ -137,14 +146,17 @@ class DbClientListView : ClientListView {
         )
 
     private companion object {
-        /** Подзапрос последнего баланса по каждому клиенту организации. */
+        /** День рождения клиента как целое MMDD (месяц × 100 + день), без учёта года. */
+        const val BIRTHDAY_MD = "(EXTRACT(MONTH FROM c.birthday)::int * 100 + EXTRACT(DAY FROM c.birthday)::int)"
+
+        /** Подзапрос баланса главной книги по каждому клиенту организации. */
         val BAL_CTE =
             """
             WITH bal AS (
-                SELECT DISTINCT ON (client_id) client_id, balance_after
-                FROM client_balance_journal
-                WHERE org_id = :orgId
-                ORDER BY client_id, created_at DESC
+                SELECT a.client_id, -SUM(p.amount) AS balance_after
+                FROM ledger_accounts a JOIN ledger_postings p ON p.account_id = a.id
+                WHERE a.org_id = :orgId AND a.kind IN ('advance', 'receivable')
+                GROUP BY a.client_id
             )
             """.trimIndent()
 
@@ -185,15 +197,15 @@ class DbClientListView : ClientListView {
                     AND (
                         (
                             :birthdayFromMd::int <= :birthdayToMd::int
-                            AND (EXTRACT(MONTH FROM c.birthday)::int * 100 + EXTRACT(DAY FROM c.birthday)::int)
+                            AND $BIRTHDAY_MD
                                 BETWEEN :birthdayFromMd::int AND :birthdayToMd::int
                         )
                         OR (
                             :birthdayFromMd::int > :birthdayToMd::int
                             AND (
-                                (EXTRACT(MONTH FROM c.birthday)::int * 100 + EXTRACT(DAY FROM c.birthday)::int)
+                                $BIRTHDAY_MD
                                     >= :birthdayFromMd::int
-                                OR (EXTRACT(MONTH FROM c.birthday)::int * 100 + EXTRACT(DAY FROM c.birthday)::int)
+                                OR $BIRTHDAY_MD
                                     <= :birthdayToMd::int
                             )
                         )

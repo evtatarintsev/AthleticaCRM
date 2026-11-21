@@ -97,13 +97,148 @@ function table() {
 }
 
 describe("список клиентов", () => {
+  it("из виджета сохраняет режим, показывает фильтр и меняет сортировку с клавиатуры", async () => {
+    const api = clientsServer([alice, bob]);
+    const { history } = openApp("/clients?birthday=todayTomorrow&sort=nextBirthday", api.fetch);
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    expect(screen.getByText("ДР · Сегодня и завтра")).toBeVisible();
+    expect(ClientListRequestSchema.parse(api.to("clients/list").at(-1)?.body).sort).toEqual([
+      { field: "NEXT_BIRTHDAY", direction: "Asc" },
+      { field: "NAME", direction: "Asc" },
+    ]);
+    expect(
+      table()
+        .getAllByRole("columnheader")
+        .filter((head) => head.getAttribute("aria-sort") === "ascending"),
+    ).toHaveLength(0);
+    const name = table().getByRole("button", { name: /Сортировать по.*Имя/ });
+    name.focus();
+    expect(name).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => {
+      expect(ClientListRequestSchema.parse(api.to("clients/list").at(-1)?.body)).toMatchObject({
+        sortField: "NAME",
+        sortDirection: "Asc",
+      });
+    });
+    expect(history.location.search).toContain("birthday=todayTomorrow");
+    expect(history.location.search).not.toContain("nextBirthday");
+  });
+
+  it("панель показывает период виджета, позволяет заменить его и снять фильтр", async () => {
+    const api = clientsServer([alice]);
+    const { history } = openApp("/clients?birthday=weekAhead&sort=nextBirthday", api.fetch);
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: /Фильтры/ }));
+    const sheet = screen.getByRole("dialog", { name: ru["clients.filters"] });
+    expect(within(sheet).getByRole("button", { name: "На неделю вперёд" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Завтра" }));
+    await user.click(within(sheet).getByRole("button", { name: ru["clients.filter.apply"] }));
+    expect(await screen.findByText("ДР · Завтра")).toBeVisible();
+    expect(history.location.search).toContain("birthday=tomorrow");
+    await user.click(screen.getByRole("button", { name: /ДР · Завтра/ }));
+    await waitFor(() => {
+      const request = ClientListRequestSchema.parse(api.to("clients/list").at(-1)?.body);
+      expect(request.birthday).toBeUndefined();
+      expect(request.sort).toBeUndefined();
+      expect(request.sortField).toBe("NAME");
+    });
+    expect(history.location.search).not.toContain("birthday");
+  });
+
   it("показывает клиентов с числом найденного", async () => {
     openApp("/clients", clientsServer([alice, bob]).fetch);
 
     expect(await screen.findByRole("table")).toBeVisible();
     expect(table().getByText("Алиса Иванова")).toBeVisible();
     expect(table().getByText("Борис Смирнов")).toBeVisible();
-    expect(screen.getByText("2 клиента")).toBeVisible();
+    const heading = screen.getByRole("heading", { level: 1, name: ru["clients.title"] });
+    expect(heading.parentElement).toHaveTextContent("2 клиента");
+    expect(
+      within(screen.getByRole("group", { name: ru["clients.viewsLabel"] })).queryByText(/клиент/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: ru["clients.create"] })).toHaveAttribute(
+      "href",
+      "/clients/new",
+    );
+  });
+
+  it("пустой вид «Должники» показывает «Должников нет»", async () => {
+    openApp("/clients?debt=true", clientsServer([alice]).fetch);
+
+    expect(await screen.findByText(ru["clients.emptyView.debt"])).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: ru["clients.resetFilters"] }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("«Сбросить фильтры» после пустого поиска очищает поиск и сохраняет сортировку", async () => {
+    const api = clientsServer([alice, bob]);
+    const { history } = openApp("/clients?q=зз&noGroup=true&sort=balance", api.fetch);
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(ru["clients.noResults"])).toBeVisible();
+    await user.click(screen.getByRole("button", { name: ru["clients.resetFilters"] }));
+
+    await screen.findByRole("table");
+    expect(screen.getByRole("searchbox", { name: ru["clients.search"] })).toHaveValue("");
+    expect(screen.getByRole("button", { name: ru["clients.view.all"] })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(history.location.search).toBe("?sort=balance");
+  });
+
+  it("отметка чекбокса подсвечивает строку и не уводит в карточку", async () => {
+    const { history } = openApp("/clients", clientsServer([alice, bob]).fetch);
+    const user = userEvent.setup();
+
+    await screen.findByRole("table");
+    const checkbox = table().getByRole("checkbox", { name: "Выбрать «Алиса Иванова»" });
+    await user.click(checkbox);
+
+    expect(checkbox.closest("tr")).toHaveAttribute("data-state", "selected");
+    expect(history.location.pathname).toBe("/clients");
+  });
+
+  it("группы клиента — два чипа-ссылки и «+N», чип ведёт на страницу группы", async () => {
+    const groups = [
+      { id: "0199a0b2-7c3e-7d2a-9f10-000000000211", name: "Младшая группа" },
+      { id: "0199a0b2-7c3e-7d2a-9f10-000000000212", name: "ОФП дети" },
+      { id: "0199a0b2-7c3e-7d2a-9f10-000000000213", name: "Плавание" },
+    ];
+    const api = clientsServer([ClientListItemSchema.parse({ ...alice, groups })]);
+    const { history } = openApp("/clients", api.fetch);
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: ru["clients.columns"] }));
+    const dialog = await screen.findByRole("dialog", { name: ru["clients.displaySettings"] });
+    await user.click(within(dialog).getByRole("checkbox", { name: ru["clients.column.groups"] }));
+    await user.keyboard("{Escape}");
+
+    const chip = await table().findByRole("link", { name: "ОФП дети" });
+    expect(table().getByRole("link", { name: "Младшая группа" })).toBeVisible();
+    expect(table().queryByRole("link", { name: "Плавание" })).not.toBeInTheDocument();
+    expect(table().getByText("+1")).toHaveAttribute("title", "Плавание");
+
+    await user.click(chip);
+    await waitFor(() => {
+      expect(history.location.pathname).toBe(`/groups/${groups[1]?.id ?? ""}`);
+    });
+  });
+
+  it("строка на телефоне: долг — красная метка, редактирования нет", async () => {
+    openApp("/clients", clientsServer([alice, bob]).fetch);
+
+    const list = within(await screen.findByRole("list", { name: ru["clients.title"] }));
+    expect(list.getByText(/[-−]50,00/)).toHaveAttribute("data-balance", "neg");
+    expect(list.getByText(/1\s000,00/)).toHaveAttribute("data-balance", "pos");
+    expect(list.queryByRole("link", { name: /Редактировать/ })).not.toBeInTheDocument();
   });
 
   it("поиск фильтрует список и сохраняется в адресе", async () => {

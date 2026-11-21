@@ -116,9 +116,10 @@ export function session(
     username: "coach@example.com",
     name,
     avatarId,
-    orgInfo: { name: "Лига", balance: { minorUnits: 150000, currency: "RUB" } },
+    orgInfo: { name: "Лига", balance: { minorUnits: 150000, currency: "RUB" }, timezone: "UTC" },
     currentBranch: branch,
     permissions,
+    emailVerificationPending: false,
   };
 }
 

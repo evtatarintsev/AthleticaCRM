@@ -26,16 +26,6 @@ interface Groups {
         employees: List<Employee>,
     ): Group
 
-    /**
-     * Возвращает группы организации для операций записи (генерация занятий, обработчики событий).
-     * Фильтрует по [RequestContext.branchIdOrNull]: если задан — только для этого филиала,
-     * если null (системный контекст) — все группы организации.
-     *
-     * Выборка под нужды экранов — в [org.athletica.crm.read.groups.GroupListView].
-     */
-    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun list(): List<Group>
-
     /** Возвращает группу по идентификатору. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: GroupId): Group

@@ -1,5 +1,6 @@
 package org.athletica.crm.assistant
 
+import arrow.core.raise.Raise
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -15,14 +16,25 @@ import kotlinx.coroutines.runBlocking
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.configureServer
+import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.EmployeeId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.clients.AuditClients
+import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeePermissionSelection
+import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.sessionAccessToken
+import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
+import org.athletica.crm.testName
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -128,14 +140,49 @@ class AssistantRoutesTest {
             orThrow { context(owner) { assertEquals(1, di.assistant.settings().acceptedMessages) } }
         }
 
-    /** Токен соответствует настоящему владельцу из фикстуры. */
-    private fun token(): String =
-        testJwtConfig.makeAccessToken(
+    /** Статус загружает сотрудника один раз за запрос и видит отзыв права в следующем запросе. */
+    @Test
+    fun statusLoadsEmployeeOnceAndSeesRevokeInNextRequest(): Unit =
+        testApplication {
+            val counting = CountingEmployees(di.employees)
+            di = di.copy(employees = counting)
+            application { context(di) { configureServer() } }
+            val permission = UserPermission.CAN_USE_ASSISTANT
+            val staff =
+                orThrow {
+                    context(owner) {
+                        val created = di.database.transaction { di.employees.new(EmployeeId.new(), testName("Staff"), null, null, null, EmployeePermissionSelection(grantedPermissions = setOf(permission))) }
+                        di.database.transaction { created.invite(EmailAddress("status-staff@example.com"), "password123") }
+                        di.database.transaction { di.employees.byId(created.id) }
+                    }
+                }
+            val staffToken = token(staff.id)
+            counting.calls = 0
+            val permitted = client.get("/api/assistant/status") { header(HttpHeaders.Authorization, "Bearer $staffToken") }
+            assertEquals(HttpStatusCode.OK, permitted.status)
+            assertTrue(permitted.bodyAsText().contains("\"permitted\":true"), permitted.bodyAsText())
+            assertEquals(1, counting.calls)
+
+            orThrow {
+                context(owner) {
+                    di.database.transaction {
+                        staff.withNew(testName("Staff"), EmployeePermissionSelection(revokedPermissions = setOf(permission)), null, null, null, staff.availableBranches).save()
+                    }
+                }
+            }
+            val revoked = client.get("/api/assistant/status") { header(HttpHeaders.Authorization, "Bearer $staffToken") }
+            assertEquals(HttpStatusCode.OK, revoked.status)
+            assertTrue(revoked.bodyAsText().contains("\"permitted\":false"), revoked.bodyAsText())
+        }
+
+    /** Токен сотрудника [employeeId] организации владельца из фикстуры. */
+    private fun token(employeeId: EmployeeId = owner.employee.id): String =
+        testJwtConfig.sessionAccessToken(
             object : AuthenticatedUser {
                 override val id = owner.userId
                 override val orgId = owner.orgId
                 override val branchId = owner.branchId
-                override val employeeId = owner.employee.id
+                override val employeeId = employeeId
                 override val username = owner.username
             },
         )
@@ -147,4 +194,22 @@ class AssistantRoutesTest {
             contentType(ContentType.Application.Json)
             setBody(body)
         }
+
+    /** Считает вызовы загрузки сотрудников, делегируя их [delegate]. */
+    private class CountingEmployees(private val delegate: Employees) : Employees by delegate {
+        /** Число вызовов [byId] и [byIds]. */
+        var calls = 0
+
+        context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+        override suspend fun byId(id: EmployeeId): Employee {
+            calls++
+            return delegate.byId(id)
+        }
+
+        context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+        override suspend fun byIds(ids: List<EmployeeId>): List<Employee> {
+            calls++
+            return delegate.byIds(ids)
+        }
+    }
 }

@@ -5,6 +5,7 @@ import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.api.schemas.employees.EmployeeAccessStatus
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -17,8 +18,14 @@ import org.athletica.crm.employeeContext
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 /** Тесты read-проекции списка сотрудников: скоуп организации, сортировка и названия ролей. */
@@ -80,9 +87,9 @@ class DbEmployeeListViewTest {
             return roleId
         }
 
-    private suspend fun list() =
+    private suspend fun list(now: Instant = NOW) =
         either {
-            TestPostgres.db.transaction { context(ctx) { view.list() } }
+            TestPostgres.db.transaction { context(ctx) { view.list(EmployeeListQuery(now)) } }
         }.getOrElse { fail("Unexpected error: $it") }
 
     @Test
@@ -134,4 +141,61 @@ class DbEmployeeListViewTest {
             assertEquals("Администратор", employees.getValue("Сотрудник").roles.first().name)
             assertTrue(employees.getValue("Без ролей").roles.isEmpty())
         }
+
+    /**
+     * Выдаёт сотруднику [id] логин; [lastSeenAgo] — давность последней активности относительно [NOW],
+     * [blocked] — признак блокировки.
+     */
+    private suspend fun grantAccess(id: EmployeeId, lastSeenAgo: Duration? = null, blocked: Boolean = false) =
+        orThrow {
+            val userId = UserId.new()
+            TestPostgres.db
+                .sql("INSERT INTO users (id, login, password_hash) VALUES (:id, :login, :hash)")
+                .bind("id", userId).bind("login", "$userId@example.com").bind("hash", "x")
+                .execute()
+            TestPostgres.db
+                .sql("UPDATE employees SET user_id = :userId, last_seen_at = :lastSeen, blocked_at = :blockedAt WHERE id = :id")
+                .bind("userId", userId)
+                .bind("lastSeen", lastSeenAgo?.let { NOW - it })
+                .bind("blockedAt", if (blocked) NOW else null)
+                .bind("id", id)
+                .execute()
+        }
+
+    @Test
+    fun `статус выводится из логина, активности и блокировки`() =
+        runTest {
+            insertEmployee("А без доступа")
+            grantAccess(insertEmployee("Б не входил"))
+            grantAccess(insertEmployee("В активен"), lastSeenAgo = 3.hours)
+            grantAccess(insertEmployee("Г заблокирован"), lastSeenAgo = 1.minutes, blocked = true)
+
+            val items = list().employees
+
+            assertEquals(
+                listOf(EmployeeAccessStatus.NO_ACCESS, EmployeeAccessStatus.INVITED, EmployeeAccessStatus.ACTIVE, EmployeeAccessStatus.BLOCKED),
+                items.map { it.status },
+            )
+            assertNull(items[1].lastSeenAt)
+            assertEquals(NOW - 3.hours, items[2].lastSeenAt)
+            assertFalse(items[3].online)
+        }
+
+    @Test
+    fun `в сети при активности не старше 5 минут`() =
+        runTest {
+            grantAccess(insertEmployee("А недавно"), lastSeenAgo = 2.minutes)
+            grantAccess(insertEmployee("Б давно"), lastSeenAgo = 10.minutes)
+
+            val items = list().employees
+
+            assertTrue(items[0].online)
+            assertFalse(items[1].online)
+            assertEquals(NOW - 10.minutes, items[1].lastSeenAt)
+        }
+
+    private companion object {
+        /** Момент запроса списка в тестах. */
+        val NOW = Instant.parse("2026-11-20T12:00:00Z")
+    }
 }

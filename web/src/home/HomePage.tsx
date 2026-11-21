@@ -19,13 +19,9 @@ import { DashboardSettingsDialog } from "./DashboardSettingsDialog";
 import { DebtorsWidgetCard } from "./DebtorsWidgetCard";
 import { SessionsWidgetCard } from "./SessionsWidgetCard";
 import { UnclosedSessionsWidgetCard } from "./UnclosedSessionsWidgetCard";
+import { useNow } from "@/lib/useNow";
 
-/**
- * Главная веб-клиента: настраиваемые виджеты (занятия сегодня, должники, дни рождения,
- * незакрытые журналы),
- * паритет с `HomeScreen` KMP-клиента. На широком экране виджеты стоят в ряд, на узком —
- * друг под другом. Настройки открываются шестерёнкой в заголовке.
- */
+/** Главная: настраиваемая сетка виджетов с общими часами браузера. */
 export function HomePage({ api }: { readonly api: ApiClient }) {
   const { t } = useI18n();
   const branchId = useSession(api).currentBranch.id;
@@ -38,7 +34,8 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
     [display.data],
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const today = todayLocalDate();
+  const now = useNow();
+  const today = todayLocalDate(now);
 
   return (
     <section>
@@ -58,13 +55,13 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
         }
       />
       {dashboard === undefined ? (
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <Skeleton className="h-64 flex-1" />
-          <Skeleton className="h-64 flex-1" />
-          <Skeleton className="h-64 flex-1" />
+        <div className="grid gap-4 md:grid-cols-2 md:items-start">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="grid gap-4 md:grid-cols-2 md:items-start">
           {orderedVisible(dashboard).map((widget) => {
             const title = resolveTitle(t, widget);
             switch (widget.type) {
@@ -77,6 +74,8 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
                     settings={dashboard}
                     widget={widget}
                     title={title}
+                    now={now}
+                    today={today}
                   />
                 );
               case "debtors":
@@ -111,6 +110,7 @@ export function HomePage({ api }: { readonly api: ApiClient }) {
                     settings={dashboard}
                     widget={widget}
                     title={title}
+                    today={today}
                   />
                 );
             }

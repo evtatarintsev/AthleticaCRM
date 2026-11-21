@@ -14,19 +14,33 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorOf } from "@/query/apiFailure";
 import { EditSheet } from "@/ui/EditSheet";
 import {
+  assistantAllowed,
   assistantCodeMessage,
   assistantDialogQuery,
   assistantErrorMessage,
   assistantStatusQuery,
 } from "./assistantQueries";
 
-/** Состояние живёт над размонтируемым EditSheet и переживает закрытие и переходы страниц. */
-export function AssistantHost({ api, employeeId }: { api: ApiClient; employeeId: EmployeeId }) {
+/**
+ * Панель помощника и кнопка её открытия на широком экране. Состояние живёт над размонтируемым
+ * EditSheet и переживает закрытие и переходы страниц. Открытием управляет раскладка
+ * ([open], [onOpenChange]): на узком экране панель открывается из меню аккаунта.
+ */
+export function AssistantHost({
+  api,
+  employeeId,
+  open,
+  onOpenChange,
+}: {
+  api: ApiClient;
+  employeeId: EmployeeId;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useI18n();
   const cache = useQueryClient();
   const status = useQuery(assistantStatusQuery(api, employeeId));
-  const allowed = status.data?.available === true && status.data.enabled && status.data.permitted;
-  const [open, setOpen] = useState(false);
+  const allowed = assistantAllowed(status.data);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -39,7 +53,9 @@ export function AssistantHost({ api, employeeId }: { api: ApiClient; employeeId:
     refetchInterval: (query) =>
       query.state.data?.messages.some((m) => m.status === "processing") === true ? 1000 : false,
   });
-  if (!allowed && open) setOpen(false);
+  useEffect(() => {
+    if (!allowed && open) onOpenChange(false);
+  }, [allowed, open, onOpenChange]);
   useEffect(() => {
     active.current = true;
     return () => {
@@ -142,9 +158,10 @@ export function AssistantHost({ api, employeeId }: { api: ApiClient; employeeId:
         <Button
           variant="ghost"
           size="icon"
+          className="hidden lg:inline-flex"
           aria-label={t("assistant.title")}
           onClick={() => {
-            setOpen(true);
+            onOpenChange(true);
           }}
         >
           <SparklesIcon aria-hidden />
@@ -152,7 +169,7 @@ export function AssistantHost({ api, employeeId }: { api: ApiClient; employeeId:
       )}
       <EditSheet
         open={open && allowed}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         title={t("assistant.title")}
         size="lg"
       >

@@ -7,10 +7,10 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
+import org.athletica.crm.core.entityids.SaleItemId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.storage.Transaction
 
@@ -40,7 +40,7 @@ interface Memberships {
         sessions: PositiveInt?,
         groupIds: List<GroupId>,
         duration: MembershipDuration,
-        price: Money,
+        saleItemId: SaleItemId,
         activation: Activation,
         closeMode: CloseMode,
         issuedOn: LocalDate,

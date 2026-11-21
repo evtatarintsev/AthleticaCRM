@@ -1,9 +1,11 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
+  BlockEmployeeRequestSchema,
   CreateEmployeeRequestSchema,
   CreateRoleRequestSchema,
+  TerminateEmployeeSessionRequestSchema,
   UpdateEmployeeRequestSchema,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
@@ -20,7 +22,9 @@ const existing = {
   name: "Виктор Сидоров",
   avatarId: null,
   isOwner: false,
-  isActive: true,
+  status: "ACTIVE",
+  lastSeenAt: null,
+  online: false,
   joinedAt: "2024-03-01T00:00:00Z",
   roles: [],
   phoneNo: "+79990001122",
@@ -29,6 +33,36 @@ const existing = {
   revokedPermissions: [],
   allBranchesAccess: true,
   branchIds: [],
+};
+
+const north = { id: "0199a0b2-7c3e-7d2a-9f10-000000000004", name: "Север" };
+const south = { id: "0199a0b2-7c3e-7d2a-9f10-000000000005", name: "Юг" };
+
+/** Сотрудник с филиалом «Центр», заходивший 3 часа назад. */
+const restricted = {
+  ...existing,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000405",
+  name: "Галина Центр",
+  lastSeenAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
+  allBranchesAccess: false,
+  branchIds: [center.id, north.id],
+};
+
+/** Сотрудник без филиалов, которому раньше выдавали доступ, — заблокирован. */
+const blocked = {
+  ...existing,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000406",
+  name: "Денис Заблокирован",
+  status: "BLOCKED",
+  allBranchesAccess: false,
+  branchIds: [],
+};
+
+/** Карточка текущего пользователя сессии. */
+const self = {
+  ...existing,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000002",
+  name: "Иван Петров",
 };
 
 const owner = {
@@ -43,6 +77,18 @@ const owner = {
   branchIds: [center.id],
 };
 
+/** Сеанс сотрудника на телефоне. */
+const phoneSession = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000701",
+  browser: "Chrome 142",
+  os: "Android",
+  platform: "ANDROID",
+  ip: "10.0.0.2",
+  createdAt: "2026-11-20T10:00:00Z",
+  lastSeenAt: "2026-11-21T10:00:00Z",
+  current: false,
+};
+
 /**
  * Сервер с ролями [roles], филиалами и сотрудниками [existing] и [owner] в памяти; [failSave] — сохранение
  * сотрудника отклоняется. Созданные роли добавляются к [roles].
@@ -55,7 +101,22 @@ function formServer({
   const detailsById = new Map<string, Record<string, unknown>>([
     [existing.id, existing],
     [owner.id, owner],
+    [restricted.id, restricted],
+    [blocked.id, blocked],
+    [self.id, self],
   ]);
+  const sessionsById = new Map<string, readonly unknown[]>([
+    [existing.id, [phoneSession]],
+    [owner.id, [phoneSession]],
+  ]);
+  const setStatus = (body: unknown, status: string) => {
+    const { employeeId } = BlockEmployeeRequestSchema.parse(body);
+    detailsById.set(employeeId, { ...detailsById.get(employeeId), status });
+    if (status === "BLOCKED") {
+      sessionsById.set(employeeId, []);
+    }
+    return json(undefined);
+  };
   const conflict = () => json({ code: "EMAIL_TAKEN", message: "Email уже занят" }, 409);
   return appServer({
     "employees/list": () => json({ employees: [...detailsById.values()], total: detailsById.size }),
@@ -65,7 +126,16 @@ function formServer({
       orgRoles = [...orgRoles, role];
       return json(role);
     },
-    "branches/list": () => json({ branches: [center] }),
+    "branches/list": () => json({ branches: [center, north, south] }),
+    "employees/block": ({ body }) => setStatus(body, "BLOCKED"),
+    "employees/unblock": ({ body }) => setStatus(body, "ACTIVE"),
+    "employees/sessions": ({ query }) =>
+      json({ items: sessionsById.get(query.get("employeeId") ?? "") ?? [] }),
+    "employees/sessions/terminate": ({ body }) => {
+      const { employeeId } = TerminateEmployeeSessionRequestSchema.parse(body);
+      sessionsById.set(employeeId, []);
+      return json(undefined);
+    },
     "employees/detail": ({ query }) => {
       const detail = detailsById.get(query.get("id") ?? "");
       return detail === undefined ? json({ code: "NOT_FOUND", message: "" }, 404) : json(detail);
@@ -79,7 +149,9 @@ function formServer({
         ...existing,
         id: request.id,
         name: request.name,
-        isActive: false,
+        status: "NO_ACCESS",
+        lastSeenAt: null,
+        online: false,
         phoneNo: request.phoneNo ?? null,
         email: request.email,
       };
@@ -96,6 +168,8 @@ function formServer({
         name: request.name,
         phoneNo: request.phoneNo ?? null,
         email: request.email,
+        allBranchesAccess: request.allBranchesAccess,
+        branchIds: request.branchIds,
       });
       return json(undefined);
     },
@@ -105,10 +179,14 @@ function formServer({
 /** Панель с заголовком [name]. */
 const sheet = (name: string) => within(screen.getByRole("dialog", { name }));
 
-/** Открывает вложенную панель секции [section] кнопкой «Изменить». */
-async function editSection(user: UserEvent, section: string) {
+/** Открывает вложенную панель секции [section] формы [form] кнопкой «Изменить». */
+async function editSection(
+  user: UserEvent,
+  section: string,
+  form: string = ru["employees.create"],
+) {
   await user.click(
-    sheet(ru["employees.create"]).getByRole("button", {
+    sheet(form).getByRole("button", {
       name: `${ru["employees.editSection"]}: ${section}`,
     }),
   );
@@ -517,5 +595,208 @@ describe("панель редактирования владельца", () => {
     expect(within(form).getByText(ru["employees.columnRoles"])).toBeVisible();
     expect(within(form).getByText(ru["employees.sectionPermissions"])).toBeVisible();
     expect(within(form).getByText(ru["employees.sectionBranchAccess"])).toBeVisible();
+  });
+});
+
+/** Секция «Доступ к филиалам» карточки сотрудника [name]. */
+async function branchSection(name: string) {
+  const card = await screen.findByRole("dialog", { name });
+  const heading = await within(card).findByRole("heading", {
+    name: ru["employees.sectionBranchAccess"],
+  });
+  const section = heading.closest("section");
+  if (section === null) {
+    throw new Error("секция филиалов не найдена");
+  }
+  return within(section);
+}
+
+describe("доступ к филиалам при редактировании", () => {
+  it("ограничивает сотрудника со всеми филиалами одним филиалом", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${existing.id}&edit=true`, api.fetch);
+    const user = userEvent.setup();
+
+    await screen.findByLabelText(ru["employees.name"]);
+    await editSection(user, ru["employees.sectionBranchAccess"], ru["employees.edit"]);
+    const picker = sheet(ru["employees.sectionBranchAccess"]);
+    [center, north, south].forEach((branch) => {
+      expect(picker.getByRole("checkbox", { name: branch.name })).toBeChecked();
+    });
+    await user.click(picker.getByRole("checkbox", { name: north.name }));
+    await user.click(picker.getByRole("checkbox", { name: south.name }));
+    await user.click(picker.getByRole("button", { name: ru["action.done"] }));
+    await sheetClosed(ru["employees.sectionBranchAccess"]);
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    await sheetClosed(ru["employees.edit"]);
+    const [updated] = api
+      .to("employees/update")
+      .map((r) => UpdateEmployeeRequestSchema.parse(r.body));
+    expect(updated).toMatchObject({ allBranchesAccess: false, branchIds: [center.id] });
+    const section = await branchSection(existing.name);
+    expect(await section.findByText(center.name)).toBeVisible();
+    expect(section.queryByText(north.name)).toBeNull();
+  });
+
+  it("меняет выбранный филиал на другой", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${restricted.id}&edit=true`, api.fetch);
+    const user = userEvent.setup();
+
+    await screen.findByLabelText(ru["employees.name"]);
+    await editSection(user, ru["employees.sectionBranchAccess"], ru["employees.edit"]);
+    const picker = sheet(ru["employees.sectionBranchAccess"]);
+    await user.click(picker.getByRole("checkbox", { name: center.name }));
+    await user.click(picker.getByRole("button", { name: ru["action.done"] }));
+    await sheetClosed(ru["employees.sectionBranchAccess"]);
+    await user.click(screen.getByRole("button", { name: ru["action.save"] }));
+
+    await sheetClosed(ru["employees.edit"]);
+    const [updated] = api
+      .to("employees/update")
+      .map((r) => UpdateEmployeeRequestSchema.parse(r.body));
+    expect(updated).toMatchObject({ allBranchesAccess: false, branchIds: [north.id] });
+  });
+});
+
+describe("карточка сотрудника: доступ, статус и блокировка", () => {
+  it("показывает выбранные филиалы", async () => {
+    openApp(`/employees?employee=${restricted.id}`, formServer().fetch);
+
+    const section = await branchSection(restricted.name);
+    expect(await section.findByText(center.name)).toBeVisible();
+    expect(section.getByText(north.name)).toBeVisible();
+  });
+
+  it("показывает «Все филиалы» при доступе ко всем", async () => {
+    openApp(`/employees?employee=${existing.id}`, formServer().fetch);
+
+    expect(
+      (await branchSection(existing.name)).getByText(ru["employees.allBranches"]),
+    ).toBeVisible();
+  });
+
+  it("сообщает об отсутствии доступа к филиалам", async () => {
+    openApp(`/employees?employee=${blocked.id}`, formServer().fetch);
+
+    expect(
+      (await branchSection(blocked.name)).getByText(ru["employees.noBranchAccess"]),
+    ).toBeVisible();
+  });
+
+  it("показывает время последней активности", async () => {
+    openApp(`/employees?employee=${restricted.id}`, formServer().fetch);
+
+    const card = await screen.findByRole("dialog", { name: restricted.name });
+    expect(
+      within(card).getByText(ru["employees.lastSeen"].replace("{ago}", "3 часа назад")),
+    ).toBeVisible();
+  });
+
+  it("блокирует сотрудника после подтверждения", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${existing.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const card = await screen.findByRole("dialog", { name: existing.name });
+    await user.click(within(card).getByRole("button", { name: ru["employees.block"] }));
+    const confirm = await screen.findByRole("dialog", { name: ru["employees.blockConfirmTitle"] });
+    await user.click(within(confirm).getByRole("button", { name: ru["employees.block"] }));
+
+    expect(await within(card).findByText(ru["employees.statusBlocked"])).toBeVisible();
+    expect(within(card).getByRole("button", { name: ru["employees.unblock"] })).toBeVisible();
+    expect(api.to("employees/block")).toHaveLength(1);
+  });
+
+  it("отмена подтверждения не блокирует", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${existing.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const card = await screen.findByRole("dialog", { name: existing.name });
+    await user.click(within(card).getByRole("button", { name: ru["employees.block"] }));
+    const confirm = await screen.findByRole("dialog", { name: ru["employees.blockConfirmTitle"] });
+    await user.click(within(confirm).getByRole("button", { name: ru["action.cancel"] }));
+
+    await sheetClosed(ru["employees.blockConfirmTitle"]);
+    expect(api.to("employees/block")).toHaveLength(0);
+    expect(within(card).getByText(ru["employees.statusActive"])).toBeVisible();
+  });
+
+  it("разблокирует сразу, без «Отправить доступ» у заблокированного", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${blocked.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const card = await screen.findByRole("dialog", { name: blocked.name });
+    expect(within(card).queryByRole("button", { name: ru["employees.sendAccess"] })).toBeNull();
+    await user.click(within(card).getByRole("button", { name: ru["employees.unblock"] }));
+
+    expect(await within(card).findByText(ru["employees.statusActive"])).toBeVisible();
+    expect(api.to("employees/unblock")).toHaveLength(1);
+  });
+
+  it("у владельца и в своей карточке кнопок блокировки нет", async () => {
+    openApp(`/employees?employee=${owner.id}`, formServer().fetch);
+    const ownerCard = await screen.findByRole("dialog", { name: owner.name });
+    expect(within(ownerCard).queryByRole("button", { name: ru["employees.block"] })).toBeNull();
+
+    cleanup();
+    openApp(`/employees?employee=${self.id}`, formServer().fetch);
+    const selfCard = await screen.findByRole("dialog", { name: self.name });
+    expect(within(selfCard).getByRole("button", { name: ru["action.edit"] })).toBeVisible();
+    expect(within(selfCard).queryByRole("button", { name: ru["employees.block"] })).toBeNull();
+    expect(within(selfCard).queryByRole("button", { name: ru["employees.unblock"] })).toBeNull();
+  });
+});
+
+describe("карточка сотрудника: сеансы", () => {
+  /** Раздел «Активные сеансы» в открытой карточке сотрудника [name]. */
+  async function sessionsSection(name: string) {
+    const card = await screen.findByRole("dialog", { name });
+    const heading = await within(card).findByRole("heading", { name: ru["sessions.title"] });
+    const section = heading.closest("section");
+    if (!(section instanceof HTMLElement)) {
+      throw new Error("раздел сеансов не найден");
+    }
+    return within(section);
+  }
+
+  it("завершает сеанс сотрудника", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${existing.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const section = await sessionsSection(existing.name);
+    expect(await section.findByText("Chrome 142 · Android")).toBeVisible();
+    await user.click(section.getByRole("button", { name: ru["sessions.terminate"] }));
+
+    expect(await section.findByText(ru["sessions.empty"])).toBeVisible();
+    expect(api.to("employees/sessions/terminate").map((r) => r.body)).toEqual([
+      { employeeId: existing.id, sessionId: phoneSession.id },
+    ]);
+  });
+
+  it("у владельца сеансы видны без кнопок завершения", async () => {
+    openApp(`/employees?employee=${owner.id}`, formServer().fetch);
+
+    const section = await sessionsSection(owner.name);
+    expect(await section.findByText("Chrome 142 · Android")).toBeVisible();
+    expect(section.queryByRole("button", { name: ru["sessions.terminate"] })).toBeNull();
+  });
+
+  it("после блокировки список сеансов пустой", async () => {
+    openApp(`/employees?employee=${existing.id}`, formServer().fetch);
+    const user = userEvent.setup();
+
+    const section = await sessionsSection(existing.name);
+    expect(await section.findByText("Chrome 142 · Android")).toBeVisible();
+    const card = await screen.findByRole("dialog", { name: existing.name });
+    await user.click(within(card).getByRole("button", { name: ru["employees.block"] }));
+    const confirm = await screen.findByRole("dialog", { name: ru["employees.blockConfirmTitle"] });
+    await user.click(within(confirm).getByRole("button", { name: ru["employees.block"] }));
+
+    expect(await section.findByText(ru["sessions.empty"])).toBeVisible();
   });
 });

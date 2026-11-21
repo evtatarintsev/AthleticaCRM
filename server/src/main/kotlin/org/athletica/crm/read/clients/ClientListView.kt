@@ -23,7 +23,16 @@ enum class ClientSortColumn {
 
     /** По дате рождения. */
     BIRTHDAY,
+
+    /** По месяцу и дню относительно начала диапазона дней рождения. */
+    NEXT_BIRTHDAY,
 }
+
+/** Критерий сортировки read-проекции клиентов. */
+data class ClientSortCriterion(
+    val column: ClientSortColumn,
+    val ascending: Boolean = true,
+)
 
 /**
  * Параметры запроса страницы списка клиентов: фильтры, сортировка и пагинация.
@@ -48,10 +57,8 @@ data class ClientListQuery(
     val groupId: GroupId? = null,
     /** Фильтр по дню рождения (диапазон дат по месяцу/дню). `null` — без фильтра. */
     val birthday: DateRange? = null,
-    /** Колонка сортировки. */
-    val sortColumn: ClientSortColumn = ClientSortColumn.NAME,
-    /** Сортировать по возрастанию (`true`) или убыванию (`false`). */
-    val ascending: Boolean = true,
+    /** Критерии сортировки в порядке приоритета. */
+    val sort: List<ClientSortCriterion> = listOf(ClientSortCriterion(ClientSortColumn.NAME)),
     /** Размер страницы; `null` — без ограничения (используется для выгрузки целиком). */
     val limit: Int? = 50,
     /** Смещение от начала выборки. */

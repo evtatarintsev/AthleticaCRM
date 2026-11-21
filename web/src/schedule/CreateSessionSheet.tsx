@@ -66,7 +66,7 @@ function CreateSessionForm({ api, date }: { readonly api: ApiClient; readonly da
   const halls = useQuery({ ...apiQuery(api, branchId, "halls/list"), select: (r) => r.halls });
   const employees = useQuery({
     ...apiQuery(api, branchId, "employees/list"),
-    select: (r) => r.employees.filter((employee) => employee.isActive),
+    select: (r) => r.employees.filter((employee) => employee.status !== "BLOCKED"),
   });
 
   const groupOptions: readonly SelectOption<string>[] = [

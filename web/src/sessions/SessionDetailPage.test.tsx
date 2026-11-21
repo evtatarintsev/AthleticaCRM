@@ -50,7 +50,9 @@ const coach = {
   name: "Сергей Волков",
   avatarId: null,
   isOwner: false,
-  isActive: true,
+  status: "ACTIVE",
+  lastSeenAt: null,
+  online: false,
   joinedAt: "2024-01-01T00:00:00Z",
   roles: [],
   phoneNo: null,
@@ -260,6 +262,61 @@ const labelGroup = (name: string) =>
   within(row(name)).getByRole("group", { name: `Метки: ${name}` });
 
 describe("карточка занятия", () => {
+  it.each([false, true])("возврат виден при загрузке и после ответа (ошибка: %s)", async (fail) => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const server = journalServer(journalOf([]));
+    const { history } = openApp(`/sessions/${sessionId}`, async (input, init) => {
+      if (new URL(input, "http://localhost").pathname === "/api/sessions/journal") {
+        await pending;
+        if (fail)
+          return json({ code: "SESSION_NOT_FOUND", message: "Не найдено", fields: null }, 404);
+      }
+      return server.fetch(input, init);
+    });
+    const back = await screen.findByRole("link", { name: ru["action.back"] });
+    expect(back).toBeVisible();
+    expect(back).toHaveAttribute("href", "/schedule");
+    expect(screen.queryByText(ru["sessionDetail.loadError"])).not.toBeInTheDocument();
+    release?.();
+    if (fail) await screen.findByText(ru["sessionDetail.loadError"]);
+    else await screen.findByRole("heading", { name: /Юниоры У8/ });
+    expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
+    await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/schedule");
+      expect(history.location.search).toBe(fail ? "" : "?date=2026-10-01");
+    });
+  });
+
+  it("возврат ведёт на предыдущую страницу, а адрес ссылки остаётся расписанием", async () => {
+    const server = journalServer(journalOf([]));
+    const { history } = openApp("/clients?tab=all", server.fetch);
+    history.push(`/sessions/${sessionId}`);
+    await screen.findByRole("heading", { name: /Юниоры У8/ });
+    const back = screen.getByRole("link", { name: ru["action.back"] });
+    expect(back).toHaveAttribute("href", "/schedule?date=2026-10-01");
+    await userEvent.setup().click(back);
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/clients");
+      expect(history.location.search).toBe("?tab=all");
+    });
+  });
+
+  it("клик с Ctrl по возврату оставляет браузеру открыть расписание в новой вкладке", async () => {
+    const server = journalServer(journalOf([]));
+    const { history } = openApp("/clients", server.fetch);
+    history.push(`/sessions/${sessionId}`);
+    await screen.findByRole("heading", { name: /Юниоры У8/ });
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}");
+    await user.click(screen.getByRole("link", { name: ru["action.back"] }));
+    await user.keyboard("{/Control}");
+    expect(history.location.pathname).toBe(`/sessions/${sessionId}`);
+  });
+
   it("клик по тренеру открывает его карточку панелью, после закрытия остаётся занятие", async () => {
     const server = journalServer(journalOf([participant("1", "Аня")]));
     const { history } = openApp(`/sessions/${sessionId}`, server.fetch);

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Список клиентов</title>
+<style>
+:root{
+  --bg:#f7f7f8; --surface:#fff; --surface-2:#fafafa; --line:#ececef; --line-strong:#dcdce0;
+  --text:#111113; --text-2:#3f3f46; --muted:#6b6b74;
+  --brand:#2f55d4; --brand-hover:#2443b0; --brand-soft:#eef2ff; --brand-ink:#2443b0;
+  --bad-soft:#ffe9e9; --bad-ink:#a3171b; --good-ink:#15803d; --good-soft:#e7f8ee;
+  --shadow:0 1px 2px rgba(16,16,20,.04),0 4px 16px rgba(16,16,20,.04);
+  --pop:0 12px 32px rgba(16,16,20,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e0e11; --surface:#17171b; --surface-2:#1c1c21; --line:#26262c; --line-strong:#34343b;
+    --text:#f4f4f6; --text-2:#cfcfd6; --muted:#9a9aa5;
+    --brand:#5b7cf0; --brand-hover:#7591f3; --brand-soft:#1d2440; --brand-ink:#a9bbff;
+    --bad-soft:#3b1515; --bad-ink:#ff9b9b; --good-ink:#6ee7a0; --good-soft:#0f2f1e;
+    --shadow:none; --pop:0 12px 32px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.outer{max-width:1240px;margin:0 auto;padding:20px 16px 0;display:flex;flex-direction:column;gap:12px}
+@media (min-width:720px){.outer{padding:24px 32px 0}}
+
+.modebar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:12px;border:1px dashed var(--line-strong);font-size:13px;color:var(--muted)}
+.modebar .grp{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;padding:3px;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.seg button{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;font-size:13px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+.stage{container-type:inline-size;margin:0 auto 96px;width:100%;position:relative}
+.stage.phone{max-width:390px;height:780px;overflow:auto;border:1px solid var(--line-strong);border-radius:32px;background:var(--bg);box-shadow:var(--pop)}
+.wrap{padding:20px 0 24px;display:flex;flex-direction:column;gap:16px;min-height:100%}
+.stage.phone .wrap{padding:20px 16px 0}
+
+/* Шапка */
+.top{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between}
+.top h1{margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-.015em}
+.top .meta{margin-top:2px;font-size:14px;color:var(--muted)}
+.actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow);transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn-icon{width:40px;padding:0;justify-content:center}
+.btn-sm{height:32px;padding:0 12px;font-size:13px;border-radius:8px;box-shadow:none}
+.cnt-pill{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--brand);color:#fff;font-size:12px;font-variant-numeric:tabular-nums}
+
+/* Поиск */
+.toolbar{display:flex;gap:8px;align-items:center}
+.search{position:relative;flex:1;min-width:0}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search input{width:100%;height:40px;padding:0 12px 0 38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px;box-shadow:var(--shadow)}
+.search input:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+
+/* Виды — чипы */
+.tabs{display:flex;gap:8px;padding:6px 0;overflow-x:auto;scrollbar-width:none;background:var(--bg)}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:13px;font-weight:500;color:var(--muted);white-space:nowrap}
+.tabs button:hover{color:var(--text);border-color:var(--line-strong)}
+.tabs button[aria-pressed="true"]{color:#fff;background:var(--brand);border-color:var(--brand)}
+.fchips{display:flex;flex-wrap:wrap;gap:8px}
+.fchip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 6px 0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:500}
+.fchip span{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;border-radius:99px;color:var(--muted)}
+.fchip:hover span{background:var(--line);color:var(--text)}
+
+/* Список */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:0;overflow:hidden}
+.row{display:grid;grid-template-columns:20px minmax(200px,1.5fr) 110px 90px minmax(160px,1.2fr) 120px 32px;align-items:center;gap:6px 16px;padding:10px 16px;border-top:1px solid var(--line);font-size:14px;position:relative}
+.row:first-child{border-top:0}
+.row.head{padding-top:9px;padding-bottom:9px;background:var(--surface-2);font-size:12.5px;font-weight:500;color:var(--muted)}
+.row.head .sort{display:inline-flex;gap:4px;align-items:center;border:0;background:transparent;padding:0;color:inherit;font-weight:inherit}
+.row.head .sort:hover{color:var(--text)}
+.row:not(.head):hover{background:var(--surface-2)}
+.row.sel{background:var(--brand-soft)}
+.row .r{justify-self:end;text-align:right}
+.row .c{text-align:center}
+.who{display:flex;align-items:center;gap:12px;min-width:0}
+.who .nm{min-width:0}
+.who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .sub-sm{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stretch{position:absolute;inset:0;z-index:0}
+.row input,.row .ib,.row a.gchip,.row .gmore{position:relative;z-index:1}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);margin:0}
+.av{width:34px;height:34px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:none}
+.gchips{display:flex;flex-wrap:nowrap;gap:6px;min-width:0;overflow:hidden}
+.gchip,.gmore{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);font-size:12.5px;font-weight:500;color:var(--brand);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+a.gchip:hover{border-color:var(--line-strong)}
+.gmore{color:var(--muted)}
+.dash{color:var(--muted)}
+.money{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.money.zero{color:var(--muted);font-weight:400}
+.money.neg{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;background:var(--bad-soft);color:var(--bad-ink);font-weight:600}
+.ib{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
+.ib:hover{background:var(--line);color:var(--text)}
+.empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:48px 16px;text-align:center;color:var(--muted);font-size:14px}
+.empty .ok{width:44px;height:44px;border-radius:99px;background:var(--good-soft);color:var(--good-ink);display:inline-flex;align-items:center;justify-content:center}
+.empty .nf{width:44px;height:44px;border-radius:99px;background:var(--surface-2);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px var(--line)}
+.more{display:flex;justify-content:center;padding:4px 0}
+
+/* Нижняя панель выбора (существующая SelectionBar) */
+.selbar{position:sticky;bottom:0;z-index:5;margin:0 -32px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 32px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(6px);border-top:1px solid var(--line);font-size:14px;font-weight:500}
+.selbar .acts{display:flex;gap:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:var(--text);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:var(--pop);animation:pop .14s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.show-sm{display:none}
+@container (max-width:767px){
+  .wrap{gap:14px}
+  .hide-sm{display:none !important}
+  .show-sm{display:revert}
+  .views{position:sticky;top:0;z-index:4;margin:0 -16px;padding:0 10px;background:var(--bg)}
+  .row.head{display:none}
+  .card{border-radius:12px}
+  .row{grid-template-columns:20px minmax(0,1fr) auto;gap:4px 12px;padding:12px 14px}
+  .row > .col-x{display:none}
+  .selbar{margin:0 -16px;padding:12px 16px}
+}
+</style>
+</head>
+<body>
+<div class="outer" id="bar"></div>
+<div class="outer" style="padding-top:0"><div class="stage" id="stage"></div></div>
+<script>
+const sv = (d, w = 16) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {
+  search: sv('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  sliders: sv('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
+  cols: sv('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>'),
+  plus: sv('<path d="M12 5v14M5 12h14"/>'),
+  edit: sv('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
+  x: sv('<path d="M18 6 6 18M6 6l12 12"/>', 12),
+  check: sv('<path d="M20 6 9 17l-5-5"/>', 22),
+  users: sv('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/>', 22),
+  up: sv('<path d="M12 19V5M6 11l6-6 6 6"/>', 12),
+};
+const PALETTE = [['#e0e7ff','#3730a3'],['#ffedd5','#9a3412'],['#dcfce7','#166534'],['#fce7f3','#9d174d'],['#e0f2fe','#075985']];
+const av = (name, i) => { const [bg, fg] = PALETTE[i % PALETTE.length]; const ini = name.split(' ').map(p => p[0]).join('').slice(0, 2); return `<span class="av" style="background:${bg};color:${fg}" aria-hidden="true">${ini}</span>`; };
+const rub = n => (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('ru-RU').replace(/\s/g, ' ') + ' ₽';
+const plural = n => n % 10 === 1 && n % 100 !== 11 ? 'клиент' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'клиента' : 'клиентов';
+
+const CLIENTS = [
+  { name:'Анна Иванова', g:'Женский', bday:'12.03.2017', groups:['Мини','Юниор'], bal:-1200 },
+  { name:'Глеб Петров', g:'Мужской', bday:'02.07.2015', groups:['Юниор'], bal:0 },
+  { name:'Мила Сидорова', g:'Женский', bday:'19.01.2019', groups:[], bal:0 },
+  { name:'Марк Соколов', g:'Мужской', bday:'30.05.2017', groups:['Младшая группа','ОФП дети','Плавание'], bal:0 },
+  { name:'Ева Кузнецова', g:'Женский', bday:'18.11.2014', groups:['Старшая'], bal:2400 },
+  { name:'Тимур Алиев', g:'Мужской', bday:'08.09.2016', groups:['Юниор'], bal:-3500 },
+  { name:'София Морозова', g:'Женский', bday:'25.12.2018', groups:['Мини'], bal:0 },
+  { name:'Лев Новиков', g:'Мужской', bday:'14.04.2020', groups:['Мини'], bal:0 },
+  { name:'Варвара Орлова', g:'Женский', bday:'03.02.2012', groups:['Старшая','ОФП взрослые'], bal:600 },
+  { name:'Артём Волков', g:'Мужской', bday:'21.06.2013', groups:[], bal:-800 },
+  { name:'Алиса Лебедева', g:'Женский', bday:'11.10.2017', groups:['Юниор'], bal:0 },
+  { name:'Даниил Козлов', g:'Мужской', bday:'29.08.2011', groups:['Старшая'], bal:0 },
+  { name:'Полина Егорова', g:'Женский', bday:'07.03.2016', groups:[], bal:0, archived:true },
+].map((c, i) => ({ ...c, id:i }));
+
+const VIEWS = {
+  all:      { label:'Все',        test:c => !c.archived },
+  debt:     { label:'Должники',   test:c => !c.archived && c.bal < 0, empty:'Должников нет' },
+  nogroup:  { label:'Без группы', test:c => !c.archived && c.groups.length === 0, empty:'Все клиенты в группах' },
+  archived: { label:'Архив',      test:c => !!c.archived, empty:'Архив пуст' },
+};
+
+const state = { phone:false, view:'all', q:'', female:false, sel:new Set() };
+
+function filteredClients() {
+  return CLIENTS.filter(VIEWS[state.view].test)
+    .filter(c => !state.female || c.g === 'Женский')
+    .filter(c => c.name.toLowerCase().includes(state.q.toLowerCase()));
+}
+
+function groups(c) {
+  if (!c.groups.length) { return '<span class="dash">—</span>'; }
+  const shown = c.groups.slice(0, 2).map(g => `<a href="#" class="gchip" data-act="toast" data-v="Страница группы «${g}»">${g}</a>`).join('');
+  const rest = c.groups.length - 2;
+  return `<div class="gchips">${shown}${rest > 0 ? `<span class="gmore" title="${c.groups.slice(2).join(', ')}">+${rest}</span>` : ''}</div>`;
+}
+function money(c) {
+  return `<span class="money ${c.bal < 0 ? 'neg' : c.bal === 0 ? 'zero' : ''}">${rub(c.bal)}</span>`;
+}
+function row(c) {
+  return `<div class="row ${state.sel.has(c.id) ? 'sel' : ''}">
+    <input type="checkbox" data-act="sel" data-v="${c.id}" ${state.sel.has(c.id) ? 'checked' : ''} aria-label="Выбрать ${c.name}">
+    <div class="who">${av(c.name, c.id)}<div class="nm"><b>${c.name}</b>
+      <div class="show-sm sub-sm">${c.groups.join(', ')}</div></div></div>
+    <div class="c col-x">${c.bday}</div>
+    <div class="c col-x">${c.g}</div>
+    <div class="col-x">${groups(c)}</div>
+    <div class="r">${money(c)}</div>
+    <button class="ib col-x" data-act="toast" data-v="Редактирование: ${c.name}" aria-label="Редактировать">${I.edit}</button>
+    <a href="#" class="stretch" data-act="toast" data-v="Карточка: ${c.name}" aria-label="${c.name}"></a>
+  </div>`;
+}
+
+function emptyState() {
+  if (state.q || state.female) {
+    return `<div class="empty"><span class="nf">${I.search.replace(/16/g, '22')}</span>Ничего не найдено<button class="btn btn-sm" data-act="reset">Сбросить фильтры</button></div>`;
+  }
+  if (state.view === 'all') {
+    return `<div class="empty"><span class="nf">${I.users}</span>Клиентов пока нет<button class="btn btn-sm btn-primary" data-act="toast" data-v="Новый клиент">${I.plus}Новый клиент</button></div>`;
+  }
+  return `<div class="empty"><span class="ok">${I.check}</span>${VIEWS[state.view].empty}</div>`;
+}
+
+function render() {
+  document.getElementById('bar').innerHTML = `
+    <div class="modebar">
+      <span>Только в макете. Попробуйте: «Без группы» → фильтр «Женский»; поиск «зз»; выбор строк.</span>
+      <div class="grp"><span>Экран:</span><div class="seg">${[['0','Компьютер'],['1','Телефон']].map(([k, l]) => `<button aria-pressed="${state.phone === (k === '1')}" data-act="phone" data-v="${k}">${l}</button>`).join('')}</div></div>
+    </div>`;
+
+  const list = filteredClients();
+  const allSel = list.length > 0 && list.every(c => state.sel.has(c.id));
+  const head = `<div class="row head"><input type="checkbox" data-act="selall" ${allSel ? 'checked' : ''} aria-label="Выбрать всех"><button class="sort">Имя ${I.up}</button><button class="sort" style="justify-self:center">Дата рождения</button><span class="c">Пол</span><span>Группы</span><button class="sort r">Баланс</button><span></span></div>`;
+  const body = list.length ? head + list.map(row).join('') : emptyState();
+
+  const stage = document.getElementById('stage');
+  stage.className = 'stage' + (state.phone ? ' phone' : '');
+  stage.innerHTML = `<div class="wrap">
+    <div class="top">
+      <div><h1>Клиенты</h1><div class="meta">${list.length} ${plural(list.length)}</div></div>
+      <div class="actions">
+        <button class="btn hide-sm" data-act="toast" data-v="Настройка колонок">${I.cols}Колонки</button>
+        <button class="btn btn-primary hide-sm" data-act="toast" data-v="Новый клиент">${I.plus}Новый клиент</button>
+        <button class="btn btn-primary btn-icon show-sm" data-act="toast" data-v="Новый клиент" aria-label="Новый клиент">${I.plus}</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <label class="search">${I.search}<input type="search" id="q" placeholder="Поиск по клиентам" value="${state.q}"></label>
+      <button class="btn" data-act="female" aria-label="Фильтры">${I.sliders}<span class="hide-sm">Фильтры</span>${state.female ? '<span class="cnt-pill">1</span>' : ''}</button>
+    </div>
+    <div class="views">
+      <div class="tabs">${Object.entries(VIEWS).map(([k, v]) => `<button aria-pressed="${state.view === k && !state.female}" data-act="view" data-v="${k}">${v.label}</button>`).join('')}</div>
+      ${state.female ? `<div class="fchips" style="margin-top:12px"><button class="fchip" data-act="female">Женский<span>${I.x}</span></button></div>` : ''}
+    </div>
+    <div class="card">${body}</div>
+    ${list.length ? `<div class="more"><button class="btn btn-sm" data-act="toast" data-v="Следующая страница">Показать ещё</button></div>` : ''}
+    ${state.sel.size ? `<div class="selbar"><span>Выбрано: ${state.sel.size}</span><div class="acts">
+      <button class="btn btn-sm" data-act="toast" data-v="Экспорт выбранных">Экспорт</button>
+      <button class="btn btn-sm" data-act="toast" data-v="${state.view === 'archived' ? 'Восстановлены' : 'Перенесены в архив'}">${state.view === 'archived' ? 'Восстановить' : 'В архив'}</button></div></div>` : ''}
+  </div>`;
+
+  document.getElementById('q').addEventListener('input', e => {
+    state.q = e.target.value; const pos = e.target.selectionStart; render();
+    const n = document.getElementById('q'); n.focus(); n.setSelectionRange(pos, pos);
+  });
+}
+
+function toast(text) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = text; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) { return; }
+  const { act, v } = el.dataset;
+  if (act === 'sel') { const id = Number(v); state.sel.has(id) ? state.sel.delete(id) : state.sel.add(id); render(); return; }
+  e.preventDefault();
+  if (act === 'phone') { state.phone = v === '1'; }
+  if (act === 'view') { state.view = v; state.female = false; state.sel.clear(); }
+  if (act === 'female') { state.female = !state.female; }
+  if (act === 'reset') { state.q = ''; state.female = false; state.view = 'all'; }
+  if (act === 'selall') { const list = filteredClients(); const all = list.every(c => state.sel.has(c.id)); list.forEach(c => all ? state.sel.delete(c.id) : state.sel.add(c.id)); }
+  if (act === 'toast') { toast(v); return; }
+  render();
+});
+render();
+</script>
+</body>
+</html>

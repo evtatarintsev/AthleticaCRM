@@ -1,13 +1,12 @@
 package org.athletica.crm.routes
 
+import arrow.core.raise.context.Raise
+import arrow.core.raise.context.raise
 import io.ktor.http.HttpHeaders
 import org.athletica.crm.api.schemas.clients.AddClientToGroupsRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
-import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
-import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryRequest
-import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientContactInput
 import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.clients.ClientDetailRequest
@@ -19,6 +18,7 @@ import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
 import org.athletica.crm.api.schemas.clients.ClientListRequest
 import org.athletica.crm.api.schemas.clients.ClientListResponse
+import org.athletica.crm.api.schemas.clients.ClientSort
 import org.athletica.crm.api.schemas.clients.ClientSortField
 import org.athletica.crm.api.schemas.clients.ClientState
 import org.athletica.crm.api.schemas.clients.ClientUnpaidSessionsRequest
@@ -31,13 +31,15 @@ import org.athletica.crm.api.schemas.clients.field
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.customfields.CustomFieldDefinition
 import org.athletica.crm.core.customfields.displayValue
 import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
-import org.athletica.crm.domain.clientbalance.ClientBalance
-import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
@@ -53,9 +55,11 @@ import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.domain.enrollments.addToGroups
+import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.clients.ClientListQuery
 import org.athletica.crm.read.clients.ClientSortColumn
+import org.athletica.crm.read.clients.ClientSortCriterion
 import org.athletica.crm.storage.Database
 
 /**
@@ -66,7 +70,6 @@ context(db: Database)
 fun RouteWithContext.clientsRoutes(
     clients: Clients,
     views: ReadViews,
-    balances: ClientBalances,
     employees: Employees,
     enrollments: Enrollments,
     definitions: CustomFieldDefinitions,
@@ -105,7 +108,7 @@ fun RouteWithContext.clientsRoutes(
     get<ClientDetailRequest, ClientDetailResponse>("/clients/detail") { request ->
         db.transaction {
             val client = clients.byId(request.id)
-            client.detailResponse(balances.currentOf(client), contacts.byClient(client.id))
+            client.detailResponse(views.clientBalance.byClient(client.id), contacts.byClient(client.id))
         }
     }
 
@@ -123,7 +126,7 @@ fun RouteWithContext.clientsRoutes(
                         request.customFields,
                     )
             contacts.replace(client, request.contacts.toDomain(client.id))
-            val balance = balances.currentOf(client)
+            val balance = views.clientBalance.byClient(client.id)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
@@ -143,7 +146,7 @@ fun RouteWithContext.clientsRoutes(
                     )
                     .apply { save() }
             contacts.replace(client, request.contacts.toDomain(client.id))
-            val balance = balances.currentOf(client)
+            val balance = views.clientBalance.byClient(client.id)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
@@ -163,14 +166,6 @@ fun RouteWithContext.clientsRoutes(
     post<RemoveClientFromGroupRequest, Unit>("/clients/remove-from-group") { request ->
         db.transaction {
             enrollments.remove(request.groupId, request.clientIds)
-        }
-    }
-
-    post<AdjustBalanceRequest, ClientDetailResponse>("/clients/balance/adjust") { request ->
-        db.transaction {
-            val client = clients.activeById(request.clientId)
-            val balance = balances.adjust(client, request.amount, request.note)
-            client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
 
@@ -203,15 +198,9 @@ fun RouteWithContext.clientsRoutes(
             request.clientIds.forEach { id -> clients.restore(id) }
         }
     }
-
-    get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
-        db.transaction {
-            views.clientBalanceHistory.byClient(request.id)
-        }
-    }
 }
 
-fun Client.detailResponse(balance: ClientBalance, contacts: List<ClientContact>) =
+fun Client.detailResponse(balance: Money, contacts: List<ClientContact>) =
     ClientDetailResponse(
         id = id,
         name = name,
@@ -219,7 +208,7 @@ fun Client.detailResponse(balance: ClientBalance, contacts: List<ClientContact>)
         birthday = birthday,
         gender = gender,
         groups = groups.map { ClientGroup(it.id, it.name) },
-        balance = balance.totalAmount,
+        balance = balance,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
         leadSourceId = leadSourceId,
         customFields = customFields,
@@ -249,9 +238,20 @@ private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientCo
 /** Максимальный размер страницы списка клиентов: защищает от чрезмерных запросов. */
 private const val MAX_CLIENT_PAGE_SIZE = 100
 
-/** Преобразует запрос списка из API в доменные параметры выборки с нормализацией пагинации. */
-private fun ClientListRequest.toQuery(): ClientListQuery =
-    ClientListQuery(
+/**
+ * Преобразует запрос списка из API в параметры выборки: нормализует пагинацию и сортировку
+ * (непустой `sort` заменяет одиночные `sortField`/`sortDirection`). Поднимает `INVALID_CLIENT_SORT`,
+ * если поле сортировки повторяется или `NEXT_BIRTHDAY` задан без фильтра по дню рождения.
+ */
+context(ctx: RequestContext, raise: Raise<AppError>)
+internal fun ClientListRequest.toQuery(): ClientListQuery {
+    val criteria = sort?.takeIf { it.isNotEmpty() } ?: listOf(ClientSort(sortField, sortDirection))
+    if (criteria.map { it.field }.distinct().size != criteria.size ||
+        (birthday == null && criteria.any { it.field == ClientSortField.NEXT_BIRTHDAY })
+    ) {
+        raise(CommonDomainError("INVALID_CLIENT_SORT", Messages.InvalidClientSort.localize()))
+    }
+    return ClientListQuery(
         archived = archived,
         search = name?.takeIf { it.isNotBlank() },
         gender = gender,
@@ -259,16 +259,23 @@ private fun ClientListRequest.toQuery(): ClientListQuery =
         noGroup = noGroup,
         groupId = groupId,
         birthday = birthday,
-        sortColumn =
-            when (sortField) {
-                ClientSortField.NAME -> ClientSortColumn.NAME
-                ClientSortField.BALANCE -> ClientSortColumn.BALANCE
-                ClientSortField.BIRTHDAY -> ClientSortColumn.BIRTHDAY
+        sort =
+            criteria.map { criterion ->
+                ClientSortCriterion(
+                    column =
+                        when (criterion.field) {
+                            ClientSortField.NAME -> ClientSortColumn.NAME
+                            ClientSortField.BALANCE -> ClientSortColumn.BALANCE
+                            ClientSortField.BIRTHDAY -> ClientSortColumn.BIRTHDAY
+                            ClientSortField.NEXT_BIRTHDAY -> ClientSortColumn.NEXT_BIRTHDAY
+                        },
+                    ascending = criterion.direction == SortDirectionSchema.Asc,
+                )
             },
-        ascending = sortDirection == SortDirectionSchema.Asc,
         limit = limit.coerceIn(1, MAX_CLIENT_PAGE_SIZE),
         offset = offset.coerceAtLeast(0),
     )
+}
 
 /**
  * Генерирует CSV контент для экспорта списка клиентов.

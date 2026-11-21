@@ -5,10 +5,12 @@ import org.athletica.crm.api.schemas.AuthMeResponse
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.api.schemas.OrgInfo
 import org.athletica.crm.api.schemas.UpdateMeRequest
+import org.athletica.crm.api.schemas.auth.ResendEmailConfirmationResponse
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.org.Organizations
 import org.athletica.crm.domain.orgbalance.OrgBalances
 import org.athletica.crm.read.auth.profile
@@ -21,7 +23,12 @@ import org.athletica.crm.storage.Database
  * POST /auth/me/change-password — меняет пароль (требует старый пароль).
  */
 context(db: Database)
-fun RouteWithContext.profileRoutes(auth: Auth, organizations: Organizations, orgBalances: OrgBalances) {
+fun RouteWithContext.profileRoutes(
+    auth: Auth,
+    organizations: Organizations,
+    orgBalances: OrgBalances,
+    emailVerifications: EmailVerifications,
+) {
     get<Unit, AuthMeResponse>("/auth/me") {
         val user = profile()
         val info =
@@ -30,7 +37,7 @@ fun RouteWithContext.profileRoutes(auth: Auth, organizations: Organizations, org
                     { orgBalances.current() },
                     { organizations.current() },
                 ) { balance, org ->
-                    OrgInfo(org.name, balance.totalAmount)
+                    OrgInfo(org.name, balance.totalAmount, org.timezone)
                 }
             }
 
@@ -43,6 +50,7 @@ fun RouteWithContext.profileRoutes(auth: Auth, organizations: Organizations, org
             orgInfo = info,
             currentBranch = BranchDetailResponse(user.currentBranchId, user.currentBranchName),
             permissions = grantedPermissions(),
+            emailVerificationPending = db.transaction { emailVerifications.pending(user.id) },
         )
     }
 
@@ -56,6 +64,10 @@ fun RouteWithContext.profileRoutes(auth: Auth, organizations: Organizations, org
         db.transaction {
             auth.changePassword(request)
         }
+    }
+
+    post<Unit, ResendEmailConfirmationResponse>("/auth/me/resend-email-confirmation") {
+        db.transaction { emailVerifications.resend() }
     }
 }
 

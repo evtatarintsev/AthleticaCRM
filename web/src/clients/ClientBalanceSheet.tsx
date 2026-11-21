@@ -1,79 +1,20 @@
-import { useForm } from "@tanstack/react-form";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import type { ApiClient } from "@/api/client";
-import type {
-  BalanceJournalEntry,
-  BranchId,
-  ClientDetailResponse,
-  Money,
-} from "@/api/generated/contracts";
+import type { BranchId, ClientDetailResponse, SaleId } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ClientPaymentSheet, type ClientPaymentMode } from "@/finance/ClientPaymentSheet";
+import { SaleSheet } from "@/finance/SaleSheet";
 import { FormAlert } from "@/forms/FormAlert";
-import { RadioGroupField, TextField } from "@/forms/fields";
-import { useI18n, type I18n, type PlainMessageKey } from "@/i18n/context";
-import { parseMoney } from "@/lib/money";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
-import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
-import { useEditSheet } from "@/ui/editSheetContext";
+import { hasPermission, useSession } from "@/query/session";
+import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 
-/** Направление корректировки баланса. */
-type Direction = "credit" | "debit";
-
-/** Значения формы корректировки баланса. */
-interface AdjustBalanceFormValues {
-  readonly direction: Direction;
-  readonly amount: string;
-  readonly note: string;
-}
-
-/** Схема формы корректировки баланса с сообщениями на языке [t] в валюте [currency]. */
-function adjustBalanceSchema(t: I18n["t"], currency: Money["currency"]) {
-  return z.object({
-    direction: z.enum(["credit", "debit"]),
-    amount: z
-      .string()
-      .refine((v) => (parseMoney(v, currency)?.minorUnits ?? 0) > 0, t("error.invalidAmount")),
-    note: z.string().trim().min(1, t("error.required")),
-  });
-}
-
-/** Ключ подписи типа операции [operationType] журнала баланса клиента. */
-function operationLabelKey(operationType: string): PlainMessageKey {
-  switch (operationType) {
-    case "sale_overpayment":
-      return "clientCard.operation.sale_overpayment";
-    case "sale_payment":
-      return "clientCard.operation.sale_payment";
-    case "refund":
-      return "clientCard.operation.refund";
-    case "admin_credit":
-      return "clientCard.operation.admin_credit";
-    case "admin_debit":
-      return "clientCard.operation.admin_debit";
-    default:
-      return "clientCard.operation.other";
-  }
-}
-
-/**
- * Панель «Баланс» клиента [client], открытая при [open]: текущая сумма, корректировка
- * во вложенной панели и полный журнал операций по счёту от новых к старым. После корректировки
- * передаёт обновлённого клиента в [onChanged]. Право `CAN_VIEW_CLIENT_BALANCE` проверяет
- * вызывающий компонент.
- */
-export function ClientBalanceSheet({
-  api,
-  branchId,
-  client,
-  open,
-  onOpenChange,
-  onChanged,
-}: {
+/** Баланс, аванс, долги и полная история клиента; команды открываются вложенными панелями. */
+export function ClientBalanceSheet(props: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly client: ClientDetailResponse;
@@ -83,216 +24,177 @@ export function ClientBalanceSheet({
 }) {
   const { t } = useI18n();
   return (
-    <EditSheet open={open} onOpenChange={onOpenChange} title={t("clientCard.balance")} size="lg">
-      <ClientBalancePanel api={api} branchId={branchId} client={client} onChanged={onChanged} />
+    <EditSheet
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title={t("clientCard.balance")}
+      size="lg"
+    >
+      <ClientBalancePanel {...props} />
     </EditSheet>
   );
 }
 
-/** Содержимое панели «Баланс»: сводка, журнал и вложенная панель корректировки. */
 function ClientBalancePanel({
   api,
   branchId,
   client,
   onChanged,
-}: {
-  readonly api: ApiClient;
-  readonly branchId: BranchId;
-  readonly client: ClientDetailResponse;
-  readonly onChanged: (client: ClientDetailResponse) => void;
-}) {
+}: Parameters<typeof ClientBalanceSheet>[0]) {
   const { t, format } = useI18n();
-  const queryClient = useQueryClient();
-  const [adjustOpen, setAdjustOpen] = useState(false);
-  const historyQuery = apiQuery(api, branchId, "clients/balance/history", { id: client.id });
-  const history = useQuery(historyQuery);
-  const entries = history.data?.entries ?? [];
-
+  const session = useSession(api);
+  const history = useQuery(
+    apiQuery(api, branchId, "finance/client-ledger", { clientId: client.id }),
+  );
+  const [mode, setMode] = useState<ClientPaymentMode | null>(null);
+  const [saleId, setSaleId] = useState<SaleId | null>(null);
+  const zero = { ...client.balance, minorUnits: 0 };
+  const summary = history.data ?? {
+    balance: client.balance,
+    advance: zero,
+    debt: zero,
+    entries: [],
+    salesWithDebt: [],
+  };
+  const active = client.state === "ACTIVE";
   return (
     <EditSheetBody>
-      <div className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4">
+      <div className="space-y-3 rounded-lg border p-4">
         <p
           className={cn(
             "text-2xl font-semibold tabular-nums",
-            client.balance.minorUnits < 0 && "text-destructive",
+            summary.balance.minorUnits < 0 && "text-destructive",
           )}
         >
-          {format.money(client.balance)}
+          {format.money(summary.balance)}
         </p>
-        {client.state === "ACTIVE" && (
-          <Button
-            onClick={() => {
-              setAdjustOpen(true);
-            }}
-          >
-            {t("clients.detail.balanceAdjust")}
-          </Button>
+        {history.data !== undefined && (
+          <p className="text-sm">
+            {t("finance.advance")}: {format.money(summary.advance)} · {t("finance.debt")}:{" "}
+            {format.money(summary.debt)}
+          </p>
         )}
+        <div className="flex flex-wrap gap-2">
+          {active &&
+            hasPermission(session, "CAN_ACCEPT_PAYMENTS") &&
+            history.data !== undefined && (
+              <Button
+                type="button"
+                onClick={() => {
+                  setMode("payment");
+                }}
+              >
+                {t("finance.payment")}
+              </Button>
+            )}
+          {active &&
+            hasPermission(session, "CAN_MANAGE_FINANCE") &&
+            summary.advance.minorUnits > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setMode("payout");
+                }}
+              >
+                {t("finance.payout")}
+              </Button>
+            )}
+          {active && hasPermission(session, "CAN_MANAGE_FINANCE") && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setMode("adjust");
+              }}
+            >
+              {t("finance.adjust")}
+            </Button>
+          )}
+        </div>
       </div>
-      <h2 className="pt-2 text-base font-semibold">{t("clientCard.balanceHistory")}</h2>
+      <h2 className="font-semibold">{t("clientCard.balanceHistory")}</h2>
+      {history.isPending && <Skeleton className="h-24" />}
       {history.isError && <FormAlert message={t("clientCard.balanceHistoryLoadError")} />}
-      {history.isPending && <Skeleton className="h-24 w-full" />}
-      {history.isSuccess && entries.length === 0 && (
+      {history.isSuccess && summary.entries.length === 0 && (
         <p className="py-8 text-center text-muted-foreground">
           {t("clients.detail.balanceHistoryEmpty")}
         </p>
       )}
-      {entries.length > 0 && (
-        <ul className="divide-y rounded-lg border bg-card">
-          {entries.map((entry) => (
-            <BalanceHistoryRow key={entry.id} entry={entry} />
-          ))}
-        </ul>
-      )}
-      <EditSheet
-        open={adjustOpen}
-        onOpenChange={setAdjustOpen}
-        title={t("clients.detail.balanceAdjustTitle")}
-      >
-        <AdjustBalanceForm
+      <ul className="divide-y rounded-lg border">
+        {summary.entries.map((entry) => (
+          <li key={entry.id} className="flex items-start justify-between gap-3 p-3">
+            <div className="min-w-0 space-y-1">
+              {entry.saleId === null ? (
+                <p className="font-medium">{t(`finance.kind.${entry.kind}`)}</p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0"
+                  onClick={() => {
+                    setSaleId(entry.saleId);
+                  }}
+                >
+                  {t(`finance.kind.${entry.kind}`)}
+                </Button>
+              )}
+              {entry.reversed && <p className="text-sm">{t("finance.cancelled")}</p>}
+              {entry.comment !== null && <p className="break-words text-sm">{entry.comment}</p>}
+              <p className="text-xs text-muted-foreground">
+                {format.date(entry.occurredOn)} · {format.dateTime(entry.createdAt)} ·{" "}
+                {entry.performedBy?.name}
+              </p>
+              {entry.fromAdvance.minorUnits > 0 && (
+                <p className="text-xs">
+                  {t("finance.fromAdvance")}: {format.money(entry.fromAdvance)}
+                </p>
+              )}
+            </div>
+            <div className="shrink-0 text-right">
+              <p
+                className={cn(
+                  "tabular-nums",
+                  entry.amount.minorUnits < 0 && "text-destructive",
+                  entry.amount.minorUnits > 0 && "text-emerald-700",
+                )}
+              >
+                {entry.amount.minorUnits > 0 ? "+" : ""}
+                {format.money(entry.amount)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("clientCard.balanceAfter", { amount: format.money(entry.balanceAfter) })}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {mode !== null && (
+        <ClientPaymentSheet
           api={api}
-          client={client}
-          onSuccess={(updated) => {
-            onChanged(updated);
-            void queryClient.invalidateQueries({ queryKey: historyQuery.queryKey });
+          branchId={branchId}
+          clientId={client.id}
+          summary={summary}
+          mode={mode}
+          open
+          onOpenChange={(open) => {
+            if (!open) setMode(null);
+          }}
+          onSaved={async () => {
+            const updated = await api.call("clients/detail", { id: client.id });
+            if (updated.ok) onChanged(updated.value);
           }}
         />
-      </EditSheet>
-    </EditSheetBody>
-  );
-}
-
-/** Строка журнала баланса клиента: операция, комментарий, когда и кем, сумма и остаток. */
-function BalanceHistoryRow({ entry }: { readonly entry: BalanceJournalEntry }) {
-  const { t, format } = useI18n();
-  return (
-    <li className="flex items-start justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <p className="font-medium">{t(operationLabelKey(entry.operationType))}</p>
-        {entry.note !== null && entry.note !== "" && (
-          <p className="text-sm break-words text-muted-foreground">{entry.note}</p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          <time dateTime={entry.createdAt}>{format.dateTime(entry.createdAt)}</time>
-          {entry.performedBy !== null && ` · ${entry.performedBy.name}`}
-        </p>
-      </div>
-      <div className="shrink-0 text-right">
-        <p
-          className={cn(
-            "font-medium tabular-nums",
-            entry.amount.minorUnits < 0
-              ? "text-destructive"
-              : "text-emerald-700 dark:text-emerald-400",
-          )}
-        >
-          {entry.amount.minorUnits > 0 ? "+" : ""}
-          {format.money(entry.amount)}
-        </p>
-        <p className="text-xs text-muted-foreground tabular-nums">
-          {t("clientCard.balanceAfter", { amount: format.money(entry.balanceAfter) })}
-        </p>
-      </div>
-    </li>
-  );
-}
-
-/**
- * Форма административной корректировки баланса клиента [client]: направление, сумма
- * и комментарий. После успеха передаёт обновлённого клиента в [onSuccess] и закрывает свою панель.
- */
-function AdjustBalanceForm({
-  api,
-  client,
-  onSuccess,
-}: {
-  readonly api: ApiClient;
-  readonly client: ClientDetailResponse;
-  readonly onSuccess: (client: ClientDetailResponse) => void;
-}) {
-  const { t } = useI18n();
-  const { close } = useEditSheet();
-  const currency = client.balance.currency;
-  const schema = useMemo(() => adjustBalanceSchema(t, currency), [t, currency]);
-  const [failure, setFailure] = useState<string | null>(null);
-
-  const defaultValues: AdjustBalanceFormValues = { direction: "credit", amount: "", note: "" };
-  const form = useForm({
-    defaultValues,
-    validators: { onSubmit: schema },
-    onSubmit: async ({ value }) => {
-      const parsed = parseMoney(value.amount, currency);
-      if (parsed === null) {
-        return;
-      }
-      const amount: Money = {
-        currency,
-        minorUnits: value.direction === "debit" ? -parsed.minorUnits : parsed.minorUnits,
-      };
-      setFailure(null);
-      const result = await api.call("clients/balance/adjust", {
-        clientId: client.id,
-        amount,
-        note: value.note.trim(),
-      });
-      if (!result.ok) {
-        setFailure(apiErrorMessage(t, result.error));
-        return;
-      }
-      onSuccess(result.value);
-      close();
-    },
-  });
-
-  return (
-    <form.Subscribe
-      selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
-    >
-      {({ dirty, submitting }) => (
-        <EditSheetForm
-          dirty={dirty}
-          submitting={submitting}
-          onSubmit={() => {
-            void form.handleSubmit();
-          }}
-        >
-          {failure !== null && <FormAlert message={failure} />}
-          <form.Field name="direction">
-            {(field) => (
-              <RadioGroupField
-                field={field}
-                label={t("clients.detail.balanceDirection")}
-                options={[
-                  { value: "credit", label: t("clients.detail.balanceCredit") },
-                  { value: "debit", label: t("clients.detail.balanceDebit") },
-                ]}
-              />
-            )}
-          </form.Field>
-          <form.Field name="amount">
-            {(field) => (
-              <TextField
-                field={field}
-                label={t("clients.detail.balanceAmount")}
-                inputMode="decimal"
-                autoComplete="off"
-                required
-                autoFocus
-              />
-            )}
-          </form.Field>
-          <form.Field name="note">
-            {(field) => (
-              <TextField
-                field={field}
-                label={t("clients.detail.balanceNote")}
-                autoComplete="off"
-                required
-              />
-            )}
-          </form.Field>
-        </EditSheetForm>
       )}
-    </form.Subscribe>
+      <SaleSheet
+        api={api}
+        branchId={branchId}
+        saleId={saleId}
+        open={saleId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSaleId(null);
+        }}
+      />
+    </EditSheetBody>
   );
 }

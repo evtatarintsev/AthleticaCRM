@@ -4,8 +4,10 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.domain.auth.IssuedSession
 import java.util.Date
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -34,11 +36,8 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .withAudience(AUDIENCE)
             .build()
 
-    /**
-     * Создаёт подписанный JWT access токен для пользователя с идентификатором [userId],
-     * организацией [orgId], филиалом [branchId], идентификатором сотрудника [employeeId] и именем [username].
-     */
-    fun makeAccessToken(user: AuthenticatedUser): String =
+    /** Подписанный JWT access токен пользователя [user] в сессии [sessionId]. */
+    fun makeAccessToken(user: AuthenticatedUser, sessionId: AuthSessionId): String =
         JWT
             .create()
             .withIssuer(ISSUER)
@@ -48,20 +47,24 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
             .withClaim(CLAIM_BRANCH_ID, user.branchId.toString())
             .withClaim(CLAIM_EMPLOYEE_ID, user.employeeId.toString())
             .withClaim(CLAIM_USERNAME, user.username)
+            .withClaim(CLAIM_SESSION_ID, sessionId.toString())
             .withClaim(CLAIM_TYPE, TYPE_ACCESS)
             .withExpiresAt(Date(System.currentTimeMillis() + accessTokenTtl.inWholeMilliseconds))
             .sign(algorithm)
 
     /**
-     * Создаёт подписанный JWT refresh токен для пользователя с идентификатором [userId] в филиале [branchId].
+     * Подписанный JWT refresh токен пользователя [userId] в филиале [branchId];
+     * принадлежит сессии [session] и несёт её действующий `jti`.
      */
-    fun makeRefreshToken(userId: UserId, branchId: BranchId): String =
+    fun makeRefreshToken(userId: UserId, branchId: BranchId, session: IssuedSession): String =
         JWT
             .create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
             .withClaim(CLAIM_USER_ID, userId.toString())
             .withClaim(CLAIM_BRANCH_ID, branchId.toString())
+            .withClaim(CLAIM_SESSION_ID, session.id.toString())
+            .withJWTId(session.refreshJti.toString())
             .withClaim(CLAIM_TYPE, TYPE_REFRESH)
             .withExpiresAt(Date(System.currentTimeMillis() + refreshTokenTtl.inWholeMilliseconds))
             .sign(algorithm)
@@ -87,6 +90,9 @@ class JwtConfig(secret: String, accessTokenTtlMinutes: Long, refreshTokenTtlDays
 
         /** Claim с именем пользователя. */
         const val CLAIM_USERNAME = "username"
+
+        /** Claim с идентификатором сессии входа. */
+        const val CLAIM_SESSION_ID = "sid"
 
         /** Claim с типом токена. */
         const val CLAIM_TYPE = "type"

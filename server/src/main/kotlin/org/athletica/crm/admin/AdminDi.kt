@@ -5,6 +5,7 @@ import org.athletica.crm.createDatabase
 import org.athletica.crm.domain.events.FailedDomainEvents
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
+import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 
 /**
@@ -27,6 +28,9 @@ class AdminDi(
 
     /** Поиск организаций без привязки к организации запроса. */
     val orgSearch: OrgSearch by lazy { OrgSearch(database) }
+
+    /** Пароли пользователей всех организаций. */
+    val userPasswords: UserPasswords by lazy { UserPasswords(database, PasswordHasher()) }
 
     companion object {
         /**

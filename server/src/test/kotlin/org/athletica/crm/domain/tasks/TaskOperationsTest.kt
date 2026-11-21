@@ -14,6 +14,7 @@ import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -118,7 +119,7 @@ class TaskOperationsTest {
             override val name = "Stub"
             override val avatarId: UploadId? = null
             override val isOwner = false
-            override val isActive = true
+            override val blockedAt: Instant? = null
             override val joinedAt: Instant = Clock.System.now()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null
@@ -132,6 +133,15 @@ class TaskOperationsTest {
 
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun invite(email: EmailAddress, password: String) = Unit
+
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun block() = Unit
+
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun unblock() = Unit
+
+            context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+            override suspend fun terminateSession(sessionId: AuthSessionId) = Unit
 
             context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
             override suspend fun withNew(

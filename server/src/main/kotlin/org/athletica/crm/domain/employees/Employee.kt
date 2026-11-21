@@ -4,6 +4,7 @@ import arrow.core.raise.Raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.UploadId
@@ -26,7 +27,12 @@ interface Employee : UserActor {
     val name: String
     val avatarId: UploadId?
     val isOwner: Boolean
-    val isActive: Boolean
+
+    /** Момент блокировки сотрудника; `null` — не заблокирован. */
+    val blockedAt: Instant?
+
+    /** Может ли сотрудник работать в системе: логин выдан и сотрудник не заблокирован. */
+    val isActive: Boolean get() = userId != null && blockedAt == null
     val joinedAt: Instant
     val phoneNo: String?
     val email: EmailAddress?
@@ -35,11 +41,33 @@ interface Employee : UserActor {
     /** Доступ к филиалам организации: ко всем (включая будущие) либо к явному набору. */
     val availableBranches: EmployeeBranchAccess
 
+    /** Есть ли доступ к филиалу организации, независимо от способа его назначения. */
+    fun hasAccessTo(branchId: BranchId): Boolean = availableBranches.contains(branchId)
+
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
+    /** Выдаёт сотруднику логин [email] с паролем [password]; повторная выдача отклоняется. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun invite(email: EmailAddress, password: String)
+
+    /**
+     * Блокирует сотрудника и завершает все его сессии; владельца и самого себя заблокировать нельзя,
+     * повторная блокировка ничего не меняет.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun block()
+
+    /**
+     * Завершает сессию входа [sessionId] сотрудника. Правила те же, что у [block]: сессии владельца
+     * и свои через сотрудника не завершаются; чужая или несуществующая сессия — ошибка.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun terminateSession(sessionId: AuthSessionId)
+
+    /** Снимает блокировку с сотрудника. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun unblock()
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNew(

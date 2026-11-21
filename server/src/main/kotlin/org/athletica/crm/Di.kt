@@ -25,7 +25,9 @@ import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.AuditAuth
 import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.AuthSessions
 import org.athletica.crm.domain.auth.DbAuth
+import org.athletica.crm.domain.auth.DbAuthSessions
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.auth.EmailVerificationConfig
 import org.athletica.crm.domain.auth.EmailVerifications
@@ -180,15 +182,16 @@ data class Di(
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
     val roles: Roles = DbRoles(),
     val emailVerificationConfig: EmailVerificationConfig = EmailVerificationConfig("http://localhost:5173"),
+    val authSessions: AuthSessions = DbAuthSessions(),
     val employees: Employees =
         AuditEmployees(
-            EmailEmployees(DbEmployees(DbUsers(passwordHasher), roles), orgEmails),
+            EmailEmployees(DbEmployees(DbUsers(passwordHasher), roles, authSessions), orgEmails),
             audit,
         ),
 ) {
     val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
-    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications), audit)
+    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)

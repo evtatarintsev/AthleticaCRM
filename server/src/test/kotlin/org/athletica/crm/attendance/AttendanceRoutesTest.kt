@@ -40,6 +40,7 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.sessions.SessionStatus
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
@@ -89,7 +90,7 @@ class AttendanceRoutesTest {
                 }
             }
         user = assertIs<Either.Right<AuthenticatedUser>>(result).value
-        token = testJwtConfig.makeAccessToken(user)
+        token = testJwtConfig.sessionAccessToken(user)
     }
 
     /** Группа «Йога» с занятием вчера и постоянными участниками [names]; возвращает занятие и клиентов. */

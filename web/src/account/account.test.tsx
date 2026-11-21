@@ -400,3 +400,121 @@ describe("уведомления", () => {
     });
   });
 });
+
+/** Текущий сеанс — ноутбук. */
+const laptopSession = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000601",
+  browser: "Chrome 142",
+  os: "macOS",
+  platform: "MACOS",
+  ip: "10.0.0.1",
+  createdAt: "2026-11-20T10:00:00Z",
+  lastSeenAt: "2026-11-21T10:00:00Z",
+  current: true,
+};
+
+/** Другой сеанс — телефон. */
+const phoneSession = {
+  ...laptopSession,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000602",
+  os: "Android",
+  platform: "ANDROID",
+  ip: "10.0.0.2",
+  current: false,
+};
+
+describe("активные сеансы", () => {
+  /** Сервер с сеансами [initial]; [failTerminate] — завершение отклоняется. */
+  function sessionsServer(initial: readonly unknown[], failTerminate = false) {
+    let items = initial;
+    return server({
+      "auth/sessions": () => json({ items }),
+      "auth/sessions/terminate": () => {
+        if (failTerminate) {
+          return json(
+            { code: "AUTH_SESSION_NOT_FOUND", message: "Сеанс не найден", fields: null },
+            400,
+          );
+        }
+        items = [laptopSession];
+        return empty();
+      },
+      "auth/sessions/terminate-others": () => {
+        items = [laptopSession];
+        return empty();
+      },
+    });
+  }
+
+  /** Открывает из профиля панель сеансов и возвращает её. */
+  async function openSessions(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: ru["sessions.title"] }));
+    return within(await screen.findByRole("dialog", { name: ru["sessions.title"] }));
+  }
+
+  it("показывает это устройство и завершает другой сеанс", async () => {
+    const api = sessionsServer([laptopSession, phoneSession]);
+    openApp("/settings/edit-profile", api.fetch);
+    const user = userEvent.setup();
+
+    const panel = await openSessions(user);
+    expect(await panel.findByText(ru["sessions.thisDevice"])).toBeVisible();
+    expect(panel.getByText("Chrome 142 · macOS")).toBeVisible();
+    await user.click(panel.getByRole("button", { name: ru["sessions.terminate"] }));
+
+    await waitFor(() => {
+      expect(panel.queryByText("Chrome 142 · Android")).toBeNull();
+    });
+    expect(api.to("auth/sessions/terminate").map((r) => r.body)).toEqual([
+      { sessionId: phoneSession.id },
+    ]);
+  });
+
+  it("с единственным сеансом нет «Завершить все другие»", async () => {
+    openApp("/settings/edit-profile", sessionsServer([laptopSession]).fetch);
+    const user = userEvent.setup();
+
+    const panel = await openSessions(user);
+    expect(await panel.findByText("Chrome 142 · macOS")).toBeVisible();
+    expect(panel.queryByRole("button", { name: ru["sessions.terminateOthers"] })).toBeNull();
+  });
+
+  it("«Завершить все другие» требует подтверждения", async () => {
+    const api = sessionsServer([laptopSession, phoneSession]);
+    openApp("/settings/edit-profile", api.fetch);
+    const user = userEvent.setup();
+
+    const panel = await openSessions(user);
+    await user.click(await panel.findByRole("button", { name: ru["sessions.terminateOthers"] }));
+    let confirm = await screen.findByRole("dialog", {
+      name: ru["sessions.terminateOthersConfirmTitle"],
+    });
+    await user.click(within(confirm).getByRole("button", { name: ru["action.cancel"] }));
+    expect(api.to("auth/sessions/terminate-others")).toHaveLength(0);
+    expect(panel.getByText("Chrome 142 · Android")).toBeVisible();
+
+    await user.click(panel.getByRole("button", { name: ru["sessions.terminateOthers"] }));
+    confirm = await screen.findByRole("dialog", {
+      name: ru["sessions.terminateOthersConfirmTitle"],
+    });
+    await user.click(
+      within(confirm).getByRole("button", { name: ru["sessions.terminateOthersConfirm"] }),
+    );
+
+    await waitFor(() => {
+      expect(panel.queryByText("Chrome 142 · Android")).toBeNull();
+    });
+    expect(api.to("auth/sessions/terminate-others")).toHaveLength(1);
+  });
+
+  it("ошибка завершения показывается в панели, список не меняется", async () => {
+    openApp("/settings/edit-profile", sessionsServer([laptopSession, phoneSession], true).fetch);
+    const user = userEvent.setup();
+
+    const panel = await openSessions(user);
+    await user.click(await panel.findByRole("button", { name: ru["sessions.terminate"] }));
+
+    expect(await panel.findByText("Сеанс не найден")).toBeVisible();
+    expect(panel.getByText("Chrome 142 · Android")).toBeVisible();
+  });
+});

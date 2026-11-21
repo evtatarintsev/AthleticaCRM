@@ -2,9 +2,11 @@ package org.athletica.crm.domain.employees
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
+import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -13,6 +15,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.permissions.UserPermission
+import org.athletica.crm.domain.auth.AuthSessions
 import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.i18n.Messages
@@ -34,6 +37,7 @@ data class DbEmployee(
     private val users: Users,
     private val roleCatalog: Roles,
     private val orgId: OrgId,
+    private val sessions: AuthSessions,
 ) : Employee {
     override val roles: List<EmployeeRole> get() = permissionSettings.roles
 
@@ -135,9 +139,22 @@ data class DbEmployee(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun block() {
+        ensureBlockable()
+        updateBlockedAt("COALESCE(blocked_at, now())")
+        userId?.let { sessions.deleteOthers(it, keep = null) }
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun terminateSession(sessionId: AuthSessionId) {
+        ensureBlockable()
+        sessions.delete(sessionId, userId ?: raise(CommonDomainError("AUTH_SESSION_NOT_FOUND", Messages.AuthSessionNotFound.localize())))
+    }
+
+    /** Проверяет, что сотрудник не владелец и не автор запроса: только такого можно блокировать и лишать сессий. */
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
+    private fun ensureBlockable() {
         ensure(!isOwner) { CommonDomainError("EMPLOYEE_OWNER_CANNOT_BE_BLOCKED", Messages.EmployeeOwnerCannotBeBlocked.localize()) }
         ensure(id != ctx.employee.id) { CommonDomainError("EMPLOYEE_CANNOT_BLOCK_SELF", Messages.EmployeeCannotBlockSelf.localize()) }
-        updateBlockedAt("COALESCE(blocked_at, now())")
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

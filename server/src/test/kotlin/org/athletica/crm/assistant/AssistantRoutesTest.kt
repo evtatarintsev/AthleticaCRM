@@ -29,6 +29,7 @@ import org.athletica.crm.domain.clients.AuditClients
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.testDi
@@ -176,7 +177,7 @@ class AssistantRoutesTest {
 
     /** Токен сотрудника [employeeId] организации владельца из фикстуры. */
     private fun token(employeeId: EmployeeId = owner.employee.id): String =
-        testJwtConfig.makeAccessToken(
+        testJwtConfig.sessionAccessToken(
             object : AuthenticatedUser {
                 override val id = owner.userId
                 override val orgId = owner.orgId

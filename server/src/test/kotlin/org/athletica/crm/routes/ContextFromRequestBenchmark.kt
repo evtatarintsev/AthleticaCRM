@@ -21,6 +21,7 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.EmployeeRole
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
@@ -77,7 +78,7 @@ class ContextFromRequestBenchmark {
                 }
             }
         val token =
-            testJwtConfig.makeAccessToken(
+            testJwtConfig.sessionAccessToken(
                 object : AuthenticatedUser {
                     override val id = owner.userId
                     override val orgId = owner.orgId
@@ -94,7 +95,7 @@ class ContextFromRequestBenchmark {
                     authenticate("auth-jwt") {
                         get("/bench/context") {
                             val started = TimeSource.Monotonic.markNow()
-                            call.contextFromRequest(di.database, di.employees, di.organizations, di.employeePresence)
+                            call.contextFromRequest(di.database, di.employees, di.organizations, di.employeePresence, di.authSessions)
                             samples += started.elapsedNow()
                             call.respond(HttpStatusCode.NoContent)
                         }

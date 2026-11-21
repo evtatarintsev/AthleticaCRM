@@ -38,6 +38,7 @@ import org.athletica.crm.domain.casharticles.seedCashArticles
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.employeeContext
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
@@ -78,7 +79,7 @@ class FinanceRoutesTest {
         }
 
     private fun token() =
-        testJwtConfig.makeAccessToken(
+        testJwtConfig.sessionAccessToken(
             object : AuthenticatedUser {
                 override val id = fixture.ctx.userId
                 override val orgId = fixture.orgId

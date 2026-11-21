@@ -1,10 +1,12 @@
 package org.athletica.crm.routes
 
 import arrow.core.raise.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import arrow.core.raise.either
 import com.auth0.jwt.interfaces.DecodedJWT
 import io.ktor.http.Cookie
+import io.ktor.http.HttpHeaders
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.header
 import io.ktor.server.request.receive
@@ -19,26 +21,39 @@ import org.athletica.crm.api.schemas.auth.ConfirmEmailRequest
 import org.athletica.crm.api.schemas.auth.ConfirmEmailResponse
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
+import org.athletica.crm.api.schemas.auth.SessionListResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.auth.SwitchBranchRequest
+import org.athletica.crm.api.schemas.auth.TerminateSessionRequest
 import org.athletica.crm.api.schemas.branches.BranchDetailResponse
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.entityids.toAuthSessionId
 import org.athletica.crm.core.entityids.toBranchId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.errors.SessionRevoked
 import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.AuthSessions
 import org.athletica.crm.domain.auth.EmailVerifications
+import org.athletica.crm.domain.auth.IssuedSession
 import org.athletica.crm.domain.branch.Branches
+import org.athletica.crm.i18n.Messages
+import org.athletica.crm.read.ReadViews
+import org.athletica.crm.read.auth.SessionListQuery
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
+import org.athletica.crm.storage.Transaction
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
 context(db: Database, jwtConfig: JwtConfig)
-fun Route.authRoutes(auth: Auth, emailVerifications: EmailVerifications) {
+fun Route.authRoutes(auth: Auth, emailVerifications: EmailVerifications, sessions: AuthSessions) {
     post("/auth/confirm-email") {
         either {
             val request = call.body<ConfirmEmailRequest>()
@@ -63,7 +78,8 @@ fun Route.authRoutes(auth: Auth, emailVerifications: EmailVerifications) {
         call.eitherToAuthResponse {
             val request = call.body<SignUpRequest>()
             db.transaction {
-                auth.signup(request, call.langFromRequest(), call.clientIp())
+                val user = auth.signup(request, call.langFromRequest(), call.clientIp())
+                user to call.newSession(sessions, user)
             }
         }
     }.contract(postContract<SignUpRequest, LoginResponse>())
@@ -72,20 +88,22 @@ fun Route.authRoutes(auth: Auth, emailVerifications: EmailVerifications) {
         call.eitherToAuthResponse {
             val request = call.receive<LoginRequest>()
             db.transaction {
-                auth.login(request.username, request.password, request.branchId, call.langFromRequest(), call.clientIp())
+                val user = auth.login(request.username, request.password, request.branchId, call.langFromRequest(), call.clientIp())
+                user to call.newSession(sessions, user)
             }
         }
     }.contract(postContract<LoginRequest, LoginResponse>())
 
     post("/auth/refresh-token") {
         call.eitherToAuthResponse {
+            val token = call.request.refreshToken().verifiedJwtToken(jwtConfig)
+            val (userId, branchId) = token.userIdAndBranchClaim()
+            val (sessionId, jti) = token.sessionAndJtiClaim()
             db.transaction {
-                call.request
-                    .refreshToken()
-                    .verifiedJwtToken(jwtConfig)
-                    .userIdAndBranchClaim()
-                    .let { (userId, branchId) -> auth.userById(userId, branchId) }
-            }
+                sessions
+                    .rotate(sessionId, jti, call.clientIp(), Clock.System.now())
+                    ?.let { auth.userById(userId, branchId) to it }
+            } ?: raise(CommonDomainError("SESSION_REVOKED", "Session is revoked"))
         }
     }.contract(postContract<Unit, LoginResponse>())
 }
@@ -97,6 +115,34 @@ fun RouteWithContext.logout(auth: Auth) {
             auth.logout()
         }
         call.response.cookies.clearJwtCookies()
+    }
+}
+
+/**
+ * Регистрирует маршруты сеансов текущего пользователя из [sessions] и проекции [views]:
+ * GET /auth/sessions — список, POST /auth/sessions/terminate — завершить один не текущий,
+ * POST /auth/sessions/terminate-others — завершить все, кроме текущего.
+ */
+context(db: Database, jwtConfig: JwtConfig)
+fun RouteWithContext.authSessionsRoutes(sessions: AuthSessions, views: ReadViews) {
+    get<Unit, SessionListResponse>("/auth/sessions") {
+        val ctx = contextOf<EmployeeRequestContext>()
+        db.transaction {
+            views.sessionList.list(SessionListQuery(ctx.employee.id, Clock.System.now(), jwtConfig.refreshTokenTtl))
+        }
+    }
+
+    post<TerminateSessionRequest, Unit>("/auth/sessions/terminate") { request ->
+        val ctx = contextOf<EmployeeRequestContext>()
+        ensure(request.sessionId != ctx.sessionId) {
+            CommonDomainError("CANNOT_TERMINATE_CURRENT_SESSION", Messages.CannotTerminateCurrentSession.localize())
+        }
+        db.transaction { sessions.delete(request.sessionId, ctx.userId) }
+    }
+
+    post<Unit, Unit>("/auth/sessions/terminate-others") {
+        val ctx = contextOf<EmployeeRequestContext>()
+        db.transaction { sessions.deleteOthers(ctx.userId, ctx.sessionId) }
     }
 }
 
@@ -116,32 +162,33 @@ fun RouteWithContext.myBranchesRoute() {
 /**
  * Регистрирует маршрут POST /auth/switch-branch.
  * Переключает текущего пользователя на другой доступный филиал
- * и выпускает новые JWT-токены с обновлённым [branchId].
+ * и выпускает новые JWT-токены с обновлённым [branchId] в той же сессии из [sessions].
  */
 context(db: Database, jwtConfig: JwtConfig)
-fun RouteWithContext.switchBranchRoute(auth: Auth) {
+fun RouteWithContext.switchBranchRoute(auth: Auth, sessions: AuthSessions) {
     post<SwitchBranchRequest, LoginResponse>("/auth/switch-branch") { request, call ->
-        val user =
+        val sessionId = contextOf<EmployeeRequestContext>().sessionId ?: raise(SessionRevoked)
+        val (user, session) =
             db.transaction {
-                auth.switchBranch(request.branchId)
+                auth.switchBranch(request.branchId) to sessions.reissue(sessionId, Clock.System.now())
             }
-        val newAccessToken = jwtConfig.makeAccessToken(user)
-        val newRefreshToken = jwtConfig.makeRefreshToken(user.id, user.branchId)
+        val newAccessToken = jwtConfig.makeAccessToken(user, session.id)
+        val newRefreshToken = jwtConfig.makeRefreshToken(user.id, user.branchId, session)
         call.response.cookies.setJwtCookies(newAccessToken, newRefreshToken)
         LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken)
     }
 }
 
 /**
- * Выполняет [block] в контексте [Raise], при успехе выпускает новые JWT-токены и отвечает [LoginResponse].
- * Ошибку передаёт в [respondError].
+ * Выполняет [block] в контексте [Raise], при успехе выпускает новые JWT-токены пользователя
+ * в его сессии и отвечает [LoginResponse]. Ошибку передаёт в [respondError].
  */
 context(jwtConfig: JwtConfig)
-suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<AppError>.() -> AuthenticatedUser) {
+suspend inline fun RoutingCall.eitherToAuthResponse(block: Raise<AppError>.() -> Pair<AuthenticatedUser, IssuedSession>) {
     either {
-        val user = block()
-        val newAccessToken = jwtConfig.makeAccessToken(user)
-        val newRefreshToken = jwtConfig.makeRefreshToken(user.id, user.branchId)
+        val (user, session) = block()
+        val newAccessToken = jwtConfig.makeAccessToken(user, session.id)
+        val newRefreshToken = jwtConfig.makeRefreshToken(user.id, user.branchId, session)
 
         response.cookies.setJwtCookies(newAccessToken, newRefreshToken)
         respond(LoginResponse(accessToken = newAccessToken, refreshToken = newRefreshToken))
@@ -180,6 +227,30 @@ fun DecodedJWT.userIdAndBranchClaim(): Pair<UserId, BranchId> {
     val userId = Uuid.parse(getClaim(JwtConfig.CLAIM_USER_ID).asString()).toUserId()
     val branchId = Uuid.parse(getClaim(JwtConfig.CLAIM_BRANCH_ID).asString()).toBranchId()
     return userId to branchId
+}
+
+/**
+ * Открывает в [sessions] новую сессию пользователя [user] с User-Agent и IP этого запроса;
+ * заодно удаляет его сессии, неактивные дольше срока жизни refresh токена.
+ */
+context(tr: Transaction, raise: Raise<AppError>, jwtConfig: JwtConfig)
+suspend fun RoutingCall.newSession(sessions: AuthSessions, user: AuthenticatedUser): IssuedSession {
+    val now = Clock.System.now()
+    return sessions.new(user.id, user.orgId, request.header(HttpHeaders.UserAgent), clientIp(), now, now - jwtConfig.refreshTokenTtl)
+}
+
+/**
+ * Извлекает из refresh токена сессию и идентификатор самого токена (`jti`).
+ * Токен без них поднимает ошибку.
+ */
+context(raise: Raise<AppError>)
+fun DecodedJWT.sessionAndJtiClaim(): Pair<AuthSessionId, Uuid> {
+    val sessionId = getClaim(JwtConfig.CLAIM_SESSION_ID).asString()?.let { Uuid.parseOrNull(it) }
+    val jti = id?.let { Uuid.parseOrNull(it) }
+    if (sessionId == null || jti == null) {
+        raise(CommonDomainError("SESSION_REVOKED", "Session is revoked"))
+    }
+    return sessionId.toAuthSessionId() to jti
 }
 
 /**

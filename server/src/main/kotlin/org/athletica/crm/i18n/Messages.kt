@@ -337,6 +337,16 @@ object Messages {
         override val en = "You cannot block yourself"
     }
 
+    object AuthSessionNotFound : LocalizationKey {
+        override val ru = "Сеанс не найден"
+        override val en = "Session not found"
+    }
+
+    object CannotTerminateCurrentSession : LocalizationKey {
+        override val ru = "Текущий сеанс завершается выходом"
+        override val en = "Use sign out to end the current session"
+    }
+
     object DisciplineNotFound : LocalizationKey {
         override val ru = "Дисциплина не найдена"
         override val en = "Discipline not found"

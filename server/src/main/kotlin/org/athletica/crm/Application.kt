@@ -40,11 +40,13 @@ import org.athletica.crm.assistant.assistantRoutes
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.EmployeeBlocked
+import org.athletica.crm.core.errors.SessionRevoked
 import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.routes.attendanceRoutes
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
+import org.athletica.crm.routes.authSessionsRoutes
 import org.athletica.crm.routes.branchesRoutes
 import org.athletica.crm.routes.channelsRoutes
 import org.athletica.crm.routes.checkoutRoutes
@@ -148,7 +150,7 @@ fun Application.configureServer() {
 
     install(StatusPages) {
         exception<UnhandledAppError> { call, cause ->
-            if (cause.error == EmployeeBlocked) {
+            if (cause.error == EmployeeBlocked || cause.error == SessionRevoked) {
                 call.respond(HttpStatusCode.Unauthorized, "Token expired or invalid")
             } else {
                 logger.error("Unhandled exception", cause)
@@ -183,7 +185,8 @@ fun Application.configureServer() {
             verifier(di.jwtConfig.verifier)
             validate { credential ->
                 val type = credential.payload.getClaim(JwtConfig.CLAIM_TYPE).asString()
-                if (type == JwtConfig.TYPE_ACCESS) JWTPrincipal(credential.payload) else null
+                val sessionId = credential.payload.getClaim(JwtConfig.CLAIM_SESSION_ID).asString()
+                if (type == JwtConfig.TYPE_ACCESS && sessionId != null) JWTPrincipal(credential.payload) else null
             }
             challenge { _, _ ->
                 call.respond(HttpStatusCode.Unauthorized, "Token expired or invalid")
@@ -197,14 +200,15 @@ fun Application.configureServer() {
                 checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
 
                 context(di.jwtConfig) {
-                    authRoutes(di.auth, di.emailVerifications)
+                    authRoutes(di.auth, di.emailVerifications, di.authSessions)
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         assistantRoutes(di.assistant)
                         logout(di.auth)
                         context(di.jwtConfig) {
-                            switchBranchRoute(di.auth)
+                            switchBranchRoute(di.auth, di.authSessions)
+                            authSessionsRoutes(di.authSessions, di.views)
                         }
                         context(di.branches) {
                             myBranchesRoute()
@@ -246,7 +250,9 @@ fun Application.configureServer() {
                         membershipsRoutes(di.memberships, di.orgCalendar, di.views, di.clientPayments, di.sales)
                         leadSourcesRoutes(di.leadSources)
                         customFieldsRoutes(di.customFieldDefinitions)
-                        employeesRoutes(di.employees, di.roles, di.views)
+                        context(di.jwtConfig) {
+                            employeesRoutes(di.employees, di.roles, di.views)
+                        }
                         profileRoutes(di.auth, di.organizations, di.orgBalances, di.emailVerifications)
                         orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {

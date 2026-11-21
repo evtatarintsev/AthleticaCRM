@@ -1,5 +1,8 @@
 package org.athletica.crm.routes
 
+import org.athletica.crm.api.schemas.auth.EmployeeSessionsRequest
+import org.athletica.crm.api.schemas.auth.SessionListResponse
+import org.athletica.crm.api.schemas.auth.TerminateEmployeeSessionRequest
 import org.athletica.crm.api.schemas.employees.BlockEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
@@ -21,13 +24,15 @@ import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.read.ReadViews
+import org.athletica.crm.read.auth.SessionListQuery
 import org.athletica.crm.read.employees.EmployeeDetailQuery
 import org.athletica.crm.read.employees.EmployeeListQuery
+import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.Database
 import kotlin.time.Clock
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 
-context(db: Database)
+context(db: Database, jwtConfig: JwtConfig)
 fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: ReadViews) {
     route("/employees") {
         get<Unit, EmployeeListResponse>("/list") {
@@ -89,6 +94,18 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
         post<UnblockEmployeeRequest, Unit>("/unblock") { request ->
             db.transaction {
                 employees.byId(request.employeeId).unblock()
+            }
+        }
+
+        get<EmployeeSessionsRequest, SessionListResponse>("/sessions") { request ->
+            db.transaction {
+                views.sessionList.list(SessionListQuery(request.employeeId, Clock.System.now(), jwtConfig.refreshTokenTtl))
+            }
+        }
+
+        post<TerminateEmployeeSessionRequest, Unit>("/sessions/terminate") { request ->
+            db.transaction {
+                employees.byId(request.employeeId).terminateSession(request.sessionId)
             }
         }
 

@@ -279,6 +279,17 @@ export const en: Messages<typeof ru> = {
   "password.confirm": "Confirm password",
   "password.changed": "Password changed",
 
+  "sessions.title": "Active sessions",
+  "sessions.thisDevice": "This device",
+  "sessions.otherSessions": "Active sessions",
+  "sessions.terminate": "Terminate session",
+  "sessions.terminateOthers": "Terminate all other sessions",
+  "sessions.terminateOthersHint": "Logs out all devices except this one.",
+  "sessions.terminateOthersConfirmTitle": "Terminate all other sessions?",
+  "sessions.terminateOthersConfirm": "Terminate",
+  "sessions.unknownDevice": "Unknown device",
+  "sessions.empty": "No active sessions",
+
   "branch.title": "Switch branch",
   "branch.current": "Current branch",
   "branch.loadError": "Failed to load branches",

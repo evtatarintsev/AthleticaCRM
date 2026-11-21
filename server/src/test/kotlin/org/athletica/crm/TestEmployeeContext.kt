@@ -2,6 +2,7 @@ package org.athletica.crm
 
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -15,7 +16,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
  * Собирает контекст запроса сотрудника для тестов. Сотрудник — [EmployeeStub] с идентификатором
  * [employeeId], именем [employeeName], настройкой прав [permissions] и доступом к филиалам
  * [availableBranches]; запрос выполняется в организации [orgId] и филиале [branchId].
- * Сессионные поля ([userId], [username], [clientIp]), язык [lang] и валюта [currency]
+ * Сессионные поля ([userId], [username], [clientIp], [sessionId]), язык [lang] и валюта [currency]
  * получают значения по умолчанию, которые тест может переопределить.
  *
  * Единственное место в тестах, которое создаёт [EmployeeRequestContext] напрямую:
@@ -33,6 +34,7 @@ fun employeeContext(
     lang: Lang = Lang.RU,
     clientIp: String? = null,
     currency: Currency = Currency.RUB,
+    sessionId: AuthSessionId? = null,
 ): EmployeeRequestContext {
     val employee =
         EmployeeStub(
@@ -51,5 +53,6 @@ fun employeeContext(
         username = username,
         clientIp = clientIp,
         employee = employee,
+        sessionId = sessionId,
     )
 }

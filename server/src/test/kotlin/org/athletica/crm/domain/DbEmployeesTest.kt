@@ -828,4 +828,22 @@ class DbEmployeesTest {
 
             assertEquals("EMPLOYEE_ACCESS_ALREADY_SENT", assertIs<Either.Left<AppError>>(result).value.code)
         }
+
+    @Test
+    fun `логин нельзя привязать ко второму сотруднику`() =
+        runTest {
+            val employee = invitedEmployee(EmployeeId.new(), "single@example.com")
+
+            val result =
+                either {
+                    TestPostgres.db
+                        .sql("INSERT INTO employees (id, org_id, user_id, name) VALUES (:id, :orgId, :userId, 'Двойник')")
+                        .bind("id", EmployeeId.new())
+                        .bind("orgId", otherOrgId)
+                        .bind("userId", employee.userId)
+                        .execute()
+                }
+
+            assertIs<Either.Left<AppError>>(result)
+        }
 }

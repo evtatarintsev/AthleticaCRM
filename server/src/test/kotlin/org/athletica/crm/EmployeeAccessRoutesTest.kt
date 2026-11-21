@@ -101,7 +101,7 @@ class EmployeeAccessRoutesTest {
             val owner = signUpOwner()
             testApplication {
                 application { context(di) { configureServer() } }
-                val ownerToken = testJwtConfig.makeAccessToken(owner)
+                val ownerToken = testJwtConfig.sessionAccessToken(owner)
                 val id = EmployeeId.new()
 
                 val created = post(ownerToken, "employees/create", """{"id":"$id","name":"Анна"}""")
@@ -128,7 +128,7 @@ class EmployeeAccessRoutesTest {
             val owner = signUpOwner()
             testApplication {
                 application { context(di) { configureServer() } }
-                val ownerToken = testJwtConfig.makeAccessToken(owner)
+                val ownerToken = testJwtConfig.sessionAccessToken(owner)
                 val id = EmployeeId.new()
                 invite(ownerToken, id, "anna@example.com")
                 val tokens = json.decodeFromString<LoginResponse>(login(owner, "anna@example.com").bodyAsText())
@@ -157,7 +157,7 @@ class EmployeeAccessRoutesTest {
             val owner = signUpOwner()
             testApplication {
                 application { context(di) { configureServer() } }
-                val ownerToken = testJwtConfig.makeAccessToken(owner)
+                val ownerToken = testJwtConfig.sessionAccessToken(owner)
                 val id = EmployeeId.new()
                 invite(ownerToken, id, "anna@example.com")
                 val employeeToken = json.decodeFromString<LoginResponse>(login(owner, "anna@example.com").bodyAsText()).accessToken

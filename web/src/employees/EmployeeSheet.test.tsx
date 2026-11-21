@@ -5,6 +5,7 @@ import {
   BlockEmployeeRequestSchema,
   CreateEmployeeRequestSchema,
   CreateRoleRequestSchema,
+  TerminateEmployeeSessionRequestSchema,
   UpdateEmployeeRequestSchema,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
@@ -76,6 +77,18 @@ const owner = {
   branchIds: [center.id],
 };
 
+/** Сеанс сотрудника на телефоне. */
+const phoneSession = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000701",
+  browser: "Chrome 142",
+  os: "Android",
+  platform: "ANDROID",
+  ip: "10.0.0.2",
+  createdAt: "2026-11-20T10:00:00Z",
+  lastSeenAt: "2026-11-21T10:00:00Z",
+  current: false,
+};
+
 /**
  * Сервер с ролями [roles], филиалами и сотрудниками [existing] и [owner] в памяти; [failSave] — сохранение
  * сотрудника отклоняется. Созданные роли добавляются к [roles].
@@ -92,9 +105,16 @@ function formServer({
     [blocked.id, blocked],
     [self.id, self],
   ]);
+  const sessionsById = new Map<string, readonly unknown[]>([
+    [existing.id, [phoneSession]],
+    [owner.id, [phoneSession]],
+  ]);
   const setStatus = (body: unknown, status: string) => {
     const { employeeId } = BlockEmployeeRequestSchema.parse(body);
     detailsById.set(employeeId, { ...detailsById.get(employeeId), status });
+    if (status === "BLOCKED") {
+      sessionsById.set(employeeId, []);
+    }
     return json(undefined);
   };
   const conflict = () => json({ code: "EMAIL_TAKEN", message: "Email уже занят" }, 409);
@@ -109,6 +129,13 @@ function formServer({
     "branches/list": () => json({ branches: [center, north, south] }),
     "employees/block": ({ body }) => setStatus(body, "BLOCKED"),
     "employees/unblock": ({ body }) => setStatus(body, "ACTIVE"),
+    "employees/sessions": ({ query }) =>
+      json({ items: sessionsById.get(query.get("employeeId") ?? "") ?? [] }),
+    "employees/sessions/terminate": ({ body }) => {
+      const { employeeId } = TerminateEmployeeSessionRequestSchema.parse(body);
+      sessionsById.set(employeeId, []);
+      return json(undefined);
+    },
     "employees/detail": ({ query }) => {
       const detail = detailsById.get(query.get("id") ?? "");
       return detail === undefined ? json({ code: "NOT_FOUND", message: "" }, 404) : json(detail);
@@ -721,5 +748,55 @@ describe("карточка сотрудника: доступ, статус и �
     expect(within(selfCard).getByRole("button", { name: ru["action.edit"] })).toBeVisible();
     expect(within(selfCard).queryByRole("button", { name: ru["employees.block"] })).toBeNull();
     expect(within(selfCard).queryByRole("button", { name: ru["employees.unblock"] })).toBeNull();
+  });
+});
+
+describe("карточка сотрудника: сеансы", () => {
+  /** Раздел «Активные сеансы» в открытой карточке сотрудника [name]. */
+  async function sessionsSection(name: string) {
+    const card = await screen.findByRole("dialog", { name });
+    const heading = await within(card).findByRole("heading", { name: ru["sessions.title"] });
+    const section = heading.closest("section");
+    if (!(section instanceof HTMLElement)) {
+      throw new Error("раздел сеансов не найден");
+    }
+    return within(section);
+  }
+
+  it("завершает сеанс сотрудника", async () => {
+    const api = formServer();
+    openApp(`/employees?employee=${existing.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    const section = await sessionsSection(existing.name);
+    expect(await section.findByText("Chrome 142 · Android")).toBeVisible();
+    await user.click(section.getByRole("button", { name: ru["sessions.terminate"] }));
+
+    expect(await section.findByText(ru["sessions.empty"])).toBeVisible();
+    expect(api.to("employees/sessions/terminate").map((r) => r.body)).toEqual([
+      { employeeId: existing.id, sessionId: phoneSession.id },
+    ]);
+  });
+
+  it("у владельца сеансы видны без кнопок завершения", async () => {
+    openApp(`/employees?employee=${owner.id}`, formServer().fetch);
+
+    const section = await sessionsSection(owner.name);
+    expect(await section.findByText("Chrome 142 · Android")).toBeVisible();
+    expect(section.queryByRole("button", { name: ru["sessions.terminate"] })).toBeNull();
+  });
+
+  it("после блокировки список сеансов пустой", async () => {
+    openApp(`/employees?employee=${existing.id}`, formServer().fetch);
+    const user = userEvent.setup();
+
+    const section = await sessionsSection(existing.name);
+    expect(await section.findByText("Chrome 142 · Android")).toBeVisible();
+    const card = await screen.findByRole("dialog", { name: existing.name });
+    await user.click(within(card).getByRole("button", { name: ru["employees.block"] }));
+    const confirm = await screen.findByRole("dialog", { name: ru["employees.blockConfirmTitle"] });
+    await user.click(within(confirm).getByRole("button", { name: ru["employees.block"] }));
+
+    expect(await section.findByText(ru["sessions.empty"])).toBeVisible();
   });
 });

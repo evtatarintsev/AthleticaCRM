@@ -56,7 +56,7 @@ class EmailConfirmationRoutesTest {
         testApplication {
             application { context(di) { configureServer() } }
             val user = signup()
-            val access = di.jwtConfig.makeAccessToken(user)
+            val access = di.jwtConfig.sessionAccessToken(user)
             val profile = client.get("/api/auth/me") { header(HttpHeaders.Authorization, "Bearer $access") }
             assertEquals(HttpStatusCode.OK, profile.status)
             assertTrue(Json.parseToJsonElement(profile.bodyAsText()).jsonObject.getValue("emailVerificationPending").jsonPrimitive.boolean)
@@ -66,7 +66,7 @@ class EmailConfirmationRoutesTest {
                     setBody("""{"username":"${user.username}","password":"password123","branchId":"${user.branchId}"}""")
                 }
             assertEquals(HttpStatusCode.OK, login.status)
-            val refresh = client.post("/api/auth/refresh-token") { header("X-Refresh-Token", di.jwtConfig.makeRefreshToken(user.id, user.branchId)) }
+            val refresh = client.post("/api/auth/refresh-token") { header("X-Refresh-Token", di.jwtConfig.makeRefreshToken(user.id, user.branchId, openTestSession(user))) }
             assertEquals(HttpStatusCode.OK, refresh.status)
             val resend = client.post("/api/auth/me/resend-email-confirmation") { header(HttpHeaders.Authorization, "Bearer $access") }
             assertEquals(HttpStatusCode.OK, resend.status)
@@ -81,7 +81,7 @@ class EmailConfirmationRoutesTest {
             val user = signup()
             val token = token(user)
             val other = signup("other@example.com")
-            val otherAccess = di.jwtConfig.makeAccessToken(other)
+            val otherAccess = di.jwtConfig.sessionAccessToken(other)
             val response =
                 client.post("/api/auth/confirm-email") {
                     header(HttpHeaders.Authorization, "Bearer $otherAccess")
@@ -100,7 +100,7 @@ class EmailConfirmationRoutesTest {
             assertContains(repeated.bodyAsText(), "already_confirmed")
             assertNull(repeated.headers[HttpHeaders.SetCookie])
             for ((account, pending) in listOf(user to false, other to true)) {
-                val access = di.jwtConfig.makeAccessToken(account)
+                val access = di.jwtConfig.sessionAccessToken(account)
                 val profile = client.get("/api/auth/me") { header(HttpHeaders.Authorization, "Bearer $access") }
                 assertEquals(pending, Json.parseToJsonElement(profile.bodyAsText()).jsonObject.getValue("emailVerificationPending").jsonPrimitive.boolean)
                 for ((lang, description) in listOf("en" to "confirmed email", "ru" to "подтверждение email")) {

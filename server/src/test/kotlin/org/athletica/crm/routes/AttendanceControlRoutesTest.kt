@@ -23,6 +23,7 @@ import org.athletica.crm.configureServer
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
@@ -63,7 +64,7 @@ class AttendanceControlRoutesTest {
                     )
                 }
             }
-        token = testJwtConfig.makeAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
+        token = testJwtConfig.sessionAccessToken(assertIs<Either.Right<AuthenticatedUser>>(result).value)
     }
 
     private suspend fun ApplicationTestBuilder.settings(): AttendanceControlSettingsResponse {

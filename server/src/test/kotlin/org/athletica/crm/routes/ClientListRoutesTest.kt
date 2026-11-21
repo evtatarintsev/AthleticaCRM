@@ -26,6 +26,7 @@ import org.athletica.crm.employeeContext
 import org.athletica.crm.read.clients.ClientListQuery
 import org.athletica.crm.read.clients.ClientSortColumn
 import org.athletica.crm.read.clients.ClientSortCriterion
+import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
@@ -85,7 +86,7 @@ class ClientListRoutesTest {
                         }
                     },
                 ).value
-            val token = testJwtConfig.makeAccessToken(owner)
+            val token = testJwtConfig.sessionAccessToken(owner)
             testApplication {
                 application { context(di) { configureServer() } }
                 listOf(

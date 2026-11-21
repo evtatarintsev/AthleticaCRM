@@ -8,8 +8,8 @@ export function Logo({ className }: { className: string }) {
     <img
       src="/logo.png"
       alt={t("app.name")}
-      width={1152}
-      height={250}
+      width={898}
+      height={176}
       className={cn("block h-auto rounded-lg bg-white p-2", className)}
     />
   );

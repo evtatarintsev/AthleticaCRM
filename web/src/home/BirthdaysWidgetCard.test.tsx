@@ -105,9 +105,11 @@ describe("виджет дней рождения", () => {
     const fake = server(uploadId);
     openApp("/", fake.fetch);
 
-    await screen.findByRole("link", { name: /Алиса Иванова-Смирнова Длинная-Фамилия/ });
+    const link = await screen.findByRole("link", {
+      name: /Алиса Иванова-Смирнова Длинная-Фамилия/,
+    });
     const image = await waitFor(() => {
-      const element = document.querySelector("img");
+      const element = link.querySelector("img");
       if (element === null) {
         throw new Error("Аватар ещё не загружен");
       }
@@ -116,7 +118,7 @@ describe("виджет дней рождения", () => {
     fireEvent.error(image);
 
     await waitFor(() => {
-      expect(document.querySelector("img")).not.toBeInTheDocument();
+      expect(link.querySelector("img")).not.toBeInTheDocument();
     });
     expect(screen.getByText("АИ")).toBeInTheDocument();
   });

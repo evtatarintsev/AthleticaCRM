@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { useI18n } from "@/i18n/context";
 import { useInboxCounter } from "@/messaging/inboxQueries";
 import { sessionQuery } from "@/query/queries";
+import { Logo } from "@/ui/Logo";
 import { AccountMenu } from "./AccountMenu";
 import { ClubCard } from "./ClubCard";
 import { Navigation } from "./Navigation";
@@ -92,18 +93,11 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
   );
 }
 
-/** Тихая подпись продукта внизу меню: знак и название, не ссылка. */
+/** Логотип продукта внизу меню, не ссылка. */
 function ProductMark() {
-  const { t } = useI18n();
   return (
-    <div className="mt-auto flex items-center gap-2 border-t px-2 pt-3 text-xs text-muted-foreground">
-      <span
-        aria-hidden
-        className="grid size-[18px] place-items-center rounded-[5px] bg-primary text-[10px] font-bold text-primary-foreground"
-      >
-        A
-      </span>
-      {t("clubCard.product")}
+    <div className="mt-auto border-t px-2 pt-3">
+      <Logo className="w-44 max-w-full" />
     </div>
   );
 }

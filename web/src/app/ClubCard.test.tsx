@@ -133,16 +133,19 @@ describe("карточка клуба", () => {
     expect(api.to("auth/switch-branch").map((r) => r.body)).toEqual([{ branchId: north.id }]);
   });
 
-  it("стоит в выезжающем меню, а подпись Athletica не получает фокус", async () => {
+  it("стоит в выезжающем меню, а логотип продукта не получает фокус", async () => {
     openApp("/", fourBranches().fetch);
     const user = userEvent.setup();
 
-    expect(await (await sidebar()).findByText(ru["clubCard.product"])).toBeInTheDocument();
-    expect((await sidebar()).getByText(ru["clubCard.product"]).closest("a, button")).toBeNull();
+    const logo = await (await sidebar()).findByRole("img", { name: ru["app.name"] });
+    expect(logo).toHaveAttribute("src", "/logo.png");
+    expect(logo.closest("a, button")).toBeNull();
     await user.click(screen.getByRole("button", { name: ru["nav.openMenu"] }));
     const drawer = await screen.findByRole("dialog", { name: ru["nav.label"] });
     expect(within(drawer).getByRole("button", { name: cardLabel("Центр") })).toBeVisible();
-    expect(within(drawer).getByText(ru["clubCard.product"]).closest("a, button")).toBeNull();
+    expect(
+      within(drawer).getByRole("img", { name: ru["app.name"] }).closest("a, button"),
+    ).toBeNull();
   });
 });
 

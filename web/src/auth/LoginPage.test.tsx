@@ -108,6 +108,7 @@ describe("LoginPage", () => {
       "autocomplete",
       "current-password",
     );
+    expect(screen.getByRole("img", { name: ru["app.name"] })).toHaveAttribute("src", "/logo.png");
   });
 
   it("не отправляет пустую форму и связывает ошибку с полем", async () => {

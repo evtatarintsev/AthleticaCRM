@@ -123,6 +123,9 @@ Fail2ban ограничивает повторные попытки, но сам
 
 - `EmailVerificationConfig.passwordResetLink(token)` → `<CRM_PUBLIC_URL>/reset-password#token=...`.
   Класс не переименовываем, хотя он теперь шире: переименование — шум в диффе ради имени.
+- `emailVerification.publicUrl` в `application.conf` по умолчанию указывает на dev-nginx
+  (`https://app.athletica.crm`), `CRM_PUBLIC_URL` переопределяет его; production Compose по умолчанию
+  передаёт `https://app.${DOMAIN}`. Адрес Vite и Host запроса для ссылки не используются.
 - `passwordResetEmail(to, name, lang, link)` в `SystemEmailTemplate.kt` по образцу `registrationEmail`;
   новые строки в `Messages` (тема, текст, срок «1 час», кнопка, подвал «вы или кто-то запросили сброс; если не вы — проигнорируйте»).
 
@@ -141,6 +144,8 @@ Fail2ban ограничивает повторные попытки, но сам
   и «подтверждение» (zod, `refine` на совпадение); при `INVALID_PASSWORD_RESET` — сообщение и ссылка на `/forgot-password`;
   при успехе — сообщение и ссылка на `/login`.
 - `LoginPage` — ссылка «Забыли пароль?», оба пути в `staticAppPaths`.
+- `/reset-password` и `/confirm-email` — публичные страницы: истечение сессии, в том числе при
+  предварительной загрузке ссылки входа, не переводит их на `/login` и не делает адресом возврата после входа.
 
 ## Risks / Trade-offs
 

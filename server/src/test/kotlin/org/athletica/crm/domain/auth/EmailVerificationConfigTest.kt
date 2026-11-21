@@ -1,10 +1,25 @@
 package org.athletica.crm.domain.auth
 
+import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigResolveOptions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
 class EmailVerificationConfigTest {
+    @Test
+    fun `application links default to dev nginx and respect the public URL override`() {
+        val defaults = ConfigFactory.parseResources("application.conf")
+        val options = ConfigResolveOptions.defaults().setUseSystemEnvironment(false)
+        listOf(
+            emptyMap<String, String>() to "https://app.athletica.crm",
+            mapOf("CRM_PUBLIC_URL" to "https://crm.example.com") to "https://crm.example.com",
+        ).forEach { (override, expected) ->
+            val url = ConfigFactory.parseMap(override).withFallback(defaults).resolve(options).getString("emailVerification.publicUrl")
+            assertEquals("$expected/reset-password#token=token", EmailVerificationConfig(url).passwordResetLink("token"))
+        }
+    }
+
     @Test
     fun `links use the configured origin and web base path`() {
         assertEquals("https://app.example.com/web/confirm-email#token=a_b-c", EmailVerificationConfig("https://app.example.com/web/").confirmationLink("a_b-c"))

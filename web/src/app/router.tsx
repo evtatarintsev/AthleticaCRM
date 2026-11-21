@@ -778,13 +778,15 @@ export function isStaticAppPath(path: string): path is StaticAppPath {
 }
 
 /**
- * Страницы только для гостей: с действующей сессией они ведут в приложение,
- * а потеря сессии на них не уводит на вход.
+ * Публичные страницы авторизации: потеря сессии на них не уводит на вход,
+ * в том числе при предварительной загрузке ссылки на страницу входа.
  */
-const guestPaths: ReadonlySet<string> = new Set<StaticAppPath>([
+const publicAuthPaths: ReadonlySet<string> = new Set<StaticAppPath>([
   "/login",
   "/sign-up",
   "/forgot-password",
+  "/reset-password",
+  "/confirm-email",
 ]);
 
 /** Маршрутизация приложения: элемент для рендера и переход на вход при потере сессии. */
@@ -792,8 +794,8 @@ export interface AppRouting {
   /** `RouterProvider` с роутером приложения. */
   readonly element: ReactElement;
   /**
-   * Открывает вход с адресом возврата на текущую страницу. На гостевых страницах (вход,
-   * регистрация, восстановление пароля) ничего не делает: гость остаётся на своей странице, адрес возврата не затирается.
+   * Открывает вход с адресом возврата на текущую страницу. На публичных страницах авторизации
+   * ничего не делает: пользователь остаётся на своей странице, адрес возврата не затирается.
    */
   readonly redirectToLogin: () => void;
 }
@@ -805,7 +807,7 @@ export function createAppRouting(context: RouterContext, history?: RouterHistory
     element: <RouterProvider router={router} />,
     redirectToLogin: () => {
       const { pathname, href } = router.latestLocation;
-      if (!guestPaths.has(pathname)) {
+      if (!publicAuthPaths.has(pathname)) {
         void router.navigate({ to: "/login", search: { redirect: href }, replace: true });
       }
     },

@@ -149,11 +149,10 @@ class DbGroupRosterView : GroupRosterView {
                     AND NOT EXISTS (SELECT 1 FROM membership_debits d
                                      WHERE d.session_id = s.id AND d.client_id = c.id
                                        AND d.reversed_at IS NULL)) AS unpaid_sessions,
-                COALESCE((SELECT j.balance_after
-                            FROM client_balance_journal j
-                           WHERE j.client_id = c.id AND j.org_id = c.org_id
-                           ORDER BY j.created_at DESC
-                           LIMIT 1), 0) AS balance
+                COALESCE((SELECT -SUM(p.amount)
+                            FROM ledger_accounts a JOIN ledger_postings p ON p.account_id = a.id
+                           WHERE a.client_id = c.id AND a.org_id = c.org_id
+                             AND a.kind IN ('advance', 'receivable')), 0) AS balance
             FROM enrollments e
             JOIN clients c ON c.id = e.client_id AND c.org_id = :orgId
             LEFT JOIN LATERAL (

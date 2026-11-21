@@ -11,6 +11,7 @@ import type {
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SaleSheet } from "@/finance/SaleSheet";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
@@ -118,6 +119,7 @@ function MembershipPanel({
   const [freezing, setFreezing] = useState(false);
   const freeze = membership.state.type === "active" ? membership.state.freeze : null;
   const canFreeze = membership.state.type === "active" && freeze === null;
+  const [saleOpen, setSaleOpen] = useState(false);
   const [extending, setExtending] = useState(false);
   const extendableEnd =
     membership.state.type === "active" && freeze === null ? membership.state.endDate : null;
@@ -143,6 +145,19 @@ function MembershipPanel({
 
   return (
     <EditSheetBody>
+      <MembershipPayment
+        membership={membership}
+        onOpen={() => {
+          setSaleOpen(true);
+        }}
+      />
+      <SaleSheet
+        api={api}
+        branchId={branchId}
+        saleId={membership.sale.saleId}
+        open={saleOpen}
+        onOpenChange={setSaleOpen}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <MembershipPill phase={view.phase} />
         <span className="text-sm">
@@ -503,6 +518,28 @@ function Field({ label, children }: { readonly label: string; readonly children:
     <div className="grid grid-cols-[8rem_1fr] gap-3 px-4 py-2.5">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0">{children}</dd>
+    </div>
+  );
+}
+
+function MembershipPayment({
+  membership,
+  onOpen,
+}: {
+  readonly membership: MembershipSchema;
+  readonly onOpen: () => void;
+}) {
+  const { t, format } = useI18n();
+  return (
+    <div className="space-y-1 rounded-lg border p-3">
+      <p className="font-medium">{t(`finance.state.${membership.sale.paymentState}`)}</p>
+      <p>
+        {t("finance.paid")}: {format.money(membership.sale.paid)} · {t("finance.toPay")}:{" "}
+        {format.money(membership.sale.debt)}
+      </p>
+      <Button type="button" variant="link" className="h-auto p-0" onClick={onOpen}>
+        {t("finance.sale")}
+      </Button>
     </div>
   );
 }

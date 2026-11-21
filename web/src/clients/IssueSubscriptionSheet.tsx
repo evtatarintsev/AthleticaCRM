@@ -34,6 +34,9 @@ import { TariffRow } from "@/tariffs/TariffRow";
 import { TariffSheet, type TariffTerms } from "@/tariffs/TariffSheet";
 import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
+import { PaymentBlock } from "@/finance/PaymentBlock";
+import { initialPayment, paymentInput } from "@/finance/payment";
+import { hasPermission, useSession } from "@/query/session";
 import { membershipsQuery } from "./card/clientCardQueries";
 import { RepayDebtChoice } from "./membership/RepayDebt";
 
@@ -283,6 +286,25 @@ function IssueSubscriptionSteps({
   const [failure, setFailure] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>({ kind: "create" });
   const [editorOpen, setEditorOpen] = useState(false);
+  const session = useSession(api);
+  const canAccept = hasPermission(session, "CAN_ACCEPT_PAYMENTS");
+  const [payNow, setPayNow] = useState(true);
+  const [paymentDraft, setPaymentDraft] = useState(initialPayment);
+  const accounts = useQuery({
+    ...apiQuery(api, branchId, "finance/cash-accounts"),
+    enabled: canAccept && step === "terms",
+  });
+  const paymentOptions = useQuery({
+    ...apiQuery(api, branchId, "finance/client-payment-options", { clientId }),
+    enabled: canAccept && step === "terms",
+  });
+  const availableCash = (accounts.data?.accounts ?? []).filter((account) => !account.archived);
+  const advance = paymentOptions.data?.advance ?? { minorUnits: 0, currency };
+  const paymentDirty =
+    !payNow ||
+    paymentDraft.fromAdvance !== "" ||
+    paymentDraft.cash.length !== 1 ||
+    paymentDraft.cash.some((row) => row.amount !== null || row.cashAccountId !== "");
 
   const active = (tariffs.data?.tariffs ?? []).filter((tariff) => !tariff.archived);
 
@@ -302,9 +324,18 @@ function IssueSubscriptionSteps({
         return;
       }
       setFailure(null);
+      const payment =
+        canAccept && payNow && price.minorUnits > 0
+          ? paymentInput(paymentDraft, availableCash, price, advance)
+          : null;
+      if (canAccept && payNow && price.minorUnits > 0 && payment === null) {
+        setFailure(t("error.invalidAmount"));
+        return;
+      }
       const membershipId = MembershipIdSchema.parse(uuidv7());
       const result = await api.call("memberships/issue", {
         id: membershipId,
+        payment,
         clientId,
         tariffPlanId: chosen.kind === "tariff" ? chosen.tariff.id : null,
         name:
@@ -331,6 +362,7 @@ function IssueSubscriptionSteps({
         return;
       }
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["api", branchId] }),
         queryClient.invalidateQueries({
           queryKey: membershipsQuery(api, branchId, clientId).queryKey,
         }),
@@ -353,7 +385,7 @@ function IssueSubscriptionSteps({
     },
   });
 
-  const dirty = useSelector(form.store, (state) => state.isDirty);
+  const dirty = useSelector(form.store, (state) => state.isDirty) || paymentDirty;
   useEffect(() => {
     if (step === "pick") {
       reportGuard({ dirty, submitting: false });
@@ -365,6 +397,8 @@ function IssueSubscriptionSteps({
       const values = valuesFrom(template, clientGroupIds);
       setDefaults(values);
       form.reset(values);
+      setPaymentDraft(initialPayment());
+      setPayNow(true);
       setFailure(null);
     }
     setChosen(template);
@@ -502,7 +536,7 @@ function IssueSubscriptionSteps({
         >
           {({ dirty: formDirty, submitting, noGroups }) => (
             <EditSheetForm
-              dirty={formDirty}
+              dirty={formDirty || paymentDirty}
               submitting={submitting}
               submitDisabled={noGroups}
               submitLabel={t("clients.issue.submit")}
@@ -669,6 +703,34 @@ function IssueSubscriptionSteps({
                   />
                 )}
               </form.Field>
+              {canAccept && (
+                <>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={payNow}
+                      onChange={(event) => {
+                        setPayNow(event.target.checked);
+                      }}
+                    />
+                    {t("finance.payNow")}
+                  </label>
+                  {payNow && (
+                    <form.Subscribe selector={(state) => state.values.price}>
+                      {(price) => (
+                        <PaymentBlock
+                          value={paymentDraft}
+                          onChange={setPaymentDraft}
+                          accounts={availableCash}
+                          debt={parseMoney(price, currency) ?? { minorUnits: 0, currency }}
+                          advance={advance}
+                          canAccept
+                        />
+                      )}
+                    </form.Subscribe>
+                  )}
+                </>
+              )}
             </EditSheetForm>
           )}
         </form.Subscribe>

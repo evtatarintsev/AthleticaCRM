@@ -92,7 +92,8 @@ mise run admin org find ЦР   # = bin/athletica admin org find ЦР
 │   ├── employees/        # Employee domain (includes EmployeePermissions)
 │   ├── discipline/       # Sport/activity types
 │   ├── groups/           # Class/course groups
-│   ├── clientbalance/    # Client account balance tracking
+│   ├── ledger/           # Главная книга и шаблоны проводок
+│   ├── sales/            # Продажи и позиции
 │   ├── orgbalance/       # Organization-level balance
 │   ├── audit/            # Audit logging
 │   ├── auth/             # Authentication (Users)
@@ -101,7 +102,8 @@ mise run admin org find ЦР   # = bin/athletica admin org find ЦР
 │
 ├── read/                  # Read-проекции (query-модель) под нужды экранов
 │   ├── ReadViews.kt      # Реестр проекций; маршруты принимают его целиком
-│   ├── clients/          # ClientListView, ClientBalanceHistoryView
+│   ├── clients/          # ClientListView
+│   ├── finance/          # Балансы, история клиента, продажи, журнал и ДДС
 │   ├── groups/           # GroupListView, GroupDetailView
 │   ├── tasks/            # TaskListView, TaskDetailView
 │   ├── home/             # TodayScheduleView
@@ -449,7 +451,7 @@ No reflection-based DI framework; all wiring is explicit and visible.
 - **Ubiquitous Language**: See README.md for domain terms (Client, Group, Discipline, etc.)
 - **Architecture Deep Dive**: See `docs/ARCHITECTURE_CORE.md`
 - **Use Cases**: See `docs/USECASES_CORE.md` for all 28+ business flows
-- **Client Balance**: See `docs/client-balance.md` for accounting rules
+- **Finance Ledger**: See `docs/ledger.md` for accounting rules
 - **Quick Reference**: See `docs/QUICK_REFERENCE.md` for developer cheat sheet
 - **CLI**: See `docs/cli.md` for run modes (`serve`) and admin commands (`admin org ...`)
 

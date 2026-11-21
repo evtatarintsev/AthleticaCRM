@@ -16,6 +16,7 @@ import org.athletica.crm.api.schemas.memberships.MembershipHistoryRequest
 import org.athletica.crm.api.schemas.memberships.MembershipHistoryResponse
 import org.athletica.crm.api.schemas.memberships.MembershipListRequest
 import org.athletica.crm.api.schemas.memberships.MembershipListResponse
+import org.athletica.crm.api.schemas.memberships.MembershipSaleSchema
 import org.athletica.crm.api.schemas.memberships.MembershipSchema
 import org.athletica.crm.api.schemas.memberships.MembershipStateSchema
 import org.athletica.crm.api.schemas.memberships.RepayDebtRequest
@@ -25,6 +26,7 @@ import org.athletica.crm.api.schemas.memberships.UnfreezeMembershipRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsRequest
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.entityids.SaleId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.subscription.ActivationMode
@@ -37,12 +39,15 @@ import org.athletica.crm.domain.memberships.MembershipDuration
 import org.athletica.crm.domain.memberships.Memberships
 import org.athletica.crm.domain.memberships.RevokedMembership
 import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.crm.usecases.memberships.closeMembership
 import org.athletica.crm.usecases.memberships.extendMembership
 import org.athletica.crm.usecases.memberships.freezeMembership
+import org.athletica.crm.usecases.memberships.issueMembership
 import org.athletica.crm.usecases.memberships.revokeMembership
 import org.athletica.crm.usecases.memberships.unfreezeMembership
 
@@ -55,11 +60,15 @@ fun RouteWithContext.membershipsRoutes(
     memberships: Memberships,
     calendar: OrgCalendar,
     views: ReadViews,
+    payments: ClientPayments,
+    sales: Sales,
 ) {
     route("/memberships") {
         post<IssueMembershipRequest, Unit>("/issue") { request ->
             db.transaction {
-                memberships.issue(
+                val saleId = SaleId.new()
+                issueMembership(
+                    memberships = memberships,
                     id = request.id,
                     clientId = request.clientId,
                     tariffPlanId = request.tariffPlanId,
@@ -71,15 +80,19 @@ fun RouteWithContext.membershipsRoutes(
                     activation = request.activation(),
                     closeMode = request.closeMode,
                     issuedOn = calendar.today(),
+                    saleId = saleId,
+                    sales = sales,
                 )
+                request.payment?.let { payments.pay(saleId, request.clientId, it, calendar.today()) }
             }
         }
 
         post<MembershipListRequest, MembershipListResponse>("/list") { request ->
             db.transaction {
                 val today = calendar.today()
+                val saleStates = views.membershipSales.byClient(request.clientId)
                 memberships.forClient(request.clientId)
-                    .map { it.toSchema(today) }
+                    .map { it.toSchema(today, checkNotNull(saleStates[it.id])) }
                     .let { MembershipListResponse(it) }
             }
         }
@@ -137,7 +150,7 @@ private fun IssueMembershipRequest.activation(): Activation =
     }
 
 /** Преобразует доменный абонемент в схему ответа со свойствами, выведенными на дату [today]. */
-private fun Membership.toSchema(today: LocalDate): MembershipSchema =
+private fun Membership.toSchema(today: LocalDate, sale: MembershipSaleSchema): MembershipSchema =
     MembershipSchema(
         id = id,
         name = name,
@@ -153,6 +166,7 @@ private fun Membership.toSchema(today: LocalDate): MembershipSchema =
         issuedOn = issuedOn,
         groups = groups.map { MembershipGroupSchema(it.id, it.name) },
         state = stateSchema(today),
+        sale = sale,
     )
 
 /** Состояние абонемента для ответа; для активного — свойства на дату [today]. */

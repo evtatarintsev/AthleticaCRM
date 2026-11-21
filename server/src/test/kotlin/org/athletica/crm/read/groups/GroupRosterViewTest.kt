@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
 
 /** DB-тесты проекции состава группы: выбор абонемента, причина внимания, порядок и скоуп. */
 class GroupRosterViewTest {
-    private val fixture = MembershipFixture()
+    private val fixture = MembershipFixture(membershipPrice = org.athletica.crm.core.money.Money.zero(org.athletica.crm.core.money.Currency.RUB))
     private val view = DbGroupRosterView()
     private val ctx: EmployeeRequestContext = employeeContext(orgId = fixture.orgId, branchId = fixture.branchId)
 
@@ -122,20 +122,7 @@ class GroupRosterViewTest {
         clientId: ClientId,
         rubles: Int,
     ) {
-        orThrow {
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, note, performed_by)
-                    VALUES (:orgId, :c, :v, :v, 'admin_debit', 'тест', :e)
-                    """.trimIndent(),
-                )
-                .bind("orgId", fixture.orgId)
-                .bind("c", clientId)
-                .bind("v", rubles.toBigDecimal())
-                .bind("e", fixture.employeeId)
-                .execute()
-        }
+        org.athletica.crm.setClientAdvance(fixture.orgId, clientId, org.athletica.crm.core.money.Money(rubles.toLong() * 100, org.athletica.crm.core.money.Currency.RUB))
     }
 
     @Test

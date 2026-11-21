@@ -7,6 +7,7 @@ import {
   FreezeMembershipRequestSchema,
   type MembershipSchema,
 } from "@/api/generated/contracts";
+import { testSale } from "@/test/finance";
 import { ru } from "@/i18n/ru";
 import { appServer, empty, json, openApp } from "@/test/app";
 import { activeState, testMembership } from "@/test/memberships";
@@ -108,6 +109,7 @@ function membershipsServer(
   let debt = showClientDebt ? unpaidSessions : [];
   const entries: unknown[] = [issuedEntry];
   return appServer({
+    "sales/detail": () => json(testSale),
     "custom-fields/list": () => json([]),
     "clients/detail": () =>
       json(
@@ -599,4 +601,29 @@ it("repayment refreshes client unpaid sessions and keeps the negative balance al
   expect(screen.queryByText(/3 неоплаченных занятия/)).toBeNull();
   expect(screen.getByRole("heading", { name: ru["clientOverview.attention"] })).toBeVisible();
   expect(screen.getByText(/Долг/)).toBeVisible();
+});
+
+it("показывает частичную оплату и открывает продажу абонемента", async () => {
+  const partial = testMembership({
+    name: "Частичный",
+    state: activeState("2026-10-01", "2026-11-30"),
+    sale: {
+      saleId: testSale.id,
+      paid: { minorUnits: 150000, currency: "RUB" },
+      debt: { minorUnits: 250000, currency: "RUB" },
+      paymentState: "PARTIAL",
+    },
+  });
+  const api = membershipsServer([partial]);
+  openApp(`/clients/${client.id}`, api.fetch);
+  const user = userEvent.setup();
+  await user.click(await tileButton("Частичный"));
+  const panel = await screen.findByRole("dialog", { name: "Частичный" });
+  expect(within(panel).getByText(ru["finance.state.PARTIAL"])).toBeInTheDocument();
+  expect(within(panel).getByText(/К оплате: 2\s500,00/)).toBeInTheDocument();
+  await user.click(within(panel).getByRole("button", { name: ru["finance.sale"] }));
+  expect(await screen.findByRole("dialog", { name: ru["finance.sale"] })).toBeInTheDocument();
+  await waitFor(() => {
+    expect(api.to("sales/detail")).toHaveLength(1);
+  });
 });

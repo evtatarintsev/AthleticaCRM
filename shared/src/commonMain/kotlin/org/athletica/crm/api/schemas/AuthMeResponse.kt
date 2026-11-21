@@ -38,4 +38,6 @@ data class OrgInfo(
      * Баланс организации. null если недоступен пользователю.
      */
     val balance: Money?,
+    /** Часовой пояс организации для дат операций в формах. */
+    val timezone: String,
 )

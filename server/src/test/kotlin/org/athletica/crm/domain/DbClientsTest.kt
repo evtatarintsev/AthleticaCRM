@@ -27,7 +27,6 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.audit.PostgresAuditLog
-import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.ArchivedClient
@@ -43,6 +42,7 @@ import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.testName
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -236,7 +236,7 @@ class DbClientsTest {
                 orThrow {
                     TestPostgres.db.transaction { context(ctx) { clients.new(id, testName("Клиент"), null, null, Gender.MALE) } }
                 }
-            val balances = DbClientBalances()
+            val balances = ClientPayments()
             val archived = CompletableDeferred<Unit>()
             val balanceStarted = CompletableDeferred<Unit>()
             val profileStarted = CompletableDeferred<Unit>()
@@ -257,7 +257,8 @@ class DbClientsTest {
                     either {
                         TestPostgres.db.transaction {
                             balanceStarted.complete(Unit)
-                            context(ctx) { balances.adjust(stale, Money(100, Currency.RUB), "Пополнение") }
+                            val manager = ctx.copy(employee = org.athletica.crm.domain.EmployeeStub(id = employeeId, permissionSettings = EmployeePermission(emptyList(), setOf(org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE), emptySet())))
+                            context(manager) { balances.adjust(stale, Money(100, Currency.RUB), "Пополнение") }
                         }
                     }
                 }
@@ -290,7 +291,7 @@ class DbClientsTest {
                     context(ctx) {
                         val client = assertIs<ArchivedClient>(clients.byId(id))
                         assertEquals("Клиент", client.name)
-                        assertEquals(emptyList(), balances.currentOf(client).history())
+                        assertEquals(Money.zero(Currency.RUB), org.athletica.crm.read.finance.DbClientBalanceView().byClient(client.id))
                     }
                 }
             }

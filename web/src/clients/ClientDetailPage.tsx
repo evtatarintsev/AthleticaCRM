@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type { ClientId, MembershipId, TaskId } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
+import { SaleCreateSheet } from "@/finance/SaleSheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { ConversationSheet } from "@/messaging/ConversationSheet";
@@ -60,6 +62,7 @@ export function ClientDetailPage({
   const queryClient = useQueryClient();
   const session = useSession(api);
   const branchId = session.currentBranch.id;
+  const [saleCreateOpen, setSaleCreateOpen] = useState(false);
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
   const changeTab = onTabChange;
   const requestedTab = tab;
@@ -182,6 +185,25 @@ export function ClientDetailPage({
         }}
       />
       {(sections.isError || unpaid.isError) && <FormAlert message={t("clients.loadClientError")} />}
+      {data.state === "ACTIVE" && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setSaleCreateOpen(true);
+          }}
+        >
+          {t("finance.sellService")}
+        </Button>
+      )}
+      <SaleCreateSheet
+        api={api}
+        branchId={branchId}
+        client={data}
+        open={saleCreateOpen}
+        onOpenChange={setSaleCreateOpen}
+        onSaved={refreshDetail}
+      />
       <Tabs
         className="gap-4"
         value={activeTab}

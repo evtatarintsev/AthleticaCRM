@@ -1,5 +1,6 @@
 import {
   CalendarDaysIcon,
+  WalletIcon,
   CheckSquareIcon,
   HomeIcon,
   IdCardIcon,
@@ -13,7 +14,15 @@ import type { ru } from "@/i18n/ru";
 
 /** Раздел приложения в основной навигации. */
 export type SectionId =
-  "home" | "schedule" | "clients" | "inbox" | "groups" | "employees" | "tasks" | "settings";
+  | "home"
+  | "schedule"
+  | "clients"
+  | "inbox"
+  | "groups"
+  | "employees"
+  | "tasks"
+  | "settings"
+  | "finance";
 
 /** Пункт основной навигации. */
 export interface Section {
@@ -36,6 +45,7 @@ export const sections: readonly Section[] = [
   { id: "groups", path: "/groups", label: "nav.groups", icon: UsersRoundIcon },
   { id: "employees", path: "/employees", label: "nav.employees", icon: IdCardIcon },
   { id: "tasks", path: "/tasks", label: "nav.tasks", icon: CheckSquareIcon },
+  { id: "finance", path: "/finance", label: "nav.finance", icon: WalletIcon },
   { id: "settings", path: "/settings", label: "nav.settings", icon: SettingsIcon },
 ];
 

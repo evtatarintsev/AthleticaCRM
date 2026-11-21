@@ -78,7 +78,9 @@ class AuthMePermissionsTest {
                 header(HttpHeaders.Authorization, "Bearer $token")
             }
         assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
-        return json.decodeFromString<AuthMeResponse>(response.bodyAsText()).permissions
+        val session = json.decodeFromString<AuthMeResponse>(response.bodyAsText())
+        assertEquals("UTC", session.orgInfo.timezone)
+        return session.permissions
     }
 
     @Test

@@ -7,7 +7,6 @@ import org.athletica.crm.Di
 import org.athletica.crm.createDatabase
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.branch.DbBranches
-import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.mail.DbOrgEmails
@@ -23,6 +22,7 @@ import org.athletica.crm.domain.payment.PaymentGatewayError
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.infra.mail.Email
 import org.athletica.infra.yookassa.YookassaConfig
 
@@ -57,7 +57,7 @@ fun offlineDi(): Di {
         emailDispatcher = OfflineEmailDispatcher,
         orgBalances = DbOrgBalances(),
         organizations = DbOrganizations(),
-        clientBalances = DbClientBalances(),
+        clientPayments = ClientPayments(),
         clients = DbClients(),
         branches = DbBranches(),
         customFieldDefinitions = DbCustomFieldDefinitions(),

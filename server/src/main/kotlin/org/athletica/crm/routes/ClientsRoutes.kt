@@ -5,11 +5,8 @@ import arrow.core.raise.context.raise
 import io.ktor.http.HttpHeaders
 import org.athletica.crm.api.schemas.clients.AddClientToGroupsRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
-import org.athletica.crm.api.schemas.clients.AdjustBalanceRequest
 import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
 import org.athletica.crm.api.schemas.clients.AttachClientDocRequest
-import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryRequest
-import org.athletica.crm.api.schemas.clients.ClientBalanceHistoryResponse
 import org.athletica.crm.api.schemas.clients.ClientContactInput
 import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.clients.ClientDetailRequest
@@ -41,9 +38,8 @@ import org.athletica.crm.core.entityids.ClientContactId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
-import org.athletica.crm.domain.clientbalance.ClientBalance
-import org.athletica.crm.domain.clientbalance.ClientBalances
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
@@ -74,7 +70,6 @@ context(db: Database)
 fun RouteWithContext.clientsRoutes(
     clients: Clients,
     views: ReadViews,
-    balances: ClientBalances,
     employees: Employees,
     enrollments: Enrollments,
     definitions: CustomFieldDefinitions,
@@ -113,7 +108,7 @@ fun RouteWithContext.clientsRoutes(
     get<ClientDetailRequest, ClientDetailResponse>("/clients/detail") { request ->
         db.transaction {
             val client = clients.byId(request.id)
-            client.detailResponse(balances.currentOf(client), contacts.byClient(client.id))
+            client.detailResponse(views.clientBalance.byClient(client.id), contacts.byClient(client.id))
         }
     }
 
@@ -131,7 +126,7 @@ fun RouteWithContext.clientsRoutes(
                         request.customFields,
                     )
             contacts.replace(client, request.contacts.toDomain(client.id))
-            val balance = balances.currentOf(client)
+            val balance = views.clientBalance.byClient(client.id)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
@@ -151,7 +146,7 @@ fun RouteWithContext.clientsRoutes(
                     )
                     .apply { save() }
             contacts.replace(client, request.contacts.toDomain(client.id))
-            val balance = balances.currentOf(client)
+            val balance = views.clientBalance.byClient(client.id)
             client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
@@ -171,14 +166,6 @@ fun RouteWithContext.clientsRoutes(
     post<RemoveClientFromGroupRequest, Unit>("/clients/remove-from-group") { request ->
         db.transaction {
             enrollments.remove(request.groupId, request.clientIds)
-        }
-    }
-
-    post<AdjustBalanceRequest, ClientDetailResponse>("/clients/balance/adjust") { request ->
-        db.transaction {
-            val client = clients.activeById(request.clientId)
-            val balance = balances.adjust(client, request.amount, request.note)
-            client.detailResponse(balance, contacts.byClient(client.id))
         }
     }
 
@@ -211,15 +198,9 @@ fun RouteWithContext.clientsRoutes(
             request.clientIds.forEach { id -> clients.restore(id) }
         }
     }
-
-    get<ClientBalanceHistoryRequest, ClientBalanceHistoryResponse>("/clients/balance/history") { request ->
-        db.transaction {
-            views.clientBalanceHistory.byClient(request.id)
-        }
-    }
 }
 
-fun Client.detailResponse(balance: ClientBalance, contacts: List<ClientContact>) =
+fun Client.detailResponse(balance: Money, contacts: List<ClientContact>) =
     ClientDetailResponse(
         id = id,
         name = name,
@@ -227,7 +208,7 @@ fun Client.detailResponse(balance: ClientBalance, contacts: List<ClientContact>)
         birthday = birthday,
         gender = gender,
         groups = groups.map { ClientGroup(it.id, it.name) },
-        balance = balance.totalAmount,
+        balance = balance,
         docs = docs.map { ClientDoc(it.id, it.uploadId, it.name, it.createdAt) },
         leadSourceId = leadSourceId,
         customFields = customFields,

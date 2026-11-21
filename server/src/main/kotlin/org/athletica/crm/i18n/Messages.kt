@@ -706,6 +706,12 @@ object Messages {
         override val en = "Membership not found"
     }
 
+    /** Позиция продажи для абонемента не найдена, отменена или принадлежит другому клиенту. */
+    object MembershipSaleItemNotFound : LocalizationKey {
+        override val ru = "Позиция продажи абонемента не найдена"
+        override val en = "Membership sale item not found"
+    }
+
     object MembershipUnlimitedCloseOnLastSession : LocalizationKey {
         override val ru = "Безлимитный абонемент нельзя закрывать при списании последнего занятия"
         override val en = "An unlimited membership cannot close on its last session"

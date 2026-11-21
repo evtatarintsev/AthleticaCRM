@@ -41,6 +41,7 @@ import kotlin.time.Instant
 class MembershipFixture(
     private val timezone: String = "UTC",
     private val currency: Currency = Currency.RUB,
+    private val membershipPrice: Money = Money(4_000_00, currency),
 ) {
     /** Организация теста. */
     val orgId: OrgId = OrgId.new()
@@ -145,7 +146,8 @@ class MembershipFixture(
         groupIds: List<GroupId> = listOf(groupId),
     ): Membership =
         tx {
-            memberships.issue(
+            org.athletica.crm.usecases.memberships.issueMembership(
+                memberships,
                 MembershipId.new(),
                 clientId,
                 null,
@@ -153,7 +155,7 @@ class MembershipFixture(
                 sessions?.let(::testPositiveInt),
                 groupIds,
                 duration,
-                Money(4_000_00, currency),
+                membershipPrice,
                 activation,
                 closeMode,
                 issuedOn,

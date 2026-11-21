@@ -147,23 +147,7 @@ class DbClientListViewTest {
         createdAt: Instant,
         operationType: String = "admin_credit",
     ) {
-        orThrow {
-            TestPostgres.db
-                .sql(
-                    """
-                    INSERT INTO client_balance_journal (org_id, client_id, amount, balance_after, operation_type, performed_by, created_at)
-                    VALUES (:orgId, :clientId, :amount, :balanceAfter, :type::balance_operation_type, :performedBy, :createdAt)
-                    """.trimIndent(),
-                )
-                .bind("orgId", orgId)
-                .bind("clientId", clientId)
-                .bind("amount", Money(balanceAfter, Currency.RUB))
-                .bind("balanceAfter", Money(balanceAfter, Currency.RUB))
-                .bind("type", operationType)
-                .bind("performedBy", performedBy)
-                .bind("createdAt", createdAt)
-                .execute()
-        }
+        org.athletica.crm.setClientAdvance(OrgId(orgId), clientId, Money(balanceAfter, Currency.RUB))
     }
 
     private suspend fun insertContact(

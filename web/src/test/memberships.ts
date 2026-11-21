@@ -15,6 +15,7 @@ export interface TestMembership {
   readonly activationDeadline?: string | null;
   readonly closeMode?: MembershipSchema["closeMode"];
   readonly state: unknown;
+  readonly sale?: MembershipSchema["sale"];
 }
 
 /** Абонемент в форме ответа сервера `memberships/list` с состоянием [params].state. */
@@ -34,6 +35,12 @@ export function testMembership(params: TestMembership): MembershipSchema {
     issuedOn: "2026-09-01",
     groups: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000901", name: "Утренняя группа" }],
     state: params.state,
+    sale: params.sale ?? {
+      saleId: "0199a0b2-7c3e-7d2a-9f10-000000000b01",
+      paid: { minorUnits: 400000, currency: "RUB" },
+      debt: { minorUnits: 0, currency: "RUB" },
+      paymentState: "PAID",
+    },
   });
 }
 

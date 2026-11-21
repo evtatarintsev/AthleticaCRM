@@ -2,6 +2,7 @@ package org.athletica.crm.api.schemas.memberships
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.athletica.crm.api.schemas.finance.PaymentInput
 import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
@@ -16,7 +17,7 @@ import org.athletica.crm.core.subscription.DurationUnit
  * Запрос на выдачу абонемента клиенту.
  *
  * Дата начала и окончания определяются на сервере режимом активации и сроком
- * ([durationValue]/[durationUnit]). Оплата и баланс на этом этапе не затрагиваются.
+ * ([durationValue]/[durationUnit]). Выдача создаёт продажу и необязательную оплату.
  */
 @Serializable
 data class IssueMembershipRequest(
@@ -46,4 +47,6 @@ data class IssueMembershipRequest(
     val activationDeadline: LocalDate? = null,
     /** Режим закрытия. */
     val closeMode: CloseMode,
+    /** Необязательная оплата в одной транзакции с выдачей. */
+    val payment: PaymentInput? = null,
 )

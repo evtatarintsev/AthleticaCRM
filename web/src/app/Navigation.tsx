@@ -15,25 +15,29 @@ const BADGE_LIMIT = 99;
 export function Navigation({
   onNavigate,
   badges = {},
+  canViewFinance = false,
 }: {
   onNavigate?: () => void;
   badges?: Partial<Record<SectionId, number>>;
+  canViewFinance?: boolean;
 }) {
   const { t } = useI18n();
   const current = sectionOf(useLocation({ select: (location) => location.pathname }));
   return (
     <nav aria-label={t("nav.label")}>
       <ul className="space-y-1">
-        {sections.map((section) => (
-          <li key={section.id}>
-            <SectionLink
-              section={section}
-              current={section.id === current}
-              badge={badges[section.id] ?? 0}
-              {...(onNavigate === undefined ? {} : { onNavigate })}
-            />
-          </li>
-        ))}
+        {sections
+          .filter((section) => section.id !== "finance" || canViewFinance)
+          .map((section) => (
+            <li key={section.id}>
+              <SectionLink
+                section={section}
+                current={section.id === current}
+                badge={badges[section.id] ?? 0}
+                {...(onNavigate === undefined ? {} : { onNavigate })}
+              />
+            </li>
+          ))}
       </ul>
     </nav>
   );

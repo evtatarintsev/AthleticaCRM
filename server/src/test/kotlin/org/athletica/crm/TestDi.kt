@@ -3,8 +3,6 @@ package org.athletica.crm
 import arrow.core.raise.context.Raise
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.branch.DbBranches
-import org.athletica.crm.domain.clientbalance.AuditClientBalances
-import org.athletica.crm.domain.clientbalance.DbClientBalances
 import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.mail.DbOrgEmails
@@ -17,6 +15,7 @@ import org.athletica.crm.domain.payment.PaymentGateway
 import org.athletica.crm.domain.payment.PaymentGatewayError
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.infra.yookassa.YookassaConfig
 
 /** JWT-конфиг для тестовой среды. */
@@ -42,7 +41,7 @@ fun testDi(): Di {
         emailDispatcher = FakeEmailDispatcher(),
         orgBalances = DbOrgBalances(),
         organizations = DbOrganizations(),
-        clientBalances = AuditClientBalances(DbClientBalances(), audit),
+        clientPayments = ClientPayments(audit = audit),
         clients = DbClients(),
         branches = DbBranches(),
         customFieldDefinitions = DbCustomFieldDefinitions(),

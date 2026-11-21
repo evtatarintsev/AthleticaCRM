@@ -149,14 +149,14 @@ class DbClientListView : ClientListView {
         /** День рождения клиента как целое MMDD (месяц × 100 + день), без учёта года. */
         const val BIRTHDAY_MD = "(EXTRACT(MONTH FROM c.birthday)::int * 100 + EXTRACT(DAY FROM c.birthday)::int)"
 
-        /** Подзапрос последнего баланса по каждому клиенту организации. */
+        /** Подзапрос баланса главной книги по каждому клиенту организации. */
         val BAL_CTE =
             """
             WITH bal AS (
-                SELECT DISTINCT ON (client_id) client_id, balance_after
-                FROM client_balance_journal
-                WHERE org_id = :orgId
-                ORDER BY client_id, created_at DESC
+                SELECT a.client_id, -SUM(p.amount) AS balance_after
+                FROM ledger_accounts a JOIN ledger_postings p ON p.account_id = a.id
+                WHERE a.org_id = :orgId AND a.kind IN ('advance', 'receivable')
+                GROUP BY a.client_id
             )
             """.trimIndent()
 

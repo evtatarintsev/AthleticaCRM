@@ -17,7 +17,7 @@ const me = {
   username: "coach@example.com",
   name: "Иван Петров",
   avatarId: null,
-  orgInfo: { name: "Лига", balance: null },
+  orgInfo: { name: "Лига", balance: null, timezone: "UTC" },
   currentBranch: { id: "0199a0b2-7c3e-7d2a-9f10-000000000003", name: "Центр" },
   permissions: [],
   emailVerificationPending: false,

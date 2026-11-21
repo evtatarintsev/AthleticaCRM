@@ -715,7 +715,7 @@ function CashOperationForm({
             >
               <option value="">{t("finance.select")}</option>
               {employees.data?.employees
-                .filter((e) => e.isActive)
+                .filter((e) => e.status !== "BLOCKED")
                 .map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.name}

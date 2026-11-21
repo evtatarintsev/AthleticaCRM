@@ -31,6 +31,7 @@ import org.athletica.crm.domain.auth.DbAuthSessions
 import org.athletica.crm.domain.auth.DbUsers
 import org.athletica.crm.domain.auth.EmailVerificationConfig
 import org.athletica.crm.domain.auth.EmailVerifications
+import org.athletica.crm.domain.auth.PasswordResets
 import org.athletica.crm.domain.branch.AuditBranches
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.domain.branch.DbBranches
@@ -191,6 +192,7 @@ data class Di(
 ) {
     val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
+    val passwordResets = PasswordResets(orgEmails, authSessions, emailVerifications, audit, passwordHasher, emailVerificationConfig)
     val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)

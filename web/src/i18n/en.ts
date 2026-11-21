@@ -216,6 +216,18 @@ export const en: Messages<typeof ru> = {
   "auth.actionRegister": "Sign up",
   "auth.noAccount": "Don't have an account?",
   "auth.haveAccount": "Already have an account?",
+  "auth.forgotPassword": "Forgot password?",
+  "passwordReset.requestTitle": "Password recovery",
+  "passwordReset.requestSubtitle": "Enter your email and we will send a link to set a new password",
+  "passwordReset.send": "Send link",
+  "passwordReset.sent":
+    "If the address is registered, an email with a link is on its way. The link expires in 1 hour.",
+  "passwordReset.backToLogin": "Back to sign in",
+  "passwordReset.title": "New password",
+  "passwordReset.subtitle": "Set a new password. All open sessions will be signed out.",
+  "passwordReset.submit": "Save password",
+  "passwordReset.done": "Password changed. Sign in with your new password.",
+  "passwordReset.requestNew": "Request a new link",
 
   "action.back": "Back",
   "action.save": "Save",
@@ -1438,5 +1450,6 @@ export const en: Messages<typeof ru> = {
   "audit.action.export": "Export",
   "audit.action.import": "Import",
   "audit.action.auth_change_password": "Password change",
+  "audit.action.auth_password_reset": "Password reset",
   "audit.action.balance_adjust": "Balance adjustment",
 };

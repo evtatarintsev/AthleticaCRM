@@ -283,4 +283,23 @@ class EmailVerificationsTest {
             assertFails { orThrow { db.transaction { context(ctx(second)) { verification.resend() } } } }
             assertEquals(2L, count("org_emails"))
         }
+
+    @Test
+    fun `ownership confirms a pending email once and ignores users without a pending confirmation`() =
+        runTest {
+            val user = signup()
+            val other = signup(login = "other@example.com")
+            val verification = service()
+            orThrow {
+                db.transaction {
+                    sql("DELETE FROM user_email_verifications WHERE user_id = :userId").bind("userId", other.id).execute()
+                    verification.confirmOwnership(other.id, null)
+                    verification.confirmOwnership(user.id, "192.0.2.7")
+                    verification.confirmOwnership(user.id, "192.0.2.7")
+                    assertFalse(verification.pending(user.id))
+                }
+            }
+            assertEquals(1L, count("notifications"))
+            assertEquals(1L, orThrow { db.sql("SELECT count(*) AS n FROM audit_logs WHERE action_type = 'auth_verify_email' AND ip_address = '192.0.2.7'").firstOrNull { it.asLong("n") } })
+        }
 }

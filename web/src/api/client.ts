@@ -70,6 +70,8 @@ const WITHOUT_REFRESH: ReadonlySet<EndpointPath> = new Set<EndpointPath>([
   "auth/branches",
   "auth/sign-up",
   "auth/confirm-email",
+  "auth/forgot-password",
+  "auth/reset-password",
   "auth/refresh-token",
 ]);
 

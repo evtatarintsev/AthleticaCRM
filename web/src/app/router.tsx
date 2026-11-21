@@ -51,6 +51,8 @@ import { LoginPage } from "@/auth/LoginPage";
 import { LoginSearchSchema, postLoginTarget } from "@/auth/redirect";
 import { SignUpPage } from "@/auth/SignUpPage";
 import { ConfirmEmailPage } from "@/auth/ConfirmEmailPage";
+import { ForgotPasswordPage } from "@/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/auth/ResetPasswordPage";
 import { BASE_PATH } from "@/config";
 import { ApiFailure } from "@/query/apiFailure";
 import { sessionQuery } from "@/query/queries";
@@ -128,6 +130,36 @@ const confirmEmailRoute = createRoute({
       if (hash !== "") void navigate({ hash: "", replace: true });
     }, [hash, navigate]);
     return <ConfirmEmailPage key={token} api={api} token={token} />;
+  },
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  beforeLoad: async ({ context }) => {
+    await leaveGuestPageIfAuthenticated(context, "/");
+  },
+  component: function ForgotPasswordRoute() {
+    const { api } = forgotPasswordRoute.useRouteContext();
+    return <ForgotPasswordPage api={api} />;
+  },
+});
+
+/** Страница ссылки сброса: токен берётся из фрагмента и сразу убирается из адреса и истории. */
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: function ResetPasswordRoute() {
+    const { api } = resetPasswordRoute.useRouteContext();
+    const hash = useLocation({ select: (location) => location.hash });
+    const navigate = resetPasswordRoute.useNavigate();
+    const incomingToken = new URLSearchParams(hash).get("token") ?? "";
+    const [token, setToken] = useState(incomingToken);
+    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
+    useEffect(() => {
+      if (hash !== "") void navigate({ hash: "", replace: true });
+    }, [hash, navigate]);
+    return <ResetPasswordPage key={token} api={api} token={token} />;
   },
 });
 
@@ -645,6 +677,8 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   signUpRoute,
   confirmEmailRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   appRoute.addChildren([
     homeRoute,
     settingsRoute,
@@ -711,6 +745,8 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/login": true,
   "/sign-up": true,
   "/confirm-email": true,
+  "/forgot-password": true,
+  "/reset-password": true,
   "/settings": true,
   "/settings/edit-profile": true,
   "/settings/change-password": true,
@@ -742,18 +778,24 @@ export function isStaticAppPath(path: string): path is StaticAppPath {
 }
 
 /**
- * Страницы только для гостей: с действующей сессией они ведут в приложение,
- * а потеря сессии на них не уводит на вход.
+ * Публичные страницы авторизации: потеря сессии на них не уводит на вход,
+ * в том числе при предварительной загрузке ссылки на страницу входа.
  */
-const guestPaths: ReadonlySet<string> = new Set<StaticAppPath>(["/login", "/sign-up"]);
+const publicAuthPaths: ReadonlySet<string> = new Set<StaticAppPath>([
+  "/login",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+  "/confirm-email",
+]);
 
 /** Маршрутизация приложения: элемент для рендера и переход на вход при потере сессии. */
 export interface AppRouting {
   /** `RouterProvider` с роутером приложения. */
   readonly element: ReactElement;
   /**
-   * Открывает вход с адресом возврата на текущую страницу. На гостевых страницах (вход,
-   * регистрация) ничего не делает: гость остаётся на своей странице, адрес возврата не затирается.
+   * Открывает вход с адресом возврата на текущую страницу. На публичных страницах авторизации
+   * ничего не делает: пользователь остаётся на своей странице, адрес возврата не затирается.
    */
   readonly redirectToLogin: () => void;
 }
@@ -765,7 +807,7 @@ export function createAppRouting(context: RouterContext, history?: RouterHistory
     element: <RouterProvider router={router} />,
     redirectToLogin: () => {
       const { pathname, href } = router.latestLocation;
-      if (!guestPaths.has(pathname)) {
+      if (!publicAuthPaths.has(pathname)) {
         void router.navigate({ to: "/login", search: { redirect: href }, replace: true });
       }
     },

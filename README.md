@@ -51,6 +51,9 @@ Dev-nginx (`docker-compose.dev.yaml`) отдаёт лендинг на `athletic
    ```bash
    mise run server
    ```
+   Ссылки в письмах подтверждения email и сброса пароля берутся из `CRM_PUBLIC_URL`.
+   По умолчанию это `https://app.athletica.crm` (dev-nginx). Для другого адреса CRM задайте
+   переменную перед запуском сервера; в production Compose по умолчанию использует `https://app.${DOMAIN}`.
 6. Фронтенд:
    ```bash
    cd web && npm ci && cd .. && mise run web

@@ -2233,6 +2233,13 @@ export const ExtendMembershipRequestSchema = z
   .readonly();
 export type ExtendMembershipRequest = z.output<typeof ExtendMembershipRequestSchema>;
 
+export const ForgotPasswordRequestSchema = z
+  .object({
+    email: z.string(),
+  })
+  .readonly();
+export type ForgotPasswordRequest = z.output<typeof ForgotPasswordRequestSchema>;
+
 export const FreezeMembershipRequestSchema = z
   .object({
     membershipId: MembershipIdSchema,
@@ -3110,6 +3117,14 @@ export const ResendEmailConfirmationResponseSchema = z
   })
   .readonly();
 export type ResendEmailConfirmationResponse = z.output<typeof ResendEmailConfirmationResponseSchema>;
+
+export const ResetPasswordRequestSchema = z
+  .object({
+    token: z.string(),
+    newPassword: z.string(),
+  })
+  .readonly();
+export type ResetPasswordRequest = z.output<typeof ResetPasswordRequestSchema>;
 
 export const RestoreClientRequestSchema = z
   .object({
@@ -4077,6 +4092,13 @@ export const endpoints = {
     out: "json",
     response: ConfirmEmailResponseSchema,
   },
+  "auth/forgot-password": {
+    method: "POST",
+    in: "body",
+    request: ForgotPasswordRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "auth/login": {
     method: "POST",
     in: "body",
@@ -4132,6 +4154,13 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: LoginResponseSchema,
+  },
+  "auth/reset-password": {
+    method: "POST",
+    in: "body",
+    request: ResetPasswordRequestSchema,
+    out: "empty",
+    response: z.undefined(),
   },
   "auth/sessions": {
     method: "GET",

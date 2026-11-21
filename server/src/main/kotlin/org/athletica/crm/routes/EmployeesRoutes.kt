@@ -1,7 +1,9 @@
 package org.athletica.crm.routes
 
+import org.athletica.crm.api.schemas.employees.BlockEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.CreateRoleRequest
+import org.athletica.crm.api.schemas.employees.EmployeeAccessStatus
 import org.athletica.crm.api.schemas.employees.EmployeeDetailRequest
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.api.schemas.employees.EmployeeListItem
@@ -10,6 +12,7 @@ import org.athletica.crm.api.schemas.employees.EmployeeRole
 import org.athletica.crm.api.schemas.employees.RoleItem
 import org.athletica.crm.api.schemas.employees.RoleListResponse
 import org.athletica.crm.api.schemas.employees.SendEmployeeAccessRequest
+import org.athletica.crm.api.schemas.employees.UnblockEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateEmployeeRequest
 import org.athletica.crm.api.schemas.employees.UpdateRoleRequest
 import org.athletica.crm.domain.employees.Employee
@@ -18,7 +21,10 @@ import org.athletica.crm.domain.employees.EmployeePermissionSelection
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.read.ReadViews
+import org.athletica.crm.read.employees.EmployeeDetailQuery
+import org.athletica.crm.read.employees.EmployeeListQuery
 import org.athletica.crm.storage.Database
+import kotlin.time.Clock
 import org.athletica.crm.domain.employees.EmployeeRole as DomainEmployeeRole
 
 context(db: Database)
@@ -26,13 +32,13 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
     route("/employees") {
         get<Unit, EmployeeListResponse>("/list") {
             db.transaction {
-                views.employeeList.list()
+                views.employeeList.list(EmployeeListQuery(Clock.System.now()))
             }
         }
 
         get<EmployeeDetailRequest, EmployeeDetailResponse>("/detail") { request ->
             db.transaction {
-                views.employeeDetail.byId(request.id)
+                views.employeeDetail.byId(EmployeeDetailQuery(request.id, Clock.System.now()))
             }
         }
 
@@ -74,6 +80,18 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
             }
         }
 
+        post<BlockEmployeeRequest, Unit>("/block") { request ->
+            db.transaction {
+                employees.byId(request.employeeId).block()
+            }
+        }
+
+        post<UnblockEmployeeRequest, Unit>("/unblock") { request ->
+            db.transaction {
+                employees.byId(request.employeeId).unblock()
+            }
+        }
+
         get<Unit, RoleListResponse>("/roles") {
             db.transaction {
                 roles.list()
@@ -98,16 +116,16 @@ fun RouteWithContext.employeesRoutes(employees: Employees, roles: Roles, views: 
     }
 }
 
-/** Собирает элемент списка из только что созданного сотрудника и назначенных ему ролей. */
+/** Собирает элемент списка из только что созданного сотрудника: логин ещё не выдан, активности нет. */
 private fun Employee.toListItem() =
     EmployeeListItem(
-        id,
-        name,
-        avatarId,
-        isOwner,
-        isActive,
-        joinedAt,
-        roles.map { role -> EmployeeRole(role.id, role.name.value) },
+        id = id,
+        name = name,
+        avatarId = avatarId,
+        isOwner = isOwner,
+        status = EmployeeAccessStatus.NO_ACCESS,
+        joinedAt = joinedAt,
+        roles = roles.map { role -> EmployeeRole(role.id, role.name.value) },
     )
 
 /** Конвертирует [CreateEmployeeRequest] в доменный [EmployeeBranchAccess]. */

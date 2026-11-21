@@ -25,7 +25,7 @@ data class DbEmployee(
     override val name: String,
     override val avatarId: UploadId?,
     override val isOwner: Boolean,
-    override val isActive: Boolean,
+    override val blockedAt: Instant?,
     override val joinedAt: Instant,
     override val phoneNo: String?,
     override val email: EmailAddress?,
@@ -56,7 +56,6 @@ data class DbEmployee(
                 """
                 UPDATE employees
                 SET user_id             = :userId,
-                    is_active           = :isActive,
                     name                = :name,
                     avatar_id           = :avatarId,
                     phone_no            = :phoneNo,
@@ -66,7 +65,6 @@ data class DbEmployee(
                 """.trimIndent(),
             )
                 .bind("userId", userId)
-                .bind("isActive", isActive)
                 .bind("name", name)
                 .bind("avatarId", avatarId)
                 .bind("phoneNo", phoneNo)
@@ -130,8 +128,32 @@ data class DbEmployee(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) {
+        ensure(userId == null) { CommonDomainError("EMPLOYEE_ACCESS_ALREADY_SENT", Messages.EmployeeAccessAlreadySent.localize()) }
         val user = users.new(email.value, password)
-        copy(userId = user.id, isActive = true, email = email).save()
+        copy(userId = user.id, email = email).save()
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun block() {
+        ensure(!isOwner) { CommonDomainError("EMPLOYEE_OWNER_CANNOT_BE_BLOCKED", Messages.EmployeeOwnerCannotBeBlocked.localize()) }
+        ensure(id != ctx.employee.id) { CommonDomainError("EMPLOYEE_CANNOT_BLOCK_SELF", Messages.EmployeeCannotBlockSelf.localize()) }
+        updateBlockedAt("COALESCE(blocked_at, now())")
+    }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun unblock() {
+        updateBlockedAt("NULL")
+    }
+
+    /** Записывает в `blocked_at` SQL-выражение [value]. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    private suspend fun updateBlockedAt(value: String) {
+        val updated =
+            tr.sql("UPDATE employees SET blocked_at = $value WHERE id = :id AND org_id = :orgId")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        ensure(updated == 1L) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

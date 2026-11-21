@@ -14,11 +14,16 @@ import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { Avatar } from "@/ui/Avatar";
 import { PageHeader } from "@/ui/PageHeader";
-import { OwnerBadge, RoleChip, StatusBadge } from "./EmployeeBadges";
+import { LastSeen, OwnerBadge, RoleChip, StatusBadge } from "./EmployeeBadges";
 import { EmployeeCardSheet } from "./EmployeeCardSheet";
 import { type EmployeeListSearch } from "./employeeSearch";
 import { EmployeeSheet } from "./EmployeeSheet";
 import { SendAccessDialog } from "./SendAccessDialog";
+
+/** Работает ли [employee] в системе: доступ выдан и не заблокирован (фильтр «Только активные»). */
+function isWorking(employee: EmployeeListItem): boolean {
+  return employee.status === "ACTIVE" || employee.status === "INVITED";
+}
 
 /** Истина, если [employee] подходит под текст поиска [query]: по имени, email или телефону. */
 function matchesSearch(employee: EmployeeListItem, query: string): boolean {
@@ -36,8 +41,8 @@ function matchesSearch(employee: EmployeeListItem, query: string): boolean {
  * Список сотрудников организации: поиск, быстрый фильтр «только активные», таблица на широких
  * экранах и карточки на узких. API отдаёт список целиком без серверной фильтрации, поэтому поиск
  * и фильтр применяются на клиенте. Карточка, редактирование и создание сотрудника — панелями
- * поверх списка, открытая панель хранится в адресе [search]; отправка доступа неактивному
- * сотруднику — диалогом прямо из строки.
+ * поверх списка, открытая панель хранится в адресе [search]; отправка доступа сотруднику
+ * без доступа — диалогом прямо из строки.
  */
 export function EmployeesPage({
   api,
@@ -64,7 +69,7 @@ export function EmployeesPage({
     const query = search.trim().toLocaleLowerCase();
     const list = employees.data?.employees ?? [];
     return list
-      .filter((employee) => (!onlyActive || employee.isActive) && matchesSearch(employee, query))
+      .filter((employee) => (!onlyActive || isWorking(employee)) && matchesSearch(employee, query))
       .toSorted((a, b) => a.name.localeCompare(b.name));
   }, [employees.data, search, onlyActive]);
 
@@ -151,6 +156,7 @@ export function EmployeesPage({
                     <tr>
                       <th className="px-4 py-2 font-medium">{t("employees.name")}</th>
                       <th className="px-4 py-2 font-medium">{t("employees.columnStatus")}</th>
+                      <th className="px-4 py-2 font-medium">{t("employees.columnActivity")}</th>
                       <th className="px-4 py-2 font-medium">{t("employees.columnRoles")}</th>
                       <th className="px-4 py-2 font-medium">{t("employees.columnContact")}</th>
                       <th className="px-4 py-2">
@@ -217,7 +223,7 @@ export function EmployeesPage({
   );
 }
 
-/** Кнопка отправки доступа для неактивного сотрудника [employee]; для активного — `null`. */
+/** Кнопка отправки доступа сотруднику [employee] без доступа; для остальных — `null`. */
 function SendAccessButton({
   employee,
   onSendAccess,
@@ -226,7 +232,7 @@ function SendAccessButton({
   onSendAccess: () => void;
 }) {
   const { t } = useI18n();
-  if (employee.isActive) {
+  if (employee.status !== "NO_ACCESS") {
     return null;
   }
   return (
@@ -270,7 +276,10 @@ function EmployeeRow({
         </Link>
       </td>
       <td className="px-4 py-2">
-        <StatusBadge active={employee.isActive} />
+        <StatusBadge status={employee.status} />
+      </td>
+      <td className="px-4 py-2">
+        <LastSeen online={employee.online} lastSeenAt={employee.lastSeenAt} withPrefix={false} />
       </td>
       <td className="px-4 py-2">
         {employee.isOwner ? (
@@ -325,7 +334,12 @@ function EmployeeCard({
             <span className="truncate font-medium">{employee.name}</span>
           </span>
           <span className="flex flex-wrap items-center gap-1.5">
-            <StatusBadge active={employee.isActive} />
+            <StatusBadge status={employee.status} />
+            <LastSeen
+              online={employee.online}
+              lastSeenAt={employee.lastSeenAt}
+              withPrefix={false}
+            />
             {employee.isOwner ? (
               <OwnerBadge />
             ) : (

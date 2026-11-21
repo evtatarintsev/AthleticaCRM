@@ -180,7 +180,7 @@ class MembershipSchedulerTest {
         orThrow {
             runTest {
                 val issued = fixture.issue(fixture.insertClient())
-                TestPostgres.db.sql("UPDATE employees SET is_active = false WHERE id = :id").bind("id", fixture.employeeId).execute()
+                TestPostgres.db.sql("UPDATE employees SET blocked_at = now() WHERE id = :id").bind("id", fixture.employeeId).execute()
 
                 fixture.at(LocalDate(2026, 11, 16))
                 scheduler.processDue()

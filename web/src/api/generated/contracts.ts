@@ -526,6 +526,13 @@ export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;
 export const BirthdayWindowSchema = z.enum(["TODAY", "TOMORROW", "WEEK"]);
 export type BirthdayWindow = z.output<typeof BirthdayWindowSchema>;
 
+export const BlockEmployeeRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+  })
+  .readonly();
+export type BlockEmployeeRequest = z.output<typeof BlockEmployeeRequestSchema>;
+
 export const BranchCreateRequestSchema = z
   .object({
     id: BranchIdSchema,
@@ -2120,6 +2127,9 @@ export const EditGroupRequestSchema = z
   .readonly();
 export type EditGroupRequest = z.output<typeof EditGroupRequestSchema>;
 
+export const EmployeeAccessStatusSchema = z.enum(["NO_ACCESS", "INVITED", "ACTIVE", "BLOCKED"]);
+export type EmployeeAccessStatus = z.output<typeof EmployeeAccessStatusSchema>;
+
 export const EmployeeDetailRequestSchema = z
   .object({
     id: EmployeeIdSchema,
@@ -2141,7 +2151,9 @@ export const EmployeeDetailResponseSchema = z
     name: z.string(),
     avatarId: UploadIdSchema.nullable(),
     isOwner: z.boolean(),
-    isActive: z.boolean(),
+    status: EmployeeAccessStatusSchema,
+    lastSeenAt: InstantSchema.nullable(),
+    online: z.boolean(),
     joinedAt: InstantSchema,
     roles: z.array(EmployeeRoleSchema).readonly(),
     phoneNo: z.string().nullable(),
@@ -2160,7 +2172,9 @@ export const EmployeeListItemSchema = z
     name: z.string(),
     avatarId: UploadIdSchema.nullable(),
     isOwner: z.boolean(),
-    isActive: z.boolean(),
+    status: EmployeeAccessStatusSchema,
+    lastSeenAt: InstantSchema.nullable(),
+    online: z.boolean(),
     joinedAt: InstantSchema,
     roles: z.array(EmployeeRoleSchema).readonly(),
     phoneNo: z.string().nullable(),
@@ -3653,6 +3667,13 @@ export const UnassignTaskRequestSchema = z
   .readonly();
 export type UnassignTaskRequest = z.output<typeof UnassignTaskRequestSchema>;
 
+export const UnblockEmployeeRequestSchema = z
+  .object({
+    employeeId: EmployeeIdSchema,
+  })
+  .readonly();
+export type UnblockEmployeeRequest = z.output<typeof UnblockEmployeeRequestSchema>;
+
 export const UnclosedSessionItemSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -4336,6 +4357,13 @@ export const endpoints = {
     out: "json",
     response: DisplaySettingsSchema,
   },
+  "employees/block": {
+    method: "POST",
+    in: "body",
+    request: BlockEmployeeRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
   "employees/create": {
     method: "POST",
     in: "body",
@@ -4382,6 +4410,13 @@ export const endpoints = {
     method: "POST",
     in: "body",
     request: SendEmployeeAccessRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "employees/unblock": {
+    method: "POST",
+    in: "body",
+    request: UnblockEmployeeRequestSchema,
     out: "empty",
     response: z.undefined(),
   },

@@ -161,7 +161,7 @@ class AssistantGuardTest {
     fun deactivatedOwnerCannotManageSettings(): Unit =
         orThrow {
             runBlocking {
-                di.database.sql("UPDATE employees SET is_active = false WHERE id = :id").bind("id", owner.employee.id).execute()
+                di.database.sql("UPDATE employees SET blocked_at = now() WHERE id = :id").bind("id", owner.employee.id).execute()
                 context(owner) {
                     assertEquals("ASSISTANT_FORBIDDEN", assertIs<Either.Left<AppError>>(either { di.assistant.settings() }).value.code)
                     assertEquals("ASSISTANT_FORBIDDEN", assertIs<Either.Left<AppError>>(either { di.assistant.updateSettings(AssistantSettingsRequest(false, 100)) }).value.code)

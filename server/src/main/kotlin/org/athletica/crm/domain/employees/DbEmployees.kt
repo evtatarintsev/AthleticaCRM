@@ -23,6 +23,7 @@ import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asInstant
+import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
@@ -62,8 +63,8 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
 
         tr.sql(
             """
-            INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, is_active, all_branches_access)
-            VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, false, :allBranchesAccess)
+            INSERT INTO employees (id, org_id, name, avatar_id, phone_no, email, all_branches_access)
+            VALUES (:id, :orgId, :name, :avatarId, :phoneNo, :email, :allBranchesAccess)
             """.trimIndent(),
         )
             .bind("id", id)
@@ -101,7 +102,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         }
         return DbEmployee(
             id = id, userId = null,
-            name = name.value, avatarId = avatarId, isOwner = false, isActive = false,
+            name = name.value, avatarId = avatarId, isOwner = false, blockedAt = null,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
             permissionSettings = permissionSettings,
@@ -134,7 +135,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                         name = row.asString("name"),
                         avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
                         isOwner = row.asBoolean("is_owner"),
-                        isActive = row.asBoolean("is_active"),
+                        blockedAt = row.asInstantOrNull("blocked_at"),
                         joinedAt = row.asInstant("joined_at"),
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email")?.toEmailAddress(),
@@ -172,7 +173,8 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
                 SELECT e.id
                 FROM employees e
                 WHERE e.org_id = :orgId
-                  AND e.is_active
+                  AND e.user_id IS NOT NULL
+                  AND e.blocked_at IS NULL
                   AND (
                       e.all_branches_access
                       OR EXISTS (
@@ -194,7 +196,7 @@ class DbEmployees(private val users: Users, private val roles: Roles) : Employee
         val BY_IDS_SQL =
             """
             SELECT
-                e.id, e.user_id, e.name, e.avatar_id, e.is_owner, e.is_active, e.joined_at,
+                e.id, e.user_id, e.name, e.avatar_id, e.is_owner, e.blocked_at, e.joined_at,
                 e.phone_no, e.email, e.all_branches_access,
                 (SELECT COALESCE(jsonb_agg(jsonb_build_object(
                             'id', r.id,

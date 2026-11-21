@@ -20,7 +20,12 @@ data class EmployeeListItem(
     val name: String,
     val avatarId: UploadId? = null,
     val isOwner: Boolean,
-    val isActive: Boolean,
+    /** Статус доступа сотрудника. */
+    val status: EmployeeAccessStatus,
+    /** Момент последней активности; `null` — сотрудник ещё не входил. */
+    val lastSeenAt: Instant? = null,
+    /** Сотрудник «в сети»: активность не старше 5 минут на момент запроса. */
+    val online: Boolean = false,
     val joinedAt: Instant,
     val roles: List<EmployeeRole>,
     val phoneNo: String? = null,

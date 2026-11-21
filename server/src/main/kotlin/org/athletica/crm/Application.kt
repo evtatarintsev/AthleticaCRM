@@ -39,6 +39,8 @@ import org.athletica.crm.api.schemas.ErrorResponse
 import org.athletica.crm.assistant.assistantRoutes
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.errors.EmployeeBlocked
+import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.routes.attendanceRoutes
 import org.athletica.crm.routes.auditRoutes
@@ -145,6 +147,17 @@ fun Application.configureServer() {
     install(CallLogging)
 
     install(StatusPages) {
+        exception<UnhandledAppError> { call, cause ->
+            if (cause.error == EmployeeBlocked) {
+                call.respond(HttpStatusCode.Unauthorized, "Token expired or invalid")
+            } else {
+                logger.error("Unhandled exception", cause)
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    ErrorResponse(code = "INTERNAL_ERROR", message = "Something went wrong"),
+                )
+            }
+        }
         exception<Throwable> { call, cause ->
             logger.error("Unhandled exception", cause)
             call.respond(

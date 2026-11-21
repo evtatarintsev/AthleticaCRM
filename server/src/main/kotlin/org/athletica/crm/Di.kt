@@ -63,6 +63,7 @@ import org.athletica.crm.domain.employees.AuditEmployees
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.EmailEmployees
+import org.athletica.crm.domain.employees.EmployeePresence
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.employees.Roles
 import org.athletica.crm.domain.enrollments.AuditEnrollments
@@ -185,6 +186,7 @@ data class Di(
             audit,
         ),
 ) {
+    val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
     val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications), audit)
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)

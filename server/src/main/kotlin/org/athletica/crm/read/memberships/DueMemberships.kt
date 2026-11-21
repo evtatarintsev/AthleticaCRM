@@ -28,7 +28,7 @@ internal suspend fun dueMemberships(now: Instant): List<Pair<OrgId, MembershipId
                OR (state = 'ACTIVE' AND freeze_end < today)
                OR (state = 'ACTIVE' AND close_mode = 'ON_EXPIRY' AND end_date < today)
                OR (state = 'ACTIVE' AND close_notified_at IS NULL
-                   AND EXISTS (SELECT 1 FROM employees e WHERE e.id = issued_by AND e.is_active)
+                   AND EXISTS (SELECT 1 FROM employees e WHERE e.id = issued_by AND e.user_id IS NOT NULL AND e.blocked_at IS NULL)
                    AND ((close_mode = 'MANUAL' AND (end_date < today OR sessions_remaining = 0))
                      OR (close_mode = 'ON_LAST_SESSION' AND end_date < today AND sessions_remaining > 0)))
             ORDER BY org_id, id

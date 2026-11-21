@@ -139,6 +139,41 @@ object Messages {
         override val en = "Email confirmation was not requested for this account"
     }
 
+    object PasswordResetEmailTitle : LocalizationKey {
+        override val ru = "Сброс пароля AthleticaCRM"
+        override val en = "AthleticaCRM password reset"
+    }
+
+    object PasswordResetEmailBody : LocalizationKey {
+        override val ru = "Мы получили запрос на сброс пароля вашего аккаунта. Чтобы задать новый пароль, нажмите кнопку ниже. После сброса все открытые сеансы будут завершены."
+        override val en = "We received a request to reset the password for your account. To set a new password, press the button below. All open sessions will be signed out after the reset."
+    }
+
+    object PasswordResetExpiry : LocalizationKey {
+        override val ru = "Ссылка действует 1 час и сработает один раз. Если кнопка не работает, откройте ссылку ниже."
+        override val en = "The link expires in 1 hour and works once. If the button does not work, open the link below."
+    }
+
+    object PasswordResetAction : LocalizationKey {
+        override val ru = "Задать новый пароль"
+        override val en = "Set a new password"
+    }
+
+    object PasswordResetEmailFooter : LocalizationKey {
+        override val ru = "Вы получили письмо, потому что для этого адреса запросили сброс пароля в AthleticaCRM. Если это были не вы, просто проигнорируйте письмо — пароль не изменится."
+        override val en = "You received this email because a password reset was requested for this address in AthleticaCRM. If this was not you, simply ignore this email: your password will not change."
+    }
+
+    object InvalidPasswordReset : LocalizationKey {
+        override val ru = "Ссылка недействительна или срок её действия истёк. Запросите новое письмо для сброса пароля."
+        override val en = "The link is invalid or expired. Request a new password reset email."
+    }
+
+    object EmptyNewPassword : LocalizationKey {
+        override val ru = "Введите новый пароль"
+        override val en = "Enter a new password"
+    }
+
     /** Короткое название типа действия для описания события журнала. */
     fun auditAction(action: AuditActionType, lang: Lang): String =
         when (lang) {
@@ -155,6 +190,7 @@ object Messages {
                     AuditActionType.EXPORT -> "экспорт данных"
                     AuditActionType.IMPORT -> "импорт данных"
                     AuditActionType.AUTH_CHANGE_PASSWORD -> "смена пароля"
+                    AuditActionType.AUTH_PASSWORD_RESET -> "сброс пароля"
                     AuditActionType.BALANCE_ADJUST -> "корректировка баланса"
                 }
             Lang.EN ->
@@ -170,6 +206,7 @@ object Messages {
                     AuditActionType.EXPORT -> "exported data"
                     AuditActionType.IMPORT -> "imported data"
                     AuditActionType.AUTH_CHANGE_PASSWORD -> "changed password"
+                    AuditActionType.AUTH_PASSWORD_RESET -> "reset password"
                     AuditActionType.BALANCE_ADJUST -> "adjusted balance for"
                 }
         }

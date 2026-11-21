@@ -9,6 +9,7 @@ class EmailVerificationConfigTest {
     fun `links use the configured origin and web base path`() {
         assertEquals("https://app.example.com/web/confirm-email#token=a_b-c", EmailVerificationConfig("https://app.example.com/web/").confirmationLink("a_b-c"))
         assertEquals("http://localhost:5173/confirm-email#token=token", EmailVerificationConfig("http://localhost:5173").confirmationLink("token"))
+        assertEquals("https://app.example.com/web/reset-password#token=a_b-c", EmailVerificationConfig("https://app.example.com/web/").passwordResetLink("a_b-c"))
     }
 
     @Test
@@ -17,5 +18,6 @@ class EmailVerificationConfigTest {
             assertFails { EmailVerificationConfig(it) }
         }
         assertFails { EmailVerificationConfig("https://app.example.com").confirmationLink("token&redirect=evil") }
+        assertFails { EmailVerificationConfig("https://app.example.com").passwordResetLink("token&redirect=evil") }
     }
 }

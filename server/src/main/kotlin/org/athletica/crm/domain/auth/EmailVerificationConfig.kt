@@ -14,8 +14,13 @@ class EmailVerificationConfig(publicUrl: String) {
         }
     }
 
-    fun confirmationLink(token: String): String {
+    fun confirmationLink(token: String): String = link("confirm-email", token)
+
+    /** Ссылка на страницу сброса пароля веб-клиента с токеном [token] во фрагменте. */
+    fun passwordResetLink(token: String): String = link("reset-password", token)
+
+    private fun link(page: String, token: String): String {
         require(token.matches(Regex("[A-Za-z0-9_-]+")))
-        return "${base.toASCIIString().trimEnd('/')}/confirm-email#token=$token"
+        return "${base.toASCIIString().trimEnd('/')}/$page#token=$token"
     }
 }

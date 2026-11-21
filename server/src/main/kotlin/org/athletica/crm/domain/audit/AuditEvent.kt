@@ -22,6 +22,7 @@ enum class AuditActionType(val code: String) {
     EXPORT("export"),
     IMPORT("import"),
     AUTH_CHANGE_PASSWORD("auth_change_password"),
+    AUTH_PASSWORD_RESET("auth_password_reset"),
     BALANCE_ADJUST("balance_adjust"),
 }
 

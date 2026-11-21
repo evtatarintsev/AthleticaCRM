@@ -220,6 +220,18 @@ export const ru = {
   "auth.actionRegister": "Зарегистрироваться",
   "auth.noAccount": "Нет аккаунта?",
   "auth.haveAccount": "Уже есть аккаунт?",
+  "auth.forgotPassword": "Забыли пароль?",
+  "passwordReset.requestTitle": "Восстановление пароля",
+  "passwordReset.requestSubtitle": "Укажите email — мы пришлём ссылку для нового пароля",
+  "passwordReset.send": "Отправить ссылку",
+  "passwordReset.sent":
+    "Если адрес зарегистрирован, письмо со ссылкой уже отправлено. Ссылка действует 1 час.",
+  "passwordReset.backToLogin": "Вернуться ко входу",
+  "passwordReset.title": "Новый пароль",
+  "passwordReset.subtitle": "Задайте новый пароль. Все открытые сеансы будут завершены.",
+  "passwordReset.submit": "Сохранить пароль",
+  "passwordReset.done": "Пароль изменён. Войдите с новым паролем.",
+  "passwordReset.requestNew": "Запросить новую ссылку",
 
   "action.back": "Назад",
   "action.save": "Сохранить",
@@ -1495,5 +1507,6 @@ export const ru = {
   "audit.action.export": "Экспорт",
   "audit.action.import": "Импорт",
   "audit.action.auth_change_password": "Смена пароля",
+  "audit.action.auth_password_reset": "Сброс пароля",
   "audit.action.balance_adjust": "Корректировка баланса",
 } as const;

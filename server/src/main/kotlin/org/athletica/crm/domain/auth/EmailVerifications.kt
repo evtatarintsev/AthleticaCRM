@@ -33,9 +33,6 @@ import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
-import java.security.MessageDigest
-import java.security.SecureRandom
-import java.util.Base64
 import kotlin.math.ceil
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
@@ -49,7 +46,7 @@ class EmailVerifications(
 ) {
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun register(user: AuthenticatedUser, name: String, lang: Lang) {
-        val token = newToken()
+        val token = newOneTimeToken()
         val now = clock.now()
         tr.sql(
             """
@@ -58,7 +55,7 @@ class EmailVerifications(
             """.trimIndent(),
         )
             .bind("userId", user.id).bind("orgId", user.orgId).bind("email", user.username)
-            .bind("hash", hash(token)).bind("expiresAt", now + 24.hours).bind("now", now).execute()
+            .bind("hash", oneTimeTokenHash(token)).bind("expiresAt", now + 24.hours).bind("now", now).execute()
         schedule(user.orgId, user.username, name, lang, token)
     }
 
@@ -81,24 +78,44 @@ class EmailVerifications(
         val remaining = ceil(60 - (now - row.lastSentAt).inWholeMilliseconds / 1000.0).toInt().coerceIn(0, 60)
         if (remaining > 0) return ResendEmailConfirmationResponse(ResendEmailStatus.RATE_LIMITED, remaining)
         if (row.email != row.login) invalid(ctx.lang)
-        val token = newToken()
+        val token = newOneTimeToken()
         tr.sql(
             """
             UPDATE user_email_verifications SET token_hash = :hash, expires_at = :expiresAt, last_sent_at = :now WHERE user_id = :userId
             """.trimIndent(),
-        ).bind("hash", hash(token)).bind("expiresAt", now + 24.hours).bind("now", now).bind("userId", ctx.userId).execute()
+        ).bind("hash", oneTimeTokenHash(token)).bind("expiresAt", now + 24.hours).bind("now", now).bind("userId", ctx.userId).execute()
         schedule(row.orgId, row.email, row.name, ctx.lang, token)
         return ResendEmailConfirmationResponse(ResendEmailStatus.QUEUED, 60)
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun confirm(token: String, lang: Lang, clientIp: String?): ConfirmEmailResponse {
-        if (!token.matches(Regex("[A-Za-z0-9_-]{43}"))) invalid(lang)
+        if (!token.isOneTimeTokenFormat()) invalid(lang)
         val row =
             tr.sql("$select WHERE v.token_hash = :hash FOR UPDATE OF v")
-                .bind("hash", hash(token)).firstOrNull { Verification(it) } ?: invalid(lang)
+                .bind("hash", oneTimeTokenHash(token)).firstOrNull { Verification(it) } ?: invalid(lang)
         if (row.verifiedAt != null) return ConfirmEmailResponse(EmailConfirmationStatus.ALREADY_CONFIRMED)
         if (clock.now() >= row.expiresAt || row.email != row.login) invalid(lang)
+        markVerified(row, clientIp)
+        return ConfirmEmailResponse(EmailConfirmationStatus.CONFIRMED)
+    }
+
+    /**
+     * Подтверждает email пользователя [userId], владение которым доказано иначе, чем ссылкой
+     * подтверждения (сброс пароля по письму). Без ожидающего подтверждения или при сменившемся
+     * логине ничего не делает. [clientIp] попадает в событие audit.
+     */
+    context(tr: Transaction, raise: Raise<AppError>)
+    suspend fun confirmOwnership(userId: UserId, clientIp: String?) {
+        val row = tr.sql("$select WHERE v.user_id = :userId FOR UPDATE OF v").bind("userId", userId).firstOrNull { Verification(it) }
+        if (row == null || row.verifiedAt != null || row.email != row.login) {
+            return
+        }
+        markVerified(row, clientIp)
+    }
+
+    context(tr: Transaction, raise: Raise<AppError>)
+    private suspend fun markVerified(row: Verification, clientIp: String?) {
         tr.sql("UPDATE user_email_verifications SET verified_at = :now WHERE user_id = :userId")
             .bind("now", clock.now()).bind("userId", row.userId).execute()
         context(SystemContexts.forOrg(row.orgId)) {
@@ -114,7 +131,6 @@ class EmailVerifications(
                 ipAddress = clientIp,
             ),
         )
-        return ConfirmEmailResponse(EmailConfirmationStatus.CONFIRMED)
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
@@ -153,8 +169,4 @@ class EmailVerifications(
         JOIN users u ON u.id = v.user_id
         JOIN employees e ON e.user_id = v.user_id AND e.org_id = v.org_id
         """.trimIndent()
-
-    private fun newToken(): String = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32).also { SecureRandom().nextBytes(it) })
-
-    private fun hash(token: String): String = MessageDigest.getInstance("SHA-256").digest(token.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 }

@@ -47,4 +47,20 @@ class SystemEmailTemplateTest {
         }
         assertEquals(Lang.RU, Lang.default())
     }
+
+    @Test
+    fun `password reset email is localized and carries the full link and lifetime in both versions`() {
+        val resetLink = "https://app.example.com/reset-password#token=abc_xyz-123"
+        for (lang in Lang.entries) {
+            val email = passwordResetEmail(address, "<Owner>", lang, resetLink)
+            assertEquals(listOf(address), email.to)
+            assertContains(email.html.value, "&lt;Owner&gt;")
+            listOf(email.html.value, email.text.value).forEach {
+                assertContains(it, resetLink)
+                assertContains(it, if (lang == Lang.EN) "1 hour" else "1 час")
+                assertContains(it, if (lang == Lang.EN) "Set a new password" else "Задать новый пароль")
+            }
+            assertEquals(if (lang == Lang.EN) "AthleticaCRM password reset" else "Сброс пароля AthleticaCRM", email.subject.value)
+        }
+    }
 }

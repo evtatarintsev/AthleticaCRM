@@ -175,6 +175,11 @@ export function LoginPage({ api, onAuthenticated }: { api: AuthApi; onAuthentica
             />
           )}
         </form.Field>
+        <div className="text-right text-sm">
+          <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+            {t("auth.forgotPassword")}
+          </Link>
+        </div>
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(submitting) => (
             <Button

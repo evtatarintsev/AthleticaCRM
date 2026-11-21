@@ -59,4 +59,22 @@ fun registrationEmail(
         footer = Messages.RegistrationEmailFooter.localize(lang),
     )
 
+/** Письмо со ссылкой [link] для сброса пароля пользователя [name] на адрес [to], на языке [lang]. */
+fun passwordResetEmail(
+    to: EmailAddress,
+    name: String,
+    lang: Lang,
+    link: String,
+): Email =
+    systemEmail(
+        to = to,
+        lang = lang,
+        subject = Messages.PasswordResetEmailTitle.localize(lang),
+        title = Messages.PasswordResetEmailTitle.localize(lang),
+        greeting = Messages.EmailGreeting.localize(lang, name),
+        paragraphs = listOf(Messages.PasswordResetEmailBody.localize(lang), Messages.PasswordResetExpiry.localize(lang)),
+        action = EmailAction(Messages.PasswordResetAction.localize(lang), link),
+        footer = Messages.PasswordResetEmailFooter.localize(lang),
+    )
+
 private fun String.html(): String = replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;")

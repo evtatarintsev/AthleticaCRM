@@ -200,7 +200,7 @@ fun Application.configureServer() {
                 checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
 
                 context(di.jwtConfig) {
-                    authRoutes(di.auth, di.emailVerifications, di.authSessions)
+                    authRoutes(di.auth, di.emailVerifications, di.passwordResets, di.authSessions)
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {

@@ -19,8 +19,10 @@ import org.athletica.crm.api.schemas.auth.AuthBranchesRequest
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.ConfirmEmailRequest
 import org.athletica.crm.api.schemas.auth.ConfirmEmailResponse
+import org.athletica.crm.api.schemas.auth.ForgotPasswordRequest
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
+import org.athletica.crm.api.schemas.auth.ResetPasswordRequest
 import org.athletica.crm.api.schemas.auth.SessionListResponse
 import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.auth.SwitchBranchRequest
@@ -41,6 +43,7 @@ import org.athletica.crm.domain.auth.Auth
 import org.athletica.crm.domain.auth.AuthSessions
 import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.auth.IssuedSession
+import org.athletica.crm.domain.auth.PasswordResets
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
@@ -53,13 +56,32 @@ import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
 context(db: Database, jwtConfig: JwtConfig)
-fun Route.authRoutes(auth: Auth, emailVerifications: EmailVerifications, sessions: AuthSessions) {
+fun Route.authRoutes(
+    auth: Auth,
+    emailVerifications: EmailVerifications,
+    passwordResets: PasswordResets,
+    sessions: AuthSessions,
+) {
     post("/auth/confirm-email") {
         either {
             val request = call.body<ConfirmEmailRequest>()
             db.transaction { emailVerifications.confirm(request.token, call.langFromRequest(), call.clientIp()) }
         }.fold({ call.respondError(it) }, { call.respond(it) })
     }.contract(postContract<ConfirmEmailRequest, ConfirmEmailResponse>())
+
+    post("/auth/forgot-password") {
+        either {
+            val request = call.body<ForgotPasswordRequest>()
+            db.transaction { passwordResets.request(request.email, call.langFromRequest()) }
+        }.fold({ call.respondError(it) }, { call.respond(Unit) })
+    }.contract(postContract<ForgotPasswordRequest, Unit>())
+
+    post("/auth/reset-password") {
+        either {
+            val request = call.body<ResetPasswordRequest>()
+            db.transaction { passwordResets.reset(request.token, request.newPassword, call.langFromRequest(), call.clientIp()) }
+        }.fold({ call.respondError(it) }, { call.respond(Unit) })
+    }.contract(postContract<ResetPasswordRequest, Unit>())
 
     post("/auth/branches") {
         val request = call.receive<AuthBranchesRequest>()

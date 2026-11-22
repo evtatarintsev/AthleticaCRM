@@ -1,7 +1,8 @@
 package org.athletica.infra.messaging.smsaero
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
@@ -25,6 +26,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.util.Base64
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -39,8 +41,11 @@ sealed interface SmsAeroResult<out T> {
      */
     data class Error(val status: Int, val message: String) : SmsAeroResult<Nothing>
 
-    /** SMS Aero не ответил: сеть, таймаут или ошибка сервера (HTTP 5xx). */
+    /** SMS Aero недоступен: нет соединения или ошибка сервера (HTTP 5xx) — запрос не выполнен. */
     data object Unavailable : SmsAeroResult<Nothing>
+
+    /** Запрос ушёл, но ответа нет (таймаут): SMS Aero мог его выполнить, исход неизвестен. */
+    data object NoResponse : SmsAeroResult<Nothing>
 }
 
 /** Учётные данные аккаунта SMS Aero: [email] и [apiKey]. */
@@ -74,7 +79,7 @@ class SmsAeroApi(
         when (val result = call(credentials, "auth", JsonObject(emptyMap()))) {
             is SmsAeroResult.Ok -> SmsAeroResult.Ok(Unit)
             is SmsAeroResult.Error -> result
-            SmsAeroResult.Unavailable -> SmsAeroResult.Unavailable
+            SmsAeroResult.Unavailable, SmsAeroResult.NoResponse -> SmsAeroResult.Unavailable
         }
 
     /**
@@ -88,7 +93,7 @@ class SmsAeroApi(
                 when (val result = call(credentials, "sign/list", JsonObject(emptyMap()), page)) {
                     is SmsAeroResult.Ok -> result.value
                     is SmsAeroResult.Error -> return result
-                    SmsAeroResult.Unavailable -> return SmsAeroResult.Unavailable
+                    SmsAeroResult.Unavailable, SmsAeroResult.NoResponse -> return SmsAeroResult.Unavailable
                 }
             val signs = data.listItems()
             signs.firstOrNull { it.stringField("name") == name }?.let {
@@ -102,7 +107,10 @@ class SmsAeroApi(
         return SmsAeroResult.Ok(null)
     }
 
-    /** Отправляет текст [text] на номер [number] от подписи [sign]; результат — идентификатор сообщения. */
+    /**
+     * Отправляет текст [text] на номер [number] от подписи [sign]; результат — идентификатор сообщения.
+     * [SmsAeroResult.NoResponse] — SMS могло уйти, повтор рискует дублем.
+     */
     suspend fun send(
         credentials: SmsAeroCredentials,
         number: String,
@@ -121,6 +129,7 @@ class SmsAeroApi(
                     ?: SmsAeroResult.Error(200, "Нет id сообщения в ответе")
             is SmsAeroResult.Error -> result
             SmsAeroResult.Unavailable -> SmsAeroResult.Unavailable
+            SmsAeroResult.NoResponse -> SmsAeroResult.NoResponse
         }
     }
 
@@ -144,6 +153,12 @@ class SmsAeroApi(
                 }.let { it.status.value to it.bodyAsText() }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: HttpRequestTimeoutException) {
+                logger.warn("SMS Aero {} [{}]: нет ответа ({})", method, credentials.email, e.javaClass.simpleName)
+                return SmsAeroResult.NoResponse
+            } catch (e: SocketTimeoutException) {
+                logger.warn("SMS Aero {} [{}]: нет ответа ({})", method, credentials.email, e.javaClass.simpleName)
+                return SmsAeroResult.NoResponse
             } catch (e: IOException) {
                 logger.warn("SMS Aero {} [{}]: недоступен ({})", method, credentials.email, e.javaClass.simpleName)
                 return SmsAeroResult.Unavailable
@@ -210,9 +225,12 @@ class SmsAeroApi(
     }
 }
 
-/** Создаёт HTTP-клиент для API SMS Aero: ответы с ошибкой не бросают исключений, их разбирает [SmsAeroApi]. */
+/**
+ * Создаёт HTTP-клиент для API SMS Aero: ответы с ошибкой не бросают исключений, их разбирает [SmsAeroApi].
+ * Движок OkHttp, как у Telegram: сбой DNS у него — `IOException`, а не `UnresolvedAddressException` CIO.
+ */
 fun createSmsAeroHttpClient(): HttpClient =
-    HttpClient(CIO) {
+    HttpClient(OkHttp) {
         install(HttpTimeout) {
             connectTimeoutMillis = 5_000
         }

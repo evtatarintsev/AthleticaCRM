@@ -96,4 +96,20 @@ class SmsAeroApiTest {
 
             assertEquals(SmsAeroResult.Unavailable, api.auth(credentials))
         }
+
+    @Test
+    fun `таймаут отправки — NoResponse, SMS могло уйти`() =
+        runTest {
+            val api = smsAeroTestApi { request -> throw HttpRequestTimeoutException(request.url.toString(), 10_000) }
+
+            assertEquals(SmsAeroResult.NoResponse, api.send(credentials, "79991234567", "т", "Dinamo"))
+        }
+
+    @Test
+    fun `хост не резолвится — Unavailable, а не исключение`() =
+        runTest {
+            val api = SmsAeroApi(createSmsAeroHttpClient(), baseUrl = "https://sms-aero.invalid/v2")
+
+            assertEquals(SmsAeroResult.Unavailable, api.auth(credentials))
+        }
 }

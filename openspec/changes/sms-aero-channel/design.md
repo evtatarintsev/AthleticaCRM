@@ -59,7 +59,8 @@ Ktor-клиент, заголовок `Authorization: Basic base64(email:apiKey)
 шли на заглушку HTTP-сервера; в `application.conf` не выносится.
 
 Результат — `SmsAeroResult<T>`: `Ok(value)`, `Error(status, message)` (ответ SMS Aero с HTTP
-4xx или `success: false`), `Unavailable` (сеть, таймаут, HTTP 5xx). Форма — как у
+4xx или `success: false`), `Unavailable` (нет соединения, HTTP 5xx), `NoResponse` (запрос ушёл,
+ответа нет — таймаут; SMS Aero мог его выполнить). Форма — как у
 `TelegramResult`, чтобы верификатор и транспорт маппили исходы одинаково.
 
 Методы: `auth(credentials)`, `sign(credentials, name)` — перебирает страницы `/sign/list`,
@@ -93,6 +94,7 @@ Ktor-клиент, заголовок `Authorization: Basic base64(email:apiKey)
 | `Error` 404 (IP не в белом списке) | `PermanentFailure("SMS_AERO_IP_FORBIDDEN", …)` |
 | `Error` 401/403 (ключ отозван после сохранения) | `PermanentFailure("SMS_AERO_AUTH_INVALID", …)` |
 | `Unavailable` | `TransientFailure("SMS_AERO_UNAVAILABLE", …)` |
+| `NoResponse` (таймаут) | `PermanentFailure("SMS_AERO_NO_RESPONSE", …)` — SMS могло уйти, повтор отправил бы платный дубль |
 
 402 — окончательный отказ для этого сообщения: повтор через минуту не поможет, а
 автоматический повтор после пополнения отправил бы устаревший текст. Тексты причин — из

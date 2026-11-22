@@ -52,12 +52,12 @@ class ProviderChannelConfigVerifier(
                 } else {
                     raise(smsAeroUnavailable())
                 }
-            SmsAeroResult.Unavailable -> raise(smsAeroUnavailable())
+            SmsAeroResult.Unavailable, SmsAeroResult.NoResponse -> raise(smsAeroUnavailable())
         }
         val sign =
             when (val result = smsAero.sign(credentials, trimmed.sign)) {
                 is SmsAeroResult.Ok -> result.value
-                is SmsAeroResult.Error, SmsAeroResult.Unavailable -> raise(smsAeroUnavailable())
+                is SmsAeroResult.Error, SmsAeroResult.Unavailable, SmsAeroResult.NoResponse -> raise(smsAeroUnavailable())
             }
         if (sign == null) {
             raise(CommonDomainError("SMS_AERO_SIGN_NOT_FOUND", Messages.SmsAeroSignNotFound.localize(trimmed.sign)))

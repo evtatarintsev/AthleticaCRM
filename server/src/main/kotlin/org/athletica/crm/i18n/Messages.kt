@@ -359,6 +359,11 @@ object Messages {
         override val en = { reason: String -> "SMS Aero rejected the message: $reason" }
     }
 
+    object SmsAeroNoResponse : LocalizationKey {
+        override val ru = "SMS Aero не ответил вовремя — сообщение могло уйти, проверьте его в кабинете SMS Aero"
+        override val en = "SMS Aero did not respond in time — the message may have been sent, check it in the SMS Aero dashboard"
+    }
+
     object SmsAeroNoFunds : LocalizationKey {
         override val ru = "Недостаточно средств на балансе SMS Aero"
         override val en = "Insufficient funds on the SMS Aero balance"

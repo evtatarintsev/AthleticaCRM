@@ -3,6 +3,7 @@ package org.athletica.infra.messaging.smsaero
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import kotlinx.coroutines.test.runTest
@@ -80,6 +81,14 @@ class SmsAeroSmsTransportTest {
             val result = SmsAeroSmsTransport(settings, smsAeroTestApi { throw IOException("down") }).send("79991234567", "т")
 
             assertEquals("SMS_AERO_UNAVAILABLE", (result as SendResult.TransientFailure).code)
+        }
+
+    @Test
+    fun `нет ответа на отправку — окончательный отказ без повтора`() =
+        runTest {
+            val transport = SmsAeroSmsTransport(settings, smsAeroTestApi { request -> throw HttpRequestTimeoutException(request.url.toString(), 10_000) })
+
+            assertEquals("SMS_AERO_NO_RESPONSE", (transport.send("79991234567", "т") as SendResult.PermanentFailure).code)
         }
 
     @Test

@@ -10,7 +10,8 @@ import org.slf4j.LoggerFactory
 
 /**
  * Транспорт «SMS через SMS Aero» с настройками [settings]: отправляет текст через API [api] с
- * аккаунта и от подписи канала. Отказ SMS Aero — окончательный, недоступность — временная.
+ * аккаунта и от подписи канала. Отказ SMS Aero — окончательный, недоступность — временная;
+ * таймаут без ответа — окончательный: SMS могло уйти, а повтор отправил бы платный дубль.
  * В журнал пишутся код, причина от SMS Aero и последние 4 цифры номера; ключ и текст — нет.
  */
 class SmsAeroSmsTransport(
@@ -29,12 +30,11 @@ class SmsAeroSmsTransport(
                     is SmsAeroResult.Ok -> SendResult.Sent(sent.value)
                     is SmsAeroResult.Error -> sent.toSendResult()
                     SmsAeroResult.Unavailable -> SendResult.TransientFailure("SMS_AERO_UNAVAILABLE", Messages.SmsAeroUnavailable.localize(LANG))
+                    SmsAeroResult.NoResponse -> SendResult.PermanentFailure("SMS_AERO_NO_RESPONSE", Messages.SmsAeroNoResponse.localize(LANG))
                 }
             }
-        when (result) {
-            is SendResult.Sent -> Unit
-            is SendResult.PermanentFailure -> logger.warn("SMS Aero [{}] -> …{}: {} {}", settings.email, (number ?: address).takeLast(4), result.code, result.message)
-            is SendResult.TransientFailure -> logger.warn("SMS Aero [{}] -> …{}: {} {}", settings.email, (number ?: address).takeLast(4), result.code, result.message)
+        if (result !is SendResult.Sent) {
+            logger.warn("SMS Aero [{}] -> …{}: {}", settings.email, (number ?: address).takeLast(4), result)
         }
         return result
     }

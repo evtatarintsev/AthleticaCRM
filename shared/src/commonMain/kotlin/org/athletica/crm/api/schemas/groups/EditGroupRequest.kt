@@ -19,4 +19,9 @@ data class EditGroupRequest(
     val disciplineIds: List<DisciplineId> = emptyList(),
     /** Идентификаторы преподавателей группы, наследуемые новыми занятиями. */
     val employeeIds: List<EmployeeId> = emptyList(),
+    /**
+     * Показывать ли занятия группы в виджетах расписания. Обязательное: редактирование заменяет
+     * все поля группы, и значение по умолчанию молча включало бы показ у скрытой группы.
+     */
+    val shownInWidgets: Boolean,
 )

@@ -25,6 +25,7 @@ private data class NewGroupSnapshot(
     val name: String,
     val disciplineIds: List<DisciplineId>,
     val employeeIds: List<EmployeeId>,
+    val shownInWidgets: Boolean,
 )
 
 /**
@@ -39,9 +40,10 @@ class AuditGroups(private val delegate: Groups, private val audit: AuditLog) : G
         name: NonBlankName,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
+        shownInWidgets: Boolean,
     ): Group =
-        delegate.new(id, name, disciplineIds, employees).also {
-            audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name.value, disciplineIds, employees.map { it.id })))
+        delegate.new(id, name, disciplineIds, employees, shownInWidgets).also {
+            audit.logCreate("group", id, Json.encodeToString(NewGroupSnapshot(id, name.value, disciplineIds, employees.map { it.id }, shownInWidgets)))
         }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)

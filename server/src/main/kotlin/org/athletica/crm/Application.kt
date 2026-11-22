@@ -71,8 +71,10 @@ import org.athletica.crm.routes.orgBalanceRoutes
 import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.paymentRoutes
 import org.athletica.crm.routes.profileRoutes
+import org.athletica.crm.routes.publicScheduleRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.scheduleRoutes
+import org.athletica.crm.routes.scheduleWidgetsRoutes
 import org.athletica.crm.routes.sessionsRoutes
 import org.athletica.crm.routes.sportCatalogRoutes
 import org.athletica.crm.routes.switchBranchRoute
@@ -198,6 +200,8 @@ fun Application.configureServer() {
             route("/api") {
                 // Webhook ЮKassa — ВНЕ JWT-авторизации: вызывается платёжным шлюзом напрямую
                 checkoutRoutes(di.database, di.payments, di.orgBalances, di.yookassaConfig)
+                // Публичное расписание виджета — ВНЕ JWT-авторизации: открывается посетителем сайта клуба
+                publicScheduleRoutes(di.database, di.views)
 
                 context(di.jwtConfig) {
                     authRoutes(di.auth, di.emailVerifications, di.passwordResets, di.authSessions)
@@ -242,6 +246,7 @@ fun Application.configureServer() {
                         orgRoutes(di.organizations, di.attendanceControls, di.clientCardSections)
                         branchesRoutes(di.branches)
                         hallsRoutes(di.halls)
+                        scheduleWidgetsRoutes(di.scheduleWidgets, di.views)
                         homeRoutes(di.views)
                         scheduleRoutes(di.views)
                         disciplinesRoutes(di.disciplines)

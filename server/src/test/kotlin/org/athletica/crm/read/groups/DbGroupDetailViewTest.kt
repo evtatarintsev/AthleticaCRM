@@ -26,6 +26,7 @@ import org.athletica.crm.storage.asUuid
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -241,6 +242,23 @@ class DbGroupDetailViewTest {
             insertSlot(orgId, groupId, insertHall(orgId, "Зал"))
 
             assertNull(succeeding(orgId, groupId).scheduleChangeAt)
+        }
+
+    @Test
+    fun `отдаёт признак показа в виджетах`() =
+        runTest {
+            val orgId = insertOrg()
+            val shown = insertGroup(orgId, "Взрослые")
+            val hidden = insertGroup(orgId, "Тестовая")
+            orThrow {
+                TestPostgres.db
+                    .sql("UPDATE groups SET shown_in_widgets = false WHERE id = :id")
+                    .bind("id", hidden)
+                    .execute()
+            }
+
+            assertTrue(succeeding(orgId, shown).shownInWidgets)
+            assertFalse(succeeding(orgId, hidden).shownInWidgets)
         }
 
     /** Вставляет версию слота «среда 18:00–19:00» с заданным периодом действия. */

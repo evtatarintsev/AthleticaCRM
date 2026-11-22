@@ -57,6 +57,7 @@ import { sessionQuery } from "@/query/queries";
 import { HomePage } from "@/home/HomePage";
 import { InboxPage } from "@/messaging/InboxPage";
 import { InboxSearchSchema, type InboxSearch } from "@/messaging/inboxSearch";
+import { PublicWidgetPage } from "@/widget/PublicWidgetPage";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
 import { SessionErrorPage } from "./SessionErrorPage";
@@ -91,6 +92,17 @@ async function leaveGuestPageIfAuthenticated(
     throw redirect({ href: target, replace: true });
   }
 }
+
+/** Публичная страница виджета расписания для iframe: вне раскладки CRM и без проверки сессии. */
+const widgetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/widget/$key",
+  component: function WidgetRoute() {
+    const { api } = widgetRoute.useRouteContext();
+    const { key } = widgetRoute.useParams();
+    return <PublicWidgetPage api={api} widgetKey={key} />;
+  },
+});
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -296,6 +308,13 @@ const hallsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/halls",
   beforeLoad: settingsPanelRedirect("halls"),
+});
+
+/** Виджеты расписания — панель настроек. */
+const scheduleWidgetsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/schedule-widgets",
+  beforeLoad: settingsPanelRedirect("schedule-widgets"),
 });
 
 /** Справочник дисциплин — теперь панель настроек. */
@@ -660,6 +679,7 @@ const tasksRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  widgetRoute,
   loginRoute,
   signUpRoute,
   confirmEmailRoute,
@@ -672,6 +692,7 @@ const routeTree = rootRoute.addChildren([
     changePasswordRoute,
     switchBranchRoute,
     hallsRoute,
+    scheduleWidgetsRoute,
     disciplinesRoute,
     clientSourcesRoute,
     branchesRoute,
@@ -738,6 +759,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/settings/change-password": true,
   "/settings/switch-branch": true,
   "/settings/halls": true,
+  "/settings/schedule-widgets": true,
   "/settings/disciplines": true,
   "/settings/client-sources": true,
   "/settings/branches": true,

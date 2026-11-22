@@ -84,6 +84,7 @@ fun RouteWithContext.groupsRoutes(
                         request.name,
                         request.disciplineIds,
                         employees.byIds(request.employeeIds),
+                        request.shownInWidgets,
                     )
                 views.groupDetail.byId(group.id)
             }
@@ -98,6 +99,7 @@ fun RouteWithContext.groupsRoutes(
                         request.disciplineIds,
                         employees.byIds(request.employeeIds),
                     )
+                    .withShownInWidgets(request.shownInWidgets)
                     .save()
                 views.groupDetail.byId(request.id)
             }

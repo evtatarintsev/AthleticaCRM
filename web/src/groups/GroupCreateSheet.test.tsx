@@ -60,6 +60,7 @@ function createServer({ failCreate = false }: { failCreate?: boolean } = {}) {
         employees: staff
           .filter((e) => (request.employeeIds ?? []).includes(e.id))
           .map((e) => ({ id: e.id, name: e.name, avatarId: e.avatarId })),
+        shownInWidgets: request.shownInWidgets ?? true,
       };
       return json(created);
     },
@@ -96,6 +97,26 @@ describe("создание группы в панели", () => {
     expect(within(sheet).getByText(ru["groups.detail.employeesEmpty"])).toBeVisible();
     expect(history.location.search).toContain("create=true");
     expect(history.location.search).toContain("q=");
+  });
+
+  it("признак «Показывать в виджетах» включён по умолчанию и уходит в запрос создания", async () => {
+    const server = createServer();
+    openApp("/groups?create=true", server.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await createSheet();
+    const shown = within(sheet).getByRole("checkbox", { name: ru["groups.shownInWidgets"] });
+    expect(shown).toBeChecked();
+    await user.type(nameField(sheet), "Тестовая");
+    await user.click(shown);
+    await user.click(within(sheet).getByRole("button", { name: ru["action.create"] }));
+
+    await waitFor(() => {
+      expect(server.to("groups/create")).toHaveLength(1);
+    });
+    expect(GroupCreateRequestSchema.parse(server.to("groups/create")[0]?.body).shownInWidgets).toBe(
+      false,
+    );
   });
 
   it("пустое название — ошибка у поля без запроса", async () => {
@@ -165,6 +186,7 @@ describe("создание группы в панели", () => {
       name: "Бокс дети",
       disciplineIds: [boxing.id],
       employeeIds: [],
+      shownInWidgets: true,
     });
     expect(history.location.pathname).toBe(`/groups/${request.id}`);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

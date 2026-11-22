@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { ApiClient } from "@/api/client";
 import type { GroupDetailResponse } from "@/api/generated/contracts";
 import { FormAlert } from "@/forms/FormAlert";
-import { TextField } from "@/forms/fields";
+import { CheckboxField, TextField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
@@ -14,7 +14,7 @@ import { useEditSheet } from "@/ui/editSheetContext";
 import { groupNameSchema } from "./groupName";
 
 /**
- * Панель справа для изменения названия группы [group]. Дисциплины и тренеры меняются своими
+ * Панель справа для изменения названия группы [group] и признака показа в виджетах. Дисциплины и тренеры меняются своими
  * секциями карточки, поэтому здесь отправляются без изменений — такими, как загружены в карточке.
  */
 export function GroupRenameSheet({
@@ -52,7 +52,7 @@ function GroupRenameForm({
   const [failure, setFailure] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { name: group.name },
+    defaultValues: { name: group.name, shownInWidgets: group.shownInWidgets },
     onSubmit: async ({ value }) => {
       const name = schema.safeParse(value.name);
       if (!name.success) {
@@ -64,6 +64,7 @@ function GroupRenameForm({
         name: name.data,
         disciplineIds: group.disciplines.map((d) => d.id),
         employeeIds: group.employees.map((e) => e.id),
+        shownInWidgets: value.shownInWidgets,
       });
       if (!result.ok) {
         setFailure(apiErrorMessage(t, result.error));
@@ -96,6 +97,15 @@ function GroupRenameForm({
           <form.Field name="name" validators={{ onSubmit: schema }}>
             {(field) => (
               <TextField field={field} label={t("groups.name")} autoComplete="off" required />
+            )}
+          </form.Field>
+          <form.Field name="shownInWidgets">
+            {(field) => (
+              <CheckboxField
+                field={field}
+                label={t("groups.shownInWidgets")}
+                hint={t("groups.shownInWidgetsHint")}
+              />
             )}
           </form.Field>
         </EditSheetForm>

@@ -23,6 +23,7 @@ internal data class DbGroup(
     override val name: String,
     override val disciplines: List<DisciplineId>,
     override val employeeIds: List<EmployeeId>,
+    override val shownInWidgets: Boolean,
     private val sync: ScheduleSync,
     private val syncEmployees: Boolean = false,
 ) : Group {
@@ -30,10 +31,11 @@ internal data class DbGroup(
     override suspend fun save() {
         val updatedRows =
             tr
-                .sql("UPDATE groups SET name = :name WHERE id = :id AND org_id = :orgId")
+                .sql("UPDATE groups SET name = :name, shown_in_widgets = :shownInWidgets WHERE id = :id AND org_id = :orgId")
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
                 .bind("name", name)
+                .bind("shownInWidgets", shownInWidgets)
                 .onViolation("uq_groups_org_name") { CommonDomainError("GROUP_NAME_ALREADY_EXISTS", Messages.GroupNameAlreadyExists.localize()) }
                 .execute()
 
@@ -87,4 +89,6 @@ internal data class DbGroup(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewName(name: NonBlankName): Group = copy(name = name.value)
+
+    override fun withShownInWidgets(shown: Boolean): Group = copy(shownInWidgets = shown)
 }

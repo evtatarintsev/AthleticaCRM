@@ -84,6 +84,8 @@ server {
 
     # CRM закрыта от поисковиков целиком
     add_header X-Robots-Tag "noindex, nofollow" always;
+    # Страницы CRM нельзя встраивать в чужие сайты; исключение — виджет расписания ниже
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
 
     location /api/assistant/ {
         resolver           127.0.0.11 valid=10s;
@@ -104,6 +106,17 @@ server {
         proxy_set_header   X-Real-IP $remote_addr;
         proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # Публичный виджет расписания встраивается в iframe на любом сайте.
+    # add_header здесь отменяет заголовки уровня server, поэтому X-Robots-Tag повторён.
+    location /widget/ {
+        add_header Content-Security-Policy "frame-ancestors *" always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://frontend:80;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
     }
 
     # Веб-фронтенд (React)

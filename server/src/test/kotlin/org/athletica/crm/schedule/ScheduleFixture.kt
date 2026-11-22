@@ -30,9 +30,9 @@ import kotlin.uuid.Uuid
 /**
  * Набор помощников для DB-тестов расписания и занятий: создаёт минимальный
  * граф сущностей (организация, филиал, зал, группа, слот, занятие) прямым SQL,
- * минуя доменные репозитории.
+ * минуя доменные репозитории. [permissions] — права сотрудника, от имени которого идут запросы.
  */
-class ScheduleFixture {
+class ScheduleFixture(private val permissions: EmployeePermission = EmployeePermission()) {
     /** Организация, в контексте которой выполняются запросы теста. */
     var orgId: Uuid = Uuid.NIL
         private set
@@ -212,6 +212,14 @@ class ScheduleFixture {
         }
     }
 
+    /** Тот же граф сущностей, но запросы идут от сотрудника с правами [permissions]. */
+    fun withPermissions(permissions: EmployeePermission): ScheduleFixture =
+        ScheduleFixture(permissions).also {
+            it.orgId = orgId
+            it.branchId = branchId
+            it.actorId = actorId
+        }
+
     /** Контекст сотрудника текущей организации и филиала. */
     fun ctx(): EmployeeRequestContext =
         employeeContext(
@@ -223,7 +231,7 @@ class ScheduleFixture {
             username = "test@example.com",
             clientIp = null,
             currency = Currency.RUB,
-            permissions = EmployeePermission(),
+            permissions = permissions,
         )
 
     /** Выполняет [block] в транзакции с контекстом сотрудника; ошибка домена роняет тест. */

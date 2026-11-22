@@ -70,6 +70,10 @@ import org.athletica.crm.read.tasks.DbTaskDetailView
 import org.athletica.crm.read.tasks.DbTaskListView
 import org.athletica.crm.read.tasks.TaskDetailView
 import org.athletica.crm.read.tasks.TaskListView
+import org.athletica.crm.read.widgets.DbPublicScheduleView
+import org.athletica.crm.read.widgets.DbWidgetListView
+import org.athletica.crm.read.widgets.PublicScheduleView
+import org.athletica.crm.read.widgets.WidgetListView
 
 /**
  * Реестр read-проекций приложения: единая точка, через которую маршруты получают
@@ -151,4 +155,8 @@ data class ReadViews(
     val conversation: ConversationView = DbConversationView(),
     /** Активные сеансы сотрудника для профиля и карточки сотрудника. */
     val sessionList: SessionListView = DbSessionListView(),
+    /** Виджеты расписания текущего филиала для раздела настроек. */
+    val widgetList: WidgetListView = DbWidgetListView(),
+    /** Публичное расписание виджета для посетителей сайта и ВКонтакте. */
+    val publicSchedule: PublicScheduleView = DbPublicScheduleView(),
 )

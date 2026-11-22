@@ -504,6 +504,16 @@ object Messages {
         override val en = "Hall not found"
     }
 
+    object WidgetNotFound : LocalizationKey {
+        override val ru = "Виджет не найден"
+        override val en = "Widget not found"
+    }
+
+    object WidgetUnavailable : LocalizationKey {
+        override val ru = "Расписание недоступно"
+        override val en = "Schedule is unavailable"
+    }
+
     object HallInUse : LocalizationKey {
         override val ru = "Зал используется в расписании или занятиях"
         override val en = "Hall is used in schedule or sessions"

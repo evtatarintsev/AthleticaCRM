@@ -13,7 +13,7 @@ import kotlin.uuid.Uuid
 
 /** Проверяет миграции и изоляцию составных внешних ключей PostgreSQL. */
 class AssistantMigrationTest {
-    /** База отклоняет связь чужой организации, сообщения и карточки. */
+    /** База отклоняет связь чужой организации, сообщения и карточки и вторую ожидающую карточку диалога. */
     @Test
     fun foreignKeysKeepOrganizationAndDialogTogether(): Unit =
         orThrow {
@@ -26,7 +26,7 @@ class AssistantMigrationTest {
                 DriverManager.getConnection(pg.jdbcUrl, pg.username, pg.password).use { connection ->
                     connection.createStatement().use { sql ->
                         assertEquals(
-                            5,
+                            7,
                             sql.executeQuery("SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'assistant_%'").let {
                                 it.next()
                                 it.getInt(1)
@@ -46,6 +46,13 @@ class AssistantMigrationTest {
                         assertFailsWith<SQLException> {
                             sql.executeUpdate("INSERT INTO assistant_client_drafts(client_id,dialog_id,org_id,message_id,payload,status) VALUES ('${Uuid.random()}','$otherDialog','${other.orgId}','$message','{}','pending')")
                         }
+                        val source = Uuid.random()
+                        sql.executeUpdate("INSERT INTO assistant_import_sources(id,dialog_id,org_id,message_id,kind,data) VALUES ('$source','$dialog','${owner.orgId}','$message','table','{}')")
+                        sql.executeUpdate("INSERT INTO assistant_client_drafts(client_id,dialog_id,org_id,message_id,payload,status) VALUES ('${Uuid.random()}','$dialog','${owner.orgId}','$message','{}','pending')")
+                        val pendingImport = "INSERT INTO assistant_import_drafts(id,dialog_id,org_id,message_id,source_id,payload,status) VALUES ('${Uuid.random()}','$dialog','${owner.orgId}','$message','$source','{}','pending')"
+                        assertFailsWith<SQLException> { sql.executeUpdate(pendingImport) }
+                        sql.executeUpdate("UPDATE assistant_client_drafts SET status = 'superseded' WHERE dialog_id = '$dialog'")
+                        sql.executeUpdate(pendingImport)
                     }
                 }
             }

@@ -50,6 +50,7 @@ function conversation(
               status,
               errorCode,
               blocks,
+              attachments: [],
             },
           ],
   });

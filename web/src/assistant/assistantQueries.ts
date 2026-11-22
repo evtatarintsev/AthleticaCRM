@@ -47,6 +47,24 @@ export function assistantCodeMessage(t: I18n["t"], code: string): string {
       return t("assistant.error.interrupted");
     case "ASSISTANT_PROVIDER_FAILURE":
       return t("assistant.error.provider");
+    case "ASSISTANT_IMPORT_UNSUPPORTED_FORMAT":
+      return t("assistant.attachError.unsupported");
+    case "ASSISTANT_IMPORT_ATTACHMENT_SET":
+      return t("assistant.attachError.mixed");
+    case "ASSISTANT_IMPORT_TOO_MANY_PHOTOS":
+      return t("assistant.attachError.tooManyPhotos");
+    case "ASSISTANT_IMPORT_FILE_TOO_BIG":
+      return t("assistant.attachError.tooBig");
+    case "ASSISTANT_IMPORT_FILE_UNAVAILABLE":
+      return t("assistant.error.importFileUnavailable");
+    case "ASSISTANT_IMPORT_RECOGNITION_UNAVAILABLE":
+      return t("assistant.error.importRecognitionUnavailable");
+    case "ASSISTANT_IMPORT_TOO_MANY_ROWS":
+      return t("assistant.error.importTooManyRows");
+    case "ASSISTANT_IMPORT_FILE_INVALID":
+      return t("assistant.error.importFileInvalid");
+    case "ASSISTANT_IMPORT_DRAFT_STALE":
+      return t("assistant.import.stale");
     default:
       return t("assistant.error.validation");
   }

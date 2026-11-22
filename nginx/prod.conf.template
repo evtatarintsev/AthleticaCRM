@@ -77,6 +77,9 @@ server {
     listen 443 ssl;
     server_name app.${DOMAIN};
 
+    # Загрузка файлов до 10 МБ: импорт таблиц и фото журнала
+    client_max_body_size 11m;
+
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     include             /etc/letsencrypt/options-ssl-nginx.conf;
@@ -87,6 +90,7 @@ server {
     # Страницы CRM нельзя встраивать в чужие сайты; исключение — виджет расписания ниже
     add_header Content-Security-Policy "frame-ancestors 'none'" always;
 
+    # Ход помощника с вложениями длится до 180 с (распознавание фото и подготовка импорта)
     location /api/assistant/ {
         resolver           127.0.0.11 valid=10s;
         set $upstream      http://server:8080;
@@ -95,7 +99,7 @@ server {
         proxy_set_header   X-Real-IP $remote_addr;
         proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_read_timeout 90s;
+        proxy_read_timeout 190s;
     }
 
     location /api/ {

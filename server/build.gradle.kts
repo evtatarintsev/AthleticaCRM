@@ -48,6 +48,8 @@ dependencies {
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.contentNegotiation)
     implementation(libs.commons.csv)
+    implementation(libs.fastexcel.reader)
+    testImplementation(libs.fastexcel.writer)
     implementation(libs.koog.agents.core)
     implementation(libs.koog.http)
     implementation(libs.koog.openai)

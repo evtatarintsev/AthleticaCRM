@@ -147,7 +147,10 @@ fun Application.module() {
  */
 context(di: Di)
 fun Application.configureServer() {
-    monitor.subscribe(ApplicationStopped) { di.assistantConnection.close() }
+    monitor.subscribe(ApplicationStopped) {
+        di.assistantConnection.close()
+        di.photoRecognizer.close()
+    }
     install(CallLogging)
 
     install(StatusPages) {

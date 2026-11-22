@@ -21,6 +21,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
 
@@ -83,8 +84,42 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
     private suspend fun expire(id: Uuid) {
         tr.sql("UPDATE assistant_messages SET status = 'failed', error_code = 'ASSISTANT_TIMEOUT' WHERE dialog_id = :dialog AND org_id = :org AND status = 'processing' AND deadline <= :now")
             .bind("dialog", id).bind("org", ctx.orgId).bind("now", clock.now()).execute()
-        tr.sql("UPDATE assistant_client_drafts SET status = 'superseded' WHERE dialog_id = :dialog AND org_id = :org AND status = 'pending' AND message_id IN (SELECT id FROM assistant_messages WHERE dialog_id = :dialog AND org_id = :org AND status = 'failed')")
-            .bind("dialog", id).bind("org", ctx.orgId).execute()
+        listOf("assistant_client_drafts", "assistant_import_drafts").forEach { table ->
+            tr.sql("UPDATE $table SET status = 'superseded' WHERE dialog_id = :dialog AND org_id = :org AND status = 'pending' AND message_id IN (SELECT id FROM assistant_messages WHERE dialog_id = :dialog AND org_id = :org AND status = 'failed')")
+                .bind("dialog", id).bind("org", ctx.orgId).execute()
+        }
+    }
+
+    /** Новая карточка, клиентская или пакетная, заменяет прежнюю ожидающую карточку диалога. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun supersedePending(dialog: Uuid) {
+        listOf("assistant_client_drafts", "assistant_import_drafts").forEach { table ->
+            tr.sql("UPDATE $table SET status = 'superseded' WHERE dialog_id = :dialog AND org_id = :org AND status = 'pending'")
+                .bind("dialog", dialog).bind("org", ctx.orgId).execute()
+        }
+    }
+
+    /**
+     * Сохранять можно только карточку из завершённого предыдущего обмена ([card] — ход карточки).
+     * Прямое подтверждение без [current] отклоняется, пока в диалоге идёт ход: он может заменить карточку.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun requireConfirmable(dialog: Uuid, card: Uuid, current: Uuid?) {
+        if (current == null) {
+            requireIdle(dialog)
+        }
+        val confirmable =
+            if (current == null) {
+                tr.sql("SELECT status FROM assistant_messages WHERE id = :card AND dialog_id = :dialog AND org_id = :org")
+                    .bind("card", card).bind("dialog", dialog).bind("org", ctx.orgId).firstOrNull { it.asString("status") } == "completed"
+            } else {
+                tr.sql("SELECT old.status = 'completed' AND old.position < current.position AS earlier FROM assistant_messages old, assistant_messages current WHERE old.id = :card AND current.id = :current AND old.dialog_id = :dialog AND current.dialog_id = :dialog AND old.org_id = :org AND current.org_id = :org")
+                    .bind("card", card).bind("current", current).bind("dialog", dialog).bind("org", ctx.orgId)
+                    .firstOrNull { it.get("earlier", Boolean::class.java) } ?: false
+            }
+        if (!confirmable) {
+            raise(assistantError("CONFIRMATION_REQUIRED"))
+        }
     }
 
     /** Сообщения и актуальные состояния карточек восстанавливаются из БД. */
@@ -95,22 +130,47 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
             tr.sql("SELECT client_id,status FROM assistant_client_drafts WHERE dialog_id = :dialog AND org_id = :org")
                 .bind("dialog", id).bind("org", ctx.orgId)
                 .list { it.asUuid("client_id") to AssistantDraftStatus.valueOf(it.asString("status").uppercase()) }.toMap()
+        val imports =
+            tr.sql("SELECT id,status FROM assistant_import_drafts WHERE dialog_id = :dialog AND org_id = :org")
+                .bind("dialog", id).bind("org", ctx.orgId)
+                .list { it.asUuid("id") to AssistantDraftStatus.valueOf(it.asString("status").uppercase()) }.toMap()
         val messages =
-            tr.sql("SELECT id,role,text,status,blocks::text,error_code FROM assistant_messages WHERE dialog_id = :dialog AND org_id = :org ORDER BY position")
+            tr.sql("SELECT id,role,text,status,blocks::text,error_code,attachments::text FROM assistant_messages WHERE dialog_id = :dialog AND org_id = :org ORDER BY position")
                 .bind("dialog", id).bind("org", ctx.orgId).list { row ->
                     val blocks =
                         Json.decodeFromString<List<AssistantBlock>>(row.asString("blocks")).map { block ->
-                            if (block is AssistantBlock.ClientDraft) block.copy(status = drafts[block.clientId.value] ?: AssistantDraftStatus.SUPERSEDED) else block
+                            when (block) {
+                                is AssistantBlock.ClientDraft -> block.copy(status = drafts[block.clientId.value] ?: AssistantDraftStatus.SUPERSEDED)
+                                is AssistantBlock.ImportDraft -> block.copy(status = imports[block.draftId] ?: AssistantDraftStatus.SUPERSEDED)
+                                else -> block
+                            }
                         }
-                    AssistantMessage(row.asUuid("id"), AssistantMessageRole.valueOf(row.asString("role").uppercase()), row.asString("text"), AssistantMessageStatus.valueOf(row.asString("status").uppercase()), blocks, row.asStringOrNull("error_code"))
+                    AssistantMessage(
+                        row.asUuid("id"),
+                        AssistantMessageRole.valueOf(row.asString("role").uppercase()),
+                        row.asString("text"),
+                        AssistantMessageStatus.valueOf(row.asString("status").uppercase()),
+                        blocks,
+                        row.asStringOrNull("error_code"),
+                        Json.decodeFromString<List<String>>(row.asString("attachments")),
+                    )
                 }
         return AssistantDialogResponse(id, messages)
     }
 
-    /** В одной транзакции резервирует квоту и сохраняет вход вместе с ходом. */
+    /**
+     * В одной транзакции резервирует квоту и сохраняет вход вместе с ходом. При вложениях [attachments]
+     * (имена файлов) текст может быть пустым; [deadline] — срок хода от приёма.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun accept(dialogId: Uuid, text: String, available: Boolean): Uuid {
-        if (text.isBlank() || text.length > 4000) {
+    suspend fun accept(
+        dialogId: Uuid,
+        text: String,
+        available: Boolean,
+        attachments: List<String> = emptyList(),
+        deadline: Duration = TURN_DEADLINE,
+    ): Uuid {
+        if ((text.isBlank() && attachments.isEmpty()) || text.length > 4000) {
             raise(assistantError("VALIDATION"))
         }
         val settings = settings(available, lock = true)
@@ -126,9 +186,9 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
         if (reserved == null) {
             raise(assistantError("LIMIT"))
         }
-        insertMessage(dialogId, Uuid.random(), "user", text, "completed")
+        insertMessage(dialogId, Uuid.random(), "user", text, "completed", deadline, attachments)
         val id = Uuid.random()
-        insertMessage(dialogId, id, "assistant", "", "processing")
+        insertMessage(dialogId, id, "assistant", "", "processing", deadline)
         return id
     }
 
@@ -150,9 +210,12 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
         role: String,
         text: String,
         status: String,
+        deadline: Duration,
+        attachments: List<String> = emptyList(),
     ) {
-        tr.sql("INSERT INTO assistant_messages(id,dialog_id,org_id,role,text,status,deadline) VALUES (:id,:dialog,:org,:role,:text,:status,:deadline)")
-            .bind("id", id).bind("dialog", dialog).bind("org", ctx.orgId).bind("role", role).bind("text", text).bind("status", status).bind("deadline", clock.now() + TURN_DEADLINE).execute()
+        tr.sql("INSERT INTO assistant_messages(id,dialog_id,org_id,role,text,status,deadline,attachments) VALUES (:id,:dialog,:org,:role,:text,:status,:deadline,:attachments::jsonb)")
+            .bind("id", id).bind("dialog", dialog).bind("org", ctx.orgId).bind("role", role).bind("text", text).bind("status", status).bind("deadline", clock.now() + deadline)
+            .bind("attachments", Json.encodeToString(attachments)).execute()
     }
 
     /** Последние целые успешные обмены, без незавершённых tool call/result. */
@@ -193,5 +256,8 @@ class AssistantStorage(private val calendar: OrgCalendar, private val clock: Clo
     companion object {
         /** Срок жизни хода от приёма сообщения; после него ответ модели не сохраняется. */
         val TURN_DEADLINE = 45.seconds
+
+        /** Срок хода с вложениями: распознавание фото и подготовка импорта не укладываются в обычный. */
+        val ATTACHMENTS_TURN_DEADLINE = 180.seconds
     }
 }

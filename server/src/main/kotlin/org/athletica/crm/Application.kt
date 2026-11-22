@@ -224,6 +224,7 @@ fun Application.configureServer() {
                             di.enrollments,
                             di.customFieldDefinitions,
                             di.clientContacts,
+                            di.orgCalendar,
                         )
                         financeRoutes(di.clientPayments, di.saleActions, di.cashOperations, di.cashAccounts, di.cashArticles, di.sales, di.clients, di.orgCalendar, di.views)
                         clientNotesRoutes(di.clientNotes)

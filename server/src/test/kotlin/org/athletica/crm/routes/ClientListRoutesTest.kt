@@ -12,6 +12,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.auth.SignUpRequest
@@ -33,14 +34,13 @@ import org.athletica.crm.testName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.time.Instant
 
 /** Совместимость форматов сортировки и проверки границы API клиентов. */
 class ClientListRoutesTest {
     private fun query(body: String): ClientListQuery =
         assertIs<Either.Right<ClientListQuery>>(
             context(employeeContext(orgId = OrgId.new())) {
-                either<AppError, ClientListQuery> { Json.decodeFromString<ClientListRequest>(body).toQuery(Instant.fromEpochMilliseconds(0)) }
+                either<AppError, ClientListQuery> { Json.decodeFromString<ClientListRequest>(body).toQuery(LocalDate(2026, 11, 20)) }
             },
         ).value
 

@@ -34,6 +34,7 @@ import { clientFieldValue, contactValues, customFieldDisplay, sortableField } fr
 import {
   clientListMembershipLabel,
   noMembershipLabel,
+  type ClientListMembershipIcon,
   type ClientListMembershipLabel,
 } from "./clientListMembership";
 import type { ClientSortColumn } from "./clientListSearch";
@@ -454,6 +455,21 @@ function MembershipLabels({
   );
 }
 
+/** Значок [icon] метки абонемента; `null` — метка без значка. */
+function MembershipIcon({ icon }: { readonly icon: ClientListMembershipIcon }) {
+  const className = "size-3.5 shrink-0";
+  switch (icon) {
+    case "ticket":
+      return <TicketIcon aria-hidden className={className} />;
+    case "clock":
+      return <ClockIcon aria-hidden className={className} />;
+    case "alert":
+      return <TriangleAlertIcon aria-hidden className={className} />;
+    case null:
+      return null;
+  }
+}
+
 /** Метка абонемента [label]: цвет и значок по признакам. */
 function MembershipPill({
   label,
@@ -462,14 +478,6 @@ function MembershipPill({
   readonly label: ClientListMembershipLabel;
   readonly compact: boolean;
 }) {
-  const Icon =
-    label.icon === "ticket"
-      ? TicketIcon
-      : label.icon === "clock"
-        ? ClockIcon
-        : label.icon === "alert"
-          ? TriangleAlertIcon
-          : null;
   return (
     <span
       data-tone={label.tone}
@@ -484,7 +492,7 @@ function MembershipPill({
         label.tone === "none" && "border bg-card text-muted-foreground",
       )}
     >
-      {Icon !== null && <Icon aria-hidden className="size-3.5 shrink-0" />}
+      <MembershipIcon icon={label.icon} />
       <span className="truncate">{label.text}</span>
     </span>
   );

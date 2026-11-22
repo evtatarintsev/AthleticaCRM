@@ -70,38 +70,37 @@ ClientListMembership
 
 ### 2. SQL отдаёт сырые поля, признаки и порядок — Kotlin
 
-В `SELECT` страницы добавляются три выражения:
+В `SELECT` страницы добавляются два выражения (только в запросе страницы, не в `COUNT`):
 
 - `memberships` — коррелированный `jsonb_agg` по `memberships m WHERE m.client_id = c.id AND
-  m.org_id = c.org_id AND m.state IN ('ACTIVE','INACTIVE') ORDER BY m.end_date NULLS LAST,
-  m.issued_on, m.created_at, m.id` с сырыми колонками;
+  m.org_id = c.org_id AND m.state IN ('ACTIVE','INACTIVE')` с сырыми колонками и порядком
+  `ORDER BY CASE` по части (0 — активный не «к закрытию», 1 — `end_date < :today OR
+  sessions_remaining <= 0`, 2 — неактивированный), затем `end_date NULLS LAST, issued_on,
+  created_at, id`;
 - `unpaid_sessions` — `COUNT(*)` по предикату неоплаченного занятия с
-  `JOIN groups g ON g.id = s.group_id AND g.branch_id = :branchId`;
-- `today` — `(CAST(:now AS timestamptz) AT TIME ZONE o.timezone)::date` через
-  `JOIN organizations o ON o.id = c.org_id` (только в запросе страницы, не в `COUNT`).
+  `JOIN groups g ON g.id = s.group_id AND g.branch_id = :branchId`.
 
 JSON декодируется в приватный `@Serializable` row-тип внутри `DbClientListView`; для `ACTIVE`
-вызывается `ActiveStatus.of(start, end, remaining, today)`. Затем список клиента стабильно
-сортируется по части: 0 — активный не `closePending`, 1 — активный `closePending`, 2 —
-неактивированный. Стабильная сортировка сохраняет SQL-порядок внутри части (дата окончания →
-выданный раньше), так что второй сортировки не нужно.
+вызывается `ActiveStatus.of(start, end, remaining, today)`, порядок списка — SQL.
 
-Это не нарушает правило «сортировка в SQL»: страница клиентов по-прежнему режется в SQL, а в Kotlin
-упорядочивается только вложенный список одного клиента (единицы записей) по признаку из `shared`.
-Альтернатива — `CASE` с копией `closePending` в `ORDER BY`, как в `DbGroupRosterView`; там копия
-нужна ради `LIMIT 1` в `LATERAL`, здесь берутся все абонементы, и копия только добавила бы
-второй источник правды.
+Ступень «к закрытию» в `CASE` — копия `ActiveStatus.closePending`, как в `DbGroupRosterView`:
+проекция постраничная, а сортировать в Kotlin по признаку из `shared` CLAUDE.md разрешает только
+в непостраничной проекции. Копию держит в согласии тест «Действующий раньше неактивированного и
+к закрытию».
 
 Альтернатива «отдельный запрос абонементов по `client_id = ANY(:ids)`» отклонена: требование
 спеки — один запрос страницы, и текущая проекция уже строится на коррелированных подзапросах.
 
-### 3. «Сегодня» — из `ClientListQuery.now`
+### 3. «Сегодня» — из `ClientListQuery.today`
 
-`ClientListQuery` получает обязательное `now: Instant` без значения по умолчанию; маршруты
-`clients/list` и `clients/export` передают `Clock.System.now()`, `toQuery(now)` принимает его
-аргументом. Так тесты задают дату сценария («сегодня 20.11»), как в `GroupRosterQuery`. Экспорт
-тоже получает абонементы — лишняя, но дешёвая работа; отдельный флаг «без абонементов» не
-заводится, пока экспорт не стал узким местом.
+`ClientListQuery` получает обязательное `today: LocalDate` без значения по умолчанию; маршруты
+`clients/list` и `clients/export` берут его из `OrgCalendar.today()`, как финансовые маршруты,
+`toQuery(today)` принимает его аргументом. Так тесты задают дату сценария («сегодня 20.11»), а
+правило часового пояса организации остаётся в одном месте — `OrgCalendar`.
+
+Экспорт абонементы и неоплаченные занятия не выводит, поэтому передаёт
+`withMemberships = false`: подзапросы заменяются константами `'[]'` и `0`, и выгрузка всей базы
+не считает историю посещаемости каждого клиента.
 
 ### 4. Каталог колонок отдельно от экспорта
 

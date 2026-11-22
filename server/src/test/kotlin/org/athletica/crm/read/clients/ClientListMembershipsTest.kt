@@ -3,10 +3,6 @@ package org.athletica.crm.read.clients
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.toInstant
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.clients.ActiveClientListMembershipState
 import org.athletica.crm.api.schemas.clients.ClientListItem
@@ -49,14 +45,15 @@ class ClientListMembershipsTest {
         runBlocking { fixture.setUp() }
     }
 
-    /** Страница списка на полдень [today] с размером [limit] и смещением [offset]. */
+    /** Страница списка на [today] с размером [limit] и смещением [offset]; [withMemberships] — собирать абонементы. */
     private suspend fun page(
         limit: Int? = 50,
         offset: Int = 0,
+        withMemberships: Boolean = true,
     ): ClientListResponse =
         fixture.tx(ctx) {
             context(ctx) {
-                view.page(ClientListQuery(now = today.atTime(LocalTime(12, 0)).toInstant(TimeZone.UTC), limit = limit, offset = offset))
+                view.page(ClientListQuery(today = today, withMemberships = withMemberships, limit = limit, offset = offset))
             }
         }
 
@@ -331,23 +328,15 @@ class ClientListMembershipsTest {
         }
 
     @Test
-    fun `сегодня считается в часовом поясе организации`() =
+    fun `выгрузка без абонементов и неоплаченных занятий`() =
         runTest {
-            orThrow {
-                TestPostgres.db
-                    .sql("UPDATE organizations SET timezone = 'Asia/Vladivostok' WHERE id = :id")
-                    .bind("id", fixture.orgId)
-                    .execute()
-            }
             val anna = client()
-            active(anna, "Мини 8", LocalDate(2026, 10, 21), LocalDate(2026, 11, 20))
-            val lateEvening = LocalDate(2026, 11, 20).atTime(LocalTime(20, 0)).toInstant(TimeZone.UTC)
+            active(anna, "Мини 8", LocalDate(2026, 11, 1), LocalDate(2026, 11, 30))
+            visit(anna)
 
-            val state =
-                fixture.tx(ctx) {
-                    context(ctx) { view.page(ClientListQuery(now = lateEvening)) }
-                }.clients.single().memberships.single().state
-            assertEquals(TermPosition.EXPIRED, assertIs<ActiveClientListMembershipState>(state).termPosition)
+            val item = page(limit = null, withMemberships = false).clients.single()
+            assertEquals(emptyList(), item.memberships)
+            assertEquals(0, item.unpaidSessions)
         }
 
     @Test

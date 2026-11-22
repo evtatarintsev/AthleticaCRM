@@ -3,6 +3,7 @@ package org.athletica.crm.routes
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.ktor.http.HttpHeaders
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.clients.AddClientToGroupsRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
 import org.athletica.crm.api.schemas.clients.ArchiveClientRequest
@@ -55,14 +56,13 @@ import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.enrollments.Enrollments
 import org.athletica.crm.domain.enrollments.addToGroups
+import org.athletica.crm.domain.org.OrgCalendar
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.clients.ClientListQuery
 import org.athletica.crm.read.clients.ClientSortColumn
 import org.athletica.crm.read.clients.ClientSortCriterion
 import org.athletica.crm.storage.Database
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 /**
  * Регистрирует маршруты для работы с клиентами:
@@ -76,6 +76,7 @@ fun RouteWithContext.clientsRoutes(
     enrollments: Enrollments,
     definitions: CustomFieldDefinitions,
     contacts: ClientContacts,
+    calendar: OrgCalendar,
 ) {
     post<ClientUnpaidSessionsRequest, UnpaidSessionsResponse>("/clients/unpaid-sessions") { request ->
         db.transaction { views.unpaidSessions.byClient(request.clientId) }
@@ -83,7 +84,7 @@ fun RouteWithContext.clientsRoutes(
 
     post<ClientListRequest, ClientListResponse>("/clients/list") { request ->
         db.transaction {
-            views.clientList.page(request.toQuery(Clock.System.now()))
+            views.clientList.page(request.toQuery(calendar.today()))
         }
     }
 
@@ -92,7 +93,7 @@ fun RouteWithContext.clientsRoutes(
 
         val (items, customDefs) =
             db.transaction {
-                val items = views.clientList.page(ClientListQuery(now = Clock.System.now(), limit = null)).clients
+                val items = views.clientList.page(ClientListQuery(today = calendar.today(), withMemberships = false, limit = null)).clients
                 Pair(items, definitions.all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE))
             }
 
@@ -247,10 +248,10 @@ private const val MAX_CLIENT_PAGE_SIZE = 100
  * Преобразует запрос списка из API в параметры выборки: нормализует пагинацию и сортировку
  * (непустой `sort` заменяет одиночные `sortField`/`sortDirection`). Поднимает `INVALID_CLIENT_SORT`,
  * если поле сортировки повторяется или `NEXT_BIRTHDAY` задан без фильтра по дню рождения.
- * [now] — момент запроса, от которого проекция отсчитывает «сегодня» организации.
+ * [today] — «сегодня» организации, на которое проекция выводит признаки абонементов.
  */
 context(ctx: RequestContext, raise: Raise<AppError>)
-internal fun ClientListRequest.toQuery(now: Instant): ClientListQuery {
+internal fun ClientListRequest.toQuery(today: LocalDate): ClientListQuery {
     val criteria = sort?.takeIf { it.isNotEmpty() } ?: listOf(ClientSort(sortField, sortDirection))
     if (criteria.map { it.field }.distinct().size != criteria.size ||
         (birthday == null && criteria.any { it.field == ClientSortField.NEXT_BIRTHDAY })
@@ -258,7 +259,7 @@ internal fun ClientListRequest.toQuery(now: Instant): ClientListQuery {
         raise(CommonDomainError("INVALID_CLIENT_SORT", Messages.InvalidClientSort.localize()))
     }
     return ClientListQuery(
-        now = now,
+        today = today,
         archived = archived,
         search = name?.takeIf { it.isNotBlank() },
         gender = gender,

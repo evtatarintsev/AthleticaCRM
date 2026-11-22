@@ -18,6 +18,7 @@ export const SettingsPanelSchema = z.enum([
   "tariffs",
   "attendance-control",
   "client-card",
+  "schedule-widgets",
 ]);
 
 /** Панель страницы настроек. */

@@ -20,4 +20,6 @@ data class GroupCreateRequest(
     val disciplineIds: List<DisciplineId> = emptyList(),
     /** Идентификаторы преподавателей группы, наследуемые новыми занятиями. */
     val employeeIds: List<EmployeeId> = emptyList(),
+    /** Показывать ли занятия группы в виджетах расписания. */
+    val shownInWidgets: Boolean = true,
 )

@@ -18,6 +18,7 @@ import org.athletica.crm.domain.sessions.DbScheduleSync
 import org.athletica.crm.domain.sessions.ScheduleSync
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 
@@ -29,13 +30,15 @@ class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
         name: NonBlankName,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
+        shownInWidgets: Boolean,
     ): Group {
         tr
-            .sql("INSERT INTO groups (id, org_id, branch_id, name) VALUES (:id, :orgId, :branchId, :name)")
+            .sql("INSERT INTO groups (id, org_id, branch_id, name, shown_in_widgets) VALUES (:id, :orgId, :branchId, :name, :shownInWidgets)")
             .bind("id", id)
             .bind("orgId", ctx.orgId)
             .bind("branchId", ctx.branchId)
             .bind("name", name.value)
+            .bind("shownInWidgets", shownInWidgets)
             .onViolation("uq_groups_org_name") { CommonDomainError("GROUP_NAME_ALREADY_EXISTS", Messages.GroupNameAlreadyExists.localize()) }
             .onViolation("groups_pkey") { CommonDomainError("GROUP_ALREADY_EXISTS", Messages.GroupAlreadyExists.localize()) }
             .execute()
@@ -60,17 +63,17 @@ class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
                 .onViolation("group_employees_employee_id_fkey") { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
                 .execute()
         }
-        return DbGroup(id, ctx.branchId, name.value, disciplineIds, employees.map { it.id }, sync)
+        return DbGroup(id, ctx.branchId, name.value, disciplineIds, employees.map { it.id }, shownInWidgets, sync)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: GroupId): Group {
-        val (branchId, name) =
+        val (branchId, name, shownInWidgets) =
             tr
-                .sql("SELECT branch_id, name FROM groups WHERE id = :id AND org_id = :orgId")
+                .sql("SELECT branch_id, name, shown_in_widgets FROM groups WHERE id = :id AND org_id = :orgId")
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
-                .firstOrNull { row -> row.asUuid("branch_id").toBranchId() to row.asString("name") }
+                .firstOrNull { row -> Triple(row.asUuid("branch_id").toBranchId(), row.asString("name"), row.asBoolean("shown_in_widgets")) }
                 ?: raise(CommonDomainError("GROUP_NOT_FOUND", Messages.GroupNotFound.localize()))
 
         val disciplines =
@@ -85,6 +88,6 @@ class DbGroups(private val sync: ScheduleSync = DbScheduleSync()) : Groups {
                 .bind("groupId", id)
                 .list { row -> row.asUuid("employee_id").toEmployeeId() }
 
-        return DbGroup(id, branchId, name, disciplines, employeeIds, sync)
+        return DbGroup(id, branchId, name, disciplines, employeeIds, shownInWidgets, sync)
     }
 }

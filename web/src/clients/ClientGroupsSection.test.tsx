@@ -215,6 +215,7 @@ it("shows each group's schedule, hall and nearest session using the shared sched
     scheduleChangeAt: null,
     disciplines: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000d02", name: "ОФП" }],
     employees: [],
+    shownInWidgets: true,
   });
   const session = (id: string, date: string, status: string) => ({
     id,

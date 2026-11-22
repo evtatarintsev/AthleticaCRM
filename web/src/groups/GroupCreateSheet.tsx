@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import { GroupIdSchema, type DisciplineId, type EmployeeId } from "@/api/generated/contracts";
 import { FormAlert } from "@/forms/FormAlert";
-import { TextField } from "@/forms/fields";
+import { CheckboxField, TextField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
 import { uuidv7 } from "@/lib/uuid";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
@@ -26,10 +26,17 @@ interface GroupCreateValues {
   readonly disciplineIds: readonly DisciplineId[];
   /** Выбранные тренеры. */
   readonly employeeIds: readonly EmployeeId[];
+  /** Показывать ли занятия группы в виджетах расписания. */
+  readonly shownInWidgets: boolean;
 }
 
 /** Пустая форма новой группы. */
-const EMPTY_GROUP: GroupCreateValues = { name: "", disciplineIds: [], employeeIds: [] };
+const EMPTY_GROUP: GroupCreateValues = {
+  name: "",
+  disciplineIds: [],
+  employeeIds: [],
+  shownInWidgets: true,
+};
 
 /**
  * Панель справа для создания группы: название, дисциплины и тренеры. Дисциплины и тренеры
@@ -80,6 +87,7 @@ function GroupCreateForm({ api }: { readonly api: ApiClient }) {
         name: name.data,
         disciplineIds: value.disciplineIds,
         employeeIds: value.employeeIds,
+        shownInWidgets: value.shownInWidgets,
       });
       if (!result.ok) {
         setFailure(apiErrorMessage(t, result.error));
@@ -152,6 +160,15 @@ function GroupCreateForm({ api }: { readonly api: ApiClient }) {
           <form.Field name="name" validators={{ onSubmit: schema }}>
             {(field) => (
               <TextField field={field} label={t("groups.name")} autoComplete="off" required />
+            )}
+          </form.Field>
+          <form.Field name="shownInWidgets">
+            {(field) => (
+              <CheckboxField
+                field={field}
+                label={t("groups.shownInWidgets")}
+                hint={t("groups.shownInWidgetsHint")}
+              />
             )}
           </form.Field>
           <form.Subscribe selector={(state) => state.values.disciplineIds}>

@@ -15,6 +15,7 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
@@ -41,6 +42,7 @@ class DbGroupDetailView : GroupDetailView {
             scheduleChangeAt = asLocalDateOrNull("schedule_change_at"),
             disciplines = Json.decodeFromString<List<GroupDiscipline>>(asString("disciplines")),
             employees = Json.decodeFromString<List<GroupEmployee>>(asString("employees")),
+            shownInWidgets = asBoolean("shown_in_widgets"),
         )
 
     private companion object {
@@ -49,6 +51,7 @@ class DbGroupDetailView : GroupDetailView {
             SELECT
                 g.id,
                 g.name,
+                g.shown_in_widgets,
                 ${DbGroupListView.SCHEDULE_JSON} AS schedule,
                 ${DbGroupListView.SCHEDULE_CHANGE_AT} AS schedule_change_at,
                 ${DbGroupListView.EMPLOYEES_JSON} AS employees,

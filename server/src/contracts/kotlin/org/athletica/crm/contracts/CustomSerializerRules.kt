@@ -8,6 +8,7 @@ import org.athletica.crm.core.clientnotes.ClientNoteText
 import org.athletica.crm.core.customfields.CustomFieldKey
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.time.Validity
+import org.athletica.crm.core.widgets.WidgetHorizon
 
 /** Правило отображения типа со своим `KSerializer` в TypeScript. */
 sealed interface CustomRule {
@@ -35,6 +36,8 @@ val customSerializerRules: Map<String, CustomRule> =
             CustomRule.Named("CustomFieldKey", "z.string().regex(/^[a-z_]+$/).brand<\"CustomFieldKey\">()"),
         NonBlankName.serializer().descriptor.serialName to CustomRule.Inline("z.string().trim().min(1)"),
         PositiveInt.serializer().descriptor.serialName to CustomRule.Inline("z.int32().positive()"),
+        WidgetHorizon.serializer().descriptor.serialName to
+            CustomRule.Inline("z.int32().min(${WidgetHorizon.MIN_DAYS}).max(${WidgetHorizon.MAX_DAYS})"),
         ClientNoteText.serializer().descriptor.serialName to CustomRule.Inline("z.string().max(${ClientNoteText.MAX_LENGTH})"),
         SessionColorKey.serializer().descriptor.serialName to CustomRule.Named("SessionColorKey", zodEnum(SessionColorKey.entries.map { it.name })),
         Validity.serializer().descriptor.serialName to CustomRule.Renamed("Validity"),

@@ -127,6 +127,9 @@ import org.athletica.crm.domain.tariffs.DbTariffPlans
 import org.athletica.crm.domain.tariffs.TariffPlans
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.domain.widgets.AuditScheduleWidgets
+import org.athletica.crm.domain.widgets.DbScheduleWidgets
+import org.athletica.crm.domain.widgets.ScheduleWidgets
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
@@ -214,6 +217,7 @@ data class Di(
     val sessionJournals: SessionJournals = DbSessionJournals(attendanceLabels, bus)
     val groupSchedule: GroupSchedule = DbGroupSchedule(orgCalendar, scheduleSync)
     val halls: Halls = AuditHalls(DbHalls(), audit)
+    val scheduleWidgets: ScheduleWidgets = AuditScheduleWidgets(DbScheduleWidgets(), audit)
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val clientContacts = DbClientContacts()
     val assistantStorage = AssistantStorage(orgCalendar)

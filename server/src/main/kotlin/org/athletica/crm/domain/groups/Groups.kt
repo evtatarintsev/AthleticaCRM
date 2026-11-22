@@ -16,7 +16,7 @@ interface Groups {
      * через [GroupSchedule.setFrom] в той же транзакции.
      * Требует контекста сотрудника, т.к. брать филиал из JWT-токена.
      * [employees] — преподаватели группы; каждый должен иметь доступ к филиалу [EmployeeRequestContext.branchId],
-     * иначе ошибка `EMPLOYEE_NOT_FOUND`.
+     * иначе ошибка `EMPLOYEE_NOT_FOUND`. [shownInWidgets] — показывать ли занятия группы в виджетах расписания.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun new(
@@ -24,6 +24,7 @@ interface Groups {
         name: NonBlankName,
         disciplineIds: List<DisciplineId>,
         employees: List<Employee>,
+        shownInWidgets: Boolean = true,
     ): Group
 
     /** Возвращает группу по идентификатору. */

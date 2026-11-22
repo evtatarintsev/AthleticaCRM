@@ -22,9 +22,10 @@ private data class GroupSnapshot(
     val name: String,
     val disciplines: List<DisciplineId>,
     val employeeIds: List<EmployeeId>,
+    val shownInWidgets: Boolean,
 )
 
-private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, disciplines, employeeIds))
+private fun Group.snapshot() = Json.encodeToString(GroupSnapshot(name, disciplines, employeeIds, shownInWidgets))
 
 /**
  * Декоратор [Group], добавляющий запись в журнал аудита при мутирующих операциях.
@@ -46,4 +47,6 @@ class AuditGroup(private val delegate: Group, private val audit: AuditLog) : Gro
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun withNewName(name: NonBlankName): Group = AuditGroup(delegate.withNewName(name), audit)
+
+    override fun withShownInWidgets(shown: Boolean): Group = AuditGroup(delegate.withShownInWidgets(shown), audit)
 }

@@ -5,6 +5,7 @@ import {
   BookOpenIcon,
   Building2Icon,
   ChevronRightIcon,
+  CalendarDaysIcon,
   ClipboardCheckIcon,
   DoorOpenIcon,
   FileUpIcon,
@@ -28,11 +29,13 @@ import {
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import type { ApiClient } from "@/api/client";
+import type { UserPermission } from "@/api/generated/contracts";
 import { ChangePasswordSheet } from "@/account/ChangePasswordSheet";
 import { ProfileSheet } from "@/account/ProfileSheet";
 import { SwitchBranchSheet } from "@/account/SwitchBranchSheet";
 import type { StaticAppPath } from "@/app/router";
 import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import { hasPermission, useSession } from "@/query/session";
 import { AssistantSettingsSheet } from "@/assistant/AssistantSettingsSheet";
 import { AttendanceControlSheet } from "./attendanceControl/AttendanceControlSheet";
 import { ClientImportSheet } from "./import/ClientImportSheet";
@@ -43,6 +46,7 @@ import { OrgBalanceSheet } from "./org/OrgBalanceSheet";
 import { OrgSettingsSheet } from "./org/OrgSettingsSheet";
 import { RolesSheet } from "./roles/RolesSheet";
 import { TariffsSheet } from "./tariffs/TariffsSheet";
+import { ScheduleWidgetsSheet } from "./widgets/ScheduleWidgetsSheet";
 import { SettingsPanelSchema, type SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
@@ -60,6 +64,8 @@ interface SettingItem {
   readonly subtitle: PlainMessageKey;
   readonly icon: LucideIcon;
   readonly target: SettingTarget;
+  /** Право, без которого пункт скрыт, а его панель не открывается. */
+  readonly permission?: UserPermission;
 }
 
 /** Раздел настроек с заголовком [label]. */
@@ -244,6 +250,13 @@ const SETTINGS: readonly SettingSection[] = [
         icon: MessagesSquareIcon,
         target: app("/settings/channels"),
       },
+      {
+        title: "settings.itemScheduleWidgets",
+        subtitle: "settings.itemScheduleWidgetsSubtitle",
+        icon: CalendarDaysIcon,
+        target: panel("schedule-widgets"),
+        permission: "CAN_MANAGE_WIDGETS",
+      },
     ],
   },
 ];
@@ -273,6 +286,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   tariffs: TariffsSheet,
   "attendance-control": AttendanceControlSheet,
   "client-card": ClientCardSectionsSheet,
+  "schedule-widgets": ScheduleWidgetsSheet,
 };
 
 /**
@@ -291,6 +305,14 @@ export function SettingsPage({
   onPanelChange: (panel: SettingsPanel | undefined) => void;
 }) {
   const { t } = useI18n();
+  const session = useSession(api);
+  const allowed = (item: SettingItem) =>
+    item.permission === undefined || hasPermission(session, item.permission);
+  const forbiddenPanels = new Set(
+    SETTINGS.flatMap((section) => section.items)
+      .filter((item) => !allowed(item))
+      .flatMap((item) => (item.target.kind === "panel" ? [item.target.panel] : [])),
+  );
   return (
     <section className="max-w-3xl space-y-8">
       <h1 className="text-2xl font-semibold tracking-tight">{t("settings.title")}</h1>
@@ -298,7 +320,7 @@ export function SettingsPage({
         <section key={section.label} className="space-y-2">
           <h2 className="px-1 text-sm font-medium text-muted-foreground">{t(section.label)}</h2>
           <ul className="divide-y rounded-lg border bg-card">
-            {section.items.map((item) => (
+            {section.items.filter(allowed).map((item) => (
               <li key={item.title}>
                 <SettingRow item={item} />
               </li>
@@ -306,19 +328,21 @@ export function SettingsPage({
           </ul>
         </section>
       ))}
-      {SettingsPanelSchema.options.map((target) => {
-        const Sheet = SHEETS[target];
-        return (
-          <Sheet
-            key={target}
-            api={api}
-            open={panel === target}
-            onOpenChange={(open) => {
-              onPanelChange(open ? target : undefined);
-            }}
-          />
-        );
-      })}
+      {SettingsPanelSchema.options
+        .filter((target) => !forbiddenPanels.has(target))
+        .map((target) => {
+          const Sheet = SHEETS[target];
+          return (
+            <Sheet
+              key={target}
+              api={api}
+              open={panel === target}
+              onOpenChange={(open) => {
+                onPanelChange(open ? target : undefined);
+              }}
+            />
+          );
+        })}
     </section>
   );
 }

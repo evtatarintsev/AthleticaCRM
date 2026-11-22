@@ -507,7 +507,7 @@ export const OrgInfoSchema = z
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT"]);
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS"]);
 export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const AuthMeResponseSchema = z
@@ -1581,6 +1581,23 @@ export const CreateSaleRequestSchema = z
   .readonly();
 export type CreateSaleRequest = z.output<typeof CreateSaleRequestSchema>;
 
+export const ScheduleWidgetIdSchema = z.uuid().brand<"ScheduleWidgetId">();
+export type ScheduleWidgetId = z.output<typeof ScheduleWidgetIdSchema>;
+
+export const CreateScheduleWidgetRequestSchema = z
+  .object({
+    id: ScheduleWidgetIdSchema,
+    name: z.string().trim().min(1),
+    enabled: z.boolean().optional(),
+    horizon: z.int32().min(7).max(90).optional(),
+    showCoaches: z.boolean().optional(),
+    showHall: z.boolean().optional(),
+    showDisciplines: z.boolean().optional(),
+    excludedGroupIds: z.array(GroupIdSchema).readonly().optional(),
+  })
+  .readonly();
+export type CreateScheduleWidgetRequest = z.output<typeof CreateScheduleWidgetRequestSchema>;
+
 export const CreateSessionRequestSchema = z
   .object({
     id: SessionIdSchema,
@@ -2144,9 +2161,24 @@ export const EditGroupRequestSchema = z
     name: z.string().trim().min(1),
     disciplineIds: z.array(DisciplineIdSchema).readonly().optional(),
     employeeIds: z.array(EmployeeIdSchema).readonly().optional(),
+    shownInWidgets: z.boolean(),
   })
   .readonly();
 export type EditGroupRequest = z.output<typeof EditGroupRequestSchema>;
+
+export const EditScheduleWidgetRequestSchema = z
+  .object({
+    id: ScheduleWidgetIdSchema,
+    name: z.string().trim().min(1),
+    enabled: z.boolean(),
+    horizon: z.int32().min(7).max(90),
+    showCoaches: z.boolean(),
+    showHall: z.boolean(),
+    showDisciplines: z.boolean(),
+    excludedGroupIds: z.array(GroupIdSchema).readonly(),
+  })
+  .readonly();
+export type EditScheduleWidgetRequest = z.output<typeof EditScheduleWidgetRequestSchema>;
 
 export const EmployeeAccessStatusSchema = z.enum(["NO_ACCESS", "INVITED", "ACTIVE", "BLOCKED"]);
 export type EmployeeAccessStatus = z.output<typeof EmployeeAccessStatusSchema>;
@@ -2305,6 +2337,7 @@ export const GroupCreateRequestSchema = z
     name: z.string().trim().min(1),
     disciplineIds: z.array(DisciplineIdSchema).readonly().optional(),
     employeeIds: z.array(EmployeeIdSchema).readonly().optional(),
+    shownInWidgets: z.boolean().optional(),
   })
   .readonly();
 export type GroupCreateRequest = z.output<typeof GroupCreateRequestSchema>;
@@ -2361,6 +2394,7 @@ export const GroupDetailResponseSchema = z
     scheduleChangeAt: LocalDateSchema.nullable(),
     disciplines: z.array(GroupDisciplineSchema).readonly(),
     employees: z.array(GroupEmployeeSchema).readonly(),
+    shownInWidgets: z.boolean(),
   })
   .readonly();
 export type GroupDetailResponse = z.output<typeof GroupDetailResponseSchema>;
@@ -3096,6 +3130,39 @@ export const PayoutAdvanceRequestSchema = z
   .readonly();
 export type PayoutAdvanceRequest = z.output<typeof PayoutAdvanceRequestSchema>;
 
+export const PublicScheduleRequestSchema = z
+  .object({
+    key: z.string(),
+    from: LocalDateSchema.nullable().optional(),
+    to: LocalDateSchema.nullable().optional(),
+  })
+  .readonly();
+export type PublicScheduleRequest = z.output<typeof PublicScheduleRequestSchema>;
+
+export const PublicScheduleSessionSchemaSchema = z
+  .object({
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    endTime: LocalTimeSchema,
+    groupName: z.string(),
+    hall: z.string().nullable(),
+    disciplines: z.array(z.string()).readonly().nullable(),
+    coaches: z.array(z.string()).readonly().nullable(),
+    cancelled: z.boolean(),
+  })
+  .readonly();
+export type PublicScheduleSessionSchema = z.output<typeof PublicScheduleSessionSchemaSchema>;
+
+export const PublicScheduleResponseSchema = z
+  .object({
+    today: LocalDateSchema,
+    periodStart: LocalDateSchema,
+    periodEnd: LocalDateSchema,
+    sessions: z.array(PublicScheduleSessionSchemaSchema).readonly(),
+  })
+  .readonly();
+export type PublicScheduleResponse = z.output<typeof PublicScheduleResponseSchema>;
+
 export const RemoveClientFromGroupRequestSchema = z
   .object({
     clientIds: z.array(ClientIdSchema).readonly(),
@@ -3357,6 +3424,44 @@ export const ScheduleSlotInputSchema = z
   })
   .readonly();
 export type ScheduleSlotInput = z.output<typeof ScheduleSlotInputSchema>;
+
+export const ScheduleWidgetDetailResponseSchema = z
+  .object({
+    id: ScheduleWidgetIdSchema,
+    name: z.string(),
+    publicKey: z.string(),
+    enabled: z.boolean(),
+    horizon: z.int32().min(7).max(90),
+    showCoaches: z.boolean(),
+    showHall: z.boolean(),
+    showDisciplines: z.boolean(),
+    excludedGroupIds: z.array(GroupIdSchema).readonly(),
+  })
+  .readonly();
+export type ScheduleWidgetDetailResponse = z.output<typeof ScheduleWidgetDetailResponseSchema>;
+
+export const ScheduleWidgetIdRequestSchema = z
+  .object({
+    id: ScheduleWidgetIdSchema,
+  })
+  .readonly();
+export type ScheduleWidgetIdRequest = z.output<typeof ScheduleWidgetIdRequestSchema>;
+
+export const ScheduleWidgetListItemSchema = z
+  .object({
+    id: ScheduleWidgetIdSchema,
+    name: z.string(),
+    enabled: z.boolean(),
+  })
+  .readonly();
+export type ScheduleWidgetListItem = z.output<typeof ScheduleWidgetListItemSchema>;
+
+export const ScheduleWidgetListResponseSchema = z
+  .object({
+    widgets: z.array(ScheduleWidgetListItemSchema).readonly(),
+  })
+  .readonly();
+export type ScheduleWidgetListResponse = z.output<typeof ScheduleWidgetListResponseSchema>;
 
 export const SendEmployeeAccessRequestSchema = z
   .object({
@@ -5038,6 +5143,13 @@ export const endpoints = {
     out: "json",
     response: PaymentUrlResponseSchema,
   },
+  "public/schedule-widget": {
+    method: "GET",
+    in: "query",
+    request: PublicScheduleRequestSchema,
+    out: "json",
+    response: PublicScheduleResponseSchema,
+  },
   "sales/cancel": {
     method: "POST",
     in: "body",
@@ -5072,6 +5184,48 @@ export const endpoints = {
     request: ReturnSaleRequestSchema,
     out: "empty",
     response: z.undefined(),
+  },
+  "schedule-widgets/create": {
+    method: "POST",
+    in: "body",
+    request: CreateScheduleWidgetRequestSchema,
+    out: "json",
+    response: ScheduleWidgetDetailResponseSchema,
+  },
+  "schedule-widgets/delete": {
+    method: "POST",
+    in: "body",
+    request: ScheduleWidgetIdRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "schedule-widgets/detail": {
+    method: "GET",
+    in: "query",
+    request: ScheduleWidgetIdRequestSchema,
+    out: "json",
+    response: ScheduleWidgetDetailResponseSchema,
+  },
+  "schedule-widgets/edit": {
+    method: "POST",
+    in: "body",
+    request: EditScheduleWidgetRequestSchema,
+    out: "json",
+    response: ScheduleWidgetDetailResponseSchema,
+  },
+  "schedule-widgets/list": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ScheduleWidgetListResponseSchema,
+  },
+  "schedule-widgets/regenerate-key": {
+    method: "POST",
+    in: "body",
+    request: ScheduleWidgetIdRequestSchema,
+    out: "json",
+    response: ScheduleWidgetDetailResponseSchema,
   },
   "schedule/list": {
     method: "POST",

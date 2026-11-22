@@ -91,6 +91,7 @@ const juniors = GroupDetailResponseSchema.parse({
   scheduleChangeAt: null,
   disciplines: [],
   employees: [],
+  shownInWidgets: true,
 });
 
 const membershipId = "0199a0b2-0000-7000-8000-b00000000001";
@@ -197,7 +198,7 @@ function groupServer(
         return groupNotFound();
       }
       const request = EditGroupRequestSchema.parse(body);
-      group = { ...group, name: request.name };
+      group = { ...group, name: request.name, shownInWidgets: request.shownInWidgets };
       return json(group);
     },
     "halls/list": () => json({ halls: [bigHall] }),
@@ -877,12 +878,32 @@ describe("изменение названия группы", () => {
       name: "Старшие",
       disciplineIds: [boxing.id],
       employeeIds: [ivanov.id],
+      shownInWidgets: true,
     });
     expect(await screen.findByRole("heading", { name: "Старшие" })).toBeVisible();
     expect(
       within(section(ru["groups.detail.employeesTitle"])).getByText(ivanov.name),
     ).toBeVisible();
     expect(toast.success).toHaveBeenCalledWith(ru["groups.detail.renamed"]);
+  });
+
+  it("снятый признак «Показывать в виджетах» уходит в запрос редактирования", async () => {
+    const server = groupServer(seniors);
+    openApp(`/groups/${seniors.id}`, server.fetch);
+    const user = userEvent.setup();
+
+    const sheet = await openRename(user);
+    const shown = within(sheet).getByRole("checkbox", { name: ru["groups.shownInWidgets"] });
+    expect(shown).toBeChecked();
+    await user.click(shown);
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(server.to("groups/edit")).toHaveLength(1);
+    });
+    expect(EditGroupRequestSchema.parse(server.to("groups/edit")[0]?.body).shownInWidgets).toBe(
+      false,
+    );
   });
 
   it("пустое название — ошибка без запроса", async () => {

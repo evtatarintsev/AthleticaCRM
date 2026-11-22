@@ -32,6 +32,9 @@ interface Group {
     /** Преподаватели группы, используемые как шаблон при генерации занятий. */
     val employeeIds: List<EmployeeId>
 
+    /** Показываются ли занятия группы в виджетах расписания. */
+    val shownInWidgets: Boolean
+
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
@@ -48,6 +51,9 @@ interface Group {
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNewName(name: NonBlankName): Group
+
+    /** Возвращает копию с признаком показа в виджетах [shown] (без записи в БД). */
+    fun withShownInWidgets(shown: Boolean): Group
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun withNew(

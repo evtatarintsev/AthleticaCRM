@@ -25,6 +25,7 @@ const group = GroupDetailResponseSchema.parse({
   scheduleChangeAt: null,
   disciplines: [],
   employees: [],
+  shownInWidgets: true,
 });
 
 const today = todayLocalDate();

@@ -18,10 +18,12 @@ import org.athletica.crm.domain.clients.DbClients
 import org.athletica.crm.domain.clients.activeById
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
+import org.athletica.crm.storage.ConstraintViolation
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /** Тесты репозитория контактов клиента ([DbClientContacts]). */
@@ -149,5 +151,90 @@ class DbClientContactsTest {
                 }
 
             assertTrue(result.getOrNull().orEmpty().isEmpty())
+        }
+
+    private suspend fun replaceContacts(vararg contactList: ClientContact) =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) {
+                    contacts.replace(clients.activeById(clientId), contactList.toList())
+                }
+            }
+        }
+
+    private suspend fun storedContacts(): List<ClientContact> =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) {
+                    contacts.byClient(clientId)
+                }
+            }
+        }.getOrNull().orEmpty()
+
+    private fun phone(
+        value: String,
+        label: String,
+        isPrimary: Boolean = false,
+    ) = ClientContact(ClientContactId.new(), clientId, ContactType.PHONE, value, label, isPrimary)
+
+    @Test
+    fun `replace сохраняет набор в нормализованном виде`() =
+        runTest {
+            replaceContacts(
+                phone("1", " мама "),
+                ClientContact(ClientContactId.new(), clientId, ContactType.EMAIL, "a@b.c"),
+                phone("2", "папа", isPrimary = true),
+            )
+
+            assertEquals(
+                listOf(
+                    Triple("2", "папа", true),
+                    Triple("1", "мама", false),
+                    Triple("a@b.c", null, true),
+                ),
+                storedContacts().map { Triple(it.value, it.label, it.isPrimary) },
+            )
+        }
+
+    @Test
+    fun `два основных телефона отклоняются и не меняют прежние контакты`() =
+        runTest {
+            replaceContacts(phone("1", "мама"))
+
+            val result = replaceContacts(phone("2", "папа", isPrimary = true), phone("3", "бабушка", isPrimary = true))
+
+            assertTrue(result.isLeft())
+            assertEquals(listOf("1"), storedContacts().map { it.value })
+        }
+
+    @Test
+    fun `после удаления основного телефона основным становится следующий`() =
+        runTest {
+            replaceContacts(phone("1", "мама", isPrimary = true), phone("2", "папа"))
+
+            replaceContacts(phone("2", "папа"))
+
+            assertEquals(listOf("папа" to true), storedContacts().map { it.label to it.isPrimary })
+        }
+
+    @Test
+    fun `база не даёт оставить тип контактов без основного или с двумя основными`() =
+        runTest {
+            replaceContacts(phone("1", "мама"), phone("2", "папа"))
+
+            val withoutPrimary =
+                either {
+                    TestPostgres.db.sql("UPDATE client_contacts SET is_primary = false WHERE client_id = :clientId")
+                        .bind("clientId", clientId).execute()
+                }
+            val twoPrimaries =
+                either {
+                    TestPostgres.db.sql("UPDATE client_contacts SET is_primary = true WHERE client_id = :clientId")
+                        .bind("clientId", clientId).execute()
+                }
+
+            assertEquals("ck_client_contacts_one_primary", assertIs<ConstraintViolation>(withoutPrimary.leftOrNull()).constraint)
+            assertIs<ConstraintViolation>(twoPrimaries.leftOrNull())
+            assertEquals(listOf("мама" to true, "папа" to false), storedContacts().map { it.label to it.isPrimary })
         }
 }

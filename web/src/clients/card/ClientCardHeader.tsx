@@ -52,7 +52,7 @@ export function ClientCardHeader({
   const archived = client.state === "ARCHIVED";
   const clientId = client.id;
 
-  const phone = client.contacts.find((contact) => contact.type === "PHONE");
+  const phone = client.contacts.find((contact) => contact.type === "PHONE" && contact.isPrimary);
   return (
     <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-[1_1_360px] items-center gap-3.5 max-sm:pr-12">

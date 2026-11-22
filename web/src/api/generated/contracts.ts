@@ -143,6 +143,8 @@ export const ClientContactInputSchema = z
   .object({
     type: ContactTypeSchema,
     value: z.string(),
+    label: z.string().nullable(),
+    isPrimary: z.boolean(),
   })
   .readonly();
 export type ClientContactInput = z.output<typeof ClientContactInputSchema>;
@@ -895,6 +897,8 @@ export const ClientContactSchemaSchema = z
     id: ClientContactIdSchema,
     type: ContactTypeSchema,
     value: z.string(),
+    label: z.string().nullable(),
+    isPrimary: z.boolean(),
   })
   .readonly();
 export type ClientContactSchema = z.output<typeof ClientContactSchemaSchema>;
@@ -923,6 +927,16 @@ export const ClientChannelsResponseSchema = z
   })
   .readonly();
 export type ClientChannelsResponse = z.output<typeof ClientChannelsResponseSchema>;
+
+export const ClientContactInputInputSchema = z
+  .object({
+    type: ContactTypeSchema,
+    value: z.string(),
+    label: z.string().nullable().optional(),
+    isPrimary: z.boolean().optional(),
+  })
+  .readonly();
+export type ClientContactInputInput = z.output<typeof ClientContactInputInputSchema>;
 
 export const ClientDebtSchemaSchema = z
   .object({
@@ -1478,7 +1492,7 @@ export const CreateClientRequestSchema = z
     gender: GenderSchema,
     leadSourceId: LeadSourceIdSchema.nullable().optional(),
     customFields: z.array(CustomFieldValueSchema).readonly().optional(),
-    contacts: z.array(ClientContactInputSchema).readonly().optional(),
+    contacts: z.array(ClientContactInputInputSchema).readonly().optional(),
   })
   .readonly();
 export type CreateClientRequest = z.output<typeof CreateClientRequestSchema>;
@@ -2119,7 +2133,7 @@ export const EditClientRequestSchema = z
     gender: GenderSchema,
     leadSourceId: LeadSourceIdSchema.nullable().optional(),
     customFields: z.array(CustomFieldValueSchema).readonly().optional(),
-    contacts: z.array(ClientContactInputSchema).readonly().optional(),
+    contacts: z.array(ClientContactInputInputSchema).readonly().optional(),
   })
   .readonly();
 export type EditClientRequest = z.output<typeof EditClientRequestSchema>;

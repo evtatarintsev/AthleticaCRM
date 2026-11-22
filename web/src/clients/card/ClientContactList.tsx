@@ -1,7 +1,6 @@
-import { AtSignIcon, MailIcon, PhoneIcon, SendIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import type { ClientContactSchema } from "@/api/generated/contracts";
 import { useI18n } from "@/i18n/context";
+import { contactIcon } from "../contactIcon";
 
 /**
  * Список контактов клиента [contacts] с кликабельными ссылками: телефон — `tel:`,
@@ -20,46 +19,61 @@ export function ClientContactList({
   return (
     <ul className="divide-y">
       {contacts.map((contact) => (
-        <ContactRow key={contact.id} contact={contact} />
+        <ContactRow
+          key={contact.id}
+          contact={contact}
+          markPrimary={
+            contact.isPrimary && contacts.filter((other) => other.type === contact.type).length > 1
+          }
+        />
       ))}
     </ul>
   );
 }
 
-/** Иконка и ссылка контакта [contact] по его типу. */
-function contactView(contact: ClientContactSchema): { icon: ReactNode; href: string } {
+/** Ссылка контакта [contact] по его типу. */
+function contactHref(contact: ClientContactSchema): string {
   switch (contact.type) {
     case "PHONE":
-      return { icon: <PhoneIcon aria-hidden />, href: `tel:${contact.value}` };
+      return `tel:${contact.value}`;
     case "EMAIL":
-      return { icon: <MailIcon aria-hidden />, href: `mailto:${contact.value}` };
+      return `mailto:${contact.value}`;
     case "TELEGRAM":
-      return {
-        icon: <SendIcon aria-hidden />,
-        href: `https://t.me/${contact.value.replace(/^@/, "")}`,
-      };
+      return `https://t.me/${contact.value.replace(/^@/, "")}`;
     case "VK":
-      return { icon: <AtSignIcon aria-hidden />, href: `https://vk.com/${contact.value}` };
+      return `https://vk.com/${contact.value}`;
     case "FACEBOOK":
-      return { icon: <AtSignIcon aria-hidden />, href: `https://facebook.com/${contact.value}` };
+      return `https://facebook.com/${contact.value}`;
   }
 }
 
-/** Строка контакта: иконка типа, значение-ссылка и подпись типа. */
-function ContactRow({ contact }: { readonly contact: ClientContactSchema }) {
+/**
+ * Строка контакта: иконка типа, значение-ссылка и подпись — комментарий или название типа.
+ * [markPrimary] — показать пометку «основной» (только когда контактов этого типа несколько).
+ */
+function ContactRow({
+  contact,
+  markPrimary,
+}: {
+  readonly contact: ClientContactSchema;
+  readonly markPrimary: boolean;
+}) {
   const { t } = useI18n();
-  const view = contactView(contact);
   return (
     <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
       <span className="inline-flex size-7.5 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground [&_svg]:size-4">
-        {view.icon}
+        {contactIcon(contact.type)}
       </span>
       <span className="min-w-0 flex-1">
-        <a href={view.href} className="block truncate font-medium text-primary hover:underline">
+        <a
+          href={contactHref(contact)}
+          className="block truncate font-medium text-primary hover:underline"
+        >
           {contact.value}
         </a>
         <span className="block text-xs text-muted-foreground">
-          {t(`contactType.${contact.type}`)}
+          {contact.label ?? t(`contactType.${contact.type}`)}
+          {markPrimary && ` · ${t("clients.contactPrimary")}`}
         </span>
       </span>
     </li>

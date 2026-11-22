@@ -40,8 +40,8 @@ object MessagingFixture {
         orThrow {
             TestPostgres.db.sql(
                 """
-                INSERT INTO client_contacts (id, org_id, client_id, type, value)
-                VALUES (:id, :orgId, :clientId, 'PHONE', :value)
+                INSERT INTO client_contacts (id, org_id, client_id, type, value, is_primary)
+                VALUES (:id, :orgId, :clientId, 'PHONE', :value, NOT EXISTS (SELECT 1 FROM client_contacts WHERE client_id = :clientId AND type = 'PHONE'))
                 """.trimIndent(),
             ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId).bind("value", phone).execute()
         }

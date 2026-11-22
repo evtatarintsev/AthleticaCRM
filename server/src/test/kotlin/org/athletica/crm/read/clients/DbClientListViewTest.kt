@@ -150,18 +150,23 @@ class DbClientListViewTest {
         org.athletica.crm.setClientAdvance(OrgId(orgId), clientId, Money(balanceAfter, Currency.RUB))
     }
 
+    /** Позиция следующего добавленного контакта: контакты идут в порядке добавления. */
+    private var nextContactPosition = 0
+
     private suspend fun insertContact(
         orgId: Uuid,
         clientId: ClientId,
         type: String,
         value: String,
+        label: String? = null,
+        isPrimary: Boolean = false,
     ) {
         orThrow {
             TestPostgres.db
                 .sql(
                     """
-                    INSERT INTO client_contacts (id, org_id, client_id, type, value)
-                    VALUES (:id, :orgId, :clientId, :type, :value)
+                    INSERT INTO client_contacts (id, org_id, client_id, type, value, label, is_primary, position)
+                    VALUES (:id, :orgId, :clientId, :type, :value, :label, :isPrimary OR NOT EXISTS (SELECT 1 FROM client_contacts WHERE client_id = :clientId AND type = :type), :position)
                     """.trimIndent(),
                 )
                 .bind("id", Uuid.generateV7())
@@ -169,6 +174,9 @@ class DbClientListViewTest {
                 .bind("clientId", clientId)
                 .bind("type", type)
                 .bind("value", value)
+                .bind("label", label)
+                .bind("isPrimary", isPrimary)
+                .bind("position", nextContactPosition++)
                 .execute()
         }
     }
@@ -534,8 +542,8 @@ class DbClientListViewTest {
             val b = insertClient(orgId, "B")
             val group = insertGroup(orgId, "Самбо")
             addClientToGroup(a, group)
-            insertContact(orgId, a, ContactType.PHONE.name, "+79991112233")
-            insertContact(orgId, a, ContactType.EMAIL.name, "a@example.com")
+            insertContact(orgId, a, ContactType.PHONE.name, "+79991112233", label = "мама", isPrimary = true)
+            insertContact(orgId, a, ContactType.PHONE.name, "+79994445566", label = "папа")
 
             val result = page(orgId, ClientListQuery(sort = listOf(ClientSortCriterion(ClientSortColumn.NAME))))
             val itemA = result.clients.first { it.name == "A" }
@@ -543,7 +551,10 @@ class DbClientListViewTest {
             assertEquals(1, itemA.groups.size)
             assertEquals("Самбо", itemA.groups.single().name)
             assertEquals(2, itemA.contacts.size)
-            assertTrue(itemA.contacts.any { it.type == ContactType.PHONE && it.value == "+79991112233" })
+            assertEquals(
+                listOf(Triple("+79991112233", "мама", true), Triple("+79994445566", "папа", false)),
+                itemA.contacts.map { Triple(it.value, it.label, it.isPrimary) },
+            )
             assertTrue(itemB.groups.isEmpty())
             assertTrue(itemB.contacts.isEmpty())
         }

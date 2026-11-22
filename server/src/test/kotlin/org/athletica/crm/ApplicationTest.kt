@@ -12,6 +12,7 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.LoginResponse
+import org.athletica.crm.api.schemas.clients.ClientDetailResponse
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
@@ -129,6 +130,39 @@ class ApplicationTest {
             val response = client.get("/api/auth/me")
             assertEquals(HttpStatusCode.Unauthorized, response.status)
             assertContains(response.bodyAsText(), "Token expired or invalid")
+        }
+
+    @Test
+    fun `HTTP принимает контакты в старом формате и отклоняет два основных телефона`() =
+        testApplication {
+            application { context(testDi) { configureServer() } }
+
+            suspend fun postJson(path: String, body: String, token: String? = null) =
+                client.post("/api/$path") {
+                    contentType(ContentType.Application.Json)
+                    if (token != null) {
+                        header(HttpHeaders.Authorization, "Bearer $token")
+                    }
+                    setBody(body)
+                }
+
+            val signupBody = """{"companyName":"Acme","userName":"Owner","login":"owner@example.com","password":"password123","timezone":"UTC","currency":"RUB"}"""
+            val token = serverJson.decodeFromString<LoginResponse>(postJson("auth/sign-up", signupBody).bodyAsText()).accessToken
+
+            val legacy = postJson("clients/create", """{"id":"${ClientId.new()}","name":"Иван","gender":"MALE","contacts":[{"type":"PHONE","value":"+79990001122"}]}""", token)
+            assertEquals(HttpStatusCode.OK, legacy.status)
+            val contact = serverJson.decodeFromString<ClientDetailResponse>(legacy.bodyAsText()).contacts.single()
+            assertEquals(true, contact.isPrimary)
+            assertEquals(null, contact.label)
+
+            val duplicatePrimary =
+                postJson(
+                    "clients/create",
+                    """{"id":"${ClientId.new()}","name":"Пётр","gender":"MALE","contacts":[{"type":"PHONE","value":"1","isPrimary":true},{"type":"PHONE","value":"2","isPrimary":true}]}""",
+                    token,
+                )
+            assertEquals(HttpStatusCode.BadRequest, duplicatePrimary.status)
+            assertContains(duplicatePrimary.bodyAsText(), "CONTACT_PRIMARY_DUPLICATE")
         }
 
     @Test

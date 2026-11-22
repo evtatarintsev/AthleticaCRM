@@ -65,7 +65,7 @@ function card(status = "pending") {
       name: "Иванов Иван",
       gender: "MALE",
       birthday: null,
-      contacts: [{ type: "PHONE", value: "89091302211" }],
+      contacts: [{ type: "PHONE", value: "89091302211", label: "мама", isPrimary: true }],
       customFields: [],
       customFieldLabels: {},
     },
@@ -146,6 +146,7 @@ describe("AI-помощник", () => {
     });
     openApp("/settings", server.fetch);
     const user = await openAssistant();
+    expect(await screen.findAllByText("89091302211 · мама")).not.toHaveLength(0);
     await user.dblClick(await screen.findByRole("button", { name: ru["assistant.confirm"] }));
     expect(await screen.findByRole("link", { name: ru["assistant.created"] })).toHaveAttribute(
       "href",

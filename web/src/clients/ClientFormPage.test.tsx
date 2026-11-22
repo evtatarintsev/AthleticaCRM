@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
@@ -105,7 +105,15 @@ const alice = ClientDetailResponseSchema.parse({
   docs: [],
   leadSourceId: null,
   customFields: [],
-  contacts: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000601", type: "PHONE", value: "+70000000001" }],
+  contacts: [
+    {
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000601",
+      type: "PHONE",
+      value: "+70000000001",
+      label: "мама",
+      isPrimary: true,
+    },
+  ],
   state: "ACTIVE",
 });
 const aliceContact = alice.contacts[0];
@@ -144,7 +152,10 @@ function clientFormServer(initial: readonly ClientDetailResponse[] = []) {
         customFields: request.customFields ?? [],
         contacts: (request.contacts ?? []).map((contact, index) => ({
           id: ClientContactIdSchema.parse(`0199a0b2-7c3e-7d2a-9f10-00000000070${index.toString()}`),
-          ...contact,
+          type: contact.type,
+          value: contact.value,
+          label: contact.label ?? null,
+          isPrimary: contact.isPrimary ?? false,
         })),
         state: "ACTIVE",
       };
@@ -172,7 +183,10 @@ function clientFormServer(initial: readonly ClientDetailResponse[] = []) {
         customFields: request.customFields ?? existing?.customFields ?? [],
         contacts: (request.contacts ?? []).map((contact, index) => ({
           id: ClientContactIdSchema.parse(`0199a0b2-7c3e-7d2a-9f10-00000000080${index.toString()}`),
-          ...contact,
+          type: contact.type,
+          value: contact.value,
+          label: contact.label ?? null,
+          isPrimary: contact.isPrimary ?? false,
         })),
         state: existing?.state ?? "ACTIVE",
       };
@@ -215,7 +229,9 @@ describe("создание клиента", () => {
     expect(request.name).toBe("Новый клиент");
     expect(request.leadSourceId).toBe(leadSource.id);
     expect(request.birthday).toBe("1990-05-01");
-    expect(request.contacts).toEqual([{ type: "PHONE", value: "+79990000000" }]);
+    expect(request.contacts).toEqual([
+      { type: "PHONE", value: "+79990000000", label: null, isPrimary: true },
+    ]);
     expect(request.customFields).toEqual(
       expect.arrayContaining([
         { type: "text", fieldKey: "notes", value: "текст заметки" },
@@ -228,6 +244,89 @@ describe("создание клиента", () => {
         { type: "text", fieldKey: "site", value: "https://example.com" },
       ]),
     );
+  });
+});
+
+describe("контакты клиента", () => {
+  it("пустая форма — одна строка телефона без выбора типа и без флажка «основной»", async () => {
+    openApp("/clients/new", clientFormServer().fetch);
+
+    expect(await screen.findByLabelText(ru["contactType.PHONE"])).toHaveValue("");
+    expect(screen.queryByRole("combobox", { name: /тип/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(ru["clients.contactPrimary"])).not.toBeInTheDocument();
+  });
+
+  it("добавляет телефоны и Telegram, выбранный основной уходит в запрос", async () => {
+    const api = clientFormServer();
+    const { history } = openApp("/clients/new", api.fetch);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(ru["clients.name"]), "Ребёнок");
+    await user.type(screen.getByLabelText(ru["contactType.PHONE"]), "+79990000001");
+    await user.type(screen.getByLabelText(ru["clients.contactLabel"]), "мама");
+
+    await user.click(screen.getByRole("button", { name: ru["clients.addPhone"] }));
+    const phones = screen.getAllByLabelText(ru["contactType.PHONE"]);
+    expect(phones[1]).toHaveFocus();
+    await user.keyboard("+79990000002");
+    const labels = screen.getAllByLabelText(ru["clients.contactLabel"]);
+    const papaLabel = labels[1];
+    if (papaLabel === undefined) {
+      throw new Error("нет поля комментария второго телефона");
+    }
+    await user.type(papaLabel, "папа");
+    const primaries = screen.getAllByLabelText(ru["clients.contactPrimary"]);
+    expect(primaries).toHaveLength(2);
+    expect(primaries[0]).toBeChecked();
+    const papaPrimary = primaries[1];
+    if (papaPrimary === undefined) {
+      throw new Error("нет флажка второго телефона");
+    }
+    await user.click(papaPrimary);
+
+    await user.click(screen.getByRole("button", { name: ru["clients.addMoreContacts"] }));
+    await user.click(await screen.findByRole("menuitem", { name: ru["contactType.TELEGRAM"] }));
+    await waitFor(() => {
+      expect(screen.getByLabelText(ru["contactType.TELEGRAM"])).toHaveFocus();
+    });
+    await user.keyboard("@child");
+
+    await user.click(screen.getByRole("button", { name: ru["action.create"] }));
+    await screen.findByRole("table");
+    expect(history.location.pathname).toBe("/clients");
+
+    const request = CreateClientRequestSchema.parse(api.to("clients/create").at(-1)?.body);
+    expect(request.contacts).toEqual([
+      { type: "PHONE", value: "+79990000001", label: "мама", isPrimary: false },
+      { type: "PHONE", value: "+79990000002", label: "папа", isPrimary: true },
+      { type: "TELEGRAM", value: "@child", label: null, isPrimary: true },
+    ]);
+  });
+
+  it("при удалении основного телефона основным становится оставшийся", async () => {
+    const api = clientFormServer();
+    openApp("/clients/new", api.fetch);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(ru["clients.name"]), "Ребёнок");
+    await user.type(screen.getByLabelText(ru["contactType.PHONE"]), "+79990000001");
+    await user.click(screen.getByRole("button", { name: ru["clients.addPhone"] }));
+    await user.keyboard("+79990000002");
+    const removeFirst = screen.getAllByRole("button", { name: ru["clients.removeContact"] })[0];
+    if (removeFirst === undefined) {
+      throw new Error("нет кнопки удаления");
+    }
+    await user.click(removeFirst);
+
+    expect(screen.getByLabelText(ru["contactType.PHONE"])).toHaveValue("+79990000002");
+    expect(screen.queryByLabelText(ru["clients.contactPrimary"])).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: ru["action.create"] }));
+    await screen.findByRole("table");
+
+    const request = CreateClientRequestSchema.parse(api.to("clients/create").at(-1)?.body);
+    expect(request.contacts).toEqual([
+      { type: "PHONE", value: "+79990000002", label: null, isPrimary: true },
+    ]);
   });
 });
 
@@ -261,6 +360,7 @@ describe("редактирование клиента", () => {
     const nameField = await screen.findByLabelText(ru["clients.name"]);
     expect(nameField).toHaveValue(alice.name);
     expect(screen.getByLabelText(ru["contactType.PHONE"])).toHaveValue(aliceContact.value);
+    expect(screen.getByLabelText(ru["clients.contactLabel"])).toHaveValue("мама");
 
     await user.clear(nameField);
     await user.type(nameField, "Алиса Смирнова");
@@ -272,6 +372,8 @@ describe("редактирование клиента", () => {
     const request = EditClientRequestSchema.parse(api.to("clients/edit").at(-1)?.body);
     expect(request.id).toBe(alice.id);
     expect(request.name).toBe("Алиса Смирнова");
-    expect(request.contacts).toEqual([{ type: "PHONE", value: aliceContact.value }]);
+    expect(request.contacts).toEqual([
+      { type: "PHONE", value: aliceContact.value, label: "мама", isPrimary: true },
+    ]);
   });
 });

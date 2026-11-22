@@ -83,16 +83,25 @@ class DbClientChannelsViewTest {
             return id
         }
 
-    /** Добавляет клиенту контакт типа [type] со значением [value]. */
-    private suspend fun insertContact(type: String, value: String) {
+    /** Позиция следующего добавленного контакта: контакты идут в порядке добавления. */
+    private var nextContactPosition = 0
+
+    /** Добавляет клиенту контакт типа [type] со значением [value] и комментарием [label]; основной — при [isPrimary] или если это первый контакт типа. */
+    private suspend fun insertContact(
+        type: String,
+        value: String,
+        label: String? = null,
+        isPrimary: Boolean = false,
+    ) {
         orThrow {
             TestPostgres.db.sql(
                 """
-                INSERT INTO client_contacts (id, org_id, client_id, type, value)
-                VALUES (:id, :orgId, :clientId, :type, :value)
+                INSERT INTO client_contacts (id, org_id, client_id, type, value, label, is_primary, position)
+                VALUES (:id, :orgId, :clientId, :type, :value, :label, :isPrimary OR NOT EXISTS (SELECT 1 FROM client_contacts WHERE client_id = :clientId AND type = :type), :position)
                 """.trimIndent(),
             ).bind("id", ClientContactId.new()).bind("orgId", orgId).bind("clientId", clientId)
-                .bind("type", type).bind("value", value).execute()
+                .bind("type", type).bind("value", value).bind("label", label).bind("isPrimary", isPrimary)
+                .bind("position", nextContactPosition++).execute()
         }
     }
 
@@ -175,6 +184,21 @@ class DbClientChannelsViewTest {
             assertEquals(listOf("+79990001122", "+79990003344"), channels.getValue(smsId).contacts.map { it.value })
             assertTrue(channels.getValue(telegramId).contacts.isEmpty())
             assertFalse(channels.getValue(telegramId).available)
+        }
+
+    @Test
+    fun `контакты канала содержат комментарий и признак основного`() =
+        runTest {
+            val smsId = insertIntegration("SMS", SMS_CONFIG)
+            insertContact("PHONE", "+79990001122", label = "папа", isPrimary = true)
+            insertContact("PHONE", "+79990003344", label = "мама")
+
+            val sms = channels().first { it.id == smsId }
+
+            assertEquals(
+                listOf(Triple("+79990001122", "папа", true), Triple("+79990003344", "мама", false)),
+                sms.contacts.map { Triple(it.value, it.label, it.isPrimary) },
+            )
         }
 
     @Test

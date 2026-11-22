@@ -231,10 +231,12 @@ private fun ClientContact.toSchema(): ClientContactSchema =
         id = id,
         type = type,
         value = value,
+        label = label,
+        isPrimary = isPrimary,
     )
 
 /** Маппинг контактов из запроса в доменные сущности клиента [clientId] с новыми идентификаторами. */
-private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientContact> = map { ClientContact(ClientContactId.new(), clientId, it.type, it.value) }
+private fun List<ClientContactInput>.toDomain(clientId: ClientId): List<ClientContact> = map { ClientContact(ClientContactId.new(), clientId, it.type, it.value, it.label, it.isPrimary) }
 
 /** Максимальный размер страницы списка клиентов: защищает от чрезмерных запросов. */
 private const val MAX_CLIENT_PAGE_SIZE = 100

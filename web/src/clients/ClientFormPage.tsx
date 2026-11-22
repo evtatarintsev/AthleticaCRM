@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { ApiClient } from "@/api/client";
 import {
   LocalDateSchema,
-  type ClientContactInput,
+  type ClientContactInputInput,
   type ClientDetailResponse,
   type CustomFieldValue,
   type Gender,
@@ -35,7 +35,7 @@ export interface ClientSaveInput {
   readonly gender: Gender;
   readonly leadSourceId: LeadSourceId | null;
   readonly customFields: readonly CustomFieldValue[];
-  readonly contacts: readonly ClientContactInput[];
+  readonly contacts: readonly ClientContactInputInput[];
 }
 
 /** Значение поля источника клиента: идентификатор или пустая строка — источник не выбран. */

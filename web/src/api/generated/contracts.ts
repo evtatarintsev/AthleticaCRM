@@ -3356,6 +3356,13 @@ export const SaveCustomFieldsRequestSchema = z
   .readonly();
 export type SaveCustomFieldsRequest = z.output<typeof SaveCustomFieldsRequestSchema>;
 
+export const SaveTelegramGatewayTokenRequestSchema = z
+  .object({
+    token: z.string(),
+  })
+  .readonly();
+export type SaveTelegramGatewayTokenRequest = z.output<typeof SaveTelegramGatewayTokenRequestSchema>;
+
 export const ScheduleDisciplineSchemaSchema = z
   .object({
     id: DisciplineIdSchema,
@@ -3482,6 +3489,13 @@ export const SendMessageRequestSchema = z
   .readonly();
 export type SendMessageRequest = z.output<typeof SendMessageRequestSchema>;
 
+export const SendTelegramGatewayTestCodeRequestSchema = z
+  .object({
+    phone: z.string(),
+  })
+  .readonly();
+export type SendTelegramGatewayTestCodeRequest = z.output<typeof SendTelegramGatewayTestCodeRequestSchema>;
+
 export const SessionDebitPreviewRequestSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -3606,6 +3620,13 @@ export const SetSessionEmployeesRequestSchema = z
   })
   .readonly();
 export type SetSessionEmployeesRequest = z.output<typeof SetSessionEmployeesRequestSchema>;
+
+export const SetTelegramGatewayEnabledRequestSchema = z
+  .object({
+    enabled: z.boolean(),
+  })
+  .readonly();
+export type SetTelegramGatewayEnabledRequest = z.output<typeof SetTelegramGatewayEnabledRequestSchema>;
 
 export const SignUpRequestSchema = z
   .object({
@@ -3764,6 +3785,41 @@ export const TaskListResponseSchema = z
   })
   .readonly();
 export type TaskListResponse = z.output<typeof TaskListResponseSchema>;
+
+export const TelegramGatewayBalanceSchemaSchema = z
+  .object({
+    amount: MoneySchema,
+    at: InstantSchema,
+  })
+  .readonly();
+export type TelegramGatewayBalanceSchema = z.output<typeof TelegramGatewayBalanceSchemaSchema>;
+
+export const TelegramGatewayCodeOutcomeSchema = z.enum(["SENT", "UNDELIVERABLE", "NOT_CONFIGURED", "FAILED"]);
+export type TelegramGatewayCodeOutcome = z.output<typeof TelegramGatewayCodeOutcomeSchema>;
+
+export const TelegramGatewayIntegrationSchemaSchema = z
+  .object({
+    tokenMask: z.string(),
+    enabled: z.boolean(),
+    balance: TelegramGatewayBalanceSchemaSchema.nullable(),
+  })
+  .readonly();
+export type TelegramGatewayIntegrationSchema = z.output<typeof TelegramGatewayIntegrationSchemaSchema>;
+
+export const TelegramGatewaySettingsResponseSchema = z
+  .object({
+    integration: TelegramGatewayIntegrationSchemaSchema.nullable(),
+  })
+  .readonly();
+export type TelegramGatewaySettingsResponse = z.output<typeof TelegramGatewaySettingsResponseSchema>;
+
+export const TelegramGatewayTestCodeResponseSchema = z
+  .object({
+    outcome: TelegramGatewayCodeOutcomeSchema,
+    reason: z.string().nullable(),
+  })
+  .readonly();
+export type TelegramGatewayTestCodeResponse = z.output<typeof TelegramGatewayTestCodeResponseSchema>;
 
 export const TerminateEmployeeSessionRequestSchema = z
   .object({
@@ -5415,6 +5471,34 @@ export const endpoints = {
     request: UpdateTaskRequestSchema,
     out: "json",
     response: TaskDetailResponseSchema,
+  },
+  "telegram-gateway/save-token": {
+    method: "POST",
+    in: "body",
+    request: SaveTelegramGatewayTokenRequestSchema,
+    out: "json",
+    response: TelegramGatewaySettingsResponseSchema,
+  },
+  "telegram-gateway/set-enabled": {
+    method: "POST",
+    in: "body",
+    request: SetTelegramGatewayEnabledRequestSchema,
+    out: "json",
+    response: TelegramGatewaySettingsResponseSchema,
+  },
+  "telegram-gateway/settings": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: TelegramGatewaySettingsResponseSchema,
+  },
+  "telegram-gateway/test-code": {
+    method: "POST",
+    in: "body",
+    request: SendTelegramGatewayTestCodeRequestSchema,
+    out: "json",
+    response: TelegramGatewayTestCodeResponseSchema,
   },
   "upload": {
     method: "POST",

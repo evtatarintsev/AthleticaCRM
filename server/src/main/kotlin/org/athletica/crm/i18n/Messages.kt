@@ -319,6 +319,21 @@ object Messages {
         override val en = "Telegram rejected the bot token — check it in BotFather"
     }
 
+    object TelegramGatewayTokenInvalid : LocalizationKey {
+        override val ru = "Telegram Gateway не принял токен — проверьте его в личном кабинете Gateway"
+        override val en = "Telegram Gateway rejected the token — check it in your Gateway account"
+    }
+
+    object TelegramGatewayUnavailable : LocalizationKey {
+        override val ru = "Telegram Gateway сейчас недоступен — попробуйте позже"
+        override val en = "Telegram Gateway is unavailable right now — try again later"
+    }
+
+    object TelegramGatewayNotConnected : LocalizationKey {
+        override val ru = "Telegram Gateway не подключён"
+        override val en = "Telegram Gateway is not connected"
+    }
+
     object TelegramUnavailable : LocalizationKey {
         override val ru = "Telegram сейчас недоступен — попробуйте сохранить позже"
         override val en = "Telegram is unavailable right now — try saving later"

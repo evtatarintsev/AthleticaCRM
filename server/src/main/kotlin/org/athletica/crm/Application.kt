@@ -80,6 +80,7 @@ import org.athletica.crm.routes.sportCatalogRoutes
 import org.athletica.crm.routes.switchBranchRoute
 import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
+import org.athletica.crm.routes.telegramGatewayRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.asUuid
@@ -228,6 +229,7 @@ fun Application.configureServer() {
                         financeRoutes(di.clientPayments, di.saleActions, di.cashOperations, di.cashAccounts, di.cashArticles, di.sales, di.clients, di.orgCalendar, di.views)
                         clientNotesRoutes(di.clientNotes)
                         channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
+                        telegramGatewayRoutes(di.telegramGatewayIntegrations, di.telegramGateway)
                         messagingRoutes(
                             di.channelIntegrations,
                             di.conversations,

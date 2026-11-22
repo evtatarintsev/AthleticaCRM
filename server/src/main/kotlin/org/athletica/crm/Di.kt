@@ -127,6 +127,10 @@ import org.athletica.crm.domain.tariffs.DbTariffPlans
 import org.athletica.crm.domain.tariffs.TariffPlans
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.domain.telegramgateway.AuditTelegramGatewayIntegrations
+import org.athletica.crm.domain.telegramgateway.DbTelegramGatewayIntegrations
+import org.athletica.crm.domain.telegramgateway.TelegramGateway
+import org.athletica.crm.domain.telegramgateway.TelegramGatewayIntegrations
 import org.athletica.crm.domain.widgets.AuditScheduleWidgets
 import org.athletica.crm.domain.widgets.DbScheduleWidgets
 import org.athletica.crm.domain.widgets.ScheduleWidgets
@@ -152,6 +156,8 @@ import org.athletica.infra.messaging.telegram.TelegramPoller
 import org.athletica.infra.messaging.telegram.TelegramPollingSupervisor
 import org.athletica.infra.messaging.telegram.TelegramProxy
 import org.athletica.infra.messaging.telegram.createTelegramHttpClients
+import org.athletica.infra.telegram.gateway.ProviderTelegramGateway
+import org.athletica.infra.telegram.gateway.TelegramGatewayApi
 import org.athletica.infra.yookassa.YookassaApi
 import org.athletica.infra.yookassa.YookassaConfig
 import org.athletica.infra.yookassa.YookassaPaymentGateway
@@ -184,6 +190,7 @@ data class Di(
     val paymentGateway: PaymentGateway,
     val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
+    val telegramGatewayApi: TelegramGatewayApi = TelegramGatewayApi(createTelegramHttpClients(emptyList())),
     val roles: Roles = DbRoles(),
     val emailVerificationConfig: EmailVerificationConfig = EmailVerificationConfig("http://localhost:5173"),
     val authSessions: AuthSessions = DbAuthSessions(),
@@ -237,6 +244,8 @@ data class Di(
     val channelConfigVerifier: ChannelConfigVerifier = ProviderChannelConfigVerifier(telegramApi)
     val channelIntegrations: ChannelIntegrations =
         AuditChannelIntegrations(DbChannelIntegrations(channelTransports, clientContacts, channelBindings), audit)
+    val telegramGatewayIntegrations: TelegramGatewayIntegrations = AuditTelegramGatewayIntegrations(DbTelegramGatewayIntegrations(), audit)
+    val telegramGateway: TelegramGateway = ProviderTelegramGateway(database, telegramGatewayIntegrations, telegramGatewayApi)
     val conversations = DbConversations()
     val conversationReadStates: ConversationReadStates = DbConversationReadStates()
     val channelChats: ChannelChats = DbChannelChats()
@@ -276,6 +285,7 @@ fun Application.di(): Di {
     val ykConfig = yookassaConfig()
     val orgEmails = DbOrgEmails()
     val audit = PostgresAuditLog()
+    val telegramClients = createTelegramHttpClients(telegramProxies())
     return Di(
         dbConfig,
         db,
@@ -296,7 +306,8 @@ fun Application.di(): Di {
         yookassaConfig = ykConfig,
         payments = DbPayments(),
         paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
-        telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
+        telegramApi = TelegramBotApi(telegramClients),
+        telegramGatewayApi = TelegramGatewayApi(telegramClients),
         assistantConnection = AssistantConnection.from(environment.config),
         emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
     )

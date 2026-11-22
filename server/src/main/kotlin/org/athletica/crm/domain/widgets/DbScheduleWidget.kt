@@ -25,30 +25,34 @@ internal data class DbScheduleWidget(
     override suspend fun save() {
         requireManageWidgets()
         requireBranchGroups()
-        tr.sql(
-            """
-            INSERT INTO schedule_widgets (id, org_id, branch_id, name, public_key, enabled, horizon_days,
-                                          show_coaches, show_hall, show_disciplines)
-            VALUES (:id, :orgId, :branchId, :name, :publicKey, :enabled, :horizonDays,
-                    :showCoaches, :showHall, :showDisciplines)
-            ON CONFLICT (id) DO UPDATE SET
-                name = EXCLUDED.name, enabled = EXCLUDED.enabled, horizon_days = EXCLUDED.horizon_days,
-                show_coaches = EXCLUDED.show_coaches, show_hall = EXCLUDED.show_hall,
-                show_disciplines = EXCLUDED.show_disciplines
-            WHERE schedule_widgets.org_id = :orgId AND schedule_widgets.branch_id = :branchId
-            """.trimIndent(),
-        )
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .bind("branchId", branchId)
-            .bind("name", name)
-            .bind("publicKey", publicKey)
-            .bind("enabled", settings.enabled)
-            .bind("horizonDays", settings.horizon.days)
-            .bind("showCoaches", settings.showCoaches)
-            .bind("showHall", settings.showHall)
-            .bind("showDisciplines", settings.showDisciplines)
-            .execute()
+        val saved =
+            tr.sql(
+                """
+                INSERT INTO schedule_widgets (id, org_id, branch_id, name, public_key, enabled, horizon_days,
+                                              show_coaches, show_hall, show_disciplines)
+                VALUES (:id, :orgId, :branchId, :name, :publicKey, :enabled, :horizonDays,
+                        :showCoaches, :showHall, :showDisciplines)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name, enabled = EXCLUDED.enabled, horizon_days = EXCLUDED.horizon_days,
+                    show_coaches = EXCLUDED.show_coaches, show_hall = EXCLUDED.show_hall,
+                    show_disciplines = EXCLUDED.show_disciplines
+                WHERE schedule_widgets.org_id = :orgId AND schedule_widgets.branch_id = :branchId
+                """.trimIndent(),
+            )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("branchId", branchId)
+                .bind("name", name)
+                .bind("publicKey", publicKey)
+                .bind("enabled", settings.enabled)
+                .bind("horizonDays", settings.horizon.days)
+                .bind("showCoaches", settings.showCoaches)
+                .bind("showHall", settings.showHall)
+                .bind("showDisciplines", settings.showDisciplines)
+                .execute()
+        if (saved == 0L) {
+            raise(CommonDomainError("WIDGET_NOT_FOUND", Messages.WidgetNotFound.localize()))
+        }
 
         tr.sql("DELETE FROM schedule_widget_excluded_groups WHERE widget_id = :id")
             .bind("id", id)

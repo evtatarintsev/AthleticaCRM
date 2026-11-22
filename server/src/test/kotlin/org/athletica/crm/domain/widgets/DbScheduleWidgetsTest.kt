@@ -136,6 +136,26 @@ class DbScheduleWidgetsTest {
         }
 
     @Test
+    fun `идентификатор чужого виджета не перезаписывает его настройки`() =
+        runTest {
+            manager.setUp()
+            val group = manager.insertGroup("Взрослые")
+            val id = ScheduleWidgetId.new()
+            manager.inContext { widgets.new(id, testName("Сайт"), WidgetSettings(excludedGroups = listOf(group))).save() }
+            val stranger = ScheduleFixture(EmployeePermission(emptyList(), setOf(UserPermission.CAN_MANAGE_WIDGETS), emptySet()))
+            stranger.setUp("Other Org")
+            val strangerGroup = stranger.insertGroup("Чужая")
+
+            assertEquals(
+                "WIDGET_NOT_FOUND",
+                codeOf(stranger.runInContext { widgets.new(id, testName("Захват"), WidgetSettings(excludedGroups = listOf(strangerGroup))).save() }),
+            )
+            val widget = manager.inContext { widgets.byId(id) }
+            assertEquals("Сайт", widget.name)
+            assertEquals(listOf(group), widget.settings.excludedGroups)
+        }
+
+    @Test
     fun `перевыпуск ключа заменяет ключ`() =
         runTest {
             manager.setUp()
@@ -161,6 +181,19 @@ class DbScheduleWidgetsTest {
             manager.inContext { widgets.byId(id).delete() }
 
             assertEquals("WIDGET_NOT_FOUND", codeOf(manager.runInContext { widgets.byId(id) }))
+            assertEquals(0L, widgetCount())
+        }
+
+    @Test
+    fun `удаление филиала удаляет его виджеты`() =
+        runTest {
+            manager.setUp()
+            manager.inContext { widgets.new(ScheduleWidgetId.new(), testName("Сайт")).save() }
+
+            orThrow {
+                TestPostgres.db.sql("DELETE FROM branches WHERE id = :id").bind("id", manager.branchId).execute()
+            }
+
             assertEquals(0L, widgetCount())
         }
 

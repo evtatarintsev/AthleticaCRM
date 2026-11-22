@@ -5,7 +5,7 @@
 CREATE TABLE schedule_widgets (
     id               UUID         NOT NULL PRIMARY KEY,
     org_id           UUID         NOT NULL REFERENCES organizations (id),
-    branch_id        UUID         NOT NULL REFERENCES branches (id),
+    branch_id        UUID         NOT NULL REFERENCES branches (id) ON DELETE CASCADE,
     name             VARCHAR(255) NOT NULL,
     public_key       VARCHAR(64)  NOT NULL,
     enabled          BOOLEAN      NOT NULL,

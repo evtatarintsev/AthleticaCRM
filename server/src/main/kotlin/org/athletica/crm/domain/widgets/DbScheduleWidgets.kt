@@ -1,6 +1,8 @@
 package org.athletica.crm.domain.widgets
 
+import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
@@ -27,34 +29,34 @@ class DbScheduleWidgets : ScheduleWidgets {
             tr.sql("SELECT group_id FROM schedule_widget_excluded_groups WHERE widget_id = :id ORDER BY group_id")
                 .bind("id", id)
                 .list { it.asUuid("group_id").toGroupId() }
-        val (widget, horizonDays) =
-            tr.sql(
+        return tr
+            .sql(
                 """
                 SELECT name, public_key, enabled, horizon_days, show_coaches, show_hall, show_disciplines
                 FROM schedule_widgets
                 WHERE id = :id AND org_id = :orgId AND branch_id = :branchId
                 """.trimIndent(),
             )
-                .bind("id", id)
-                .bind("orgId", ctx.orgId)
-                .bind("branchId", ctx.branchId)
-                .firstOrNull { row ->
-                    DbScheduleWidget(
-                        id = id,
-                        branchId = ctx.branchId,
-                        name = row.asString("name"),
-                        publicKey = row.asString("public_key"),
-                        settings =
-                            WidgetSettings(
-                                enabled = row.asBoolean("enabled"),
-                                showCoaches = row.asBoolean("show_coaches"),
-                                showHall = row.asBoolean("show_hall"),
-                                showDisciplines = row.asBoolean("show_disciplines"),
-                                excludedGroups = excluded,
-                            ),
-                    ) to row.asInt("horizon_days")
-                }
-                ?: raise(CommonDomainError("WIDGET_NOT_FOUND", Messages.WidgetNotFound.localize()))
-        return widget.copy(settings = widget.settings.copy(horizon = WidgetHorizon.from(horizonDays)))
+            .bind("id", id)
+            .bind("orgId", ctx.orgId)
+            .bind("branchId", ctx.branchId)
+            .firstOrNull { row ->
+                DbScheduleWidget(
+                    id = id,
+                    branchId = ctx.branchId,
+                    name = row.asString("name"),
+                    publicKey = row.asString("public_key"),
+                    settings =
+                        WidgetSettings(
+                            enabled = row.asBoolean("enabled"),
+                            horizon = either { WidgetHorizon.from(row.asInt("horizon_days")) }.getOrElse { error(it) },
+                            showCoaches = row.asBoolean("show_coaches"),
+                            showHall = row.asBoolean("show_hall"),
+                            showDisciplines = row.asBoolean("show_disciplines"),
+                            excludedGroups = excluded,
+                        ),
+                )
+            }
+            ?: raise(CommonDomainError("WIDGET_NOT_FOUND", Messages.WidgetNotFound.localize()))
     }
 }

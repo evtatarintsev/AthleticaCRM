@@ -1,6 +1,8 @@
 package org.athletica.crm.read.widgets
 
+import arrow.core.getOrElse
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import kotlinx.serialization.json.Json
@@ -13,6 +15,7 @@ import org.athletica.crm.core.entityids.toScheduleWidgetId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.permissions.requireManageWidgets
+import org.athletica.crm.core.widgets.WidgetHorizon
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
@@ -63,14 +66,14 @@ class DbWidgetListView : WidgetListView {
             ?: raise(CommonDomainError("WIDGET_NOT_FOUND", Messages.WidgetNotFound.localize()))
     }
 
-    /** Собирает карточку виджета; горизонт и группы декодируются сериализаторами схемы. */
+    /** Собирает карточку виджета; исключённые группы декодируются сериализатором схемы. */
     private fun Row.toDetail(): ScheduleWidgetDetailResponse =
         ScheduleWidgetDetailResponse(
             id = asUuid("id").toScheduleWidgetId(),
             name = asString("name"),
             publicKey = asString("public_key"),
             enabled = asBoolean("enabled"),
-            horizon = Json.decodeFromString(asInt("horizon_days").toString()),
+            horizon = either { WidgetHorizon.from(asInt("horizon_days")) }.getOrElse { error(it) },
             showCoaches = asBoolean("show_coaches"),
             showHall = asBoolean("show_hall"),
             showDisciplines = asBoolean("show_disciplines"),

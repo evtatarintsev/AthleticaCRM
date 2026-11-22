@@ -96,11 +96,8 @@ function WidgetSchedule({ schedule }: { schedule: PublicScheduleResponse }) {
                 </h2>
               )}
               <ul className="space-y-2">
-                {sessionsOf(day).map((session) => (
-                  <WidgetSessionCard
-                    key={`${session.startTime}-${session.groupName}`}
-                    session={session}
-                  />
+                {sessionsOf(day).map((session, index) => (
+                  <WidgetSessionCard key={index} session={session} />
                 ))}
               </ul>
             </section>
@@ -135,8 +132,8 @@ function WidgetSessionCard({ session }: { session: PublicScheduleSessionSchema }
       {session.cancelled && (
         <p className="text-xs font-medium text-destructive">{t("schedule.cancelled")}</p>
       )}
-      {details.map((detail) => (
-        <p key={detail} className="text-xs break-words text-muted-foreground">
+      {details.map((detail, index) => (
+        <p key={index} className="text-xs break-words text-muted-foreground">
           {detail}
         </p>
       ))}

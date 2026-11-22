@@ -32,7 +32,8 @@ interface ScheduleWidget {
 
     /**
      * Сохраняет виджет: INSERT при создании либо UPDATE существующего.
-     * Ошибка `GROUP_NOT_FOUND`, если среди исключённых есть группа не из филиала виджета.
+     * Ошибка `GROUP_NOT_FOUND`, если среди исключённых есть группа не из филиала виджета;
+     * `WIDGET_NOT_FOUND`, если виджет с этим идентификатором уже есть в другом филиале или организации.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()

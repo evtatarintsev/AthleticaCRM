@@ -82,6 +82,8 @@ const client = (id: string, name: string) =>
     customFields: [],
     contacts: [],
     state: "ACTIVE",
+    memberships: [],
+    unpaidSessions: 0,
   });
 
 /** Полная карточка участницы «Аня» с телефоном и почтой. */

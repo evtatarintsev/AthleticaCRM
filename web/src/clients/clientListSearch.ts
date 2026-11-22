@@ -3,7 +3,7 @@ import type { ClientListRequest, DateRange, LocalDate } from "@/api/generated/co
 import { addDays } from "@/lib/localDate";
 
 /** Колонка сортировки списка клиентов. */
-export type ClientSortColumn = "name" | "balance" | "birthday";
+export type ClientSortColumn = "name" | "balance";
 
 /** Быстрый фильтр по дню рождения. */
 export type ClientBirthdayFilter =
@@ -50,7 +50,7 @@ export const ClientListSearchSchema = z.object({
     .optional()
     .catch(undefined),
   archived: z.boolean().optional().catch(undefined),
-  sort: z.enum(["name", "balance", "birthday", "nextBirthday"]).optional().catch(undefined),
+  sort: z.enum(["name", "balance", "nextBirthday"]).optional().catch(undefined),
   dir: z.enum(["asc", "desc"]).optional().catch(undefined),
 });
 
@@ -213,12 +213,7 @@ export function clientListRequest(
           ] as const,
         }
       : {
-          sortField:
-            filters.sort === "name"
-              ? ("NAME" as const)
-              : filters.sort === "balance"
-                ? ("BALANCE" as const)
-                : ("BIRTHDAY" as const),
+          sortField: filters.sort === "name" ? ("NAME" as const) : ("BALANCE" as const),
           sortDirection: filters.dir === "asc" ? ("Asc" as const) : ("Desc" as const),
         }),
     ...(filters.gender === "all" ? {} : { gender: filters.gender === "male" ? "MALE" : "FEMALE" }),

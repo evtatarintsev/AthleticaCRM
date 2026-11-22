@@ -47,6 +47,8 @@ const petr = {
   customFields: [],
   contacts: [],
   state: "ACTIVE",
+  memberships: [],
+  unpaidSessions: 0,
 };
 
 const inbound = (id: string, body: string, createdAt: string) => ({

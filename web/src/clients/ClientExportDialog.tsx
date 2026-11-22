@@ -11,10 +11,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useI18n } from "@/i18n/context";
+import { useI18n, type PlainMessageKey } from "@/i18n/context";
 import { downloadBlob } from "@/lib/download";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
-import { CLIENT_FIELD_KEYS, standardColumnLabelKey } from "./clientColumns";
+
+/** Стандартное поле экспорта клиентов (каталог `ClientField`) с ключом названия в словаре. */
+const EXPORT_FIELDS: readonly { readonly key: string; readonly label: PlainMessageKey }[] = [
+  { key: "birthday", label: "clients.column.birthday" },
+  { key: "gender", label: "clients.column.gender" },
+  { key: "groups", label: "clients.column.groups" },
+  { key: "balance", label: "clients.column.balance" },
+];
 
 /**
  * Диалог экспорта клиентов: выбор полей для CSV-файла. Экспортируются клиенты
@@ -34,7 +41,7 @@ export function ClientExportDialog({
 }) {
   const { t } = useI18n();
   const orderedKeys: readonly string[] = [
-    ...CLIENT_FIELD_KEYS,
+    ...EXPORT_FIELDS.map((field) => field.key),
     ...customFields.map((field) => field.fieldKey),
   ];
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set(orderedKeys));
@@ -80,12 +87,12 @@ export function ClientExportDialog({
         </DialogHeader>
         <div className="space-y-2">
           {failure !== null && <p className="text-sm text-destructive">{failure}</p>}
-          {CLIENT_FIELD_KEYS.map((field) => (
+          {EXPORT_FIELDS.map((field) => (
             <ExportFieldRow
-              key={field}
-              fieldKey={field}
-              label={t(standardColumnLabelKey(field))}
-              checked={selected.has(field)}
+              key={field.key}
+              fieldKey={field.key}
+              label={t(field.label)}
+              checked={selected.has(field.key)}
               onCheckedChange={toggle}
             />
           ))}

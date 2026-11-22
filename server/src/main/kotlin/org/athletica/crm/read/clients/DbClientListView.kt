@@ -2,19 +2,29 @@ package org.athletica.crm.read.clients
 
 import arrow.core.raise.context.Raise
 import io.r2dbc.spi.Row
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.athletica.crm.api.schemas.clients.ActiveClientListMembershipState
 import org.athletica.crm.api.schemas.clients.ClientContactSchema
 import org.athletica.crm.api.schemas.clients.ClientGroup
 import org.athletica.crm.api.schemas.clients.ClientListItem
+import org.athletica.crm.api.schemas.clients.ClientListMembership
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.api.schemas.clients.ClientState
+import org.athletica.crm.api.schemas.clients.InactiveClientListMembershipState
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toUploadId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.subscription.ActivationMode
+import org.athletica.crm.core.subscription.ActiveStatus
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asInt
+import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asMoney
@@ -24,8 +34,11 @@ import org.athletica.crm.storage.asUuidOrNull
 
 /**
  * Реализация [ClientListView] поверх PostgreSQL. Собирает страницу клиентов одним
- * запросом, соединяя баланс (CTE с последней записью журнала), группы и контакты
- * (агрегированные в JSONB), и отдельным запросом считает общее число совпадений.
+ * запросом, соединяя баланс (CTE с последней записью журнала), группы, контакты и
+ * абонементы (агрегированные в JSONB) и число неоплаченных занятий в группах филиала,
+ * и отдельным запросом считает общее число совпадений. «Сегодня» — дата
+ * [ClientListQuery.now] в часовом поясе организации; признаки абонемента выводит общий
+ * [ActiveStatus.of], порядок частей — Kotlin поверх SQL-порядка внутри части.
  */
 class DbClientListView : ClientListView {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -77,7 +90,27 @@ class DbClientListView : ClientListView {
                   WHERE e.client_id = c.id AND e.left_at IS NULL) AS groups,
                 (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', cc.id, 'type', cc.type, 'value', cc.value, 'label', cc.label, 'isPrimary', cc.is_primary) ORDER BY cc.position), '[]'::jsonb)
                    FROM client_contacts cc
-                  WHERE cc.client_id = c.id AND cc.org_id = c.org_id) AS contacts
+                  WHERE cc.client_id = c.id AND cc.org_id = c.org_id) AS contacts,
+                (SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                            'id', m.id, 'name', m.name, 'state', m.state,
+                            'activationMode', m.activation_mode, 'activateOn', m.activate_on,
+                            'startDate', m.start_date, 'endDate', m.end_date,
+                            'sessionsTotal', m.sessions_total, 'sessionsRemaining', m.sessions_remaining)
+                          ORDER BY m.end_date NULLS LAST, m.issued_on, m.created_at, m.id), '[]'::jsonb)
+                   FROM memberships m
+                  WHERE m.client_id = c.id AND m.org_id = c.org_id
+                    AND m.state IN ('ACTIVE', 'INACTIVE')) AS memberships,
+                (SELECT COUNT(*)::int
+                   FROM session_attendance a
+                   JOIN sessions s ON s.id = a.session_id
+                   JOIN groups g ON g.id = s.group_id AND g.branch_id = :branchId
+                  WHERE a.client_id = c.id AND a.presence = 'present'
+                    AND s.org_id = c.org_id AND s.status = 'completed'
+                    AND NOT EXISTS (SELECT 1 FROM membership_debits d
+                                     WHERE d.session_id = s.id AND d.client_id = c.id
+                                       AND d.reversed_at IS NULL)) AS unpaid_sessions,
+                (SELECT (CAST(:now AS timestamptz) AT TIME ZONE o.timezone)::date
+                   FROM organizations o WHERE o.id = c.org_id) AS today
             $FROM_WHERE
             ORDER BY $order
             ${if (query.limit != null) "LIMIT :limit OFFSET :offset" else ""}
@@ -86,6 +119,8 @@ class DbClientListView : ClientListView {
         return tr
             .sql(sql)
             .bindFilters(query)
+            .bind("now", query.now)
+            .bind("branchId", ctx.branchId)
             .let { q -> query.limit?.let { q.bind("limit", it).bind("offset", query.offset) } ?: q }
             .list { row -> row.toListItem() }
     }
@@ -143,7 +178,66 @@ class DbClientListView : ClientListView {
             customFields = Json.decodeFromString(asString("custom_fields")),
             contacts = Json.decodeFromString<List<ClientContactSchema>>(asString("contacts")),
             state = if (asString("state") == "ARCHIVED") ClientState.ARCHIVED else ClientState.ACTIVE,
+            memberships = memberships(asLocalDate("today")),
+            unpaidSessions = asInt("unpaid_sessions"),
         )
+
+    /**
+     * Абонементы клиента из JSONB-массива с признаками на дату [today]. SQL отдаёт их по дате
+     * окончания и дате выдачи; стабильная сортировка по части (активный, «к закрытию»,
+     * неактивированный) сохраняет этот порядок внутри части.
+     */
+    private fun Row.memberships(today: LocalDate): List<ClientListMembership> =
+        Json
+            .decodeFromString<List<MembershipRow>>(asString("memberships"))
+            .map { it.toMembership(today) }
+            .sortedBy { m ->
+                when (val state = m.state) {
+                    is ActiveClientListMembershipState -> if (state.closePending) 1 else 0
+                    is InactiveClientListMembershipState -> 2
+                }
+            }
+
+    /** Абонемент строки JSONB-массива в сыром виде таблицы `memberships`. */
+    @Serializable
+    private data class MembershipRow(
+        /** Идентификатор абонемента. */
+        val id: MembershipId,
+        /** Название абонемента. */
+        val name: String,
+        /** Сохранённое состояние: `ACTIVE` или `INACTIVE`. */
+        val state: String,
+        /** Режим активации. */
+        val activationMode: ActivationMode,
+        /** Дата активации для режима «с даты». */
+        val activateOn: LocalDate?,
+        /** Дата начала; у неактивированного — `null`. */
+        val startDate: LocalDate?,
+        /** Дата окончания; у неактивированного — `null`. */
+        val endDate: LocalDate?,
+        /** Общее количество занятий; `null` — безлимит. */
+        val sessionsTotal: Int?,
+        /** Остаток занятий; `null` — безлимит. */
+        val sessionsRemaining: Int?,
+    ) {
+        /** Абонемент ответа с признаками на дату [today]. */
+        fun toMembership(today: LocalDate): ClientListMembership {
+            val state =
+                if (state == "ACTIVE" && startDate != null && endDate != null) {
+                    val status = ActiveStatus.of(startDate, endDate, sessionsRemaining, today)
+                    ActiveClientListMembershipState(
+                        startDate = startDate,
+                        endDate = endDate,
+                        termPosition = status.termPosition,
+                        endingSoon = status.endingSoon.sorted(),
+                        closePending = status.closePending,
+                    )
+                } else {
+                    InactiveClientListMembershipState(activationMode, activateOn)
+                }
+            return ClientListMembership(id, name, sessionsTotal, sessionsRemaining, state)
+        }
+    }
 
     private companion object {
         /** День рождения клиента как целое MMDD (месяц × 100 + день), без учёта года. */

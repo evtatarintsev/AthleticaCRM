@@ -1,25 +1,20 @@
 import type { ContactType, CustomFieldDefinition } from "@/api/generated/contracts";
 import type { PlainMessageKey } from "@/i18n/context";
 
-/** Стандартное поле клиента, доступное как колонка таблицы (каталог `ClientField`). */
-export type ClientFieldKey = "birthday" | "gender" | "groups" | "balance";
+/** Стандартная колонка таблицы клиентов (каталог `ClientListColumn`). */
+export type ClientColumnKey = "groups" | "memberships" | "balance";
 
 /**
  * Колонка таблицы клиентов, восстановленная из ключей настроек отображения.
  * «Имя» — отдельная всегда видимая колонка и в настройки не входит.
  */
 export type ClientColumn =
-  | { readonly kind: "standard"; readonly field: ClientFieldKey }
+  | { readonly kind: "standard"; readonly field: ClientColumnKey }
   | { readonly kind: "contact"; readonly type: ContactType }
   | { readonly kind: "custom"; readonly fieldKey: string; readonly label: string };
 
-/** Стандартные поля в устойчивом порядке. */
-export const CLIENT_FIELD_KEYS: readonly ClientFieldKey[] = [
-  "birthday",
-  "gender",
-  "groups",
-  "balance",
-];
+/** Стандартные колонки в устойчивом порядке. */
+export const CLIENT_COLUMN_KEYS: readonly ClientColumnKey[] = ["groups", "memberships", "balance"];
 
 /** Типы контактов в устойчивом порядке. */
 export const CONTACT_TYPES: readonly ContactType[] = [
@@ -38,13 +33,11 @@ export function contactColumnKey(type: ContactType): string {
   return `${CONTACT_PREFIX}${type}`;
 }
 
-/** Ключ названия стандартного поля [field] в словаре. */
-export function standardColumnLabelKey(field: ClientFieldKey): PlainMessageKey {
+/** Ключ названия стандартной колонки [field] в словаре. */
+export function standardColumnLabelKey(field: ClientColumnKey): PlainMessageKey {
   switch (field) {
-    case "gender":
-      return "clients.column.gender";
-    case "birthday":
-      return "clients.column.birthday";
+    case "memberships":
+      return "clients.column.memberships";
     case "balance":
       return "clients.column.balance";
     case "groups":
@@ -53,15 +46,15 @@ export function standardColumnLabelKey(field: ClientFieldKey): PlainMessageKey {
 }
 
 /**
- * Разбирает ключ [key] настроек отображения в колонку. Стандартные поля распознаются
- * по каталогу `ClientField`, контакт-колонки — по префиксу, остальное ищется среди
+ * Разбирает ключ [key] настроек отображения в колонку. Стандартные колонки распознаются
+ * по каталогу `ClientListColumn`, контакт-колонки — по префиксу, остальное ищется среди
  * определений дополнительных полей [customFields]. Неизвестный ключ — `null`.
  */
 export function clientColumnOf(
   key: string,
   customFields: readonly CustomFieldDefinition[],
 ): ClientColumn | null {
-  const field = CLIENT_FIELD_KEYS.find((candidate) => candidate === key);
+  const field = CLIENT_COLUMN_KEYS.find((candidate) => candidate === key);
   if (field !== undefined) {
     return { kind: "standard", field };
   }
@@ -110,7 +103,7 @@ export function availableClientColumns(
   customFields: readonly CustomFieldDefinition[],
 ): readonly ClientColumn[] {
   const selected = new Set(enabled.map(clientColumnKey));
-  const standard = CLIENT_FIELD_KEYS.filter((field) => !selected.has(field)).map(
+  const standard = CLIENT_COLUMN_KEYS.filter((field) => !selected.has(field)).map(
     (field): ClientColumn => ({ kind: "standard", field }),
   );
   const contact = CONTACT_TYPES.map((type): ClientColumn => ({ kind: "contact", type })).filter(

@@ -33,13 +33,14 @@ import org.athletica.crm.testName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Instant
 
 /** Совместимость форматов сортировки и проверки границы API клиентов. */
 class ClientListRoutesTest {
     private fun query(body: String): ClientListQuery =
         assertIs<Either.Right<ClientListQuery>>(
             context(employeeContext(orgId = OrgId.new())) {
-                either<AppError, ClientListQuery> { Json.decodeFromString<ClientListRequest>(body).toQuery() }
+                either<AppError, ClientListQuery> { Json.decodeFromString<ClientListRequest>(body).toQuery(Instant.fromEpochMilliseconds(0)) }
             },
         ).value
 

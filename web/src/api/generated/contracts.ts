@@ -1191,6 +1191,50 @@ export const ClientLedgerResponseSchema = z
   .readonly();
 export type ClientLedgerResponse = z.output<typeof ClientLedgerResponseSchema>;
 
+export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
+export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
+
+export const TermPositionSchema = z.enum(["NOT_STARTED", "IN_TERM", "EXPIRED"]);
+export type TermPosition = z.output<typeof TermPositionSchema>;
+
+export const ClientListMembershipStateActiveSchema = z
+  .object({
+    type: z.literal("active"),
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    termPosition: TermPositionSchema,
+    endingSoon: z.array(EndingSoonReasonSchema).readonly(),
+    closePending: z.boolean(),
+  })
+  .readonly();
+export type ClientListMembershipStateActive = z.output<typeof ClientListMembershipStateActiveSchema>;
+
+export const ClientListMembershipStateInactiveSchema = z
+  .object({
+    type: z.literal("inactive"),
+    activationMode: ActivationModeSchema,
+    activateOn: LocalDateSchema.nullable(),
+  })
+  .readonly();
+export type ClientListMembershipStateInactive = z.output<typeof ClientListMembershipStateInactiveSchema>;
+
+export const ClientListMembershipStateSchema = z.discriminatedUnion("type", [ClientListMembershipStateActiveSchema, ClientListMembershipStateInactiveSchema]);
+export type ClientListMembershipState = z.output<typeof ClientListMembershipStateSchema>;
+
+export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
+export type MembershipId = z.output<typeof MembershipIdSchema>;
+
+export const ClientListMembershipSchema = z
+  .object({
+    id: MembershipIdSchema,
+    name: z.string(),
+    sessionsTotal: z.int32().nullable(),
+    sessionsRemaining: z.int32().nullable(),
+    state: ClientListMembershipStateSchema,
+  })
+  .readonly();
+export type ClientListMembership = z.output<typeof ClientListMembershipSchema>;
+
 export const ClientListItemSchema = z
   .object({
     id: ClientIdSchema,
@@ -1203,6 +1247,8 @@ export const ClientListItemSchema = z
     customFields: z.array(CustomFieldValueSchema).readonly(),
     contacts: z.array(ClientContactSchemaSchema).readonly(),
     state: ClientStateSchema,
+    memberships: z.array(ClientListMembershipSchema).readonly(),
+    unpaidSessions: z.int32(),
   })
   .readonly();
 export type ClientListItem = z.output<typeof ClientListItemSchema>;
@@ -1338,9 +1384,6 @@ export const ClientsDisplaySettingsInputSchema = z
   })
   .readonly();
 export type ClientsDisplaySettingsInput = z.output<typeof ClientsDisplaySettingsInputSchema>;
-
-export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
-export type MembershipId = z.output<typeof MembershipIdSchema>;
 
 export const CloseMembershipRequestSchema = z
   .object({
@@ -2251,9 +2294,6 @@ export const EmployeeSessionsRequestSchema = z
   .readonly();
 export type EmployeeSessionsRequest = z.output<typeof EmployeeSessionsRequestSchema>;
 
-export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
-export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
-
 export const FieldErrorSchema = z
   .object({
     name: z.string(),
@@ -2900,9 +2940,6 @@ export const MembershipSaleSchemaSchema = z
   })
   .readonly();
 export type MembershipSaleSchema = z.output<typeof MembershipSaleSchemaSchema>;
-
-export const TermPositionSchema = z.enum(["NOT_STARTED", "IN_TERM", "EXPIRED"]);
-export type TermPosition = z.output<typeof TermPositionSchema>;
 
 export const MembershipStateSchemaActiveSchema = z
   .object({

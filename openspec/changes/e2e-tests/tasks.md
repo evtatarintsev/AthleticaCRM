@@ -15,7 +15,7 @@
   Проверка: `npm run check` в `e2e/` проходит, а намеренно добавленный `as` даёт ошибку линтера
 - [ ] 1.3 `e2e/playwright.config.ts`:
   - `baseURL: https://app.e2e.test`, `ignoreHTTPSErrors`, `locale: ru-RU`;
-  - `retries` (1 в CI, 0 локально), `trace`/`screenshot`/`video` при ретрае и падении;
+  - `retries: 0`, `trace`/`screenshot`/`video` при падении;
   - HTML-отчёт в `e2e/playwright-report`;
   - проект Chromium.
 
@@ -37,9 +37,9 @@
 
   `e2e/stand/e2e.env` — только тестовые значения. Проверка: `docker compose -p athletica-e2e -f docker-compose.prod.yaml -f e2e/stand/docker-compose.e2e.yaml --env-file e2e/stand/e2e.env config` проходит, у nginx нет опубликованных портов, certbot не входит в `up`
 - [ ] 2.3 `e2e/stand/run.sh`:
-  - `certs.sh` → `up -d --wait` (`--build` локально или `--no-build` по флагу CI) → `run --rm playwright` → `down -v` через `trap`;
+  - `certs.sh` → `up -d --wait --build` → `run --rm playwright` → `down -v` через `trap`;
   - флаг `--keep`;
-  - при падении печатает `docker compose logs`.
+  - при падении печатает `docker compose logs` до `down`, отчёт остаётся в `e2e/playwright-report`.
 
   Задача `e2e` в `mise.toml`. Проверка: `mise run e2e -- --keep` поднимает стенд, и из контейнера playwright `curl -k https://app.e2e.test/api/auth/me` отвечает 401, а `https://app.e2e.test/` — HTML SPA. С dev-стендом, запущенным параллельно, конфликта портов нет
 - [ ] 2.4 `e2e/README.md`:
@@ -84,34 +84,19 @@
 - [ ] 5.5 Файл: загрузка вложения (заметка клиента или задача), открытие выданной presigned-ссылки на `minio.e2e.test`. Ответ 200, байты совпадают с загруженными. Проверка: сценарий проходит
 - [ ] 5.6 Отсутствующие доступные роли и подписи, обнаруженные в группах 4–5, исправлены в `web/`. В крайнем случае добавлен `data-testid` с записью причины в `e2e/README.md`. Проверка: `npm run check` в `web/` проходит
 
-## 6. CI
+## 6. Документация и интеграционная проверка
 
-- [ ] 6.1 `.github/workflows/e2e.yml` с `workflow_dispatch` по ветке:
-  - `run.sh` со сборкой образов в раннере, ничего не пушит;
-  - артефакт `playwright-report` всегда, логи контейнеров при падении.
-
-  Проверка: ручной запуск на ветке этого изменения зелёный, отчёт скачивается
-- [ ] 6.2 `.github/workflows/docker.yml`:
-  - сборки пушат только `sha-<sha>`;
-  - job `e2e` на этих образах (`--no-build`);
-  - job `promote` ставит `latest` через `docker buildx imagetools create`;
-  - `deploy` зависит от `promote`.
-
-  Проверка: прогон на `master` проходит цепочку `server`/`frontend` → `e2e` → `promote` → `deploy`, и `latest` в ghcr совпадает с digest `sha-<sha>`
-- [ ] 6.3 `DEPLOY.md`: `latest` ставится только после e2e, откат делается на конкретный `sha-…`. Проверка: раздел описывает фактическую цепочку из 6.2
-
-## 7. Документация и интеграционная проверка
-
-- [ ] 7.1 В `CLAUDE.md`:
+- [ ] 6.1 В `CLAUDE.md`:
   - команда `mise run e2e` в «Quick Start»;
   - правило «новый ключевой путь пользователя — сценарий в `e2e/`»;
   - правило «изменение `docker-compose.prod.yaml` или `nginx/prod.conf.template` — прогнать `mise run e2e`».
 
   Проверка: ревью текста
-- [ ] 7.2 Полный прогон `mise run e2e` трижды подряд с `workers` > 1 без падений и ретраев. Время job `e2e` в CI < 10 минут. Проверка: три зелёных прогона и время из CI
-- [ ] 7.3 Негативная проверка гейта: во временной ветке сломать `location /api/` в `prod.conf.template` и запустить `e2e.yml`. Прогон падает, отчёт и логи доступны. Ветка удаляется. Проверка: красный прогон с понятной причиной
+- [ ] 6.2 Полный прогон `mise run e2e` трижды подряд с `workers` > 1 без падений. Полный прогон вместе со сборкой образов занимает < 10 минут. Проверка: три зелёных прогона и замеренное время
+- [ ] 6.3 Негативная проверка: сломать `location /api/` в рабочей копии `nginx/prod.conf.template` и запустить `mise run e2e`. Прогон падает, логи контейнеров напечатаны, отчёт в `e2e/playwright-report` показывает причину. Правка откатывается. Проверка: красный прогон с понятной причиной, после отката зелёный
 
 ## Workflow follow-up
 
 - После реализации и стабилизации — `openspec archive e2e-tests`.
-- Решить по открытым вопросам design.md (Firefox/WebKit, e2e на PR по метке) по фактическим данным о длительности.
+- Подключение к CI (гейт перед `deploy`, перенос `latest`, ручной запуск) — отдельное изменение по фактическим данным о длительности и стабильности.
+- Решить по открытому вопросу design.md (Firefox/WebKit).

@@ -26,7 +26,9 @@ import kotlin.uuid.Uuid
  *   (`admin events retry-failed`).
  * - Обработчики вызываются вне любой транзакции и открывают свои транзакции при необходимости.
  *
- * [pollingInterval] — интервал между итерациями при отсутствии событий.
+ * [pollingInterval] — пауза перед следующей итерацией, когда очередь выбрана не полной пачкой;
+ * пока пачки полные (накопился поток событий, например после демо-наполнения), воркер
+ * выбирает следующую без паузы.
  */
 class DomainEventWorker(
     private val db: Database,
@@ -39,17 +41,21 @@ class DomainEventWorker(
     suspend fun run() {
         logger.info("Воркер доменных событий запущен")
         while (true) {
-            try {
-                processBatch()
-            } catch (e: Exception) {
-                logger.error("Ошибка в цикле обработки событий: ${e.message}", e)
+            val processed =
+                try {
+                    processBatch()
+                } catch (e: Exception) {
+                    logger.error("Ошибка в цикле обработки событий: ${e.message}", e)
+                    0
+                }
+            if (processed < BATCH_SIZE) {
+                delay(pollingInterval)
             }
-            delay(pollingInterval)
         }
     }
 
-    /** Обрабатывает одну пачку событий, чья очередная попытка наступила. */
-    suspend fun processBatch() {
+    /** Обрабатывает одну пачку событий, чья очередная попытка наступила; возвращает размер пачки. */
+    suspend fun processBatch(): Int {
         val records = db.transaction { orThrow { fetchPending() } }
         records.forEach { record ->
             try {
@@ -60,10 +66,11 @@ class DomainEventWorker(
                 db.transaction { orThrow { registerFailure(record, e.message ?: "unknown error") } }
             }
         }
+        return records.size
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
-    private suspend fun fetchPending(batchSize: Int = 10): List<DomainEventRecord> =
+    private suspend fun fetchPending(batchSize: Int = BATCH_SIZE): List<DomainEventRecord> =
         tr
             .sql(
                 """
@@ -127,6 +134,9 @@ class DomainEventWorker(
     }
 
     companion object {
+        /** Сколько событий выбирается за одну итерацию. */
+        private const val BATCH_SIZE = 10
+
         /** Сколько попыток обработки даётся событию до пометки неуспешным. */
         const val MAX_ATTEMPTS = 12
 

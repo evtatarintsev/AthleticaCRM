@@ -12,7 +12,9 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clients.ActiveClient
 import org.athletica.crm.domain.clients.lockForWrite
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 
 /** Реализация репозитория контактов клиентов на PostgreSQL через R2DBC. */
@@ -21,10 +23,10 @@ class DbClientContacts : ClientContacts {
     override suspend fun byClient(clientId: ClientId): List<ClientContact> =
         tr.sql(
             """
-            SELECT id, client_id, type, value
+            SELECT id, client_id, type, value, label, is_primary
             FROM client_contacts
             WHERE client_id = :clientId AND org_id = :orgId
-            ORDER BY created_at
+            ORDER BY position
             """.trimIndent(),
         )
             .bind("clientId", clientId)
@@ -39,10 +41,10 @@ class DbClientContacts : ClientContacts {
 
         return tr.sql(
             """
-            SELECT id, client_id, type, value
+            SELECT id, client_id, type, value, label, is_primary
             FROM client_contacts
             WHERE org_id = :orgId AND client_id = ANY(:clientIds)
-            ORDER BY created_at
+            ORDER BY position
             """.trimIndent(),
         )
             .bind("orgId", ctx.orgId)
@@ -54,16 +56,17 @@ class DbClientContacts : ClientContacts {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun replace(client: ActiveClient, contacts: List<ClientContact>) {
         client.lockForWrite()
+        val stored = contacts.normalized()
         tr.sql("DELETE FROM client_contacts WHERE client_id = :clientId AND org_id = :orgId")
             .bind("clientId", client.id)
             .bind("orgId", ctx.orgId)
             .execute()
 
-        contacts.forEach { contact ->
+        stored.forEachIndexed { position, contact ->
             tr.sql(
                 """
-                INSERT INTO client_contacts (id, org_id, client_id, type, value)
-                VALUES (:id, :orgId, :clientId, :type, :value)
+                INSERT INTO client_contacts (id, org_id, client_id, type, value, label, is_primary, position)
+                VALUES (:id, :orgId, :clientId, :type, :value, :label, :isPrimary, :position)
                 """.trimIndent(),
             )
                 .bind("id", contact.id)
@@ -71,6 +74,9 @@ class DbClientContacts : ClientContacts {
                 .bind("clientId", client.id)
                 .bind("type", contact.type.name)
                 .bind("value", contact.value)
+                .bind("label", contact.label)
+                .bind("isPrimary", contact.isPrimary)
+                .bind("position", position)
                 .execute()
         }
     }
@@ -81,6 +87,8 @@ class DbClientContacts : ClientContacts {
             clientId = asUuid("client_id").toClientId(),
             type = ContactType.valueOf(asString("type")),
             value = asString("value"),
+            label = asStringOrNull("label"),
+            isPrimary = asBoolean("is_primary"),
         )
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)

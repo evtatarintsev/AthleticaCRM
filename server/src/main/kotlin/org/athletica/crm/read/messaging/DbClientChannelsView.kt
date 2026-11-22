@@ -18,6 +18,7 @@ import org.athletica.crm.core.messaging.toChannelConfig
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 
@@ -40,11 +41,12 @@ class DbClientChannelsView : ClientChannelsView {
                                SELECT 1 FROM channel_bindings b
                                WHERE b.integration_id = ci.id AND b.client_id = :clientId AND b.org_id = :orgId
                            ) AS linked,
-                           cc.id AS contact_id, cc.type AS contact_type, cc.value AS contact_value
+                           cc.id AS contact_id, cc.type AS contact_type, cc.value AS contact_value,
+                           cc.label AS contact_label, cc.is_primary AS contact_is_primary
                     FROM channel_integrations ci
                     LEFT JOIN client_contacts cc ON cc.org_id = :orgId AND cc.client_id = :clientId
                     WHERE ci.org_id = :orgId AND ci.enabled
-                    ORDER BY ci.created_at, ci.id, cc.created_at
+                    ORDER BY ci.created_at, ci.id, cc.position
                     """.trimIndent(),
                 )
                 .bind("orgId", ctx.orgId)
@@ -98,6 +100,8 @@ class DbClientChannelsView : ClientChannelsView {
                         id = contactId.toClientContactId(),
                         type = ContactType.valueOf(asString("contact_type")),
                         value = asString("contact_value"),
+                        label = asStringOrNull("contact_label"),
+                        isPrimary = asBoolean("contact_is_primary"),
                     )
                 },
         )

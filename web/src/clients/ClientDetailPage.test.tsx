@@ -42,8 +42,20 @@ const alice = ClientDetailResponseSchema.parse({
   leadSourceId: null,
   customFields: [],
   contacts: [
-    { id: "0199a0b2-7c3e-7d2a-9f10-000000000601", type: "PHONE", value: "+70000000001" },
-    { id: "0199a0b2-7c3e-7d2a-9f10-000000000602", type: "EMAIL", value: "alice@example.com" },
+    {
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000601",
+      type: "PHONE",
+      value: "+70000000001",
+      label: null,
+      isPrimary: true,
+    },
+    {
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000602",
+      type: "EMAIL",
+      value: "alice@example.com",
+      label: null,
+      isPrimary: true,
+    },
   ],
   state: "ACTIVE",
 });
@@ -63,6 +75,29 @@ const customFieldDefs: readonly CustomFieldDefinition[] = [
 
 /** Поддельный сервер: клиент, его заметки и документы в памяти. */
 /** Загруженный файл паспорта клиента. */
+/** Ребёнок с двумя телефонами: «мама» стоит первой, но основной — «папа». */
+const child = ClientDetailResponseSchema.parse({
+  ...alice,
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000502",
+  name: "Миша Иванов",
+  contacts: [
+    {
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000611",
+      type: "PHONE",
+      value: "+70000000011",
+      label: "мама",
+      isPrimary: false,
+    },
+    {
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000612",
+      type: "PHONE",
+      value: "+70000000012",
+      label: "папа",
+      isPrimary: true,
+    },
+  ],
+});
+
 const passport = {
   id: "0199a0b2-7c3e-7d2a-9f10-000000000801",
   url: "https://files.example.com/passport.pdf",
@@ -186,6 +221,16 @@ describe("карточка клиента", () => {
       expect(history.location.pathname).toBe("/clients");
       expect(history.location.search).toBe("");
     });
+  });
+
+  it("показывает комментарии телефонов и основной номер в шапке", async () => {
+    openApp(`/clients/${child.id}`, detailServer(child).fetch);
+
+    await screen.findByRole("heading", { name: child.name });
+    expect(screen.getAllByRole("link", { name: "+70000000012" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "+70000000011" })).toHaveLength(1);
+    expect(screen.getByText("мама")).toBeInTheDocument();
+    expect(screen.getByText(`папа · ${ru["clients.contactPrimary"]}`)).toBeInTheDocument();
   });
 
   it("показывает сведения, добавляет заметку и переносит клиента в архив", async () => {
@@ -635,6 +680,34 @@ describe("чат в карточке клиента", () => {
     });
     expect((await messagesBlock()).getByText("Да, конечно")).toBeVisible();
     expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+  });
+
+  it("SMS по умолчанию уходит на основной телефон", async () => {
+    const sms = {
+      id: "0199a0b2-7c3e-7d2a-9f10-000000000a02",
+      name: "SMS",
+      provider: "smsc_sms",
+      available: true,
+      contacts: child.contacts,
+    };
+    const api = detailServer(child, [], passport, {
+      "messaging/conversation": () => json({ clientId: child.id, messages: [] }),
+      "messaging/channels": () => json({ channels: [sms] }),
+      "messaging/send": () => json({ clientId: child.id, messages: [] }),
+      "memberships/list": () => json({ memberships: [] }),
+    });
+    openApp(`/clients/${child.id}`, api.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["messaging.open"] }));
+    const sheet = await chatSheet();
+    await user.type(sheet.getByLabelText(ru["messaging.placeholder"]), "Напоминание{Enter}");
+
+    await waitFor(() => {
+      expect(api.to("messaging/send")).toHaveLength(1);
+    });
+    const request = SendMessageRequestSchema.parse(api.to("messaging/send").at(-1)?.body);
+    expect(request.contactId).toBe(child.contacts[1]?.id);
   });
 
   it("открывает чат из блока «Сообщения»", async () => {

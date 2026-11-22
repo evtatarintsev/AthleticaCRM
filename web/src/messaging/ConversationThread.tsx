@@ -29,6 +29,11 @@ import { useSession } from "@/query/session";
 import type { EditSheetGuard } from "@/ui/editSheetContext";
 import { INBOX_REFRESH_MS, invalidateInbox } from "./inboxQueries";
 
+/** Адрес по умолчанию среди контактов канала [contacts]: основной, иначе первый. */
+function defaultContactId(contacts: readonly ClientContactSchema[]): ClientContactId | null {
+  return (contacts.find((contact) => contact.isPrimary) ?? contacts[0])?.id ?? null;
+}
+
 /** Канал, выбранный по умолчанию, пока пользователь не выбрал свой: первый доступный. */
 function defaultChannel(channels: readonly ClientChannelSchema[]): ClientChannelSchema | null {
   return channels.find((channel) => channel.available) ?? channels[0] ?? null;
@@ -128,7 +133,7 @@ export function ConversationThread({
       ? defaultChannel(channels)
       : channels.find((channel) => channel.id === selectedChannelId)) ?? null;
   const options = selectedChannel?.contacts ?? [];
-  const effectiveContactId = selectedContactId ?? options[0]?.id ?? null;
+  const effectiveContactId = selectedContactId ?? defaultContactId(options);
   const available = selectedChannel?.available ?? false;
   const canSend = !sending && draft.trim() !== "" && available;
 
@@ -191,7 +196,7 @@ export function ConversationThread({
               selected={selectedChannel}
               onSelect={(channel) => {
                 setSelectedChannelId(channel.id);
-                setSelectedContactId(channel.contacts[0]?.id ?? null);
+                setSelectedContactId(defaultContactId(channel.contacts));
                 setSendError(null);
               }}
             />

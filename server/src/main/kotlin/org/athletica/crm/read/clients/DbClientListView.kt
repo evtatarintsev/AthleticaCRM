@@ -75,7 +75,7 @@ class DbClientListView : ClientListView {
                 (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', g.id, 'name', g.name) ORDER BY g.name), '[]'::jsonb)
                    FROM enrollments e JOIN groups g ON g.id = e.group_id
                   WHERE e.client_id = c.id AND e.left_at IS NULL) AS groups,
-                (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', cc.id, 'type', cc.type, 'value', cc.value) ORDER BY cc.created_at), '[]'::jsonb)
+                (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', cc.id, 'type', cc.type, 'value', cc.value, 'label', cc.label, 'isPrimary', cc.is_primary) ORDER BY cc.position), '[]'::jsonb)
                    FROM client_contacts cc
                   WHERE cc.client_id = c.id AND cc.org_id = c.org_id) AS contacts
             $FROM_WHERE

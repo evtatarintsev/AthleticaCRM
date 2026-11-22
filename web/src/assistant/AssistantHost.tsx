@@ -296,7 +296,10 @@ function ResponseBlock({
             {block.payload.contacts.map((contact, index) => (
               <div className="contents" key={index}>
                 <dt>{t(`contactType.${contact.type}`)}</dt>
-                <dd>{contact.value}</dd>
+                <dd>
+                  {contact.value}
+                  {contact.label !== null && ` · ${contact.label}`}
+                </dd>
               </div>
             ))}
             {block.payload.contacts.length === 0 && (

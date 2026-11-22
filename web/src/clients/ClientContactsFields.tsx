@@ -1,19 +1,50 @@
-import { PlusIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, PlusIcon, XIcon } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import type { ContactType } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import { manualField } from "@/forms/field";
-import { SelectField, TextField, type SelectOption } from "@/forms/fields";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/i18n/context";
 import {
-  EMPTY_CONTACT,
+  contactCountOf,
   removedContactAt,
   replacedContactAt,
+  withContactAdded,
+  withPrimaryAt,
   type ContactFormEntry,
 } from "./clientContacts";
+import { contactIcon } from "./contactIcon";
 
-const CONTACT_TYPES: readonly ContactType[] = ["PHONE", "EMAIL", "TELEGRAM", "VK", "FACEBOOK"];
+/** Предел длины комментария к контакту; совпадает с серверным `MAX_CONTACT_LABEL_LENGTH`. */
+const MAX_CONTACT_LABEL_LENGTH = 100;
 
-/** Контакты клиента на форме создания/редактирования: тип, значение, добавление и удаление строк. */
+/** Редкие типы контактов: добавляются из меню «Ещё», а не отдельной кнопкой. */
+const MORE_CONTACT_TYPES: readonly ContactType[] = ["TELEGRAM", "VK", "FACEBOOK"];
+
+/** Тип поля ввода под значение контакта [type]: телефон и почта получают свою клавиатуру. */
+function inputTypeOf(type: ContactType): "tel" | "email" | "text" {
+  switch (type) {
+    case "PHONE":
+      return "tel";
+    case "EMAIL":
+      return "email";
+    case "TELEGRAM":
+    case "VK":
+    case "FACEBOOK":
+      return "text";
+  }
+}
+
+/**
+ * Контакты клиента на форме создания/редактирования: строка — иконка типа, значение,
+ * комментарий, выбор основного (если строк типа несколько) и удаление. Тип строки задаётся
+ * кнопкой добавления и не меняется.
+ */
 export function ClientContactsFields({
   entries,
   onChange,
@@ -24,35 +55,65 @@ export function ClientContactsFields({
   readonly disabled: boolean;
 }) {
   const { t } = useI18n();
-  const typeOptions: readonly SelectOption<ContactType>[] = CONTACT_TYPES.map((type) => ({
-    value: type,
-    label: t(`contactType.${type}`),
-  }));
+  const radioGroup = useId();
+  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const pickedFromMenu = useRef(false);
+  const addedInput = useRef<HTMLInputElement>(null);
+
+  const add = (type: ContactType) => {
+    setFocusIndex(entries.length);
+    onChange(withContactAdded(entries, type));
+  };
 
   return (
     <fieldset className="space-y-2">
       <legend className="mb-1 text-sm font-medium">{t("clients.contacts")}</legend>
       {entries.map((entry, index) => (
-        <div key={index} className="flex items-end gap-2">
-          <div className="w-36 shrink-0">
-            <SelectField
-              field={manualField(`contact-type-${index.toString()}`, entry.type, (type) => {
-                onChange(replacedContactAt(entries, index, { ...entry, type }));
-              })}
-              label={t("clients.contactType")}
-              options={typeOptions}
-            />
-          </div>
-          <div className="flex-1">
-            <TextField
-              field={manualField(`contact-value-${index.toString()}`, entry.value, (value) => {
-                onChange(replacedContactAt(entries, index, { ...entry, value }));
-              })}
-              label={t(`contactType.${entry.type}`)}
-              autoComplete="off"
-              disabled={disabled}
-            />
-          </div>
+        <div key={index} className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground [&_svg]:size-4">
+            {contactIcon(entry.type)}
+          </span>
+          <Input
+            className="min-w-40 flex-1"
+            type={inputTypeOf(entry.type)}
+            aria-label={t(`contactType.${entry.type}`)}
+            placeholder={t(`contactType.${entry.type}`)}
+            autoComplete="off"
+            autoFocus={index === focusIndex}
+            ref={index === focusIndex ? addedInput : undefined}
+            value={entry.value}
+            disabled={disabled}
+            onChange={(event) => {
+              onChange(replacedContactAt(entries, index, { ...entry, value: event.target.value }));
+            }}
+          />
+          <Input
+            className="w-full sm:w-40"
+            aria-label={t("clients.contactLabel")}
+            placeholder={t("clients.contactLabelPlaceholder")}
+            autoComplete="off"
+            maxLength={MAX_CONTACT_LABEL_LENGTH}
+            value={entry.label}
+            disabled={disabled}
+            onChange={(event) => {
+              onChange(replacedContactAt(entries, index, { ...entry, label: event.target.value }));
+            }}
+          />
+          {contactCountOf(entries, entry.type) > 1 && (
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <input
+                type="radio"
+                name={`${radioGroup}-${entry.type}`}
+                checked={entry.isPrimary}
+                disabled={disabled}
+                onChange={() => {
+                  onChange(withPrimaryAt(entries, index));
+                }}
+                className="size-4 accent-primary"
+              />
+              {t("clients.contactPrimary")}
+            </label>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -60,6 +121,7 @@ export function ClientContactsFields({
             disabled={disabled}
             aria-label={t("clients.removeContact")}
             onClick={() => {
+              setFocusIndex(null);
               onChange(removedContactAt(entries, index));
             }}
           >
@@ -67,18 +129,66 @@ export function ClientContactsFields({
           </Button>
         </div>
       ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={() => {
-          onChange([...entries, EMPTY_CONTACT]);
-        }}
-      >
-        <PlusIcon aria-hidden />
-        {t("clients.addContact")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => {
+            add("PHONE");
+          }}
+        >
+          <PlusIcon aria-hidden />
+          {t("clients.addPhone")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => {
+            add("EMAIL");
+          }}
+        >
+          <PlusIcon aria-hidden />
+          {t("clients.addEmail")}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" disabled={disabled}>
+              <PlusIcon aria-hidden />
+              {t("clients.addMoreContacts")}
+              <ChevronDownIcon aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            onCloseAutoFocus={(event) => {
+              if (pickedFromMenu.current) {
+                pickedFromMenu.current = false;
+                event.preventDefault();
+                requestAnimationFrame(() => {
+                  addedInput.current?.focus();
+                });
+              }
+            }}
+          >
+            {MORE_CONTACT_TYPES.map((type) => (
+              <DropdownMenuItem
+                key={type}
+                onSelect={() => {
+                  pickedFromMenu.current = true;
+                  add(type);
+                }}
+              >
+                {contactIcon(type)}
+                {t(`contactType.${type}`)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </fieldset>
   );
 }

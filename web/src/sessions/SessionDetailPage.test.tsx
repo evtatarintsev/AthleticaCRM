@@ -92,8 +92,20 @@ const annaDetail = ClientDetailResponseSchema.parse({
   docs: [],
   leadSourceId: null,
   contacts: [
-    { id: "0199a0b2-0000-7000-8000-700000000001", type: "PHONE", value: "+70000000001" },
-    { id: "0199a0b2-0000-7000-8000-700000000002", type: "EMAIL", value: "anna@example.com" },
+    {
+      id: "0199a0b2-0000-7000-8000-700000000001",
+      type: "PHONE",
+      value: "+70000000001",
+      label: null,
+      isPrimary: true,
+    },
+    {
+      id: "0199a0b2-0000-7000-8000-700000000002",
+      type: "EMAIL",
+      value: "anna@example.com",
+      label: null,
+      isPrimary: true,
+    },
   ],
 });
 

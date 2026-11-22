@@ -25,6 +25,7 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
+import org.athletica.crm.domain.clientcontacts.normalized
 import org.athletica.crm.domain.clients.Clients
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.storage.Transaction
@@ -79,16 +80,16 @@ class ClientDrafts(
         fields.filter { it.isRequired && args.customFields[it.fieldKey.value].isNullOrBlank() }.firstOrNull()?.let {
             raise(CommonDomainError("ASSISTANT_FIELD_REQUIRED", "${it.label} (${it.fieldKey.value})"))
         }
+        val id = ClientId.new()
         val payload =
             AssistantClientPayload(
                 name.value,
                 gender,
                 args.birthday?.let { date(it) },
-                validateContacts(args.contacts),
+                validateContacts(args.contacts, id),
                 CustomFieldValues(fields).forCreation(values),
                 fields.associate { it.fieldKey.value to it.label },
             )
-        val id = ClientId.new()
         tr.sql("UPDATE assistant_client_drafts SET status = 'superseded' WHERE dialog_id = :dialog AND org_id = :org AND status = 'pending'")
             .bind("dialog", dialog).bind("org", ctx.orgId).execute()
         tr.sql("INSERT INTO assistant_client_drafts(client_id,dialog_id,org_id,message_id,payload,status) VALUES (:id,:dialog,:org,:message,:payload::jsonb,'pending')")
@@ -140,9 +141,9 @@ class ClientDrafts(
             }
         }
         val payload = Json.decodeFromString<AssistantClientPayload>(draft.second)
-        val checkedContacts = validateContacts(payload.contacts)
+        val checkedContacts = validateContacts(payload.contacts, client)
         val created = clients.new(client, NonBlankName.from(payload.name), null, payload.birthday, payload.gender, customFields = payload.customFields)
-        contacts.replace(created, checkedContacts.map { ClientContact(ClientContactId.new(), client, it.type, it.value) })
+        contacts.replace(created, checkedContacts.map { ClientContact(ClientContactId.new(), client, it.type, it.value, it.label, it.isPrimary) })
         tr.sql("UPDATE assistant_client_drafts SET status = 'executed' WHERE client_id = :id AND dialog_id = :dialog AND org_id = :org")
             .bind("id", client).bind("dialog", dialog).bind("org", ctx.orgId).execute()
         return AssistantBlock.ClientCreated(client)
@@ -157,9 +158,12 @@ class ClientDrafts(
             raise(assistantError("VALIDATION"))
         }
 
-    /** Проверяет контакты до карточки и повторно перед сохранением. */
+    /**
+     * Проверяет контакты клиента [client] до карточки и повторно перед сохранением и приводит их
+     * к хранимому виду ([normalized]): карточка показывает ровно то, что будет записано.
+     */
     context(raise: Raise<AppError>)
-    private fun validateContacts(values: List<ClientContactInput>): List<ClientContactInput> =
+    private fun validateContacts(values: List<ClientContactInput>, client: ClientId): List<ClientContactInput> =
         values.map { contact ->
             val value = contact.value.trim()
             val valid =
@@ -171,6 +175,6 @@ class ClientDrafts(
             if (!valid || value.length > 512) {
                 raise(assistantError("VALIDATION"))
             }
-            contact.copy(value = value)
-        }
+            ClientContact(ClientContactId.new(), client, contact.type, value, contact.label, contact.isPrimary)
+        }.normalized().map { ClientContactInput(it.type, it.value, it.label, it.isPrimary) }
 }

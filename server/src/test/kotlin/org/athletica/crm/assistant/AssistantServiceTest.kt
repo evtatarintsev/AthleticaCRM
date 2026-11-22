@@ -113,7 +113,7 @@ class AssistantServiceTest {
                                     FakeAssistant.call("save_client", """{"clientId":"${card?.clientId}"}""")
                                 } else {
                                     val phone = if (text.startsWith("телефон")) "89091302212" else "89091302211"
-                                    FakeAssistant.call("prepare_client", """{"name":"Иванов Иван","gender":"MALE","contacts":[{"type":"PHONE","value":"$phone"}]}""")
+                                    FakeAssistant.call("prepare_client", """{"name":"Иванов Иван","gender":"MALE","contacts":[{"type":"PHONE","value":"$phone","label":" мама "}]}""")
                                 }
                             }
                         }
@@ -124,6 +124,7 @@ class AssistantServiceTest {
                         val corrected = di.assistant.send(dialog.id, "телефон 89091302212")
                         card = corrected.messages.last().blocks.filterIsInstance<AssistantBlock.ClientDraft>().single()
                         assertEquals("89091302212", card.payload.contacts.single().value)
+                        assertEquals("мама", card.payload.contacts.single().label)
                         assertEquals(AssistantDraftStatus.SUPERSEDED, corrected.messages.flatMap { it.blocks }.filterIsInstance<AssistantBlock.ClientDraft>().first().status)
                         assertEquals("ASSISTANT_DRAFT_SUPERSEDED", assertIs<Either.Left<AppError>>(either { di.assistant.confirm(old.clientId) }).value.code)
                         val saved = di.assistant.send(dialog.id, "да")
@@ -136,8 +137,8 @@ class AssistantServiceTest {
                         assertEquals(1, count("clients"))
                         assertEquals(1, di.database.sql("SELECT count(*)::int AS count FROM client_contacts WHERE client_id = :id").bind("id", receipt.clientId).firstOrNull { it.asInt("count") })
                         assertEquals(3, context(owner) { di.assistant.settings().acceptedMessages })
-                        val phone = di.database.sql("SELECT value FROM client_contacts WHERE client_id = :id").bind("id", card.clientId).firstOrNull { it.asString("value") }
-                        assertEquals("89091302212", phone)
+                        val phone = di.database.sql("SELECT value || ' ' || label AS phone FROM client_contacts WHERE client_id = :id").bind("id", card.clientId).firstOrNull { it.asString("phone") }
+                        assertEquals("89091302212 мама", phone)
                         val audits =
                             di.database.sql("SELECT count(*)::int AS count FROM audit_logs WHERE entity_type = 'client' AND action_type = 'create' AND user_id = :user")
                                 .bind("user", staff.userId).firstOrNull { it.asInt("count") }

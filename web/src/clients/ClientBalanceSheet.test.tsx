@@ -10,6 +10,7 @@ import { ru } from "@/i18n/ru";
 import { appServer, json, openApp, session } from "@/test/app";
 
 const bob = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000502",
   name: "Борис Петров",
   avatarId: null,

@@ -15,7 +15,7 @@ it("uses server totals beyond the page and refreshes both summaries with the tas
       return json({
         tasks: [],
         total:
-          request.limit === 50
+          request.statuses === undefined
             ? 80
             : request.dueDateTo != null
               ? completed
@@ -46,7 +46,7 @@ it("uses server totals beyond the page and refreshes both summaries with the tas
   expect(cache.getQueryData(overdue.queryKey)?.total).toBe(11);
   expect(server.requests).toHaveLength(6);
   for (const request of server.requests.filter(
-    (r) => TaskListRequestSchema.parse(r.body).limit === 1,
+    (r) => TaskListRequestSchema.parse(r.body).statuses !== undefined,
   )) {
     expect(TaskListRequestSchema.parse(request.body).statuses).toEqual([
       "PENDING",

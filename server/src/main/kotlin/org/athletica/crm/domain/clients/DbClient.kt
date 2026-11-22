@@ -18,6 +18,7 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.CustomFieldDefinitions
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Instant
 
 /**
  * R2DBC-реализация активного клиента. Все запросы фильтруются по `org_id`.
@@ -25,6 +26,7 @@ import org.athletica.crm.storage.Transaction
 internal data class DbActiveClient(
     override val id: ClientId,
     override val name: String,
+    override val createdAt: Instant,
     override val avatarId: UploadId?,
     override val birthday: LocalDate?,
     override val gender: Gender,
@@ -118,6 +120,7 @@ internal data class DbActiveClient(
 internal data class DbArchivedClient(
     override val id: ClientId,
     override val name: String,
+    override val createdAt: Instant,
     override val avatarId: UploadId?,
     override val birthday: LocalDate?,
     override val gender: Gender,

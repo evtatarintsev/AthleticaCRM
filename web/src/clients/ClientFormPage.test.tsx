@@ -94,6 +94,7 @@ const customFieldDefs: readonly CustomFieldDefinition[] = [
 ].map((def) => CustomFieldDefinitionSchema.parse(def));
 
 const alice = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000501",
   name: "Алиса Иванова",
   avatarId: null,
@@ -130,6 +131,7 @@ function clientFormServer(initial: readonly ClientDetailResponse[] = []) {
     "clients/create": ({ body }) => {
       const request = CreateClientRequestSchema.parse(body);
       const client: ClientDetailResponse = {
+        createdAt: alice.createdAt,
         id: request.id,
         name: request.name,
         avatarId: request.avatarId ?? null,
@@ -157,6 +159,7 @@ function clientFormServer(initial: readonly ClientDetailResponse[] = []) {
       const request = EditClientRequestSchema.parse(body);
       const existing = clients.find((c) => c.id === request.id);
       const updated: ClientDetailResponse = {
+        createdAt: alice.createdAt,
         id: request.id,
         name: request.name,
         avatarId: request.avatarId ?? null,

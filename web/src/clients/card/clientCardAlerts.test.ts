@@ -11,6 +11,7 @@ import { clientAlerts, nextBirthday } from "./clientCardAlerts";
 const today = LocalDateSchema.parse("2026-10-13");
 
 const client = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000501",
   name: "Алиса Иванова",
   avatarId: null,

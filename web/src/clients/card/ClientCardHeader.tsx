@@ -20,13 +20,7 @@ import {
 import { useI18n } from "@/i18n/context";
 import { Avatar } from "@/ui/Avatar";
 
-/** Полных лет на дату [today] при дате рождения [birthday] (`YYYY-MM-DD`). */
-function ageOn(birthday: string, today: Date): number {
-  const [year = 0, month = 1, day = 1] = birthday.split("-").map(Number);
-  const beforeBirthday =
-    today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day);
-  return today.getFullYear() - year - (beforeBirthday ? 1 : 0);
-}
+import { ageOn } from "./clientOverview";
 
 /** Имя, основные контакты и действия; на телефоне действия закреплены снизу. */
 export function ClientCardHeader({

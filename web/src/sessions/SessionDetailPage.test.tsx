@@ -86,6 +86,7 @@ const client = (id: string, name: string) =>
 
 /** Полная карточка участницы «Аня» с телефоном и почтой. */
 const annaDetail = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   ...client("1", "Аня"),
   groups: [{ id: "0199a0b2-0000-7000-8000-100000000001", name: "Юниоры У8" }],
   docs: [],

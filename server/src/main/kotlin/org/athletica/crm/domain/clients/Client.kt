@@ -30,6 +30,9 @@ sealed interface Client {
     /** Отображаемое имя клиента. */
     val name: String
 
+    /** Момент создания записи клиента. */
+    val createdAt: Instant
+
     /** Идентификатор загрузки аватарки клиента, либо null если аватарка не задана. */
     val avatarId: UploadId?
 

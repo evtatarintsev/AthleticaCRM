@@ -1,6 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { MessageSquareIcon, PlusIcon } from "lucide-react";
-import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   InstantSchema,
@@ -13,15 +12,10 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { apiQuery } from "@/query/queries";
+import { unwrap } from "@/query/apiFailure";
 import { clientTasksQuery } from "./card/clientCardQueries";
 import { TaskStatusBadge } from "@/tasks/TaskStatusBadge";
-import {
-  BlockRow,
-  BlockStatus,
-  BlockSub,
-  ClientCardBlock,
-  ShowAllButton,
-} from "./card/ClientCardBlock";
+import { BlockRow, BlockStatus, BlockSub, ClientCardBlock } from "./card/ClientCardBlock";
 
 /** Сколько последних сообщений показывается в блоке. */
 const MESSAGES_SHOWN = 3;
@@ -44,28 +38,45 @@ export function ClientTasksSection({
   api,
   branchId,
   clientId,
-  limit,
+  onAll,
   onCreate,
   onOpen,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
-  readonly limit: number;
+  readonly onAll?: () => void;
   readonly onCreate: () => void;
   readonly onOpen: (taskId: TaskId) => void;
 }) {
   const { t, format } = useI18n();
-  const [showAll, setShowAll] = useState(false);
-  const tasks = useQuery(clientTasksQuery(api, branchId, clientId));
+  const unfinished = onAll !== undefined;
+  const count = useQuery({ ...clientTasksQuery(api, branchId, clientId), enabled: unfinished });
+  const tasks = useInfiniteQuery({
+    queryKey: ["api", branchId, "tasks/list", { clientId, pages: true, unfinished }] as const,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) =>
+      unwrap(
+        await api.call("tasks/list", {
+          clientId,
+          limit: 50,
+          offset: pageParam,
+          ...(unfinished ? { statuses: ["PENDING", "IN_PROGRESS", "PAUSED"] } : {}),
+        }),
+      ),
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((total, page) => total + page.tasks.length, 0);
+      return last.tasks.length > 0 && loaded < last.total ? loaded : undefined;
+    },
+  });
   const now = new Date().getTime();
-  const items = (tasks.data?.tasks ?? []).toSorted(compareTasks);
-  const shown = showAll ? items : items.slice(0, limit);
+  const shown = (tasks.data?.pages.flatMap((page) => page.tasks) ?? []).toSorted(compareTasks);
+  const total = tasks.data?.pages[0]?.total ?? 0;
 
   return (
     <ClientCardBlock
       title={t("tasks.title")}
-      count={items.length}
+      count={total}
       actions={
         <Button
           variant="ghost"
@@ -78,20 +89,31 @@ export function ClientTasksSection({
         </Button>
       }
       footer={
-        <ShowAllButton
-          total={items.length}
-          limit={limit}
-          showAll={showAll}
-          onToggle={() => {
-            setShowAll(!showAll);
-          }}
-        />
+        <>
+          {tasks.hasNextPage && (
+            <Button
+              variant="link"
+              size="sm"
+              disabled={tasks.isFetchingNextPage}
+              onClick={() => {
+                void tasks.fetchNextPage();
+              }}
+            >
+              {t("clients.loadMore")}
+            </Button>
+          )}
+          {onAll !== undefined && (
+            <Button variant="link" size="sm" onClick={onAll}>
+              {t("clientOverview.allTasks")} · {count.data?.total ?? 0}
+            </Button>
+          )}
+        </>
       }
     >
       <BlockStatus
         isPending={tasks.isPending}
         isError={tasks.isError}
-        isEmpty={items.length === 0}
+        isEmpty={shown.length === 0}
         empty={t("clientCard.tasksEmpty")}
       />
       {shown.length > 0 && (
@@ -109,7 +131,7 @@ export function ClientTasksSection({
                     onOpen(task.id);
                   }}
                   className={cn(
-                    "text-left font-medium hover:underline",
+                    "max-w-full text-left font-medium break-words hover:underline",
                     task.status === "COMPLETED" && "text-muted-foreground line-through",
                   )}
                 >

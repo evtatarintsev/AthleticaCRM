@@ -6,10 +6,13 @@ import {
   AddClientToGroupsRequestSchema,
   ClientDetailResponseSchema,
   GroupIdSchema,
+  GroupDetailRequestSchema,
+  ScheduleListRequestSchema,
   RemoveClientFromGroupRequestSchema,
   type ClientDetailResponse,
   type GroupId,
 } from "@/api/generated/contracts";
+import { addDays, todayLocalDate } from "@/lib/localDate";
 import { ru } from "@/i18n/ru";
 import { appServer, empty, json, openApp } from "@/test/app";
 
@@ -30,6 +33,7 @@ const stretching = {
 const allGroups = [morning, evening, stretching];
 
 const carl = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000503",
   name: "Карл Орлов",
   avatarId: null,
@@ -192,4 +196,72 @@ describe("группы клиента", () => {
       expect(screen.queryByText(morning.name)).not.toBeInTheDocument();
     });
   });
+});
+
+it("shows each group's schedule, hall and nearest session using the shared schedule request", async () => {
+  const today = todayLocalDate();
+  const group = (name: typeof morning) => ({
+    ...name,
+    schedule: [
+      {
+        dayOfWeek: "MONDAY",
+        startAt: "18:00",
+        endAt: "19:00",
+        hallId: "0199a0b2-7c3e-7d2a-9f10-000000000d01",
+        hallName: "Зал 1",
+        validity: null,
+      },
+    ],
+    scheduleChangeAt: null,
+    disciplines: [{ id: "0199a0b2-7c3e-7d2a-9f10-000000000d02", name: "ОФП" }],
+    employees: [],
+  });
+  const session = (id: string, date: string, status: string) => ({
+    id,
+    group: morning,
+    date,
+    startTime: "18:00",
+    endTime: "19:00",
+    hall: { id: "0199a0b2-7c3e-7d2a-9f10-000000000d01", name: "Зал 1" },
+    coaches: [],
+    disciplines: [],
+    status,
+    colorKey: "GREEN",
+    coachesOverridden: false,
+    rescheduledFrom: null,
+    isManual: false,
+  });
+  const upcomingId = "0199a0b2-7c3e-7d2a-9f10-000000000c01";
+  const api = appServer({
+    "clients/detail": () => json({ ...carl, groups: [morning, evening] }),
+    "groups/detail": ({ query }) =>
+      json(
+        group(
+          GroupDetailRequestSchema.parse({ id: query.get("id") }).id === morning.id
+            ? morning
+            : evening,
+        ),
+      ),
+    "schedule/list": () =>
+      json({
+        sessions: [
+          session("0199a0b2-7c3e-7d2a-9f10-000000000c02", addDays(today, -1), "SCHEDULED"),
+          session("0199a0b2-7c3e-7d2a-9f10-000000000c03", today, "CANCELLED"),
+          session(upcomingId, addDays(today, 1), "SCHEDULED"),
+        ],
+      }),
+  });
+  openApp(`/clients/${carl.id}`, api.fetch);
+  const next = await screen.findByRole("link", { name: /Открыть занятие: Утренняя группа/ });
+  expect(next).toHaveAttribute("href", `/sessions/${upcomingId}`);
+  const row = next.closest("li");
+  if (row === null) throw new Error("Missing group row");
+  expect(await within(row).findByText(/Пн · 18:00.*19:00 · Зал 1/)).toBeVisible();
+  expect(within(row).getByText("ОФП")).toBeVisible();
+  expect(await screen.findByText(ru["clientOverview.noUpcoming"])).toBeVisible();
+  expect(api.to("schedule/list")).toHaveLength(1);
+  expect(ScheduleListRequestSchema.parse(api.to("schedule/list")[0]?.body).groupIds).toEqual([
+    morning.id,
+    evening.id,
+  ]);
 });

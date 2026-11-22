@@ -1,15 +1,6 @@
 import type { ClientAttendanceItemSchema, MembershipSchema } from "@/api/generated/contracts";
 import { membershipView } from "../membership/membershipView";
 
-export const CLIENT_TABS = [
-  "overview",
-  "memberships",
-  "sessions",
-  "tasks",
-  "notes",
-  "profile",
-] as const;
-export type ClientTab = (typeof CLIENT_TABS)[number];
 export type AttendanceFilter = "all" | "PRESENT" | "ABSENT";
 
 /** Только начавшиеся/будущие неистёкшие абонементы; начавшийся с ближайшим окончанием первый. */
@@ -46,4 +37,12 @@ export function attendanceSummary(items: readonly ClientAttendanceItemSchema[] =
     present: recent.filter((item) => item.presence === "PRESENT").length,
     lastVisit: history.find((item) => item.presence === "PRESENT") ?? null,
   };
+}
+
+/** Полных лет на дату [today] при дате рождения [birthday] (`YYYY-MM-DD`). */
+export function ageOn(birthday: string, today: Date): number {
+  const [year = 0, month = 1, day = 1] = birthday.split("-").map(Number);
+  const beforeBirthday =
+    today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day);
+  return today.getFullYear() - year - (beforeBirthday ? 1 : 0);
 }

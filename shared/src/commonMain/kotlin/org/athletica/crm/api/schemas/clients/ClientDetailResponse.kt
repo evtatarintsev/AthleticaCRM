@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.money.Money
+import kotlin.time.Instant
 
 /** Полные данные клиента, возвращаемые после создания или запроса деталей. */
 @Serializable
@@ -16,6 +17,8 @@ data class ClientDetailResponse(
     val id: ClientId,
     /** Отображаемое имя клиента. */
     val name: String,
+    /** Момент появления клиента в системе. */
+    val createdAt: Instant,
     /** Идентификатор загрузки аватарки клиента, либо null если аватарка не задана. */
     val avatarId: UploadId? = null,
     /** День рождения клиента, либо null если не указан. */

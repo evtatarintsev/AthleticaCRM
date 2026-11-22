@@ -38,6 +38,7 @@ export const receiptsArticle = CashArticleSchemaSchema.parse({
   systemCode: "client_receipts",
 });
 export const financeClient = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000001201",
   name: "Иван Финансов",
   avatarId: null,

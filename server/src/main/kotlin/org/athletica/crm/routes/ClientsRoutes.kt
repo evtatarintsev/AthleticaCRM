@@ -204,6 +204,7 @@ fun Client.detailResponse(balance: Money, contacts: List<ClientContact>) =
     ClientDetailResponse(
         id = id,
         name = name,
+        createdAt = createdAt,
         avatarId = avatarId,
         birthday = birthday,
         gender = gender,

@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronDownIcon, PencilIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ClientDetailResponse, CustomFieldDefinition } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { ageOn } from "./clientOverview";
 import { customFieldDisplay } from "../clientCells";
 import { customFieldValueOf } from "../customFieldValues";
 
@@ -23,6 +24,7 @@ export function ClientCardProfile({
   leadSourceName,
   customFieldDefs,
   editable,
+  children,
 }: {
   readonly client: ClientDetailResponse;
   /** Название источника клиента; `null` — не указан или справочник не загружен. */
@@ -30,15 +32,20 @@ export function ClientCardProfile({
   readonly customFieldDefs: readonly CustomFieldDefinition[];
   /** Можно ли перейти к редактированию анкеты (клиент не в архиве). */
   readonly editable: boolean;
+  readonly children?: ReactNode;
 }) {
   const { t, format } = useI18n();
   const main: readonly ProfileField[] = [
     { label: t("clients.gender"), value: t(`gender.${client.gender}`) },
     {
       label: t("clients.birthday"),
-      value: client.birthday === null ? null : format.date(client.birthday),
+      value:
+        client.birthday === null
+          ? null
+          : `${format.date(client.birthday)} · ${t("clientCard.meta.age", { count: ageOn(client.birthday, new Date()) })}`,
     },
     { label: t("clients.leadSource"), value: leadSourceName },
+    { label: t("clientCard.createdAt"), value: format.dateTime(client.createdAt) },
   ];
   const custom: readonly ProfileField[] = customFieldDefs.map((def) => {
     const value = customFieldValueOf(client.customFields, def.fieldKey);
@@ -69,6 +76,7 @@ export function ClientCardProfile({
             <ProfileSection title={t("clients.additionalFields")} fields={custom} />
           )}
         </div>
+        {children}
       </div>
     </div>
   );

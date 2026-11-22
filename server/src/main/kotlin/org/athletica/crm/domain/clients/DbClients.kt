@@ -29,6 +29,7 @@ import org.athletica.crm.storage.asLocalDateOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
+import kotlin.time.Instant
 
 class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldDefinitions()) : Clients {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -37,7 +38,7 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
             tr
                 .sql(
                     """
-                    SELECT id, name, avatar_id, birthday, gender, lead_source_id, custom_fields, state
+                    SELECT id, name, created_at, avatar_id, birthday, gender, lead_source_id, custom_fields, state
                     FROM clients
                     WHERE id = :id AND org_id = :orgId
                     """.trimIndent(),
@@ -92,12 +93,13 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
         customFields: List<CustomFieldValue>,
     ): ActiveClient {
         val validatedFields = CustomFieldValues(definitions.all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE)).forCreation(customFields)
-        val inserted =
+        val createdAt =
             tr
                 .sql(
                     """
                     INSERT INTO clients (id, org_id, name, avatar_id, birthday, gender, lead_source_id, custom_fields)
                     VALUES (:id, :orgId, :name, :avatarId, :birthday, :gender::gender, :leadSourceId, :customFields::jsonb)
+                    RETURNING created_at
                     """.trimIndent(),
                 )
                 .bind("id", id)
@@ -110,13 +112,13 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
                 .bind("customFields", Json.encodeToString(validatedFields))
                 .onViolation("clients_pkey") { CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()) }
                 .onViolation("clients_lead_source_id_fkey") { CommonDomainError("LEAD_SOURCE_NOT_FOUND", Messages.LeadSourceNotFound.localize()) }
-                .execute()
-
-        if (inserted == 0L) raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
+                .firstOrNull { row -> row.asInstant("created_at") }
+                ?: raise(CommonDomainError("CLIENT_ALREADY_EXISTS", Messages.ClientAlreadyExists.localize()))
 
         return DbActiveClient(
             id = id,
             name = name.value,
+            createdAt = createdAt,
             avatarId = avatarId,
             birthday = birthday,
             gender = gender,
@@ -133,6 +135,7 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
     private data class ScalarClient(
         val id: ClientId,
         val name: String,
+        val createdAt: Instant,
         val avatarId: UploadId?,
         val birthday: LocalDate?,
         val gender: Gender,
@@ -145,15 +148,16 @@ class DbClients(private val definitions: CustomFieldDefinitions = DbCustomFieldD
     context(ctx: EmployeeRequestContext)
     private fun ScalarClient.toClient(groups: List<ClientGroup>, docs: List<ClientDoc>): Client =
         if (archived) {
-            DbArchivedClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields)
+            DbArchivedClient(id, name, createdAt, avatarId, birthday, gender, groups, docs, leadSourceId, customFields)
         } else {
-            DbActiveClient(id, name, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId, definitions)
+            DbActiveClient(id, name, createdAt, avatarId, birthday, gender, groups, docs, leadSourceId, customFields, ctx.orgId, definitions)
         }
 
     private fun io.r2dbc.spi.Row.toScalarClient(): ScalarClient =
         ScalarClient(
             id = asUuid("id").toClientId(),
             name = asString("name"),
+            createdAt = asInstant("created_at"),
             avatarId = asUuidOrNull("avatar_id")?.toUploadId(),
             birthday = asLocalDateOrNull("birthday"),
             gender = Gender.valueOf(asString("gender")),

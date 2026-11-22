@@ -12,6 +12,7 @@ import { ru } from "@/i18n/ru";
 import { appServer, empty, json, openApp, session } from "@/test/app";
 
 const dana = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000504",
   name: "Дана Лебедева",
   avatarId: null,

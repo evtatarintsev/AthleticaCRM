@@ -1,13 +1,11 @@
-import { Link } from "@tanstack/react-router";
 import { attendanceSummary, currentMemberships } from "./clientOverview";
-import { CheckIcon, ChevronRightIcon, ClockIcon, TicketIcon, WalletIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, TicketIcon, WalletIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ClientAttendanceItemSchema,
   MembershipId,
   MembershipSchema,
   Money,
-  ScheduleSessionSchema,
 } from "@/api/generated/contracts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/i18n/context";
@@ -15,12 +13,11 @@ import { cn } from "@/lib/utils";
 import { FreezeNote, MembershipTerms } from "../membership/MembershipParts";
 import { isCurrentMembership, membershipView } from "../membership/membershipView";
 
-/** Четыре плитки обзора; undefined означает загрузку. */
+/** Три плитки карточки; undefined означает загрузку. */
 export function ClientCardQuickInfo({
   balance,
   memberships,
   attendance,
-  nextSession,
   onBalanceClick,
   onMembershipOpen,
   onMemberships,
@@ -29,7 +26,6 @@ export function ClientCardQuickInfo({
   readonly balance: Money;
   readonly memberships: readonly MembershipSchema[] | undefined;
   readonly attendance: readonly ClientAttendanceItemSchema[] | undefined;
-  readonly nextSession: ScheduleSessionSchema | null | undefined;
   readonly onBalanceClick: (() => void) | undefined;
   readonly onMembershipOpen: (id: MembershipId) => void;
   readonly onMemberships: () => void;
@@ -40,44 +36,46 @@ export function ClientCardQuickInfo({
   const current = currentMemberships(memberships);
   const main = current[0];
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 min-[1000px]:grid-cols-4">
-      <div className="relative min-w-0 max-sm:col-span-2 max-sm:-order-2">
+    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 min-[1000px]:grid-cols-3">
+      <div className="relative min-w-0 max-[1000px]:col-span-2 min-[1000px]:col-span-1">
         {memberships === undefined ? (
           <TileSkeleton />
         ) : main === undefined ? (
-          <div className={tileClass()}>
-            <TileLabel icon={<TicketIcon />}>{t("clientCard.quick.subscription")}</TileLabel>
+          <div className={TILE_CLASS}>
+            <span className="pr-20">
+              <TileLabel icon={<TicketIcon />}>{t("clientCard.quick.subscription")}</TileLabel>
+            </span>
             <span className="text-muted-foreground">{t("clientCard.quick.noSubscription")}</span>
           </div>
         ) : (
           <MembershipOverviewTile
             membership={main}
-            more={current.length > 1}
             onOpen={() => {
               onMembershipOpen(main.id);
             }}
           />
         )}
-        {current.length > 1 && (
+        {memberships !== undefined && memberships.length > 0 && (
           <button
             type="button"
             className="absolute top-3 right-3 z-10 h-[22px] rounded-full bg-primary/10 px-2 text-xs font-semibold text-primary hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             onClick={onMemberships}
-            aria-label={t("clientOverview.moreMemberships", { count: current.length - 1 })}
+            aria-label={t("clientOverview.moreMemberships", { count: memberships.length })}
+            aria-haspopup="dialog"
           >
-            +{current.length - 1}
+            {t("clientOverview.allMemberships", { count: memberships.length })}
           </button>
         )}
       </div>
 
       {onBalanceClick === undefined ? (
-        <div className={tileClass()}>
+        <div className={TILE_CLASS}>
           <BalanceOverviewContent balance={balance} go={false} />
         </div>
       ) : (
         <button
           type="button"
-          className={cn(tileClass(), INTERACTIVE)}
+          className={cn(TILE_CLASS, INTERACTIVE)}
           aria-haspopup="dialog"
           aria-label={t("clientCard.balanceOpen", { amount: format.money(balance) })}
           onClick={onBalanceClick}
@@ -86,41 +84,11 @@ export function ClientCardQuickInfo({
         </button>
       )}
 
-      <div className="min-w-0 max-sm:col-span-2 max-sm:-order-1">
-        {nextSession === undefined ? (
-          <TileSkeleton />
-        ) : nextSession === null ? (
-          <div className={tileClass()}>
-            <TileLabel icon={<ClockIcon />}>{t("clientOverview.nextSession")}</TileLabel>
-            <span className="text-muted-foreground">{t("clientCard.quick.none")}</span>
-          </div>
-        ) : (
-          <Link
-            className={cn(tileClass("brand"), INTERACTIVE, "hover:bg-primary/90")}
-            to="/sessions/$sessionId"
-            params={{ sessionId: nextSession.id }}
-            aria-label={t("clientOverview.openSession", { name: nextSession.group.name })}
-          >
-            <TileLabel icon={<ClockIcon />} go brand>
-              {t("clientOverview.nextSession")}
-            </TileLabel>
-            <TileValue>
-              {format.date(nextSession.date)}, {format.time(nextSession.startTime)}
-            </TileValue>
-            <span className="text-sm text-primary-foreground/85">
-              <span className="block truncate">{nextSession.group.name}</span>
-              <span className="block truncate">
-                {[nextSession.hall.name, ...nextSession.coaches.map((c) => c.name)].join(" · ")}
-              </span>
-            </span>
-          </Link>
-        )}
-      </div>
-
       <button
         type="button"
-        className={cn(tileClass(), INTERACTIVE)}
+        className={cn(TILE_CLASS, INTERACTIVE)}
         aria-label={t("clientOverview.openSessions")}
+        aria-haspopup="dialog"
         onClick={onSessions}
       >
         <TileLabel icon={<CheckIcon />} go>
@@ -163,37 +131,26 @@ export function ClientCardQuickInfo({
   );
 }
 
-/** Общее оформление плиток обзора: одинаковая высота, [tone] `brand` — акцентная заливка. */
-function tileClass(tone: "default" | "brand" = "default") {
-  return cn(
-    "flex h-full min-h-33 w-full min-w-0 flex-col gap-1.5 rounded-xl border p-4 text-left max-sm:min-h-30 max-sm:p-3.5",
-    tone === "brand" ? "border-transparent bg-primary text-primary-foreground" : "bg-card",
-  );
-}
+/** Общее оформление плиток карточки. */
+const TILE_CLASS =
+  "flex h-full min-h-33 w-full min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-4 text-left max-sm:min-h-30 max-sm:p-3.5";
 
 /** Признаки нажимаемой плитки: наведение и фокус. */
 const INTERACTIVE =
   "cursor-pointer transition-colors hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
-/** Подпись плитки [children] с иконкой [icon]; [go] — стрелка перехода, [brand] — на акцентной заливке. */
+/** Подпись плитки [children] с иконкой [icon]; [go] — стрелка перехода. */
 function TileLabel({
   icon,
   go = false,
-  brand = false,
   children,
 }: {
   readonly icon: ReactNode;
   readonly go?: boolean;
-  readonly brand?: boolean;
   readonly children: ReactNode;
 }) {
   return (
-    <span
-      className={cn(
-        "flex items-center gap-1.5 text-xs font-medium [&_svg]:size-4 [&_svg]:shrink-0",
-        brand ? "text-primary-foreground/85" : "text-muted-foreground",
-      )}
-    >
+    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0">
       <span aria-hidden className="contents">
         {icon}
       </span>
@@ -245,15 +202,13 @@ function BalanceOverviewContent({
 
 /**
  * Плитка основного абонемента [membership]: кольцо остатка, название, срок и выделение
- * «Заканчивается». Нажатие — [onOpen]; при [more] справа сверху стоит отдельная кнопка «+N».
+ * «Заканчивается». Нажатие — [onOpen]; справа сверху отдельная кнопка «Все · N».
  */
 function MembershipOverviewTile({
   membership,
-  more,
   onOpen,
 }: {
   readonly membership: MembershipSchema;
-  readonly more: boolean;
   readonly onOpen: () => void;
 }) {
   const { t } = useI18n();
@@ -262,14 +217,16 @@ function MembershipOverviewTile({
   return (
     <button
       type="button"
-      className={cn(tileClass(), INTERACTIVE)}
+      className={cn(TILE_CLASS, INTERACTIVE)}
       aria-haspopup="dialog"
       aria-label={t("clientCard.membership.open", { name: membership.name })}
       onClick={onOpen}
     >
-      <TileLabel icon={<TicketIcon />} go={!more}>
-        {t("clientCard.quick.subscription")}
-      </TileLabel>
+      <span className="pr-20">
+        <TileLabel icon={<TicketIcon />} go>
+          {t("clientCard.quick.subscription")}
+        </TileLabel>
+      </span>
       <span className={cn("flex items-center gap-3", view.phase === "upcoming" && "opacity-60")}>
         <RemainingRing membership={membership} ending={ending} />
         <span className="min-w-0">

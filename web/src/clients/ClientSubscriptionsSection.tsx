@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type { BranchId, ClientId, MembershipId, MembershipSchema } from "@/api/generated/contracts";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import {
@@ -57,11 +58,13 @@ export function ClientSubscriptionsSection({
   clientId,
   limit,
   onOpen,
+  onIssue,
 }: {
   readonly api: ApiClient;
   readonly branchId: BranchId;
   readonly clientId: ClientId;
   readonly limit: number;
+  readonly onIssue?: () => void;
   readonly onOpen?: (id: MembershipId) => void;
 }) {
   const { t } = useI18n();
@@ -76,6 +79,13 @@ export function ClientSubscriptionsSection({
     <ClientCardBlock
       title={t("clients.detail.subscriptions")}
       count={items.length}
+      actions={
+        onIssue !== undefined && (
+          <Button size="sm" variant="link" onClick={onIssue}>
+            {t("clients.detail.issueSubscription")}
+          </Button>
+        )
+      }
       footer={
         <ShowAllButton
           total={items.length}

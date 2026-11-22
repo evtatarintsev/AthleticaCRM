@@ -12,7 +12,8 @@ import org.athletica.crm.storage.Transaction
  * Доменные операции не принимают время создания: его ставит `DEFAULT now()`, `clock_timestamp()`
  * или часы приложения, то есть момент наполнения. Строки, записанные за текущий день симуляции,
  * ещё датированы не раньше начала транзакции, а строки прошлых дней уже сдвинуты в прошлое,
- * поэтому отбор `>= transaction_timestamp()` точен без учёта идентификаторов.
+ * поэтому отбор `>= transaction_timestamp()` по строкам текущей транзакции (`xmin`) точен
+ * без учёта идентификаторов.
  * Деловые даты (продажи, оплаты, занятия) задают сами доменные операции и здесь не меняются.
  * Главная книга (`ledger_transactions`) неизменяема триггером, поэтому её время записи не сдвигается:
  * в ней значима дата операции `occurred_on`.
@@ -64,12 +65,13 @@ internal object DemoTimestamps {
     /**
      * Сдвигает технические времена строк организации, записанных за день [day], на полдень этого дня
      * в часовом поясе организации; для сегодняшнего дня — не позже чем за минуту до начала транзакции.
+     * Только строки текущей транзакции. Ограничение: для поясов дальше UTC+12 полдень по местному
+     * времени даёт в UTC другую дату — вынести время в параметр, если такие пояса появятся.
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun shift(day: LocalDate) {
-        // shortcut: полдень по местному времени; для поясов дальше UTC+12 дата в UTC сдвинется на день — вынести время в параметр, если такие появятся.
         ORG_COLUMNS.forEach { (table, column) ->
-            tr.sql("UPDATE $table SET $column = $DAY_TS WHERE org_id = :org AND $column >= transaction_timestamp()")
+            tr.sql("UPDATE $table SET $column = $DAY_TS WHERE org_id = :org AND $column >= transaction_timestamp() AND $OWN_ROW")
                 .bind("org", ctx.orgId)
                 .bind("day", day)
                 .execute()
@@ -78,7 +80,7 @@ internal object DemoTimestamps {
             tr.sql(
                 """
                 UPDATE $table c SET $column = $DAY_TS FROM $parent p
-                WHERE p.id = c.$reference AND p.org_id = :org AND c.$column >= transaction_timestamp()
+                WHERE p.id = c.$reference AND p.org_id = :org AND c.$column >= transaction_timestamp() AND c.$OWN_ROW
                 """.trimIndent(),
             )
                 .bind("org", ctx.orgId)
@@ -86,6 +88,13 @@ internal object DemoTimestamps {
                 .execute()
         }
     }
+
+    /**
+     * Строка записана или изменена текущей транзакцией. Без этого условия под READ COMMITTED
+     * сдвиг задел бы строки, которые параллельные транзакции закоммитили во время наполнения
+     * (вход владельца, уведомления планировщика), и перенёс бы их в историю.
+     */
+    private const val OWN_ROW = "xmin = pg_current_xact_id()::xid"
 
     /** Полдень дня `:day` в часовом поясе организации `:org`, не позже начала транзакции. */
     private const val DAY_TS =

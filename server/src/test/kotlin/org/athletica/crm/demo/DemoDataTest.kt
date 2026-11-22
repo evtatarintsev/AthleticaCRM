@@ -50,6 +50,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 /**
  * Наполнение организации профилем `small` и правила наполнения.
@@ -359,7 +360,7 @@ class DemoDataTest {
         }
 
     @Test
-    fun `организация с клиентом или группой не наполняется`() =
+    fun `организация с клиентом, группой или своей кассой не наполняется`() =
         runTest(timeout = 10.minutes) {
             filled
             val withClient = DemoFixture.signup("С клиентом")
@@ -370,13 +371,63 @@ class DemoDataTest {
             orThrow {
                 TestPostgres.db.sql("INSERT INTO groups (org_id, name, branch_id) SELECT :org, 'Группа', id FROM branches WHERE org_id = :org").bind("org", withGroup).execute()
             }
-            listOf(withClient, withGroup).forEach { orgId ->
+            val withCash = DemoFixture.signup("С кассой")
+            orThrow {
+                TestPostgres.db.sql("INSERT INTO cash_accounts (id, org_id, name, kind) VALUES (:id, :org, 'Касса', 'cash')").bind("id", Uuid.generateV7()).bind("org", withCash).execute()
+            }
+            listOf(withClient, withGroup, withCash).forEach { orgId ->
                 val counts = listOf("clients", "groups", "branches").map { num("SELECT count(*) AS n FROM $it WHERE org_id = :org", orgId) }
                 val error = assertIs<Either.Left<AppError>>(DemoFixture.fill(orgId)).value
                 assertIs<CommonDomainError>(error)
                 assertEquals("DEMO_ORG_NOT_EMPTY", error.code)
                 assertEquals(counts, listOf("clients", "groups", "branches").map { num("SELECT count(*) AS n FROM $it WHERE org_id = :org", orgId) })
             }
+        }
+
+    @Test
+    fun `без действующих меток отсутствия наполнение создаёт свою`() =
+        runTest(timeout = 10.minutes) {
+            filled
+            val orgId = DemoFixture.signup("Без меток")
+            orThrow {
+                TestPostgres.db.sql("UPDATE attendance_labels SET archived_at = now() WHERE org_id = :org AND scope = 'absent'").bind("org", orgId).execute()
+            }
+            DemoFixture.fill(orgId, history = DatePeriod(days = 21)).getOrElse { error(it) }
+            val marked =
+                num(
+                    """
+                    SELECT count(*) AS n FROM session_attendance_labels sal
+                    JOIN attendance_labels l ON l.id = sal.label_id
+                    WHERE l.org_id = :org AND l.archived_at IS NULL AND l.scope = 'absent'
+                    """.trimIndent(),
+                    orgId,
+                )
+            assertTrue(marked > 0)
+        }
+
+    @Test
+    fun `сдвиг времён не трогает строки, закоммиченные параллельно`() =
+        runTest(timeout = 10.minutes) {
+            filled
+            val orgId = DemoFixture.signup("Параллельно")
+            val foreign = Uuid.generateV7()
+            DemoFixture.asOwner(orgId) {
+                DemoTimestamps.shift(DemoFixture.today().minus(10, DateTimeUnit.DAY))
+                orThrow {
+                    TestPostgres.db.sql("INSERT INTO audit_logs (id, org_id, username, action_type) VALUES (:id, :org, 'other', 'LOGIN')")
+                        .bind("id", foreign)
+                        .bind("org", orgId)
+                        .execute()
+                }
+                DemoTimestamps.shift(DemoFixture.today().minus(10, DateTimeUnit.DAY))
+            }
+            val recent =
+                orThrow {
+                    TestPostgres.db.sql("SELECT count(*) AS n FROM audit_logs WHERE id = :id AND created_at > now() - interval '1 hour'")
+                        .bind("id", foreign)
+                        .firstOrNull { it.asLong("n") } ?: 0
+                }
+            assertEquals(1, recent)
         }
 
     @Test

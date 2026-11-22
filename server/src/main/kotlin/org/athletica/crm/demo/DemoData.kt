@@ -172,8 +172,8 @@ class DemoData(
     /**
      * Наполняет пустую организацию контекста [ctx] (контекст её владельца) историей профиля [profile],
      * которая заканчивается днём [today]; вся случайность берётся из [random]. [history] — длина
-     * периода истории, по умолчанию из профиля. Организация с клиентами или группами отклоняется
-     * ошибкой `DEMO_ORG_NOT_EMPTY` до первой записи.
+     * периода истории, по умолчанию из профиля. Уже заполненная организация (см. [ensureEmpty])
+     * отклоняется ошибкой `DEMO_ORG_NOT_EMPTY` до первой записи.
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun fill(
@@ -199,13 +199,34 @@ class DemoData(
         )
     }
 
-    /** Отклоняет организацию, в которой уже есть клиенты или группы. */
+    /**
+     * Отклоняет организацию, в которой есть что-то сверх созданного регистрацией: клиенты, группы,
+     * дисциплины, тарифы, кассы, кастомные поля, второй филиал или зал, источник лидов или метка
+     * с названием из наполнения. Иначе наполнение упало бы посередине на уникальности названий
+     * или перезаписало бы настройки организации.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     private suspend fun ensureEmpty() {
         val busy =
             tr.sql(
-                "SELECT EXISTS (SELECT 1 FROM clients WHERE org_id = :org) OR EXISTS (SELECT 1 FROM groups WHERE org_id = :org) AS busy",
-            ).bind("org", ctx.orgId).firstOrNull { it.asBoolean("busy") } ?: false
+                """
+                SELECT EXISTS (SELECT 1 FROM clients WHERE org_id = :org)
+                    OR EXISTS (SELECT 1 FROM groups WHERE org_id = :org)
+                    OR EXISTS (SELECT 1 FROM disciplines WHERE org_id = :org)
+                    OR EXISTS (SELECT 1 FROM subscription_tariffs WHERE org_id = :org)
+                    OR EXISTS (SELECT 1 FROM cash_accounts WHERE org_id = :org)
+                    OR EXISTS (SELECT 1 FROM custom_field_definitions WHERE org_id = :org)
+                    OR (SELECT count(*) FROM branches WHERE org_id = :org) > 1
+                    OR (SELECT count(*) FROM halls WHERE org_id = :org) > 1
+                    OR EXISTS (SELECT 1 FROM lead_sources WHERE org_id = :org AND name = :leadSource)
+                    OR EXISTS (SELECT 1 FROM attendance_labels WHERE org_id = :org AND lower(name) IN (lower(:freezeLabel), lower(:absentLabel)))
+                    AS busy
+                """.trimIndent(),
+            ).bind("org", ctx.orgId)
+                .bind("leadSource", PARTNER_LEAD_SOURCE)
+                .bind("freezeLabel", FREEZE_LABEL)
+                .bind("absentLabel", ABSENT_LABEL)
+                .firstOrNull { it.asBoolean("busy") } ?: false
         ensure(!busy) { CommonDomainError("DEMO_ORG_NOT_EMPTY", Messages.DemoOrgNotEmpty.localize()) }
     }
 
@@ -271,7 +292,7 @@ class DemoData(
             val disciplineIds = DISCIPLINES.take(minOf(DISCIPLINES.size, profile.groups / 3 + 3)).map { disciplines.new(DisciplineId.new(), NonBlankName.from(it)).also { discipline -> discipline.save() }.id to it }
             leadSourceIds =
                 leadSources.list().map { it.id } +
-                leadSources.new(LeadSourceId.new(), NonBlankName.from("Партнёрская акция"), LeadSourceDescription.EMPTY).also { it.save() }.id
+                leadSources.new(LeadSourceId.new(), NonBlankName.from(PARTNER_LEAD_SOURCE), LeadSourceDescription.EMPTY).also { it.save() }.id
             customFields.saveAll(
                 CLIENT_FIELDS,
                 listOf(
@@ -280,18 +301,24 @@ class DemoData(
                     CustomFieldDefinition.Text(PARENT_FIELD.toFieldKey(), "Имя родителя"),
                 ),
             )
-            world.tariffs += tariff("Пробное занятие", 1, 7, DurationUnit.DAYS, 500, CloseMode.ON_LAST_SESSION)
-            world.tariffs += tariff("8 занятий", 8, 1, DurationUnit.MONTHS, 4000, CloseMode.ON_LAST_SESSION)
-            world.tariffs += tariff("12 занятий", 12, 1, DurationUnit.MONTHS, 5400, CloseMode.ON_LAST_SESSION)
-            world.tariffs += tariff("Безлимит на месяц", null, 1, DurationUnit.MONTHS, 6500, CloseMode.ON_EXPIRY)
+            world.tariffs += tariff("Пробное занятие", 1, 7, DurationUnit.DAYS, money(500), CloseMode.ON_LAST_SESSION)
+            world.tariffs += tariff("8 занятий", 8, 1, DurationUnit.MONTHS, money(4000), CloseMode.ON_LAST_SESSION)
+            world.tariffs += tariff("12 занятий", 12, 1, DurationUnit.MONTHS, money(5400), CloseMode.ON_LAST_SESSION)
+            world.tariffs += tariff("Безлимит на месяц", null, 1, DurationUnit.MONTHS, money(6500), CloseMode.ON_EXPIRY)
 
-            world.freezeLabel = attendanceLabels.new(AttendanceLabelId.new(), "Заморозка", AttendanceLabelScope.ABSENT).also { it.save() }.id
+            world.freezeLabel = attendanceLabels.new(AttendanceLabelId.new(), FREEZE_LABEL, AttendanceLabelScope.ABSENT).also { it.save() }.id
             attendanceLabels.list(includeArchived = false).forEach {
                 when (it.scope) {
                     AttendanceLabelScope.PRESENT -> world.presentLabels += it.id
-                    AttendanceLabelScope.ABSENT -> if (it.id != world.freezeLabel) world.absentLabels += it.id
+                    AttendanceLabelScope.ABSENT ->
+                        if (it.id != world.freezeLabel) {
+                            world.absentLabels += it.id
+                        }
                     AttendanceLabelScope.ANY -> Unit
                 }
+            }
+            if (world.absentLabels.isEmpty()) {
+                world.absentLabels += attendanceLabels.new(AttendanceLabelId.new(), ABSENT_LABEL, AttendanceLabelScope.ABSENT).also { it.save() }.id
             }
             world.cashAccounts += cashAccount("Касса", CashAccountKind.CASH)
             world.cashAccounts += cashAccount("Эквайринг", CashAccountKind.ACQUIRING)
@@ -513,6 +540,7 @@ class DemoData(
             price: Money,
             day: LocalDate,
         ) {
+            /** День оплаты через [from] (включительно) – [until] (не включительно) дней после продажи. */
             fun later(from: Int, until: Int) = day.plus(from + random.nextInt(until - from), DateTimeUnit.DAY)
             val half = Money(price.minorUnits / 2, price.currency)
             when (client.habit) {
@@ -650,12 +678,12 @@ class DemoData(
             sessionCount: Int?,
             duration: Int,
             unit: DurationUnit,
-            price: Long,
+            price: Money,
             closeMode: CloseMode,
         ): DemoTariff {
             val id = TariffPlanId.new()
-            tariffPlans.new(id, NonBlankName.from(name), sessionCount?.let { PositiveInt.from(it) }, PositiveInt.from(duration), unit, money(price)).save()
-            return DemoTariff(id, name, sessionCount, duration, unit, money(price), closeMode)
+            tariffPlans.new(id, NonBlankName.from(name), sessionCount?.let { PositiveInt.from(it) }, PositiveInt.from(duration), unit, price).save()
+            return DemoTariff(id, name, sessionCount, duration, unit, price, closeMode)
         }
 
         /** Создаёт кассу организации. */
@@ -691,6 +719,15 @@ class DemoData(
 
         /** Клиент, который уходит. */
         const val CHURN_CLIENT = 6
+
+        /** Источник лидов, который создаёт наполнение. */
+        const val PARTNER_LEAD_SOURCE = "Партнёрская акция"
+
+        /** Метка отсутствия на время заморозки, которую создаёт наполнение. */
+        const val FREEZE_LABEL = "Заморозка"
+
+        /** Метка отсутствия, которую наполнение создаёт, если у организации нет ни одной действующей. */
+        const val ABSENT_LABEL = "Не пришёл без причины"
 
         /** Тип сущности кастомных полей клиента. */
         const val CLIENT_FIELDS = "CLIENT"

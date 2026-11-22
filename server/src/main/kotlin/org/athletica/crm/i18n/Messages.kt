@@ -917,10 +917,10 @@ object Messages {
         }
     }
 
-    /** Наполнение демо-данными отклонено: организация не пустая. */
+    /** Наполнение демо-данными отклонено: в организации есть данные сверх созданных регистрацией. */
     object DemoOrgNotEmpty : LocalizationKey {
-        override val ru = "Организация уже содержит клиентов или группы — наполнить можно только пустую организацию"
-        override val en = "The organization already has clients or groups — only an empty organization can be filled"
+        override val ru = "Организация уже заполнена (клиенты, группы, дисциплины, тарифы, кассы, поля, филиалы или залы) — наполнить можно только новую организацию"
+        override val en = "The organization already has data (clients, groups, disciplines, tariffs, cash accounts, fields, branches or halls) — only a new organization can be filled"
     }
 
     /** Наполнение демо-данными невозможно: у организации нет владельца. */

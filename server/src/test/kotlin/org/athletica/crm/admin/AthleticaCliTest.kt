@@ -337,7 +337,7 @@ class AthleticaCliTest {
             val result = cli().test(listOf("admin", "org", "seed", orgId.toString(), "--size=medium", "--seed=42"))
 
             assertTrue(result.statusCode != 0)
-            assertContains(result.stderr, "наполнить можно только пустую организацию")
+            assertContains(result.stderr, "наполнить можно только новую организацию")
             assertEquals(1, rows("clients", orgId))
             assertEquals(0, rows("groups", orgId))
         }

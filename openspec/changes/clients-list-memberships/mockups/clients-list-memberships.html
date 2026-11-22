@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Список клиентов — абонементы</title>
+<style>
+:root{
+  --bg:#f7f7f8; --surface:#fff; --surface-2:#fafafa; --sunk:#f1f1f4; --line:#ececef; --line-strong:#dcdce0;
+  --text:#111113; --text-2:#3f3f46; --muted:#6b6b74;
+  --brand:#2f55d4; --brand-soft:#eef2ff; --brand-ink:#2443b0;
+  --warn-soft:#fff4dc; --warn-ink:#a14a07; --good-soft:#e7f8ee; --good-ink:#15703a;
+  --bad-soft:#ffe9e9; --bad-ink:#a3171b;
+  --shadow:0 1px 2px rgba(16,16,20,.04),0 4px 16px rgba(16,16,20,.04); --pop:0 12px 32px rgba(16,16,20,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e0e11; --surface:#17171b; --surface-2:#1c1c21; --sunk:#202026; --line:#26262c; --line-strong:#34343b;
+    --text:#f4f4f6; --text-2:#cfcfd6; --muted:#9a9aa5;
+    --brand:#5b7cf0; --brand-soft:#1d2440; --brand-ink:#a9bbff;
+    --warn-soft:#3a2a0c; --warn-ink:#ffc46b; --good-soft:#0f2f1e; --good-ink:#6ee7a0;
+    --bad-soft:#3b1515; --bad-ink:#ff9b9b; --shadow:none; --pop:0 12px 32px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit;color:inherit}
+.outer{max-width:1240px;margin:0 auto;padding:20px 16px 0;display:flex;flex-direction:column;gap:12px}
+@media (min-width:720px){.outer{padding:24px 32px 0}}
+.modebar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:12px;border:1px dashed var(--line-strong);font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;padding:3px;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.seg button{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.stage{container-type:inline-size;margin:0 auto 96px;width:100%}
+.stage.phone{max-width:390px;height:820px;overflow:auto;border:1px solid var(--line-strong);border-radius:32px;box-shadow:var(--pop)}
+.wrap{padding:20px 0 24px;display:flex;flex-direction:column;gap:16px}
+.stage.phone .wrap{padding:20px 16px 24px;gap:14px}
+
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.top h1{margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-.015em}
+.top .meta{margin-top:2px;font-size:14px;color:var(--muted)}
+.actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-icon{width:40px;padding:0;justify-content:center}
+.toolbar{display:flex;gap:8px}
+.toolbar input{flex:1;min-width:0;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px}
+.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:none;height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:13px;font-weight:500;color:var(--muted)}
+.tabs button[aria-pressed="true"]{color:#fff;background:var(--brand);border-color:var(--brand)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow-x:auto}
+.row{display:grid;grid-template-columns:20px minmax(220px,1.3fr) minmax(170px,1fr) minmax(250px,1.4fr) 130px 32px;align-items:center;gap:6px 20px;padding:12px 20px;border-top:1px solid var(--line);font-size:14px;min-width:960px}
+.row:first-child{border-top:0}
+.row.head{padding-top:11px;padding-bottom:11px;background:var(--surface-2);font-size:13px;font-weight:500;color:var(--muted)}
+.row:not(.head):hover{background:var(--surface-2)}
+.r{justify-self:end;text-align:right}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);margin:0}
+.who{display:flex;align-items:center;gap:12px;min-width:0}
+.who .nm{display:flex;flex-direction:column;min-width:0}
+.who b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .sub{font-size:13px;color:var(--muted)}
+.av{width:36px;height:36px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:none}
+.stack{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+.dash{display:inline-flex;align-items:center;height:28px;color:var(--muted)}
+.gchip{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);font-size:13px;font-weight:500;color:var(--brand);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:8px;font-size:13px;font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill.ok{background:var(--brand-soft);color:var(--brand-ink)}
+.pill.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.pill.start{background:var(--good-soft);color:var(--good-ink)}
+.pill.none{background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.bal{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.money{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.money.zero{color:var(--muted);font-weight:400}
+.money.neg{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;background:var(--bad-soft);color:var(--bad-ink);font-weight:600}
+.unpaid{font-size:12.5px;font-weight:600;color:var(--bad-ink);white-space:nowrap}
+.ib{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
+
+/* Телефон */
+.li{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--line-strong)}
+.li:first-child{border-top:0}
+.li .head{display:flex;align-items:center;gap:12px}
+.li .av{width:32px;height:32px;font-size:11.5px}
+.li .nm{flex:1;min-width:0;display:flex;flex-direction:column}
+.li .nm b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .nm .sub{font-size:12.5px;color:var(--muted)}
+.li .money{font-size:14px}
+.li .unpaid{font-size:12px}
+.gm{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 6px;align-items:center;padding:6px;border-radius:8px;background:var(--sunk)}
+.gm .gchip{height:24px;padding:0 8px;border-radius:7px;font-size:12px;background:var(--surface);color:var(--text-2)}
+.gm .pill{height:24px;padding:0 8px;border-radius:7px;font-size:12px;gap:5px;justify-self:start;max-width:100%;overflow:hidden}
+.gm .dash{height:24px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="outer" id="bar"></div>
+<div class="outer" style="padding-top:0"><div class="stage" id="stage"></div></div>
+<script>
+const sv = (d, w = 15) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {
+  ticket: sv('<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/>'),
+  clock: sv('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  alert: sv('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>'),
+  edit: sv('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 16),
+  plus: sv('<path d="M12 5v14M5 12h14"/>', 16),
+  sliders: sv('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>', 16),
+};
+const PALETTE = [['#e0e7ff','#3730a3'],['#ffedd5','#9a3412'],['#dcfce7','#166534'],['#fce7f3','#9d174d'],['#e0f2fe','#075985']];
+const av = (name, i) => { const [bg, fg] = PALETTE[i % PALETTE.length]; return `<span class="av" style="background:${bg};color:${fg}" aria-hidden="true">${name.split(' ').map(p => p[0]).join('')}</span>`; };
+const rub = n => (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('ru-RU').replace(/\s/g, ' ') + ' ₽';
+
+/* Метка абонемента: вид, значок, текст. Признаки приходят с сервера. */
+const M = {
+  ok: (t) => ({ k:'ok', i:'ticket', t }),
+  ending: (t) => ({ k:'warn', i:'clock', t:'Заканчивается · ' + t }),
+  close: (t) => ({ k:'warn', i:'alert', t:'К закрытию · ' + t }),
+  start: (t) => ({ k:'start', i:'clock', t }),
+  none: () => ({ k:'none', i:null, t:'Нет абонемента' }),
+};
+const CLIENTS = [
+  { name:'Анна Иванова', meta:'Ж · 9 лет', bal:-1200, unpaid:2, lines:[['Мини', M.ok('8 из 12 · до 03.12')], ['Юниор', M.ok('Безлимит · до 31.12')]] },
+  { name:'Глеб Петров', meta:'М · 11 лет', bal:0, lines:[['Юниор', M.ending('1 из 8')]] },
+  { name:'Мила Сидорова', meta:'Ж · 7 лет', bal:0, lines:[[null, M.none()]] },
+  { name:'Марк Соколов', meta:'М · 9 лет', bal:500, unpaid:2, lines:[['Младшая группа', M.ending('1 из 8')], ['ОФП дети', M.ok('5 из 8 · до 20.12')], ['Плавание', M.ending('до 22.11')]] },
+  { name:'Ева Кузнецова', meta:'Ж · 12 лет', bal:2400, lines:[['Старшая', M.ok('Безлимит · до 30.11')]] },
+  { name:'Тимур Алиев', meta:'М · 10 лет', bal:-3500, lines:[['Юниор', M.close('срок вышел')]] },
+  { name:'София Морозова', meta:'Ж · 8 лет', bal:0, unpaid:1, lines:[['Мини', M.ok('3 из 8 · до 12.12')]] },
+  { name:'Лев Новиков', meta:'М', bal:0, lines:[['Мини', M.start('Начнётся 01.12')]] },
+  { name:'Варвара Орлова', meta:'Ж · 14 лет', bal:600, lines:[['Старшая', M.ok('10 из 12 · до 14.12')], ['ОФП взрослые', M.none()]] },
+  { name:'Артём Волков', meta:'М · 13 лет', bal:-800, lines:[['Юниор', M.close('занятия закончились')]] },
+  { name:'Алиса Лебедева', meta:'Ж · 9 лет', bal:0, lines:[['Юниор', M.start('С первого посещения')]] },
+];
+
+const state = { phone:false, groups:true, memberships:true, balance:true };
+
+const pill = (m, group) => `<span class="pill ${m.k}">${m.i ? I[m.i] : ''}${!state.groups && group ? group + ' · ' : ''}${m.t}</span>`;
+const money = c => `<span class="money ${c.bal < 0 ? 'neg' : c.bal === 0 ? 'zero' : ''}">${rub(c.bal)}</span>`;
+const balance = c => `<div class="bal">${money(c)}${c.unpaid ? `<span class="unpaid">${c.unpaid} неоплач.</span>` : ''}</div>`;
+
+function desktop() {
+  const cols = ['20px', 'minmax(220px,1.3fr)'];
+  if (state.groups) cols.push('minmax(170px,1fr)');
+  if (state.memberships) cols.push('minmax(250px,1.4fr)');
+  if (state.balance) cols.push('130px');
+  cols.push('32px');
+  const g = `grid-template-columns:${cols.join(' ')}`;
+  const head = `<div class="row head" style="${g}"><input type="checkbox" aria-label="Выбрать всех"><span>Имя ↑</span>
+    ${state.groups ? '<span>Группы</span>' : ''}${state.memberships ? '<span>Абонемент</span>' : ''}${state.balance ? '<span class="r">Баланс ↕</span>' : ''}<span></span></div>`;
+  const rows = CLIENTS.map((c, i) => `<div class="row" style="${g}">
+    <input type="checkbox" aria-label="Выбрать ${c.name}">
+    <div class="who">${av(c.name, i)}<div class="nm"><a href="#"><b>${c.name}</b></a><span class="sub">${c.meta}</span></div></div>
+    ${state.groups ? `<div class="stack">${c.lines.map(([gr]) => gr ? `<a href="#" class="gchip">${gr}</a>` : '<span class="dash">—</span>').join('')}</div>` : ''}
+    ${state.memberships ? `<div class="stack">${c.lines.map(([gr, m]) => pill(m, gr)).join('')}</div>` : ''}
+    ${state.balance ? `<div class="r">${balance(c)}</div>` : ''}
+    <button class="ib" aria-label="Редактировать ${c.name}">${I.edit}</button>
+  </div>`).join('');
+  return `<div class="card">${head}${rows}</div>`;
+}
+
+function phone() {
+  return `<div class="card" style="border-radius:12px">${CLIENTS.map((c, i) => `<div class="li">
+    <div class="head"><input type="checkbox" aria-label="Выбрать ${c.name}">${av(c.name, i)}
+      <a href="#" class="nm"><b>${c.name}</b><span class="sub">${c.meta}</span></a>
+      ${state.balance ? balance(c) : ''}</div>
+    ${state.groups || state.memberships ? `<div class="gm" style="${state.groups && state.memberships ? '' : 'grid-template-columns:minmax(0,1fr)'}">${c.lines.map(([gr, m]) =>
+      (state.groups ? (gr ? `<span class="gchip">${gr}</span>` : '<span class="dash">—</span>') : '') + (state.memberships ? pill(m, gr) : '')).join('')}</div>` : ''}
+  </div>`).join('')}</div>`;
+}
+
+function render() {
+  const tog = (k, l) => `<label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-col="${k}" ${state[k] ? 'checked' : ''}>${l}</label>`;
+  document.getElementById('bar').innerHTML = `<div class="modebar">
+    <span>Только в макете: экран и колонки из настроек «Колонки».</span>
+    <span style="display:flex;gap:12px;flex-wrap:wrap">${tog('groups', 'Группы')}${tog('memberships', 'Абонемент')}${tog('balance', 'Баланс')}</span>
+    <div class="seg">${[['0','Компьютер'],['1','Телефон']].map(([k, l]) => `<button aria-pressed="${state.phone === (k === '1')}" data-phone="${k}">${l}</button>`).join('')}</div>
+  </div>`;
+  const stage = document.getElementById('stage');
+  stage.className = 'stage' + (state.phone ? ' phone' : '');
+  stage.innerHTML = `<div class="wrap">
+    <div class="top"><div><h1>Клиенты</h1><div class="meta">11 клиентов</div></div>
+      <div class="actions">${state.phone
+        ? `<button class="btn btn-primary btn-icon" aria-label="Новый клиент">${I.plus}</button>`
+        : `<button class="btn">Колонки</button><button class="btn btn-primary">${I.plus}Новый клиент</button>`}</div></div>
+    <div class="toolbar"><input type="search" placeholder="Поиск по клиентам" aria-label="Поиск по клиентам">
+      <button class="btn ${state.phone ? 'btn-icon' : ''}" aria-label="Фильтры">${I.sliders}${state.phone ? '' : 'Фильтры'}</button></div>
+    <div class="tabs"><button aria-pressed="true">Все</button><button>Должники</button><button>Без группы</button><button>Архив</button></div>
+    ${state.phone ? phone() : desktop()}
+  </div>`;
+}
+
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-phone]');
+  if (p) { state.phone = p.dataset.phone === '1'; render(); return; }
+  if (e.target.closest('a')) { e.preventDefault(); }
+});
+document.addEventListener('change', e => {
+  const k = e.target.dataset && e.target.dataset.col;
+  if (k) { state[k] = e.target.checked; render(); }
+});
+render();
+</script>
+</body>
+</html>

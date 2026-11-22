@@ -77,6 +77,11 @@ data class ImportRowFix(
     val value: String,
     val contactType: ContactType? = null,
     val fieldKey: String? = null,
+    /**
+     * Колонка контакта, значение которой заменяет исправление; без неё — первая колонка типа
+     * [contactType]. Если такой колонки нет, контакт добавляется. Подпись колонки сохраняется.
+     */
+    val index: Int? = null,
 )
 
 /** Решение о строках, совпавших с клиентом или строкой файла только по ФИО. */
@@ -142,7 +147,7 @@ object ImportRows {
             raise(assistantError("VALIDATION"))
         }
         val header = sheet.rows.firstOrNull { it.n == args.headerRow }?.cells?.map { it.value }
-        val rows = sheet.rows.filter { it.n > args.headerRow && it.n !in args.excludeRows && it.cells.map { c -> c.value } != header }
+        val rows = sheet.rows.filter { it.n > args.headerRow && it.n !in args.excludeRows && (header == null || !repeatsHeader(it, header)) }
         if (rows.size > ImportFiles.MAX_ROWS) {
             raise(assistantError("IMPORT_TOO_MANY_ROWS"))
         }
@@ -213,6 +218,20 @@ object ImportRows {
     /** Нормализованное ФИО или имя: регистр, `ё → е`, пробелы; совпадает с SQL поиска дублей. */
     fun key(name: String): String = name.trim().replace('ё', 'е').replace('Ё', 'Е').replace(Regex("\\s+"), " ").lowercase()
 
+    /**
+     * Повтор заголовка [header], например на следующем фото журнала: совпадает больше половины его
+     * непустых ячеек без учёта регистра, пробелов и знаков, поэтому мелкие расхождения распознавания не мешают.
+     */
+    private fun repeatsHeader(row: SourceRow, header: List<String?>): Boolean {
+        val keys = header.map(::cellKey)
+        val total = keys.count { it.isNotEmpty() }
+        val same = keys.indices.count { keys[it].isNotEmpty() && cellKey(row.cells.getOrNull(it)?.value) == keys[it] }
+        return total > 0 && same * 2 > total
+    }
+
+    /** Текст ячейки для сравнения с заголовком: только буквы и цифры нормализованного [value]. */
+    private fun cellKey(value: String?): String = key(value.orEmpty()).filter(Char::isLetterOrDigit)
+
     /** Нормализованные телефоны контактов. */
     fun List<ClientContactInput>.phones(): List<String> = filter { it.type == ContactType.PHONE }.mapNotNull { PhoneDigits.from(it.value)?.value }
 }
@@ -251,7 +270,9 @@ private class RowParser(
                 { (error, field) -> base.copy(status = AssistantImportRowStatus.ERROR, error = error, errorField = field) },
                 { client -> base.copy(name = client.name, client = client) },
             ).let {
-                if (uncertain.isNotEmpty()) warnings += AssistantImportWarning.UNCERTAIN
+                if (uncertain.isNotEmpty()) {
+                    warnings += AssistantImportWarning.UNCERTAIN
+                }
                 it.copy(warnings = warnings.toList(), uncertainFields = uncertain.toList())
             }
         val client = view.client
@@ -277,7 +298,9 @@ private class RowParser(
                     uncertain -= "name"
                 }
                 position >= 0 -> {
-                    while (words.size <= position) words += ""
+                    while (words.size <= position) {
+                        words += ""
+                    }
                     words[position] = fix.value.trim()
                     uncertain -= "name"
                 }
@@ -303,8 +326,10 @@ private class RowParser(
         return cell.value?.trim()
     }
 
+    /** Ячейки строки в колонках [target], отобранных [select]; колонка за краем строки — пустая ячейка. */
     private fun cells(target: ImportTarget, select: (ImportColumn) -> Boolean = { true }): List<SourceCell> = args.columns.filter { it.target == target && select(it) }.map { row.cells.getOrNull(it.index) ?: SourceCell() }
 
+    /** Последнее исправление поля [target] этой строки. */
     private fun fix(target: ImportTarget): String? = fixes.lastOrNull { it.target == target }?.value?.trim()
 
     /** Дата в формате пользователя или распространённых форматах; ISO — формат дат-ячеек xlsx. */
@@ -313,26 +338,40 @@ private class RowParser(
         ValueParsers.parseDate(raw, args.dateFormat).fold({ ValueParsers.parseDate(raw, "yyyy-MM-dd").getOrNull() }, { it })
             .let { if (it == null && !raw.isNullOrBlank()) raise(AssistantImportRowError.INVALID_DATE to field) else it }
 
-    /** Контакты колонок с разбиением по `,;`; неуверенный контакт выбрасывается с предупреждением. */
+    /**
+     * Контакты колонок с разбиением по `,;`; неуверенный контакт выбрасывается с предупреждением.
+     * Исправление заменяет значение одной колонки ([ImportRowFix.index]) и сохраняет её подпись.
+     */
     context(raise: Raise<Pair<AssistantImportRowError, String?>>)
     private fun contacts(): List<ClientContactInput> {
+        val columns = args.columns.filter { it.target == ImportTarget.CONTACT }
         val fixed = fixes.filter { it.target == ImportTarget.CONTACT }
+        val byColumn = fixed.mapNotNull { fix -> column(fix, columns)?.let { it to fix } }.toMap()
         val fromColumns =
-            args.columns.filter { it.target == ImportTarget.CONTACT && fixed.none { f -> f.contactType == it.contactType } }.flatMap { column ->
+            columns.flatMap { column ->
+                val label = column.contactLabel?.trim()?.ifBlank { null }
+                val fix = byColumn[column]
                 val cell = row.cells.getOrNull(column.index) ?: SourceCell()
-                val values = split(cell.value)
-                if (cell.uncertain && values.isNotEmpty()) {
-                    warnings += AssistantImportWarning.CONTACT_DROPPED
-                    emptyList()
-                } else {
-                    values.map { ClientContactInput(checkNotNull(column.contactType), it, column.contactLabel?.trim()?.ifBlank { null }) }
+                val values = split(fix?.value ?: cell.value)
+                when {
+                    fix != null -> values.map { ClientContactInput(checkNotNull(fix.contactType), it, label) }
+                    cell.uncertain && values.isNotEmpty() -> {
+                        warnings += AssistantImportWarning.CONTACT_DROPPED
+                        emptyList()
+                    }
+                    else -> values.map { ClientContactInput(checkNotNull(column.contactType), it, label) }
                 }
             }
-        val contacts = fromColumns + fixed.flatMap { fix -> split(fix.value).map { ClientContactInput(checkNotNull(fix.contactType), it) } }
+        val added = fixed.filter { column(it, columns) == null }.flatMap { fix -> split(fix.value).map { ClientContactInput(checkNotNull(fix.contactType), it) } }
+        val contacts = fromColumns + added
         contacts.firstOrNull { !isValidContact(it.type, it.value) }?.let { raise(AssistantImportRowError.INVALID_CONTACT to it.type.name) }
         return either { validateContacts(contacts, ClientId.new()) }.fold({ raise(AssistantImportRowError.INVALID_CONTACT to null) }, { it })
     }
 
+    /** Колонка контакта, которую заменяет исправление [fix]: по номеру или первая колонка того же типа. */
+    private fun column(fix: ImportRowFix, columns: List<ImportColumn>): ImportColumn? = columns.firstOrNull { if (fix.index != null) it.index == fix.index else it.contactType == fix.contactType }
+
+    /** Значения контактов ячейки [value], разделённые `,` или `;`. */
     private fun split(value: String?): List<String> = value.orEmpty().split(',', ';').map(String::trim).filter(String::isNotEmpty)
 
     /** Значения доп. полей по типам определений и проверка обязательных. */

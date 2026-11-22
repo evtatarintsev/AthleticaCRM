@@ -264,6 +264,36 @@ describe("импорт через AI-помощника", () => {
     expect(await screen.findByRole("button", { name: "Создать 205 клиентов" })).toBeVisible();
     expect(server.to("upload")).toHaveLength(1);
     expect(server.to("assistant/messages/send")).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", {
+          name: ru["assistant.removeAttachment"].replace("{name}", "base.csv"),
+        }),
+      ).toBeNull();
+    });
+  });
+
+  it("сбой без ответа, ход не принят: повтор загружает файл заново", async () => {
+    let sends = 0;
+    const server = uploadingServer({
+      "assistant/messages/send": () => {
+        sends += 1;
+        if (sends === 1) throw new Error("network lost");
+        return json(conversation([importCard()], ["base.csv"]));
+      },
+    });
+    openApp("/settings", server.fetch);
+    const user = await openAssistant();
+    await user.upload(screen.getByLabelText(ru["assistant.attach"]), [
+      file("base.csv", "text/csv"),
+    ]);
+    await user.click(screen.getByRole("button", { name: ru["assistant.send"] }));
+    const attached = await screen.findByRole("list", { name: ru["assistant.attachments"] });
+    expect(within(attached).getByText("base.csv")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: ru["assistant.send"] }));
+    expect(await screen.findByRole("button", { name: "Создать 205 клиентов" })).toBeVisible();
+    expect(server.to("upload")).toHaveLength(2);
+    expect(server.to("assistant/messages/send")).toHaveLength(2);
   });
 
   it("карточка: счётчики, позиции, причины, ссылка на клиента; двойной клик создаёт один пакет", async () => {

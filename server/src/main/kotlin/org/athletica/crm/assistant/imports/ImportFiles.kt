@@ -8,8 +8,10 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.read.clients.import.CsvReader
 import org.dhatim.fastexcel.reader.Cell
 import org.dhatim.fastexcel.reader.CellType
+import org.dhatim.fastexcel.reader.ExcelReaderException
 import org.dhatim.fastexcel.reader.ReadableWorkbook
 import org.dhatim.fastexcel.reader.ReadingOptions
+import org.dhatim.fastexcel.reader.Row
 import java.io.IOException
 
 /** Тип вложения, определённый по содержимому файла. */
@@ -33,6 +35,9 @@ object ImportFiles {
 
     /** Предел строк данных в одном импорте. */
     const val MAX_ROWS = 1000
+
+    /** Предел колонок листа: дальние отформатированные ячейки не раздувают строки. */
+    private const val MAX_COLUMNS = 200
 
     /** Запас строк на заголовок и название таблицы над ним. */
     private const val HEADER_ROWS = 10
@@ -98,27 +103,44 @@ object ImportFiles {
         return listOf(SourceSheet("", rows))
     }
 
-    /** Даты — календарные ISO-даты, числа — без экспоненты, чтобы телефон не стал `8.9E10`. */
+    /**
+     * Даты — календарные ISO-даты, числа — без экспоненты, чтобы телефон не стал `8.9E10`.
+     * Строки читаются потоком: лист длиннее предела отклоняется, не загружаясь целиком.
+     */
     context(raise: Raise<AppError>)
-    private fun xlsx(bytes: ByteArray): List<SourceSheet> =
-        try {
-            ReadableWorkbook(bytes.inputStream(), ReadingOptions(true, false)).use { workbook ->
-                workbook.sheets.toList().map { sheet ->
-                    val rows =
-                        sheet.openStream().use { stream ->
-                            stream.toList().mapNotNull { row ->
-                                val cells = (0 until row.cellCount).map { SourceCell(row.getCell(it)?.let(::text)) }
-                                if (cells.any { it.value != null }) SourceRow(row.rowNum, row.rowNum, null, cells.dropLastWhile { it.value == null }) else null
-                            }
-                        }
-                    SourceSheet(sheet.name, rows)
+    private fun xlsx(bytes: ByteArray): List<SourceSheet> {
+        val sheets =
+            try {
+                ReadableWorkbook(bytes.inputStream(), ReadingOptions(true, false)).use { workbook ->
+                    workbook.sheets.toList().map { sheet -> sheet.openStream().use { sheet(sheet.name, it.iterator()) } }
+                }
+            } catch (_: ExcelReaderException) {
+                raise(assistantError("IMPORT_FILE_INVALID"))
+            } catch (_: IOException) {
+                raise(assistantError("IMPORT_FILE_INVALID"))
+            } catch (_: IllegalStateException) {
+                raise(assistantError("IMPORT_FILE_INVALID"))
+            }
+        if (sheets.any { it == null }) {
+            raise(assistantError("IMPORT_TOO_MANY_ROWS"))
+        }
+        return sheets.filterNotNull()
+    }
+
+    /** Непустые строки листа [name] из [rows] не шире [MAX_COLUMNS]; `null` — строк больше предела. */
+    private fun sheet(name: String, rows: Iterator<Row>): SourceSheet? {
+        val result = mutableListOf<SourceRow>()
+        for (row in rows) {
+            val cells = (0 until minOf(row.cellCount, MAX_COLUMNS)).map { SourceCell(row.getCell(it)?.let(::text)) }
+            if (cells.any { it.value != null }) {
+                result += SourceRow(row.rowNum, row.rowNum, null, cells.dropLastWhile { it.value == null })
+                if (result.size > MAX_ROWS + HEADER_ROWS) {
+                    return null
                 }
             }
-        } catch (_: IOException) {
-            raise(assistantError("IMPORT_FILE_INVALID"))
-        } catch (_: IllegalStateException) {
-            raise(assistantError("IMPORT_FILE_INVALID"))
         }
+        return SourceSheet(name, result)
+    }
 
     /** Текст ячейки xlsx в виде, пригодном для разбора: пустая ячейка — `null`. */
     private fun text(cell: Cell): String? =
@@ -146,7 +168,9 @@ object ImportFiles {
     /** xlsx — zip с книгой Excel внутри; имена записей zip хранятся несжатыми. Прочие zip (docx и т.п.) не поддерживаются. */
     private fun isXlsx(bytes: ByteArray): Boolean = String(bytes, Charsets.ISO_8859_1).contains("xl/workbook.xml")
 
+    /** Начинается ли массив с байтов [prefix]. */
     private fun ByteArray.startsWith(vararg prefix: Int): Boolean = size >= prefix.size && prefix.indices.all { this[it] == prefix[it].toByte() }
 
+    /** MIME-тип xlsx. */
     private const val XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 }

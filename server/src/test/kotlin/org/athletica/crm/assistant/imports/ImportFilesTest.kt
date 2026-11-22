@@ -10,6 +10,8 @@ import org.athletica.crm.core.errors.AppError
 import org.dhatim.fastexcel.Workbook
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -87,6 +89,37 @@ class ImportFilesTest {
         assertEquals("ASSISTANT_IMPORT_TOO_MANY_ROWS", code(either { ImportFiles.table(Attachment("a.csv", csv.toByteArray(), AttachmentKind.CSV, "text/csv")) }))
         val ok = (listOf("Список", "ФИО;Телефон") + List(1000) { "Клиент $it;1" }).joinToString("\n")
         assertEquals("Список", either { ImportFiles.table(Attachment("a.csv", ok.toByteArray(), AttachmentKind.CSV, "text/csv")) }.getOrNull()!!.sheets.single().rows.first().cells.single().value)
+    }
+
+    /** Лист xlsx длиннее предела отклоняется при потоковом чтении. */
+    @Test
+    fun rejectsTooManyXlsxRows() {
+        val book = xlsx("Лист1" to listOf(listOf<Any?>("ФИО")) + List(1500) { listOf<Any?>("Клиент $it") })
+        assertEquals("ASSISTANT_IMPORT_TOO_MANY_ROWS", code(either { ImportFiles.table(Attachment("a.xlsx", book, AttachmentKind.XLSX, "x")) }))
+    }
+
+    /** Повреждённая книга с подписью xlsx — понятная ошибка, а не сбой сервера. */
+    @Test
+    fun rejectsBrokenXlsx() {
+        fun zip(vararg entries: Pair<String, String>): ByteArray {
+            val out = ByteArrayOutputStream()
+            ZipOutputStream(out).use { zip ->
+                entries.forEach { (name, text) ->
+                    zip.putNextEntry(ZipEntry(name))
+                    zip.write(text.toByteArray())
+                    zip.closeEntry()
+                }
+            }
+            return out.toByteArray()
+        }
+        val good = xlsx("Лист1" to listOf(listOf("ФИО")))
+        listOf(
+            zip("[Content_Types].xml" to "<Types/>", "xl/workbook.xml" to "not xml"),
+            zip("xl/workbook.xml" to "<workbook/>"),
+            good.copyOf(good.size / 2),
+        ).forEach { bytes ->
+            assertEquals("ASSISTANT_IMPORT_FILE_INVALID", code(either { ImportFiles.table(Attachment("a.xlsx", bytes, AttachmentKind.XLSX, "x")) }))
+        }
     }
 
     /** Модель видит не больше 15 строк из 800 и значения коротких колонок. */

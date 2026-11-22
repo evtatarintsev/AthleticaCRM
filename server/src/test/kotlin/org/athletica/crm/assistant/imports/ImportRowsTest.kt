@@ -181,4 +181,37 @@ class ImportRowsTest {
         assertEquals(listOf(AssistantImportRowStatus.POSSIBLE_DUPLICATE, AssistantImportRowStatus.READY), statuses(chosen).takeLast(2))
         assertEquals(statuses(included), statuses(ImportRows.classify(included.map(ImportRows::candidate), existing, PossibleDuplicates.INCLUDE, emptySet())))
     }
+
+    /** Исправление контакта заменяет одну колонку с её подписью, другой телефон остаётся; без колонки — добавляется. */
+    @Test
+    fun contactFixReplacesOneColumn() {
+        val withFather = columns + ImportColumn(6, ImportTarget.CONTACT, ContactType.PHONE, "папа")
+        val src =
+            ImportSource(
+                listOf(
+                    SourceSheet(
+                        "Лист1",
+                        listOf(
+                            SourceRow(1, 1, null, (header + "Телефон папы").map { SourceCell(it) }),
+                            SourceRow(2, 2, null, listOf("Иванов Иван", "М", null, "89091302211", null, "A", "89091302212").map { SourceCell(it) }),
+                        ),
+                    ),
+                ),
+            )
+
+        fun contacts(fix: ImportRowFix) = rows(src, args({ it.copy(columns = withFather, rowFixes = listOf(fix)) })).single().client!!.contacts.map { it.value to it.label }.toSet()
+        assertEquals(setOf("89091302211" to "мама", "89091300000" to "папа"), contacts(ImportRowFix(2, ImportTarget.CONTACT, "89091300000", ContactType.PHONE, index = 6)))
+        assertEquals(setOf("89091300000" to "мама", "89091302212" to "папа"), contacts(ImportRowFix(2, ImportTarget.CONTACT, "89091300000", ContactType.PHONE)))
+        assertEquals(
+            setOf("89091302211" to "мама", "89091302212" to "папа", "c@d.ru" to null),
+            contacts(ImportRowFix(2, ImportTarget.CONTACT, "c@d.ru", ContactType.EMAIL, index = 9)),
+        )
+    }
+
+    /** Заголовок следующего фото с мелкими расхождениями распознавания не становится клиентом. */
+    @Test
+    fun dropsRepeatedHeader() {
+        val src = source(listOf("Иванов Иван", "М", null, null, null, "A"), listOf("фио.", "Пол", "Дата ", null, "E-mail", "Уровень"), listOf("Петров Пётр", "М", null, null, null, "A"))
+        assertEquals(listOf("Иванов Иван", "Петров Пётр"), rows(src).map { it.name })
+    }
 }

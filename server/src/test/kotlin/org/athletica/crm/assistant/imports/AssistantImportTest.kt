@@ -222,6 +222,7 @@ class AssistantImportTest {
                     assertEquals("ASSISTANT_IMPORT_UNSUPPORTED_FORMAT", code(either { di.assistant.send(dialog, "", listOf(upload("%PDF-1.4".toByteArray(), "a.pdf"))) }))
                     assertEquals("ASSISTANT_IMPORT_ATTACHMENT_SET", code(either { di.assistant.send(dialog, "", listOf(upload("ФИО\nА".toByteArray(), "a.csv"), upload(png, "a.png"))) }))
                     assertEquals("ASSISTANT_IMPORT_TOO_MANY_PHOTOS", code(either { di.assistant.send(dialog, "", List(11) { upload(png, "$it.png") }) }))
+                    assertEquals("ASSISTANT_IMPORT_ATTACHMENT_SET", code(either { di.assistant.send(dialog, "", List(11) { upload("ФИО\nА".toByteArray(), "$it.csv") }) }))
                     val foreign = context(assistantOwner(di)) { upload("ФИО\nА".toByteArray(), "a.csv") }
                     assertEquals("ASSISTANT_IMPORT_FILE_UNAVAILABLE", code(either { di.assistant.send(dialog, "", listOf(foreign)) }))
                     val noRecognition = di.copy(photoRecognizer = PhotoRecognizer.unavailable())
@@ -344,7 +345,7 @@ class AssistantImportTest {
                 FakeAssistant { prompt: Prompt ->
                     val image = prompt.messages.filterIsInstance<Message.User>().flatMap { it.parts.filterIsInstance<MessagePart.Attachment>() }.single()
                     val page = (image.source.content as ai.koog.prompt.message.AttachmentContent.Binary.Bytes).data.last()
-                    FakeAssistant.answer("""{"rows":[[{"value":"ФИО"}],[{"value":"Клиент $page"}],[{"value":"Неразборчиво $page","uncertain":true}]]}""")
+                    FakeAssistant.answer("""{"rows":[["ФИО"],["Клиент $page"],["Неразборчиво $page"]],"uncertain":[{"row":2,"column":0}]}""")
                 }
             val koog = KoogPhotoRecognizer(vision, LLModel(LLMProvider.OpenAI, "vision"))
             val source = koog.source((1..3).map { Attachment("$it.jpg", byteArrayOf(0xFF.toByte(), 0xD8.toByte(), it.toByte()), AttachmentKind.IMAGE, "image/jpeg") })

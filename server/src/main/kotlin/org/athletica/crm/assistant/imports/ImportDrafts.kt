@@ -36,23 +36,36 @@ import kotlin.uuid.Uuid
 /** Строки черновика и решение о возможных дублях, по которым он повторно проверяется перед записью. */
 @Serializable
 data class StoredImportDraft(
+    /** Разобранные строки источника со статусами на момент подготовки. */
     val rows: List<AssistantImportRow>,
     /** Стабильные ID будущих клиентов по номеру строки: повтор подтверждения ничего не дублирует. */
     val clientIds: Map<Int, ClientId>,
+    /** Решение о строках, совпавших только по ФИО. */
     val possibleDuplicates: PossibleDuplicates,
+    /** Строки, включённые в создание при решении [PossibleDuplicates.ROWS]. */
     val includeDuplicateRows: Set<Int> = emptySet(),
+    /** Подписи доп. полей по ключу для карточки. */
     val customFieldLabels: Map<String, String> = emptyMap(),
 )
 
 /** Квитанция пакета. */
 @Serializable
-data class ImportReceipt(val created: Int, val clientIds: List<ClientId>)
+data class ImportReceipt(
+    /** Сколько клиентов создано. */
+    val created: Int,
+    /** ID созданных клиентов. */
+    val clientIds: List<ClientId>,
+)
 
 /** Загрузка, приложенная к сообщению: метаданные из таблицы `uploads`. */
 class AttachedUpload(
+    /** ID загрузки. */
     val id: UploadId,
+    /** Ключ объекта в хранилище. */
     val objectKey: String,
+    /** Исходное имя файла для ленты. */
     val name: String,
+    /** Размер файла в байтах. */
     val sizeBytes: Long,
 )
 

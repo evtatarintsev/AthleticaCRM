@@ -243,26 +243,28 @@ class AssistantService(
 
     /**
      * Проверяет вложения до приёма сообщения: загрузки своей организации, размер, тип по содержимому,
-     * допустимый набор и наличие распознавания для фото. Файлы читаются вне транзакции.
+     * допустимый набор и наличие распознавания для фото. Файлы читаются вне транзакции; при наборе
+     * больше [ImportFiles.MAX_IMAGES] читается только первый — по нему выбирается код ошибки.
      */
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
     private suspend fun attachments(ids: List<UploadId>): Pair<List<AttachedUpload>, List<Attachment>> {
         if (ids.isEmpty()) {
             return emptyList<AttachedUpload>() to emptyList()
         }
-        if (ids.size > ImportFiles.MAX_IMAGES) {
-            raise(assistantError("IMPORT_TOO_MANY_PHOTOS"))
-        }
         val uploads = db.transaction { context(access()) { imports.uploads(ids) } }
         if (uploads.any { it.sizeBytes > ImportFiles.MAX_BYTES }) {
             raise(assistantError("IMPORT_FILE_TOO_BIG"))
         }
+        val tooMany = uploads.size > ImportFiles.MAX_IMAGES
         val files =
-            uploads.map { upload ->
+            uploads.take(if (tooMany) 1 else uploads.size).map { upload ->
                 val bytes = minio.downloadObject(upload.objectKey)
                 val (kind, mime) = ImportFiles.detect(bytes) ?: raise(assistantError("IMPORT_UNSUPPORTED_FORMAT"))
                 Attachment(upload.name, bytes, kind, mime)
             }
+        if (tooMany) {
+            raise(assistantError(if (files.first().kind == AttachmentKind.IMAGE) "IMPORT_TOO_MANY_PHOTOS" else "IMPORT_ATTACHMENT_SET"))
+        }
         ImportFiles.checkSet(files.map { it.kind })
         if (files.first().kind == AttachmentKind.IMAGE && !recognizer.available) {
             raise(assistantError("IMPORT_RECOGNITION_UNAVAILABLE"))
@@ -288,6 +290,8 @@ class AssistantService(
         uploads.forEach { upload ->
             try {
                 minio.deleteObject(upload.objectKey)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (failure: Exception) {
                 logger.warn("assistant turn={} upload cleanup failure={}", message, failure::class.qualifiedName)
             }

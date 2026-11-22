@@ -106,7 +106,9 @@ export function AssistantHost({
 
   /**
    * Прямой запрос без retry: при потере ответа перечитывается только диалог, файлы повторно
-   * не отправляются. Вложения сначала загружаются через `/upload` и остаются в поле при ошибке.
+   * не отправляются. Вложения сначала загружаются через `/upload` и остаются в поле при отказе;
+   * принятый ход (диалог вырос) очищает их. Без ответа сервер мог принять ход и удалить загрузки,
+   * поэтому повтор после такого сбоя загружает файлы заново.
    */
   async function send() {
     const current = dialog.data;
@@ -151,7 +153,9 @@ export function AssistantHost({
           await refreshClients();
       } else {
         setFailure(assistantErrorMessage(t, result.error));
-        await dialog.refetch();
+        if (result.error.kind !== "business") uploadedIds.current = new WeakMap();
+        const refreshed = await dialog.refetch();
+        if ((refreshed.data?.messages.length ?? 0) > current.messages.length) setFiles([]);
       }
       await status.refetch();
     } finally {

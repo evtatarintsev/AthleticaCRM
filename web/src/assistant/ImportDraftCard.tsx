@@ -114,6 +114,7 @@ export function ImportCompleted({ block }: { block: AssistantBlockImportComplete
   return <ImportCompletedLink created={block.created} />;
 }
 
+/** Число созданных клиентов [created] и ссылка на их список. */
 function ImportCompletedLink({ created }: { created: number }) {
   const { t } = useI18n();
   return (

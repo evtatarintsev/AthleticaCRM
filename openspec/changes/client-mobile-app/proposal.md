@@ -48,7 +48,7 @@
 | Изменение | Что делает | Зависит от ядра |
 |---|---|---|
 | `telegram-gateway-codes` | отправитель кодов через Telegram Gateway API | только порт `VerificationCodeSender` |
-| `platform-sms` | отправитель кодов по SMS с платформенного аккаунта | только порт `VerificationCodeSender` |
+| SMS-коды (изменение ещё не заведено) | отправитель кодов по SMS через SMS-канал организации последнего приглашения; провайдер — `sms-aero-channel` | только порт `VerificationCodeSender` |
 | `client-app-chat` | переписка с клубом, канал «Приложение» во «Входящих» | доступы, `ClientProfileContext`, порт `ClientAppPushes` |
 | `client-app-push` | push через FCM и APNs | устройства, порт `ClientAppPushes` |
 | `client-mobile-android` | модуль `:mobile` на KMP + Compose Multiplatform, общие экраны, Android | схемы в `shared` |
@@ -82,5 +82,6 @@
 - **БД**: новые таблицы аккаунтов, доступов, устройств, кодов, подтверждений на устройствах,
   предупреждений об отсутствии; колонка `organizations.client_app_enabled`.
 - **Конфигурация**: параметры клиентского JWT — в `application.conf`,
-  `docker-compose.prod.yaml`, `.env.prod.example`. Ключи Telegram Gateway, SMS, FCM и APNs
-  добавляют соответствующие изменения.
+  `docker-compose.prod.yaml`, `.env.prod.example`. Ключи Telegram Gateway, FCM и APNs
+  добавляют соответствующие изменения; SMS отправляются с аккаунтов организаций (настройки
+  их каналов), ключей платформы для SMS нет.

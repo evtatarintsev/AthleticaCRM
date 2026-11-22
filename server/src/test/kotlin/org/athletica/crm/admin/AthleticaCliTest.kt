@@ -4,11 +4,14 @@ import com.github.ajalt.clikt.command.test
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.PasswordHash
+import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.money.formatted
+import org.athletica.crm.demo.DemoFixture
 import org.athletica.crm.security.PasswordHasher
+import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
@@ -16,6 +19,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 import kotlin.uuid.Uuid
 
 /**
@@ -300,5 +304,53 @@ class AthleticaCliTest {
             assertEquals(0, result.statusCode)
             assertContains(result.stdout, "serve")
             assertContains(result.stdout, "admin")
+        }
+
+    /** Число строк таблицы [table] организации [orgId]. */
+    private suspend fun rows(table: String, orgId: OrgId): Long = orThrow { TestPostgres.db.sql("SELECT count(*) AS n FROM $table WHERE org_id = :org").bind("org", orgId).firstOrNull { it.asLong("n") } ?: 0 }
+
+    @Test
+    fun `admin org seed наполняет пустую организацию и не выводит учётных данных`() =
+        runTest(timeout = 5.minutes) {
+            val orgId = DemoFixture.signup("Клуб Демо")
+            val owner = orThrow { TestPostgres.db.sql("SELECT u.login FROM users u JOIN employees e ON e.user_id = u.id WHERE e.org_id = :org").bind("org", orgId).firstOrNull { it.asString("login") } }
+
+            val result = cli().test(listOf("admin", "org", "seed", orgId.toString()))
+
+            assertEquals(0, result.statusCode, result.stderr)
+            assertContains(result.stdout, "Организация: Клуб Демо")
+            assertContains(result.stdout, "Клиентов: 60")
+            assertFalse(result.stdout.contains(checkNotNull(owner)))
+            assertFalse(result.stdout.contains("парол", ignoreCase = true) || result.stdout.contains("password", ignoreCase = true))
+            assertEquals(60, rows("clients", orgId))
+            assertEquals(1, orThrow { TestPostgres.db.sql("SELECT count(*) AS n FROM employees WHERE org_id = :org AND user_id IS NOT NULL").bind("org", orgId).firstOrNull { it.asLong("n") } })
+        }
+
+    @Test
+    fun `admin org seed отказывает на непустой организации`() =
+        runTest(timeout = 5.minutes) {
+            val orgId = DemoFixture.signup("Клуб Занят")
+            orThrow {
+                TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :org, 'Клиент', 'MALE')").bind("id", Uuid.random()).bind("org", orgId).execute()
+            }
+
+            val result = cli().test(listOf("admin", "org", "seed", orgId.toString(), "--size=medium", "--seed=42"))
+
+            assertTrue(result.statusCode != 0)
+            assertContains(result.stderr, "наполнить можно только пустую организацию")
+            assertEquals(1, rows("clients", orgId))
+            assertEquals(0, rows("groups", orgId))
+        }
+
+    @Test
+    fun `admin org seed с недопустимым профилем падает до подключения к БД`() =
+        runTest {
+            val noDb = AdminDi { error("подключение к БД не должно открываться") }
+
+            val result = athleticaCommand(adminDi = { noDb }).test(listOf("admin", "org", "seed", "Клуб", "--size=huge"))
+
+            assertTrue(result.statusCode != 0)
+            assertContains(result.stderr, "--size")
+            assertEquals("", result.stdout)
         }
 }

@@ -1438,6 +1438,9 @@ export const en: Messages<typeof ru> = {
     "The link is invalid or expired. Sign in to the CRM and request a new email.",
   "emailVerification.openCrm": "Open CRM",
   "emailVerification.reminderTitle": "Confirm your email",
+  "demo.bannerTitle": "Demo mode",
+  "demo.banner":
+    "This is demo mode: the organization is filled with sample data. All clients, contacts and payments are fictional.",
   "emailVerification.reminder":
     "Confirm {email} using the link in your email. You can continue working in the CRM.",
   "emailVerification.resend": "Resend confirmation email",

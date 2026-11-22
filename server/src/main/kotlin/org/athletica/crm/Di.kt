@@ -12,6 +12,8 @@ import org.athletica.crm.assistant.AssistantService
 import org.athletica.crm.assistant.provider.AssistantConnection
 import org.athletica.crm.assistant.storage.AssistantStorage
 import org.athletica.crm.assistant.tools.ClientDrafts
+import org.athletica.crm.demo.DemoAuth
+import org.athletica.crm.demo.DemoData
 import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AuditAttendanceLabels
 import org.athletica.crm.domain.attendance.DbAttendanceLabels
@@ -189,11 +191,16 @@ data class Di(
             EmailEmployees(DbEmployees(DbUsers(passwordHasher), roles, authSessions), orgEmails),
             audit,
         ),
+    /** Наполнитель демо-режима; `null` — демо-режим выключен и регистрация не наполняет организацию. */
+    val demoData: DemoData? = null,
 ) {
     val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
     val passwordResets = PasswordResets(orgEmails, authSessions, emailVerifications, audit, passwordHasher, emailVerificationConfig)
-    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit)
+    val auth: Auth =
+        AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit).let { auth ->
+            demoData?.let { DemoAuth(auth, it, employees) } ?: auth
+        }
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
@@ -295,6 +302,7 @@ fun Application.di(): Di {
         telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
         assistantConnection = AssistantConnection.from(environment.config),
         emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
+        demoData = if (environment.config.property("demo.enabled").getString().toBoolean()) DemoData(audit = audit) else null,
     )
 }
 

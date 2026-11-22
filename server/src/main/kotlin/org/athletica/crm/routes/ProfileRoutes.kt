@@ -21,6 +21,7 @@ import org.athletica.crm.storage.Database
  * GET  /auth/me               — возвращает данные текущего авторизованного пользователя.
  * POST /auth/me/update        — обновляет имя и аватар.
  * POST /auth/me/change-password — меняет пароль (требует старый пароль).
+ * [demo] — признак демо-режима экземпляра, который `/auth/me` сообщает клиенту.
  */
 context(db: Database)
 fun RouteWithContext.profileRoutes(
@@ -28,6 +29,7 @@ fun RouteWithContext.profileRoutes(
     organizations: Organizations,
     orgBalances: OrgBalances,
     emailVerifications: EmailVerifications,
+    demo: Boolean,
 ) {
     get<Unit, AuthMeResponse>("/auth/me") {
         val user = profile()
@@ -51,6 +53,7 @@ fun RouteWithContext.profileRoutes(
             currentBranch = BranchDetailResponse(user.currentBranchId, user.currentBranchName),
             permissions = grantedPermissions(),
             emailVerificationPending = db.transaction { emailVerifications.pending(user.id) },
+            demo = demo,
         )
     }
 

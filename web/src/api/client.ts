@@ -189,7 +189,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           typeof payload === "object" &&
           payload !== null &&
           !Array.isArray(payload)
-          ? { emailVerificationPending: false, ...payload }
+          ? { emailVerificationPending: false, demo: false, ...payload }
           : payload,
       );
       if (!decoded.success) {

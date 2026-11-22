@@ -916,4 +916,16 @@ object Messages {
             "The “$group” session on $time is over, but its attendance journal is not closed. Mark attendance and complete the session."
         }
     }
+
+    /** Наполнение демо-данными отклонено: организация не пустая. */
+    object DemoOrgNotEmpty : LocalizationKey {
+        override val ru = "Организация уже содержит клиентов или группы — наполнить можно только пустую организацию"
+        override val en = "The organization already has clients or groups — only an empty organization can be filled"
+    }
+
+    /** Наполнение демо-данными невозможно: у организации нет владельца. */
+    object DemoOwnerNotFound : LocalizationKey {
+        override val ru = "У организации нет владельца с учётной записью"
+        override val en = "The organization has no owner with an account"
+    }
 }

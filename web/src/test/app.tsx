@@ -120,6 +120,7 @@ export function session(
     currentBranch: branch,
     permissions,
     emailVerificationPending: false,
+    demo: false,
   };
 }
 

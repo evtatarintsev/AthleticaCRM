@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Раздел «Группы»</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Раскладка: каркас приложения (меню + верхняя полоса) и страница списка; ширина решается container query по .stage */
+:root{
+  --background:oklch(.984 .003 247.858);--foreground:oklch(.129 .042 264.695);--card:#fff;
+  --muted-foreground:oklch(.554 .046 257.417);--accent:oklch(.968 .007 247.896);--border:oklch(.929 .013 255.508);
+  --primary:oklch(.52 .2 262);--on-primary:#fff;--destructive:oklch(.577 .245 27.325);--chrome:#e9e9ec;
+  --shadow:0 1px 2px rgba(16,16,32,.04),0 6px 20px -8px rgba(16,16,32,.08);
+  --blue-bg:oklch(.95 .03 262);--blue-fg:oklch(.48 .2 262);
+  --amber-bg:oklch(.96 .05 85);--amber-fg:oklch(.5 .12 65);
+  --green-bg:oklch(.95 .04 155);--green-fg:oklch(.5 .13 155);
+  --pink-bg:oklch(.95 .035 345);--pink-fg:oklch(.55 .19 345);
+  --club:#3159d8;
+  --font:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --background:oklch(.129 .042 264.695);--foreground:oklch(.984 .003 247.858);--card:oklch(.208 .042 265.755);
+  --muted-foreground:oklch(.704 .04 256.788);--accent:oklch(.279 .041 260.031);--border:oklch(1 0 0 / 10%);
+  --primary:oklch(.62 .19 262);--destructive:oklch(.704 .191 22.216);--chrome:#05060a;--shadow:none;
+  --blue-bg:oklch(.3 .08 262);--blue-fg:oklch(.8 .1 262);
+  --amber-bg:oklch(.32 .06 75);--amber-fg:oklch(.85 .1 80);
+  --green-bg:oklch(.3 .06 155);--green-fg:oklch(.82 .1 155);
+  --pink-bg:oklch(.3 .07 345);--pink-fg:oklch(.82 .1 345);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --background:oklch(.129 .042 264.695);--foreground:oklch(.984 .003 247.858);--card:oklch(.208 .042 265.755);
+  --muted-foreground:oklch(.704 .04 256.788);--accent:oklch(.279 .041 260.031);--border:oklch(1 0 0 / 10%);
+  --primary:oklch(.62 .19 262);--destructive:oklch(.704 .191 22.216);--chrome:#05060a;--shadow:none;
+  --blue-bg:oklch(.3 .08 262);--blue-fg:oklch(.8 .1 262);
+  --amber-bg:oklch(.32 .06 75);--amber-fg:oklch(.85 .1 80);
+  --green-bg:oklch(.3 .06 155);--green-fg:oklch(.82 .1 155);
+  --pink-bg:oklch(.3 .07 345);--pink-fg:oklch(.82 .1 345);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--chrome);color:var(--foreground);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+svg{flex:none}
+
+/* Панель макета */
+.outer{max-width:1280px;margin:0 auto;padding:20px 16px 0;display:flex;flex-direction:column;gap:12px}
+.mk-title{margin:0;font-size:13px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em}
+.mk-bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;padding:3px;border-radius:10px;background:var(--card);border:1px solid var(--border)}
+.seg button{white-space:nowrap;height:30px;padding:0 12px;border:0;border-radius:7px;background:transparent;font-size:13px;font-weight:500;color:var(--muted-foreground)}
+.seg button[aria-pressed="true"]{background:var(--foreground);color:var(--background)}
+.mk-note{margin:0;max-width:70ch;color:var(--muted-foreground);font-size:13px}
+.mk-note b{color:var(--foreground);font-weight:600}
+
+/* Каркас приложения */
+.stage{container-type:inline-size;margin:0 auto 64px;width:100%;background:var(--background);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.stage.phone{max-width:390px;border:8px solid var(--foreground);border-radius:32px}
+.shell{display:grid;grid-template-columns:15rem minmax(0,1fr);min-height:720px}
+.side{background:var(--card);border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:16px}
+.club{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:12px}
+.mono{width:32px;height:32px;flex:none;border-radius:8px;background:var(--club);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.club b{display:block;font-weight:600;line-height:1.25}
+.club small{display:block;color:var(--muted-foreground);font-size:12.5px;line-height:1.3}
+.club .chev{margin-left:auto;color:var(--muted-foreground)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;gap:10px;align-items:center;height:36px;padding:0 10px;border-radius:8px;font-weight:500;color:var(--muted-foreground)}
+.nav a:hover,.nav a.on{background:var(--accent);color:var(--foreground)}
+.top{height:56px;display:flex;align-items:center;gap:8px;padding:0 32px;border-bottom:1px solid var(--border)}
+.top .sp{flex:1}
+.ib{width:36px;height:36px;border:0;border-radius:8px;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:var(--muted-foreground)}
+.ib:hover{background:var(--accent);color:var(--foreground)}
+.burger,.top-club{display:none}
+.top-club{align-items:center;gap:8px;min-width:0}
+.top-club .mono{width:28px;height:28px;font-size:11px}
+.top-club span{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me{width:30px;height:30px;border-radius:99px;background:var(--pink-bg);color:var(--pink-fg);display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600}
+.main-area{padding:28px 32px 48px;max-width:72rem;min-width:0}
+
+/* Шапка страницы */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px}
+.ph h1{margin:0;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.ph p{margin:4px 0 0;color:var(--muted-foreground)}
+.btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);display:inline-flex;align-items:center;gap:8px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--accent)}
+.btn.primary{background:var(--primary);border-color:transparent;color:var(--on-primary)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.icon{width:36px;padding:0;justify-content:center}
+.badge{min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.only-narrow{display:none}
+
+/* Поиск и фильтры */
+.tools{display:flex;gap:8px;margin-bottom:12px}
+.search{position:relative;flex:1;min-width:0}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted-foreground);pointer-events:none}
+.search input{width:100%;height:36px;padding:0 12px 0 36px;border-radius:8px;border:1px solid var(--border);background:var(--card);font:inherit;color:inherit}
+.fchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.fchip{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 4px 0 12px;border-radius:999px;border:1px solid var(--border);background:var(--card);font-size:13px;font-weight:500}
+.fchip small{color:var(--muted-foreground);font-size:13px;font-weight:400}
+.fchip button{width:22px;height:22px;border:0;border-radius:99px;background:transparent;color:var(--muted-foreground);display:inline-flex;align-items:center;justify-content:center}
+.fchip button:hover{background:var(--accent);color:var(--foreground)}
+.linkbtn{border:0;background:transparent;color:var(--primary);font-weight:500;font-size:13px;padding:0 6px}
+
+/* Список в карточке */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);min-width:0;overflow:hidden}
+.table{width:100%;border-collapse:collapse}
+.table th{height:38px;padding:0 16px;background:var(--accent);color:var(--muted-foreground);font-size:12.5px;font-weight:500;text-align:left;border-bottom:1px solid var(--border)}
+.table td{padding:12px 16px;vertical-align:top;border-top:1px solid var(--border)}
+.table tbody tr:first-child td{border-top:0}
+.table tbody tr{position:relative}
+.table tbody tr:hover td{background:var(--accent)}
+.table td:first-child{width:34%}
+.table td:last-child{width:28%}
+.gname{font-weight:600;line-height:1.4}
+.gname a::after{content:"";position:absolute;inset:0}
+.note{display:block;margin-top:2px;font-size:12.5px;color:var(--amber-fg)}
+.muted{color:var(--muted-foreground)}
+.slot{display:block;white-space:nowrap}
+.slot + .slot{margin-top:2px}
+.slot .days{display:inline-block;min-width:7.5em}
+.slot time{font-variant-numeric:tabular-nums}
+.slot .hall,.slot time{white-space:nowrap}
+.slot .hall{color:var(--muted-foreground)}
+.mrow{display:none}
+
+
+/* Карточка группы — как сейчас в приложении (вкладка «Обзор») */
+.d-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px}
+.d-head h1{margin:0;font-size:24px;line-height:1.25;font-weight:600;letter-spacing:-.02em}
+.d-head ul{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
+.d-head li{border:1px solid var(--border);background:var(--card);border-radius:99px;padding:1px 10px;font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.d-head .act{margin-left:auto;display:flex;gap:8px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+.tabs button{height:44px;padding:0 12px;border:0;background:transparent;font-weight:500;color:color-mix(in oklch,var(--foreground) 60%,transparent);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.tabs button[aria-selected="true"]{color:var(--foreground);border-bottom-color:var(--foreground)}
+.tabs .dot{width:6px;height:6px;border-radius:99px;background:oklch(.77 .16 70)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.tile{display:flex;flex-direction:column;gap:6px;min-height:7.5rem;padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--card);text-align:left;font:inherit;color:inherit}
+.tile h2{margin:0;font-size:12px;font-weight:500;opacity:.8}
+.tile .v{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile p{margin:0}
+.tile.brand{background:var(--primary);border-color:transparent;color:var(--on-primary)}
+.tile.brand .big{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.tile.brand small{font-size:13px;opacity:.85;display:block}
+.tile.brand .btn{margin-top:auto;align-self:flex-start;height:32px;background:var(--card);color:var(--foreground);border-color:transparent;font-size:13px}
+.tile.warn{background:var(--amber-bg);border-color:transparent;color:var(--amber-fg)}
+.tile ul{margin:0;padding:0;list-style:none;font-size:13px}
+.bar{margin-top:auto;display:flex;gap:2px;height:6px;border-radius:99px;overflow:hidden}
+.bar span:nth-child(1){background:oklch(.7 .15 155)}
+.bar span:nth-child(2){background:oklch(.77 .16 70)}
+.bar span:nth-child(3){background:oklch(.64 .21 25)}
+.bars{margin-top:auto;display:flex;align-items:flex-end;gap:2px;height:28px;list-style:none;padding:0}
+.bars li{flex:1;border-radius:3px;background:var(--primary)}
+.cards2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.ocard{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.ocard .hd{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 16px;border-bottom:1px solid var(--border)}
+.ocard h2{margin:0;font-size:14px;font-weight:600}
+.ghost{height:32px;padding:0 10px;border:0;border-radius:8px;background:transparent;font-weight:500;font-size:13px}
+.ghost:hover{background:var(--accent)}
+.ocard ul{list-style:none;margin:0;padding:0}
+.ocard li{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--border);font-size:14px}
+.ocard li:first-child{border-top:0}
+.ocard li time{font-variant-numeric:tabular-nums}
+.ocard li .r{margin-left:auto;color:var(--muted-foreground)}
+.av{width:28px;height:28px;border-radius:99px;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;background:var(--pink-bg);color:var(--pink-fg)}
+.av.b{background:var(--blue-bg);color:var(--blue-fg)}
+.mbar{display:none}
+.backhint{margin:0 0 12px;font-size:13px;color:var(--muted-foreground)}
+.backhint button{border:0;background:transparent;padding:0;color:var(--primary);font:inherit;font-weight:500}
+
+/* Пустые состояния */
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:48px 16px}
+.empty .ic{width:44px;height:44px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:4px;background:var(--accent);color:var(--muted-foreground)}
+.empty h2{margin:0;font-size:16px;font-weight:600}
+.empty p{margin:0 0 8px;color:var(--muted-foreground);max-width:40ch}
+
+/* Узкая раскладка: телефон и окно уже 768 px */
+@container (width < 768px){
+  .shell{grid-template-columns:1fr;min-height:0}
+  .side{display:none}
+  .burger{display:inline-flex}
+  .top-club{display:flex}
+  .top{padding:0 8px}
+  .main-area{padding:20px 12px 32px}
+  .ph{margin-bottom:14px}
+  .ph h1{font-size:22px}
+  .only-wide{display:none}
+  .only-narrow{display:inline-flex}
+  .table{display:none}
+  .mrow{display:block;position:relative;padding:12px 16px;border-top:1px solid var(--border)}
+  .mrow:first-child{border-top:0}
+  .mrow:hover{background:var(--accent)}
+  .mrow .slot,.mrow .coach{font-size:13px;color:var(--muted-foreground);white-space:normal}
+  .mrow .slot .days{min-width:0;margin-right:4px}
+  .mrow .slots{margin-top:2px}
+  .tiles{grid-template-columns:1fr}
+  .cards2{grid-template-columns:1fr}
+  .d-head .act .only-wide{display:none}
+  .tabs{position:sticky;top:0;background:var(--background);margin-left:-12px;margin-right:-12px;padding:0 12px;z-index:2}
+  .mbar{display:block;position:sticky;bottom:0;margin:16px -12px -32px;padding:12px;border-top:1px solid var(--border);background:color-mix(in oklch,var(--background) 95%,transparent)}
+  .mbar .btn{width:100%;justify-content:center}
+}
+@container (560px <= width < 1000px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="outer">
+  <p class="mk-title">Раздел «Группы» — макет</p>
+  <div class="mk-bar">
+    <div class="seg" role="group" aria-label="Устройство">
+      <button type="button" data-k="device" data-v="desktop" aria-pressed="true">Компьютер</button>
+      <button type="button" data-k="device" data-v="phone" aria-pressed="false">Телефон</button>
+    </div>
+    <div class="seg" role="group" aria-label="Состояние">
+      <button type="button" data-k="state" data-v="list" aria-pressed="true">9 групп</button>
+      <button type="button" data-k="state" data-v="filtered" aria-pressed="false">С фильтром</button>
+      <button type="button" data-k="state" data-v="none" aria-pressed="false">Ничего не найдено</button>
+      <button type="button" data-k="state" data-v="empty" aria-pressed="false">Групп нет</button>
+    </div>
+  </div>
+  <p class="mk-note" id="note"></p>
+</div>
+
+<div class="outer" style="padding-top:0">
+  <div class="stage" id="stage">
+    <div class="shell">
+      <aside class="side">
+        <div class="club"><span class="mono">ФЛ</span><span><b>Фитнес Лайф</b><small>Центральный</small></span>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></div>
+        <nav class="nav" aria-label="Разделы">
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Главная</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Расписание</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Клиенты</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Входящие</a>
+          <a href="#" class="on" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Группы</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M16 12h2"/><path d="M6 12h6"/></svg>Сотрудники</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>Задачи</a>
+          <a href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Настройки</a>
+        </nav>
+      </aside>
+      <div style="min-width:0">
+        <header class="top">
+          <button class="ib burger" type="button" aria-label="Меню"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+          <span class="top-club"><span class="mono">ФЛ</span><span>Фитнес Лайф</span></span>
+          <span class="sp"></span>
+          <button class="ib" type="button" aria-label="Уведомления"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+          <span class="me">АИ</span>
+        </header>
+        <main class="main-area" id="main"></main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const GROUPS = [
+  {name:"Гимнастика, младшая",disc:["Гимнастика"],slots:[[[0,2,4],"16:00–17:00","Зал 2"]],coaches:["Ольга Смирнова"]},
+  {name:"Гимнастика, старшая",disc:["Гимнастика"],slots:[[[0,2,4],"17:00–18:30","Зал 2"],[[5],"11:00–12:30","Зал 2"]],coaches:["Ольга Смирнова","Мария Белова"]},
+  {name:"Йога для взрослых",disc:["Йога"],slots:[[[1,3],"08:00–09:00","Зал 3"]],coaches:["Мария Белова"]},
+  {name:"Каратэ 6–9 лет",disc:["Каратэ"],slots:[[[1,3],"17:00–18:00","Зал 1"]],coaches:["Сергей Ким"],change:"01.12.2026"},
+  {name:"Каратэ 10–14 лет",disc:["Каратэ"],slots:[[[0,2,4],"18:00–19:30","Зал 1"]],coaches:["Сергей Ким"]},
+  {name:"Мини-футбол 6–8 лет",disc:["Футбол"],slots:[[[1,3],"16:00–17:00","Зал 1"],[[5],"10:00–11:00","Зал 1"]],coaches:["Дмитрий Петров","Анна Иванова"]},
+  {name:"Мини-футбол 9–12 лет",disc:["Футбол"],slots:[[[1,3],"18:00–19:30","Зал 1"]],coaches:["Дмитрий Петров"]},
+  {name:"Плавание, младшая",disc:["Плавание"],slots:[],coaches:[]},
+  {name:"Функциональный тренинг",disc:["ОФП"],slots:[[[0,1,2,3,4],"19:30–21:00","Зал 3"]],coaches:["Анна Иванова"]},
+];
+const state = {device:"desktop",state:"list",page:"list",tab:"overview"};
+const OPEN = "Гимнастика, старшая";
+const nameLink = g => g.name === OPEN ? `<a href="#" data-open="group">${g.name}</a>` : `<span>${g.name}</span>`;
+
+function groupPage(){
+  const tabs = [["overview","Обзор"],["clients","Клиенты"],["memberships","Абонементы"],["sessions","Занятия"],["journal","Журнал"]];
+  const bars = [85,90,72,94,80,88,67,92,78,83];
+  const tabsHtml = `<div class="tabs" role="tablist">${tabs.map(([k,l]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${state.tab===k}">${l}${k==="clients"?'<span class="dot" title="есть клиенты, требующие внимания"></span>':""}</button>`).join("")}</div>`;
+  const overview = `
+  <div class="tiles">
+    <section class="tile brand"><h2>Следующее занятие</h2>
+      <span class="big">Ср 19.11.2026</span><small>17:00–18:30 · Зал 2</small><small>Ольга Смирнова, Мария Белова</small>
+      <button class="btn" type="button">Отметить посещение</button></section>
+    <button type="button" class="tile warn"><h2>Требуют внимания</h2><p class="v">3</p>
+      <ul><li>Абонемент заканчивается: 2</li><li>Долг: 1</li></ul></button>
+    <button type="button" class="tile"><h2>Клиенты</h2><p class="v">18</p>
+      <div class="bar" title="В порядке 15 · заканчивается 2 · долг или нет абонемента 1"><span style="flex-grow:15"></span><span style="flex-grow:2"></span><span style="flex-grow:1"></span></div></button>
+    <button type="button" class="tile"><h2>Посещаемость</h2><p class="v">83 %</p><p class="muted" style="font-size:13px">за последние 10 занятий</p>
+      <ul class="bars">${bars.map(h => `<li style="height:${h}%"></li>`).join("")}</ul></button>
+  </div>
+  <div class="cards2">
+    <section class="ocard"><div class="hd"><h2>Расписание</h2><button class="ghost" type="button">Изменить</button></div>
+      <ul>${[["Понедельник","17:00–18:30"],["Среда","17:00–18:30"],["Пятница","17:00–18:30"],["Суббота","11:00–12:30"]].map(([d,t]) => `<li><b style="font-weight:500">${d}</b><time>${t}</time><span class="r">Зал 2</span></li>`).join("")}</ul></section>
+    <section class="ocard"><div class="hd"><h2>Тренеры</h2><button class="ghost" type="button">Изменить</button></div>
+      <ul><li><span class="av">ОС</span>Ольга Смирнова</li><li><span class="av b">МБ</span>Мария Белова</li></ul></section>
+  </div>`;
+  const other = `<div class="card"><div class="empty"><h2>Вкладка «${tabs.find(([k]) => k===state.tab)[1]}»</h2><p>В макете показан только «Обзор». Остальные вкладки остаются как сейчас в приложении.</p></div></div>`;
+  return `<p class="backhint">Карточка группы в нынешнем виде, без изменений. <button type="button" data-back>← К списку групп</button></p>
+  <div class="d-head"><h1>${OPEN}</h1><ul><li>Гимнастика</li></ul>
+    <div class="act"><button class="btn primary only-wide" type="button">${ic.plus}Добавить клиентов</button>
+    <button class="btn icon" type="button" aria-label="Действия с группой"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div></div>
+  ${tabsHtml}${state.tab === "overview" ? overview : other}
+  <div class="mbar"><button class="btn primary" type="button">${ic.plus}Добавить клиентов</button></div>`;
+}
+const NOTE = "Только стиль: таблица в карточке, число групп под заголовком, чипы активных фильтров, оформленные пустые состояния. Данные и запрос прежние.";
+
+const ic = {
+  plus:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  search:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  sliders:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg>',
+  x:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  person:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
+};
+
+const plural = (n, one, few, many) => {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+};
+function slots(g){
+  if (!g.slots.length) return `<span class="slot muted">Расписание не задано</span>`;
+  return g.slots.map(([d,t,h]) => `<span class="slot"><span class="days">${d.map(i=>DAYS[i]).join(", ")}</span> <time>${t}</time> <span class="hall">· ${h}</span></span>`).join("");
+}
+const coaches = g => g.coaches.length ? g.coaches.join(", ") : "—";
+const change = g => g.change ? `<span class="note">Новое расписание с ${g.change}</span>` : "";
+
+function header(count){
+  const sub = count === null ? "" : `<p>${count} ${plural(count,"группа","группы","групп")}</p>`;
+  return `<div class="ph"><div><h1>Группы</h1>${sub}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary only-wide" type="button">${ic.plus}Новая группа</button>
+      <button class="btn primary icon only-narrow" type="button" aria-label="Новая группа">${ic.plus}</button>
+    </div></div>`;
+}
+function tools(filtered, q){
+  const badge = filtered ? `<span class="badge">1</span>` : "";
+  return `<div class="tools">
+    <label class="search">${ic.search}<input id="q" type="search" placeholder="Поиск по группам" aria-label="Поиск по группам" value="${q}"></label>
+    <button class="btn only-wide" type="button">${ic.sliders}Дисциплины${badge}</button>
+    <button class="btn only-wide" type="button">${ic.sliders}Тренеры</button>
+    <button class="btn icon only-narrow" type="button" aria-label="Фильтры" style="position:relative">${ic.sliders}${filtered?`<span class="badge" style="position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;font-size:11px">1</span>`:""}</button>
+  </div>
+  ${filtered ? `<div class="fchips"><span class="fchip"><small>Дисциплина:</small>&nbsp;Каратэ<button type="button" aria-label="Убрать фильтр «Каратэ»">${ic.x}</button></span><button class="linkbtn" type="button">Сбросить фильтры</button></div>` : ""}`;
+}
+function list(groups){
+  const table = `<table class="table"><thead><tr><th>Название</th><th>Расписание</th><th>Тренеры</th></tr></thead><tbody>${groups.map(g => `<tr>
+    <td><div class="gname">${nameLink(g)}</div>${change(g)}</td>
+    <td>${slots(g)}</td>
+    <td class="muted">${coaches(g)}</td></tr>`).join("")}</tbody></table>`;
+  const rows = groups.map(g => `<div class="mrow"><div class="gname">${nameLink(g)}</div>${change(g)}
+    <div class="slots">${slots(g)}</div>${g.coaches.length ? `<div class="coach">${coaches(g)}</div>` : ""}</div>`).join("");
+  return `<div class="card">${table}${rows}</div>`;
+}
+function emptyBlock(kind){
+  if (kind === "empty") {
+    return `<div class="card"><div class="empty"><span class="ic">${ic.person}</span><h2>Групп пока нет</h2>
+      <p>Создайте первую группу: задайте расписание, дисциплины и тренеров, затем добавьте клиентов.</p>
+      <button class="btn primary" type="button">${ic.plus}Новая группа</button></div></div>`;
+  }
+  return `<div class="card"><div class="empty"><span class="ic">${ic.search}</span><h2>Ничего не найдено</h2>
+    <p>Измените запрос или сбросьте фильтры.</p>
+    <button class="btn" type="button">Сбросить фильтры</button></div></div>`;
+}
+
+function render(){
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(state[b.dataset.k] === b.dataset.v)));
+  document.getElementById("stage").classList.toggle("phone", state.device === "phone");
+  document.getElementById("note").textContent = NOTE + " Нажмите «" + OPEN + "», чтобы открыть карточку группы.";
+  if (state.page === "group") { document.getElementById("main").innerHTML = groupPage(); return; }
+  let groups = GROUPS, count = GROUPS.length, filtered = false, q = "";
+  if (state.state === "filtered") { groups = GROUPS.filter(g => g.disc.includes("Каратэ")); count = groups.length; filtered = true; }
+  if (state.state === "none") { groups = []; count = 0; filtered = true; q = "плав"; }
+  if (state.state === "empty") { count = null; }
+  const body = state.state === "empty" ? emptyBlock("empty") : state.state === "none" ? emptyBlock("none") : list(groups);
+  document.getElementById("main").innerHTML = header(count) + (state.state === "empty" ? "" : tools(filtered, q)) + body;
+}
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  state[b.dataset.k] = b.dataset.v;
+  if (b.dataset.k !== "device") { state.page = "list"; }
+  render();
+}));
+document.getElementById("main").addEventListener("click", e => {
+  const open = e.target.closest("[data-open]"), back = e.target.closest("[data-back]"), tab = e.target.closest("[data-tab]");
+  if (open) { e.preventDefault(); state.page = "group"; state.tab = "overview"; }
+  else if (back) { state.page = "list"; }
+  else if (tab) { state.tab = tab.dataset.tab; }
+  else { return; }
+  render();
+  if (open || back) { document.getElementById("stage").scrollIntoView({block:"start"}); }
+});
+document.querySelector('.nav a[aria-current="page"]').addEventListener("click", e => { e.preventDefault(); state.page = "list"; render(); });
+render();
+</script>
+</body></html>

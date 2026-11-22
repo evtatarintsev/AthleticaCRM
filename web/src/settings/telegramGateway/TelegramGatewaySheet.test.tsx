@@ -7,7 +7,7 @@ import {
   type TelegramGatewaySettingsResponse,
 } from "@/api/generated/contracts";
 import { ru } from "@/i18n/ru";
-import { appServer, json, openApp } from "@/test/app";
+import { appServer, center, json, openApp, session } from "@/test/app";
 
 /** Подключённая интеграция с маской `••••1234`; [balance] — остаток из последнего ответа. */
 function connected(
@@ -20,6 +20,7 @@ function connected(
 function gatewayServer(initial: TelegramGatewaySettingsResponse = { integration: null }) {
   let settings = initial;
   return appServer({
+    "auth/me": () => json(session("Иван Петров", null, center, ["CAN_MANAGE_TELEGRAM_GATEWAY"])),
     "telegram-gateway/settings": () => json(settings),
     "telegram-gateway/save-token": ({ body }) => {
       if (JSON.stringify(body).includes("revoked")) {
@@ -47,6 +48,14 @@ async function openSheet(fetch: Parameters<typeof openApp>[1]) {
 }
 
 describe("Telegram Gateway", () => {
+  it("пункт скрыт без права CAN_MANAGE_TELEGRAM_GATEWAY", async () => {
+    openApp("/settings", appServer({}).fetch);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: ru["settings.title"] }),
+    ).toBeVisible();
+    expect(screen.queryByText(ru["settings.itemTelegramGateway"])).not.toBeInTheDocument();
+  });
+
   it("пункт настроек открывает панель", async () => {
     const user = userEvent.setup();
     const { history } = openApp("/settings", gatewayServer().fetch);

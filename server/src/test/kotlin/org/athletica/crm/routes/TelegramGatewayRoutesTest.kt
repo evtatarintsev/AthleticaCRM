@@ -30,6 +30,7 @@ import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewayTestCodeResp
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.sessionAccessToken
@@ -151,6 +152,22 @@ class TelegramGatewayRoutesTest {
                 assertFalse(afterShort.contains("short"), afterShort)
                 assertEquals("••••", settings().integration?.tokenMask)
                 assertEquals(true, settings().integration?.enabled)
+            }
+        }
+
+    @Test
+    fun `сотрудник без права CAN_MANAGE_TELEGRAM_GATEWAY получает PERMISSION_DENIED`() =
+        runTest {
+            signUp()
+            orThrow { di.database.sql("UPDATE employees SET is_owner = false").execute() }
+            testApplication {
+                application { context(di) { configureServer() } }
+
+                val denied = post("test-code", """{"phone":"+7 900 123-45-67"}""")
+                assertEquals(HttpStatusCode.BadRequest, denied.status)
+                assertTrue(denied.bodyAsText().contains("PERMISSION_DENIED"), denied.bodyAsText())
+                assertTrue(post("save-token", """{"token":"gw-token-abcd1234"}""").bodyAsText().contains("PERMISSION_DENIED"))
+                assertTrue(requests.isEmpty())
             }
         }
 }

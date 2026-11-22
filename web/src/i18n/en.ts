@@ -449,6 +449,10 @@ export const en: Messages<typeof ru> = {
   "permission.CAN_MANAGE_WIDGETS.name": "Can manage schedule widgets",
   "permission.CAN_MANAGE_WIDGETS.description":
     "Employee can create and configure schedule widgets for the website and VK",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.label": "Telegram Gateway",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.name": "Can manage Telegram Gateway",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.description":
+    "Employee can connect Telegram Gateway and send test codes paid from its balance",
   "permission.CAN_MANAGE_TASKS.label": "Manage tasks",
   "permission.CAN_MANAGE_TASKS.name": "Can manage tasks",
   "permission.CAN_MANAGE_TASKS.description": "Employee can edit and delete tasks of other members",

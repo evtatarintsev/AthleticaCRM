@@ -19,6 +19,7 @@ import org.athletica.crm.domain.telegramgateway.GatewayCode
 import org.athletica.crm.domain.telegramgateway.GatewayCodeTtl
 import org.athletica.infra.messaging.telegram.mockTelegramClient
 import org.athletica.infra.messaging.telegram.respondJson
+import java.net.ConnectException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds
@@ -87,11 +88,38 @@ class TelegramGatewayApiTest {
         }
 
     @Test
-    fun `не-JSON ответ — ошибка с HTTP-статусом`() =
+    fun `не-JSON ответ — Unavailable, а не ошибка Gateway`() =
         runTest {
             val api = TelegramGatewayApi(listOf(mockTelegramClient { respondJson("<html>", HttpStatusCode.BadGateway) }))
 
-            assertEquals(GatewayResult.Error("HTTP 502"), api.checkSendAbility("t", phone))
+            assertEquals(GatewayResult.Unavailable, api.checkSendAbility("t", phone))
+        }
+
+    @Test
+    fun `ошибка соединения — следующий клиент, таймаут — без повтора`() =
+        runBlocking {
+            var reached = 0
+            val healthy =
+                mockTelegramClient {
+                    reached++
+                    respondJson("""{"ok":true,"result":{"request_id":"r"}}""")
+                }
+            val refused = TelegramGatewayApi(listOf(mockTelegramClient { throw ConnectException("refused") }, healthy))
+            val slow =
+                TelegramGatewayApi(
+                    listOf(
+                        mockTelegramClient {
+                            delay(5_000)
+                            respondJson("""{"ok":true,"result":{"request_id":"r"}}""")
+                        },
+                        healthy,
+                    ),
+                    requestTimeout = 100.milliseconds,
+                )
+
+            assertEquals(GatewayResult.Ok("r", null), refused.checkSendAbility("t", phone))
+            assertEquals(GatewayResult.Unavailable, slow.checkSendAbility("t", phone))
+            assertEquals(1, reached)
         }
 
     @Test

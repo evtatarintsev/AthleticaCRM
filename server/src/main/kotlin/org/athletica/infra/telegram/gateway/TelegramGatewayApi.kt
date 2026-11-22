@@ -1,6 +1,7 @@
 package org.athletica.infra.telegram.gateway
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.SocketTimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
@@ -37,18 +39,19 @@ sealed interface GatewayResult {
     /** `ok = true`: [requestId] — идентификатор запроса Gateway, [remainingBalance] — остаток, если запрос был платным. */
     data class Ok(val requestId: String, val remainingBalance: Money?) : GatewayResult
 
-    /** `ok = false` со строкой ошибки [error] от Gateway; не-JSON ответ — `HTTP <статус>`. */
+    /** `ok = false` со строкой ошибки [error] от Gateway; без строки ошибки — `HTTP <статус>`. */
     data class Error(val error: String) : GatewayResult
 
-    /** Ни один HTTP-клиент не получил ответа: сеть или таймаут. */
+    /** Gateway не дал ответа API: сеть, таймаут или не-JSON ответ (например, 502 от балансировщика). */
     data object Unavailable : GatewayResult
 }
 
 /**
  * Клиент Telegram Gateway API. Токен аккаунта передаётся в каждый вызов заголовком
  * `Authorization: Bearer`, поэтому один клиент обслуживает все организации. Перебирает
- * [clients] (по одному на прокси `telegram.proxies`) при сетевой ошибке или таймауте, как
- * `TelegramBotApi`. Запросы не логируются: в них токен и код, в журнал попадает только метод.
+ * [clients] (по одному на прокси `telegram.proxies`) только при сетевой ошибке до отправки
+ * запроса; после таймаута запрос мог дойти до Telegram, и повтор через другой прокси оплатил бы
+ * проверку или отправил бы код дважды, поэтому сразу [GatewayResult.Unavailable]. Запросы не логируются: в них токен и код, в журнал попадает только метод.
  * [requestTimeout] — предел ожидания ответа одного клиента.
  */
 class TelegramGatewayApi(
@@ -88,7 +91,7 @@ class TelegramGatewayApi(
             },
         )
 
-    /** Выполняет метод [method] с телом [body], перебирая клиенты при сетевых ошибках. */
+    /** Выполняет метод [method] с телом [body], перебирая клиенты при ошибках соединения. */
     private suspend fun call(token: String, method: String, body: JsonObject): GatewayResult {
         val start = current.get()
         clients.indices.forEach { attempt ->
@@ -105,6 +108,10 @@ class TelegramGatewayApi(
                     }.let { it.status.value to it.bodyAsText() }
                 } catch (e: CancellationException) {
                     throw e
+                } catch (e: HttpRequestTimeoutException) {
+                    return timedOut(method, index)
+                } catch (e: SocketTimeoutException) {
+                    return timedOut(method, index)
                 } catch (e: IOException) {
                     logger.warn("Telegram Gateway {}: клиент #{} недоступен ({})", method, index, e.javaClass.simpleName)
                     null
@@ -118,15 +125,21 @@ class TelegramGatewayApi(
         return GatewayResult.Unavailable
     }
 
-    /** Разбирает ответ со статусом [status] и телом [text]. */
+    /** Исход «нет ответа» после таймаута клиента #[index] на методе [method]; другие клиенты не пробуются. */
+    private fun timedOut(method: String, index: Int): GatewayResult {
+        logger.warn("Telegram Gateway {}: клиент #{} не дождался ответа, повтора нет", method, index)
+        return GatewayResult.Unavailable
+    }
+
+    /** Разбирает ответ со статусом [status] и телом [text]; не-JSON ответ — [GatewayResult.Unavailable]. */
     private fun parse(status: Int, text: String): GatewayResult {
         val envelope =
             try {
                 json.parseToJsonElement(text).jsonObject
             } catch (e: SerializationException) {
-                return GatewayResult.Error("HTTP $status")
+                return notApi(status)
             } catch (e: IllegalArgumentException) {
-                return GatewayResult.Error("HTTP $status")
+                return notApi(status)
             }
         val ok = envelope["ok"]?.jsonPrimitive?.booleanOrNull ?: false
         val result = envelope["result"] as? JsonObject
@@ -136,6 +149,12 @@ class TelegramGatewayApi(
         }
         val balance = (result["remaining_balance"] as? JsonPrimitive)?.contentOrNull?.toBigDecimalOrNull()
         return GatewayResult.Ok(requestId, balance?.toUsd())
+    }
+
+    /** Исход для ответа со статусом [status], который не является ответом Gateway API. */
+    private fun notApi(status: Int): GatewayResult {
+        logger.warn("Telegram Gateway: ответ HTTP {} не в формате API", status)
+        return GatewayResult.Unavailable
     }
 
     private companion object {

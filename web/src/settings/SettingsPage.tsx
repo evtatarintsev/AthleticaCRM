@@ -257,6 +257,7 @@ const SETTINGS: readonly SettingSection[] = [
         subtitle: "settings.itemTelegramGatewaySubtitle",
         icon: SendIcon,
         target: panel("telegram-gateway"),
+        permission: "CAN_MANAGE_TELEGRAM_GATEWAY",
       },
       {
         title: "settings.itemScheduleWidgets",

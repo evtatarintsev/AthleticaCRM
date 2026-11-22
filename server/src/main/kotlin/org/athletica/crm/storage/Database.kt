@@ -343,7 +343,7 @@ fun Row.asMoney(column: String, currency: Currency): Money {
 }
 
 /** Как [asMoney], но `NULL` в колонке — `null`. */
-fun Row.asMoneyOrNull(column: String, currency: Currency): Money? = get(column, java.math.BigDecimal::class.java)?.let { Money(it.movePointRight(currency.fractionDigits).toLong(), currency) }
+fun Row.asMoneyOrNull(column: String, currency: Currency): Money? = if (get(column) == null) null else asMoney(column, currency)
 
 /**
  * Конвертирует [Money] обратно в [java.math.BigDecimal] с правильным масштабом

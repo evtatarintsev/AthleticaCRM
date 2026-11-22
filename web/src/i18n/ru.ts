@@ -469,6 +469,10 @@ export const ru = {
   "permission.CAN_MANAGE_WIDGETS.name": "Может управлять виджетами расписания",
   "permission.CAN_MANAGE_WIDGETS.description":
     "Сотрудник сможет создавать и настраивать виджеты расписания для сайта и ВКонтакте",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.label": "Telegram Gateway",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.name": "Может настраивать Telegram Gateway",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.description":
+    "Сотрудник сможет подключать Telegram Gateway и отправлять тестовые коды за счёт его баланса",
   "permission.CAN_MANAGE_TASKS.label": "Управление задачами",
   "permission.CAN_MANAGE_TASKS.name": "Может управлять задачами",
   "permission.CAN_MANAGE_TASKS.description":

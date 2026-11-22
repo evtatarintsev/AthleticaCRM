@@ -10,6 +10,7 @@ import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewayIntegrationS
 import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewaySettingsResponse
 import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewayTestCodeResponse
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.permissions.requireManageTelegramGateway
 import org.athletica.crm.core.secretMask
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
 import org.athletica.crm.domain.telegramgateway.GatewayCode
@@ -23,7 +24,8 @@ import java.security.SecureRandom
 
 /**
  * Регистрирует маршруты настроек Telegram Gateway организации. Токен проверяется у Telegram
- * через [gateway] до открытия транзакции; в ответах — только его маска.
+ * через [gateway] до открытия транзакции; в ответах — только его маска. Все маршруты требуют
+ * права `CAN_MANAGE_TELEGRAM_GATEWAY`: тестовый код оплачивается с баланса Gateway организации.
  * Требует контекстного параметра [Database].
  */
 context(db: Database)
@@ -33,10 +35,12 @@ fun RouteWithContext.telegramGatewayRoutes(
 ) {
     route("/telegram-gateway") {
         get<TelegramGatewaySettingsResponse>("/settings") {
+            requireManageTelegramGateway()
             db.transaction { TelegramGatewaySettingsResponse(integrations.current()?.toSchema()) }
         }
 
         post<SaveTelegramGatewayTokenRequest, TelegramGatewaySettingsResponse>("/save-token") { request ->
+            requireManageTelegramGateway()
             val token = gateway.verifiedToken(request.token)
             db.transaction {
                 integrations.saveToken(token)
@@ -45,6 +49,7 @@ fun RouteWithContext.telegramGatewayRoutes(
         }
 
         post<SetTelegramGatewayEnabledRequest, TelegramGatewaySettingsResponse>("/set-enabled") { request ->
+            requireManageTelegramGateway()
             db.transaction {
                 integrations.setEnabled(request.enabled)
                 TelegramGatewaySettingsResponse(integrations.current()?.toSchema())
@@ -52,6 +57,7 @@ fun RouteWithContext.telegramGatewayRoutes(
         }
 
         post<SendTelegramGatewayTestCodeRequest, TelegramGatewayTestCodeResponse>("/test-code") { request ->
+            requireManageTelegramGateway()
             val phone = PhoneDigits.from(request.phone) ?: raise(CommonDomainError("INVALID_PHONE", "Укажите номер телефона"))
             val code = GatewayCode.from(random.nextInt(1_000_000).toString().padStart(6, '0'))
             when (val result = gateway.send(phone, code, GatewayCodeTtl.from(TEST_CODE_TTL_SECONDS))) {

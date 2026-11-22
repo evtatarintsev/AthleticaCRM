@@ -507,7 +507,7 @@ export const OrgInfoSchema = z
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS"]);
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS", "CAN_MANAGE_TELEGRAM_GATEWAY"]);
 export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const AuthMeResponseSchema = z

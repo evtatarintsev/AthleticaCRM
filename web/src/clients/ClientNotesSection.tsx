@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PencilIcon, TrashIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
   BranchId,
@@ -16,6 +16,7 @@ import { TextAreaField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
+import { useEditSheet } from "@/ui/editSheetContext";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { BlockStatus, ClientCardBlock, ShowAllButton } from "./card/ClientCardBlock";
 
@@ -38,6 +39,7 @@ export function ClientNotesSection({
 }) {
   const { t, format } = useI18n();
   const queryClient = useQueryClient();
+  const { reportGuard } = useEditSheet();
   const notesQuery = apiQuery(api, branchId, "clients/notes/list", { clientId });
   const notes = useQuery(notesQuery);
 
@@ -48,6 +50,10 @@ export function ClientNotesSection({
   const [error, setError] = useState<string | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<ClientNoteSchema | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const original = notes.data?.notes.find((note) => note.id === editingId)?.text ?? "";
+  useEffect(() => {
+    reportGuard({ dirty: draft !== original, submitting });
+  }, [draft, original, submitting, reportGuard]);
 
   const applyResponse = (response: ClientNotesListResponse) => {
     queryClient.setQueryData(notesQuery.queryKey, response);
@@ -150,7 +156,7 @@ export function ClientNotesSection({
         <ul className="divide-y">
           {shown.map((note) => (
             <li key={note.id} className="space-y-1 px-4 py-2">
-              <p className="text-sm whitespace-pre-wrap">{note.text}</p>
+              <p className="text-sm break-words whitespace-pre-wrap">{note.text}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-medium">{note.author.name}</span>
                 <span>{format.dateTime(note.createdAt)}</span>

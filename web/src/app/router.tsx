@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
@@ -26,7 +25,6 @@ import { createAuthApi } from "@/auth/authApi";
 import { FinancePage } from "@/finance/FinancePage";
 import { FinanceSearchSchema, type FinanceSearch } from "@/finance/financeSearch";
 import { ClientsPage } from "@/clients/ClientsPage";
-import { CLIENT_TABS } from "@/clients/card/clientOverview";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
 import { ClientDetailPage } from "@/clients/ClientDetailPage";
 import { ClientEditPage } from "@/clients/ClientEditPage";
@@ -593,22 +591,10 @@ const clientRoute = createRoute({
     },
     stringify: ({ clientId }) => ({ clientId }),
   },
-  validateSearch: z.object({ tab: z.enum(CLIENT_TABS).catch("overview").default("overview") }),
   component: function ClientRoute() {
     const { api } = clientRoute.useRouteContext();
     const { clientId } = clientRoute.useParams();
-    const { tab } = clientRoute.useSearch();
-    const navigate = clientRoute.useNavigate();
-    return (
-      <ClientDetailPage
-        api={api}
-        clientId={clientId}
-        tab={tab}
-        onTabChange={(next, replace) => {
-          void navigate({ search: { tab: next }, replace: replace === true });
-        }}
-      />
-    );
+    return <ClientDetailPage api={api} clientId={clientId} />;
   },
 });
 
@@ -642,7 +628,7 @@ const clientVisitHistoryRoute = createRoute({
     stringify: ({ clientId }) => ({ clientId }),
   },
   beforeLoad: ({ params }) => {
-    throw redirect({ to: "/clients/$clientId", params, search: { tab: "sessions" } });
+    throw redirect({ to: "/clients/$clientId", params });
   },
 });
 

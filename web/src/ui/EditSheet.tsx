@@ -51,6 +51,8 @@ interface EditSheetProps {
   readonly title: string;
   /** Ширина: форма — `md` (по умолчанию), список или таблица — шире. */
   readonly size?: EditSheetSize;
+  /** Закрывать панель кликом снаружи, с обычной защитой черновика. */
+  readonly closeOnOutside?: boolean;
   /**
    * Содержимое; монтируется только пока панель открыта, поэтому каждое открытие
    * начинается с чистой формы.
@@ -66,7 +68,14 @@ interface EditSheetProps {
  * После закрытия фокус возвращается на элемент, с которого панель открыли: панель управляется
  * через [open] без `SheetTrigger`, и сам Radix вернуть фокус некуда.
  */
-export function EditSheet({ open, onOpenChange, title, size = "md", children }: EditSheetProps) {
+export function EditSheet({
+  open,
+  onOpenChange,
+  title,
+  size = "md",
+  closeOnOutside = false,
+  children,
+}: EditSheetProps) {
   const { t } = useI18n();
   const parent = useContext(EditSheetContext);
   const [childOpen, setChildOpen] = useState(false);
@@ -138,6 +147,7 @@ export function EditSheet({ open, onOpenChange, title, size = "md", children }: 
         }}
         onInteractOutside={(event) => {
           event.preventDefault();
+          if (closeOnOutside && !childOpen) requestClose();
         }}
         onEscapeKeyDown={(event) => {
           if (isExpandedCombobox(event.target)) {

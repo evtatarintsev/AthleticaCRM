@@ -40,6 +40,8 @@ import org.athletica.crm.domain.customfields.CLIENT_CUSTOM_FIELD_ENTITY_TYPE
 import org.athletica.crm.domain.customfields.DbCustomFieldDefinitions
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.employeeContext
+import org.athletica.crm.routes.detailResponse
+import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.testName
 import org.athletica.crm.usecases.finance.ClientPayments
@@ -291,7 +293,7 @@ class DbClientsTest {
                     context(ctx) {
                         val client = assertIs<ArchivedClient>(clients.byId(id))
                         assertEquals("Клиент", client.name)
-                        assertEquals(Money.zero(Currency.RUB), org.athletica.crm.read.finance.DbClientBalanceView().byClient(client.id))
+                        assertEquals(Money(0, Currency.RUB), org.athletica.crm.read.finance.DbClientBalanceView().byClient(client.id))
                     }
                 }
             }
@@ -328,6 +330,15 @@ class DbClientsTest {
 
             assertEquals(id, result.id)
             assertEquals("Мария Иванова", result.name)
+            val storedCreatedAt =
+                orThrow {
+                    TestPostgres.db.sql("SELECT created_at FROM clients WHERE id = :id")
+                        .bind("id", id).firstOrNull { it.asInstant("created_at") }
+                }
+            assertEquals(storedCreatedAt, result.createdAt)
+            val loaded = orThrow { TestPostgres.db.transaction { context(ctx) { clients.byId(id) } } }
+            assertEquals(result.createdAt, loaded.createdAt)
+            assertEquals(result.createdAt, loaded.detailResponse(Money(0, Currency.RUB), emptyList()).createdAt)
             assertEquals(birthday, result.birthday)
             assertEquals(Gender.FEMALE, result.gender)
             assertNull(result.avatarId)
@@ -712,5 +723,6 @@ class DbClientsTest {
                     TestPostgres.db.transaction { context(ctx) { clients.byId(id) } }
                 }.getOrElse { fail("Unexpected error: $it") }
             assertIs<ActiveClient>(restored)
+            assertEquals(archived.createdAt, restored.createdAt)
         }
 }

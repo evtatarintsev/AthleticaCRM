@@ -49,6 +49,7 @@ private class AuditLogStub : AuditLog {
 private data class ClientStub(
     override val id: ClientId,
     override val name: String,
+    override val createdAt: kotlin.time.Instant = kotlin.time.Instant.parse("2024-01-01T10:00:00Z"),
     override val avatarId: UploadId? = null,
     override val birthday: LocalDate? = null,
     override val gender: Gender = Gender.MALE,
@@ -105,7 +106,7 @@ private class ClientsStub(clients: List<ClientStub>) : Clients {
         leadSourceId: LeadSourceId?,
         customFields: List<CustomFieldValue>,
     ): ActiveClient {
-        val client = ClientStub(id, name.value, avatarId, birthday, gender, leadSourceId = leadSourceId, customFields = customFields)
+        val client = ClientStub(id = id, name = name.value, avatarId = avatarId, birthday = birthday, gender = gender, leadSourceId = leadSourceId, customFields = customFields)
         clients.add(client)
         return client
     }

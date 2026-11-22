@@ -16,6 +16,10 @@ import {
   ScheduleListRequestSchema,
   SendMessageRequestSchema,
   TaskDetailResponseSchema,
+  TaskDetailRequestSchema,
+  TaskListRequestSchema,
+  TaskIdSchema,
+  UpdateTaskStatusRequestSchema,
   type ClientDetailResponse,
   type ClientNoteSchema,
   type CustomFieldDefinition,
@@ -26,6 +30,7 @@ import { addDays, todayLocalDate } from "@/lib/localDate";
 import { appServer, empty, json, openApp, session } from "@/test/app";
 
 const alice = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000501",
   name: "Алиса Иванова",
   avatarId: null,
@@ -171,11 +176,11 @@ describe("карточка клиента", () => {
     });
   });
 
-  it("после смены вкладки возвращает в список без параметров карточки", async () => {
+  it("из анкеты возвращает в список без параметров карточки", async () => {
     const { history } = openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: /^Анкета/ }));
-    expect(history.location.search).toBe("?tab=profile");
+    await screen.findByRole("heading", { name: ru["clientCard.profile"] });
+    expect(history.location.search).toBe("");
     await user.click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {
       expect(history.location.pathname).toBe("/clients");
@@ -193,18 +198,19 @@ describe("карточка клиента", () => {
     expect(screen.getByText(alice.contacts[1]?.value ?? "")).toBeInTheDocument();
     expect(screen.getByText("Утренняя группа")).toBeInTheDocument();
 
-    await user.click(await screen.findByRole("tab", { name: /^Заметки/ }));
+    await user.click(await screen.findByRole("button", { name: /^Все заметки/ }));
     await user.type(
       screen.getByLabelText(ru["clients.detail.noteFieldLabel"]),
       "Перезвонить завтра",
     );
     await user.click(screen.getByRole("button", { name: ru["action.add"] }));
 
-    await screen.findByText("Перезвонить завтра");
+    await screen.findAllByText("Перезвонить завтра");
     const addRequest = AddClientNoteRequestSchema.parse(api.to("clients/notes/add").at(-1)?.body);
     expect(addRequest.clientId).toBe(alice.id);
     expect(addRequest.text).toBe("Перезвонить завтра");
 
+    await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: ru["clientCard.action.more"] }));
     await user.click(await screen.findByRole("menuitem", { name: ru["action.archive"] }));
     await screen.findByText(ru["clients.view.archived"]);
@@ -224,14 +230,15 @@ describe("карточка клиента", () => {
     openApp(`/clients/${alice.id}?tab=notes`, api.fetch);
     const user = userEvent.setup();
 
-    await screen.findByText("исходный текст");
+    await user.click(await screen.findByRole("button", { name: /^Все заметки/ }));
+    await screen.findAllByText("исходный текст");
     await user.click(screen.getByRole("button", { name: ru["clients.detail.noteEditAria"] }));
     const field = screen.getByLabelText(ru["clients.detail.noteFieldLabel"]);
     await user.clear(field);
     await user.type(field, "новый текст");
     await user.click(screen.getByRole("button", { name: ru["action.save"] }));
 
-    await screen.findByText("новый текст");
+    await screen.findAllByText("новый текст");
     expect(screen.getByText(ru["clients.detail.noteEdited"])).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: ru["clients.detail.noteDeleteAria"] }));
@@ -247,7 +254,7 @@ describe("карточка клиента", () => {
     openApp(`/clients/${alice.id}`, api.fetch);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("tab", { name: "Анкета" }));
+    await screen.findByRole("heading", { name: ru["clientCard.profile"] });
     await screen.findByText(ru["clients.detail.noDocuments"]);
     const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
     if (fileInput === null) {
@@ -398,14 +405,18 @@ describe("карточка клиента", () => {
     });
     openApp(`/clients/${alice.id}`, api.fetch);
 
-    await screen.findByText(/Большой зал/);
+    await screen.findByRole("link", { name: /Открыть занятие: Утренняя группа/ });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: "Занятия" }));
+    await user.click(
+      await screen.findByRole("button", { name: ru["clientOverview.openSessions"] }),
+    );
     expect(await screen.findAllByText(/Посещённая группа/)).toHaveLength(1);
     expect(screen.getByText(/Пропущенная группа/)).toBeInTheDocument();
     expect(screen.getByText("Болезнь")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Обзор" }));
-    expect(await screen.findByText(/Напомнить о продлении/)).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(
+      await screen.findByRole("button", { name: "Напомнить о продлении" }),
+    ).toBeInTheDocument();
 
     const alerts = within(
       screen.getByRole("heading", { name: ru["clientOverview.attention"] }).closest("section") ??
@@ -609,7 +620,7 @@ describe("чат в карточке клиента", () => {
       expect(input).toHaveFocus();
     });
     expect(history.location.pathname).toBe(`/clients/${alice.id}`);
-    expect(history.location.search).toBe("?tab=overview");
+    expect(history.location.search).toBe("");
 
     await user.type(input, "Да, конечно{Enter}");
 
@@ -671,43 +682,39 @@ describe("чат в карточке клиента", () => {
   });
 });
 
-describe("вкладки и разделы карточки", () => {
-  it("простой набор скрывает разделы и их запросы; выключенная вкладка возвращается на обзор", async () => {
+describe("одна страница и разделы карточки", () => {
+  it("простой набор показывает анкету и контакты, не запрашивает выключенные разделы", async () => {
     const api = detailServer(alice, [], passport, {
       "org/client-card": () => json({ tasks: false, notes: false, chat: false, documents: false }),
     });
     const { history } = openApp(`/clients/${alice.id}?tab=notes`, api.fetch);
     await screen.findByRole("heading", { name: alice.name });
-    await waitFor(() => {
-      expect(history.location.search).toBe("?tab=overview");
-    });
-    expect(screen.queryByRole("tab", { name: /^Заметки/ })).toBeNull();
-    expect(screen.queryByRole("tab", { name: /^Задачи/ })).toBeNull();
+    expect(await screen.findByRole("heading", { name: ru["clientCard.profile"] })).toBeVisible();
+    expect(history.location.search).toBe("?tab=notes");
+    expect(screen.queryByRole("tablist")).toBeNull();
     expect(screen.queryByRole("button", { name: ru["messaging.open"] })).toBeNull();
     expect(api.to("tasks/list")).toHaveLength(0);
     expect(api.to("clients/notes/list")).toHaveLength(0);
     expect(api.to("messaging/conversation")).toHaveLength(0);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("tab", { name: "Анкета" }));
     expect(screen.queryByText(ru["clients.detail.noDocuments"])).toBeNull();
+    const profile = screen
+      .getByRole("heading", { name: ru["clientCard.profile"] })
+      .closest<HTMLElement>("div.rounded-lg");
+    expect(profile?.parentElement?.parentElement?.lastElementChild).toContainElement(profile);
   });
-  it("невалидная вкладка открывает обзор, visits перенаправляет к занятиям", async () => {
+  it("игнорирует старый tab, visits открывает карточку без панели", async () => {
     const api = detailServer(alice);
     const { history } = openApp(`/clients/${alice.id}?tab=unknown`, api.fetch);
-    expect(await screen.findByRole("tab", { name: "Обзор" })).toHaveAttribute(
-      "data-state",
-      "active",
-    );
+    await screen.findByRole("heading", { name: alice.name });
+    expect(screen.queryByRole("tablist")).toBeNull();
     history.push(`/clients/${alice.id}/visits`);
     await waitFor(() => {
-      expect(history.location.search).toBe("?tab=sessions");
+      expect(history.location.pathname).toBe(`/clients/${alice.id}`);
+      expect(history.location.search).toBe("");
     });
-    expect(await screen.findByRole("tab", { name: "Занятия" })).toHaveAttribute(
-      "data-state",
-      "active",
-    );
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("сохранение разделов из меню включает вкладку и сохраняет данные", async () => {
+  it("сохранение разделов из меню включает карточку и сохраняет данные", async () => {
     let enabled = false;
     const api = detailServer(alice, [], passport, {
       "org/client-card": () =>
@@ -726,7 +733,7 @@ describe("вкладки и разделы карточки", () => {
     );
     await user.click(await sheet.findByRole("checkbox", { name: /Задачи/ }));
     await user.click(sheet.getByRole("button", { name: ru["action.save"] }));
-    expect(await screen.findByRole("tab", { name: /^Задачи/ })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: ru["tasks.title"] })).toBeVisible();
     expect(api.to("org/client-card/update")[0]?.body).toEqual({
       tasks: true,
       notes: false,
@@ -736,47 +743,193 @@ describe("вкладки и разделы карточки", () => {
   });
 });
 
-it("attendance and next session tiles support keyboard and expose their action", async () => {
-  const nextId = "0199a0b2-7c3e-7d2a-9f10-000000000c01";
+it("opens sessions with the keyboard and restores focus", async () => {
+  const { history } = openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
+  const user = userEvent.setup();
+  const attendance = await screen.findByRole("button", { name: ru["clientOverview.openSessions"] });
+  attendance.focus();
+  expect(attendance.className).toContain("focus-visible");
+  expect(attendance).toHaveAttribute("aria-haspopup", "dialog");
+  await user.keyboard("{Enter}");
+  expect(await screen.findByRole("dialog", { name: ru["clientOverview.sessions"] })).toBeVisible();
+  expect(history.location.search).toBe("");
+  await user.keyboard("{Escape}");
+  await waitFor(() => {
+    expect(attendance).toHaveFocus();
+  });
+});
+
+it.each(["escape", "close", "outside"])(
+  "protects note drafts when closing via %s",
+  async (method) => {
+    openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Все заметки/ }));
+    const panel = await screen.findByRole("dialog", { name: ru["clients.detail.notes"] });
+    const field = within(panel).getByLabelText(ru["clients.detail.noteFieldLabel"]);
+    await user.type(field, "Черновик заметки");
+    if (method === "escape") await user.keyboard("{Escape}");
+    else if (method === "close")
+      await user.click(within(panel).getByRole("button", { name: ru["action.close"] }));
+    else {
+      const overlay = document.querySelector<HTMLElement>('[data-slot="sheet-overlay"]');
+      if (overlay === null) throw new Error("Missing overlay");
+      await user.click(overlay);
+    }
+    const confirm = within(
+      await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] }),
+    );
+    await user.click(confirm.getByRole("button", { name: ru["action.cancel"] }));
+    expect(field).toHaveValue("Черновик заметки");
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: ru["editSheet.discardConfirm"] }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  },
+);
+
+it("closes an empty list on outside click and restores focus", async () => {
+  const { history } = openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
+  const user = userEvent.setup();
+  const trigger = await screen.findByRole("button", { name: ru["clientOverview.openSessions"] });
+  await user.click(trigger);
+  await screen.findByRole("dialog", { name: ru["clientOverview.sessions"] });
+  const overlay = document.querySelector<HTMLElement>('[data-slot="sheet-overlay"]');
+  if (overlay === null) throw new Error("Missing overlay");
+  await user.click(overlay);
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  expect(trigger).toHaveFocus();
+  expect(history.location.search).toBe("");
+});
+
+it("shows the creation date, age and full section layout", async () => {
+  openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
+  const heading = await screen.findByRole("heading", { name: ru["clientCard.profile"] });
+  const profile = heading.closest<HTMLElement>("div.rounded-lg");
+  if (profile === null) throw new Error("Missing profile");
+  expect(within(profile).getByText(ru["clientCard.createdAt"])).toBeVisible();
+  expect(within(profile).getByText(/2024/)).toBeVisible();
+  expect(within(profile).getByText(/1990.*лет/)).toBeVisible();
+  await screen.findByRole("heading", { name: ru["tasks.title"] });
+  const column = profile.parentElement?.parentElement;
+  expect(column?.previousElementSibling).toBeNull();
+  expect(within(profile).getByText(ru["clients.detail.noDocuments"])).toBeVisible();
+  expect(screen.queryByRole("tablist")).toBeNull();
+});
+
+it("loads tasks beyond the first 50, keeps the list under a task, and refreshes counts", async () => {
+  let tasks = Array.from({ length: 80 }, (_, index) =>
+    TaskDetailResponseSchema.parse({
+      ...aliceTask,
+      id: TaskIdSchema.parse(
+        `0199a0b2-7c3e-7d2a-9f10-${(index + 1).toString(16).padStart(12, "0")}`,
+      ),
+      title: `Задача ${String(index + 1)}`,
+      status: index < 60 ? "PENDING" : "COMPLETED",
+      dueDate: index >= 48 && index < 60 ? "2020-01-01T00:00:00Z" : null,
+    }),
+  );
   const api = detailServer(alice, [], passport, {
-    "schedule/list": () =>
-      json({
-        sessions: [
-          {
-            id: nextId,
-            group: alice.groups[0],
-            date: addDays(todayLocalDate(), 1),
-            startTime: "18:00",
-            endTime: "19:00",
-            hall: { id: "0199a0b2-7c3e-7d2a-9f10-000000000d01", name: "Зал" },
-            coaches: [],
-            disciplines: [],
-            status: "SCHEDULED",
-            colorKey: "GREEN",
-            coachesOverridden: false,
-            rescheduledFrom: null,
-            isManual: false,
-          },
-        ],
-      }),
+    "tasks/list": ({ body }) => {
+      const request = TaskListRequestSchema.parse(body);
+      const filtered = tasks.filter(
+        (task) =>
+          (request.statuses === undefined || request.statuses.includes(task.status)) &&
+          (request.dueDateTo == null ||
+            (task.dueDate !== null && task.dueDate <= request.dueDateTo)),
+      );
+      const offset = request.offset ?? 0;
+      return json({
+        tasks: filtered.slice(offset, offset + (request.limit ?? 50)),
+        total: filtered.length,
+      });
+    },
+    "tasks/detail": ({ body }) =>
+      json(tasks.find((task) => task.id === TaskDetailRequestSchema.parse(body).taskId)),
+    "tasks/status": ({ body }) => {
+      const request = UpdateTaskStatusRequestSchema.parse(body);
+      tasks = tasks.map((task) =>
+        request.taskIds.includes(task.id) ? { ...task, status: request.status } : task,
+      );
+      return json({ updated: request.taskIds.length });
+    },
   });
   const { history } = openApp(`/clients/${alice.id}`, api.fetch);
   const user = userEvent.setup();
-  const attendance = await screen.findByRole("button", { name: ru["clientOverview.openSessions"] });
-  for (let i = 0; i < 35 && document.activeElement !== attendance; i++) await user.tab();
-  expect(attendance).toHaveFocus();
-  expect(attendance.className).toContain("focus-visible");
-  expect(attendance).not.toHaveAttribute("aria-haspopup");
-  await user.keyboard("{Enter}");
-  expect(screen.getByRole("tab", { name: "Занятия" })).toHaveAttribute("data-state", "active");
-  await user.click(screen.getByRole("tab", { name: "Обзор" }));
-  const next = await screen.findByRole("link", { name: /Открыть занятие: Утренняя группа/ });
-  for (let i = 0; i < 35 && document.activeElement !== next; i++) await user.tab();
-  expect(next).toHaveFocus();
-  expect(next.className).toContain("focus-visible:ring");
-  expect(next.querySelector(".lucide-chevron-right")).not.toBeNull();
-  await user.keyboard("{Enter}");
+  await screen.findByText(/12 просроченных задач/);
+  const card = (await screen.findByRole("heading", { name: ru["tasks.title"] })).closest("section");
+  if (card === null) throw new Error("Missing task card");
   await waitFor(() => {
-    expect(history.location.pathname).toBe(`/sessions/${nextId}`);
+    expect(within(card).getByRole("heading")).toHaveTextContent("60");
+  });
+  await user.click(within(card).getByRole("button", { name: /Все задачи · 80/ }));
+  const list = await screen.findByRole("dialog", { name: ru["tasks.title"] });
+  await user.click(await within(list).findByRole("button", { name: ru["clients.loadMore"] }));
+  const taskRow = await within(list).findByRole("button", { name: "Задача 56" });
+  await user.click(taskRow);
+  const task = await screen.findByRole("dialog", { name: "Задача 56" });
+  await user.click(within(task).getByRole("button", { name: ru["tasks.changeStatus"] }));
+  await user.click(await screen.findByRole("menuitem", { name: ru["taskStatus.COMPLETED"] }));
+  await user.keyboard("{Escape}");
+  await waitFor(() => {
+    expect(taskRow).toHaveFocus();
+  });
+  expect(list).toBeVisible();
+  expect(within(list).getByRole("button", { name: "Задача 56" })).toBeVisible();
+  await user.keyboard("{Escape}");
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  await screen.findByText(/11 просроченных задач/);
+  expect(within(card).getByRole("heading")).toHaveTextContent("59");
+  expect(history.location.search).toBe("");
+});
+
+it("keeps an edited note and blocks closing while a note is being sent", async () => {
+  let release: (() => void) | undefined;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const note: ClientNoteSchema = {
+    id: ClientNoteIdSchema.parse("0199a0b2-7c3e-7d2a-9f10-000000000702"),
+    text: "Старый текст",
+    author: { id: session().employeeId, name: session().name },
+    createdAt: InstantSchema.parse("2024-01-01T10:00:00Z"),
+    updatedAt: null,
+  };
+  const api = detailServer(alice, [note], passport, {
+    "clients/notes/edit": () => json({ notes: [{ ...note, text: "Новый текст" }] }),
+  });
+  openApp(`/clients/${alice.id}`, async (input, init) => {
+    if (new URL(input, "http://localhost").pathname === "/api/clients/notes/edit") await waiting;
+    return api.fetch(input, init);
+  });
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: /^Все заметки/ }));
+  const panel = await screen.findByRole("dialog", { name: ru["clients.detail.notes"] });
+  await user.click(
+    await within(panel).findByRole("button", { name: ru["clients.detail.noteEditAria"] }),
+  );
+  const field = within(panel).getByLabelText(ru["clients.detail.noteFieldLabel"]);
+  await user.clear(field);
+  await user.type(field, "Новый текст");
+  await user.keyboard("{Escape}");
+  const confirm = within(await screen.findByRole("dialog", { name: ru["editSheet.discardTitle"] }));
+  await user.click(confirm.getByRole("button", { name: ru["action.cancel"] }));
+  expect(field).toHaveValue("Новый текст");
+  await user.click(within(panel).getByRole("button", { name: ru["action.save"] }));
+  await user.keyboard("{Escape}");
+  expect(panel).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: ru["editSheet.discardTitle"] })).toBeNull();
+  release?.();
+  await waitFor(() => {
+    expect(field).toHaveValue("");
+  });
+  await user.keyboard("{Escape}");
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

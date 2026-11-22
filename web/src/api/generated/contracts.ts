@@ -971,6 +971,7 @@ export const ClientDetailResponseSchema = z
   .object({
     id: ClientIdSchema,
     name: z.string(),
+    createdAt: InstantSchema,
     avatarId: UploadIdSchema.nullable(),
     birthday: LocalDateSchema.nullable(),
     gender: GenderSchema,

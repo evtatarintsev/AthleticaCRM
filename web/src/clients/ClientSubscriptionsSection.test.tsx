@@ -12,6 +12,7 @@ import { appServer, empty, json, openApp } from "@/test/app";
 import { activeState, testMembership } from "@/test/memberships";
 
 const dana = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000504",
   name: "Дана Лебедева",
   avatarId: null,
@@ -63,7 +64,7 @@ describe("абонементы клиента", () => {
     openApp(`/clients/${dana.id}?tab=memberships`, api.fetch);
     const user = userEvent.setup();
 
-    await screen.findByText(ru["clients.detail.subscriptionsEmpty"]);
+    await screen.findByText(ru["clientCard.quick.noSubscription"]);
     await user.click(screen.getByRole("button", { name: ru["clients.detail.issueSubscription"] }));
 
     const panel = await screen.findByRole("dialog", {
@@ -104,10 +105,13 @@ describe("абонементы клиента", () => {
     });
     openApp(`/clients/${dana.id}?tab=memberships`, subscriptionsServer(dana, [lastSession]).fetch);
 
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /Открыть все абонементы/ }));
     const section = within(
-      (await screen.findByRole("heading", { name: ru["clients.detail.subscriptions"] })).closest(
-        "section",
-      ) ?? document.body,
+      (
+        await screen.findByRole("dialog", { name: ru["clients.detail.subscriptions"] })
+      ).querySelector("section") ?? document.body,
     );
     expect(await section.findByText("Осталось 1 из 8")).toHaveClass("text-amber-700");
     expect(section.getByText(/31/)).not.toHaveClass("text-amber-700");
@@ -124,6 +128,9 @@ describe("абонементы клиента", () => {
     });
     openApp(`/clients/${dana.id}?tab=memberships`, subscriptionsServer(dana, [pending]).fetch);
 
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /Открыть все абонементы/ }));
     expect(await screen.findAllByText(ru["membership.phase.closePending"])).not.toHaveLength(0);
     expect(
       screen.getAllByText(`${ru["membership.expired"]} · ${ru["membership.exhausted"]}`),

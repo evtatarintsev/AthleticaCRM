@@ -31,6 +31,8 @@ export function ClientOverviewTab({
   branchId,
   client,
   quickInfo,
+  profile,
+  tasks,
   alerts,
   chat,
   notes,
@@ -49,6 +51,8 @@ export function ClientOverviewTab({
   readonly branchId: BranchId;
   readonly client: ClientDetailResponse;
   readonly quickInfo: ReactNode;
+  readonly profile: ReactNode;
+  readonly tasks: ReactNode;
   readonly alerts: readonly ClientAlert[];
   readonly chat: boolean;
   readonly notes: boolean;
@@ -68,7 +72,10 @@ export function ClientOverviewTab({
     ...apiQuery(api, branchId, "clients/notes/list", { clientId: client.id }),
     enabled: notes,
   });
-  const note = latest.data?.notes.toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const latestNotes = (latest.data?.notes ?? [])
+    .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 2);
+  const extras = chat || notes || tasks !== null;
   return (
     <div className="space-y-4">
       {quickInfo}
@@ -193,9 +200,12 @@ export function ClientOverviewTab({
             open={groupOpen}
             onOpenChange={onGroupOpen}
           />
-          {(chat || notes) && <Contacts client={client} />}
+          <Contacts client={client} />
+          {extras && profile}
         </div>
         <div className="space-y-4">
+          {!extras && profile}
+          {tasks}
           {chat && (
             <ClientMessagesSection
               api={api}
@@ -206,29 +216,35 @@ export function ClientOverviewTab({
           )}
           {notes && (
             <ClientCardBlock
-              title={t("clientOverview.latestNote")}
-              count={null}
-              actions={
+              title={t("clients.detail.notes")}
+              count={latest.data?.notes.length ?? 0}
+              footer={
                 <Button size="sm" variant="link" onClick={onNotes}>
                   {t("clientOverview.allNotes")} · {latest.data?.notes.length ?? 0}
                 </Button>
               }
+              actions={
+                <Button size="sm" variant="link" onClick={onNotes}>
+                  {t("action.add")}
+                </Button>
+              }
             >
-              {note === undefined ? (
+              {latestNotes.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-muted-foreground">
                   {t("clientOverview.noNotes")}
                 </p>
               ) : (
-                <div className="px-4 py-3.5 text-sm">
-                  <p className="whitespace-pre-wrap">{note.text}</p>
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    {note.author.name} · {format.dateTime(note.createdAt)}
-                  </p>
-                </div>
+                latestNotes.map((note) => (
+                  <div key={note.id} className="border-b last:border-0 px-4 py-3.5 text-sm">
+                    <p className="break-words whitespace-pre-wrap">{note.text}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {note.author.name} · {format.dateTime(note.createdAt)}
+                    </p>
+                  </div>
+                ))
               )}
             </ClientCardBlock>
           )}
-          {!chat && !notes && <Contacts client={client} />}
         </div>
       </div>
     </div>

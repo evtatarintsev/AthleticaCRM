@@ -14,9 +14,6 @@ import { addDays, todayLocalDate } from "@/lib/localDate";
 import { unwrap } from "@/query/apiFailure";
 import { apiQuery } from "@/query/queries";
 
-/** Сколько задач клиента загружается в карточку. */
-const TASKS_LIMIT = 50;
-
 /** На сколько дней вперёд показываются ближайшие занятия. */
 const UPCOMING_DAYS = 14;
 
@@ -46,9 +43,9 @@ export function unpaidSessionsQuery(
   return apiQuery(api, branchId, "memberships/unpaid-sessions", { membershipId });
 }
 
-/** Запрос задач клиента [clientId]; общий для блока и предупреждений шапки. */
+/** Запрос общего числа задач клиента [clientId]. */
 export function clientTasksQuery(api: ApiClient, branchId: BranchId, clientId: ClientId) {
-  return apiQuery(api, branchId, "tasks/list", { clientId, limit: TASKS_LIMIT });
+  return apiQuery(api, branchId, "tasks/list", { clientId, limit: 1 });
 }
 
 /**

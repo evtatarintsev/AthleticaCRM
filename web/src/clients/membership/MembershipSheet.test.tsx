@@ -13,6 +13,7 @@ import { appServer, empty, json, openApp } from "@/test/app";
 import { activeState, testMembership } from "@/test/memberships";
 
 const client = ClientDetailResponseSchema.parse({
+  createdAt: "2024-01-01T10:00:00Z",
   id: "0199a0b2-7c3e-7d2a-9f10-000000000505",
   name: "Борис Орлов",
   avatarId: null,
@@ -212,7 +213,7 @@ describe("абонементы в карточке клиента", () => {
     expect(endingTile.getByText("Осталось 12 из 12")).not.toHaveClass("text-amber-700");
     expect(endingTile.getByText(/^до /)).toHaveClass("text-amber-700");
 
-    expect(screen.getByRole("button", { name: /Открыть остальные абонементы: 1/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Открыть все абонементы: 3/ })).toBeVisible();
     expect(screen.getAllByText(ru["clientCard.quick.subscription"])).toHaveLength(1);
     expect(screen.queryByRole("list", { name: ru["clientCard.alerts"] })).not.toBeInTheDocument();
   });
@@ -270,13 +271,15 @@ describe("абонементы в карточке клиента", () => {
 
   it("у закрытого абонемента действий нет", async () => {
     openApp(`/clients/${client.id}?tab=memberships`, membershipsServer([closed]).fetch);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /Открыть все абонементы/ }));
     const user = userEvent.setup();
 
-    await user.click(
-      await screen.findByRole("button", {
-        name: ru["clientCard.membership.open"].replace("{name}", "Летний"),
-      }),
-    );
+    const row = await screen.findByRole("button", {
+      name: ru["clientCard.membership.open"].replace("{name}", "Летний"),
+    });
+    await user.click(row);
 
     const sheet = within(await screen.findByRole("dialog", { name: "Летний" }));
     expect(sheet.getByText(ru["membership.phase.closed"])).toBeInTheDocument();
@@ -287,6 +290,13 @@ describe("абонементы в карточке клиента", () => {
     expect(
       sheet.queryByRole("button", { name: ru["membership.extend.action"] }),
     ).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(
+      await screen.findByRole("dialog", { name: ru["clients.detail.subscriptions"] }),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(row).toHaveFocus();
+    });
   });
 
   it("продление из панели обновляет дату окончания в панели и плитке", async () => {
@@ -546,17 +556,16 @@ describe("абонементы в карточке клиента", () => {
 it("+N is a separate keyboard control and opens the list without the primary sheet", async () => {
   openApp(`/clients/${client.id}`, membershipsServer([ending, upcoming]).fetch);
   const user = userEvent.setup();
-  const more = await screen.findByRole("button", { name: /Открыть остальные абонементы: 1/ });
+  const more = await screen.findByRole("button", { name: /Открыть все абонементы: 2/ });
   expect(more.closest("button")?.parentElement?.closest("button")).toBeNull();
   for (let i = 0; i < 35 && document.activeElement !== more; i++) await user.tab();
   expect(more).toHaveFocus();
   expect(more.className).toContain("focus-visible:ring");
   await user.keyboard(" ");
-  expect(await screen.findByRole("tab", { name: /^Абонементы/ })).toHaveAttribute(
-    "data-state",
-    "active",
-  );
-  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(
+    await screen.findByRole("dialog", { name: ru["clients.detail.subscriptions"] }),
+  ).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: "1111" })).toBeNull();
   expect(await screen.findByRole("button", { name: /Борьба/ })).toBeVisible();
 });
 
@@ -568,6 +577,9 @@ it("extending a non-primary membership updates its row and recalculates the over
     state: activeState("2026-10-01", "2026-11-30"),
   };
   openApp(`/clients/${client.id}?tab=memberships`, membershipsServer([ending, later]).fetch);
+  await userEvent
+    .setup()
+    .click(await screen.findByRole("button", { name: /Открыть все абонементы/ }));
   const user = userEvent.setup();
   await user.click(await screen.findByRole("button", { name: /Другой/ }));
   const sheet = within(await screen.findByRole("dialog", { name: "Другой" }));
@@ -582,7 +594,7 @@ it("extending a non-primary membership updates its row and recalculates the over
     expect(sheet.getByText(/2099/)).toBeVisible();
   });
   await user.keyboard("{Escape}");
-  await user.click(screen.getByRole("tab", { name: "Обзор" }));
+  await user.keyboard("{Escape}");
   expect(await tileButton("1111")).toBeVisible();
   expect(screen.queryByText(/2099/)).toBeNull();
 });

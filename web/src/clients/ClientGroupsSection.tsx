@@ -10,6 +10,7 @@ import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { ChecklistSheet } from "@/ui/ChecklistSheet";
+import { clientUpcomingQuery, upcomingSessions } from "./card/clientCardQueries";
 import { todayLocalDate } from "@/lib/localDate";
 import { BlockStatus, ClientCardBlock } from "./card/ClientCardBlock";
 
@@ -35,7 +36,7 @@ export function ClientGroupsSection({
   readonly open?: boolean;
   readonly onOpenChange?: (open: boolean) => void;
 }) {
-  const { t } = useI18n();
+  const { t, format } = useI18n();
   const queryClient = useQueryClient();
   const [localOpen, setLocalOpen] = useState(false);
   const sheetOpen = open ?? localOpen;
@@ -80,6 +81,8 @@ export function ClientGroupsSection({
   const details = useQueries({
     queries: groups.map((group) => apiQuery(api, branchId, "groups/detail", { id: group.id })),
   });
+  const upcoming = useQuery(clientUpcomingQuery(api, branchId, groups));
+  const nearest = upcomingSessions(upcoming.data?.sessions);
   const memberIds = new Set(groups.map((group) => group.id));
 
   return (
@@ -107,39 +110,63 @@ export function ClientGroupsSection({
           empty={t("clients.detail.noGroups")}
         />
         {groups.length > 0 && (
-          <ul className="flex flex-wrap gap-2 px-4 py-3.5">
+          <ul className="divide-y">
             {groups.map((group, index) => {
               const detail = details[index]?.data;
-              const days = [
-                ...new Set(
-                  detail?.schedule
-                    .filter(
-                      (slot) =>
-                        slot.validity === null ||
-                        (slot.validity.from <= todayLocalDate() &&
-                          (slot.validity.to === null || slot.validity.to > todayLocalDate())),
-                    )
-                    .map((slot) => t(`day.${slot.dayOfWeek}`)),
-                ),
-              ].join(" ");
-              const sub = [detail?.disciplines.map((d) => d.name).join(", ") ?? "", days]
-                .filter((part) => part !== "")
-                .join(" · ");
+              const slots =
+                detail?.schedule.filter(
+                  (slot) =>
+                    slot.validity === null ||
+                    (slot.validity.from <= todayLocalDate() &&
+                      (slot.validity.to === null || slot.validity.to > todayLocalDate())),
+                ) ?? [];
+              const next = nearest.find((session) => session.group.id === group.id);
               return (
                 <li
                   key={group.id}
-                  className="inline-flex min-h-[34px] max-w-full items-center gap-2 rounded-[10px] border bg-muted/50 py-1 pr-1.5 pl-3 text-sm"
+                  className="flex items-start justify-between gap-3 px-4 py-3 text-sm"
                 >
-                  <Link
-                    to="/groups/$groupId"
-                    params={{ groupId: group.id }}
-                    className="truncate font-medium text-primary hover:underline"
-                  >
-                    {group.name}
-                  </Link>
-                  {sub !== "" && (
-                    <span className="truncate text-xs text-muted-foreground">{sub}</span>
-                  )}
+                  <div className="min-w-0 space-y-1">
+                    <Link
+                      to="/groups/$groupId"
+                      params={{ groupId: group.id }}
+                      className="block truncate font-medium text-primary hover:underline"
+                    >
+                      {group.name}
+                    </Link>
+                    {detail !== undefined && (
+                      <>
+                        <p className="text-xs break-words text-muted-foreground">
+                          {detail.disciplines.map((d) => d.name).join(", ")}
+                        </p>
+                        {slots.map((slot, slotIndex) => (
+                          <p key={slotIndex} className="text-xs break-words text-muted-foreground">
+                            {t(`day.${slot.dayOfWeek}`)} · {format.time(slot.startAt)}–
+                            {format.time(slot.endAt)} · {slot.hallName}
+                          </p>
+                        ))}
+                      </>
+                    )}
+                    {upcoming.isPending && groups.length > 0 ? (
+                      <p>{t("clientOverview.loading")}</p>
+                    ) : upcoming.isError ? (
+                      <p className="text-destructive">{t("clients.loadClientError")}</p>
+                    ) : next === undefined ? (
+                      <p className="text-xs break-words text-muted-foreground">
+                        {t("clientOverview.noUpcoming")}
+                      </p>
+                    ) : (
+                      <Link
+                        to="/sessions/$sessionId"
+                        params={{ sessionId: next.id }}
+                        className="block rounded text-xs text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={t("clientOverview.openSession", { name: group.name })}
+                      >
+                        {t("clientOverview.nearest")} · {format.date(next.date)},{" "}
+                        {format.time(next.startTime)} →
+                      </Link>
+                    )}
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon-xs"

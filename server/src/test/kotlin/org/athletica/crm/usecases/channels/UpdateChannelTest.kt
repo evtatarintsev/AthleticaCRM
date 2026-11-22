@@ -25,7 +25,9 @@ import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
 import org.athletica.crm.testName
+import org.athletica.infra.messaging.ProviderChannelConfigVerifier
 import org.athletica.infra.messaging.ProviderChannelTransports
+import org.athletica.infra.messaging.smsaero.smsAeroTestApi
 import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
 import kotlin.test.Test
@@ -38,7 +40,7 @@ class UpdateChannelTest {
     private val orgId = OrgId.new()
     private val context = employeeContext(orgId = orgId)
     private val channels =
-        DbChannelIntegrations(ProviderChannelTransports(telegramTestApi { error("Bot API не вызывается") }), DbClientContacts(), DbChannelBindings())
+        DbChannelIntegrations(ProviderChannelTransports(telegramTestApi { error("Bot API не вызывается") }, smsAeroTestApi { error("SMS Aero не вызывается") }), DbClientContacts(), DbChannelBindings())
 
     /** Верификатор-заглушка: запоминает проверенные конфиги, Telegram-боту даёт имя `new_bot` или отказывает. */
     private class FakeVerifier(private val reject: Boolean = false) : ChannelConfigVerifier {
@@ -52,7 +54,7 @@ class UpdateChannelTest {
             }
             return when (config) {
                 is ChannelConfig.TelegramBot -> config.copy(botUsername = "new_bot")
-                is ChannelConfig.SmscSms, is ChannelConfig.TwilioSms -> config
+                is ChannelConfig.SmscSms, is ChannelConfig.SmsAeroSms, is ChannelConfig.TwilioSms -> config
             }
         }
     }
@@ -158,6 +160,39 @@ class UpdateChannelTest {
         }
 
     @Test
+    fun `изменение SMS Aero без ключа сохраняет сохранённый ключ`() =
+        runTest {
+            val id = MessagingFixture.insertIntegration(orgId, SMS_AERO_CONFIG)
+            val verifier = FakeVerifier()
+
+            assertIs<Either.Right<Unit>>(update(verifier, id, "SMS", ChannelConfigChange.SmsAeroSms(email = "club@example.com", apiKey = null, sign = "Spartak")))
+
+            assertEquals(ChannelConfig.SmsAeroSms(email = "club@example.com", apiKey = "aero-key", sign = "Spartak"), stored(id).second)
+            assertEquals(1, verifier.verified.size)
+        }
+
+    @Test
+    fun `переименование канала SMS Aero не обращается к SMS Aero`() =
+        runTest {
+            val id = MessagingFixture.insertIntegration(orgId, SMS_AERO_CONFIG)
+            val verifier = ProviderChannelConfigVerifier(telegramTestApi { error("Bot API не вызывается") }, smsAeroTestApi { error("SMS Aero не вызывается") })
+
+            assertIs<Either.Right<Unit>>(update(verifier, id, "Новое имя", ChannelConfigChange.SmsAeroSms(email = "club@example.com", apiKey = null, sign = "Dinamo")))
+
+            assertEquals("Новое имя", stored(id).first)
+        }
+
+    @Test
+    fun `сменить провайдера SMS Aero нельзя`() =
+        runTest {
+            val id = MessagingFixture.insertIntegration(orgId, SMS_AERO_CONFIG)
+
+            val result = update(FakeVerifier(), id, "SMS", ChannelConfigChange.SmscSms(login = "club", password = null))
+
+            assertEquals("CHANNEL_PROVIDER_MISMATCH", assertIs<Either.Left<AppError>>(result).value.code)
+        }
+
+    @Test
     fun `сменить провайдера нельзя`() =
         runTest {
             val id = MessagingFixture.insertIntegration(orgId, """{"type":"smsc_sms","login":"club","password":"old"}""")
@@ -179,3 +214,6 @@ class UpdateChannelTest {
             assertEquals("CHANNEL_NOT_FOUND", assertIs<Either.Left<AppError>>(result).value.code)
         }
 }
+
+/** Сохранённый конфиг канала SMS Aero для тестов изменения. */
+private const val SMS_AERO_CONFIG = """{"type":"sms_aero_sms","email":"club@example.com","apiKey":"aero-key","sign":"Dinamo"}"""

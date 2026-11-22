@@ -105,6 +105,10 @@ enum class ChannelProviderSchema {
     @SerialName("smsc_sms")
     SMSC_SMS,
 
+    /** SMS через SMS Aero. */
+    @SerialName("sms_aero_sms")
+    SMS_AERO_SMS,
+
     /** Telegram-бот. */
     @SerialName("telegram_bot")
     TELEGRAM_BOT,

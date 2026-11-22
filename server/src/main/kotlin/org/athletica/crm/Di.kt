@@ -146,6 +146,8 @@ import org.athletica.infra.mail.SmtpConfig
 import org.athletica.infra.mail.SmtpMailbox
 import org.athletica.infra.messaging.ProviderChannelConfigVerifier
 import org.athletica.infra.messaging.ProviderChannelTransports
+import org.athletica.infra.messaging.smsaero.SmsAeroApi
+import org.athletica.infra.messaging.smsaero.createSmsAeroHttpClient
 import org.athletica.infra.messaging.telegram.TelegramBotApi
 import org.athletica.infra.messaging.telegram.TelegramPollState
 import org.athletica.infra.messaging.telegram.TelegramPoller
@@ -184,6 +186,7 @@ data class Di(
     val paymentGateway: PaymentGateway,
     val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
+    val smsAeroApi: SmsAeroApi = SmsAeroApi(createSmsAeroHttpClient()),
     val roles: Roles = DbRoles(),
     val emailVerificationConfig: EmailVerificationConfig = EmailVerificationConfig("http://localhost:5173"),
     val authSessions: AuthSessions = DbAuthSessions(),
@@ -233,8 +236,8 @@ data class Di(
     val overdueJournalScheduler: OverdueJournalScheduler = OverdueJournalScheduler(database, tasks)
     val channelBindings: ChannelBindings = DbChannelBindings()
     val inboundReceipts: InboundReceipts = DbInboundReceipts()
-    val channelTransports: ChannelTransports = ProviderChannelTransports(telegramApi)
-    val channelConfigVerifier: ChannelConfigVerifier = ProviderChannelConfigVerifier(telegramApi)
+    val channelTransports: ChannelTransports = ProviderChannelTransports(telegramApi, smsAeroApi)
+    val channelConfigVerifier: ChannelConfigVerifier = ProviderChannelConfigVerifier(telegramApi, smsAeroApi)
     val channelIntegrations: ChannelIntegrations =
         AuditChannelIntegrations(DbChannelIntegrations(channelTransports, clientContacts, channelBindings), audit)
     val conversations = DbConversations()

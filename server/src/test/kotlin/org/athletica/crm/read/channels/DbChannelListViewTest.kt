@@ -81,6 +81,11 @@ class DbChannelListViewTest {
                 """{"type":"twilio_sms","accountSid":"AC123","authToken":"twilio-auth-token-f3c2","from":"+15550001"}""",
                 name = "Twilio",
             )
+            MessagingFixture.insertIntegration(
+                orgId,
+                """{"type":"sms_aero_sms","email":"club@example.com","apiKey":"aero-api-key-Xy7Q","sign":"Dinamo"}""",
+                name = "SMS Aero",
+            )
 
             val response = list()
             val json = appJson.encodeToString(ChannelListResponse.serializer(), response)
@@ -90,10 +95,11 @@ class DbChannelListViewTest {
                     ChannelSettingsSchema.TelegramBot(tokenMask = "••••a1B9", botUsername = "club_bot"),
                     ChannelSettingsSchema.SmscSms(login = "club"),
                     ChannelSettingsSchema.TwilioSms(accountSid = "AC123", authTokenMask = "••••f3c2", from = "+15550001"),
+                    ChannelSettingsSchema.SmsAeroSms(email = "club@example.com", sign = "Dinamo", apiKeyMask = "••••Xy7Q"),
                 ),
                 response.channels.map { it.settings },
             )
-            listOf(token, "p4ssw0rd-secret", "twilio-auth-token-f3c2").forEach {
+            listOf(token, "p4ssw0rd-secret", "twilio-auth-token-f3c2", "aero-api-key-Xy7Q").forEach {
                 assertFalse(json.contains(it), "секрет $it попал в ответ")
             }
         }

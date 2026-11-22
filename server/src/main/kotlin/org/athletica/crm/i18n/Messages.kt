@@ -329,6 +329,46 @@ object Messages {
         override val en = "This bot is already connected to another channel"
     }
 
+    object SmsAeroFieldsRequired : LocalizationKey {
+        override val ru = "Укажите email, API-ключ и подпись SMS Aero"
+        override val en = "Enter the SMS Aero email, API key and sender name"
+    }
+
+    object SmsAeroAuthInvalid : LocalizationKey {
+        override val ru = "Неверный email или API-ключ SMS Aero"
+        override val en = "Invalid SMS Aero email or API key"
+    }
+
+    object SmsAeroSignNotFound : LocalizationTemplate1<String> {
+        override val ru = { sign: String -> "Подписи $sign нет в аккаунте SMS Aero — добавьте её в кабинете SMS Aero" }
+        override val en = { sign: String -> "Sender name $sign is not in the SMS Aero account — add it in the SMS Aero dashboard" }
+    }
+
+    object SmsAeroSignNotApproved : LocalizationTemplate1<String> {
+        override val ru = { sign: String -> "Подпись $sign ещё не одобрена в SMS Aero" }
+        override val en = { sign: String -> "Sender name $sign is not approved in SMS Aero yet" }
+    }
+
+    object SmsAeroUnavailable : LocalizationKey {
+        override val ru = "SMS Aero сейчас недоступен — попробуйте позже"
+        override val en = "SMS Aero is unavailable right now — try again later"
+    }
+
+    object SmsAeroRejected : LocalizationTemplate1<String> {
+        override val ru = { reason: String -> "SMS Aero отклонил сообщение: $reason" }
+        override val en = { reason: String -> "SMS Aero rejected the message: $reason" }
+    }
+
+    object SmsAeroNoFunds : LocalizationKey {
+        override val ru = "Недостаточно средств на балансе SMS Aero"
+        override val en = "Insufficient funds on the SMS Aero balance"
+    }
+
+    object SmsAeroIpForbidden : LocalizationKey {
+        override val ru = "IP-адрес сервера не в белом списке SMS Aero — проверьте настройки в кабинете SMS Aero"
+        override val en = "The server IP address is not in the SMS Aero allowlist — check the SMS Aero dashboard settings"
+    }
+
     object ChannelProviderMismatch : LocalizationKey {
         override val ru = "Провайдера канала изменить нельзя"
         override val en = "The channel provider cannot be changed"

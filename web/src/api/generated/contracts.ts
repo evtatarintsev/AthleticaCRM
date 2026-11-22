@@ -755,6 +755,16 @@ export const ChangePasswordRequestSchema = z
   .readonly();
 export type ChangePasswordRequest = z.output<typeof ChangePasswordRequestSchema>;
 
+export const ChannelConfigChangeSmsAeroSmsSchema = z
+  .object({
+    type: z.literal("sms_aero_sms"),
+    email: z.string(),
+    apiKey: z.string().nullable(),
+    sign: z.string(),
+  })
+  .readonly();
+export type ChannelConfigChangeSmsAeroSms = z.output<typeof ChannelConfigChangeSmsAeroSmsSchema>;
+
 export const ChannelConfigChangeSmscSmsSchema = z
   .object({
     type: z.literal("smsc_sms"),
@@ -782,8 +792,18 @@ export const ChannelConfigChangeTwilioSmsSchema = z
   .readonly();
 export type ChannelConfigChangeTwilioSms = z.output<typeof ChannelConfigChangeTwilioSmsSchema>;
 
-export const ChannelConfigChangeSchema = z.discriminatedUnion("type", [ChannelConfigChangeSmscSmsSchema, ChannelConfigChangeTelegramBotSchema, ChannelConfigChangeTwilioSmsSchema]);
+export const ChannelConfigChangeSchema = z.discriminatedUnion("type", [ChannelConfigChangeSmsAeroSmsSchema, ChannelConfigChangeSmscSmsSchema, ChannelConfigChangeTelegramBotSchema, ChannelConfigChangeTwilioSmsSchema]);
 export type ChannelConfigChange = z.output<typeof ChannelConfigChangeSchema>;
+
+export const ChannelSettingsSchemaSmsAeroSmsSchema = z
+  .object({
+    type: z.literal("sms_aero_sms"),
+    email: z.string(),
+    sign: z.string(),
+    apiKeyMask: z.string(),
+  })
+  .readonly();
+export type ChannelSettingsSchemaSmsAeroSms = z.output<typeof ChannelSettingsSchemaSmsAeroSmsSchema>;
 
 export const ChannelSettingsSchemaSmscSmsSchema = z
   .object({
@@ -812,7 +832,7 @@ export const ChannelSettingsSchemaTwilioSmsSchema = z
   .readonly();
 export type ChannelSettingsSchemaTwilioSms = z.output<typeof ChannelSettingsSchemaTwilioSmsSchema>;
 
-export const ChannelSettingsSchemaSchema = z.discriminatedUnion("type", [ChannelSettingsSchemaSmscSmsSchema, ChannelSettingsSchemaTelegramBotSchema, ChannelSettingsSchemaTwilioSmsSchema]);
+export const ChannelSettingsSchemaSchema = z.discriminatedUnion("type", [ChannelSettingsSchemaSmsAeroSmsSchema, ChannelSettingsSchemaSmscSmsSchema, ChannelSettingsSchemaTelegramBotSchema, ChannelSettingsSchemaTwilioSmsSchema]);
 export type ChannelSettingsSchema = z.output<typeof ChannelSettingsSchemaSchema>;
 
 export const ChannelShareSchemaSchema = z
@@ -840,7 +860,7 @@ export const ChannelListResponseSchema = z
   .readonly();
 export type ChannelListResponse = z.output<typeof ChannelListResponseSchema>;
 
-export const ChannelProviderSchemaSchema = z.enum(["smsc_sms", "telegram_bot", "twilio_sms"]);
+export const ChannelProviderSchemaSchema = z.enum(["smsc_sms", "sms_aero_sms", "telegram_bot", "twilio_sms"]);
 export type ChannelProviderSchema = z.output<typeof ChannelProviderSchemaSchema>;
 
 export const ScheduleGroupSchemaSchema = z
@@ -1444,6 +1464,16 @@ export const CreateAttendanceLabelRequestSchema = z
   .readonly();
 export type CreateAttendanceLabelRequest = z.output<typeof CreateAttendanceLabelRequestSchema>;
 
+export const NewChannelConfigSmsAeroSmsSchema = z
+  .object({
+    type: z.literal("sms_aero_sms"),
+    email: z.string(),
+    apiKey: z.string(),
+    sign: z.string(),
+  })
+  .readonly();
+export type NewChannelConfigSmsAeroSms = z.output<typeof NewChannelConfigSmsAeroSmsSchema>;
+
 export const NewChannelConfigSmscSmsSchema = z
   .object({
     type: z.literal("smsc_sms"),
@@ -1471,7 +1501,7 @@ export const NewChannelConfigTwilioSmsSchema = z
   .readonly();
 export type NewChannelConfigTwilioSms = z.output<typeof NewChannelConfigTwilioSmsSchema>;
 
-export const NewChannelConfigSchema = z.discriminatedUnion("type", [NewChannelConfigSmscSmsSchema, NewChannelConfigTelegramBotSchema, NewChannelConfigTwilioSmsSchema]);
+export const NewChannelConfigSchema = z.discriminatedUnion("type", [NewChannelConfigSmsAeroSmsSchema, NewChannelConfigSmscSmsSchema, NewChannelConfigTelegramBotSchema, NewChannelConfigTwilioSmsSchema]);
 export type NewChannelConfig = z.output<typeof NewChannelConfigSchema>;
 
 export const CreateChannelIntegrationRequestSchema = z

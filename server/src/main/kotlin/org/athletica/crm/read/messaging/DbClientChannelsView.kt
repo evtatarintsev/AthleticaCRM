@@ -112,6 +112,7 @@ class DbClientChannelsView : ClientChannelsView {
             get() =
                 when (this) {
                     is ChannelConfig.SmscSms -> ChannelProviderSchema.SMSC_SMS
+                    is ChannelConfig.SmsAeroSms -> ChannelProviderSchema.SMS_AERO_SMS
                     is ChannelConfig.TelegramBot -> ChannelProviderSchema.TELEGRAM_BOT
                     is ChannelConfig.TwilioSms -> ChannelProviderSchema.TWILIO_SMS
                 }

@@ -53,6 +53,22 @@ sealed interface ChannelConfig {
         override val addressing: ChannelAddressing get() = ChannelAddressing.ByContact(setOf(ContactType.PHONE))
     }
 
+    /** SMS через SMS Aero с аккаунта и от подписи организации. */
+    @Serializable
+    @SerialName("sms_aero_sms")
+    data class SmsAeroSms(
+        /** Email аккаунта SMS Aero — логин API. */
+        val email: String,
+        /** API-ключ аккаунта SMS Aero. */
+        val apiKey: String,
+        /** Подпись (имя отправителя), одобренная в SMS Aero. */
+        val sign: String,
+    ) : ChannelConfig {
+        override val supportsInbound: Boolean get() = false
+        override val supportsReceipts: Boolean get() = false
+        override val addressing: ChannelAddressing get() = ChannelAddressing.ByContact(setOf(ContactType.PHONE))
+    }
+
     /** Telegram-бот. */
     @Serializable
     @SerialName("telegram_bot")

@@ -51,18 +51,23 @@ fun ChannelConfigChange.mergedInto(current: ChannelConfig): ChannelConfig =
         is ChannelConfigChange.SmscSms ->
             when (current) {
                 is ChannelConfig.SmscSms -> current.copy(login = login, password = password ?: current.password)
-                is ChannelConfig.TelegramBot, is ChannelConfig.TwilioSms -> raise(providerMismatch())
+                is ChannelConfig.SmsAeroSms, is ChannelConfig.TelegramBot, is ChannelConfig.TwilioSms -> raise(providerMismatch())
+            }
+        is ChannelConfigChange.SmsAeroSms ->
+            when (current) {
+                is ChannelConfig.SmsAeroSms -> current.copy(email = email, apiKey = apiKey ?: current.apiKey, sign = sign)
+                is ChannelConfig.SmscSms, is ChannelConfig.TelegramBot, is ChannelConfig.TwilioSms -> raise(providerMismatch())
             }
         is ChannelConfigChange.TelegramBot ->
             when (current) {
                 is ChannelConfig.TelegramBot -> current.copy(botToken = botToken ?: current.botToken)
-                is ChannelConfig.SmscSms, is ChannelConfig.TwilioSms -> raise(providerMismatch())
+                is ChannelConfig.SmscSms, is ChannelConfig.SmsAeroSms, is ChannelConfig.TwilioSms -> raise(providerMismatch())
             }
         is ChannelConfigChange.TwilioSms ->
             when (current) {
                 is ChannelConfig.TwilioSms ->
                     current.copy(accountSid = accountSid, authToken = authToken ?: current.authToken, from = from)
-                is ChannelConfig.SmscSms, is ChannelConfig.TelegramBot -> raise(providerMismatch())
+                is ChannelConfig.SmscSms, is ChannelConfig.SmsAeroSms, is ChannelConfig.TelegramBot -> raise(providerMismatch())
             }
     }
 

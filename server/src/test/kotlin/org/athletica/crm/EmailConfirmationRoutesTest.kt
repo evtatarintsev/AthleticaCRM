@@ -15,11 +15,11 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
@@ -41,7 +41,7 @@ class EmailConfirmationRoutesTest {
     private suspend fun signup(email: String = "owner@example.com"): AuthenticatedUser =
         orThrow {
             TestPostgres.db.transaction {
-                di.auth.signup(SignUpRequest(testName("Club"), testName("Owner"), email, "password123", "UTC", Currency.RUB), Lang.EN, null)
+                di.auth.signup(SignUp(testName("Club"), testName("Owner"), email, "password123", "UTC", Currency.RUB), Lang.EN, null)
             }
         }
 

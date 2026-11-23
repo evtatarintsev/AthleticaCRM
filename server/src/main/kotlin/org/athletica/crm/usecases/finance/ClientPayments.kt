@@ -7,6 +7,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.finance.PaymentInput
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.CashAccountId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LedgerTransactionId
@@ -20,7 +21,6 @@ import org.athletica.crm.core.permissions.UserPermission.CAN_ACCEPT_PAYMENTS
 import org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE
 import org.athletica.crm.core.permissions.financeAccessDenied
 import org.athletica.crm.core.permissions.requireFinancePermission
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.PostgresAuditLog

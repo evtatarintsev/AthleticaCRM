@@ -20,7 +20,6 @@ import kotlinx.datetime.plus
 import kotlinx.serialization.json.Json
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.schedule.ScheduleListResponse
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.Lang
@@ -31,6 +30,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.testDi
@@ -65,7 +65,7 @@ class ScheduleListRouteTest {
             either {
                 di.database.transaction {
                     di.auth.signup(
-                        SignUpRequest(
+                        SignUp(
                             companyName = testName("Acme"),
                             userName = testName("John"),
                             login = "owner@example.com",

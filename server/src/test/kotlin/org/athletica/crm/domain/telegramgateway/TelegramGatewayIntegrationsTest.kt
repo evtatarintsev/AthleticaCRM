@@ -8,11 +8,11 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.MessagingFixture
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.employeeContext

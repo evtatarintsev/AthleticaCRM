@@ -10,11 +10,11 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
@@ -34,7 +34,7 @@ class PasswordResetRoutesTest {
     private suspend fun signup(): AuthenticatedUser =
         orThrow {
             TestPostgres.db.transaction {
-                di.auth.signup(SignUpRequest(testName("Club"), testName("Owner"), "owner@example.com", "old-password", "UTC", Currency.RUB), Lang.EN, null)
+                di.auth.signup(SignUp(testName("Club"), testName("Owner"), "owner@example.com", "old-password", "UTC", Currency.RUB), Lang.EN, null)
             }
         }
 

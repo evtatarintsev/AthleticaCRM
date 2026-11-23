@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
+import org.athletica.crm.storage.sql.JournalWindowSql
 
 /** Настройки контроля посещаемости организации: напоминание о незакрытых журналах занятий. */
 interface AttendanceControl {
@@ -22,7 +23,7 @@ interface AttendanceControl {
 
     companion object {
         /** Задача по незакрытому журналу создаётся по умолчанию. */
-        const val DEFAULT_OVERDUE_TASK_ENABLED = true
+        const val DEFAULT_OVERDUE_TASK_ENABLED = JournalWindowSql.DEFAULT_ENABLED
     }
 }
 

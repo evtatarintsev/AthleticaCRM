@@ -14,7 +14,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.finance.CashJournalRequest
 import org.athletica.crm.api.schemas.finance.CashJournalResponse
 import org.athletica.crm.api.schemas.finance.CashPaymentInput
@@ -33,6 +32,7 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.domain.cashaccounts.CashAccounts
 import org.athletica.crm.domain.casharticles.seedCashArticles
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -188,7 +188,7 @@ class FinanceRoutesTest {
     fun `регистрация создаёт системные и пользовательские статьи организации`() =
         runTest {
             orThrow {
-                val user = TestPostgres.db.transaction { TestPostgres.auth.signup(SignUpRequest(testName("Finance"), testName("Owner"), "finance@example.test", "password123", "UTC", Currency.RUB), Lang.EN, null) }
+                val user = TestPostgres.db.transaction { TestPostgres.auth.signup(SignUp(testName("Finance"), testName("Owner"), "finance@example.test", "password123", "UTC", Currency.RUB), Lang.EN, null) }
                 val count = TestPostgres.db.sql("SELECT COUNT(*)::int AS n FROM cash_articles WHERE org_id = :org").bind("org", user.orgId).firstOrNull { it.asInt("n") }
                 assertEquals(10, count)
                 assertEquals(2, TestPostgres.db.sql("SELECT COUNT(*)::int AS n FROM cash_articles WHERE org_id = :org AND system_code IS NOT NULL").bind("org", user.orgId).firstOrNull { it.asInt("n") })

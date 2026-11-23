@@ -3,10 +3,10 @@ package org.athletica.crm.read.audit
 import arrow.core.raise.Raise
 import org.athletica.crm.api.schemas.audit.AuditLogUser
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.storage.Transaction
 import kotlin.uuid.Uuid
 

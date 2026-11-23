@@ -21,11 +21,11 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.auth.DevicePlatform
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.auth.SessionListResponse
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.security.JwtConfig
 import org.junit.Before
 import java.util.Date
@@ -52,7 +52,7 @@ class AuthSessionsRoutesTest {
             either {
                 di.database.transaction {
                     di.auth.signup(
-                        SignUpRequest(
+                        SignUp(
                             companyName = testName("Acme"),
                             userName = testName("John"),
                             login = OWNER_LOGIN,

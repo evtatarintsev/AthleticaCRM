@@ -8,13 +8,13 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.customfields.CustomFieldValue
 import org.athletica.crm.core.entityids.ClientDocId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate

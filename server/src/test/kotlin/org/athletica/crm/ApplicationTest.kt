@@ -13,13 +13,13 @@ import io.ktor.server.testing.testApplication
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.LoginResponse
 import org.athletica.crm.api.schemas.clients.ClientDetailResponse
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
 import org.athletica.crm.core.entityids.TariffPlanId
 import org.athletica.crm.core.errors.orThrow
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.mail.EmailDispatcher
 import org.athletica.crm.storage.asString
 import org.junit.Before

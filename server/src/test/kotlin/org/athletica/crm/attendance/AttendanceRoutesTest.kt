@@ -25,7 +25,6 @@ import org.athletica.crm.api.schemas.attendance.AttendanceLabelListResponse
 import org.athletica.crm.api.schemas.attendance.ClientAttendanceResponse
 import org.athletica.crm.api.schemas.attendance.GroupAttendanceResponse
 import org.athletica.crm.api.schemas.attendance.SessionJournalResponse
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.attendance.AttendanceLabelScope
@@ -40,6 +39,7 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.sessions.SessionStatus
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
@@ -76,7 +76,7 @@ class AttendanceRoutesTest {
             either {
                 di.database.transaction {
                     di.auth.signup(
-                        SignUpRequest(
+                        SignUp(
                             companyName = testName("Acme"),
                             userName = testName("John"),
                             login = "owner@example.com",

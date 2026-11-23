@@ -13,12 +13,12 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.sportcatalog.SportCatalogResponse
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
@@ -45,7 +45,7 @@ class SportCatalogRoutesTest {
             either {
                 di.database.transaction {
                     di.auth.signup(
-                        SignUpRequest(
+                        SignUp(
                             companyName = testName(company),
                             userName = testName("Owner"),
                             login = login,

@@ -4,7 +4,6 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.OrgId
@@ -23,7 +22,7 @@ class SignUpTest {
     fun setUp() = TestPostgres.truncate()
 
     private fun request(login: String = "user@example.com") =
-        SignUpRequest(
+        SignUp(
             companyName = testName("Acme"),
             userName = testName("John"),
             login = login,
@@ -33,7 +32,7 @@ class SignUpTest {
         )
 
     private suspend fun signup(
-        request: SignUpRequest,
+        request: SignUp,
         lang: Lang = Lang.RU,
     ): Either<AppError, AuthenticatedUser> =
         either {

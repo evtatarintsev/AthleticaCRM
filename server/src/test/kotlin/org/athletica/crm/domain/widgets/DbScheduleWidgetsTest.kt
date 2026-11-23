@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.widgets.CreateScheduleWidgetRequest
 import org.athletica.crm.api.schemas.widgets.EditScheduleWidgetRequest
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.ScheduleWidgetId
 import org.athletica.crm.core.errors.AppError
@@ -15,7 +16,6 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.widgets.WidgetHorizon
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.employees.EmployeePermission

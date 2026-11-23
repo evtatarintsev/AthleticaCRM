@@ -9,9 +9,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.EmailConfirmationStatus
-import org.athletica.crm.api.schemas.auth.ResendEmailStatus
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
@@ -44,6 +41,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -57,7 +55,7 @@ class EmailVerificationsTest {
     @Before
     fun setUp() = TestPostgres.truncate()
 
-    private fun request(login: String = "owner@example.com") = SignUpRequest(testName("Club"), testName("Owner"), login, "password123", "UTC", Currency.RUB)
+    private fun request(login: String = "owner@example.com") = SignUp(testName("Club"), testName("Owner"), login, "password123", "UTC", Currency.RUB)
 
     private suspend fun signup(di: Di = testDi(), login: String = "owner@example.com"): AuthenticatedUser =
         orThrow {
@@ -141,21 +139,20 @@ class EmailVerificationsTest {
             orThrow {
                 db.transaction {
                     context(ctx(user)) {
-                        val limited = verification.resend()
-                        assertEquals(ResendEmailStatus.RATE_LIMITED, limited.status)
+                        val limited = assertIs<ResendResult.RateLimited>(verification.resend())
                         assertTrue(limited.retryAfterSeconds in 1..60)
                     }
                 }
             }
             assertEquals(1L, count("org_emails"))
             allowResend()
-            orThrow { db.transaction { context(ctx(user)) { assertEquals(ResendEmailStatus.QUEUED, verification.resend().status) } } }
+            orThrow { db.transaction { context(ctx(user)) { assertIs<ResendResult.Queued>(verification.resend()) } } }
             val fresh = token()
             assertNotEquals(old, fresh)
             assertEquals(2L, count("org_emails"))
             assertFails { orThrow { db.transaction { verification.confirm(old, Lang.EN, null) } } }
-            orThrow { db.transaction { assertEquals(EmailConfirmationStatus.CONFIRMED, verification.confirm(fresh, Lang.EN, null).status) } }
-            orThrow { db.transaction { context(ctx(user)) { assertEquals(ResendEmailStatus.ALREADY_CONFIRMED, verification.resend().status) } } }
+            orThrow { db.transaction { assertEquals(ConfirmResult.CONFIRMED, verification.confirm(fresh, Lang.EN, null)) } }
+            orThrow { db.transaction { context(ctx(user)) { assertEquals(ResendResult.AlreadyConfirmed, verification.resend()) } } }
             assertEquals(2L, count("org_emails"))
         }
 
@@ -168,8 +165,8 @@ class EmailVerificationsTest {
             assertFails { orThrow { db.transaction { context(ctx(user)) { service(emails = failingEmails).resend() } } } }
             assertEquals(1L, count("org_emails"))
             val verification = service()
-            val statuses = coroutineScope { List(2) { async(Dispatchers.Default) { orThrow { db.transaction { context(ctx(user)) { verification.resend().status } } } } }.awaitAll() }
-            assertEquals(setOf(ResendEmailStatus.QUEUED, ResendEmailStatus.RATE_LIMITED), statuses.toSet())
+            val statuses = coroutineScope { List(2) { async(Dispatchers.Default) { orThrow { db.transaction { context(ctx(user)) { verification.resend()::class } } } } }.awaitAll() }
+            assertEquals(setOf(ResendResult.Queued::class, ResendResult.RateLimited::class), statuses.toSet())
             assertEquals(2L, count("org_emails"))
             assertNotEquals(old, token())
         }
@@ -181,7 +178,7 @@ class EmailVerificationsTest {
             val original = token()
             allowResend()
             assertFails { orThrow { db.transaction { context(ctx(user)) { service(emails = failingEmails).resend() } } } }
-            orThrow { db.transaction { assertEquals(EmailConfirmationStatus.CONFIRMED, service().confirm(original, Lang.EN, null).status) } }
+            orThrow { db.transaction { assertEquals(ConfirmResult.CONFIRMED, service().confirm(original, Lang.EN, null)) } }
         }
 
     @Test
@@ -190,13 +187,13 @@ class EmailVerificationsTest {
             val user = signup()
             val token = token()
             val verification = service()
-            val statuses = coroutineScope { List(2) { async(Dispatchers.Default) { orThrow { db.transaction { verification.confirm(token, Lang.EN, "192.0.2.1").status } } } }.awaitAll() }
-            assertEquals(setOf(EmailConfirmationStatus.CONFIRMED, EmailConfirmationStatus.ALREADY_CONFIRMED), statuses.toSet())
+            val statuses = coroutineScope { List(2) { async(Dispatchers.Default) { orThrow { db.transaction { verification.confirm(token, Lang.EN, "192.0.2.1") } } } }.awaitAll() }
+            assertEquals(setOf(ConfirmResult.CONFIRMED, ConfirmResult.ALREADY_CONFIRMED), statuses.toSet())
             assertEquals(1L, count("notifications"))
             orThrow {
                 db.transaction {
                     val whenConfirmed = sql("SELECT verified_at FROM user_email_verifications").firstOrNull { it.asInstant("verified_at") }!!
-                    assertEquals(EmailConfirmationStatus.ALREADY_CONFIRMED, verification.confirm(token, Lang.RU, null).status)
+                    assertEquals(ConfirmResult.ALREADY_CONFIRMED, verification.confirm(token, Lang.RU, null))
                     assertEquals(whenConfirmed, sql("SELECT verified_at FROM user_email_verifications").firstOrNull { it.asInstant("verified_at") })
                     assertFalse(verification.pending(user.id))
                     val audit = sql("SELECT data::text AS data, ip_address FROM audit_logs WHERE action_type = 'auth_verify_email'").list { it.asString("data") to it.asString("ip_address") }.single()

@@ -4,14 +4,11 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import kotlinx.serialization.json.Json
-import org.athletica.crm.api.schemas.auth.ConfirmEmailResponse
-import org.athletica.crm.api.schemas.auth.EmailConfirmationStatus
-import org.athletica.crm.api.schemas.auth.ResendEmailConfirmationResponse
-import org.athletica.crm.api.schemas.auth.ResendEmailStatus
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.SystemContexts
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toEmployeeId
@@ -19,7 +16,6 @@ import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.mail.OrgEmails
@@ -68,16 +64,22 @@ class EmailVerifications(
         ).bind("userId", userId).firstOrNull { it.asBoolean("pending") } == true
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    suspend fun resend(): ResendEmailConfirmationResponse {
+    suspend fun resend(): ResendResult {
         val row =
             tr.sql("$select WHERE v.user_id = :userId FOR UPDATE OF v")
                 .bind("userId", ctx.userId).firstOrNull { Verification(it) }
                 ?: raise(CommonDomainError("EMAIL_VERIFICATION_UNAVAILABLE", Messages.EmailVerificationUnavailable.localize()))
-        if (row.verifiedAt != null) return ResendEmailConfirmationResponse(ResendEmailStatus.ALREADY_CONFIRMED, 0)
+        if (row.verifiedAt != null) {
+            return ResendResult.AlreadyConfirmed
+        }
         val now = clock.now()
         val remaining = ceil(60 - (now - row.lastSentAt).inWholeMilliseconds / 1000.0).toInt().coerceIn(0, 60)
-        if (remaining > 0) return ResendEmailConfirmationResponse(ResendEmailStatus.RATE_LIMITED, remaining)
-        if (row.email != row.login) invalid(ctx.lang)
+        if (remaining > 0) {
+            return ResendResult.RateLimited(remaining)
+        }
+        if (row.email != row.login) {
+            invalid(ctx.lang)
+        }
         val token = newOneTimeToken()
         tr.sql(
             """
@@ -85,19 +87,25 @@ class EmailVerifications(
             """.trimIndent(),
         ).bind("hash", oneTimeTokenHash(token)).bind("expiresAt", now + 24.hours).bind("now", now).bind("userId", ctx.userId).execute()
         schedule(row.orgId, row.email, row.name, ctx.lang, token)
-        return ResendEmailConfirmationResponse(ResendEmailStatus.QUEUED, 60)
+        return ResendResult.Queued(60)
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
-    suspend fun confirm(token: String, lang: Lang, clientIp: String?): ConfirmEmailResponse {
-        if (!token.isOneTimeTokenFormat()) invalid(lang)
+    suspend fun confirm(token: String, lang: Lang, clientIp: String?): ConfirmResult {
+        if (!token.isOneTimeTokenFormat()) {
+            invalid(lang)
+        }
         val row =
             tr.sql("$select WHERE v.token_hash = :hash FOR UPDATE OF v")
                 .bind("hash", oneTimeTokenHash(token)).firstOrNull { Verification(it) } ?: invalid(lang)
-        if (row.verifiedAt != null) return ConfirmEmailResponse(EmailConfirmationStatus.ALREADY_CONFIRMED)
-        if (clock.now() >= row.expiresAt || row.email != row.login) invalid(lang)
+        if (row.verifiedAt != null) {
+            return ConfirmResult.ALREADY_CONFIRMED
+        }
+        if (clock.now() >= row.expiresAt || row.email != row.login) {
+            invalid(lang)
+        }
         markVerified(row, clientIp)
-        return ConfirmEmailResponse(EmailConfirmationStatus.CONFIRMED)
+        return ConfirmResult.CONFIRMED
     }
 
     /**
@@ -169,4 +177,25 @@ class EmailVerifications(
         JOIN users u ON u.id = v.user_id
         JOIN employees e ON e.user_id = v.user_id AND e.org_id = v.org_id
         """.trimIndent()
+}
+
+/** Итог повторной отправки письма подтверждения email. */
+sealed interface ResendResult {
+    /** Письмо поставлено в очередь; следующую отправку можно запросить через [retryAfterSeconds] секунд. */
+    data class Queued(val retryAfterSeconds: Int) : ResendResult
+
+    /** Email уже подтверждён, письмо не отправлялось. */
+    data object AlreadyConfirmed : ResendResult
+
+    /** Предыдущее письмо отправлено недавно; повторить можно через [retryAfterSeconds] секунд. */
+    data class RateLimited(val retryAfterSeconds: Int) : ResendResult
+}
+
+/** Итог подтверждения email по ссылке. */
+enum class ConfirmResult {
+    /** Email подтверждён этим запросом. */
+    CONFIRMED,
+
+    /** Email был подтверждён ранее. */
+    ALREADY_CONFIRMED,
 }

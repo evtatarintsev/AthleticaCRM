@@ -38,6 +38,7 @@ import org.athletica.crm.domain.ledger.LedgerPosting
 import org.athletica.crm.domain.ledger.ledgerError
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.org.OrgCalendar
+import org.athletica.crm.domain.sales.ActiveSale
 import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.i18n.LocalizationKey
 import org.athletica.crm.storage.Transaction
@@ -76,7 +77,7 @@ class ClientPayments(
         val debt =
             if (saleId != null) {
                 val sale = sales.byId(saleId)
-                ensure(!sale.cancelled && sale.clientId == clientId) { ledgerError("SALE_CANCELLED") }
+                ensure(sale is ActiveSale && sale.clientId == clientId) { ledgerError("SALE_CANCELLED") }
                 ledger.balance(checkNotNull(receivable))
             } else {
                 Money.zero(ctx.currency)

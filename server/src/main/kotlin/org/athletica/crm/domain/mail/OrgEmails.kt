@@ -6,7 +6,9 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 
+/** Очередь исходящих писем организации. */
 interface OrgEmails {
+    /** Ставит письмо [subject] на адреса [to] в очередь отправки от имени организации из контекста. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun schedule(
         to: List<EmailAddress>,
@@ -14,8 +16,4 @@ interface OrgEmails {
         textBody: String,
         htmlBody: String,
     )
-
-    /** Возвращает очередь писем ожидающих отправки. */
-    context(tr: Transaction, raise: Raise<AppError>)
-    suspend fun pending(limit: Int = 50): List<OrgEmail>
 }

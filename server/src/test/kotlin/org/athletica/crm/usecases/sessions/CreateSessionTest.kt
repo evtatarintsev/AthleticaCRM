@@ -21,6 +21,7 @@ import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.events.DomainEventBus
 import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbSessions
+import org.athletica.crm.domain.sessions.reschedule
 import org.athletica.crm.read.sessions.DbSessionDetailView
 import org.athletica.crm.schedule.ScheduleFixture
 import org.athletica.crm.security.PasswordHasher

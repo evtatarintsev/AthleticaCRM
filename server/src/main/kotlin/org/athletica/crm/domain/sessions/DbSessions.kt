@@ -20,6 +20,7 @@ import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.core.entityids.toSlotId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.events.DomainEvents
 import org.athletica.crm.i18n.Messages
@@ -201,7 +202,7 @@ private data class SessionRow(
     val startTime: LocalTime,
     val endTime: LocalTime,
     val hallId: HallId,
-    val status: String,
+    val status: SessionStatus,
     val isRescheduled: Boolean,
     val originSlotId: SlotId?,
     val originDate: LocalDate?,
@@ -217,7 +218,7 @@ private fun io.r2dbc.spi.Row.toSessionRow(): SessionRow =
         startTime = asLocalTime("start_time"),
         endTime = asLocalTime("end_time"),
         hallId = asUuid("hall_id").toHallId(),
-        status = asString("status"),
+        status = SessionStatus.valueOf(asString("status").uppercase()),
         isRescheduled = asBoolean("is_rescheduled"),
         originSlotId = asUuidOrNull("origin_slot_id")?.toSlotId(),
         originDate = asLocalDateOrNull("origin_date"),
@@ -225,26 +226,32 @@ private fun io.r2dbc.spi.Row.toSessionRow(): SessionRow =
         isEmployeeAssignmentOverridden = asBoolean("is_employee_assignment_overridden"),
     )
 
+/** Собирает занятие в состоянии по [SessionRow.status] с преподавателями [employeeIds]. */
 private fun SessionRow.toSession(
     employeeIds: List<EmployeeId>,
     events: DomainEvents,
-): DbSession =
-    DbSession(
-        id = id,
-        groupId = groupId,
-        date = date,
-        startTime = startTime,
-        endTime = endTime,
-        hallId = hallId,
-        status = status,
-        isRescheduled = isRescheduled,
-        originSlotId = originSlotId,
-        originDate = originDate,
-        notes = notes,
-        employeeIds = employeeIds,
-        isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
-        events = events,
-    )
+): Session {
+    val data =
+        StoredSessionData(
+            id = id,
+            groupId = groupId,
+            date = date,
+            startTime = startTime,
+            endTime = endTime,
+            hallId = hallId,
+            isRescheduled = isRescheduled,
+            originSlotId = originSlotId,
+            originDate = originDate,
+            notes = notes,
+            employeeIds = employeeIds,
+            isEmployeeAssignmentOverridden = isEmployeeAssignmentOverridden,
+        )
+    return when (status) {
+        SessionStatus.SCHEDULED -> DbScheduledSession(data, events)
+        SessionStatus.COMPLETED -> DbCompletedSession(data)
+        SessionStatus.CANCELLED -> DbCancelledSession(data)
+    }
+}
 
 /** Проверяет, что зал [hallId] принадлежит организации и филиалу группы [groupId]; иначе ошибка `HALL_NOT_FOUND`. */
 context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)

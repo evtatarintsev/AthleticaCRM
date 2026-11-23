@@ -9,6 +9,8 @@ import org.athletica.crm.attendance.plusDays
 import org.athletica.crm.core.attendance.AttendanceLabelScope
 import org.athletica.crm.core.attendance.AttendancePresence
 import org.athletica.crm.domain.attendance.AttendanceMark
+import org.athletica.crm.domain.sessions.cancel
+import org.athletica.crm.domain.sessions.complete
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

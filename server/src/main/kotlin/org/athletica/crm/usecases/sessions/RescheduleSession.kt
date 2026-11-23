@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.domain.sessions.reschedule
 import org.athletica.crm.storage.Transaction
 
 /** Переносит занятие на другую дату или время. Устанавливает флаг [Session.isRescheduled]. */

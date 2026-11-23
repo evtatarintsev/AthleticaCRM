@@ -30,6 +30,7 @@ import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AttendanceMark
 import org.athletica.crm.domain.attendance.SessionJournals
 import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.domain.sessions.complete
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.attendance.ClientAttendanceQuery

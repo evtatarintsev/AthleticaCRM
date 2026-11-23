@@ -29,42 +29,59 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asUuid
 
-/**
- * Конкретная реализация [Session] на основе данных из PostgreSQL.
- * [events] публикует события о проведении и отмене занятия.
- */
-class DbSession(
+/** Данные занятия, прочитанные из строки `sessions`; общие для всех состояний. */
+internal data class StoredSessionData(
     override val id: SessionId,
     override val groupId: GroupId,
     override val date: LocalDate,
     override val startTime: LocalTime,
     override val endTime: LocalTime,
     override val hallId: HallId,
-    override val status: String,
     override val isRescheduled: Boolean,
     override val originSlotId: SlotId?,
     override val originDate: LocalDate?,
     override val notes: String?,
     override val employeeIds: List<EmployeeId>,
     override val isEmployeeAssignmentOverridden: Boolean,
+) : SessionData
+
+/** Проведённое занятие из PostgreSQL с данными [data]. */
+internal class DbCompletedSession(private val data: StoredSessionData) :
+    CompletedSession,
+    SessionData by data
+
+/** Отменённое занятие из PostgreSQL с данными [data]. */
+internal class DbCancelledSession(private val data: StoredSessionData) :
+    CancelledSession,
+    SessionData by data
+
+/**
+ * Запланированное занятие из PostgreSQL с данными [data].
+ * Каждый переход обновляет строку только при `status = 'scheduled'`: если занятие уже
+ * изменено параллельно, переход отклоняется и событие не публикуется.
+ * [events] публикует события о проведении и отмене занятия.
+ */
+internal class DbScheduledSession(
+    private val data: StoredSessionData,
     private val events: DomainEvents,
-) : Session {
+) : ScheduledSession,
+    SessionData by data {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun cancel() {
-        if (status != "scheduled") {
-            raise(CommonDomainError("SESSION_CANNOT_CANCEL", "Можно отменить только запланированное занятие"))
-        }
-        tr
-            .sql(
-                """
-                UPDATE sessions SET status = 'cancelled', cancelled_at = now()
-                WHERE id = :id AND org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .execute()
+    override suspend fun cancel(): CancelledSession {
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE sessions SET status = 'cancelled', cancelled_at = now()
+                    WHERE id = :id AND org_id = :orgId AND status = 'scheduled'
+                    """.trimIndent(),
+                )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated, cannotCancel())
         events.publish(SessionCancelled(id, groupId, date, ctx.employee.id))
+        return DbCancelledSession(data)
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
@@ -73,34 +90,32 @@ class DbSession(
         newStartTime: LocalTime,
         newEndTime: LocalTime,
         newHallId: HallId,
-    ) {
+    ): ScheduledSession {
         ensureValidSessionTime(newStartTime, newEndTime)
-        if (status != "scheduled") {
-            raise(CommonDomainError("SESSION_CANNOT_RESCHEDULE", "Можно перенести только запланированное занятие"))
-        }
         requireHallInGroupBranch(groupId, newHallId)
-        tr
-            .sql(
-                """
-                UPDATE sessions
-                SET date = :date, start_time = :startTime::time, end_time = :endTime::time, hall_id = :hallId, is_rescheduled = true
-                WHERE id = :id AND org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .bind("date", newDate.toJavaLocalDate())
-            .bind("startTime", newStartTime.toString())
-            .bind("endTime", newEndTime.toString())
-            .bind("hallId", newHallId)
-            .execute()
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE sessions
+                    SET date = :date, start_time = :startTime::time, end_time = :endTime::time, hall_id = :hallId, is_rescheduled = true
+                    WHERE id = :id AND org_id = :orgId AND status = 'scheduled'
+                    """.trimIndent(),
+                )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .bind("date", newDate.toJavaLocalDate())
+                .bind("startTime", newStartTime.toString())
+                .bind("endTime", newEndTime.toString())
+                .bind("hallId", newHallId)
+                .execute()
+        requireTransition(updated, cannotReschedule())
+        val moved = data.copy(date = newDate, startTime = newStartTime, endTime = newEndTime, hallId = newHallId, isRescheduled = true)
+        return DbScheduledSession(moved, events)
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun complete() {
-        if (status != "scheduled") {
-            raise(CommonDomainError("SESSION_CANNOT_COMPLETE", "Можно завершить только запланированное занятие"))
-        }
+    override suspend fun complete(): CompletedSession {
         if (!hasStarted()) {
             raise(CommonDomainError("SESSION_NOT_STARTED", Messages.SessionNotStarted.localize()))
         }
@@ -108,16 +123,18 @@ class DbSession(
         if (participants.any { it.mark is AttendanceMark.Unmarked }) {
             raise(CommonDomainError("SESSION_JOURNAL_INCOMPLETE", Messages.SessionJournalIncomplete.localize()))
         }
-        tr
-            .sql(
-                """
-                UPDATE sessions SET status = 'completed', completed_at = now()
-                WHERE id = :id AND org_id = :orgId
-                """.trimIndent(),
-            )
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .execute()
+        val updated =
+            tr
+                .sql(
+                    """
+                    UPDATE sessions SET status = 'completed', completed_at = now()
+                    WHERE id = :id AND org_id = :orgId AND status = 'scheduled'
+                    """.trimIndent(),
+                )
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated, cannotComplete())
         events.publish(
             SessionCompleted(
                 sessionId = id,
@@ -135,6 +152,7 @@ class DbSession(
                 completedBy = ctx.employee.id,
             ),
         )
+        return DbCompletedSession(data)
     }
 
     /** Наступило ли время начала занятия в часовом поясе организации. */
@@ -154,10 +172,7 @@ class DbSession(
             .firstOrNull { it.asBoolean("started") } ?: false
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun setEmployees(employees: List<Employee>) {
-        if (status != "scheduled") {
-            raise(CommonDomainError("SESSION_CANNOT_ASSIGN_EMPLOYEES", "Можно назначить преподавателей только для запланированного занятия"))
-        }
+    override suspend fun setEmployees(employees: List<Employee>): ScheduledSession {
         val branchId =
             tr
                 .sql("SELECT branch_id FROM groups WHERE id = :groupId AND org_id = :orgId")
@@ -169,6 +184,13 @@ class DbSession(
         distinctEmployees.forEach { employee ->
             ensure(employee.hasAccessTo(branchId)) { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
         }
+        val updated =
+            tr
+                .sql("UPDATE sessions SET is_employee_assignment_overridden = true WHERE id = :id AND org_id = :orgId AND status = 'scheduled'")
+                .bind("id", id)
+                .bind("orgId", ctx.orgId)
+                .execute()
+        requireTransition(updated, cannotAssignEmployees())
         tr
             .sql("DELETE FROM session_employees WHERE session_id = :sessionId")
             .bind("sessionId", id)
@@ -180,10 +202,18 @@ class DbSession(
                 .bind("employeeId", employee.id)
                 .execute()
         }
-        tr
-            .sql("UPDATE sessions SET is_employee_assignment_overridden = true WHERE id = :id AND org_id = :orgId")
-            .bind("id", id)
-            .bind("orgId", ctx.orgId)
-            .execute()
+        val assigned = data.copy(employeeIds = distinctEmployees.map { it.id }, isEmployeeAssignmentOverridden = true)
+        return DbScheduledSession(assigned, events)
+    }
+}
+
+/**
+ * Отклоняет переход ошибкой [error], если строка занятия не обновлена:
+ * занятие уже не запланировано — его изменили параллельно.
+ */
+context(raise: Raise<AppError>)
+private fun requireTransition(updatedRows: Long, error: CommonDomainError) {
+    if (updatedRows != 1L) {
+        raise(error)
     }
 }

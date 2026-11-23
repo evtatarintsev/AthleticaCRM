@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 import {
   EmployeeListItemSchema,
   GroupCreateRequestSchema,
@@ -89,7 +89,9 @@ describe("создание группы в панели", () => {
     const { history } = openApp(`/groups?q=${encodeURIComponent("Бокс")}`, createServer().fetch);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("link", { name: ru["groups.create"] }));
+    const [headerLink] = await screen.findAllByRole("link", { name: ru["groups.create"] });
+    assert.exists(headerLink);
+    await user.click(headerLink);
 
     const sheet = await createSheet();
     expect(nameField(sheet)).toHaveValue("");

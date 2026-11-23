@@ -50,9 +50,19 @@ export function searchOf(filters: GroupListFilters): GroupListSearch {
   };
 }
 
-/** Активных фильтров (без поиска), для бейджа кнопки. */
-export function activeFilterCount(filters: GroupListFilters): number {
-  return (filters.disciplineIds.length > 0 ? 1 : 0) + (filters.employeeIds.length > 0 ? 1 : 0);
+/** Пустое состояние списка групп. */
+export type GroupListEmptyState = "no-groups" | "no-results";
+
+/**
+ * Пустое состояние по числу групп филиала без фильтров [total] и показанных [shown]:
+ * «групп нет» опирается на [total], а не на наличие фильтров — фильтр из старой ссылки
+ * при пустом филиале не превращает приглашение создать группу в «ничего не найдено».
+ */
+export function groupListEmptyState(total: number, shown: number): GroupListEmptyState | null {
+  if (total === 0) {
+    return "no-groups";
+  }
+  return shown === 0 ? "no-results" : null;
 }
 
 /** Запрос `/groups/list` из состояния [filters]. */

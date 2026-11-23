@@ -60,11 +60,21 @@ class DbActivityLogView : ActivityLogView {
     private fun whereSql(query: ActivityLogQuery): String =
         buildList {
             add("a.org_id = :orgId")
-            if (query.actionType != null) add("a.action_type = :actionType")
-            if (query.userId != null) add("a.user_id = :userId::uuid")
-            if (query.entityType != null) add("a.entity_type = :entityType")
-            if (query.from != null) add("a.created_at >= :from::timestamptz")
-            if (query.to != null) add("a.created_at <= :to::timestamptz")
+            if (query.actionType != null) {
+                add("a.action_type = :actionType")
+            }
+            if (query.userId != null) {
+                add("a.user_id = :userId::uuid")
+            }
+            if (query.entityType != null) {
+                add("a.entity_type = :entityType")
+            }
+            if (query.from != null) {
+                add("a.created_at >= :from::timestamptz")
+            }
+            if (query.to != null) {
+                add("a.created_at <= :to::timestamptz")
+            }
         }.joinToString(prefix = "WHERE ", separator = " AND ")
 
     private fun Row.toEntry() =

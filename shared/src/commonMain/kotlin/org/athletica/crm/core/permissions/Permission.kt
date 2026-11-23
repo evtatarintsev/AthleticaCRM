@@ -31,6 +31,9 @@ enum class UserPermission : Permission {
 
     /** Позволяет создавать, настраивать и удалять виджеты расписания для сайта и ВКонтакте. */
     CAN_MANAGE_WIDGETS,
+
+    /** Позволяет подключать Telegram Gateway организации и отправлять тестовые коды за её счёт. */
+    CAN_MANAGE_TELEGRAM_GATEWAY,
 }
 
 /**

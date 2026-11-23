@@ -11,6 +11,7 @@ import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.messaging.toChannelConfig
+import org.athletica.crm.core.secretMask
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
@@ -50,9 +51,9 @@ class DbChannelListView : ChannelListView {
     private fun ChannelConfig.settings(): ChannelSettingsSchema =
         when (this) {
             is ChannelConfig.SmscSms -> ChannelSettingsSchema.SmscSms(login = login)
-            is ChannelConfig.TelegramBot -> ChannelSettingsSchema.TelegramBot(tokenMask = botToken.masked(), botUsername = botUsername)
+            is ChannelConfig.TelegramBot -> ChannelSettingsSchema.TelegramBot(tokenMask = botToken.secretMask(), botUsername = botUsername)
             is ChannelConfig.TwilioSms ->
-                ChannelSettingsSchema.TwilioSms(accountSid = accountSid, authTokenMask = authToken.masked(), from = from)
+                ChannelSettingsSchema.TwilioSms(accountSid = accountSid, authTokenMask = authToken.secretMask(), from = from)
         }
 
     /** Ссылка на бота для каналов-ботов с известным именем; `null` для остальных. */
@@ -61,26 +62,4 @@ class DbChannelListView : ChannelListView {
             is ChannelConfig.TelegramBot -> botUsername.takeIf { it.isNotBlank() }?.let { ChannelShareSchema("https://t.me/$it") }
             is ChannelConfig.SmscSms, is ChannelConfig.TwilioSms -> null
         }
-
-    /**
-     * Маска секрета: `••••` и последние [VISIBLE_TAIL] символа; секрет короче [MIN_MASKED_LENGTH]
-     * маскируется полностью, чтобы не раскрыть заметную его часть.
-     */
-    private fun String.masked(): String =
-        if (length >= MIN_MASKED_LENGTH) {
-            MASK + takeLast(VISIBLE_TAIL)
-        } else {
-            MASK
-        }
-
-    private companion object {
-        /** Видимая часть маски вместо скрытых символов. */
-        const val MASK = "••••"
-
-        /** Сколько последних символов секрета видно в маске. */
-        const val VISIBLE_TAIL = 4
-
-        /** Минимальная длина секрета, у которого показываются последние символы. */
-        const val MIN_MASKED_LENGTH = 12
-    }
 }

@@ -469,6 +469,10 @@ export const ru = {
   "permission.CAN_MANAGE_WIDGETS.name": "Может управлять виджетами расписания",
   "permission.CAN_MANAGE_WIDGETS.description":
     "Сотрудник сможет создавать и настраивать виджеты расписания для сайта и ВКонтакте",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.label": "Telegram Gateway",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.name": "Может настраивать Telegram Gateway",
+  "permission.CAN_MANAGE_TELEGRAM_GATEWAY.description":
+    "Сотрудник сможет подключать Telegram Gateway и отправлять тестовые коды за счёт его баланса",
   "permission.CAN_MANAGE_TASKS.label": "Управление задачами",
   "permission.CAN_MANAGE_TASKS.name": "Может управлять задачами",
   "permission.CAN_MANAGE_TASKS.description":
@@ -493,6 +497,8 @@ export const ru = {
   "settings.itemChangePasswordSubtitle": "Изменить текущий пароль аккаунта",
   "settings.itemChannels": "Каналы связи",
   "settings.itemChannelsSubtitle": "Интеграции для сообщений клиентам",
+  "settings.itemTelegramGateway": "Telegram Gateway",
+  "settings.itemTelegramGatewaySubtitle": "Коды входа в Telegram по номеру телефона",
   "settings.itemScheduleWidgets": "Виджеты расписания",
   "settings.itemScheduleWidgetsSubtitle": "Расписание для сайта клуба и ВКонтакте",
   "widgets.title": "Виджеты расписания",
@@ -1380,6 +1386,21 @@ export const ru = {
   "taskStatus.PAUSED": "На паузе",
   "taskStatus.COMPLETED": "Завершено",
 
+  "telegramGateway.title": "Telegram Gateway",
+  "telegramGateway.hint":
+    "Коды входа уходят в Telegram по номеру телефона за счёт вашего аккаунта Telegram Gateway.",
+  "telegramGateway.loadError": "Не удалось загрузить настройки Telegram Gateway",
+  "telegramGateway.token": "Токен Gateway",
+  "telegramGateway.connect": "Подключить",
+  "telegramGateway.changeToken": "Изменить",
+  "telegramGateway.enabled": "Отправлять коды через Telegram Gateway",
+  "telegramGateway.balance": "Остаток: {amount} на {at}",
+  "telegramGateway.testPhone": "Номер для тестового кода",
+  "telegramGateway.sendTestCode": "Отправить тестовый код",
+  "telegramGateway.outcome.sent": "Код отправлен",
+  "telegramGateway.outcome.undeliverable": "На этот номер Telegram доставить код не может",
+  "telegramGateway.outcome.notConfigured": "Интеграция выключена",
+  "telegramGateway.outcome.failed": "Код не отправлен",
   "channels.title": "Каналы связи",
   "channels.create": "Новый канал",
   "channels.edit": "Изменить канал",

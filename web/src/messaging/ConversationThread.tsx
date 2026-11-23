@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDownIcon, SendIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n, type I18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { apiErrorOf, unwrap } from "@/query/apiFailure";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
@@ -103,8 +104,21 @@ export function ConversationThread({
   const [selectedChannelId, setSelectedChannelId] = useState<ChannelIntegrationId | null>(null);
   const [selectedContactId, setSelectedContactId] = useState<ClientContactId | null>(null);
   const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const sendMessage = useMutation({
+    mutationFn: async (message: {
+      channelIntegrationId: ChannelIntegrationId;
+      contactId: ClientContactId | null;
+      body: string;
+    }) => unwrap(await api.call("messaging/send", { clientId, ...message })),
+    onSuccess: async (response) => {
+      queryClient.setQueryData(conversationQuery.queryKey, response);
+      setDraft("");
+      await invalidateInbox(queryClient, branchId);
+    },
+  });
+  const sending = sendMessage.isPending;
+  const sendError =
+    sendMessage.error === null ? null : apiErrorMessage(t, apiErrorOf(sendMessage.error));
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -137,26 +151,14 @@ export function ConversationThread({
   const available = selectedChannel?.available ?? false;
   const canSend = !sending && draft.trim() !== "" && available;
 
-  const send = async (): Promise<void> => {
-    if (selectedChannel === null || !canSend) {
-      return;
+  const send = () => {
+    if (selectedChannel !== null && canSend) {
+      sendMessage.mutate({
+        channelIntegrationId: selectedChannel.id,
+        body: draft.trim(),
+        contactId: effectiveContactId,
+      });
     }
-    setSending(true);
-    setSendError(null);
-    const result = await api.call("messaging/send", {
-      clientId,
-      channelIntegrationId: selectedChannel.id,
-      body: draft.trim(),
-      contactId: effectiveContactId,
-    });
-    setSending(false);
-    if (!result.ok) {
-      setSendError(apiErrorMessage(t, result.error));
-      return;
-    }
-    queryClient.setQueryData(conversationQuery.queryKey, result.value);
-    setDraft("");
-    await invalidateInbox(queryClient, branchId);
   };
 
   const failed = conversation.isError || channelsResult.isError;
@@ -197,7 +199,7 @@ export function ConversationThread({
               onSelect={(channel) => {
                 setSelectedChannelId(channel.id);
                 setSelectedContactId(defaultContactId(channel.contacts));
-                setSendError(null);
+                sendMessage.reset();
               }}
             />
             {selectedChannel !== null && !available && (
@@ -209,7 +211,7 @@ export function ConversationThread({
                 selectedId={effectiveContactId}
                 onSelect={(contact) => {
                   setSelectedContactId(contact.id);
-                  setSendError(null);
+                  sendMessage.reset();
                 }}
               />
             )}
@@ -224,11 +226,11 @@ export function ConversationThread({
             aria-label={t("messaging.placeholder")}
             onChange={(event) => {
               setDraft(event.target.value);
-              setSendError(null);
+              sendMessage.reset();
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && canSend) {
-                void send();
+                send();
               }
             }}
             className="flex-1"
@@ -239,7 +241,7 @@ export function ConversationThread({
             aria-label={t("messaging.send")}
             disabled={!canSend}
             onClick={() => {
-              void send();
+              send();
             }}
           >
             <SendIcon aria-hidden />

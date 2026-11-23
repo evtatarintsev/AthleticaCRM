@@ -70,12 +70,13 @@ export function fakeServer(handlers: Readonly<Record<string, FakeHandler>>) {
 /**
  * Открывает приложение на пути [path] поверх `fetch` поддельного сервера. Потеря сессии
  * обрабатывается как в `main.tsx`. [cachedSession] — данные сессии, уже лежащие в кэше
- * клиента к моменту открытия.
+ * клиента к моменту открытия; [locale] — язык интерфейса.
  */
 export function openApp(
   path: string,
   fetch: ApiClientOptions["fetch"],
   cachedSession?: ResponseOf<"auth/me">,
+  locale: "ru" | "en" = "ru",
 ): { history: RouterHistory } {
   const queryClient = createQueryClient();
   const api = createApiClient({
@@ -93,7 +94,7 @@ export function openApp(
   const history = createMemoryHistory({ initialEntries: [path] });
   const routing = createAppRouting({ api, queryClient }, history);
   render(
-    <I18nProvider initialLocale="ru">
+    <I18nProvider initialLocale={locale}>
       <QueryClientProvider client={queryClient}>{routing.element}</QueryClientProvider>
     </I18nProvider>,
   );

@@ -228,7 +228,69 @@ export const AssistantBlockClientDraftSchema = z
   .readonly();
 export type AssistantBlockClientDraft = z.output<typeof AssistantBlockClientDraftSchema>;
 
-export const AssistantBlockSchema = z.discriminatedUnion("type", [AssistantBlockClientCreatedSchema, AssistantBlockClientDraftSchema]);
+export const AssistantBlockImportCompletedSchema = z
+  .object({
+    type: z.literal("import_completed"),
+    draftId: z.uuid(),
+    created: z.int32(),
+  })
+  .readonly();
+export type AssistantBlockImportCompleted = z.output<typeof AssistantBlockImportCompletedSchema>;
+
+export const AssistantImportCountsSchema = z
+  .object({
+    total: z.int32(),
+    ready: z.int32(),
+    exists: z.int32(),
+    duplicateInFile: z.int32(),
+    possibleDuplicate: z.int32(),
+    error: z.int32(),
+    warnings: z.int32(),
+  })
+  .readonly();
+export type AssistantImportCounts = z.output<typeof AssistantImportCountsSchema>;
+
+export const AssistantImportRowErrorSchema = z.enum(["name_required", "gender_required", "invalid_date", "invalid_contact", "invalid_field", "field_required"]);
+export type AssistantImportRowError = z.output<typeof AssistantImportRowErrorSchema>;
+
+export const AssistantImportRowStatusSchema = z.enum(["ready", "exists", "duplicate_in_file", "possible_duplicate", "error"]);
+export type AssistantImportRowStatus = z.output<typeof AssistantImportRowStatusSchema>;
+
+export const AssistantImportWarningSchema = z.enum(["uncertain", "contact_dropped", "possible_duplicate"]);
+export type AssistantImportWarning = z.output<typeof AssistantImportWarningSchema>;
+
+export const AssistantImportRowSchema = z
+  .object({
+    row: z.int32(),
+    sheet: z.string().nullable(),
+    photo: z.int32().nullable(),
+    line: z.int32(),
+    status: AssistantImportRowStatusSchema,
+    name: z.string().nullable(),
+    client: AssistantClientPayloadSchema.nullable(),
+    error: AssistantImportRowErrorSchema.nullable(),
+    errorField: z.string().nullable(),
+    warnings: z.array(AssistantImportWarningSchema).readonly(),
+    uncertainFields: z.array(z.string()).readonly(),
+    existingClientId: ClientIdSchema.nullable(),
+  })
+  .readonly();
+export type AssistantImportRow = z.output<typeof AssistantImportRowSchema>;
+
+export const AssistantBlockImportDraftSchema = z
+  .object({
+    type: z.literal("import_draft"),
+    draftId: z.uuid(),
+    status: AssistantDraftStatusSchema,
+    counts: AssistantImportCountsSchema,
+    problems: z.array(AssistantImportRowSchema).readonly(),
+    preview: z.array(AssistantImportRowSchema).readonly(),
+    customFieldLabels: z.record(z.string(), z.string()).readonly(),
+  })
+  .readonly();
+export type AssistantBlockImportDraft = z.output<typeof AssistantBlockImportDraftSchema>;
+
+export const AssistantBlockSchema = z.discriminatedUnion("type", [AssistantBlockClientCreatedSchema, AssistantBlockClientDraftSchema, AssistantBlockImportCompletedSchema, AssistantBlockImportDraftSchema]);
 export type AssistantBlock = z.output<typeof AssistantBlockSchema>;
 
 export const AssistantConfirmRequestSchema = z
@@ -259,6 +321,7 @@ export const AssistantMessageSchema = z
     status: AssistantMessageStatusSchema,
     blocks: z.array(AssistantBlockSchema).readonly(),
     errorCode: z.string().nullable(),
+    attachments: z.array(z.string()).readonly(),
   })
   .readonly();
 export type AssistantMessage = z.output<typeof AssistantMessageSchema>;
@@ -271,10 +334,28 @@ export const AssistantDialogResponseSchema = z
   .readonly();
 export type AssistantDialogResponse = z.output<typeof AssistantDialogResponseSchema>;
 
+export const AssistantImportConfirmRequestSchema = z
+  .object({
+    draftId: z.uuid(),
+  })
+  .readonly();
+export type AssistantImportConfirmRequest = z.output<typeof AssistantImportConfirmRequestSchema>;
+
+export const AssistantImportConfirmResponseSchema = z
+  .object({
+    created: z.int32(),
+  })
+  .readonly();
+export type AssistantImportConfirmResponse = z.output<typeof AssistantImportConfirmResponseSchema>;
+
+export const UploadIdSchema = z.uuid().brand<"UploadId">();
+export type UploadId = z.output<typeof UploadIdSchema>;
+
 export const AssistantSendRequestSchema = z
   .object({
     dialogId: z.uuid(),
     text: z.string(),
+    attachments: z.array(UploadIdSchema).readonly().optional(),
   })
   .readonly();
 export type AssistantSendRequest = z.output<typeof AssistantSendRequestSchema>;
@@ -308,9 +389,6 @@ export type AssistantStatusResponse = z.output<typeof AssistantStatusResponseSch
 
 export const ClientDocIdSchema = z.uuid().brand<"ClientDocId">();
 export type ClientDocId = z.output<typeof ClientDocIdSchema>;
-
-export const UploadIdSchema = z.uuid().brand<"UploadId">();
-export type UploadId = z.output<typeof UploadIdSchema>;
 
 export const AttachClientDocRequestSchema = z
   .object({
@@ -4199,6 +4277,13 @@ export const endpoints = {
     request: AssistantConfirmRequestSchema,
     out: "json",
     response: AssistantConfirmResponseSchema,
+  },
+  "assistant/imports/confirm": {
+    method: "POST",
+    in: "body",
+    request: AssistantImportConfirmRequestSchema,
+    out: "json",
+    response: AssistantImportConfirmResponseSchema,
   },
   "assistant/messages/send": {
     method: "POST",

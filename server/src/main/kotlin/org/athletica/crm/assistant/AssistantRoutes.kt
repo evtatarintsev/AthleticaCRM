@@ -3,6 +3,8 @@ package org.athletica.crm.assistant
 import org.athletica.crm.api.schemas.assistant.AssistantConfirmRequest
 import org.athletica.crm.api.schemas.assistant.AssistantConfirmResponse
 import org.athletica.crm.api.schemas.assistant.AssistantDialogResponse
+import org.athletica.crm.api.schemas.assistant.AssistantImportConfirmRequest
+import org.athletica.crm.api.schemas.assistant.AssistantImportConfirmResponse
 import org.athletica.crm.api.schemas.assistant.AssistantSendRequest
 import org.athletica.crm.api.schemas.assistant.AssistantSettingsRequest
 import org.athletica.crm.api.schemas.assistant.AssistantSettingsResponse
@@ -16,6 +18,7 @@ fun RouteWithContext.assistantRoutes(assistant: AssistantService) {
     post<AssistantSettingsRequest, AssistantSettingsResponse>("/assistant/settings/update") { assistant.updateSettings(it) }
     get<Unit, AssistantDialogResponse>("/assistant/dialogs/current") { assistant.current() }
     post<Unit, AssistantDialogResponse>("/assistant/dialogs/create") { assistant.create() }
-    post<AssistantSendRequest, AssistantDialogResponse>("/assistant/messages/send") { assistant.send(it.dialogId, it.text) }
+    post<AssistantSendRequest, AssistantDialogResponse>("/assistant/messages/send") { assistant.send(it.dialogId, it.text, it.attachments) }
     post<AssistantConfirmRequest, AssistantConfirmResponse>("/assistant/drafts/confirm") { AssistantConfirmResponse(assistant.confirm(it.clientId).clientId) }
+    post<AssistantImportConfirmRequest, AssistantImportConfirmResponse>("/assistant/imports/confirm") { AssistantImportConfirmResponse(assistant.confirmImport(it.draftId).created) }
 }

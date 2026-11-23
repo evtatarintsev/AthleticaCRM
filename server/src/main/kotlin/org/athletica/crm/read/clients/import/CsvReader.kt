@@ -55,6 +55,29 @@ object CsvReader {
         }
     }
 
+    /**
+     * Все непустые записи [bytes] без выделения заголовка: строку заголовка выбирает вызывающий код,
+     * потому что над ней бывают название и пустые строки. Пустые значения становятся `null`.
+     */
+    context(raise: Raise<DomainError>)
+    fun records(bytes: ByteArray): List<List<String?>> {
+        val text = decode(bytes)
+        val format =
+            CSVFormat.Builder
+                .create()
+                .setDelimiter(detectDelimiter(text))
+                .setIgnoreEmptyLines(true)
+                .setTrim(false)
+                .build()
+        return try {
+            CSVParser(java.io.StringReader(text), format).use { parser -> parser.records.map { record -> record.toList().map { it.ifEmpty { null } } } }
+        } catch (e: IOException) {
+            raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV"))
+        } catch (e: UncheckedIOException) {
+            raise(CommonDomainError("CSV_PARSE_FAILED", "Не удалось разобрать CSV"))
+        }
+    }
+
     /** Читает заголовки и все записи из [parser]; пустые значения становятся `null`. */
     private fun read(parser: CSVParser): Parsed {
         val headers: List<String> = parser.headerNames

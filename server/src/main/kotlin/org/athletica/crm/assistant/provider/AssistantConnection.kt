@@ -33,14 +33,14 @@ class AssistantConnection internal constructor(
         /** Возвращает отключённое подключение без HTTP-клиентов. */
         fun unavailable(): AssistantConnection = AssistantConnection(null, null)
 
-        /** Читает необязательные серверные параметры, не сохраняя конфигурацию с секретом. */
-        fun from(config: ApplicationConfig): AssistantConnection {
-            val provider = config.propertyOrNull("assistant.provider")?.getString().orEmpty()
-            val model = config.propertyOrNull("assistant.model")?.getString().orEmpty()
-            val key = config.propertyOrNull("assistant.apiKey")?.getString().orEmpty()
+        /** Читает необязательные параметры раздела [path], не сохраняя конфигурацию с секретом. */
+        fun from(config: ApplicationConfig, path: String = "assistant"): AssistantConnection {
+            val provider = config.propertyOrNull("$path.provider")?.getString().orEmpty()
+            val model = config.propertyOrNull("$path.model")?.getString().orEmpty()
+            val key = config.propertyOrNull("$path.apiKey")?.getString().orEmpty()
             val connection = create(provider, model, key)
             if (!connection.available && listOf(provider, model, key).any { it.isNotBlank() }) {
-                org.slf4j.LoggerFactory.getLogger(AssistantConnection::class.java).warn("Assistant connection unavailable: incomplete configuration or unsupported provider")
+                org.slf4j.LoggerFactory.getLogger(AssistantConnection::class.java).warn("Assistant connection {} unavailable: incomplete configuration or unsupported provider", path)
             }
             return connection
         }

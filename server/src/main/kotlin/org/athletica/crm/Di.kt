@@ -9,6 +9,8 @@ import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.assistant.AssistantService
+import org.athletica.crm.assistant.imports.ImportDrafts
+import org.athletica.crm.assistant.imports.PhotoRecognizer
 import org.athletica.crm.assistant.provider.AssistantConnection
 import org.athletica.crm.assistant.storage.AssistantStorage
 import org.athletica.crm.assistant.tools.ClientDrafts
@@ -189,6 +191,7 @@ data class Di(
     val payments: Payments,
     val paymentGateway: PaymentGateway,
     val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
+    val photoRecognizer: PhotoRecognizer = PhotoRecognizer.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
     val telegramGatewayApi: TelegramGatewayApi = TelegramGatewayApi(createTelegramHttpClients(emptyList())),
     val roles: Roles = DbRoles(),
@@ -228,7 +231,19 @@ data class Di(
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val clientContacts = DbClientContacts()
     val assistantStorage = AssistantStorage(orgCalendar)
-    val assistant = AssistantService(database, assistantConnection, assistantStorage, ClientDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions), employees, customFieldDefinitions)
+    val importDrafts = ImportDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions)
+    val assistant =
+        AssistantService(
+            database,
+            assistantConnection,
+            assistantStorage,
+            ClientDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions),
+            employees,
+            customFieldDefinitions,
+            importDrafts,
+            photoRecognizer,
+            minio,
+        )
     val views = ReadViews()
     val participations: Participations = DbParticipations()
     val debitReconciliation: DebitReconciliation =
@@ -309,6 +324,7 @@ fun Application.di(): Di {
         telegramApi = TelegramBotApi(telegramClients),
         telegramGatewayApi = TelegramGatewayApi(telegramClients),
         assistantConnection = AssistantConnection.from(environment.config),
+        photoRecognizer = PhotoRecognizer.from(environment.config),
         emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
     )
 }

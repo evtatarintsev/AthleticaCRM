@@ -1,13 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { SparklesIcon } from "lucide-react";
+import { PaperclipIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ApiClient } from "@/api/client";
 import type {
   AssistantBlock,
   AssistantBlockClientDraft,
+  AssistantBlockImportDraft,
   EmployeeId,
+  UploadId,
 } from "@/api/generated/contracts";
+import { uploadFile } from "@/api/upload";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
@@ -20,6 +23,8 @@ import {
   assistantErrorMessage,
   assistantStatusQuery,
 } from "./assistantQueries";
+import { ATTACHMENT_ACCEPT, attachmentProblem } from "./attachments";
+import { ImportCompleted, ImportDraftCard } from "./ImportDraftCard";
 
 /**
  * Панель помощника и кнопка её открытия на широком экране. Состояние живёт над размонтируемым
@@ -44,6 +49,12 @@ export function AssistantHost({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [files, setFiles] = useState<readonly File[]>([]);
+  const [withFiles, setWithFiles] = useState(false);
+  const [stale, setStale] = useState<AssistantBlockImportDraft["draftId"] | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  /** Уже загруженные файлы: повторная отправка после отказа не плодит копии с ПД в хранилище. */
+  const uploadedIds = useRef(new WeakMap<File, UploadId>());
   const inFlight = useRef(false);
   const active = useRef(true);
   const dialogQuery = assistantDialogQuery(api, employeeId);
@@ -76,6 +87,15 @@ export function AssistantHost({
   }, [dialog.error, refreshStatus]);
   const processing = dialog.data?.messages.some((m) => m.status === "processing") === true;
   const busy = sending || processing;
+  const problem = attachmentProblem(files);
+  const canSend = text.trim() !== "" || files.length > 0;
+
+  /** Добавляет выбранные или перетащенные файлы; проверка набора показывается до отправки. */
+  function attach(list: FileList | null) {
+    if (list === null || list.length === 0) return;
+    setFiles((current) => [...current, ...Array.from(list)]);
+    setFailure(null);
+  }
 
   /** Квитанция обновляет все списки клиентов, в том числе в других филиалах. */
   async function refreshClients() {
@@ -84,28 +104,85 @@ export function AssistantHost({
     });
   }
 
-  /** Прямой запрос без retry: при потере ответа перечитывается только диалог. */
+  /**
+   * Прямой запрос без retry: при потере ответа перечитывается только диалог, файлы повторно
+   * не отправляются. Вложения сначала загружаются через `/upload` и остаются в поле при отказе;
+   * принятый ход (диалог вырос) очищает их. Без ответа сервер мог принять ход и удалить загрузки,
+   * поэтому повтор после такого сбоя загружает файлы заново.
+   */
   async function send() {
     const current = dialog.data;
-    if (current === undefined || inFlight.current || processing || text.trim() === "") return;
+    if (current === undefined || inFlight.current || processing || !canSend || problem !== null)
+      return;
     inFlight.current = true;
     setSending(true);
+    setWithFiles(files.length > 0);
     setFailure(null);
     try {
+      const attachments: UploadId[] = [];
+      for (const file of files) {
+        const known = uploadedIds.current.get(file);
+        if (known !== undefined) {
+          attachments.push(known);
+          continue;
+        }
+        const uploaded = await uploadFile(api, file);
+        if (!active.current) return;
+        if (!uploaded.ok) {
+          setFailure(assistantErrorMessage(t, uploaded.error));
+          return;
+        }
+        uploadedIds.current.set(file, uploaded.value.id);
+        attachments.push(uploaded.value.id);
+      }
       const result = await api.call("assistant/messages/send", {
         dialogId: current.id,
         text: text.trim(),
+        attachments,
       });
       if (!active.current) return;
       if (result.ok) {
         cache.setQueryData(dialogQuery.queryKey, result.value);
         setText("");
-        if (result.value.messages.some((m) => m.blocks.some((b) => b.type === "client_created")))
+        setFiles([]);
+        if (
+          result.value.messages.some((m) =>
+            m.blocks.some((b) => b.type === "client_created" || b.type === "import_completed"),
+          )
+        )
           await refreshClients();
       } else {
         setFailure(assistantErrorMessage(t, result.error));
-        await dialog.refetch();
+        if (result.error.kind !== "business") uploadedIds.current = new WeakMap();
+        const refreshed = await dialog.refetch();
+        if ((refreshed.data?.messages.length ?? 0) > current.messages.length) setFiles([]);
       }
+      await status.refetch();
+    } finally {
+      inFlight.current = false;
+      setSending(false);
+      setWithFiles(false);
+    }
+  }
+
+  /** Пакетное подтверждение кнопкой: без модели; устаревшая карточка показывает причину. */
+  async function confirmImport(draftId: AssistantBlockImportDraft["draftId"]) {
+    if (inFlight.current || processing) return;
+    inFlight.current = true;
+    setSending(true);
+    setFailure(null);
+    setStale(null);
+    try {
+      const result = await api.call("assistant/imports/confirm", { draftId });
+      if (!active.current) return;
+      if (result.ok) await refreshClients();
+      else if (
+        result.error.kind === "business" &&
+        result.error.code === "ASSISTANT_IMPORT_DRAFT_STALE"
+      )
+        setStale(draftId);
+      else setFailure(assistantErrorMessage(t, result.error));
+      await dialog.refetch();
       await status.refetch();
     } finally {
       inFlight.current = false;
@@ -144,6 +221,7 @@ export function AssistantHost({
       if (result.ok) {
         cache.setQueryData(dialogQuery.queryKey, result.value);
         setText("");
+        setFiles([]);
       } else setFailure(assistantErrorMessage(t, result.error));
       await status.refetch();
     } finally {
@@ -202,14 +280,28 @@ export function AssistantHost({
                 key={message.id}
                 className={message.role === "user" ? "ml-6 rounded-lg bg-muted p-3" : "space-y-3"}
               >
-                <p className="whitespace-pre-wrap">{message.text}</p>
+                {message.text !== "" && <p className="whitespace-pre-wrap">{message.text}</p>}
+                {message.attachments.length > 0 && (
+                  <ul aria-label={t("assistant.attachments")} className="space-y-1 text-sm">
+                    {message.attachments.map((name, index) => (
+                      <li key={index} className="flex min-w-0 items-center gap-1">
+                        <PaperclipIcon aria-hidden className="size-4 shrink-0" />
+                        <span className="min-w-0">{name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {message.blocks.map((block, index) => (
                   <ResponseBlock
                     key={index}
                     block={block}
                     busy={busy}
+                    stale={stale}
                     onConfirm={(id) => {
                       void confirm(id);
+                    }}
+                    onConfirmImport={(id) => {
+                      void confirmImport(id);
                     }}
                   />
                 ))}
@@ -220,7 +312,7 @@ export function AssistantHost({
             ))}
             {busy && (
               <p role="status" aria-live="polite">
-                {t("assistant.waiting")}
+                {t(withFiles ? "assistant.processingFile" : "assistant.waiting")}
               </p>
             )}
           </div>
@@ -230,8 +322,38 @@ export function AssistantHost({
               event.preventDefault();
               void send();
             }}
+            onDragOver={(event) => {
+              event.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (!busy) attach(event.dataTransfer.files);
+            }}
           >
             {failure !== null && <FormAlert message={failure} />}
+            {problem !== null && <FormAlert message={t(`assistant.attachError.${problem}`)} />}
+            {files.length > 0 && (
+              <ul aria-label={t("assistant.attachments")} className="space-y-1 text-sm">
+                {files.map((file, index) => (
+                  <li key={index} className="flex min-w-0 items-center gap-1">
+                    <PaperclipIcon aria-hidden className="size-4 shrink-0" />
+                    <span className="min-w-0 flex-1">{file.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={busy}
+                      aria-label={t("assistant.removeAttachment", { name: file.name })}
+                      onClick={() => {
+                        setFiles((current) => current.filter((_, i) => i !== index));
+                      }}
+                    >
+                      <XIcon aria-hidden />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <textarea
               className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
               aria-label={t("assistant.input")}
@@ -243,12 +365,37 @@ export function AssistantHost({
               }}
               rows={3}
             />
-            <Button
-              type="submit"
-              disabled={busy || text.trim() === "" || dialog.data === undefined}
-            >
-              {t("assistant.send")}
-            </Button>
+            <input
+              ref={picker}
+              type="file"
+              multiple
+              hidden
+              accept={ATTACHMENT_ACCEPT}
+              aria-label={t("assistant.attach")}
+              onChange={(event) => {
+                attach(event.target.files);
+                event.target.value = "";
+              }}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="submit"
+                disabled={busy || !canSend || problem !== null || dialog.data === undefined}
+              >
+                {t("assistant.send")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  picker.current?.click();
+                }}
+              >
+                <PaperclipIcon aria-hidden />
+                {t("assistant.attach")}
+              </Button>
+            </div>
           </form>
         </div>
       </EditSheet>
@@ -260,14 +407,29 @@ export function AssistantHost({
 function ResponseBlock({
   block,
   busy,
+  stale,
   onConfirm,
+  onConfirmImport,
 }: {
   block: AssistantBlock;
   busy: boolean;
+  stale: AssistantBlockImportDraft["draftId"] | null;
   onConfirm: (id: AssistantBlockClientDraft["clientId"]) => void;
+  onConfirmImport: (id: AssistantBlockImportDraft["draftId"]) => void;
 }) {
   const { t, format } = useI18n();
   switch (block.type) {
+    case "import_draft":
+      return (
+        <ImportDraftCard
+          block={block}
+          busy={busy}
+          stale={stale === block.draftId}
+          onConfirm={onConfirmImport}
+        />
+      );
+    case "import_completed":
+      return <ImportCompleted block={block} />;
     case "client_created":
       return (
         <Link

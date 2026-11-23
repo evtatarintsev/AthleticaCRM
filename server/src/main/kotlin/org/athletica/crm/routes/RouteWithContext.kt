@@ -42,6 +42,7 @@ import org.athletica.crm.core.errors.EmployeeBlocked
 import org.athletica.crm.core.errors.SessionRevoked
 import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.domain.auth.AuthSessions
+import org.athletica.crm.domain.employees.EmployeeAccess
 import org.athletica.crm.domain.employees.EmployeePresence
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.Organizations
@@ -210,7 +211,7 @@ suspend fun RoutingCall.contextFromRequest(
             db.transaction {
                 context(SystemContexts.forOrg(orgId)) {
                     val employee = employees.byId(employeeId)
-                    ensure(employee.blockedAt == null) { EmployeeBlocked }
+                    ensure(employee.access !is EmployeeAccess.Blocked) { EmployeeBlocked }
                     sessions.requireActive(sessionId, userId)
                     presence.touch(employeeId, Clock.System.now())
                     organizations.current().currency to employee

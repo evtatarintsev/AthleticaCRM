@@ -30,6 +30,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
@@ -85,19 +86,19 @@ class DbEmployees(
             .bind("allBranchesAccess", allBranchesAccess)
             .onViolation("employees_pkey") { CommonDomainError("EMPLOYEE_ALREADY_EXISTS", Messages.EmployeeAlreadyExists.localize()) }
             .execute()
-        for (role in permissionSettings.roles) {
+        permissionSettings.roles.forEach { role ->
             tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                 .bind("employeeId", id)
                 .bind("roleId", role.id)
                 .execute()
         }
-        for (permission in permissionSettings.grantedPermissions) {
+        permissionSettings.grantedPermissions.forEach { permission ->
             tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, true)")
                 .bind("employeeId", id)
                 .bind("key", permission.name)
                 .execute()
         }
-        for (permission in permissionSettings.revokedPermissions) {
+        permissionSettings.revokedPermissions.forEach { permission ->
             tr.sql("INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted) VALUES (:employeeId, :key, false)")
                 .bind("employeeId", id)
                 .bind("key", permission.name)
@@ -110,8 +111,8 @@ class DbEmployees(
                 .execute()
         }
         return DbEmployee(
-            id = id, userId = null,
-            name = name.value, avatarId = avatarId, isOwner = false, blockedAt = null,
+            id = id, access = EmployeeAccess.NoLogin,
+            name = name.value, avatarId = avatarId, isOwner = false,
             joinedAt = Clock.System.now(), phoneNo = phoneNo, email = email,
             users = users,
             permissionSettings = permissionSettings,
@@ -141,11 +142,10 @@ class DbEmployees(
                 .list { row ->
                     DbEmployee(
                         id = row.asUuid("id").toEmployeeId(),
-                        userId = row.asUuidOrNull("user_id")?.toUserId(),
                         name = row.asString("name"),
                         avatarId = row.asUuidOrNull("avatar_id")?.toUploadId(),
                         isOwner = row.asBoolean("is_owner"),
-                        blockedAt = row.asInstantOrNull("blocked_at"),
+                        access = EmployeeAccess.of(row.asUuidOrNull("user_id")?.toUserId(), row.asInstantOrNull("blocked_at")),
                         joinedAt = row.asInstant("joined_at"),
                         phoneNo = row.asStringOrNull("phone_no"),
                         email = row.asStringOrNull("email")?.toEmailAddress(),
@@ -184,8 +184,7 @@ class DbEmployees(
                 SELECT e.id
                 FROM employees e
                 WHERE e.org_id = :orgId
-                  AND e.user_id IS NOT NULL
-                  AND e.blocked_at IS NULL
+                  AND ${EmployeeAccessSql.ACTIVE}
                   AND (
                       e.all_branches_access
                       OR EXISTS (

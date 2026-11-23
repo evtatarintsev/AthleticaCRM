@@ -24,6 +24,7 @@ import org.athletica.crm.domain.employees.DbEmployee
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeAccess
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.EmployeePermissionSelection
@@ -774,11 +775,11 @@ class DbEmployeesTest {
 
             assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
             val blocked = assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value
-            val blockedAt = assertNotNull(blocked.blockedAt)
+            val blockedAt = assertIs<EmployeeAccess.Blocked>(blocked.access).blockedAt
             assertFalse(blocked.isActive)
 
             assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
-            assertEquals(blockedAt, assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.blockedAt)
+            assertEquals(blockedAt, assertIs<EmployeeAccess.Blocked>(assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.access).blockedAt)
         }
 
     @Test
@@ -791,7 +792,7 @@ class DbEmployeesTest {
             val result = attempt { employees.byId(id).block() }
 
             assertEquals("EMPLOYEE_OWNER_CANNOT_BE_BLOCKED", assertIs<Either.Left<AppError>>(result).value.code)
-            assertNull(assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.blockedAt)
+            assertIs<EmployeeAccess.Active>(assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.access)
         }
 
     @Test
@@ -814,8 +815,36 @@ class DbEmployeesTest {
             assertIs<Either.Right<Unit>>(attempt { employees.byId(id).unblock() })
 
             val employee = assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value
-            assertNull(employee.blockedAt)
+            assertIs<EmployeeAccess.Active>(employee.access)
             assertTrue(employee.isActive)
+        }
+
+    @Test
+    fun `заблокированного без логина нельзя пригласить, после снятия блокировки — можно`() =
+        runTest {
+            val id = EmployeeId.new()
+            assertIs<Either.Right<Employee>>(attempt { employees.new(id, testName("Уволенный"), null, null, null, emptyPermission) })
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+            assertEquals(EmployeeAccess.Blocked::class, assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.access::class)
+
+            val result = attempt { employees.byId(id).invite("blocked@example.com".toEmailAddress(), "secret123") }
+
+            assertEquals("EMPLOYEE_BLOCKED", assertIs<Either.Left<AppError>>(result).value.code)
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).unblock() })
+            assertEquals(EmployeeAccess.NoLogin, assertIs<Either.Right<Employee>>(attempt { employees.byId(id) }).value.access)
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).invite("blocked@example.com".toEmailAddress(), "secret123") })
+        }
+
+    @Test
+    fun `заблокированного с логином нельзя пригласить повторно`() =
+        runTest {
+            val id = EmployeeId.new()
+            invitedEmployee(id, "blocked-invited@example.com")
+            assertIs<Either.Right<Unit>>(attempt { employees.byId(id).block() })
+
+            val result = attempt { employees.byId(id).invite("blocked-again@example.com".toEmailAddress(), "secret123") }
+
+            assertEquals("EMPLOYEE_BLOCKED", assertIs<Either.Left<AppError>>(result).value.code)
         }
 
     @Test

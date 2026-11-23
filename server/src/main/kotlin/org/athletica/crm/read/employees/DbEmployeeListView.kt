@@ -18,6 +18,7 @@ import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 
 /**
  * Реализация [EmployeeListView] поверх PostgreSQL. Роли каждого сотрудника приходят
@@ -57,12 +58,12 @@ class DbEmployeeListView : EmployeeListView {
         internal val ACCESS_COLUMNS =
             """
             CASE
-                WHEN e.blocked_at IS NOT NULL THEN 'BLOCKED'
-                WHEN e.user_id IS NULL THEN 'NO_ACCESS'
+                WHEN ${EmployeeAccessSql.BLOCKED} THEN 'BLOCKED'
+                WHEN ${EmployeeAccessSql.NO_LOGIN} THEN 'NO_ACCESS'
                 WHEN e.last_seen_at IS NULL THEN 'INVITED'
                 ELSE 'ACTIVE'
             END AS status,
-            (e.blocked_at IS NULL AND e.last_seen_at IS NOT NULL
+            (${EmployeeAccessSql.ACTIVE} AND e.last_seen_at IS NOT NULL
                 AND e.last_seen_at > CAST(:now AS TIMESTAMPTZ) - INTERVAL '5 minutes') AS online,
             """.trimIndent()
 

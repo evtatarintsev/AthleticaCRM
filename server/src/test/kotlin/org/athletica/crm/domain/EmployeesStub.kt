@@ -13,6 +13,7 @@ import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeAccess
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.EmployeePermissionSelection
@@ -32,7 +33,6 @@ data class EmployeeStub(
     override val name: String = "Сотрудник",
     override val avatarId: UploadId? = null,
     override val isOwner: Boolean = false,
-    override val blockedAt: Instant? = null,
     override val joinedAt: Instant = Clock.System.now(),
     /** Роли, персональные выдачи и отзывы прав сотрудника. */
     val permissionSettings: EmployeePermission = EmployeePermission(),
@@ -40,6 +40,8 @@ data class EmployeeStub(
     override val email: EmailAddress? = null,
     override val availableBranches: EmployeeBranchAccess = EmployeeBranchAccess.All,
 ) : Employee {
+    override val access: EmployeeAccess get() = userId?.let { EmployeeAccess.Active(it) } ?: EmployeeAccess.NoLogin
+
     override val roles: List<EmployeeRole> get() = permissionSettings.roles
 
     override fun hasPermission(p: UserPermission): Boolean = permissionSettings.hasPermission(p)

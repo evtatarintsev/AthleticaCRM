@@ -22,6 +22,7 @@ import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.tasks.DbTasks
+import org.athletica.crm.domain.tasks.TaskState
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.testName
@@ -179,7 +180,7 @@ class DbTaskListViewTest {
             inContext(ctx) {
                 tasks.new(TaskId.new(), testName("Ожидает"), "", null, null, null)
                 val inProgress = tasks.new(TaskId.new(), testName("В работе"), "", null, null, null)
-                inProgress.status(TaskStatus.IN_PROGRESS).save()
+                inProgress.moveTo(TaskState.InProgress).save()
             }
 
             val result = page(query = query(statuses = setOf(TaskStatus.PENDING)))

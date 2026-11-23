@@ -25,7 +25,6 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -174,7 +173,7 @@ class TaskOperationsTest {
                 TestPostgres.db.transaction {
                     context(ctx) {
                         tasks.byIds(listOf(id1, id2))
-                            .map { context(ctx) { it.status(TaskStatus.IN_PROGRESS) } }
+                            .map { context(ctx) { it.moveTo(TaskState.InProgress) } }
                             .forEach { it.save() }
                     }
                 }
@@ -185,7 +184,7 @@ class TaskOperationsTest {
         }
 
     @Test
-    fun `status COMPLETED проставляет completedAt у нескольких задач`() =
+    fun `complete проставляет completedAt у нескольких задач`() =
         runTest {
             val id1 = TaskId.new()
             val id2 = TaskId.new()
@@ -202,7 +201,7 @@ class TaskOperationsTest {
                 TestPostgres.db.transaction {
                     context(ctx) {
                         tasks.byIds(listOf(id1, id2))
-                            .map { context(ctx) { it.status(TaskStatus.COMPLETED) } }
+                            .map { context(ctx) { it.complete() } }
                             .forEach { it.save() }
                     }
                 }
@@ -359,7 +358,7 @@ class TaskOperationsTest {
                     TestPostgres.db.transaction {
                         context(ctx) {
                             tasks.byIds(listOf(myTaskId, foreignTaskId))
-                                .map { context(ctx) { it.status(TaskStatus.IN_PROGRESS) } }
+                                .map { context(ctx) { it.moveTo(TaskState.InProgress) } }
                                 .forEach { it.save() }
                         }
                     }
@@ -387,7 +386,7 @@ class TaskOperationsTest {
                 TestPostgres.db.transaction {
                     context(ctxWithManage) {
                         tasks.byIds(listOf(foreignTaskId))
-                            .map { context(ctxWithManage) { it.status(TaskStatus.COMPLETED) } }
+                            .map { context(ctxWithManage) { it.complete() } }
                             .forEach { it.save() }
                     }
                 }

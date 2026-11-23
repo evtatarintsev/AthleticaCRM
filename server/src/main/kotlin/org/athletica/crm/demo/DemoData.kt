@@ -47,7 +47,6 @@ import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.DurationUnit
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AttendanceMark
 import org.athletica.crm.domain.attendance.AuditAttendanceLabels
@@ -642,7 +641,7 @@ class DemoData(
         /** Задачи дня [day]: новые с исполнителями и закрытие запланированных; последняя неделя остаётся открытой. */
         context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
         private suspend fun work(day: LocalDate) {
-            world.tasks.filter { it.closeOn == day }.forEach { tasks.byId(it.id).status(TaskStatus.COMPLETED).save() }
+            world.tasks.filter { it.closeOn == day }.forEach { tasks.byId(it.id).complete().save() }
             val candidates = world.clients.filter { it.groups.isNotEmpty() }
             if (candidates.isEmpty() || world.taskAssignees.isEmpty() || (day != today && random.nextDouble() >= 0.3)) {
                 return

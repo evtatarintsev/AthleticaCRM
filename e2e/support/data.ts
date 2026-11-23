@@ -4,11 +4,12 @@ import { call } from "./api";
 
 /** Подготовка данных сценария через API от имени владельца [request]. Возвращает идентификаторы. */
 
-/** Вчерашняя дата в часовом поясе тестовых организаций, `YYYY-MM-DD`: занятие уже прошло. */
-export function yesterdayInOrg(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Moscow" }).format(
-    new Date(Date.now() - 24 * 60 * 60 * 1000),
-  );
+/**
+ * Сегодняшняя дата в часовом поясе тестовых организаций, `YYYY-MM-DD`. Не вчерашняя: в составе
+ * занятия только клиенты, записанные в группу не позже его даты, а сценарий записывает сегодня.
+ */
+export function todayInOrg(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Moscow" }).format(new Date());
 }
 
 /** Создаёт дисциплину [name]. */
@@ -41,7 +42,7 @@ export async function addToGroup(
   await call(request, "clients/add-to-group", { clientIds: [clientId], groupId });
 }
 
-/** Создаёт занятие группы [groupId] на дату [date] в первом зале организации. */
+/** Создаёт занятие группы [groupId] на дату [date] в 00:00 в первом зале: на сегодня оно уже началось. */
 export async function createSession(
   request: APIRequestContext,
   groupId: string,
@@ -57,8 +58,8 @@ export async function createSession(
     id,
     groupId,
     date,
-    startTime: "10:00:00",
-    endTime: "11:00:00",
+    startTime: "00:00:00",
+    endTime: "00:01:00",
     hallId: hall.id,
     employeeIds: [],
   });

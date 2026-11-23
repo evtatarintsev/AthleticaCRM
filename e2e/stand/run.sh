@@ -12,6 +12,10 @@ if [[ "${1:-}" == "--keep" ]]; then
   shift
 fi
 
+# Переменные окружения шелла (например, из .envrc) у compose приоритетнее --env-file: убираем их,
+# чтобы стенд получил только тестовые значения из e2e.env.
+unset $(grep -oE '^[A-Z_]+' e2e/stand/e2e.env)
+
 compose=(docker compose -p athletica-e2e
   -f docker-compose.prod.yaml -f e2e/stand/docker-compose.e2e.yaml
   --env-file e2e/stand/e2e.env --profile test)

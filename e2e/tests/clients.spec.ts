@@ -21,7 +21,7 @@ test("клиент, добавленный в группу, виден в гру
   const clientName = unique("Анна");
 
   await page.goto("/groups");
-  await page.getByRole("link", { name: t["groups.create"] }).click();
+  await page.getByRole("link", { name: t["groups.create"] }).first().click();
   const groupSheet = page.getByRole("dialog", { name: t["groups.create"] });
   await groupSheet.getByLabel(t["groups.name"], { exact: false }).fill(groupName);
   await groupSheet.getByRole("button", { name: t["action.create"] }).click();

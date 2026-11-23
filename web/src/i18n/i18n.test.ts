@@ -101,6 +101,8 @@ describe("форматирование", () => {
     expect(enFormat.date(LocalDateSchema.parse("2025-01-31"))).toBe("Jan 31, 2025");
     expect(ruFormat.dayMonth(LocalDateSchema.parse("1995-11-20"))).toBe("20 ноября");
     expect(enFormat.dayMonth(LocalDateSchema.parse("1995-11-20"))).toBe("November 20");
+    expect(ruFormat.numericDate(LocalDateSchema.parse("2026-12-01"))).toBe("01.12.2026");
+    expect(enFormat.numericDate(LocalDateSchema.parse("2026-12-01"))).toBe("12/01/2026");
   });
 
   it("время суток и момент времени", () => {

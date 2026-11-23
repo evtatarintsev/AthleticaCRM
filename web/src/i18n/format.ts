@@ -9,6 +9,8 @@ export interface Formatters {
   money: (money: Money) => string;
   /** Календарная дата [date] без сдвига по часовому поясу. */
   date: (date: LocalDate) => string;
+  /** Календарная дата [date] цифрами («01.12.2026» для `ru`) без сдвига по часовому поясу. */
+  numericDate: (date: LocalDate) => string;
   /** День и месяц календарной даты без года и сдвига по часовому поясу. */
   dayMonth: (date: LocalDate) => string;
   /** Время суток [time]. */
@@ -26,6 +28,12 @@ export interface Formatters {
 export function createFormatters(locale: string): Formatters {
   const numbers = new Intl.NumberFormat(locale);
   const dates = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
+  const numericDates = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  });
   const dayMonths = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
@@ -47,6 +55,7 @@ export function createFormatters(locale: string): Formatters {
       }).format(toNumericLiteral(decimalString(money.minorUnits, digits)));
     },
     date: (date) => dates.format(Date.UTC(...dateParts(date))),
+    numericDate: (date) => numericDates.format(Date.UTC(...dateParts(date))),
     dayMonth: (date) => dayMonths.format(Date.UTC(...dateParts(date))),
     time: (time) => times.format(Date.UTC(1970, 0, 1, ...timeParts(time))),
     dateTime: (instant) => dateTimes.format(new Date(instant)),

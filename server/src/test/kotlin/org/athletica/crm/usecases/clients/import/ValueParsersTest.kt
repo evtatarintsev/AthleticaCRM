@@ -3,6 +3,8 @@ package org.athletica.crm.usecases.clients.import
 import arrow.core.Either
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.core.Gender
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -78,5 +80,27 @@ class ValueParsersTest {
     @Test
     fun `parseGender ошибка если значение не покрыто маппингом`() {
         assertIs<Either.Left<String>>(ValueParsers.parseGender("男", mapOf("Мужской" to Gender.MALE)))
+    }
+
+    @Test
+    fun `parseMoney сохраняет копейки точно`() {
+        fun rub(raw: String) = (ValueParsers.parseMoney(raw, Currency.RUB) as Either.Right).value
+        assertEquals(Money(115, Currency.RUB), rub("1.15"))
+        assertEquals(Money(29, Currency.RUB), rub("0,29"))
+        assertEquals(Money(-1050, Currency.RUB), rub("-10,5"))
+        assertEquals(Money(120_050, Currency.RUB), rub("1 200,50"))
+        assertEquals(Money(120_050, Currency.RUB), rub("1\u00A0200,50"))
+        assertEquals(Money(30_000, Currency.RUB), rub("+300"))
+    }
+
+    @Test
+    fun `parseMoney пусто → null, лишние знаки и нечисло → ошибка`() {
+        assertNull((ValueParsers.parseMoney("  ", Currency.RUB) as Either.Right).value)
+        assertNull((ValueParsers.parseMoney(null, Currency.RUB) as Either.Right).value)
+        assertIs<Either.Left<String>>(ValueParsers.parseMoney("1,005", Currency.RUB))
+        assertIs<Either.Left<String>>(ValueParsers.parseMoney("abc", Currency.RUB))
+        assertIs<Either.Left<String>>(ValueParsers.parseMoney("-", Currency.RUB))
+        assertIs<Either.Left<String>>(ValueParsers.parseMoney("1.2.3", Currency.RUB))
+        assertIs<Either.Left<String>>(ValueParsers.parseMoney("99999999999999999999", Currency.RUB))
     }
 }

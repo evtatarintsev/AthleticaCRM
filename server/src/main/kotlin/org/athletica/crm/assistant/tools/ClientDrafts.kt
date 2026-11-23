@@ -90,8 +90,7 @@ class ClientDrafts(
                 CustomFieldValues(fields).forCreation(values),
                 fields.associate { it.fieldKey.value to it.label },
             )
-        tr.sql("UPDATE assistant_client_drafts SET status = 'superseded' WHERE dialog_id = :dialog AND org_id = :org AND status = 'pending'")
-            .bind("dialog", dialog).bind("org", ctx.orgId).execute()
+        storage.supersedePending(dialog)
         tr.sql("INSERT INTO assistant_client_drafts(client_id,dialog_id,org_id,message_id,payload,status) VALUES (:id,:dialog,:org,:message,:payload::jsonb,'pending')")
             .bind("id", id).bind("dialog", dialog).bind("org", ctx.orgId).bind("message", message).bind("payload", Json.encodeToString(payload)).execute()
         return AssistantBlock.ClientDraft(id, payload, AssistantDraftStatus.PENDING)
@@ -115,9 +114,9 @@ class ClientDrafts(
             storage.requireProcessing(dialog, currentMessage)
         }
         val draft =
-            tr.sql("SELECT c.status,c.payload::text,c.message_id,m.status AS message_status,m.position FROM assistant_client_drafts c JOIN assistant_messages m ON m.id = c.message_id AND m.dialog_id = c.dialog_id AND m.org_id = c.org_id WHERE c.client_id = :client AND c.dialog_id = :dialog AND c.org_id = :org FOR UPDATE OF c")
+            tr.sql("SELECT status,payload::text,message_id FROM assistant_client_drafts WHERE client_id = :client AND dialog_id = :dialog AND org_id = :org FOR UPDATE")
                 .bind("client", client).bind("dialog", dialog).bind("org", ctx.orgId).firstOrNull { row ->
-                    Triple(row.asString("status"), row.asString("payload"), row.asString("message_status") to row.asUuid("message_id"))
+                    Triple(row.asString("status"), row.asString("payload"), row.asUuid("message_id"))
                 } ?: raise(assistantError("DIALOG_UNAVAILABLE"))
         if (draft.first == "executed") {
             return AssistantBlock.ClientCreated(client)
@@ -125,21 +124,7 @@ class ClientDrafts(
         if (draft.first != "pending") {
             raise(assistantError("DRAFT_SUPERSEDED"))
         }
-        if (currentMessage == null) {
-            storage.requireIdle(dialog)
-        }
-        if (draft.third.first != "completed" || draft.third.second == currentMessage) {
-            raise(assistantError("CONFIRMATION_REQUIRED"))
-        }
-        if (currentMessage != null) {
-            val earlier =
-                tr.sql("SELECT old.position < current.position AS earlier FROM assistant_messages old, assistant_messages current WHERE old.id = :old AND current.id = :current AND old.dialog_id = :dialog AND current.dialog_id = :dialog AND old.org_id = :org AND current.org_id = :org")
-                    .bind("old", draft.third.second).bind("current", currentMessage).bind("dialog", dialog).bind("org", ctx.orgId)
-                    .firstOrNull { it.get("earlier", Boolean::class.java) } ?: false
-            if (!earlier) {
-                raise(assistantError("CONFIRMATION_REQUIRED"))
-            }
-        }
+        storage.requireConfirmable(dialog, draft.third, currentMessage)
         val payload = Json.decodeFromString<AssistantClientPayload>(draft.second)
         val checkedContacts = validateContacts(payload.contacts, client)
         val created = clients.new(client, NonBlankName.from(payload.name), null, payload.birthday, payload.gender, customFields = payload.customFields)
@@ -157,24 +142,29 @@ class ClientDrafts(
         } catch (_: IllegalArgumentException) {
             raise(assistantError("VALIDATION"))
         }
-
-    /**
-     * Проверяет контакты клиента [client] до карточки и повторно перед сохранением и приводит их
-     * к хранимому виду ([normalized]): карточка показывает ровно то, что будет записано.
-     */
-    context(raise: Raise<AppError>)
-    private fun validateContacts(values: List<ClientContactInput>, client: ClientId): List<ClientContactInput> =
-        values.map { contact ->
-            val value = contact.value.trim()
-            val valid =
-                when (contact.type) {
-                    ContactType.PHONE -> value.all { it.isDigit() || it in "+()- ." } && PhoneDigits.from(value)?.value?.length in 7..15
-                    ContactType.EMAIL -> value.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
-                    else -> value.isNotBlank()
-                }
-            if (!valid || value.length > 512) {
-                raise(assistantError("VALIDATION"))
-            }
-            ClientContact(ClientContactId.new(), client, contact.type, value, contact.label, contact.isPrimary)
-        }.normalized().map { ClientContactInput(it.type, it.value, it.label, it.isPrimary) }
 }
+
+/** Правило допустимого значения контакта, общее для карточки клиента и импорта. */
+internal fun isValidContact(type: ContactType, raw: String): Boolean {
+    val value = raw.trim()
+    val valid =
+        when (type) {
+            ContactType.PHONE -> value.all { it.isDigit() || it in "+()- ." } && PhoneDigits.from(value)?.value?.length in 7..15
+            ContactType.EMAIL -> value.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
+            else -> value.isNotBlank()
+        }
+    return valid && value.length <= 512
+}
+
+/**
+ * Проверяет контакты клиента [client] до карточки и повторно перед сохранением и приводит их
+ * к хранимому виду ([normalized]): карточка показывает ровно то, что будет записано.
+ */
+context(raise: Raise<AppError>)
+internal fun validateContacts(values: List<ClientContactInput>, client: ClientId): List<ClientContactInput> =
+    values.map { contact ->
+        if (!isValidContact(contact.type, contact.value)) {
+            raise(assistantError("VALIDATION"))
+        }
+        ClientContact(ClientContactId.new(), client, contact.type, contact.value.trim(), contact.label, contact.isPrimary)
+    }.normalized().map { ClientContactInput(it.type, it.value, it.label, it.isPrimary) }

@@ -9,9 +9,13 @@ import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
 import org.athletica.crm.assistant.AssistantService
+import org.athletica.crm.assistant.imports.ImportDrafts
+import org.athletica.crm.assistant.imports.PhotoRecognizer
 import org.athletica.crm.assistant.provider.AssistantConnection
 import org.athletica.crm.assistant.storage.AssistantStorage
 import org.athletica.crm.assistant.tools.ClientDrafts
+import org.athletica.crm.demo.DemoAuth
+import org.athletica.crm.demo.DemoData
 import org.athletica.crm.domain.attendance.AttendanceLabels
 import org.athletica.crm.domain.attendance.AuditAttendanceLabels
 import org.athletica.crm.domain.attendance.DbAttendanceLabels
@@ -127,6 +131,10 @@ import org.athletica.crm.domain.tariffs.DbTariffPlans
 import org.athletica.crm.domain.tariffs.TariffPlans
 import org.athletica.crm.domain.tasks.DbTasks
 import org.athletica.crm.domain.tasks.Tasks
+import org.athletica.crm.domain.telegramgateway.AuditTelegramGatewayIntegrations
+import org.athletica.crm.domain.telegramgateway.DbTelegramGatewayIntegrations
+import org.athletica.crm.domain.telegramgateway.TelegramGateway
+import org.athletica.crm.domain.telegramgateway.TelegramGatewayIntegrations
 import org.athletica.crm.domain.widgets.AuditScheduleWidgets
 import org.athletica.crm.domain.widgets.DbScheduleWidgets
 import org.athletica.crm.domain.widgets.ScheduleWidgets
@@ -154,6 +162,8 @@ import org.athletica.infra.messaging.telegram.TelegramPoller
 import org.athletica.infra.messaging.telegram.TelegramPollingSupervisor
 import org.athletica.infra.messaging.telegram.TelegramProxy
 import org.athletica.infra.messaging.telegram.createTelegramHttpClients
+import org.athletica.infra.telegram.gateway.ProviderTelegramGateway
+import org.athletica.infra.telegram.gateway.TelegramGatewayApi
 import org.athletica.infra.yookassa.YookassaApi
 import org.athletica.infra.yookassa.YookassaConfig
 import org.athletica.infra.yookassa.YookassaPaymentGateway
@@ -185,8 +195,10 @@ data class Di(
     val payments: Payments,
     val paymentGateway: PaymentGateway,
     val assistantConnection: AssistantConnection = AssistantConnection.unavailable(),
+    val photoRecognizer: PhotoRecognizer = PhotoRecognizer.unavailable(),
     val telegramApi: TelegramBotApi = TelegramBotApi(createTelegramHttpClients(emptyList())),
     val smsAeroApi: SmsAeroApi = SmsAeroApi(createSmsAeroHttpClient()),
+    val telegramGatewayApi: TelegramGatewayApi = TelegramGatewayApi(createTelegramHttpClients(emptyList())),
     val roles: Roles = DbRoles(),
     val emailVerificationConfig: EmailVerificationConfig = EmailVerificationConfig("http://localhost:5173"),
     val authSessions: AuthSessions = DbAuthSessions(),
@@ -195,11 +207,16 @@ data class Di(
             EmailEmployees(DbEmployees(DbUsers(passwordHasher), roles, authSessions), orgEmails),
             audit,
         ),
+    /** Наполнитель демо-режима; `null` — демо-режим выключен и регистрация не наполняет организацию. */
+    val demoData: DemoData? = null,
 ) {
     val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
     val passwordResets = PasswordResets(orgEmails, authSessions, emailVerifications, audit, passwordHasher, emailVerificationConfig)
-    val auth: Auth = AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit)
+    val auth: Auth =
+        AuditAuth(DbAuth(passwordHasher, employees, organizations, branches, userDisplaySettings, emailVerifications, authSessions), audit).let { auth ->
+            demoData?.let { DemoAuth(auth, it, employees) } ?: auth
+        }
     val disciplines: Disciplines = AuditDisciplines(DbDisciplines(), audit)
     val tariffPlans: TariffPlans = AuditTariffPlans(DbTariffPlans(), audit)
     val memberships: Memberships = AuditMemberships(DbMemberships(), audit)
@@ -224,7 +241,19 @@ data class Di(
     val eventWorker: DomainEventWorker = DomainEventWorker(database, bus)
     val clientContacts = DbClientContacts()
     val assistantStorage = AssistantStorage(orgCalendar)
-    val assistant = AssistantService(database, assistantConnection, assistantStorage, ClientDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions), employees, customFieldDefinitions)
+    val importDrafts = ImportDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions)
+    val assistant =
+        AssistantService(
+            database,
+            assistantConnection,
+            assistantStorage,
+            ClientDrafts(assistantStorage, clients, clientContacts, customFieldDefinitions),
+            employees,
+            customFieldDefinitions,
+            importDrafts,
+            photoRecognizer,
+            minio,
+        )
     val views = ReadViews()
     val participations: Participations = DbParticipations()
     val debitReconciliation: DebitReconciliation =
@@ -240,6 +269,8 @@ data class Di(
     val channelConfigVerifier: ChannelConfigVerifier = ProviderChannelConfigVerifier(telegramApi, smsAeroApi)
     val channelIntegrations: ChannelIntegrations =
         AuditChannelIntegrations(DbChannelIntegrations(channelTransports, clientContacts, channelBindings), audit)
+    val telegramGatewayIntegrations: TelegramGatewayIntegrations = AuditTelegramGatewayIntegrations(DbTelegramGatewayIntegrations(), audit)
+    val telegramGateway: TelegramGateway = ProviderTelegramGateway(database, telegramGatewayIntegrations, telegramGatewayApi)
     val conversations = DbConversations()
     val conversationReadStates: ConversationReadStates = DbConversationReadStates()
     val channelChats: ChannelChats = DbChannelChats()
@@ -279,6 +310,7 @@ fun Application.di(): Di {
     val ykConfig = yookassaConfig()
     val orgEmails = DbOrgEmails()
     val audit = PostgresAuditLog()
+    val telegramClients = createTelegramHttpClients(telegramProxies())
     return Di(
         dbConfig,
         db,
@@ -299,9 +331,12 @@ fun Application.di(): Di {
         yookassaConfig = ykConfig,
         payments = DbPayments(),
         paymentGateway = YookassaPaymentGateway(YookassaApi(createYookassaHttpClient(CIO), ykConfig)),
-        telegramApi = TelegramBotApi(createTelegramHttpClients(telegramProxies())),
+        telegramApi = TelegramBotApi(telegramClients),
+        telegramGatewayApi = TelegramGatewayApi(telegramClients),
         assistantConnection = AssistantConnection.from(environment.config),
+        photoRecognizer = PhotoRecognizer.from(environment.config),
         emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
+        demoData = if (environment.config.property("demo.enabled").getString().toBoolean()) DemoData(audit = audit) else null,
     )
 }
 

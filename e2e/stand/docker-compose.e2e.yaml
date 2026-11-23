@@ -1,0 +1,56 @@
+# Оверлей стенда e2e поверх docker-compose.prod.yaml (design изменения openspec e2e-tests, §3).
+# Пути относительны корня репозитория: это каталог первого файла в `docker compose -f`.
+# Меняется только перечисленное здесь, остальное берётся из прод-описания без изменений.
+services:
+  server:
+    image: athletica-server:e2e
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    depends_on:
+      mailpit:
+        condition: service_started
+
+  frontend:
+    image: athletica-frontend:e2e
+    build:
+      context: ./web
+
+  nginx:
+    ports: !reset []
+    volumes:
+      - ./e2e/stand/.letsencrypt:/etc/letsencrypt:ro
+    networks:
+      default:
+        aliases:
+          - e2e.test
+          - app.e2e.test
+          - minio.e2e.test
+          - console.minio.e2e.test
+
+  mailpit:
+    image: axllent/mailpit:v1.29
+    environment:
+      MP_SMTP_BIND_ADDR: 0.0.0.0:587
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+
+  playwright:
+    # Тег совпадает с точной версией @playwright/test в e2e/package.json.
+    image: mcr.microsoft.com/playwright:v1.65.1-noble
+    profiles: ["test"]
+    init: true
+    ipc: host
+    working_dir: /work/e2e
+    environment:
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+    volumes:
+      - ./e2e:/work/e2e
+      - ./web/src:/work/web/src:ro
+      - ./web/tsconfig.base.json:/work/web/tsconfig.base.json:ro
+      # Импорт zod из web/src/api/generated разрешается вверх по дереву до /work/node_modules.
+      - ./e2e/node_modules:/work/node_modules:ro
+    depends_on:
+      - nginx
+      - mailpit
+    entrypoint: ["npx", "playwright", "test"]

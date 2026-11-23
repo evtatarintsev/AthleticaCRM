@@ -116,7 +116,7 @@ class AssistantGuardTest {
                                 raise.raise(CommonDomainError("CONTACT_INVALID", "Invalid contact"))
                             }
                         }
-                    val failing = AssistantService(di.database, fake.connection, di.assistantStorage, ClientDrafts(di.assistantStorage, di.clients, failingContacts, di.customFieldDefinitions), di.employees, di.customFieldDefinitions)
+                    val failing = AssistantService(di.database, fake.connection, di.assistantStorage, ClientDrafts(di.assistantStorage, di.clients, failingContacts, di.customFieldDefinitions), di.employees, di.customFieldDefinitions, di.importDrafts, di.photoRecognizer, di.minio)
                     assertEquals("CONTACT_INVALID", assertIs<Either.Left<AppError>>(either { failing.confirm(card.clientId) }).value.code)
                     assertEquals(0, clientCount())
                     assertEquals("pending", di.database.sql("SELECT status FROM assistant_client_drafts WHERE client_id = :id").bind("id", card.clientId).firstOrNull { it.asString("status") })

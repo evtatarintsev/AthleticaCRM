@@ -5,7 +5,7 @@ import type {
   ContactType,
   CustomFieldValue,
 } from "@/api/generated/contracts";
-import type { ClientFieldKey } from "./clientColumns";
+import type { ClientColumnKey } from "./clientColumns";
 
 /** Значение дополнительного поля клиента [client] с ключом [fieldKey], либо `undefined`. */
 export function clientFieldValue(
@@ -45,13 +45,12 @@ export function selectedClientIds(
   return clients.filter((client) => rowSelection[client.id] === true).map((client) => client.id);
 }
 
-/** Колонка сортировки для стандартного поля [field], либо `null` — поле не сортируется. */
-export function sortableField(field: ClientFieldKey): "balance" | "birthday" | null {
+/** Колонка сортировки для стандартной колонки [field], либо `null` — колонка не сортируется. */
+export function sortableField(field: ClientColumnKey): "balance" | null {
   switch (field) {
     case "balance":
-    case "birthday":
       return field;
-    case "gender":
+    case "memberships":
     case "groups":
       return null;
   }

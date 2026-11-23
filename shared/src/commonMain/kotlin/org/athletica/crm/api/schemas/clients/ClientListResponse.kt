@@ -32,6 +32,13 @@ data class ClientListItem(
     val contacts: List<ClientContactSchema> = emptyList(),
     /** Состояние клиента: активный или архивный. */
     val state: ClientState = ClientState.ACTIVE,
+    /**
+     * Активные и неактивированные абонементы клиента: сначала активные не «к закрытию»,
+     * затем «к закрытию», затем неактивированные.
+     */
+    val memberships: List<ClientListMembership>,
+    /** Число неоплаченных занятий клиента в группах текущего филиала. */
+    val unpaidSessions: Int,
 )
 
 /** Возвращает значение кастомного поля по его ключу, либо null если поле не найдено. */

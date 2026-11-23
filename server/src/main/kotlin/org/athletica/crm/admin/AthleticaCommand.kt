@@ -40,6 +40,7 @@ fun athleticaCommand(
                             FindCommand(),
                             CreditCommand(),
                             DebitCommand(),
+                            SeedCommand(),
                         ),
                     UserCommand()
                         .subcommands(

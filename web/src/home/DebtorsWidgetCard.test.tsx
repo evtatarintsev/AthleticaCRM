@@ -23,6 +23,8 @@ const clients = [
     customFields: [],
     contacts: [],
     state: "ACTIVE",
+    memberships: [],
+    unpaidSessions: 0,
   }),
 );
 function server() {

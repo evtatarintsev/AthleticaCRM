@@ -44,6 +44,8 @@ const client = (n: number, name: string) =>
     customFields: [],
     contacts: [],
     state: "ACTIVE",
+    memberships: [],
+    unpaidSessions: 0,
   });
 
 const anna = client(1, "Анна Белова");

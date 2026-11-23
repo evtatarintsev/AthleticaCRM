@@ -6,7 +6,7 @@ import {
   useTable,
   type RowSelectionState,
 } from "@tanstack/react-table";
-import { PencilIcon } from "lucide-react";
+import { ClockIcon, PencilIcon, TicketIcon, TriangleAlertIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ApiClient } from "@/api/client";
 import type { ClientListItem, ContactType } from "@/api/generated/contracts";
@@ -22,14 +22,21 @@ import {
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/ui/Avatar";
+import { ageOn } from "./card/clientOverview";
 import {
   clientColumnKey,
   standardColumnLabelKey,
   type ClientColumn,
-  type ClientFieldKey,
+  type ClientColumnKey,
 } from "./clientColumns";
 import { ClientBalance } from "./ClientBalance";
 import { clientFieldValue, contactValues, customFieldDisplay, sortableField } from "./clientCells";
+import {
+  clientListMembershipLabel,
+  noMembershipLabel,
+  type ClientListMembershipIcon,
+  type ClientListMembershipLabel,
+} from "./clientListMembership";
 import type { ClientSortColumn } from "./clientListSearch";
 
 /**
@@ -68,6 +75,7 @@ export interface ClientListTableProps {
 /**
  * Список клиентов: таблица на широком экране (≥ 768 px) и карточки на узком.
  * Клик по строке и карточке открывает карточку клиента, чекбоксы выбирают строки.
+ * На узком экране группы, абонементы и баланс подчиняются тем же настройкам колонок.
  */
 export function ClientListTable(props: ClientListTableProps) {
   const { t } = useI18n();
@@ -81,6 +89,10 @@ export function ClientListTable(props: ClientListTableProps) {
   });
   const rows = table.getRowModel().rows;
   const allSelected = rows.length > 0 && rows.every((row) => row.getIsSelected());
+  const shown = (field: ClientColumnKey) =>
+    props.columns.some((column) => column.kind === "standard" && column.field === field);
+  const showGroups = shown("groups");
+  const showMemberships = shown("memberships");
 
   return (
     <>
@@ -139,13 +151,16 @@ export function ClientListTable(props: ClientListTableProps) {
                       uploadId={row.original.avatarId}
                       name={row.original.name}
                     />
-                    <Link
-                      to="/clients/$clientId"
-                      params={{ clientId: row.original.id }}
-                      className="font-medium after:absolute after:inset-0 hover:underline"
-                    >
-                      {row.original.name}
-                    </Link>
+                    <div className="flex min-w-0 flex-col">
+                      <Link
+                        to="/clients/$clientId"
+                        params={{ clientId: row.original.id }}
+                        className="font-medium after:absolute after:inset-0 hover:underline"
+                      >
+                        {row.original.name}
+                      </Link>
+                      <ClientMeta client={row.original} />
+                    </div>
                   </div>
                 </TableCell>
                 {props.columns.map((column) => (
@@ -179,43 +194,53 @@ export function ClientListTable(props: ClientListTableProps) {
           <li
             key={row.id}
             data-state={row.getIsSelected() ? "selected" : undefined}
-            className="relative flex items-center gap-3 px-3.5 py-3 data-[state=selected]:bg-primary/5"
+            className="relative flex flex-col gap-2 px-3 py-2.5 data-[state=selected]:bg-primary/5"
           >
-            <input
-              type="checkbox"
-              checked={row.getIsSelected()}
-              onChange={row.getToggleSelectedHandler()}
-              aria-label={t("directory.select", { name: row.original.name })}
-              className="relative z-10 size-4 shrink-0 accent-primary"
-            />
-            <Link
-              to="/clients/$clientId"
-              params={{ clientId: row.original.id }}
-              aria-label={row.original.name}
-              className="after:absolute after:inset-0"
-            >
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={row.getIsSelected()}
+                onChange={row.getToggleSelectedHandler()}
+                aria-label={t("directory.select", { name: row.original.name })}
+                className="relative z-10 size-4 shrink-0 accent-primary"
+              />
               <Avatar
                 api={props.api}
                 uploadId={row.original.avatarId}
                 name={row.original.name}
-                className="size-9"
+                className="size-8"
               />
-            </Link>
-            <Link
-              to="/clients/$clientId"
-              params={{ clientId: row.original.id }}
-              className="min-w-0 flex-1 after:absolute after:inset-0"
-            >
-              <span className="block truncate font-medium">{row.original.name}</span>
-              {row.original.groups.length > 0 && (
-                <span className="block truncate text-sm text-muted-foreground">
-                  {row.original.groups.map((group) => group.name).join(", ")}
-                </span>
-              )}
-            </Link>
-            <span className="shrink-0 text-sm">
-              <ClientBalance balance={row.original.balance} />
-            </span>
+              <Link
+                to="/clients/$clientId"
+                params={{ clientId: row.original.id }}
+                className="flex min-w-0 flex-1 flex-col after:absolute after:inset-0"
+              >
+                <span className="truncate font-medium">{row.original.name}</span>
+                <ClientMeta client={row.original} />
+              </Link>
+              {shown("balance") && <BalanceCell client={row.original} />}
+            </div>
+            {(showGroups || showMemberships) && (
+              <div className="flex flex-col items-start gap-1 rounded-lg bg-muted p-1.5 text-xs">
+                {showGroups && (
+                  <div className="flex flex-wrap gap-1">
+                    {row.original.groups.length === 0 ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      row.original.groups.map((group) => (
+                        <span
+                          key={group.id}
+                          className="inline-block max-w-full truncate rounded-md border bg-card px-2 leading-5.5 font-medium"
+                        >
+                          {group.name}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                )}
+                {showMemberships && <MembershipLabels client={row.original} compact />}
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -277,7 +302,7 @@ function ColumnHead({
     case "standard": {
       const sortable = sortableField(column.field);
       return sortable === null ? (
-        <TableHead className="text-center">{t(standardColumnLabelKey(column.field))}</TableHead>
+        <TableHead>{t(standardColumnLabelKey(column.field))}</TableHead>
       ) : (
         <SortHead
           label={t(standardColumnLabelKey(column.field))}
@@ -331,78 +356,145 @@ function ColumnCell({
   }
 }
 
-/** Ячейка стандартного поля [field] клиента [client]. */
+/** Ячейка стандартной колонки [field] клиента [client]. */
 function StandardColumnCell({
   field,
   client,
 }: {
-  readonly field: ClientFieldKey;
+  readonly field: ClientColumnKey;
   readonly client: ClientListItem;
 }) {
-  const { format } = useI18n();
   switch (field) {
-    case "gender":
-      return (
-        <div className="text-center">
-          <GenderCell client={client} />
-        </div>
-      );
-    case "birthday":
-      return (
-        <div className="text-center">
-          {client.birthday === null ? "—" : format.date(client.birthday)}
-        </div>
-      );
     case "balance":
       return (
-        <div className="text-right">
-          <ClientBalance balance={client.balance} />
+        <div className="flex justify-end">
+          <BalanceCell client={client} />
         </div>
       );
     case "groups":
       return <GroupChips client={client} />;
+    case "memberships":
+      return <MembershipLabels client={client} />;
   }
 }
 
-/** Пол клиента, локализованный. */
-function GenderCell({ client }: { readonly client: ClientListItem }) {
+/** Пол и полный возраст клиента [client] на сегодня под именем: «Ж · 9 лет»; без даты рождения — пол. */
+function ClientMeta({ client }: { readonly client: ClientListItem }) {
   const { t } = useI18n();
-  return t(`gender.${client.gender}`);
+  const gender = t(`clients.genderShort.${client.gender}`);
+  return (
+    <span className="truncate text-sm text-muted-foreground">
+      {client.birthday === null
+        ? gender
+        : `${gender} · ${t("clientCard.meta.age", { count: ageOn(client.birthday, new Date()) })}`}
+    </span>
+  );
 }
 
-/** Сколько групп клиента показывается чипами; остальные сворачиваются в «+N». */
-const VISIBLE_GROUPS = 2;
-
-/** Группы клиента [client] чипами-ссылками на страницу группы; лишние — чипом «+N» с подсказкой. */
-function GroupChips({ client }: { readonly client: ClientListItem }) {
+/** Баланс клиента [client] и под ним число неоплаченных занятий красным, если они есть. */
+function BalanceCell({ client }: { readonly client: ClientListItem }) {
   const { t } = useI18n();
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-0.5 text-sm">
+      <ClientBalance balance={client.balance} />
+      {client.unpaidSessions > 0 && (
+        <span className="text-xs font-semibold whitespace-nowrap text-destructive">
+          {t("clients.unpaidSessions", { count: client.unpaidSessions })}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Группы клиента [client] чипами-ссылками на страницу группы, друг под другом. */
+function GroupChips({ client }: { readonly client: ClientListItem }) {
   if (client.groups.length === 0) {
     return <span className="text-muted-foreground">—</span>;
   }
-  const hidden = client.groups.slice(VISIBLE_GROUPS);
-  const chip =
-    "relative z-10 inline-block h-6.5 max-w-36 truncate rounded-lg border bg-muted/50 px-2.5 text-xs leading-6 font-medium";
   return (
-    <div className="flex gap-1.5">
-      {client.groups.slice(0, VISIBLE_GROUPS).map((group) => (
+    <div className="flex flex-col items-start gap-1.5">
+      {client.groups.map((group) => (
         <Link
           key={group.id}
           to="/groups/$groupId"
           params={{ groupId: group.id }}
-          className={cn(chip, "text-primary hover:border-foreground/20")}
+          className="relative z-10 inline-block h-6.5 max-w-48 truncate rounded-lg border bg-muted/50 px-2.5 text-xs leading-6 font-medium text-primary hover:border-foreground/20"
         >
           {group.name}
         </Link>
       ))}
-      {hidden.length > 0 && (
-        <span
-          title={hidden.map((group) => group.name).join(", ")}
-          className={cn(chip, "text-muted-foreground")}
-        >
-          {t("clients.groupsMore", { count: hidden.length })}
-        </span>
-      )}
     </div>
+  );
+}
+
+/**
+ * Метки абонементов клиента [client] друг под другом в порядке ответа сервера;
+ * без абонементов — «Нет абонемента». [compact] — уменьшенные метки строки на телефоне.
+ */
+function MembershipLabels({
+  client,
+  compact = false,
+}: {
+  readonly client: ClientListItem;
+  readonly compact?: boolean;
+}) {
+  const i18n = useI18n();
+  const labels =
+    client.memberships.length === 0
+      ? [{ key: "none", label: noMembershipLabel(i18n) }]
+      : client.memberships.map((membership) => ({
+          key: membership.id,
+          label: clientListMembershipLabel(membership, i18n),
+        }));
+  return (
+    <div className={cn("flex max-w-full flex-col items-start", compact ? "gap-1" : "gap-1.5")}>
+      {labels.map(({ key, label }) => (
+        <MembershipPill key={key} label={label} compact={compact} />
+      ))}
+    </div>
+  );
+}
+
+/** Значок [icon] метки абонемента; `null` — метка без значка. */
+function MembershipIcon({ icon }: { readonly icon: ClientListMembershipIcon }) {
+  const className = "size-3.5 shrink-0";
+  switch (icon) {
+    case "ticket":
+      return <TicketIcon aria-hidden className={className} />;
+    case "clock":
+      return <ClockIcon aria-hidden className={className} />;
+    case "alert":
+      return <TriangleAlertIcon aria-hidden className={className} />;
+    case null:
+      return null;
+  }
+}
+
+/** Метка абонемента [label]: цвет и значок по признакам. */
+function MembershipPill({
+  label,
+  compact,
+}: {
+  readonly label: ClientListMembershipLabel;
+  readonly compact: boolean;
+}) {
+  return (
+    <span
+      data-tone={label.tone}
+      className={cn(
+        "inline-flex max-w-full items-center gap-1.5 truncate rounded-lg font-medium whitespace-nowrap tabular-nums",
+        compact ? "h-6 px-2 text-xs" : "h-6.5 px-2.5 text-xs",
+        label.tone === "ok" && "bg-primary/10 text-primary",
+        label.tone === "warn" &&
+          "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
+        label.tone === "start" &&
+          "bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+        label.tone === "none" && "border bg-card text-muted-foreground",
+      )}
+    >
+      <MembershipIcon icon={label.icon} />
+      <span className="truncate">{label.text}</span>
+    </span>
   );
 }
 

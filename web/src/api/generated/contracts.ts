@@ -228,7 +228,69 @@ export const AssistantBlockClientDraftSchema = z
   .readonly();
 export type AssistantBlockClientDraft = z.output<typeof AssistantBlockClientDraftSchema>;
 
-export const AssistantBlockSchema = z.discriminatedUnion("type", [AssistantBlockClientCreatedSchema, AssistantBlockClientDraftSchema]);
+export const AssistantBlockImportCompletedSchema = z
+  .object({
+    type: z.literal("import_completed"),
+    draftId: z.uuid(),
+    created: z.int32(),
+  })
+  .readonly();
+export type AssistantBlockImportCompleted = z.output<typeof AssistantBlockImportCompletedSchema>;
+
+export const AssistantImportCountsSchema = z
+  .object({
+    total: z.int32(),
+    ready: z.int32(),
+    exists: z.int32(),
+    duplicateInFile: z.int32(),
+    possibleDuplicate: z.int32(),
+    error: z.int32(),
+    warnings: z.int32(),
+  })
+  .readonly();
+export type AssistantImportCounts = z.output<typeof AssistantImportCountsSchema>;
+
+export const AssistantImportRowErrorSchema = z.enum(["name_required", "gender_required", "invalid_date", "invalid_contact", "invalid_field", "field_required"]);
+export type AssistantImportRowError = z.output<typeof AssistantImportRowErrorSchema>;
+
+export const AssistantImportRowStatusSchema = z.enum(["ready", "exists", "duplicate_in_file", "possible_duplicate", "error"]);
+export type AssistantImportRowStatus = z.output<typeof AssistantImportRowStatusSchema>;
+
+export const AssistantImportWarningSchema = z.enum(["uncertain", "contact_dropped", "possible_duplicate"]);
+export type AssistantImportWarning = z.output<typeof AssistantImportWarningSchema>;
+
+export const AssistantImportRowSchema = z
+  .object({
+    row: z.int32(),
+    sheet: z.string().nullable(),
+    photo: z.int32().nullable(),
+    line: z.int32(),
+    status: AssistantImportRowStatusSchema,
+    name: z.string().nullable(),
+    client: AssistantClientPayloadSchema.nullable(),
+    error: AssistantImportRowErrorSchema.nullable(),
+    errorField: z.string().nullable(),
+    warnings: z.array(AssistantImportWarningSchema).readonly(),
+    uncertainFields: z.array(z.string()).readonly(),
+    existingClientId: ClientIdSchema.nullable(),
+  })
+  .readonly();
+export type AssistantImportRow = z.output<typeof AssistantImportRowSchema>;
+
+export const AssistantBlockImportDraftSchema = z
+  .object({
+    type: z.literal("import_draft"),
+    draftId: z.uuid(),
+    status: AssistantDraftStatusSchema,
+    counts: AssistantImportCountsSchema,
+    problems: z.array(AssistantImportRowSchema).readonly(),
+    preview: z.array(AssistantImportRowSchema).readonly(),
+    customFieldLabels: z.record(z.string(), z.string()).readonly(),
+  })
+  .readonly();
+export type AssistantBlockImportDraft = z.output<typeof AssistantBlockImportDraftSchema>;
+
+export const AssistantBlockSchema = z.discriminatedUnion("type", [AssistantBlockClientCreatedSchema, AssistantBlockClientDraftSchema, AssistantBlockImportCompletedSchema, AssistantBlockImportDraftSchema]);
 export type AssistantBlock = z.output<typeof AssistantBlockSchema>;
 
 export const AssistantConfirmRequestSchema = z
@@ -259,6 +321,7 @@ export const AssistantMessageSchema = z
     status: AssistantMessageStatusSchema,
     blocks: z.array(AssistantBlockSchema).readonly(),
     errorCode: z.string().nullable(),
+    attachments: z.array(z.string()).readonly(),
   })
   .readonly();
 export type AssistantMessage = z.output<typeof AssistantMessageSchema>;
@@ -271,10 +334,28 @@ export const AssistantDialogResponseSchema = z
   .readonly();
 export type AssistantDialogResponse = z.output<typeof AssistantDialogResponseSchema>;
 
+export const AssistantImportConfirmRequestSchema = z
+  .object({
+    draftId: z.uuid(),
+  })
+  .readonly();
+export type AssistantImportConfirmRequest = z.output<typeof AssistantImportConfirmRequestSchema>;
+
+export const AssistantImportConfirmResponseSchema = z
+  .object({
+    created: z.int32(),
+  })
+  .readonly();
+export type AssistantImportConfirmResponse = z.output<typeof AssistantImportConfirmResponseSchema>;
+
+export const UploadIdSchema = z.uuid().brand<"UploadId">();
+export type UploadId = z.output<typeof UploadIdSchema>;
+
 export const AssistantSendRequestSchema = z
   .object({
     dialogId: z.uuid(),
     text: z.string(),
+    attachments: z.array(UploadIdSchema).readonly().optional(),
   })
   .readonly();
 export type AssistantSendRequest = z.output<typeof AssistantSendRequestSchema>;
@@ -308,9 +389,6 @@ export type AssistantStatusResponse = z.output<typeof AssistantStatusResponseSch
 
 export const ClientDocIdSchema = z.uuid().brand<"ClientDocId">();
 export type ClientDocId = z.output<typeof ClientDocIdSchema>;
-
-export const UploadIdSchema = z.uuid().brand<"UploadId">();
-export type UploadId = z.output<typeof UploadIdSchema>;
 
 export const AttachClientDocRequestSchema = z
   .object({
@@ -507,7 +585,7 @@ export const OrgInfoSchema = z
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS"]);
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS", "CAN_MANAGE_TELEGRAM_GATEWAY"]);
 export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const AuthMeResponseSchema = z
@@ -521,6 +599,7 @@ export const AuthMeResponseSchema = z
     currentBranch: BranchDetailResponseSchema,
     permissions: z.array(UserPermissionSchema).readonly(),
     emailVerificationPending: z.boolean(),
+    demo: z.boolean(),
   })
   .readonly();
 export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;
@@ -1211,6 +1290,50 @@ export const ClientLedgerResponseSchema = z
   .readonly();
 export type ClientLedgerResponse = z.output<typeof ClientLedgerResponseSchema>;
 
+export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
+export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
+
+export const TermPositionSchema = z.enum(["NOT_STARTED", "IN_TERM", "EXPIRED"]);
+export type TermPosition = z.output<typeof TermPositionSchema>;
+
+export const ClientListMembershipStateActiveSchema = z
+  .object({
+    type: z.literal("active"),
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+    termPosition: TermPositionSchema,
+    endingSoon: z.array(EndingSoonReasonSchema).readonly(),
+    closePending: z.boolean(),
+  })
+  .readonly();
+export type ClientListMembershipStateActive = z.output<typeof ClientListMembershipStateActiveSchema>;
+
+export const ClientListMembershipStateInactiveSchema = z
+  .object({
+    type: z.literal("inactive"),
+    activationMode: ActivationModeSchema,
+    activateOn: LocalDateSchema.nullable(),
+  })
+  .readonly();
+export type ClientListMembershipStateInactive = z.output<typeof ClientListMembershipStateInactiveSchema>;
+
+export const ClientListMembershipStateSchema = z.discriminatedUnion("type", [ClientListMembershipStateActiveSchema, ClientListMembershipStateInactiveSchema]);
+export type ClientListMembershipState = z.output<typeof ClientListMembershipStateSchema>;
+
+export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
+export type MembershipId = z.output<typeof MembershipIdSchema>;
+
+export const ClientListMembershipSchema = z
+  .object({
+    id: MembershipIdSchema,
+    name: z.string(),
+    sessionsTotal: z.int32().nullable(),
+    sessionsRemaining: z.int32().nullable(),
+    state: ClientListMembershipStateSchema,
+  })
+  .readonly();
+export type ClientListMembership = z.output<typeof ClientListMembershipSchema>;
+
 export const ClientListItemSchema = z
   .object({
     id: ClientIdSchema,
@@ -1223,6 +1346,8 @@ export const ClientListItemSchema = z
     customFields: z.array(CustomFieldValueSchema).readonly(),
     contacts: z.array(ClientContactSchemaSchema).readonly(),
     state: ClientStateSchema,
+    memberships: z.array(ClientListMembershipSchema).readonly(),
+    unpaidSessions: z.int32(),
   })
   .readonly();
 export type ClientListItem = z.output<typeof ClientListItemSchema>;
@@ -1358,9 +1483,6 @@ export const ClientsDisplaySettingsInputSchema = z
   })
   .readonly();
 export type ClientsDisplaySettingsInput = z.output<typeof ClientsDisplaySettingsInputSchema>;
-
-export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
-export type MembershipId = z.output<typeof MembershipIdSchema>;
 
 export const CloseMembershipRequestSchema = z
   .object({
@@ -2281,9 +2403,6 @@ export const EmployeeSessionsRequestSchema = z
   .readonly();
 export type EmployeeSessionsRequest = z.output<typeof EmployeeSessionsRequestSchema>;
 
-export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
-export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
-
 export const FieldErrorSchema = z
   .object({
     name: z.string(),
@@ -2931,9 +3050,6 @@ export const MembershipSaleSchemaSchema = z
   .readonly();
 export type MembershipSaleSchema = z.output<typeof MembershipSaleSchemaSchema>;
 
-export const TermPositionSchema = z.enum(["NOT_STARTED", "IN_TERM", "EXPIRED"]);
-export type TermPosition = z.output<typeof TermPositionSchema>;
-
 export const MembershipStateSchemaActiveSchema = z
   .object({
     type: z.literal("active"),
@@ -3386,6 +3502,13 @@ export const SaveCustomFieldsRequestSchema = z
   .readonly();
 export type SaveCustomFieldsRequest = z.output<typeof SaveCustomFieldsRequestSchema>;
 
+export const SaveTelegramGatewayTokenRequestSchema = z
+  .object({
+    token: z.string(),
+  })
+  .readonly();
+export type SaveTelegramGatewayTokenRequest = z.output<typeof SaveTelegramGatewayTokenRequestSchema>;
+
 export const ScheduleDisciplineSchemaSchema = z
   .object({
     id: DisciplineIdSchema,
@@ -3512,6 +3635,13 @@ export const SendMessageRequestSchema = z
   .readonly();
 export type SendMessageRequest = z.output<typeof SendMessageRequestSchema>;
 
+export const SendTelegramGatewayTestCodeRequestSchema = z
+  .object({
+    phone: z.string(),
+  })
+  .readonly();
+export type SendTelegramGatewayTestCodeRequest = z.output<typeof SendTelegramGatewayTestCodeRequestSchema>;
+
 export const SessionDebitPreviewRequestSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -3636,6 +3766,13 @@ export const SetSessionEmployeesRequestSchema = z
   })
   .readonly();
 export type SetSessionEmployeesRequest = z.output<typeof SetSessionEmployeesRequestSchema>;
+
+export const SetTelegramGatewayEnabledRequestSchema = z
+  .object({
+    enabled: z.boolean(),
+  })
+  .readonly();
+export type SetTelegramGatewayEnabledRequest = z.output<typeof SetTelegramGatewayEnabledRequestSchema>;
 
 export const SignUpRequestSchema = z
   .object({
@@ -3794,6 +3931,41 @@ export const TaskListResponseSchema = z
   })
   .readonly();
 export type TaskListResponse = z.output<typeof TaskListResponseSchema>;
+
+export const TelegramGatewayBalanceSchemaSchema = z
+  .object({
+    amount: MoneySchema,
+    at: InstantSchema,
+  })
+  .readonly();
+export type TelegramGatewayBalanceSchema = z.output<typeof TelegramGatewayBalanceSchemaSchema>;
+
+export const TelegramGatewayCodeOutcomeSchema = z.enum(["SENT", "UNDELIVERABLE", "NOT_CONFIGURED", "FAILED"]);
+export type TelegramGatewayCodeOutcome = z.output<typeof TelegramGatewayCodeOutcomeSchema>;
+
+export const TelegramGatewayIntegrationSchemaSchema = z
+  .object({
+    tokenMask: z.string(),
+    enabled: z.boolean(),
+    balance: TelegramGatewayBalanceSchemaSchema.nullable(),
+  })
+  .readonly();
+export type TelegramGatewayIntegrationSchema = z.output<typeof TelegramGatewayIntegrationSchemaSchema>;
+
+export const TelegramGatewaySettingsResponseSchema = z
+  .object({
+    integration: TelegramGatewayIntegrationSchemaSchema.nullable(),
+  })
+  .readonly();
+export type TelegramGatewaySettingsResponse = z.output<typeof TelegramGatewaySettingsResponseSchema>;
+
+export const TelegramGatewayTestCodeResponseSchema = z
+  .object({
+    outcome: TelegramGatewayCodeOutcomeSchema,
+    reason: z.string().nullable(),
+  })
+  .readonly();
+export type TelegramGatewayTestCodeResponse = z.output<typeof TelegramGatewayTestCodeResponseSchema>;
 
 export const TerminateEmployeeSessionRequestSchema = z
   .object({
@@ -4136,6 +4308,13 @@ export const endpoints = {
     request: AssistantConfirmRequestSchema,
     out: "json",
     response: AssistantConfirmResponseSchema,
+  },
+  "assistant/imports/confirm": {
+    method: "POST",
+    in: "body",
+    request: AssistantImportConfirmRequestSchema,
+    out: "json",
+    response: AssistantImportConfirmResponseSchema,
   },
   "assistant/messages/send": {
     method: "POST",
@@ -5445,6 +5624,34 @@ export const endpoints = {
     request: UpdateTaskRequestSchema,
     out: "json",
     response: TaskDetailResponseSchema,
+  },
+  "telegram-gateway/save-token": {
+    method: "POST",
+    in: "body",
+    request: SaveTelegramGatewayTokenRequestSchema,
+    out: "json",
+    response: TelegramGatewaySettingsResponseSchema,
+  },
+  "telegram-gateway/set-enabled": {
+    method: "POST",
+    in: "body",
+    request: SetTelegramGatewayEnabledRequestSchema,
+    out: "json",
+    response: TelegramGatewaySettingsResponseSchema,
+  },
+  "telegram-gateway/settings": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: TelegramGatewaySettingsResponseSchema,
+  },
+  "telegram-gateway/test-code": {
+    method: "POST",
+    in: "body",
+    request: SendTelegramGatewayTestCodeRequestSchema,
+    out: "json",
+    response: TelegramGatewayTestCodeResponseSchema,
   },
   "upload": {
     method: "POST",

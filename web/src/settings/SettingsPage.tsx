@@ -16,6 +16,7 @@ import {
   MegaphoneIcon,
   MessagesSquareIcon,
   PanelRightOpenIcon,
+  SendIcon,
   SettingsIcon,
   SparklesIcon,
   ShieldCheckIcon,
@@ -47,6 +48,7 @@ import { OrgSettingsSheet } from "./org/OrgSettingsSheet";
 import { RolesSheet } from "./roles/RolesSheet";
 import { TariffsSheet } from "./tariffs/TariffsSheet";
 import { ScheduleWidgetsSheet } from "./widgets/ScheduleWidgetsSheet";
+import { TelegramGatewaySheet } from "./telegramGateway/TelegramGatewaySheet";
 import { SettingsPanelSchema, type SettingsPanel } from "./settingsSearch";
 
 /** Куда ведёт пункт настроек. */
@@ -251,6 +253,13 @@ const SETTINGS: readonly SettingSection[] = [
         target: app("/settings/channels"),
       },
       {
+        title: "settings.itemTelegramGateway",
+        subtitle: "settings.itemTelegramGatewaySubtitle",
+        icon: SendIcon,
+        target: panel("telegram-gateway"),
+        permission: "CAN_MANAGE_TELEGRAM_GATEWAY",
+      },
+      {
         title: "settings.itemScheduleWidgets",
         subtitle: "settings.itemScheduleWidgetsSubtitle",
         icon: CalendarDaysIcon,
@@ -287,6 +296,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   "attendance-control": AttendanceControlSheet,
   "client-card": ClientCardSectionsSheet,
   "schedule-widgets": ScheduleWidgetsSheet,
+  "telegram-gateway": TelegramGatewaySheet,
 };
 
 /**

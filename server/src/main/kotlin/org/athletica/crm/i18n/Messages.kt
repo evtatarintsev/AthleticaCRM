@@ -319,6 +319,21 @@ object Messages {
         override val en = "Telegram rejected the bot token — check it in BotFather"
     }
 
+    object TelegramGatewayTokenInvalid : LocalizationKey {
+        override val ru = "Telegram Gateway не принял токен — проверьте его в личном кабинете Gateway"
+        override val en = "Telegram Gateway rejected the token — check it in your Gateway account"
+    }
+
+    object TelegramGatewayUnavailable : LocalizationKey {
+        override val ru = "Telegram Gateway сейчас недоступен — попробуйте позже"
+        override val en = "Telegram Gateway is unavailable right now — try again later"
+    }
+
+    object TelegramGatewayNotConnected : LocalizationKey {
+        override val ru = "Telegram Gateway не подключён"
+        override val en = "Telegram Gateway is not connected"
+    }
+
     object TelegramUnavailable : LocalizationKey {
         override val ru = "Telegram сейчас недоступен — попробуйте сохранить позже"
         override val en = "Telegram is unavailable right now — try saving later"
@@ -970,5 +985,17 @@ object Messages {
         override val en = { group: String, time: String ->
             "The “$group” session on $time is over, but its attendance journal is not closed. Mark attendance and complete the session."
         }
+    }
+
+    /** Наполнение демо-данными отклонено: в организации есть данные сверх созданных регистрацией. */
+    object DemoOrgNotEmpty : LocalizationKey {
+        override val ru = "Организация уже заполнена (клиенты, группы, дисциплины, тарифы, кассы, поля, филиалы или залы) — наполнить можно только новую организацию"
+        override val en = "The organization already has data (clients, groups, disciplines, tariffs, cash accounts, fields, branches or halls) — only a new organization can be filled"
+    }
+
+    /** Наполнение демо-данными невозможно: у организации нет владельца. */
+    object DemoOwnerNotFound : LocalizationKey {
+        override val ru = "У организации нет владельца с учётной записью"
+        override val en = "The organization has no owner with an account"
     }
 }

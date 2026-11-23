@@ -80,6 +80,7 @@ import org.athletica.crm.routes.sportCatalogRoutes
 import org.athletica.crm.routes.switchBranchRoute
 import org.athletica.crm.routes.tariffsRoutes
 import org.athletica.crm.routes.tasks.taskRoutes
+import org.athletica.crm.routes.telegramGatewayRoutes
 import org.athletica.crm.routes.uploadRoutes
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.storage.asUuid
@@ -147,7 +148,10 @@ fun Application.module() {
  */
 context(di: Di)
 fun Application.configureServer() {
-    monitor.subscribe(ApplicationStopped) { di.assistantConnection.close() }
+    monitor.subscribe(ApplicationStopped) {
+        di.assistantConnection.close()
+        di.photoRecognizer.close()
+    }
     install(CallLogging)
 
     install(StatusPages) {
@@ -224,10 +228,12 @@ fun Application.configureServer() {
                             di.enrollments,
                             di.customFieldDefinitions,
                             di.clientContacts,
+                            di.orgCalendar,
                         )
                         financeRoutes(di.clientPayments, di.saleActions, di.cashOperations, di.cashAccounts, di.cashArticles, di.sales, di.clients, di.orgCalendar, di.views)
                         clientNotesRoutes(di.clientNotes)
                         channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
+                        telegramGatewayRoutes(di.telegramGatewayIntegrations, di.telegramGateway)
                         messagingRoutes(
                             di.channelIntegrations,
                             di.conversations,
@@ -258,7 +264,7 @@ fun Application.configureServer() {
                         context(di.jwtConfig) {
                             employeesRoutes(di.employees, di.roles, di.views)
                         }
-                        profileRoutes(di.auth, di.organizations, di.orgBalances, di.emailVerifications)
+                        profileRoutes(di.auth, di.organizations, di.orgBalances, di.emailVerifications, di.demoData != null)
                         orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {
                             uploadRoutes()

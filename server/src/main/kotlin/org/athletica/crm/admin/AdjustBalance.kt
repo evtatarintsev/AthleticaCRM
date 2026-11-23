@@ -21,16 +21,7 @@ internal suspend fun SuspendingCliktCommand.adjustOrgBalance(
     rawAmount: Double,
     description: String,
 ) {
-    val org =
-        when (val resolution = di.orgSearch.resolve(orgArg)) {
-            is OrgResolution.Found -> resolution.org
-            is OrgResolution.Ambiguous ->
-                throw CliktError(
-                    (listOf("Найдено несколько организаций. Укажите UUID из списка:") + resolution.candidates.map { it.describe() })
-                        .joinToString("\n"),
-                )
-            OrgResolution.NotFound -> throw CliktError("Организация не найдена: $orgArg")
-        }
+    val org = resolveOrg(di, orgArg)
 
     echo("Организация: ${org.name} (${org.id})")
 
@@ -56,3 +47,18 @@ internal suspend fun SuspendingCliktCommand.adjustOrgBalance(
         },
     )
 }
+
+/**
+ * Организация по аргументу [orgArg] — UUID или части названия; [di] — зависимости административных команд.
+ * Если организаций несколько или нет ни одной, завершает команду ошибкой со списком кандидатов.
+ */
+internal suspend fun resolveOrg(di: AdminDi, orgArg: String): OrgInfo =
+    when (val resolution = di.orgSearch.resolve(orgArg)) {
+        is OrgResolution.Found -> resolution.org
+        is OrgResolution.Ambiguous ->
+            throw CliktError(
+                (listOf("Найдено несколько организаций. Укажите UUID из списка:") + resolution.candidates.map { it.describe() })
+                    .joinToString("\n"),
+            )
+        OrgResolution.NotFound -> throw CliktError("Организация не найдена: $orgArg")
+    }

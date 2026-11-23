@@ -29,6 +29,8 @@ data class AuthMeResponse(
     val permissions: Set<UserPermission> = emptySet(),
     /** Новый аккаунт ожидает подтверждения email; не ограничивает доступ. */
     val emailVerificationPending: Boolean = false,
+    /** Экземпляр сервера работает в демо-режиме: организация заполнена демонстрационными данными. */
+    val demo: Boolean = false,
 )
 
 @Serializable

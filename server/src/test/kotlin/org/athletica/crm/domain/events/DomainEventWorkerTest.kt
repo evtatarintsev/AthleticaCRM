@@ -112,8 +112,8 @@ class DomainEventWorkerTest {
         runTest {
             val id = publish()
 
-            worker.processBatch()
-            worker.processBatch()
+            assertEquals(1, worker.processBatch())
+            assertEquals(0, worker.processBatch())
 
             assertEquals(1, calls)
             val after = row(id)

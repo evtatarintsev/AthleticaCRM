@@ -99,7 +99,9 @@ function ClientPaymentForm({
             due,
             debt === undefined ? { ...summary.advance, minorUnits: 0 } : summary.advance,
           );
-          if (payment === null || !occurredOn.success) return null;
+          if (payment === null || !occurredOn.success) {
+            return null;
+          }
           return debt === undefined
             ? api.call("finance/advance/top-up", {
                 clientId,
@@ -115,9 +117,13 @@ function ClientPaymentForm({
               });
         }
         const parsed = parseMoney(amount, summary.balance.currency);
-        if (parsed === null || parsed.minorUnits <= 0) return null;
+        if (parsed === null || parsed.minorUnits <= 0) {
+          return null;
+        }
         if (mode === "adjust") {
-          if (comment.trim() === "") return null;
+          if (comment.trim() === "") {
+            return null;
+          }
           return api.call("finance/advance/adjust", {
             clientId,
             amount: {
@@ -134,8 +140,9 @@ function ClientPaymentForm({
           !cashAccountId.success ||
           !occurredOn.success ||
           parsed.minorUnits > summary.advance.minorUnits
-        )
+        ) {
           return null;
+        }
         return api.call("finance/advance/payout", {
           clientId,
           cashAccountId: cashAccountId.data,

@@ -55,7 +55,9 @@ describe("главная", () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       vi.setSystemTime(new Date(2026, 10, 18, 12));
       const widget = defaultDashboardSettings().widgets.find((item) => item.type === "birthdays");
-      if (widget?.type !== "birthdays") throw new Error("Нет виджета дней рождения");
+      if (widget?.type !== "birthdays") {
+        throw new Error("Нет виджета дней рождения");
+      }
       const first = ClientListItemSchema.parse({
         id: "0199a0b2-7c3e-7d2a-9f10-000000000901",
         name: "Яна",

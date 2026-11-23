@@ -79,12 +79,16 @@ export function DashboardSettingsDialog({
                   }
                 }}
                 onPointerDown={(event) => {
-                  if (event.button !== 0) return;
+                  if (event.button !== 0) {
+                    return;
+                  }
                   event.currentTarget.setPointerCapture(event.pointerId);
                   setDrag({ id: widget.id, targetId: widget.id });
                 }}
                 onPointerMove={(event) => {
-                  if (drag === null) return;
+                  if (drag === null) {
+                    return;
+                  }
                   const row = document
                     .elementFromPoint(event.clientX, event.clientY)
                     ?.closest("[data-widget-id]");

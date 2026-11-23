@@ -80,8 +80,11 @@ export function FinanceAccounts({
                     void api
                       .call("finance/cash-accounts/archive", { id: a.id, archived: !a.archived })
                       .then(async (result) => {
-                        if (result.ok) await refresh();
-                        else setError(apiErrorMessage(t, result.error));
+                        if (result.ok) {
+                          await refresh();
+                        } else {
+                          setError(apiErrorMessage(t, result.error));
+                        }
                       });
                   }}
                 >
@@ -169,8 +172,9 @@ function CashAccountForm({
         const amount = parseMoney(opening.trim().replace(/^-/, ""), currency);
         const on = LocalDateSchema.safeParse(date);
         const branchId = BranchIdSchema.safeParse(branch);
-        if (name.trim() === "" || (initial === null && (amount === null || !on.success)))
+        if (name.trim() === "" || (initial === null && (amount === null || !on.success))) {
           return Promise.resolve(null);
+        }
         return api.call("finance/cash-accounts/save", {
           id,
           name: name.trim(),
@@ -316,8 +320,11 @@ export function FinanceArticles({
               void api
                 .call("finance/cash-articles/archive", { id: a.id, archived: !a.archived })
                 .then(async (result) => {
-                  if (result.ok) await refresh();
-                  else setError(apiErrorMessage(t, result.error));
+                  if (result.ok) {
+                    await refresh();
+                  } else {
+                    setError(apiErrorMessage(t, result.error));
+                  }
                 });
             }}
           >
@@ -402,7 +409,9 @@ function CashArticleForm({
       onSaved={onSaved}
       submit={() => {
         setInvalid(true);
-        if (name.trim() === "") return Promise.resolve(null);
+        if (name.trim() === "") {
+          return Promise.resolve(null);
+        }
         const parentId = CashArticleIdSchema.safeParse(parent);
         return api.call("finance/cash-articles/save", {
           id,

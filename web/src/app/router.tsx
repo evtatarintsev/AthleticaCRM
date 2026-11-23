@@ -135,9 +135,13 @@ const confirmEmailRoute = createRoute({
     const navigate = confirmEmailRoute.useNavigate();
     const incomingToken = new URLSearchParams(hash).get("token") ?? "";
     const [token, setToken] = useState(incomingToken);
-    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
+    if (hash !== "" && incomingToken !== token) {
+      setToken(incomingToken);
+    }
     useEffect(() => {
-      if (hash !== "") void navigate({ hash: "", replace: true });
+      if (hash !== "") {
+        void navigate({ hash: "", replace: true });
+      }
     }, [hash, navigate]);
     return <ConfirmEmailPage key={token} api={api} token={token} />;
   },
@@ -165,9 +169,13 @@ const resetPasswordRoute = createRoute({
     const navigate = resetPasswordRoute.useNavigate();
     const incomingToken = new URLSearchParams(hash).get("token") ?? "";
     const [token, setToken] = useState(incomingToken);
-    if (hash !== "" && incomingToken !== token) setToken(incomingToken);
+    if (hash !== "" && incomingToken !== token) {
+      setToken(incomingToken);
+    }
     useEffect(() => {
-      if (hash !== "") void navigate({ hash: "", replace: true });
+      if (hash !== "") {
+        void navigate({ hash: "", replace: true });
+      }
     }, [hash, navigate]);
     return <ResetPasswordPage key={token} api={api} token={token} />;
   },

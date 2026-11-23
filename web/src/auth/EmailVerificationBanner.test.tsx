@@ -45,8 +45,9 @@ describe("напоминание о подтверждении email", () => {
       expect(
         screen.getByText(ru["emailVerification.wait"].replace("{seconds}", "1"), { exact: false }),
       ).toBeVisible();
-      if (status === "queued")
+      if (status === "queued") {
         expect(screen.getByText(ru["emailVerification.queued"], { exact: false })).toBeVisible();
+      }
       await waitFor(
         () => {
           expect(button).toBeEnabled();

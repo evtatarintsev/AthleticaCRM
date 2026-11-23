@@ -107,8 +107,9 @@ function SaleCreateForm({ api, branchId, client, onSaved }: Parameters<typeof Sa
               item.quantity > 2147483647 ||
               item.unitPrice === null,
           )
-        )
+        ) {
           return null;
+        }
         const saleItems = parsed.flatMap((item) =>
           item.unitPrice === null ? [] : [{ ...item, unitPrice: item.unitPrice }],
         );
@@ -116,9 +117,13 @@ function SaleCreateForm({ api, branchId, client, onSaved }: Parameters<typeof Sa
           canAccept && payNow && total.minorUnits > 0
             ? paymentInput(draft, available, total, advance)
             : null;
-        if (canAccept && payNow && total.minorUnits > 0 && payment === null) return null;
+        if (canAccept && payNow && total.minorUnits > 0 && payment === null) {
+          return null;
+        }
         const soldOn = LocalDateSchema.safeParse(date);
-        if (!soldOn.success) return null;
+        if (!soldOn.success) {
+          return null;
+        }
         return api.call("sales/create", {
           id: SaleIdSchema.parse(uuidv7()),
           clientId: client.id,
@@ -277,7 +282,7 @@ function SalePanel({
 }) {
   const { t } = useI18n();
   const query = useQuery(apiQuery(api, branchId, "sales/detail", { saleId }));
-  if (query.data === undefined)
+  if (query.data === undefined) {
     return (
       <EditSheetBody>
         {query.isError ? (
@@ -287,6 +292,7 @@ function SalePanel({
         )}
       </EditSheetBody>
     );
+  }
   return <LoadedSalePanel api={api} branchId={branchId} sale={query.data} />;
 }
 
@@ -429,7 +435,9 @@ function LoadedSalePanel({
           saleId={sale.id}
           open={action === "payment"}
           onOpenChange={(open) => {
-            if (!open) setAction(null);
+            if (!open) {
+              setAction(null);
+            }
           }}
           onSaved={refresh}
         />
@@ -437,7 +445,9 @@ function LoadedSalePanel({
       <EditSheet
         open={action === "return"}
         onOpenChange={(open) => {
-          if (!open) setAction(null);
+          if (!open) {
+            setAction(null);
+          }
         }}
         title={t("finance.return")}
       >
@@ -446,7 +456,9 @@ function LoadedSalePanel({
       <EditSheet
         open={action === "cancel"}
         onOpenChange={(open) => {
-          if (!open) setAction(null);
+          if (!open) {
+            setAction(null);
+          }
         }}
         title={t("finance.cancelSale")}
       >
@@ -455,7 +467,9 @@ function LoadedSalePanel({
       <EditSheet
         open={reversing !== null}
         onOpenChange={(open) => {
-          if (!open) setReversing(null);
+          if (!open) {
+            setReversing(null);
+          }
         }}
         title={t("finance.cancelOperation")}
       >
@@ -504,8 +518,9 @@ function SaleReturnForm({
           parsed.minorUnits > sale.total.minorUnits - sale.returned.minorUnits ||
           reason.trim() === "" ||
           (payOut && !cash.success)
-        )
+        ) {
           return null;
+        }
         return api.call("sales/return", {
           saleId: sale.id,
           amount: parsed,

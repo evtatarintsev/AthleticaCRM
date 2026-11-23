@@ -252,7 +252,9 @@ describe("раздел Финансы", () => {
     const user = userEvent.setup();
     const system = await screen.findByText(receiptsArticle.name);
     const row = system.closest("li");
-    if (row === null) throw new Error("System article row is missing");
+    if (row === null) {
+      throw new Error("System article row is missing");
+    }
     expect(within(row).getByText(ru["finance.system"])).toBeInTheDocument();
     expect(within(row).queryByRole("button")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: ru["finance.createArticle"] }));

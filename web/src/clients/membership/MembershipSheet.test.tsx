@@ -558,7 +558,9 @@ it("+N is a separate keyboard control and opens the list without the primary she
   const user = userEvent.setup();
   const more = await screen.findByRole("button", { name: /Открыть все абонементы: 2/ });
   expect(more.closest("button")?.parentElement?.closest("button")).toBeNull();
-  for (let i = 0; i < 35 && document.activeElement !== more; i++) await user.tab();
+  for (let i = 0; i < 35 && document.activeElement !== more; i++) {
+    await user.tab();
+  }
   expect(more).toHaveFocus();
   expect(more.className).toContain("focus-visible:ring");
   await user.keyboard(" ");

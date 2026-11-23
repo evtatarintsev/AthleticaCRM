@@ -191,8 +191,9 @@ describe("карточка клиента", () => {
     const { history } = openApp(`/clients/${alice.id}`, async (input, init) => {
       if (new URL(input, "http://localhost").pathname === "/api/clients/detail") {
         await pending;
-        if (fail)
+        if (fail) {
           return json({ code: "CLIENT_NOT_FOUND", message: "Не найдено", fields: null }, 404);
+        }
       }
       return server.fetch(input, init);
     });
@@ -201,8 +202,11 @@ describe("карточка клиента", () => {
     expect(back).toHaveAttribute("href", "/clients");
     expect(screen.queryByRole("heading", { name: alice.name })).not.toBeInTheDocument();
     release?.();
-    if (fail) await screen.findByText(ru["clients.loadClientError"]);
-    else await screen.findByRole("heading", { name: alice.name });
+    if (fail) {
+      await screen.findByText(ru["clients.loadClientError"]);
+    } else {
+      await screen.findByRole("heading", { name: alice.name });
+    }
     expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
     await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {
@@ -841,12 +845,15 @@ it.each(["escape", "close", "outside"])(
     const panel = await screen.findByRole("dialog", { name: ru["clients.detail.notes"] });
     const field = within(panel).getByLabelText(ru["clients.detail.noteFieldLabel"]);
     await user.type(field, "Черновик заметки");
-    if (method === "escape") await user.keyboard("{Escape}");
-    else if (method === "close")
+    if (method === "escape") {
+      await user.keyboard("{Escape}");
+    } else if (method === "close") {
       await user.click(within(panel).getByRole("button", { name: ru["action.close"] }));
-    else {
+    } else {
       const overlay = document.querySelector<HTMLElement>('[data-slot="sheet-overlay"]');
-      if (overlay === null) throw new Error("Missing overlay");
+      if (overlay === null) {
+        throw new Error("Missing overlay");
+      }
       await user.click(overlay);
     }
     const confirm = within(
@@ -869,7 +876,9 @@ it("closes an empty list on outside click and restores focus", async () => {
   await user.click(trigger);
   await screen.findByRole("dialog", { name: ru["clientOverview.sessions"] });
   const overlay = document.querySelector<HTMLElement>('[data-slot="sheet-overlay"]');
-  if (overlay === null) throw new Error("Missing overlay");
+  if (overlay === null) {
+    throw new Error("Missing overlay");
+  }
   await user.click(overlay);
   await waitFor(() => {
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -882,7 +891,9 @@ it("shows the creation date, age and full section layout", async () => {
   openApp(`/clients/${alice.id}`, detailServer(alice).fetch);
   const heading = await screen.findByRole("heading", { name: ru["clientCard.profile"] });
   const profile = heading.closest<HTMLElement>("div.rounded-lg");
-  if (profile === null) throw new Error("Missing profile");
+  if (profile === null) {
+    throw new Error("Missing profile");
+  }
   expect(within(profile).getByText(ru["clientCard.createdAt"])).toBeVisible();
   expect(within(profile).getByText(/2024/)).toBeVisible();
   expect(within(profile).getByText(/1990.*лет/)).toBeVisible();
@@ -934,7 +945,9 @@ it("loads tasks beyond the first 50, keeps the list under a task, and refreshes 
   const user = userEvent.setup();
   await screen.findByText(/12 просроченных задач/);
   const card = (await screen.findByRole("heading", { name: ru["tasks.title"] })).closest("section");
-  if (card === null) throw new Error("Missing task card");
+  if (card === null) {
+    throw new Error("Missing task card");
+  }
   await waitFor(() => {
     expect(within(card).getByRole("heading")).toHaveTextContent("60");
   });
@@ -977,7 +990,9 @@ it("keeps an edited note and blocks closing while a note is being sent", async (
     "clients/notes/edit": () => json({ notes: [{ ...note, text: "Новый текст" }] }),
   });
   openApp(`/clients/${alice.id}`, async (input, init) => {
-    if (new URL(input, "http://localhost").pathname === "/api/clients/notes/edit") await waiting;
+    if (new URL(input, "http://localhost").pathname === "/api/clients/notes/edit") {
+      await waiting;
+    }
     return api.fetch(input, init);
   });
   const user = userEvent.setup();

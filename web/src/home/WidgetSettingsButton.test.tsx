@@ -52,7 +52,9 @@ describe("индивидуальные настройки виджетов гл�
     const switches = within(dialog).getAllByRole("switch");
     const handles = within(dialog).getAllByRole("button", { name: /Переместить/ });
     const labels = switches.map((item) => item.getAttribute("aria-label"));
-    for (const item of switches) await user.click(item);
+    for (const item of switches) {
+      await user.click(item);
+    }
     expect(within(dialog).getAllByRole("switch")).toEqual(switches);
     expect(
       within(dialog)
@@ -83,8 +85,9 @@ describe("индивидуальные настройки виджетов гл�
   it("нормализует старый кэш при первом изменении и сохраняет позиции нескольких скрытых виджетов", async () => {
     const initial = defaultDashboardSettings();
     const [a, b, c, d] = initial.widgets;
-    if (a === undefined || b === undefined || c === undefined || d === undefined)
+    if (a === undefined || b === undefined || c === undefined || d === undefined) {
       throw new Error("Missing defaults");
+    }
     const widgets = initial.widgets.map((widget) =>
       widget.type === "debtors" ? { ...widget, title: "Долг", limit: 7 } : widget,
     );
@@ -158,7 +161,9 @@ describe("индивидуальные настройки виджетов гл�
     const handles = within(dialog).getAllByRole("button", { name: /Переместить/ });
     const source = handles[0];
     const target = handles[3];
-    if (source === undefined || target === undefined) throw new Error("Missing drag handles");
+    if (source === undefined || target === undefined) {
+      throw new Error("Missing drag handles");
+    }
     Object.defineProperty(source, "setPointerCapture", { value: () => undefined });
     Object.defineProperty(document, "elementFromPoint", {
       configurable: true,

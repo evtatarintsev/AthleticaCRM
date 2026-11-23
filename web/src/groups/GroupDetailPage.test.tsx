@@ -287,7 +287,9 @@ describe("вкладки карточки группы", () => {
     const { history } = openApp(`/groups/${juniors.id}`, async (input, init) => {
       if (new URL(input, "http://localhost").pathname === "/api/groups/detail") {
         await pending;
-        if (fail) return groupNotFound();
+        if (fail) {
+          return groupNotFound();
+        }
       }
       return server.fetch(input, init);
     });
@@ -296,8 +298,11 @@ describe("вкладки карточки группы", () => {
     expect(back).toHaveAttribute("href", "/groups");
     expect(screen.queryByRole("heading", { name: juniors.name })).not.toBeInTheDocument();
     release?.();
-    if (fail) await screen.findByText(ru["groups.detail.loadError"]);
-    else await screen.findByRole("heading", { name: juniors.name });
+    if (fail) {
+      await screen.findByText(ru["groups.detail.loadError"]);
+    } else {
+      await screen.findByRole("heading", { name: juniors.name });
+    }
     expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
     await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {

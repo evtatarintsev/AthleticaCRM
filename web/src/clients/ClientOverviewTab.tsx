@@ -131,7 +131,9 @@ export function ClientOverviewTab({
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          if (alert.membership !== null) onRepay(alert.membership.id);
+                          if (alert.membership !== null) {
+                            onRepay(alert.membership.id);
+                          }
                         }}
                       >
                         {t(
@@ -173,8 +175,11 @@ export function ClientOverviewTab({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        if (alert.count === 1 && alert.first !== undefined) onTask(alert.first.id);
-                        else onTasks();
+                        if (alert.count === 1 && alert.first !== undefined) {
+                          onTask(alert.first.id);
+                        } else {
+                          onTasks();
+                        }
                       }}
                     >
                       {t("clientOverview.open")}

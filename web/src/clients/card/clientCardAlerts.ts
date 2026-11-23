@@ -82,11 +82,14 @@ export function clientAlerts({
   ) {
     alerts.push({ type: "noActiveSubscription" });
   }
-  if (overdue !== undefined && overdue.total > 0)
+  if (overdue !== undefined && overdue.total > 0) {
     alerts.push({ type: "overdueTasks", count: overdue.total, first: overdue.tasks[0] });
+  }
   if (client.birthday !== null) {
     const on = nextBirthday(client.birthday, today);
-    if (on <= addDays(today, 7)) alerts.push({ type: "birthday", on });
+    if (on <= addDays(today, 7)) {
+      alerts.push({ type: "birthday", on });
+    }
   }
   return alerts;
 }

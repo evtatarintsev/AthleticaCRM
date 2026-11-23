@@ -147,7 +147,9 @@ export function EditSheet({
         }}
         onInteractOutside={(event) => {
           event.preventDefault();
-          if (closeOnOutside && !childOpen) requestClose();
+          if (closeOnOutside && !childOpen) {
+            requestClose();
+          }
         }}
         onEscapeKeyDown={(event) => {
           if (isExpandedCombobox(event.target)) {

@@ -178,11 +178,15 @@ function ClientBalancePanel({
           mode={mode}
           open
           onOpenChange={(open) => {
-            if (!open) setMode(null);
+            if (!open) {
+              setMode(null);
+            }
           }}
           onSaved={async () => {
             const updated = await api.call("clients/detail", { id: client.id });
-            if (updated.ok) onChanged(updated.value);
+            if (updated.ok) {
+              onChanged(updated.value);
+            }
           }}
         />
       )}
@@ -192,7 +196,9 @@ function ClientBalancePanel({
         saleId={saleId}
         open={saleId !== null}
         onOpenChange={(open) => {
-          if (!open) setSaleId(null);
+          if (!open) {
+            setSaleId(null);
+          }
         }}
       />
     </EditSheetBody>

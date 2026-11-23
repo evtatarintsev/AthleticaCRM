@@ -32,22 +32,29 @@ export function paymentInput(
     fromAdvance === null ||
     fromAdvance.minorUnits > Math.max(0, advance.minorUnits) ||
     fromAdvance.minorUnits > debt.minorUnits
-  )
+  ) {
     return null;
+  }
   const cash: CashPaymentInput[] = [];
   for (const row of draft.cash) {
     const amount =
       row.amount === null
         ? { ...debt, minorUnits: Math.max(0, debt.minorUnits - fromAdvance.minorUnits) }
         : parseMoney(row.amount, debt.currency);
-    if (amount === null) return null;
-    if (amount.minorUnits === 0) continue;
+    if (amount === null) {
+      return null;
+    }
+    if (amount.minorUnits === 0) {
+      continue;
+    }
     const account = accounts.find(
       (a) =>
         a.id ===
         (row.cashAccountId === "" ? accounts.find((a) => !a.archived)?.id : row.cashAccountId),
     );
-    if (account === undefined || account.archived) return null;
+    if (account === undefined || account.archived) {
+      return null;
+    }
     cash.push({ cashAccountId: account.id, amount });
   }
   const total = cash.reduce((sum, row) => sum + row.amount.minorUnits, fromAdvance.minorUnits);

@@ -172,7 +172,9 @@ function RowReasons({ row }: { row: AssistantImportRow }) {
   const reasons: string[] = [];
   switch (row.status) {
     case "error":
-      if (row.error !== null) reasons.push(t(`assistant.import.rowError.${row.error}`));
+      if (row.error !== null) {
+        reasons.push(t(`assistant.import.rowError.${row.error}`));
+      }
       break;
     case "exists":
     case "duplicate_in_file":

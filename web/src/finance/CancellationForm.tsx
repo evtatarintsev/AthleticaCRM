@@ -37,7 +37,9 @@ export function CancellationForm({
         submitLabel={t("finance.cancelOperation")}
         onSubmit={() => {
           setInvalid(true);
-          if (reason.trim() !== "") setConfirming(true);
+          if (reason.trim() !== "") {
+            setConfirming(true);
+          }
         }}
       >
         {error !== null && <FormAlert message={error} />}

@@ -126,8 +126,11 @@ export function FinanceOperations({
               .call("finance/journal/export", { ...request, limit: 50, offset: 0 })
               .then((result) => {
                 setExporting(false);
-                if (result.ok) downloadBlob("cash-journal.csv", result.value);
-                else setError(apiErrorMessage(t, result.error));
+                if (result.ok) {
+                  downloadBlob("cash-journal.csv", result.value);
+                } else {
+                  setError(apiErrorMessage(t, result.error));
+                }
               });
           }}
         >
@@ -240,7 +243,9 @@ export function FinanceOperations({
       <EditSheet
         open={creating !== null}
         onOpenChange={(open) => {
-          if (!open) setCreating(null);
+          if (!open) {
+            setCreating(null);
+          }
         }}
         title={creating === null ? "" : t(`finance.${creating}`)}
       >
@@ -344,7 +349,9 @@ export function FinanceOperations({
         saleId={saleId}
         open={saleId !== null}
         onOpenChange={(open) => {
-          if (!open) setSaleId(null);
+          if (!open) {
+            setSaleId(null);
+          }
         }}
       />
     </div>
@@ -524,7 +531,9 @@ export function JournalFilters({
         unavailable={new Map<ClientId, string>()}
         onSubmit={(picked) => {
           const first = picked[0];
-          if (first !== undefined) onSearchChange({ ...search, client: first.id });
+          if (first !== undefined) {
+            onSearchChange({ ...search, client: first.id });
+          }
           return Promise.resolve(null);
         }}
       />
@@ -590,10 +599,13 @@ function CashOperationForm({
         const article = CashArticleIdSchema.safeParse(articleId);
         const occurredOn = LocalDateSchema.safeParse(date);
         const person = EmployeeIdSchema.safeParse(employee);
-        if (parsed === null || parsed.minorUnits <= 0 || !cash.success || !occurredOn.success)
+        if (parsed === null || parsed.minorUnits <= 0 || !cash.success || !occurredOn.success) {
           return Promise.resolve(null);
+        }
         if (kind === "transfer") {
-          if (!to.success || to.data === cash.data) return Promise.resolve(null);
+          if (!to.success || to.data === cash.data) {
+            return Promise.resolve(null);
+          }
           return api.call("finance/transfer", {
             fromCashAccountId: cash.data,
             toCashAccountId: to.data,
@@ -602,7 +614,9 @@ function CashOperationForm({
             comment: comment.trim() === "" ? null : comment.trim(),
           });
         }
-        if (!article.success) return Promise.resolve(null);
+        if (!article.success) {
+          return Promise.resolve(null);
+        }
         return api.call(kind === "income" ? "finance/income" : "finance/expense", {
           cashAccountId: cash.data,
           articleId: article.data,

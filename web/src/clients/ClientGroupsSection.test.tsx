@@ -256,7 +256,9 @@ it("shows each group's schedule, hall and nearest session using the shared sched
   const next = await screen.findByRole("link", { name: /Открыть занятие: Утренняя группа/ });
   expect(next).toHaveAttribute("href", `/sessions/${upcomingId}`);
   const row = next.closest("li");
-  if (row === null) throw new Error("Missing group row");
+  if (row === null) {
+    throw new Error("Missing group row");
+  }
   expect(await within(row).findByText(/Пн · 18:00.*19:00 · Зал 1/)).toBeVisible();
   expect(within(row).getByText("ОФП")).toBeVisible();
   expect(await screen.findByText(ru["clientOverview.noUpcoming"])).toBeVisible();

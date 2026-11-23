@@ -1519,7 +1519,6 @@ export const ru = {
   "messaging.sendError": "Не удалось отправить сообщение",
   "messaging.deliveryPending": "Отправляется",
   "messaging.deliverySent": "Отправлено",
-  "messaging.deliveryDelivered": "Доставлено",
   "messaging.deliveryFailed": "Не доставлено",
   "messaging.open": "Чат",
   "inbox.title": "Входящие",

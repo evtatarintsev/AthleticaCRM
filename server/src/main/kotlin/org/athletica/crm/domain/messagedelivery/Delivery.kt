@@ -35,9 +35,6 @@ sealed interface DeliveryState {
     /** Отправлена провайдеру. */
     data object Sent : DeliveryState
 
-    /** Подтверждена доставка провайдером. */
-    data object Delivered : DeliveryState
-
     /** Терминальный отказ доставки. */
     data class Failed(val error: DeliveryError) : DeliveryState
 }

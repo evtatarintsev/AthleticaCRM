@@ -33,8 +33,8 @@ class DbConversationView : ConversationView {
                            COALESCE((
                                SELECT jsonb_agg(jsonb_build_object(
                                    'channelIntegrationId', d.channel_integration_id,
-                                   'state', CASE WHEN d.state IN ('PENDING', 'SENT', 'DELIVERED') THEN d.state ELSE 'FAILED' END,
-                                   'errorMessage', CASE WHEN d.state NOT IN ('PENDING', 'SENT', 'DELIVERED')
+                                   'state', CASE WHEN d.state IN ('PENDING', 'SENT') THEN d.state ELSE 'FAILED' END,
+                                   'errorMessage', CASE WHEN d.state NOT IN ('PENDING', 'SENT')
                                                        THEN COALESCE(d.error_message, '') END
                                ) ORDER BY d.created_at, d.id)
                                FROM message_deliveries d

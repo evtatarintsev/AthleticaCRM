@@ -62,7 +62,6 @@ data class DeliverySchema(
 enum class DeliveryStateSchema {
     PENDING,
     SENT,
-    DELIVERED,
     FAILED,
 }
 

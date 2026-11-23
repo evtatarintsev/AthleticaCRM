@@ -1542,7 +1542,7 @@ export const MessageSchemaInboundSchema = z
   .readonly();
 export type MessageSchemaInbound = z.output<typeof MessageSchemaInboundSchema>;
 
-export const DeliveryStateSchemaSchema = z.enum(["PENDING", "SENT", "DELIVERED", "FAILED"]);
+export const DeliveryStateSchemaSchema = z.enum(["PENDING", "SENT", "FAILED"]);
 export type DeliveryStateSchema = z.output<typeof DeliveryStateSchemaSchema>;
 
 export const DeliverySchemaSchema = z

@@ -45,6 +45,17 @@ type Template =
   { readonly kind: "tariff"; readonly tariff: TariffPlanSchema } | { readonly kind: "individual" };
 
 /**
+ * Шаг выдачи: выбор шаблона (с ранее выбранным [chosen], чтобы вернуться к нему без потери
+ * введённых условий), условия выбранного шаблона или предложение погасить долг уже выданным
+ * абонементом [offer]. Переходы: выбор шаблона — pick → terms, «Изменить» — terms → pick,
+ * выдача с неоплаченными занятиями — terms → repay.
+ */
+type Step =
+  | { readonly kind: "pick"; readonly chosen: Template | null }
+  | { readonly kind: "terms"; readonly chosen: Template }
+  | { readonly kind: "repay"; readonly offer: RepayOffer };
+
+/**
  * Что редактируется во вложенной панели тарифа: новый тариф или существующий. Значение
  * остаётся после закрытия панели, чтобы её содержимое не пропадало во время анимации закрытия.
  */
@@ -277,9 +288,7 @@ function IssueSubscriptionSteps({
   const tariffsQuery = apiQuery(api, branchId, "tariffs/list", {});
   const tariffs = useQuery(tariffsQuery);
   const schema = useMemo(() => issueSubscriptionSchema(t, currency), [t, currency]);
-  const [step, setStep] = useState<"pick" | "terms" | "repay">("pick");
-  const [offer, setOffer] = useState<RepayOffer | null>(null);
-  const [chosen, setChosen] = useState<Template | null>(null);
+  const [step, setStep] = useState<Step>({ kind: "pick", chosen: null });
   const [defaults, setDefaults] = useState(() =>
     valuesFrom({ kind: "individual" }, clientGroupIds),
   );
@@ -292,11 +301,11 @@ function IssueSubscriptionSteps({
   const [paymentDraft, setPaymentDraft] = useState(initialPayment);
   const accounts = useQuery({
     ...apiQuery(api, branchId, "finance/cash-accounts"),
-    enabled: canAccept && step === "terms",
+    enabled: canAccept && step.kind === "terms",
   });
   const paymentOptions = useQuery({
     ...apiQuery(api, branchId, "finance/client-payment-options", { clientId }),
-    enabled: canAccept && step === "terms",
+    enabled: canAccept && step.kind === "terms",
   });
   const availableCash = (accounts.data?.accounts ?? []).filter((account) => !account.archived);
   const advance = paymentOptions.data?.advance ?? { minorUnits: 0, currency };
@@ -316,7 +325,7 @@ function IssueSubscriptionSteps({
       const price = parseMoney(value.price, currency);
       const sessions = value.unlimited ? null : positiveInt(value.sessions);
       if (
-        chosen === null ||
+        step.kind !== "terms" ||
         durationValue === null ||
         price === null ||
         (!value.unlimited && sessions === null)
@@ -332,6 +341,7 @@ function IssueSubscriptionSteps({
         setFailure(t("error.invalidAmount"));
         return;
       }
+      const chosen = step.chosen;
       const membershipId = MembershipIdSchema.parse(uuidv7());
       const result = await api.call("memberships/issue", {
         id: membershipId,
@@ -376,8 +386,10 @@ function IssueSubscriptionSteps({
       if (activeNow) {
         const unpaid = await api.call("memberships/unpaid-sessions", { membershipId });
         if (unpaid.ok && unpaid.value.sessions.length > 0) {
-          setOffer({ membershipId, remaining: sessions, sessions: unpaid.value.sessions });
-          setStep("repay");
+          setStep({
+            kind: "repay",
+            offer: { membershipId, remaining: sessions, sessions: unpaid.value.sessions },
+          });
           return;
         }
       }
@@ -387,10 +399,12 @@ function IssueSubscriptionSteps({
 
   const dirty = useSelector(form.store, (state) => state.isDirty) || paymentDirty;
   useEffect(() => {
-    if (step === "pick") {
+    if (step.kind === "pick") {
       reportGuard({ dirty, submitting: false });
     }
   }, [reportGuard, step, dirty]);
+
+  const chosen = step.kind === "repay" ? null : step.chosen;
 
   const choose = (template: Template) => {
     if (chosen === null || templateKey(chosen) !== templateKey(template)) {
@@ -401,8 +415,7 @@ function IssueSubscriptionSteps({
       setPayNow(true);
       setFailure(null);
     }
-    setChosen(template);
-    setStep("terms");
+    setStep({ kind: "terms", chosen: template });
   };
 
   const refreshTariffs = () => queryClient.invalidateQueries({ queryKey: tariffsQuery.queryKey });
@@ -434,7 +447,7 @@ function IssueSubscriptionSteps({
   const chosenKey = chosen === null ? null : templateKey(chosen);
   return (
     <>
-      {step === "pick" && (
+      {step.kind === "pick" && (
         <EditSheetBody>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">{t("clients.issue.pickHint")}</p>
@@ -511,22 +524,22 @@ function IssueSubscriptionSteps({
           </ul>
         </EditSheetBody>
       )}
-      {step === "repay" && offer !== null && (
+      {step.kind === "repay" && (
         <EditSheetBody>
           <p className="text-sm">{t("membership.repay.offer")}</p>
           <RepayDebtChoice
             api={api}
             branchId={branchId}
             clientId={clientId}
-            membershipId={offer.membershipId}
-            remaining={offer.remaining}
-            sessions={offer.sessions}
+            membershipId={step.offer.membershipId}
+            remaining={step.offer.remaining}
+            sessions={step.offer.sessions}
             skipLabel={t("membership.repay.skip")}
             onFinished={close}
           />
         </EditSheetBody>
       )}
-      {step === "terms" && chosen !== null && (
+      {step.kind === "terms" && (
         <form.Subscribe
           selector={(state) => ({
             dirty: state.isDirty,
@@ -546,10 +559,10 @@ function IssueSubscriptionSteps({
             >
               {failure !== null && <FormAlert message={failure} />}
               <TemplateSummary
-                template={chosen}
+                template={step.chosen}
                 disabled={submitting}
                 onChange={() => {
-                  setStep("pick");
+                  setStep({ kind: "pick", chosen: step.chosen });
                 }}
               />
               <form.Field name="groupIds">

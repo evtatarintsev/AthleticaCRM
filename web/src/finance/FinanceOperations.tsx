@@ -44,6 +44,16 @@ interface OperationsProps {
   readonly canManage: boolean;
 }
 
+/**
+ * Открытая карточка операции журнала: ключ записи и открыта ли поверх неё форма отмены.
+ * Отмена без карточки невозможна, поэтому признак живёт внутри выбора, а не отдельным флагом.
+ */
+interface EntrySelection {
+  readonly id: CashJournalEntry["id"];
+  readonly cashAccountId: CashJournalEntry["cashAccountId"];
+  readonly cancelling: boolean;
+}
+
 /** Постраничный журнал с фильтрами в адресе и отдельными карточками на телефоне. */
 export function FinanceOperations({
   api,
@@ -76,10 +86,11 @@ export function FinanceOperations({
     },
   });
   const [creating, setCreating] = useState<"income" | "expense" | "transfer" | null>(null);
-  const [selection, setSelected] = useState<Pick<CashJournalEntry, "id" | "cashAccountId"> | null>(
-    null,
-  );
-  const [cancelling, setCancelling] = useState(false);
+  const [selection, setSelection] = useState<EntrySelection | null>(null);
+  /** Открывает карточку операции [entry] без формы отмены. */
+  const select = (entry: CashJournalEntry) => {
+    setSelection({ id: entry.id, cashAccountId: entry.cashAccountId, cancelling: false });
+  };
   const [saleId, setSaleId] = useState<SaleId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -178,7 +189,7 @@ export function FinanceOperations({
                     variant="link"
                     className="h-auto p-0"
                     onClick={() => {
-                      setSelected(entry);
+                      select(entry);
                     }}
                   >
                     {t(`finance.kind.${entry.kind}`)}
@@ -207,7 +218,7 @@ export function FinanceOperations({
               variant="link"
               className="h-auto p-0"
               onClick={() => {
-                setSelected(entry);
+                select(entry);
               }}
             >
               {t(`finance.kind.${entry.kind}`)}
@@ -260,8 +271,7 @@ export function FinanceOperations({
         open={selected !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setSelected(null);
-            setCancelling(false);
+            setSelection(null);
           }
         }}
         title={t("finance.operations")}
@@ -307,7 +317,9 @@ export function FinanceOperations({
                     type="button"
                     variant="destructive"
                     onClick={() => {
-                      setCancelling(true);
+                      setSelection((current) =>
+                        current === null ? null : { ...current, cancelling: true },
+                      );
                     }}
                   >
                     {t("finance.cancelOperation")}
@@ -315,8 +327,10 @@ export function FinanceOperations({
                 )
               )}
               <EditSheet
-                open={cancelling}
-                onOpenChange={setCancelling}
+                open={selection?.cancelling === true}
+                onOpenChange={(cancelling) => {
+                  setSelection((current) => (current === null ? null : { ...current, cancelling }));
+                }}
                 title={t("finance.cancelOperation")}
               >
                 <CancellationForm
@@ -329,7 +343,7 @@ export function FinanceOperations({
                     id: selected.id,
                   }}
                   onSaved={async () => {
-                    setSelected(null);
+                    setSelection(null);
                     await refresh();
                   }}
                 />

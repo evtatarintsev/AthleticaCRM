@@ -5,7 +5,7 @@ import {
   createDiscipline,
   createGroup,
   createSession,
-  yesterdayInOrg,
+  todayInOrg,
 } from "../support/data";
 import { expect, test } from "../support/fixtures";
 import { t } from "../support/i18n";
@@ -51,7 +51,7 @@ test("отметка посещения видна в занятии и в ис�
   const groupId = await createGroup(owner.api, groupName);
   const clientId = await createClient(owner.api, clientName);
   await addToGroup(owner.api, clientId, groupId);
-  const sessionId = await createSession(owner.api, groupId, yesterdayInOrg());
+  const sessionId = await createSession(owner.api, groupId, todayInOrg());
 
   await page.goto(`/sessions/${sessionId}`);
   const row = page.getByRole("listitem", { name: clientName });

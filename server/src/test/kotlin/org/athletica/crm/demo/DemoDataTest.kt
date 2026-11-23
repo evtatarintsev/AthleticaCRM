@@ -162,7 +162,7 @@ class DemoDataTest {
     @Test
     fun `есть клиент без групп и клиент во всех группах своего филиала`() =
         runTest(timeout = 10.minutes) {
-            asOwner { assertTrue(views.clientList.page(ClientListQuery(noGroup = true)).total > 0u) }
+            asOwner { assertTrue(views.clientList.page(ClientListQuery(today = filled.today, noGroup = true)).total > 0u) }
             val inAllGroups =
                 num(
                     """
@@ -190,7 +190,7 @@ class DemoDataTest {
             val saleId = orThrow { TestPostgres.db.sql("SELECT id FROM sales WHERE org_id = :org LIMIT 1").bind("org", filled.orgId).firstOrNull { it.asUuid("id").toSaleId() } }
             checkNotNull(saleId)
             asOwner {
-                assertTrue(views.clientList.page(ClientListQuery()).total > 0u, "клиенты")
+                assertTrue(views.clientList.page(ClientListQuery(today = today)).total > 0u, "клиенты")
                 val groups = views.groupList.list(GroupListQuery()).groups
                 assertTrue(groups.isNotEmpty(), "группы")
                 groups.forEach { views.groupDetail.byId(it.id) }

@@ -34,6 +34,7 @@ import org.athletica.crm.employeeContext
 import org.athletica.crm.read.messaging.DbConversationView
 import org.athletica.crm.storage.asString
 import org.athletica.infra.messaging.ProviderChannelTransports
+import org.athletica.infra.messaging.smsaero.smsAeroTestApi
 import org.athletica.infra.messaging.telegram.telegramTestApi
 import org.junit.Before
 import kotlin.test.Test
@@ -52,7 +53,7 @@ class SendMessageTest {
 
     private val contacts = DbClientContacts()
     private val bindings = DbChannelBindings()
-    private val channels = DbChannelIntegrations(ProviderChannelTransports(telegramTestApi { error("Bot API не вызывается") }), contacts, bindings)
+    private val channels = DbChannelIntegrations(ProviderChannelTransports(telegramTestApi { error("Bot API не вызывается") }, smsAeroTestApi { error("SMS Aero не вызывается") }), contacts, bindings)
     private val conversations = DbConversations()
     private val deliveries = DbDeliveries()
 

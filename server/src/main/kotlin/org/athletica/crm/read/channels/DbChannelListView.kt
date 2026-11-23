@@ -51,6 +51,7 @@ class DbChannelListView : ChannelListView {
     private fun ChannelConfig.settings(): ChannelSettingsSchema =
         when (this) {
             is ChannelConfig.SmscSms -> ChannelSettingsSchema.SmscSms(login = login)
+            is ChannelConfig.SmsAeroSms -> ChannelSettingsSchema.SmsAeroSms(email = email, sign = sign, apiKeyMask = apiKey.secretMask())
             is ChannelConfig.TelegramBot -> ChannelSettingsSchema.TelegramBot(tokenMask = botToken.secretMask(), botUsername = botUsername)
             is ChannelConfig.TwilioSms ->
                 ChannelSettingsSchema.TwilioSms(accountSid = accountSid, authTokenMask = authToken.secretMask(), from = from)
@@ -60,6 +61,6 @@ class DbChannelListView : ChannelListView {
     private fun ChannelConfig.share(): ChannelShareSchema? =
         when (this) {
             is ChannelConfig.TelegramBot -> botUsername.takeIf { it.isNotBlank() }?.let { ChannelShareSchema("https://t.me/$it") }
-            is ChannelConfig.SmscSms, is ChannelConfig.TwilioSms -> null
+            is ChannelConfig.SmscSms, is ChannelConfig.SmsAeroSms, is ChannelConfig.TwilioSms -> null
         }
 }

@@ -46,21 +46,25 @@ val appSerializersModule =
         polymorphic(ChannelConfig::class) {
             subclass(ChannelConfig.TwilioSms::class, ChannelConfig.TwilioSms.serializer())
             subclass(ChannelConfig.SmscSms::class, ChannelConfig.SmscSms.serializer())
+            subclass(ChannelConfig.SmsAeroSms::class, ChannelConfig.SmsAeroSms.serializer())
             subclass(ChannelConfig.TelegramBot::class, ChannelConfig.TelegramBot.serializer())
         }
         polymorphic(ChannelSettingsSchema::class) {
             subclass(ChannelSettingsSchema.TwilioSms::class, ChannelSettingsSchema.TwilioSms.serializer())
             subclass(ChannelSettingsSchema.SmscSms::class, ChannelSettingsSchema.SmscSms.serializer())
+            subclass(ChannelSettingsSchema.SmsAeroSms::class, ChannelSettingsSchema.SmsAeroSms.serializer())
             subclass(ChannelSettingsSchema.TelegramBot::class, ChannelSettingsSchema.TelegramBot.serializer())
         }
         polymorphic(NewChannelConfig::class) {
             subclass(NewChannelConfig.TwilioSms::class, NewChannelConfig.TwilioSms.serializer())
             subclass(NewChannelConfig.SmscSms::class, NewChannelConfig.SmscSms.serializer())
+            subclass(NewChannelConfig.SmsAeroSms::class, NewChannelConfig.SmsAeroSms.serializer())
             subclass(NewChannelConfig.TelegramBot::class, NewChannelConfig.TelegramBot.serializer())
         }
         polymorphic(ChannelConfigChange::class) {
             subclass(ChannelConfigChange.TwilioSms::class, ChannelConfigChange.TwilioSms.serializer())
             subclass(ChannelConfigChange.SmscSms::class, ChannelConfigChange.SmscSms.serializer())
+            subclass(ChannelConfigChange.SmsAeroSms::class, ChannelConfigChange.SmsAeroSms.serializer())
             subclass(ChannelConfigChange.TelegramBot::class, ChannelConfigChange.TelegramBot.serializer())
         }
     }

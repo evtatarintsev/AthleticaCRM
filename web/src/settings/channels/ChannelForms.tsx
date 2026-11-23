@@ -4,6 +4,7 @@ import { z } from "zod";
 import type {
   ChannelConfigChange,
   ChannelIntegrationId,
+  ChannelSettingsSchemaSmsAeroSms,
   ChannelSettingsSchemaSmscSms,
   ChannelSettingsSchemaTelegramBot,
   ChannelSettingsSchemaTwilioSms,
@@ -191,6 +192,130 @@ export function SmscChannelForm({
                 autoComplete="new-password"
                 required={creating}
                 {...(creating ? {} : { hint: t("channels.passwordKeepHint") })}
+              />
+            )}
+          </form.Field>
+        </ProviderFormFrame>
+      )}
+    </form.Subscribe>
+  );
+}
+
+/**
+ * Форма канала SMS Aero: email аккаунта, API-ключ и подпись; при изменении пустой ключ
+ * оставляет сохранённый.
+ */
+export function SmsAeroChannelForm({
+  initial,
+  onSave,
+  header,
+}: ProviderFormProps<ChannelSettingsSchemaSmsAeroSms>) {
+  const { t } = useI18n();
+  const creating = initial === null;
+  const { failure, submit } = useProviderSubmit(onSave);
+  const schema = useMemo(
+    () =>
+      z.object({
+        name: requiredSchema(t),
+        email: requiredSchema(t),
+        apiKey: secretSchema(t, creating),
+        sign: requiredSchema(t),
+      }),
+    [t, creating],
+  );
+  const form = useForm({
+    defaultValues: {
+      name: initial?.name ?? "",
+      email: initial?.settings.email ?? "",
+      apiKey: "",
+      sign: initial?.settings.sign ?? "",
+    },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      const name = value.name.trim();
+      const email = value.email.trim();
+      const sign = value.sign.trim();
+      await submit(
+        creating
+          ? {
+              kind: "create",
+              name,
+              config: { type: "sms_aero_sms", email, apiKey: value.apiKey.trim(), sign },
+            }
+          : {
+              kind: "update",
+              id: initial.id,
+              name,
+              config: {
+                type: "sms_aero_sms",
+                email,
+                apiKey: changedSecret(value.apiKey.trim()),
+                sign,
+              },
+            },
+      );
+    },
+  });
+
+  return (
+    <form.Subscribe
+      selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
+    >
+      {({ dirty, submitting }) => (
+        <ProviderFormFrame
+          header={header(dirty)}
+          dirty={dirty}
+          submitting={submitting}
+          failure={failure}
+          onSubmit={() => {
+            void form.handleSubmit();
+          }}
+        >
+          <form.Field name="name">
+            {(field) => (
+              <TextField
+                field={field}
+                label={t("channels.field.name")}
+                autoComplete="off"
+                required
+              />
+            )}
+          </form.Field>
+          <form.Field name="email">
+            {(field) => (
+              <TextField
+                field={field}
+                type="email"
+                label={t("channels.field.email")}
+                autoComplete="off"
+                required
+              />
+            )}
+          </form.Field>
+          <form.Field name="apiKey">
+            {(field) => (
+              <PasswordField
+                field={field}
+                label={t("channels.field.apiKey")}
+                autoComplete="off"
+                required={creating}
+                {...(initial === null
+                  ? {}
+                  : {
+                      placeholder: initial.settings.apiKeyMask,
+                      hint: t("channels.secretKeepHint", { mask: initial.settings.apiKeyMask }),
+                    })}
+              />
+            )}
+          </form.Field>
+          <form.Field name="sign">
+            {(field) => (
+              <TextField
+                field={field}
+                label={t("channels.field.sign")}
+                autoComplete="off"
+                required
+                hint={t("channels.signHint")}
               />
             )}
           </form.Field>

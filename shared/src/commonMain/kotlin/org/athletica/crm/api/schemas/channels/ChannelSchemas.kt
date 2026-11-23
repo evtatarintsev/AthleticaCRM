@@ -37,6 +37,16 @@ sealed interface ChannelSettingsSchema {
         val login: String,
     ) : ChannelSettingsSchema
 
+    /** SMS через SMS Aero. */
+    @Serializable
+    @SerialName("sms_aero_sms")
+    data class SmsAeroSms(
+        val email: String,
+        val sign: String,
+        /** Маска API-ключа. */
+        val apiKeyMask: String,
+    ) : ChannelSettingsSchema
+
     /** Telegram-бот. */
     @Serializable
     @SerialName("telegram_bot")
@@ -81,6 +91,15 @@ sealed interface NewChannelConfig {
         val password: String,
     ) : NewChannelConfig
 
+    /** SMS через SMS Aero. */
+    @Serializable
+    @SerialName("sms_aero_sms")
+    data class SmsAeroSms(
+        val email: String,
+        val apiKey: String,
+        val sign: String,
+    ) : NewChannelConfig
+
     /** Telegram-бот. */
     @Serializable
     @SerialName("telegram_bot")
@@ -113,6 +132,16 @@ sealed interface ChannelConfigChange {
         val login: String,
         /** Новый пароль; `null` — не менять. */
         val password: String?,
+    ) : ChannelConfigChange
+
+    /** SMS через SMS Aero. */
+    @Serializable
+    @SerialName("sms_aero_sms")
+    data class SmsAeroSms(
+        val email: String,
+        /** Новый API-ключ; `null` — не менять. */
+        val apiKey: String?,
+        val sign: String,
     ) : ChannelConfigChange
 
     /** Telegram-бот. */

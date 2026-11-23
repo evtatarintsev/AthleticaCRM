@@ -28,6 +28,19 @@ const sms = {
   share: null,
 };
 
+const aero = {
+  id: "0199a0b2-7c3e-7d2a-9f10-000000000503",
+  name: "SMS Aero",
+  settings: {
+    type: "sms_aero_sms",
+    email: "club@example.com",
+    sign: "Dinamo",
+    apiKeyMask: "••••Xy7Q",
+  },
+  enabled: true,
+  share: null,
+};
+
 /** Подпись из словаря [key] с подставленным именем канала [name]. */
 function named(
   key: "channels.editChannel" | "channels.toggleChannel" | "channels.shareChannel",
@@ -103,6 +116,65 @@ describe("каналы связи: создание в панели", () => {
       await within(sheet).findByRole("button", { name: ru["channels.provider.twilio_sms"] }),
     ).toBeVisible();
   });
+
+  it("создаёт канал SMS Aero", async () => {
+    const server = appServer({
+      "channels/list": () => json({ channels: [] }),
+      "channels/create": () => empty(),
+    });
+    openApp("/settings/channels", server.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["channels.create"] }));
+    const sheet = await screen.findByRole("dialog");
+    await user.click(
+      within(sheet).getByRole("button", { name: ru["channels.provider.sms_aero_sms"] }),
+    );
+    await user.type(within(sheet).getByLabelText(ru["channels.field.name"]), "SMS");
+    await user.type(within(sheet).getByLabelText(ru["channels.field.email"]), " club@example.com ");
+    await user.type(within(sheet).getByLabelText(ru["channels.field.apiKey"]), "key");
+    await user.type(within(sheet).getByLabelText(ru["channels.field.sign"]), " Dinamo ");
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    const request = CreateChannelIntegrationRequestSchema.parse(
+      server.to("channels/create")[0]?.body,
+    );
+    expect(request.config).toEqual({
+      type: "sms_aero_sms",
+      email: "club@example.com",
+      apiKey: "key",
+      sign: "Dinamo",
+    });
+  });
+
+  it("ошибка проверки SMS Aero оставляет панель открытой с введёнными данными", async () => {
+    const message = "Подпись Dinamo ещё не одобрена в SMS Aero";
+    const server = appServer({
+      "channels/list": () => json({ channels: [] }),
+      "channels/create": () =>
+        json({ code: "SMS_AERO_SIGN_NOT_APPROVED", message, fields: null }, 400),
+    });
+    openApp("/settings/channels", server.fetch);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: ru["channels.create"] }));
+    const sheet = await screen.findByRole("dialog");
+    await user.click(
+      within(sheet).getByRole("button", { name: ru["channels.provider.sms_aero_sms"] }),
+    );
+    await user.type(within(sheet).getByLabelText(ru["channels.field.name"]), "SMS");
+    await user.type(within(sheet).getByLabelText(ru["channels.field.email"]), "club@example.com");
+    await user.type(within(sheet).getByLabelText(ru["channels.field.apiKey"]), "key");
+    await user.type(within(sheet).getByLabelText(ru["channels.field.sign"]), "Dinamo");
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    expect(await within(sheet).findByText(message)).toBeVisible();
+    expect(within(sheet).getByLabelText(ru["channels.field.sign"])).toHaveValue("Dinamo");
+    expect(within(sheet).getByLabelText(ru["channels.field.apiKey"])).toHaveValue("key");
+  });
 });
 
 describe("каналы связи: изменение в панели", () => {
@@ -141,6 +213,40 @@ describe("каналы связи: изменение в панели", () => {
       id: bot.id,
       name: "Новый бот",
       config: { type: "telegram_bot", botToken: null },
+    });
+  });
+
+  it("изменение SMS Aero без ключа не отправляет ключ", async () => {
+    const server = appServer({
+      "channels/list": () => json({ channels: [aero] }),
+      "channels/update": () => empty(),
+    });
+    openApp("/settings/channels", server.fetch);
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", { name: named("channels.editChannel", aero.name) }),
+    );
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getByLabelText(ru["channels.field.apiKey"])).toHaveValue("");
+    expect(
+      within(sheet).getByText(ru["channels.secretKeepHint"].replace("{mask}", "••••Xy7Q")),
+    ).toBeVisible();
+
+    const sign = within(sheet).getByLabelText(ru["channels.field.sign"]);
+    await user.clear(sign);
+    await user.type(sign, "Spartak");
+    await user.click(within(sheet).getByRole("button", { name: ru["action.save"] }));
+
+    await waitFor(() => {
+      expect(server.to("channels/update")).toHaveLength(1);
+    });
+    expect(
+      UpdateChannelIntegrationRequestSchema.parse(server.to("channels/update")[0]?.body),
+    ).toEqual({
+      id: aero.id,
+      name: aero.name,
+      config: { type: "sms_aero_sms", email: "club@example.com", apiKey: null, sign: "Spartak" },
     });
   });
 });

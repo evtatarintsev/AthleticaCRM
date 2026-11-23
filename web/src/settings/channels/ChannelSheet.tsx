@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
 import {
+  SmsAeroChannelForm,
   SmscChannelForm,
   TelegramChannelForm,
   TwilioChannelForm,
@@ -17,7 +18,12 @@ import {
 export type ChannelProvider = ChannelIntegrationSchema["settings"]["type"];
 
 /** Провайдеры в порядке показа на шаге выбора. */
-const PROVIDERS: readonly ChannelProvider[] = ["smsc_sms", "telegram_bot", "twilio_sms"];
+const PROVIDERS: readonly ChannelProvider[] = [
+  "smsc_sms",
+  "sms_aero_sms",
+  "telegram_bot",
+  "twilio_sms",
+];
 
 /** Шаг панели создания: выбор провайдера или форма выбранного провайдера. */
 type Step =
@@ -176,6 +182,8 @@ function NewProviderForm({
   switch (provider) {
     case "smsc_sms":
       return <SmscChannelForm initial={null} onSave={onSave} header={header} />;
+    case "sms_aero_sms":
+      return <SmsAeroChannelForm initial={null} onSave={onSave} header={header} />;
     case "telegram_bot":
       return <TelegramChannelForm initial={null} onSave={onSave} header={header} />;
     case "twilio_sms":
@@ -199,6 +207,14 @@ function ChannelForm({
     case "smsc_sms":
       return (
         <SmscChannelForm initial={{ id, name, settings }} onSave={onSave} header={renderHeader} />
+      );
+    case "sms_aero_sms":
+      return (
+        <SmsAeroChannelForm
+          initial={{ id, name, settings }}
+          onSave={onSave}
+          header={renderHeader}
+        />
       );
     case "telegram_bot":
       return (

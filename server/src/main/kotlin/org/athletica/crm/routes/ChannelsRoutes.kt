@@ -62,6 +62,7 @@ fun RouteWithContext.channelsRoutes(
 private fun NewChannelConfig.toChannelConfig(): ChannelConfig =
     when (this) {
         is NewChannelConfig.SmscSms -> ChannelConfig.SmscSms(login = login, password = password)
+        is NewChannelConfig.SmsAeroSms -> ChannelConfig.SmsAeroSms(email = email, apiKey = apiKey, sign = sign)
         is NewChannelConfig.TelegramBot -> ChannelConfig.TelegramBot(botToken = botToken)
         is NewChannelConfig.TwilioSms -> ChannelConfig.TwilioSms(accountSid = accountSid, authToken = authToken, from = from)
     }

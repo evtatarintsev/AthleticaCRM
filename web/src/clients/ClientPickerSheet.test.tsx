@@ -33,6 +33,8 @@ const client = (n: number, name: string) =>
     customFields: [],
     contacts: [],
     state: "ACTIVE",
+    memberships: [],
+    unpaidSessions: 0,
   });
 
 const ivan = client(1, "Иван Смирнов");

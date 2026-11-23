@@ -34,6 +34,8 @@ const petrov = ClientListItemSchema.parse({
   customFields: [],
   contacts: [],
   state: "ACTIVE",
+  memberships: [],
+  unpaidSessions: 0,
 });
 
 /** Сервер, принимающий создание задачи; [failure] — текст ошибки создания. */

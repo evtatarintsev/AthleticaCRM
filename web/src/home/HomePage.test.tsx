@@ -66,6 +66,8 @@ describe("главная", () => {
         contacts: [],
         customFields: [],
         state: "ACTIVE",
+        memberships: [],
+        unpaidSessions: 0,
         balance: { minorUnits: 0, currency: "RUB" },
       });
       const last = {
@@ -204,6 +206,8 @@ describe("главная", () => {
       customFields: [],
       contacts: [],
       state: "ACTIVE",
+      memberships: [],
+      unpaidSessions: 0,
     });
     const fake = appServer({
       "display-settings": () =>

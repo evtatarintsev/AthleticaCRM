@@ -38,6 +38,8 @@ const client = (avatarId: string | null) =>
     customFields: [],
     contacts: [],
     state: "ACTIVE",
+    memberships: [],
+    unpaidSessions: 0,
   });
 
 function server(avatarId: string | null) {

@@ -37,9 +37,15 @@ describe("дни рождения в адресе списка клиентов"
   it("сохраняет прежние границы самостоятельных фильтров", () => {
     expect(birthdayRange("tomorrow", today)).toEqual({ from: "2026-11-19", to: "2026-11-19" });
     expect(birthdayRange("week", today)).toEqual({ from: today, to: "2026-11-24" });
-    expect(
-      clientListRequest(clientListFilters({ sort: "birthday", dir: "desc" }), today, 50, 0),
-    ).toMatchObject({ sortField: "BIRTHDAY", sortDirection: "Desc" });
+  });
+
+  it("сортировки по дате рождения нет: ?sort=birthday из адреса — сортировка по имени", () => {
+    const filters = clientListFilters(ClientListSearchSchema.parse({ sort: "birthday" }));
+    expect(filters.sort).toBe("name");
+    expect(clientListRequest(filters, today, 50, 0)).toMatchObject({
+      sortField: "NAME",
+      sortDirection: "Asc",
+    });
   });
 
   it("нормализует направление и сбрасывает ближайший ДР при удалённом фильтре", () => {

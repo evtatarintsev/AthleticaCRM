@@ -127,7 +127,11 @@ function clientFormServer(initial: readonly ClientDetailResponse[] = []) {
   return appServer({
     "lead-sources/list": () => json({ leadSources: [leadSource, otherSource] }),
     "custom-fields/list": () => json(customFieldDefs),
-    "clients/list": () => json({ clients, total: clients.length }),
+    "clients/list": () =>
+      json({
+        clients: clients.map((client) => ({ ...client, memberships: [], unpaidSessions: 0 })),
+        total: clients.length,
+      }),
     "display-settings": () =>
       json({
         clients: { columns: [], sort: null, savedViews: [] },

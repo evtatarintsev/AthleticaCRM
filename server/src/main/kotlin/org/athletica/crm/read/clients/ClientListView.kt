@@ -1,6 +1,7 @@
 package org.athletica.crm.read.clients
 
 import arrow.core.raise.context.Raise
+import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.clients.ClientListResponse
 import org.athletica.crm.core.DateRange
 import org.athletica.crm.core.EmployeeRequestContext
@@ -40,6 +41,10 @@ data class ClientSortCriterion(
  * а пустой поисковый запрос приведён к `null`).
  */
 data class ClientListQuery(
+    /** «Сегодня» организации: дата, на которую выводятся признаки абонементов. */
+    val today: LocalDate,
+    /** Собирать абонементы и число неоплаченных занятий; выгрузка их не выводит и отключает. */
+    val withMemberships: Boolean = true,
     /** Возвращать архивных клиентов вместо активных. */
     val archived: Boolean = false,
     /**
@@ -67,9 +72,11 @@ data class ClientListQuery(
 
 /**
  * Read-проекция списка клиентов: соединяет данные нескольких агрегатов
- * (клиент, баланс, группы, контакты) в одном запросе с серверной фильтрацией,
- * сортировкой и пагинацией. Это не репозиторий агрегата `Client`, а кросс-агрегатная
- * выборка под конкретный экран, поэтому она сразу собирает готовый ответ API.
+ * (клиент, баланс, группы, контакты, активные и неактивированные абонементы с признаками
+ * на «сегодня» организации из [ClientListQuery.today], число неоплаченных занятий в группах
+ * текущего филиала) в одном запросе с серверной фильтрацией, сортировкой и пагинацией.
+ * Это не репозиторий агрегата `Client`, а кросс-агрегатная выборка под конкретный экран,
+ * поэтому она сразу собирает готовый ответ API.
  */
 interface ClientListView {
     /** Возвращает страницу клиентов согласно [query]. */

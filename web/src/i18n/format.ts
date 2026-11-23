@@ -11,6 +11,8 @@ export interface Formatters {
   date: (date: LocalDate) => string;
   /** День и месяц календарной даты без года и сдвига по часовому поясу. */
   dayMonth: (date: LocalDate) => string;
+  /** День и месяц календарной даты цифрами («03.12») без года и сдвига по часовому поясу. */
+  dayMonthShort: (date: LocalDate) => string;
   /** Время суток [time]. */
   time: (time: LocalTime) => string;
   /** Момент [instant] в часовом поясе браузера. */
@@ -31,6 +33,11 @@ export function createFormatters(locale: string): Formatters {
     month: "long",
     timeZone: "UTC",
   });
+  const dayMonthsShort = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  });
   const times = new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: "UTC" });
   const dateTimes = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const localDates = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
@@ -48,6 +55,7 @@ export function createFormatters(locale: string): Formatters {
     },
     date: (date) => dates.format(Date.UTC(...dateParts(date))),
     dayMonth: (date) => dayMonths.format(Date.UTC(...dateParts(date))),
+    dayMonthShort: (date) => dayMonthsShort.format(Date.UTC(...dateParts(date))),
     time: (time) => times.format(Date.UTC(1970, 0, 1, ...timeParts(time))),
     dateTime: (instant) => dateTimes.format(new Date(instant)),
     ago: (instant, now) => {

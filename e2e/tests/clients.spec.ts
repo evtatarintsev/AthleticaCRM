@@ -5,8 +5,11 @@ import {
   createDiscipline,
   createGroup,
   createSession,
+  rub,
   todayInOrg,
 } from "../support/data";
+import { call } from "../support/api";
+import { uuidv7 } from "../../web/src/lib/uuid";
 import { expect, test } from "../support/fixtures";
 import { t } from "../support/i18n";
 
@@ -75,4 +78,39 @@ test("отметка посещения видна в занятии и в ис�
     sessions.getByRole("button", { name: `${t["clientOverview.filter.PRESENT"]} · 1` }),
   ).toBeVisible();
   await expect(sessions.getByText(groupName)).toBeVisible();
+});
+
+test("список клиентов с абонементами совпадает с контрактом", async ({ page, owner }) => {
+  const clientName = unique("Вера");
+  const clientId = await createClient(owner.api, clientName);
+  const groupId = await createGroup(owner.api, unique("Дневная"));
+  const issue = {
+    clientId,
+    tariffPlanId: null,
+    sessions: 8,
+    groupIds: [groupId],
+    durationValue: 1,
+    durationUnit: "MONTHS",
+    price: rub(1000),
+    closeMode: "MANUAL",
+  } as const;
+  const variants = [
+    { name: "Активный", activationMode: "IMMEDIATE" },
+    { name: "Безлимит", activationMode: "IMMEDIATE", sessions: null },
+    { name: "Последнее занятие", activationMode: "IMMEDIATE", sessions: 1 },
+    { name: "Неделя", activationMode: "IMMEDIATE", durationValue: 7, durationUnit: "DAYS" },
+    { name: "С даты", activationMode: "ON_DATE", activateOn: "2099-01-01" },
+    { name: "Неактивированный", activationMode: "ON_FIRST_VISIT" },
+  ] as const;
+  for (const variant of variants) {
+    await call(owner.api, "memberships/issue", { ...issue, ...variant, id: uuidv7() });
+  }
+
+  const { clients } = await call(owner.api, "clients/list", {});
+  expect(clients.find((client) => client.id === clientId)?.memberships).toHaveLength(
+    variants.length,
+  );
+
+  await page.goto("/clients");
+  await expect(page.getByRole("link", { name: clientName, exact: true })).toBeVisible();
 });

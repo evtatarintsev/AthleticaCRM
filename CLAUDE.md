@@ -31,6 +31,18 @@ When adding or changing environment variables in `application.conf`:
 
 Both files must be updated in the same commit as the `application.conf` change.
 
+### End-to-end тесты
+
+Смоук-набор на полном стенде (`e2e/`, см. `e2e/README.md`) в CI не запускается, поэтому прогон — обязанность автора изменения:
+- изменён `docker-compose.prod.yaml`, `nginx/prod.conf.template`, Dockerfile, аутентификация, почта или загрузка файлов — прогнать `mise run e2e`;
+- появился новый ключевой путь пользователя — добавить сценарий в `e2e/tests/`.
+
+When touching `e2e/`, additionally run inside `e2e/`:
+```bash
+npm run format
+npm run check   # typecheck + eslint + prettier --check
+```
+
 ## Quick Start Commands
 
 ### Build and Test
@@ -55,6 +67,9 @@ Both files must be updated in the same commit as the `application.conf` change.
 
 # Run tests in parallel (faster)
 ./gradlew test --parallel --max-workers=4
+
+# E2E: собрать образы, поднять стенд, прогнать Playwright, удалить стенд
+mise run e2e
 ```
 
 ### Database and Migrations
@@ -76,6 +91,7 @@ mise run admin org find ЦР   # = bin/athletica admin org find ЦР
 - **server**: Ktor backend (REST API, database access, business logic)
 - **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs), пока только JVM-таргет; задел под будущие мобильные KMP-клиенты
 - **web**: веб-фронтенд — TypeScript + React + Vite, отдаётся с `/`. Не Gradle-модуль, см. `web/README.md`
+- **e2e**: смоук-тесты Playwright на полном стенде (прод-compose + оверлей), см. `e2e/README.md`
 
 ### Key Directories in `server/src/main/kotlin/org/athletica/crm/`
 

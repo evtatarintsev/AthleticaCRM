@@ -23,3 +23,6 @@ node_modules/
 .claude/
 .sdkmanrc
 nginx/certs/
+e2e/playwright-report/
+e2e/test-results/
+e2e/stand/.letsencrypt/

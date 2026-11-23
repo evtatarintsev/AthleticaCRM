@@ -23,7 +23,7 @@ compose=(docker compose -p athletica-e2e
 cleanup() {
   local status=$?
   if [[ $status -ne 0 ]]; then
-    "${compose[@]}" logs --no-color --tail=200 server nginx mailpit || true
+    "${compose[@]}" logs --no-color --tail=200 server clients nginx mailpit || true
     echo "Отчёт Playwright: e2e/playwright-report/index.html" >&2
   fi
   if [[ $keep -eq 0 ]]; then
@@ -38,5 +38,5 @@ if [[ ! -d e2e/node_modules ]]; then
   (cd e2e && npm ci --no-audit --no-fund)
 fi
 
-"${compose[@]}" up -d --wait --build postgres rustfs mailpit server frontend nginx
+"${compose[@]}" up -d --wait --build postgres rustfs mailpit server clients frontend nginx
 "${compose[@]}" run --rm playwright "$@"

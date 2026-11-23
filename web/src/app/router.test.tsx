@@ -21,6 +21,7 @@ const me = {
   currentBranch: { id: "0199a0b2-7c3e-7d2a-9f10-000000000003", name: "Центр" },
   permissions: [],
   emailVerificationPending: false,
+  demo: false,
 };
 
 /** JSON-ответ с кодом [status]. */

@@ -2,6 +2,11 @@ package org.athletica.crm.admin
 
 import com.github.ajalt.clikt.core.CliktError
 import org.athletica.crm.createDatabase
+import org.athletica.crm.demo.DemoData
+import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.employees.DbEmployees
+import org.athletica.crm.domain.employees.DbRoles
+import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.events.FailedDomainEvents
 import org.athletica.crm.domain.orgbalance.DbOrgBalances
 import org.athletica.crm.domain.orgbalance.OrgBalances
@@ -28,6 +33,12 @@ class AdminDi(
 
     /** Поиск организаций без привязки к организации запроса. */
     val orgSearch: OrgSearch by lazy { OrgSearch(database) }
+
+    /** Сотрудники организаций: контекст владельца для наполнения. */
+    val employees: Employees by lazy { DbEmployees(DbUsers(PasswordHasher()), DbRoles()) }
+
+    /** Наполнитель пустой организации демонстрационными данными. */
+    val demoData: DemoData by lazy { DemoData() }
 
     /** Пароли пользователей всех организаций. */
     val userPasswords: UserPasswords by lazy { UserPasswords(database, PasswordHasher()) }

@@ -48,7 +48,7 @@ describe("типы вызова", () => {
     );
     expect(await api.call("auth/me")).toMatchObject({
       ok: true,
-      value: { emailVerificationPending: false },
+      value: { emailVerificationPending: false, demo: false },
     });
   });
 

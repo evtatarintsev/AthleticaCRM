@@ -264,7 +264,7 @@ fun Application.configureServer() {
                         context(di.jwtConfig) {
                             employeesRoutes(di.employees, di.roles, di.views)
                         }
-                        profileRoutes(di.auth, di.organizations, di.orgBalances, di.emailVerifications)
+                        profileRoutes(di.auth, di.organizations, di.orgBalances, di.emailVerifications, di.demoData != null)
                         orgBalanceRoutes(di.orgBalances)
                         context(di.minio) {
                             uploadRoutes()

@@ -1646,6 +1646,9 @@ export const ru = {
     "Ссылка недействительна или истекла. Войдите в CRM и запросите новое письмо.",
   "emailVerification.openCrm": "Открыть CRM",
   "emailVerification.reminderTitle": "Подтвердите email",
+  "demo.bannerTitle": "Демо-режим",
+  "demo.banner":
+    "Это демо-режим: организация заполнена демонстрационными данными. Все клиенты, контакты и платежи вымышлены.",
   "emailVerification.reminder":
     "Подтвердите email {email} по ссылке в письме. Вы можете продолжать работать в CRM.",
   "emailVerification.resend": "Отправить письмо повторно",

@@ -599,6 +599,7 @@ export const AuthMeResponseSchema = z
     currentBranch: BranchDetailResponseSchema,
     permissions: z.array(UserPermissionSchema).readonly(),
     emailVerificationPending: z.boolean(),
+    demo: z.boolean(),
   })
   .readonly();
 export type AuthMeResponse = z.output<typeof AuthMeResponseSchema>;

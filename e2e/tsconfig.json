@@ -1,0 +1,12 @@
+{
+  "extends": "../web/tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "paths": {
+      "zod": ["./node_modules/zod"]
+    }
+  },
+  "include": ["*.ts", "support", "tests"]
+}

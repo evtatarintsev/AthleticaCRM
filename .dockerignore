@@ -5,3 +5,7 @@
 **/build
 **/node_modules
 **/.DS_Store
+# Сборке сервера не нужны: без них правка e2e-тестов или nginx не пересобирает серверный образ
+e2e
+openspec
+nginx

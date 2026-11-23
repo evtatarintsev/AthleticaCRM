@@ -5,6 +5,7 @@ import org.athletica.crm.core.AdminRequestContext
 import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.orgbalance.OrgBalanceOperationType
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -37,8 +38,8 @@ data class OrgBalanceEntry(
     val amount: Money,
     /** Баланс организации после операции. */
     val balanceAfter: Money,
-    /** Тип операции: admin_credit, admin_debit, system_fee, replenishment, bonus. */
-    val operationType: String,
+    /** Тип операции. */
+    val operationType: OrgBalanceOperationType,
     /** Текстовое описание операции. */
     val description: String,
     /** Время операции. */

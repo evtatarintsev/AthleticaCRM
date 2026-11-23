@@ -3175,12 +3175,15 @@ export const NotificationsResponseSchema = z
   .readonly();
 export type NotificationsResponse = z.output<typeof NotificationsResponseSchema>;
 
+export const OrgBalanceOperationTypeSchema = z.enum(["replenishment", "bonus", "system_fee", "admin_credit", "admin_debit"]);
+export type OrgBalanceOperationType = z.output<typeof OrgBalanceOperationTypeSchema>;
+
 export const OrgBalanceJournalEntrySchema = z
   .object({
     id: z.uuid(),
     amount: MoneySchema,
     balanceAfter: MoneySchema,
-    operationType: z.string(),
+    operationType: OrgBalanceOperationTypeSchema,
     description: z.string(),
     createdAt: InstantSchema,
   })

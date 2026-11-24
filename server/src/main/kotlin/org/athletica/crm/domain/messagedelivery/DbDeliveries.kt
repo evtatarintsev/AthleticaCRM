@@ -85,12 +85,11 @@ class DbDeliveries : Deliveries {
             .list { row -> row.toDelivery() }
 
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun pending(limit: Int): List<PendingDelivery> =
+    override suspend fun pending(limit: Int): List<DeliveryId> =
         tr.sql(
             """
-            SELECT d.id, d.channel_integration_id, d.recipient_address, m.body, d.attempts
+            SELECT d.id
             FROM message_deliveries d
-            JOIN messages m ON m.id = d.message_id
             JOIN channel_integrations c ON c.id = d.channel_integration_id
             WHERE d.state = 'PENDING' AND c.enabled = true
             ORDER BY d.created_at
@@ -98,7 +97,22 @@ class DbDeliveries : Deliveries {
             """.trimIndent(),
         )
             .bind("limit", limit)
-            .list { row ->
+            .list { row -> row.asUuid("id").toDeliveryId() }
+
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun claim(id: DeliveryId): PendingDelivery? =
+        tr.sql(
+            """
+            SELECT d.id, d.channel_integration_id, d.recipient_address, m.body, d.attempts
+            FROM message_deliveries d
+            JOIN messages m ON m.id = d.message_id
+            JOIN channel_integrations c ON c.id = d.channel_integration_id
+            WHERE d.id = :id AND d.state = 'PENDING' AND c.enabled = true
+            FOR UPDATE OF d SKIP LOCKED
+            """.trimIndent(),
+        )
+            .bind("id", id)
+            .firstOrNull { row ->
                 PendingDelivery(
                     id = row.asUuid("id").toDeliveryId(),
                     channelIntegrationId = row.asUuid("channel_integration_id").toChannelIntegrationId(),
@@ -114,12 +128,13 @@ class DbDeliveries : Deliveries {
             """
             UPDATE message_deliveries
             SET state = 'SENT', provider_message_ref = :ref, sent_at = now(), error_code = NULL, error_message = NULL
-            WHERE id = :id
+            WHERE id = :id AND state = 'PENDING'
             """.trimIndent(),
         )
             .bind("id", id)
             .bind("ref", ref.value)
             .execute()
+            .let { requirePending(it) }
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
@@ -128,13 +143,14 @@ class DbDeliveries : Deliveries {
             """
             UPDATE message_deliveries
             SET state = 'FAILED', error_code = :code, error_message = :message
-            WHERE id = :id
+            WHERE id = :id AND state = 'PENDING'
             """.trimIndent(),
         )
             .bind("id", id)
             .bind("code", error.code)
             .bind("message", error.message)
             .execute()
+            .let { requirePending(it) }
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
@@ -143,13 +159,14 @@ class DbDeliveries : Deliveries {
             """
             UPDATE message_deliveries
             SET attempts = attempts + 1, error_code = :code, error_message = :message
-            WHERE id = :id
+            WHERE id = :id AND state = 'PENDING'
             """.trimIndent(),
         )
             .bind("id", id)
             .bind("code", error.code)
             .bind("message", error.message)
             .execute()
+            .let { requirePending(it) }
     }
 
     private fun Row.toDelivery(): Delivery =
@@ -168,7 +185,6 @@ class DbDeliveries : Deliveries {
         when (asString("state")) {
             "PENDING" -> DeliveryState.Pending
             "SENT" -> DeliveryState.Sent
-            "DELIVERED" -> DeliveryState.Delivered
             else ->
                 DeliveryState.Failed(
                     DeliveryError(
@@ -177,4 +193,12 @@ class DbDeliveries : Deliveries {
                     ),
                 )
         }
+
+    /** Переход разрешён только из `PENDING`: иначе доставку уже обработали. */
+    context(raise: Raise<AppError>)
+    private fun requirePending(updatedRows: Long) {
+        if (updatedRows != 1L) {
+            raise(CommonDomainError("DELIVERY_NOT_PENDING", "Доставка уже не ожидает отправки"))
+        }
+    }
 }

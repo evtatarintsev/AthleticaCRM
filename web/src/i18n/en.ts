@@ -1450,7 +1450,6 @@ export const en: Messages<typeof ru> = {
   "messaging.sendError": "Failed to send the message",
   "messaging.deliveryPending": "Sending",
   "messaging.deliverySent": "Sent",
-  "messaging.deliveryDelivered": "Delivered",
   "messaging.deliveryFailed": "Not delivered",
   "messaging.open": "Chat",
   "inbox.title": "Inbox",

@@ -1,6 +1,8 @@
 package org.athletica.crm.domain.conversations
 
 import arrow.core.Either
+import arrow.core.getOrElse
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -9,12 +11,16 @@ import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.DeliveryId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UserId
+import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.messaging.ChannelConfig
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.channels.ChannelIntegration
+import org.athletica.crm.domain.channels.ChannelIntegrations
 import org.athletica.crm.domain.channels.ChannelTransport
 import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
@@ -23,13 +29,18 @@ import org.athletica.crm.domain.channels.SendResult
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.messagedelivery.DbDeliveries
+import org.athletica.crm.domain.messagedelivery.DeliveryError
 import org.athletica.crm.domain.messagedelivery.MessageDispatcher
+import org.athletica.crm.domain.messagedelivery.PendingDelivery
 import org.athletica.crm.employeeContext
+import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.fail
 
 /** Тесты фонового диспетчера исходящих доставок ([MessageDispatcher]). */
@@ -93,17 +104,26 @@ class MessageDispatcherTest {
         }
     }
 
-    private suspend fun enqueueDelivery() {
+    private suspend fun enqueueDelivery(): DeliveryId =
         either {
             TestPostgres.db.transaction {
                 context(ctx) {
                     val conversation = conversations.forClient(clientId)
                     val message = conversation.appendOutbound(Author.Employee(employeeId), "Привет")
-                    deliveries.create(message.id, integrationId) { "+79990001122" }
+                    deliveries.create(message.id, integrationId) { "+79990001122" }.id
                 }
             }
-        }.let { if (it is Either.Left) fail("Не удалось поставить доставку: ${it.value}") }
-    }
+        }.getOrElse { fail("Не удалось поставить доставку: $it") }
+
+    private suspend fun errorCode(): String? =
+        orThrow {
+            TestPostgres.db.sql(
+                "SELECT COALESCE(error_code, '') AS code FROM message_deliveries WHERE org_id = :orgId LIMIT 1",
+            )
+                .bind("orgId", orgId)
+                .firstOrNull { row -> row.asString("code") }
+                ?.takeIf { it.isNotEmpty() }
+        }
 
     private suspend fun state(): String =
         orThrow {
@@ -198,6 +218,87 @@ class MessageDispatcherTest {
 
                 assertEquals("PENDING", state())
             }
+        }
+
+    @Test
+    fun `временная ошибка на последней попытке переводит доставку в FAILED`() =
+        runTest {
+            enqueueDelivery()
+            val dispatcher =
+                MessageDispatcher(
+                    TestPostgres.db,
+                    deliveries,
+                    channelsWith(SendResult.TransientFailure("TIMEOUT", "Таймаут")),
+                    maxRetries = 2,
+                )
+
+            dispatcher.pollOnce()
+            dispatcher.pollOnce()
+
+            assertEquals("FAILED", state())
+            assertEquals("TIMEOUT", errorCode())
+        }
+
+    @Test
+    fun `без отправителя доставка переходит в FAILED, а не остаётся PENDING`() =
+        runTest {
+            enqueueDelivery()
+            val withoutSenders =
+                object : ChannelIntegrations by channelsWith(SendResult.Sent("provider-123")) {
+                    context(tr: Transaction, raise: Raise<AppError>)
+                    override suspend fun senderById(id: ChannelIntegrationId): ChannelIntegration? = null
+                }
+
+            MessageDispatcher(TestPostgres.db, deliveries, withoutSenders).pollOnce()
+
+            assertEquals("FAILED", state())
+            assertEquals(PendingDelivery.CHANNEL_NOT_FOUND, errorCode())
+        }
+
+    @Test
+    fun `переход разрешён только из PENDING`() =
+        runTest {
+            val id = enqueueDelivery()
+            MessageDispatcher(TestPostgres.db, deliveries, channelsWith(SendResult.Sent("provider-123"))).pollOnce()
+
+            val result =
+                either {
+                    TestPostgres.db.transaction { deliveries.markFailed(id, DeliveryError("LATE", "Поздно")) }
+                }
+
+            assertEquals("DELIVERY_NOT_PENDING", assertIs<Either.Left<AppError>>(result).value.code)
+            assertEquals("SENT", state())
+        }
+
+    @Test
+    fun `захваченную доставку другой обработчик пропускает`() =
+        runTest {
+            val id = enqueueDelivery()
+            var sends = 0
+            val counting =
+                DbChannelIntegrations(
+                    object : ChannelTransports {
+                        override fun transport(config: ChannelConfig): ChannelTransport =
+                            object : ChannelTransport {
+                                override suspend fun send(address: String, body: String): SendResult {
+                                    sends++
+                                    return SendResult.Sent("provider-123")
+                                }
+                            }
+                    },
+                    DbClientContacts(),
+                    DbChannelBindings(),
+                )
+
+            orThrow {
+                TestPostgres.db.transaction {
+                    assertNotNull(deliveries.claim(id))
+                    MessageDispatcher(TestPostgres.db, deliveries, counting).pollOnce()
+                }
+            }
+
+            assertEquals(0, sends)
+            assertEquals("PENDING", state())
         }
 
     private companion object {

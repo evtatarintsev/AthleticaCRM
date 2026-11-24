@@ -282,17 +282,12 @@ function MessageBubble({ message }: { readonly message: MessageSchema }) {
 }
 
 /** Подпись статуса доставки сообщения. */
-function deliveryStateLabel(
-  t: I18n["t"],
-  state: "PENDING" | "SENT" | "DELIVERED" | "FAILED",
-): string {
+function deliveryStateLabel(t: I18n["t"], state: "PENDING" | "SENT" | "FAILED"): string {
   switch (state) {
     case "PENDING":
       return t("messaging.deliveryPending");
     case "SENT":
       return t("messaging.deliverySent");
-    case "DELIVERED":
-      return t("messaging.deliveryDelivered");
     case "FAILED":
       return t("messaging.deliveryFailed");
   }

@@ -3,9 +3,9 @@ package org.athletica.crm.domain.messagedelivery
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import org.athletica.crm.core.entityids.DeliveryId
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.domain.channels.ChannelIntegrations
-import org.athletica.crm.domain.channels.SendResult
 import org.athletica.crm.storage.Database
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.cancellation.CancellationException
@@ -16,12 +16,9 @@ import kotlin.time.Duration.Companion.seconds
  * Фоновый диспетчер исходящих доставок (outbox).
  *
  * Поллит доставки в статусе `PENDING` (только для включённых интеграций), отправляет их через
- * саму интеграцию ([org.athletica.crm.domain.channels.ChannelIntegration.send]) и проставляет
- * итоговый статус:
- * - успех -> `SENT` с идентификатором у провайдера;
- * - [SendResult.PermanentFailure] -> `FAILED`;
- * - [SendResult.TransientFailure] -> повтор (увеличивается счётчик попыток), а при достижении
- *   [maxRetries] -> `FAILED`.
+ * саму интеграцию ([org.athletica.crm.domain.channels.ChannelIntegration.send]) и исполняет переход,
+ * который выбирает [PendingDelivery.next] ([maxRetries] — предел попыток при временных ошибках).
+ * Удалённая интеграция -> `FAILED` с кодом [PendingDelivery.CHANNEL_NOT_FOUND].
  *
  * Работает в одном процессе с приложением; запускается в отдельной корутине при старте.
  */
@@ -52,25 +49,30 @@ class MessageDispatcher(
     /** Обрабатывает одну порцию доставок из очереди. Выделено для прямого вызова в тестах. */
     suspend fun pollOnce() {
         val pending = db.transaction { orThrow { deliveries.pending(20) } }
-        pending.forEach { delivery -> dispatch(delivery) }
+        pending.forEach { id -> dispatch(id) }
     }
 
-    private suspend fun dispatch(delivery: PendingDelivery) {
-        val sender = db.transaction { orThrow { channels.senderById(delivery.channelIntegrationId) } } ?: return
-
-        when (val result = sender.send(delivery.recipientAddress, delivery.body)) {
-            is SendResult.Sent ->
-                db.transaction { orThrow { deliveries.markSent(delivery.id, ProviderMessageRef(result.providerRef)) } }
-
-            is SendResult.PermanentFailure ->
-                db.transaction { orThrow { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) } }
-
-            is SendResult.TransientFailure ->
-                if (delivery.attempts + 1 >= maxRetries) {
-                    db.transaction { orThrow { deliveries.markFailed(delivery.id, DeliveryError(result.code, result.message)) } }
-                } else {
-                    db.transaction { orThrow { deliveries.retryLater(delivery.id, DeliveryError(result.code, result.message)) } }
+    /**
+     * Захватывает доставку [id], отправляет и фиксирует переход в одной транзакции: блокировка строки
+     * не даёт другому обработчику отправить её повторно.
+     */
+    private suspend fun dispatch(id: DeliveryId) {
+        db.transaction {
+            orThrow {
+                val delivery = deliveries.claim(id) ?: return@orThrow
+                val sender = channels.senderById(delivery.channelIntegrationId)
+                val transition =
+                    if (sender == null) {
+                        delivery.withoutSender()
+                    } else {
+                        delivery.next(sender.send(delivery.recipientAddress, delivery.body), maxRetries)
+                    }
+                when (transition) {
+                    is DeliveryTransition.MarkSent -> deliveries.markSent(id, transition.ref)
+                    is DeliveryTransition.Retry -> deliveries.retryLater(id, transition.error)
+                    is DeliveryTransition.Fail -> deliveries.markFailed(id, transition.error)
                 }
+            }
         }
     }
 }

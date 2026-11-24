@@ -21,6 +21,7 @@ import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.minutes
 
 class OrgEmailsTest {
     @Before
@@ -45,7 +46,7 @@ class OrgEmailsTest {
                         val employee = employees.new(EmployeeId.new(), testName("Trainer"), null, null, null, EmployeePermissionSelection(), EmployeeBranchAccess.All)
                         employee.invite(EmailAddress("trainer@example.com"), "invitePassword")
                     }
-                    val pending = emails.pending()
+                    val pending = emails.claimPending(50, 1.minutes)
                     assertEquals(2, pending.size)
                     assertEquals(listOf(EmailAddress("owner@example.com")), pending.single { it.orgId == first }.to)
                     val invitation = pending.single { it.orgId == second }

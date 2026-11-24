@@ -22,7 +22,7 @@ class DbRoles : Roles {
             .bind("orgId", ctx.orgId)
             .bind("name", role.name.value)
             .execute()
-        for (permission in role.permissions) {
+        role.permissions.forEach { permission ->
             tr.sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
                 .bind("roleId", role.id)
                 .bind("key", permission.name)
@@ -40,7 +40,7 @@ class DbRoles : Roles {
         tr.sql("DELETE FROM role_permissions WHERE role_id = :roleId")
             .bind("roleId", role.id)
             .execute()
-        for (permission in role.permissions) {
+        role.permissions.forEach { permission ->
             tr.sql("INSERT INTO role_permissions (role_id, permission_key) VALUES (:roleId, :key)")
                 .bind("roleId", role.id)
                 .bind("key", permission.name)

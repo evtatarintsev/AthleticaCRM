@@ -21,6 +21,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 
 /**
  * Возвращает профиль текущего авторизованного пользователя.
@@ -37,7 +38,7 @@ suspend fun profile(): UserProfile =
             FROM users u
             JOIN employees e ON e.user_id = u.id AND e.org_id = :orgId
             JOIN branches b ON b.id = :branchId AND b.org_id = e.org_id
-            WHERE u.id = :id AND e.blocked_at IS NULL
+            WHERE u.id = :id AND ${EmployeeAccessSql.ACTIVE}
             """.trimIndent(),
         )
         .bind("id", ctx.userId)

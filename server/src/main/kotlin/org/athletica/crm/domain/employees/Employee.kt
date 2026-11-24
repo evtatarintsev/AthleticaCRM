@@ -23,16 +23,18 @@ import kotlin.uuid.Uuid
  */
 interface Employee : UserActor {
     val id: EmployeeId
-    val userId: UserId?
     val name: String
     val avatarId: UploadId?
     val isOwner: Boolean
 
-    /** Момент блокировки сотрудника; `null` — не заблокирован. */
-    val blockedAt: Instant?
+    /** Доступ сотрудника к системе: без логина, с логином или заблокирован. */
+    val access: EmployeeAccess
+
+    /** Логин сотрудника; `null` — логин не выдан. */
+    val userId: UserId? get() = access.userId
 
     /** Может ли сотрудник работать в системе: логин выдан и сотрудник не заблокирован. */
-    val isActive: Boolean get() = userId != null && blockedAt == null
+    val isActive: Boolean get() = access is EmployeeAccess.Active
     val joinedAt: Instant
     val phoneNo: String?
     val email: EmailAddress?
@@ -47,7 +49,7 @@ interface Employee : UserActor {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun save()
 
-    /** Выдаёт сотруднику логин [email] с паролем [password]; повторная выдача отклоняется. */
+    /** Выдаёт сотруднику логин [email] с паролем [password]; только из [EmployeeAccess.NoLogin]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun invite(email: EmailAddress, password: String)
 
@@ -65,7 +67,7 @@ interface Employee : UserActor {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun terminateSession(sessionId: AuthSessionId)
 
-    /** Снимает блокировку с сотрудника. */
+    /** Снимает блокировку с сотрудника, логин сохраняется; снятие с незаблокированного ничего не меняет. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun unblock()
 

@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 import kotlin.time.Instant
 
 /** Абонементы всех организаций, которым по местной дате организации положено действие. */
@@ -28,7 +29,7 @@ internal suspend fun dueMemberships(now: Instant): List<Pair<OrgId, MembershipId
                OR (state = 'ACTIVE' AND freeze_end < today)
                OR (state = 'ACTIVE' AND close_mode = 'ON_EXPIRY' AND end_date < today)
                OR (state = 'ACTIVE' AND close_notified_at IS NULL
-                   AND EXISTS (SELECT 1 FROM employees e WHERE e.id = issued_by AND e.user_id IS NOT NULL AND e.blocked_at IS NULL)
+                   AND EXISTS (SELECT 1 FROM employees e WHERE e.id = issued_by AND ${EmployeeAccessSql.ACTIVE})
                    AND ((close_mode = 'MANUAL' AND (end_date < today OR sessions_remaining = 0))
                      OR (close_mode = 'ON_LAST_SESSION' AND end_date < today AND sessions_remaining > 0)))
             ORDER BY org_id, id

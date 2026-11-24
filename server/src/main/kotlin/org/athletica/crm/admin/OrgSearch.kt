@@ -5,6 +5,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 import kotlin.uuid.Uuid
 
 /** Данные об организации для административных операций. */
@@ -28,7 +29,7 @@ class OrgSearch(private val database: Database) {
                     """
                     SELECT o.id, o.name, o.currency, u.login AS owner_login
                     FROM organizations o
-                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.user_id IS NOT NULL AND e.blocked_at IS NULL
+                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND ${EmployeeAccessSql.ACTIVE}
                     JOIN users u     ON u.id = e.user_id
                     WHERE o.name ILIKE '%' || :query || '%'
                        OR u.login ILIKE '%' || :query || '%'
@@ -55,7 +56,7 @@ class OrgSearch(private val database: Database) {
                     """
                     SELECT o.id, o.name, o.currency, u.login AS owner_login
                     FROM organizations o
-                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND e.user_id IS NOT NULL AND e.blocked_at IS NULL
+                    JOIN employees e ON e.org_id = o.id AND e.is_owner = true AND ${EmployeeAccessSql.ACTIVE}
                     JOIN users u     ON u.id = e.user_id
                     WHERE o.id = :id
                     """.trimIndent(),

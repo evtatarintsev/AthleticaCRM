@@ -19,6 +19,7 @@ import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
@@ -52,7 +53,7 @@ class PasswordResets(
                     INSERT INTO password_resets (user_id, token_hash, expires_at, last_sent_at)
                     SELECT u.id, :hash, :expiresAt, :now
                     FROM users u JOIN employees e ON e.user_id = u.id
-                    WHERE u.login = :email AND e.blocked_at IS NULL
+                    WHERE u.login = :email AND ${EmployeeAccessSql.ACTIVE}
                     ON CONFLICT (user_id) DO UPDATE
                         SET token_hash = EXCLUDED.token_hash, expires_at = EXCLUDED.expires_at,
                             last_sent_at = EXCLUDED.last_sent_at, used_at = NULL
@@ -103,7 +104,7 @@ class PasswordResets(
                 UPDATE password_resets r SET used_at = :now
                 FROM employees e
                 WHERE r.token_hash = :hash AND r.used_at IS NULL AND r.expires_at > :now
-                    AND e.user_id = r.user_id AND e.blocked_at IS NULL
+                    AND e.user_id = r.user_id AND ${EmployeeAccessSql.ACTIVE}
                 RETURNING r.user_id, e.org_id, e.name
                 """.trimIndent(),
             )

@@ -11,7 +11,6 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
-import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.permissions.UserPermission
@@ -20,15 +19,15 @@ import org.athletica.crm.domain.auth.Users
 import org.athletica.crm.domain.branch.DbBranches
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 data class DbEmployee(
     override val id: EmployeeId,
-    override val userId: UserId?,
     override val name: String,
     override val avatarId: UploadId?,
     override val isOwner: Boolean,
-    override val blockedAt: Instant?,
+    override val access: EmployeeAccess,
     override val joinedAt: Instant,
     override val phoneNo: String?,
     override val email: EmailAddress?,
@@ -83,7 +82,7 @@ data class DbEmployee(
             .bind("id", id)
             .execute()
 
-        for (role in permissionSettings.roles) {
+        permissionSettings.roles.forEach { role ->
             tr.sql("INSERT INTO employee_roles (employee_id, role_id) VALUES (:employeeId, :roleId)")
                 .bind("employeeId", id)
                 .bind("roleId", role.id)
@@ -94,7 +93,7 @@ data class DbEmployee(
             .bind("id", id)
             .execute()
 
-        for (permission in permissionSettings.grantedPermissions) {
+        permissionSettings.grantedPermissions.forEach { permission ->
             tr.sql(
                 """
                 INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
@@ -106,7 +105,7 @@ data class DbEmployee(
                 .execute()
         }
 
-        for (permission in permissionSettings.revokedPermissions) {
+        permissionSettings.revokedPermissions.forEach { permission ->
             tr.sql(
                 """
                 INSERT INTO employee_permission_overrides (employee_id, permission_key, is_granted)
@@ -132,15 +131,22 @@ data class DbEmployee(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(email: EmailAddress, password: String) {
-        ensure(userId == null) { CommonDomainError("EMPLOYEE_ACCESS_ALREADY_SENT", Messages.EmployeeAccessAlreadySent.localize()) }
+        when (access) {
+            is EmployeeAccess.NoLogin -> {}
+            is EmployeeAccess.Active -> raise(CommonDomainError("EMPLOYEE_ACCESS_ALREADY_SENT", Messages.EmployeeAccessAlreadySent.localize()))
+            is EmployeeAccess.Blocked -> raise(CommonDomainError("EMPLOYEE_BLOCKED", Messages.EmployeeIsBlocked.localize()))
+        }
         val user = users.new(email.value, password)
-        copy(userId = user.id, email = email).save()
+        copy(access = EmployeeAccess.Active(user.id), email = email).save()
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun block() {
         ensureBlockable()
-        updateBlockedAt("COALESCE(blocked_at, now())")
+        if (access is EmployeeAccess.Blocked) {
+            return
+        }
+        updateBlockedAt(Clock.System.now())
         userId?.let { sessions.deleteOthers(it, keep = null) }
     }
 
@@ -159,14 +165,17 @@ data class DbEmployee(
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun unblock() {
-        updateBlockedAt("NULL")
+        if (access is EmployeeAccess.Blocked) {
+            updateBlockedAt(null)
+        }
     }
 
-    /** Записывает в `blocked_at` SQL-выражение [value]. */
+    /** Записывает момент блокировки [blockedAt]; `null` снимает блокировку. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    private suspend fun updateBlockedAt(value: String) {
+    private suspend fun updateBlockedAt(blockedAt: Instant?) {
         val updated =
-            tr.sql("UPDATE employees SET blocked_at = $value WHERE id = :id AND org_id = :orgId")
+            tr.sql("UPDATE employees SET blocked_at = :blockedAt WHERE id = :id AND org_id = :orgId")
+                .bind("blockedAt", blockedAt)
                 .bind("id", id)
                 .bind("orgId", ctx.orgId)
                 .execute()

@@ -424,6 +424,11 @@ object Messages {
         override val en = "Employee access has already been granted"
     }
 
+    object EmployeeIsBlocked : LocalizationKey {
+        override val ru = "Сотрудник заблокирован: сначала снимите блокировку"
+        override val en = "The employee is blocked: unblock them first"
+    }
+
     object EmployeeOwnerCannotBeBlocked : LocalizationKey {
         override val ru = "Владельца организации нельзя заблокировать"
         override val en = "The organization owner cannot be blocked"

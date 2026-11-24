@@ -26,6 +26,7 @@ import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.employees.Employee
+import org.athletica.crm.domain.employees.EmployeeAccess
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.employees.EmployeePermissionSelection
@@ -114,11 +115,10 @@ class TaskOperationsTest {
     private fun employeeStub(id: EmployeeId): Employee =
         object : Employee {
             override val id = id
-            override val userId = null
             override val name = "Stub"
             override val avatarId: UploadId? = null
             override val isOwner = false
-            override val blockedAt: Instant? = null
+            override val access: EmployeeAccess = EmployeeAccess.NoLogin
             override val joinedAt: Instant = Clock.System.now()
             override val phoneNo: String? = null
             override val email: EmailAddress? = null

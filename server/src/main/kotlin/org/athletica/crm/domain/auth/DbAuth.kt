@@ -37,6 +37,7 @@ import org.athletica.crm.security.UserNotFound
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
+import org.athletica.crm.storage.sql.EmployeeAccessSql
 
 class DbAuth(
     private val passwordHasher: PasswordHasher,
@@ -81,7 +82,7 @@ class DbAuth(
             SELECT u.id, u.login, e.id AS employee_id, e.org_id
             FROM users u
             JOIN employees e ON e.user_id = u.id
-            WHERE u.id = :id AND e.blocked_at IS NULL
+            WHERE u.id = :id AND ${EmployeeAccessSql.ACTIVE}
             """.trimIndent(),
         )
             .bind("id", id)
@@ -202,7 +203,7 @@ class DbAuth(
                 SELECT u.id, u.login, u.password_hash, e.id AS employee_id, e.org_id
                 FROM users u
                 JOIN employees e ON e.user_id = u.id
-                WHERE u.login = :username AND e.blocked_at IS NULL
+                WHERE u.login = :username AND ${EmployeeAccessSql.ACTIVE}
                 """.trimIndent(),
             )
                 .bind("username", username)

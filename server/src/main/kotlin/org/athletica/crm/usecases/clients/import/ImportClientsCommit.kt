@@ -22,7 +22,7 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.LeadSourceId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.core.money.toMoney
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE
 import org.athletica.crm.core.permissions.requireFinancePermission
 import org.athletica.crm.domain.clients.Clients
@@ -286,9 +286,9 @@ private suspend fun processRow(
             if (raw.isEmpty()) null else leadSourceIdByCsvValue[raw]
         }
 
-    val balance: Double? =
+    val balance: Money? =
         plan.balanceIndex?.let { idx ->
-            ValueParsers.parseDecimal(row.getOrNull(idx))
+            ValueParsers.parseMoney(row.getOrNull(idx), ctx.currency)
                 .fold(
                     ifLeft = {
                         errors += "Не удалось распознать баланс: ${row.getOrNull(idx)}"
@@ -319,8 +319,8 @@ private suspend fun processRow(
                 leadSourceId = leadSourceId,
                 customFields = customFields,
             )
-        if (balance != null && balance != 0.0) {
-            balances.adjust(client, balance.toMoney(ctx.currency), balanceNote)
+        if (balance != null && !balance.isZero) {
+            balances.adjust(client, balance, balanceNote)
         }
         RowResult(rowNumber = rowNumber, status = Status.OK)
     }.fold(

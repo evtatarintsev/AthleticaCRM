@@ -8,6 +8,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
@@ -17,6 +19,8 @@ import java.time.format.DateTimeParseException
  * пользователем на шаге маппинга. Пустая строка/null во всех парсерах превращается в `null`.
  */
 object ValueParsers {
+    private val MONEY_REGEX = Regex("([+-]?)(\\d*)(?:\\.(\\d*))?")
+
     /**
      * Распространённые форматы дат, которые проверяются по умолчанию (если пользователь не задал свой).
      * Порядок имеет значение — первый подошедший выигрывает.
@@ -86,6 +90,36 @@ object ValueParsers {
                 .replace(',', '.')
         return normalized.toDoubleOrNull()?.right()
             ?: "INVALID_DECIMAL: $trimmed".left()
+    }
+
+    /**
+     * Парсит денежную сумму (баланс) из CSV в [Money] валюты [currency] без промежуточного `Double`.
+     * Поддерживает знак, запятую и точку как десятичный разделитель, обычные и неразрывные пробелы
+     * между разрядами. Больше дробных знаков, чем [Currency.fractionDigits], — ошибка.
+     * Пустая строка → `null`.
+     */
+    fun parseMoney(raw: String?, currency: Currency): Either<String, Money?> {
+        val trimmed = raw?.trim().orEmpty()
+        if (trimmed.isEmpty()) {
+            return null.right()
+        }
+        val normalized =
+            trimmed
+                .replace(" ", "")
+                .replace("\u00A0", "")
+                .replace(',', '.')
+        val match = MONEY_REGEX.matchEntire(normalized) ?: return "INVALID_DECIMAL: $trimmed".left()
+        val (sign, whole, fraction) = match.destructured
+        if (whole.isEmpty() && fraction.isEmpty()) {
+            return "INVALID_DECIMAL: $trimmed".left()
+        }
+        if (fraction.length > currency.fractionDigits) {
+            return "TOO_MANY_FRACTION_DIGITS: $trimmed".left()
+        }
+        val minor =
+            (whole + fraction.padEnd(currency.fractionDigits, '0')).ifEmpty { "0" }.toLongOrNull()
+                ?: return "INVALID_DECIMAL: $trimmed".left()
+        return Money(if (sign == "-") -minor else minor, currency).right()
     }
 
     /**

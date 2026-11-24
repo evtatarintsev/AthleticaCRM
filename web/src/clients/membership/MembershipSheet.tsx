@@ -16,6 +16,7 @@ import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { useActionSheet } from "@/ui/actionSheet";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import { membershipHistoryQuery, membershipsQuery } from "../card/clientCardQueries";
 import {
@@ -76,6 +77,14 @@ export function MembershipSheet({
 /** Действие с подтверждением в панели абонемента. */
 type PendingAction = "close" | "revoke" | "unfreeze" | "cancelFreeze";
 
+/** Вложенная панель или подтверждение поверх карточки абонемента; открыто не больше одного. */
+type MembershipDialog =
+  | { readonly kind: "sale" }
+  | { readonly kind: "repay" }
+  | { readonly kind: "freeze" }
+  | { readonly kind: "extend" }
+  | { readonly kind: "confirm" };
+
 /** Маршрут API действия [action]. */
 function actionPath(action: PendingAction) {
   switch (action) {
@@ -110,24 +119,20 @@ function MembershipPanel({
   const queryClient = useQueryClient();
   const view = membershipView(membership);
   const historyQuery = membershipHistoryQuery(api, branchId, membership.id);
-  const [confirming, setConfirming] = useState<PendingAction | null>(null);
+  const { sheet: dialog, open: setDialog, closeOn } = useActionSheet<MembershipDialog>();
   const [shownAction, setShownAction] = useState<PendingAction>("close");
   const [error, setError] = useState<string | null>(null);
   const canClose = membership.state.type === "active";
   const canRevoke = membership.state.type === "active" || membership.state.type === "inactive";
-  const [repaying, setRepaying] = useState(false);
-  const [freezing, setFreezing] = useState(false);
   const freeze = membership.state.type === "active" ? membership.state.freeze : null;
   const canFreeze = membership.state.type === "active" && freeze === null;
-  const [saleOpen, setSaleOpen] = useState(false);
-  const [extending, setExtending] = useState(false);
   const extendableEnd =
     membership.state.type === "active" && freeze === null ? membership.state.endDate : null;
 
   const ask = (action: PendingAction) => {
     setError(null);
     setShownAction(action);
-    setConfirming(action);
+    setDialog({ kind: "confirm" });
   };
 
   const perform = async (action: PendingAction) => {
@@ -148,15 +153,15 @@ function MembershipPanel({
       <MembershipPayment
         membership={membership}
         onOpen={() => {
-          setSaleOpen(true);
+          setDialog({ kind: "sale" });
         }}
       />
       <SaleSheet
         api={api}
         branchId={branchId}
         saleId={membership.sale.saleId}
-        open={saleOpen}
-        onOpenChange={setSaleOpen}
+        open={dialog?.kind === "sale"}
+        onOpenChange={closeOn("sale")}
       />
       <div className="flex flex-wrap items-center gap-2">
         <MembershipPill phase={view.phase} />
@@ -185,7 +190,7 @@ function MembershipPanel({
               type="button"
               variant="outline"
               onClick={() => {
-                setRepaying(true);
+                setDialog({ kind: "repay" });
               }}
             >
               {t("membership.repay.action")}
@@ -196,7 +201,7 @@ function MembershipPanel({
               type="button"
               variant="outline"
               onClick={() => {
-                setFreezing(true);
+                setDialog({ kind: "freeze" });
               }}
             >
               {t("membership.freeze.action")}
@@ -207,7 +212,7 @@ function MembershipPanel({
               type="button"
               variant="outline"
               onClick={() => {
-                setExtending(true);
+                setDialog({ kind: "extend" });
               }}
             >
               {t("membership.extend.action")}
@@ -241,8 +246,8 @@ function MembershipPanel({
       )}
       <MembershipHistory api={api} branchId={branchId} membershipId={membership.id} />
       <RepayDebtSheet
-        open={repaying}
-        onOpenChange={setRepaying}
+        open={dialog?.kind === "repay"}
+        onOpenChange={closeOn("repay")}
         api={api}
         branchId={branchId}
         clientId={clientId}
@@ -250,8 +255,8 @@ function MembershipPanel({
         remaining={membership.sessionsRemaining}
       />
       <FreezeMembershipSheet
-        open={freezing}
-        onOpenChange={setFreezing}
+        open={dialog?.kind === "freeze"}
+        onOpenChange={closeOn("freeze")}
         api={api}
         branchId={branchId}
         clientId={clientId}
@@ -259,8 +264,8 @@ function MembershipPanel({
       />
       {extendableEnd !== null && (
         <ExtendMembershipSheet
-          open={extending}
-          onOpenChange={setExtending}
+          open={dialog?.kind === "extend"}
+          onOpenChange={closeOn("extend")}
           api={api}
           branchId={branchId}
           clientId={clientId}
@@ -269,12 +274,8 @@ function MembershipPanel({
         />
       )}
       <ConfirmDialog
-        open={confirming !== null}
-        onOpenChange={(next) => {
-          if (!next) {
-            setConfirming(null);
-          }
-        }}
+        open={dialog?.kind === "confirm"}
+        onOpenChange={closeOn("confirm")}
         {...confirmTexts(t, shownAction)}
         onConfirm={() => perform(shownAction)}
       />

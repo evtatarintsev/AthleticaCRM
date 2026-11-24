@@ -54,7 +54,14 @@ import { isEditableStatus } from "./sessionStatus";
 
 /** Какая из панелей и диалогов действий сейчас открыта. */
 type ActionDialog =
-  "reschedule" | "hall" | "coaches" | "note" | "markRemainingAbsent" | "addParticipant" | null;
+  | "reschedule"
+  | "hall"
+  | "coaches"
+  | "note"
+  | "markRemainingAbsent"
+  | "addParticipant"
+  | "cancel"
+  | null;
 
 /** Через сколько миллисекунд после команды журнала превью списаний запрашивается повторно. */
 const DEBIT_REFRESH_DELAY_MS = 2000;
@@ -150,7 +157,6 @@ function SessionJournalCard({
 
   const [overrides, setOverrides] = useState<SessionCardOverrides>({});
   const [dialog, setDialog] = useState<ActionDialog>(null);
-  const [cancelling, setCancelling] = useState(false);
 
   const card = sessionCard(journal, overrides);
   const editable = isEditableStatus(card.status);
@@ -232,7 +238,7 @@ function SessionJournalCard({
               void complete();
             }}
             onCancel={() => {
-              setCancelling(true);
+              setDialog("cancel");
             }}
             onNote={() => {
               setDialog("note");
@@ -263,8 +269,8 @@ function SessionJournalCard({
       </div>
 
       <ConfirmDialog
-        open={cancelling}
-        onOpenChange={setCancelling}
+        open={dialog === "cancel"}
+        onOpenChange={closeDialog}
         title={t("sessionDetail.cancelConfirmTitle")}
         description={t("sessionDetail.cancelConfirmText")}
         confirmLabel={t("sessionDetail.cancelAction")}

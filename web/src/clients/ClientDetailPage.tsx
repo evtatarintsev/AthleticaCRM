@@ -24,6 +24,7 @@ import { ClientOverviewTab } from "./ClientOverviewTab";
 import { ClientSessionsTab } from "./ClientSessionsTab";
 import { ClientCardSectionsSheet } from "./ClientCardSectionsSheet";
 import { RepayDebtSheet } from "./membership/RepayDebt";
+import { useActionSheet } from "@/ui/actionSheet";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import { ClientNotesSection } from "./ClientNotesSection";
 import { ClientSubscriptionsSection } from "./ClientSubscriptionsSection";
@@ -42,6 +43,21 @@ import { clientAlerts } from "./card/clientCardAlerts";
 import { ClientCardHeader } from "./card/ClientCardHeader";
 import { ClientCardProfile } from "./card/ClientCardProfile";
 
+/**
+ * Панель действия поверх карточки или панели списка; одновременно открыта не больше одной.
+ */
+type ActionSheet =
+  | { readonly kind: "membership"; readonly id: MembershipId }
+  | { readonly kind: "repay"; readonly id: MembershipId }
+  | { readonly kind: "task"; readonly id: TaskId }
+  | { readonly kind: "taskCreate" }
+  | { readonly kind: "issue" }
+  | { readonly kind: "saleCreate" }
+  | { readonly kind: "group" }
+  | { readonly kind: "sections" }
+  | { readonly kind: "chat" }
+  | { readonly kind: "balance" };
+
 /** Карточка клиента: одна страница и панели списков; изменения открываются в существующих панелях. */
 export function ClientDetailPage({
   api,
@@ -54,21 +70,15 @@ export function ClientDetailPage({
   const queryClient = useQueryClient();
   const session = useSession(api);
   const branchId = session.currentBranch.id;
-  const [saleCreateOpen, setSaleCreateOpen] = useState(false);
   const canViewBalance = hasPermission(session, "CAN_VIEW_CLIENT_BALANCE");
   const [listPanel, setListPanel] = useState<"memberships" | "sessions" | "tasks" | "notes" | null>(
     null,
   );
-  const [sectionsOpen, setSectionsOpen] = useState(false);
-  const [groupOpen, setGroupOpen] = useState(false);
-  const [repayId, setRepayId] = useState<MembershipId | null>(null);
-  const [balanceOpen, setBalanceOpen] = useState(false);
-  const [membershipId, setMembershipId] = useState<MembershipId | null>(null);
-  const [membershipOpen, setMembershipOpen] = useState(false);
-  const [issueOpen, setIssueOpen] = useState(false);
-  const [taskCreateOpen, setTaskCreateOpen] = useState(false);
-  const [openTaskId, setOpenTaskId] = useState<TaskId | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
+  const { sheet, open: setSheet, closeOn } = useActionSheet<ActionSheet>();
+  /** Обработчик, открывающий панель [next]. */
+  const show = (next: ActionSheet) => () => {
+    setSheet(next);
+  };
   const detailQuery = apiQuery(api, branchId, "clients/detail", { id: clientId });
   const client = useQuery(detailQuery);
   const customFieldDefs = useQuery(clientCustomFieldsQuery(api, branchId));
@@ -122,50 +132,51 @@ export function ClientDetailPage({
     today: todayLocalDate(),
   });
   const openMembership = (id: MembershipId) => {
-    setMembershipId(id);
-    setMembershipOpen(true);
+    setSheet({ kind: "membership", id });
+  };
+  const openTask = (id: TaskId) => {
+    setSheet({ kind: "task", id });
   };
   const detailPanels = (
     <>
-      {membershipOpen && (
+      {sheet?.kind === "membership" && (
         <MembershipSheet
           membership={
-            memberships.data?.memberships.find((membership) => membership.id === membershipId) ??
-            null
+            memberships.data?.memberships.find((membership) => membership.id === sheet.id) ?? null
           }
-          open={membershipOpen}
+          open
           api={api}
           branchId={branchId}
           clientId={clientId}
-          onOpenChange={setMembershipOpen}
+          onOpenChange={closeOn("membership")}
         />
       )}
 
-      {taskCreateOpen && (
+      {sheet?.kind === "taskCreate" && (
         <TaskCreateSheet
           api={api}
-          open={taskCreateOpen}
-          onOpenChange={setTaskCreateOpen}
+          open
+          onOpenChange={closeOn("taskCreate")}
           client={{ id: data.id, name: data.name }}
         />
       )}
-      {openTaskId !== null && (
+      {sheet?.kind === "task" && (
         <TaskSheet
           api={api}
-          taskId={openTaskId}
+          taskId={sheet.id}
           onClose={() => {
-            setOpenTaskId(null);
+            closeOn("task")(false);
           }}
         />
       )}
 
-      {issueOpen && (
+      {sheet?.kind === "issue" && (
         <IssueSubscriptionSheet
           api={api}
           branchId={branchId}
           clientId={clientId}
-          open={issueOpen}
-          onOpenChange={setIssueOpen}
+          open
+          onOpenChange={closeOn("issue")}
         />
       )}
     </>
@@ -178,38 +189,18 @@ export function ClientDetailPage({
         client={data}
         leadSourceName={leadSourceName}
         chatEnabled={flags?.chat === true}
-        onTaskCreate={
-          flags?.tasks === true
-            ? () => {
-                setTaskCreateOpen(true);
-              }
-            : undefined
-        }
-        onAddGroup={() => {
-          setGroupOpen(true);
-        }}
-        onSections={() => {
-          setSectionsOpen(true);
-        }}
+        onTaskCreate={flags?.tasks === true ? show({ kind: "taskCreate" }) : undefined}
+        onAddGroup={show({ kind: "group" })}
+        onSections={show({ kind: "sections" })}
         onToggleArchived={(archived) => {
           void toggleArchived(archived);
         }}
-        onIssueSubscription={() => {
-          setIssueOpen(true);
-        }}
-        onOpenChat={() => {
-          setChatOpen(true);
-        }}
+        onIssueSubscription={show({ kind: "issue" })}
+        onOpenChat={show({ kind: "chat" })}
       />
       {(sections.isError || unpaid.isError) && <FormAlert message={t("clients.loadClientError")} />}
       {data.state === "ACTIVE" && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setSaleCreateOpen(true);
-          }}
-        >
+        <Button type="button" variant="outline" onClick={show({ kind: "saleCreate" })}>
           {t("finance.sellService")}
         </Button>
       )}
@@ -217,8 +208,8 @@ export function ClientDetailPage({
         api={api}
         branchId={branchId}
         client={data}
-        open={saleCreateOpen}
-        onOpenChange={setSaleCreateOpen}
+        open={sheet?.kind === "saleCreate"}
+        onOpenChange={closeOn("saleCreate")}
         onSaved={refreshDetail}
       />
       <ClientOverviewTab
@@ -229,29 +220,27 @@ export function ClientDetailPage({
         chat={flags?.chat === true}
         notes={flags?.notes === true}
         onChanged={refreshDetail}
-        onChat={() => {
-          setChatOpen(true);
-        }}
+        onChat={show({ kind: "chat" })}
         onNotes={() => {
           setListPanel("notes");
         }}
-        onIssue={() => {
-          setIssueOpen(true);
+        onIssue={show({ kind: "issue" })}
+        onBalance={canViewBalance ? show({ kind: "balance" }) : undefined}
+        onRepay={(id) => {
+          setSheet({ kind: "repay", id });
         }}
-        onBalance={
-          canViewBalance
-            ? () => {
-                setBalanceOpen(true);
-              }
-            : undefined
-        }
-        onRepay={setRepayId}
-        onTask={setOpenTaskId}
+        onTask={openTask}
         onTasks={() => {
           setListPanel("tasks");
         }}
-        groupOpen={groupOpen}
-        onGroupOpen={setGroupOpen}
+        groupOpen={sheet?.kind === "group"}
+        onGroupOpen={(open) => {
+          if (open) {
+            setSheet({ kind: "group" });
+          } else {
+            closeOn("group")(false);
+          }
+        }}
         profile={
           <ClientCardProfile
             client={data}
@@ -275,10 +264,8 @@ export function ClientDetailPage({
               api={api}
               branchId={branchId}
               clientId={clientId}
-              onCreate={() => {
-                setTaskCreateOpen(true);
-              }}
-              onOpen={setOpenTaskId}
+              onCreate={show({ kind: "taskCreate" })}
+              onOpen={openTask}
               onAll={() => {
                 setListPanel("tasks");
               }}
@@ -290,13 +277,7 @@ export function ClientDetailPage({
             balance={data.balance}
             memberships={memberships.data?.memberships}
             attendance={attendance.data?.items}
-            onBalanceClick={
-              canViewBalance
-                ? () => {
-                    setBalanceOpen(true);
-                  }
-                : undefined
-            }
+            onBalanceClick={canViewBalance ? show({ kind: "balance" }) : undefined}
             onMembershipOpen={openMembership}
             onMemberships={() => {
               setListPanel("memberships");
@@ -332,9 +313,7 @@ export function ClientDetailPage({
               clientId={clientId}
               limit={100}
               onOpen={openMembership}
-              onIssue={() => {
-                setIssueOpen(true);
-              }}
+              onIssue={show({ kind: "issue" })}
             />
           )}
           {listPanel === "sessions" && (
@@ -350,10 +329,8 @@ export function ClientDetailPage({
               api={api}
               branchId={branchId}
               clientId={clientId}
-              onCreate={() => {
-                setTaskCreateOpen(true);
-              }}
-              onOpen={setOpenTaskId}
+              onCreate={show({ kind: "taskCreate" })}
+              onOpen={openTask}
             />
           )}
           {listPanel === "notes" && (
@@ -369,33 +346,40 @@ export function ClientDetailPage({
         {listPanel !== null && detailPanels}
       </EditSheet>
       {listPanel === null && detailPanels}
-      <ClientCardSectionsSheet api={api} open={sectionsOpen} onOpenChange={setSectionsOpen} />
-      {repayId !== null && (
+      <ClientCardSectionsSheet
+        api={api}
+        open={sheet?.kind === "sections"}
+        onOpenChange={closeOn("sections")}
+      />
+      {sheet?.kind === "repay" && (
         <RepayDebtSheet
           api={api}
           branchId={branchId}
           clientId={clientId}
-          membershipId={repayId}
+          membershipId={sheet.id}
           remaining={
-            memberships.data?.memberships.find((item) => item.id === repayId)?.sessionsRemaining ??
+            memberships.data?.memberships.find((item) => item.id === sheet.id)?.sessionsRemaining ??
             null
           }
           open
-          onOpenChange={(open) => {
-            if (!open) setRepayId(null);
-          }}
+          onOpenChange={closeOn("repay")}
         />
       )}
 
-      <ConversationSheet api={api} clientId={clientId} open={chatOpen} onOpenChange={setChatOpen} />
+      <ConversationSheet
+        api={api}
+        clientId={clientId}
+        open={sheet?.kind === "chat"}
+        onOpenChange={closeOn("chat")}
+      />
 
       {canViewBalance && (
         <ClientBalanceSheet
           api={api}
           branchId={branchId}
           client={data}
-          open={balanceOpen}
-          onOpenChange={setBalanceOpen}
+          open={sheet?.kind === "balance"}
+          onOpenChange={closeOn("balance")}
           onChanged={(updated) => {
             queryClient.setQueryData(detailQuery.queryKey, updated);
           }}

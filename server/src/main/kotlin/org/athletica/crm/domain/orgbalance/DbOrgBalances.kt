@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.sum
+import org.athletica.crm.core.orgbalance.OrgBalanceOperationType
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asMoney
@@ -34,7 +35,7 @@ class DbOrgBalances : OrgBalances {
                         id = row.asUuid("id"),
                         amount = row.asMoney("amount", ctx.currency),
                         balanceAfter = row.asMoney("balance_after", ctx.currency),
-                        operationType = row.asString("operation_type"),
+                        operationType = row.asString("operation_type").let { code -> OrgBalanceOperationType.entries.first { it.code == code } },
                         description = row.asString("description"),
                         createdAt = row.asInstant("created_at"),
                     )

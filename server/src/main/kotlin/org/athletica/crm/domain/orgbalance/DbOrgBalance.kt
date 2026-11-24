@@ -7,6 +7,7 @@ import org.athletica.crm.core.SystemRequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.core.orgbalance.OrgBalanceOperationType
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.storage.Transaction
 import kotlin.uuid.Uuid
@@ -28,7 +29,7 @@ data class DbOrgBalance(
             CommonDomainError("BALANCE_DESCRIPTION_REQUIRED", Messages.BalanceNoteRequired.localize())
         }
 
-        val operationType = if (amount.isPositive) "admin_credit" else "admin_debit"
+        val operationType = if (amount.isPositive) OrgBalanceOperationType.ADMIN_CREDIT else OrgBalanceOperationType.ADMIN_DEBIT
         val balanceAfter = totalAmount + amount
 
         tr
@@ -46,7 +47,7 @@ data class DbOrgBalance(
             .bind("id", Uuid.generateV7())
             .bind("orgId", ctx.orgId)
             .bind("amount", amount)
-            .bind("operationType", operationType)
+            .bind("operationType", operationType.code)
             .bind("description", description)
             .execute()
 

@@ -8,34 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { TextField } from "@/forms/fields";
-import { useI18n, type PlainMessageKey } from "@/i18n/context";
+import { useI18n } from "@/i18n/context";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
 import { CURRENCIES } from "@/lib/currency";
 import { parseMoney } from "@/lib/money";
 import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
-
-/** Описание платежа пополнения — то же значение, что шлёт KMP-клиент, для единого журнала. */
-const REPLENISH_DESCRIPTION = "Пополнение баланса";
-
-/** Ключ подписи типа операции журнала баланса организации. */
-function operationLabelKey(operationType: string): PlainMessageKey {
-  switch (operationType) {
-    case "admin_credit":
-      return "orgBalance.operation.admin_credit";
-    case "admin_debit":
-      return "orgBalance.operation.admin_debit";
-    case "system_fee":
-      return "orgBalance.operation.system_fee";
-    case "replenishment":
-      return "orgBalance.operation.replenishment";
-    case "bonus":
-      return "orgBalance.operation.bonus";
-    default:
-      return "orgBalance.operation.replenishment";
-  }
-}
 
 /** Панель баланса организации, открытая при [open]. */
 export function OrgBalanceSheet({
@@ -119,7 +98,7 @@ function BalanceHistoryRow({ entry }: { readonly entry: OrgBalanceJournalEntry }
   return (
     <li className="flex items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
-        <p className="font-medium">{t(operationLabelKey(entry.operationType))}</p>
+        <p className="font-medium">{t(`orgBalance.operation.${entry.operationType}`)}</p>
         <p className="truncate text-sm text-muted-foreground">{entry.description}</p>
         <time dateTime={entry.createdAt} className="text-xs text-muted-foreground">
           {format.dateTime(entry.createdAt)}
@@ -162,7 +141,7 @@ function ReplenishForm({
       setFailure(null);
       const result = await api.call("payments/initiate", {
         amount: money.minorUnits,
-        description: REPLENISH_DESCRIPTION,
+        description: t("orgBalance.replenishDescription"),
       });
       if (!result.ok) {
         setFailure(apiErrorMessage(t, result.error));

@@ -81,8 +81,11 @@ export function FinanceAccounts({
                     void api
                       .call("finance/cash-accounts/archive", { id: a.id, archived: !a.archived })
                       .then(async (result) => {
-                        if (result.ok) await refresh();
-                        else setError(apiErrorMessage(t, result.error));
+                        if (result.ok) {
+                          await refresh();
+                        } else {
+                          setError(apiErrorMessage(t, result.error));
+                        }
                       });
                   }}
                 >
@@ -315,8 +318,11 @@ export function FinanceArticles({
               void api
                 .call("finance/cash-articles/archive", { id: a.id, archived: !a.archived })
                 .then(async (result) => {
-                  if (result.ok) await refresh();
-                  else setError(apiErrorMessage(t, result.error));
+                  if (result.ok) {
+                    await refresh();
+                  } else {
+                    setError(apiErrorMessage(t, result.error));
+                  }
                 });
             }}
           >

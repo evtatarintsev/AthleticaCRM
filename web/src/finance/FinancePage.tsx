@@ -30,13 +30,14 @@ export function FinancePage({
 }) {
   const { t } = useI18n();
   const session = useSession(api);
-  if (!hasPermission(session, "CAN_VIEW_FINANCE"))
+  if (!hasPermission(session, "CAN_VIEW_FINANCE")) {
     return (
       <section>
         <PageHeader title={t("finance.title")} />
         <p>{t("finance.noAccess")}</p>
       </section>
     );
+  }
   const branchId = session.currentBranch.id;
   const canManage = hasPermission(session, "CAN_MANAGE_FINANCE");
   return (
@@ -155,8 +156,11 @@ function FinanceCashFlow({
           setExporting(true);
           void api.call("finance/cash-flow/export", query).then((result) => {
             setExporting(false);
-            if (result.ok) downloadBlob("cash-flow.csv", result.value);
-            else setError(apiErrorMessage(t, result.error));
+            if (result.ok) {
+              downloadBlob("cash-flow.csv", result.value);
+            } else {
+              setError(apiErrorMessage(t, result.error));
+            }
           });
         }}
       >
@@ -230,9 +234,13 @@ function FinanceCashFlow({
                             className="h-auto p-0"
                             onClick={() => {
                               const month = data.data.months[index];
-                              if (month === undefined) return;
+                              if (month === undefined) {
+                                return;
+                              }
                               const start = LocalDateSchema.safeParse(`${month}-01`);
-                              if (!start.success) return;
+                              if (!start.success) {
+                                return;
+                              }
                               const end = LocalDateSchema.parse(
                                 new Date(
                                   Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0),

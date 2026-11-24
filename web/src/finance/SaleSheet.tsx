@@ -355,7 +355,7 @@ function SalePanel({
 }) {
   const { t } = useI18n();
   const query = useQuery(apiQuery(api, branchId, "sales/detail", { saleId }));
-  if (query.data === undefined)
+  if (query.data === undefined) {
     return (
       <EditSheetBody>
         {query.isError ? (
@@ -365,6 +365,7 @@ function SalePanel({
         )}
       </EditSheetBody>
     );
+  }
   return <LoadedSalePanel api={api} branchId={branchId} sale={query.data} />;
 }
 
@@ -507,7 +508,9 @@ function LoadedSalePanel({
           saleId={sale.id}
           open={action === "payment"}
           onOpenChange={(open) => {
-            if (!open) setAction(null);
+            if (!open) {
+              setAction(null);
+            }
           }}
           onSaved={refresh}
         />
@@ -515,7 +518,9 @@ function LoadedSalePanel({
       <EditSheet
         open={action === "return"}
         onOpenChange={(open) => {
-          if (!open) setAction(null);
+          if (!open) {
+            setAction(null);
+          }
         }}
         title={t("finance.return")}
       >
@@ -524,7 +529,9 @@ function LoadedSalePanel({
       <EditSheet
         open={action === "cancel"}
         onOpenChange={(open) => {
-          if (!open) setAction(null);
+          if (!open) {
+            setAction(null);
+          }
         }}
         title={t("finance.cancelSale")}
       >
@@ -533,7 +540,9 @@ function LoadedSalePanel({
       <EditSheet
         open={reversing !== null}
         onOpenChange={(open) => {
-          if (!open) setReversing(null);
+          if (!open) {
+            setReversing(null);
+          }
         }}
         title={t("finance.cancelOperation")}
       >

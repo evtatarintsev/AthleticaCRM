@@ -71,6 +71,8 @@ export default tseslint.config(
         },
       ],
       "@typescript-eslint/prefer-readonly": "error",
+      // Фигурные скобки у `if`/`else`/циклов обязательны, как и в Kotlin-коде (CLAUDE.md).
+      curly: ["error", "all"],
       // TanStack Router прерывает beforeLoad/loader только выброшенным `redirect(...)`,
       // а он — `Response`, не `Error`. Разрешён ровно этот тип из пакета роутера.
       "@typescript-eslint/only-throw-error": [

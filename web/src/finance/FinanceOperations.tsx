@@ -139,8 +139,11 @@ export function FinanceOperations({
               .call("finance/journal/export", { ...request, limit: 50, offset: 0 })
               .then((result) => {
                 setExporting(false);
-                if (result.ok) downloadBlob("cash-journal.csv", result.value);
-                else setError(apiErrorMessage(t, result.error));
+                if (result.ok) {
+                  downloadBlob("cash-journal.csv", result.value);
+                } else {
+                  setError(apiErrorMessage(t, result.error));
+                }
               });
           }}
         >
@@ -253,7 +256,9 @@ export function FinanceOperations({
       <EditSheet
         open={creating !== null}
         onOpenChange={(open) => {
-          if (!open) setCreating(null);
+          if (!open) {
+            setCreating(null);
+          }
         }}
         title={creating === null ? "" : t(`finance.${creating}`)}
       >
@@ -360,7 +365,9 @@ export function FinanceOperations({
         saleId={saleId}
         open={saleId !== null}
         onOpenChange={(open) => {
-          if (!open) setSaleId(null);
+          if (!open) {
+            setSaleId(null);
+          }
         }}
       />
     </div>
@@ -540,7 +547,9 @@ export function JournalFilters({
         unavailable={new Map<ClientId, string>()}
         onSubmit={(picked) => {
           const first = picked[0];
-          if (first !== undefined) onSearchChange({ ...search, client: first.id });
+          if (first !== undefined) {
+            onSearchChange({ ...search, client: first.id });
+          }
           return Promise.resolve(null);
         }}
       />

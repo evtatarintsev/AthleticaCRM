@@ -12,9 +12,15 @@ export function sessionStates(
     ...sessions.map((session) => timeMinutes(session.startTime)).filter((start) => start > minutes),
   );
   return sessions.map((session) => {
-    if (responseDate !== today) return "none";
-    if (timeMinutes(session.endTime) <= minutes) return "past";
-    if (timeMinutes(session.startTime) <= minutes) return "live";
+    if (responseDate !== today) {
+      return "none";
+    }
+    if (timeMinutes(session.endTime) <= minutes) {
+      return "past";
+    }
+    if (timeMinutes(session.startTime) <= minutes) {
+      return "live";
+    }
     return timeMinutes(session.startTime) === nextStart ? "next" : "none";
   });
 }

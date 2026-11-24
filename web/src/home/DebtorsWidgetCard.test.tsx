@@ -63,7 +63,9 @@ describe("должники", () => {
     const { history } = openApp("/", server().fetch);
     await screen.findByRole("link", { name: /Марк Соколов/ }, { timeout: 5000 });
     const card = screen.getByRole("heading", { name: "Должники" }).parentElement?.parentElement;
-    if (card === null || card === undefined) throw new Error("Missing card");
+    if (card === null || card === undefined) {
+      throw new Error("Missing card");
+    }
     expect(within(card).getAllByRole("listitem")).toHaveLength(5);
     expect(within(card).getByText("7")).toBeVisible();
     await userEvent.setup().click(within(card).getByRole("link", { name: "Показать всех (7)" }));

@@ -76,7 +76,9 @@ export function AssistantHost({
       query.state.data?.messages.some((m) => m.status === "processing") === true ? 1000 : false,
   });
   useEffect(() => {
-    if (!allowed && open) onOpenChange(false);
+    if (!allowed && open) {
+      onOpenChange(false);
+    }
   }, [allowed, open, onOpenChange]);
   useEffect(() => {
     active.current = true;
@@ -87,7 +89,9 @@ export function AssistantHost({
   }, [cache, employeeId]);
   const refreshStatus = status.refetch;
   useEffect(() => {
-    if (dialog.error === null) return;
+    if (dialog.error === null) {
+      return;
+    }
     const error = apiErrorOf(dialog.error);
     if (
       error.kind === "business" &&
@@ -114,7 +118,9 @@ export function AssistantHost({
 
   /** Добавляет выбранные или перетащенные файлы; проверка набора показывается до отправки. */
   function attach(list: FileList | null) {
-    if (list === null || list.length === 0) return;
+    if (list === null || list.length === 0) {
+      return;
+    }
     setFiles((current) => [...current, ...Array.from(list)]);
     setTurn((current) => (current.kind === "failed" ? IDLE : current));
   }
@@ -134,8 +140,9 @@ export function AssistantHost({
    */
   async function send() {
     const current = dialog.data;
-    if (current === undefined || inFlight.current || processing || !canSend || problem !== null)
+    if (current === undefined || inFlight.current || processing || !canSend || problem !== null) {
       return;
+    }
     inFlight.current = true;
     setTurn({ kind: "sending", withFiles: files.length > 0 });
     try {
@@ -147,7 +154,9 @@ export function AssistantHost({
           continue;
         }
         const uploaded = await uploadFile(api, file);
-        if (!active.current) return;
+        if (!active.current) {
+          return;
+        }
         if (!uploaded.ok) {
           fail(assistantErrorMessage(t, uploaded.error));
           return;
@@ -160,7 +169,9 @@ export function AssistantHost({
         text: text.trim(),
         attachments,
       });
-      if (!active.current) return;
+      if (!active.current) {
+        return;
+      }
       if (result.ok) {
         cache.setQueryData(dialogQuery.queryKey, result.value);
         setText("");
@@ -169,13 +180,18 @@ export function AssistantHost({
           result.value.messages.some((m) =>
             m.blocks.some((b) => b.type === "client_created" || b.type === "import_completed"),
           )
-        )
+        ) {
           await refreshClients();
+        }
       } else {
         fail(assistantErrorMessage(t, result.error));
-        if (result.error.kind !== "business") uploadedIds.current = new WeakMap();
+        if (result.error.kind !== "business") {
+          uploadedIds.current = new WeakMap();
+        }
         const refreshed = await dialog.refetch();
-        if ((refreshed.data?.messages.length ?? 0) > current.messages.length) setFiles([]);
+        if ((refreshed.data?.messages.length ?? 0) > current.messages.length) {
+          setFiles([]);
+        }
       }
       await status.refetch();
     } finally {
@@ -186,20 +202,27 @@ export function AssistantHost({
 
   /** Пакетное подтверждение кнопкой: без модели; устаревшая карточка показывает причину. */
   async function confirmImport(draftId: AssistantBlockImportDraft["draftId"]) {
-    if (inFlight.current || processing) return;
+    if (inFlight.current || processing) {
+      return;
+    }
     inFlight.current = true;
     setTurn({ kind: "sending", withFiles: false });
     setStale(null);
     try {
       const result = await api.call("assistant/imports/confirm", { draftId });
-      if (!active.current) return;
-      if (result.ok) await refreshClients();
-      else if (
+      if (!active.current) {
+        return;
+      }
+      if (result.ok) {
+        await refreshClients();
+      } else if (
         result.error.kind === "business" &&
         result.error.code === "ASSISTANT_IMPORT_DRAFT_STALE"
-      )
+      ) {
         setStale(draftId);
-      else fail(assistantErrorMessage(t, result.error));
+      } else {
+        fail(assistantErrorMessage(t, result.error));
+      }
       await dialog.refetch();
       await status.refetch();
     } finally {
@@ -210,14 +233,21 @@ export function AssistantHost({
 
   /** Подтверждение блокируется синхронно, включая два клика в одном кадре. */
   async function confirm(clientId: AssistantBlockClientDraft["clientId"]) {
-    if (inFlight.current || processing) return;
+    if (inFlight.current || processing) {
+      return;
+    }
     inFlight.current = true;
     setTurn({ kind: "sending", withFiles: false });
     try {
       const result = await api.call("assistant/drafts/confirm", { clientId });
-      if (!active.current) return;
-      if (result.ok) await refreshClients();
-      else fail(assistantErrorMessage(t, result.error));
+      if (!active.current) {
+        return;
+      }
+      if (result.ok) {
+        await refreshClients();
+      } else {
+        fail(assistantErrorMessage(t, result.error));
+      }
       await dialog.refetch();
       await status.refetch();
     } finally {
@@ -228,17 +258,23 @@ export function AssistantHost({
 
   /** Новый диалог начинается только по явному действию сотрудника. */
   async function create() {
-    if (inFlight.current || processing) return;
+    if (inFlight.current || processing) {
+      return;
+    }
     inFlight.current = true;
     setTurn({ kind: "sending", withFiles: false });
     try {
       const result = await api.call("assistant/dialogs/create");
-      if (!active.current) return;
+      if (!active.current) {
+        return;
+      }
       if (result.ok) {
         cache.setQueryData(dialogQuery.queryKey, result.value);
         setText("");
         setFiles([]);
-      } else fail(assistantErrorMessage(t, result.error));
+      } else {
+        fail(assistantErrorMessage(t, result.error));
+      }
       await status.refetch();
     } finally {
       inFlight.current = false;
@@ -343,7 +379,9 @@ export function AssistantHost({
             }}
             onDrop={(event) => {
               event.preventDefault();
-              if (!busy) attach(event.dataTransfer.files);
+              if (!busy) {
+                attach(event.dataTransfer.files);
+              }
             }}
           >
             {failure !== null && <FormAlert message={failure} />}

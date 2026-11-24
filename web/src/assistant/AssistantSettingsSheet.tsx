@@ -44,7 +44,7 @@ function SettingsPanel({ api }: { api: ApiClient }) {
     queryKey: key,
     queryFn: async () => unwrap(await api.call("assistant/settings")),
   });
-  if (query.data === undefined)
+  if (query.data === undefined) {
     return (
       <EditSheetBody>
         {query.isError ? (
@@ -54,12 +54,15 @@ function SettingsPanel({ api }: { api: ApiClient }) {
         )}
       </EditSheetBody>
     );
+  }
   return (
     <SettingsForm
       settings={query.data}
       onSave={async (values) => {
         const result = await api.call("assistant/settings/update", values);
-        if (!result.ok) return assistantErrorMessage(t, result.error);
+        if (!result.ok) {
+          return assistantErrorMessage(t, result.error);
+        }
         cache.setQueryData(key, result.value);
         await cache.invalidateQueries({ queryKey: ["assistant", employeeId] });
         return null;
@@ -86,12 +89,16 @@ function SettingsForm({
   const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= 2147483647;
   const dirty = enabled !== settings.enabled || limit !== String(settings.dailyMessageLimit);
   async function save() {
-    if (saving || !valid) return;
+    if (saving || !valid) {
+      return;
+    }
     setSaving(true);
     try {
       const error = await onSave({ enabled, dailyMessageLimit: parsed });
       setFailure(error);
-      if (error === null) close();
+      if (error === null) {
+        close();
+      }
     } finally {
       setSaving(false);
     }

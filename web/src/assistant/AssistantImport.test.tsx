@@ -164,7 +164,9 @@ describe("импорт через AI-помощника", () => {
     await openAssistant();
     const input = screen.getByRole("textbox", { name: ru["assistant.input"] });
     const form = input.closest("form");
-    if (form === null) throw new Error("нет формы");
+    if (form === null) {
+      throw new Error("нет формы");
+    }
     fireEvent.drop(form, { dataTransfer: { files: [file("clients.xlsx", "")] } });
     const attached = await screen.findByRole("list", { name: ru["assistant.attachments"] });
     expect(within(attached).getByText("clients.xlsx")).toBeVisible();
@@ -278,7 +280,9 @@ describe("импорт через AI-помощника", () => {
     const server = uploadingServer({
       "assistant/messages/send": () => {
         sends += 1;
-        if (sends === 1) throw new Error("network lost");
+        if (sends === 1) {
+          throw new Error("network lost");
+        }
         return json(conversation([importCard()], ["base.csv"]));
       },
     });
@@ -310,7 +314,9 @@ describe("импорт через AI-помощника", () => {
     const problems = (
       await screen.findAllByRole("list", { name: ru["assistant.import.problems"] })
     )[1];
-    if (problems === undefined) throw new Error("нет списка");
+    if (problems === undefined) {
+      throw new Error("нет списка");
+    }
     expect(within(problems).getByText("Клиенты, строка 12")).toBeVisible();
     expect(within(problems).getByText(/Некорректный контакт/)).toBeVisible();
     expect(within(problems).getByText("Фото 2, строка 4")).toBeVisible();

@@ -286,8 +286,9 @@ describe("карточка занятия", () => {
     const { history } = openApp(`/sessions/${sessionId}`, async (input, init) => {
       if (new URL(input, "http://localhost").pathname === "/api/sessions/journal") {
         await pending;
-        if (fail)
+        if (fail) {
           return json({ code: "SESSION_NOT_FOUND", message: "Не найдено", fields: null }, 404);
+        }
       }
       return server.fetch(input, init);
     });
@@ -296,8 +297,11 @@ describe("карточка занятия", () => {
     expect(back).toHaveAttribute("href", "/schedule");
     expect(screen.queryByText(ru["sessionDetail.loadError"])).not.toBeInTheDocument();
     release?.();
-    if (fail) await screen.findByText(ru["sessionDetail.loadError"]);
-    else await screen.findByRole("heading", { name: /Юниоры У8/ });
+    if (fail) {
+      await screen.findByText(ru["sessionDetail.loadError"]);
+    } else {
+      await screen.findByRole("heading", { name: /Юниоры У8/ });
+    }
     expect(screen.getAllByRole("link", { name: ru["action.back"] })).toHaveLength(1);
     await userEvent.setup().click(screen.getByRole("link", { name: ru["action.back"] }));
     await waitFor(() => {

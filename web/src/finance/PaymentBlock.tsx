@@ -28,7 +28,9 @@ export function PaymentBlock({
 }) {
   const { t, format } = useI18n();
   const id = useId();
-  if (!canAccept) return null;
+  if (!canAccept) {
+    return null;
+  }
   const fromAdvance =
     parseMoney(value.fromAdvance === "" ? "0" : value.fromAdvance, debt.currency)?.minorUnits ?? 0;
   const automatic = { ...debt, minorUnits: Math.max(0, debt.minorUnits - fromAdvance) };

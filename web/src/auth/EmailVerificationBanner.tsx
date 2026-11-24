@@ -26,7 +26,9 @@ export function EmailVerificationBanner({ api, email }: { api: ApiClient; email:
   }, [api, queryClient]);
 
   useEffect(() => {
-    if (seconds === 0) return;
+    if (seconds === 0) {
+      return;
+    }
     const timer = window.setTimeout(() => {
       setSeconds(seconds - 1);
     }, 1000);

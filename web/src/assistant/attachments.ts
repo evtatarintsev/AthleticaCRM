@@ -14,8 +14,12 @@ export type AttachmentProblem = "unsupported" | "tooBig" | "mixed" | "tooManyPho
 /** Вид файла по имени и MIME-типу; окончательно тип по содержимому определяет сервер. */
 function kind(file: File): "table" | "image" | null {
   const name = file.name.toLowerCase();
-  if (name.endsWith(".csv") || name.endsWith(".xlsx")) return "table";
-  if (["image/jpeg", "image/png", "image/webp"].includes(file.type)) return "image";
+  if (name.endsWith(".csv") || name.endsWith(".xlsx")) {
+    return "table";
+  }
+  if (["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    return "image";
+  }
   return null;
 }
 
@@ -25,10 +29,18 @@ function kind(file: File): "table" | "image" | null {
  */
 export function attachmentProblem(files: readonly File[]): AttachmentProblem | null {
   const kinds = files.map(kind);
-  if (kinds.some((k) => k === null)) return "unsupported";
-  if (files.some((f) => f.size > MAX_ATTACHMENT_BYTES)) return "tooBig";
+  if (kinds.some((k) => k === null)) {
+    return "unsupported";
+  }
+  if (files.some((f) => f.size > MAX_ATTACHMENT_BYTES)) {
+    return "tooBig";
+  }
   const images = kinds.filter((k) => k === "image").length;
-  if ((images > 0 && images < files.length) || (images === 0 && files.length > 1)) return "mixed";
-  if (images > MAX_PHOTOS) return "tooManyPhotos";
+  if ((images > 0 && images < files.length) || (images === 0 && files.length > 1)) {
+    return "mixed";
+  }
+  if (images > MAX_PHOTOS) {
+    return "tooManyPhotos";
+  }
   return null;
 }

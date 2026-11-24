@@ -35,7 +35,7 @@ function Panel({ api }: { readonly api: ApiClient }) {
   const queryClient = useQueryClient();
   const query = clientCardSectionsQuery(api, branchId);
   const settings = useQuery(query);
-  if (settings.data === undefined)
+  if (settings.data === undefined) {
     return (
       <EditSheetBody>
         {settings.isError ? (
@@ -45,12 +45,15 @@ function Panel({ api }: { readonly api: ApiClient }) {
         )}
       </EditSheetBody>
     );
+  }
   return (
     <SectionsForm
       values={settings.data}
       onSave={async (values) => {
         const result = await api.call("org/client-card/update", values);
-        if (!result.ok) return apiErrorMessage(t, result.error);
+        if (!result.ok) {
+          return apiErrorMessage(t, result.error);
+        }
         queryClient.setQueryData(query.queryKey, result.value);
         toast.success(t("clientOverview.saved"));
         return null;
@@ -73,7 +76,9 @@ function SectionsForm({
     onSubmit: async ({ value }) => {
       const failure = await onSave(value);
       setError(failure);
-      if (failure === null) close();
+      if (failure === null) {
+        close();
+      }
     },
   });
   return (

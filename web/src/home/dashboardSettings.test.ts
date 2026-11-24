@@ -53,8 +53,9 @@ describe("периоды дней рождения", () => {
 
 function fixture() {
   const [a, b, c, d] = defaultDashboardSettings().widgets;
-  if (a === undefined || b?.type !== "debtors" || c === undefined || d === undefined)
+  if (a === undefined || b?.type !== "debtors" || c === undefined || d === undefined) {
     throw new Error("Missing defaults");
+  }
   const settings: DashboardSettings = {
     widgets: [a, { ...b, title: "Мой долг", limit: 7 }, c, d],
     layout: [d.id, a.id, c.id],

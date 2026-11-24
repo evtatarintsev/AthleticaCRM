@@ -112,7 +112,7 @@ export function ClientDetailPage({
     toast.success(t(archived ? "clients.archivedToast" : "clients.restoredToast"));
   };
 
-  if (client.data === undefined)
+  if (client.data === undefined) {
     return (
       <section className="max-w-6xl space-y-4">
         <BackLink link={{ to: "/clients" }} />
@@ -121,6 +121,7 @@ export function ClientDetailPage({
         {client.isError && <FormAlert message={t("clients.loadClientError")} />}
       </section>
     );
+  }
   const data = client.data;
   const leadSourceName =
     leadSources.data?.leadSources.find((source) => source.id === data.leadSourceId)?.name ?? null;
@@ -291,7 +292,9 @@ export function ClientDetailPage({
       <EditSheet
         open={listPanel !== null}
         onOpenChange={(open) => {
-          if (!open) setListPanel(null);
+          if (!open) {
+            setListPanel(null);
+          }
         }}
         title={
           listPanel === "memberships"

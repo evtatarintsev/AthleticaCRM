@@ -14,7 +14,9 @@ export function currentMemberships(memberships: readonly MembershipSchema[] = []
       const av = membershipView(a),
         bv = membershipView(b);
       const phase = Number(av.phase === "upcoming") - Number(bv.phase === "upcoming");
-      if (phase !== 0) return phase;
+      if (phase !== 0) {
+        return phase;
+      }
       const end = (av.endDate ?? "~").localeCompare(bv.endDate ?? "~");
       return end === 0 ? a.id.localeCompare(b.id) : end;
     });

@@ -55,8 +55,9 @@ describe("каркас виджета", () => {
     await userEvent.setup().tab();
     expect(button).toHaveFocus();
     expect(button.className).toContain("focus-visible:ring");
-    for (const icon of container.querySelectorAll("svg"))
+    for (const icon of container.querySelectorAll("svg")) {
       expect(icon).toHaveAttribute("aria-hidden", "true");
+    }
   });
   it.each(["pending", "error", "empty"] as const)("скрывает счётчик, тело и футер: %s", (state) => {
     const { container } = card(state);
@@ -68,6 +69,8 @@ describe("каркас виджета", () => {
       expect(screen.getByText("Должников нет")).toBeVisible();
       expect(container.querySelector(".lucide-check")).toHaveAttribute("aria-hidden", "true");
     }
-    if (state === "error") expect(screen.getByText("Не удалось загрузить список")).toBeVisible();
+    if (state === "error") {
+      expect(screen.getByText("Не удалось загрузить список")).toBeVisible();
+    }
   });
 });

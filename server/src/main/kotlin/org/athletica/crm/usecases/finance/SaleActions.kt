@@ -6,8 +6,6 @@ import org.athletica.crm.api.schemas.finance.CreateSaleRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.entityids.CashAccountId
 import org.athletica.crm.core.entityids.SaleId
-import org.athletica.crm.core.entityids.toLedgerTransactionId
-import org.athletica.crm.core.entityids.toMembershipId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.permissions.UserPermission.CAN_MANAGE_FINANCE
@@ -22,12 +20,10 @@ import org.athletica.crm.domain.memberships.RevokedMembership
 import org.athletica.crm.domain.memberships.revokeManually
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.org.OrgCalendar
-import org.athletica.crm.domain.sales.Sale
 import org.athletica.crm.domain.sales.SaleLine
 import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asMoney
-import org.athletica.crm.storage.asUuid
 
 /** Продажа, возврат и отмена; каждая команда выполняется внутри одной транзакции БД вызывающего. */
 class SaleActions(
@@ -46,19 +42,6 @@ class SaleActions(
     }
 
     /**
-     * Блокирует клиента продажи [id] и его счета аванса и долга в общем порядке блокировок,
-     * затем перечитывает продажу и проверяет, что она не отменена.
-     */
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    private suspend fun lockSale(id: SaleId): Sale {
-        val sale = sales.byId(id)
-        tr.sql("SELECT id FROM clients WHERE id = :client AND org_id = :org FOR UPDATE")
-            .bind("client", sale.clientId).bind("org", ctx.orgId).firstOrNull { 1 }
-        ledger.lock(listOf(ledger.account(LedgerOwner.Advance(sale.clientId)), ledger.account(LedgerOwner.Receivable(id, sale.clientId))))
-        return sales.byId(id).also { ensure(!it.cancelled) { ledgerError("SALE_CANCELLED") } }
-    }
-
-    /**
      * Оформляет возврат [amount] по продаже [id] с причиной [reason]. Возврат сначала гасит долг
      * по продаже, остаток зачисляется на аванс клиента. Если задана касса [cashAccountId], клиенту
      * выплачивается только зачисленная на аванс часть: погашенный долг деньгами не возвращается.
@@ -73,7 +56,7 @@ class SaleActions(
         requireFinancePermission(CAN_MANAGE_FINANCE)
         ensure(reason.isNotBlank()) { ledgerError("FINANCE_REASON_REQUIRED") }
         ensure(amount.currency == ctx.currency && amount.isPositive) { ledgerError("FINANCE_AMOUNT_INVALID") }
-        val sale = lockSale(id)
+        val sale = sales.lockActive(id)
         val returned =
             tr.sql(
                 """
@@ -103,28 +86,14 @@ class SaleActions(
     suspend fun cancel(id: SaleId, reason: String) {
         requireFinancePermission(CAN_MANAGE_FINANCE)
         ensure(reason.isNotBlank()) { ledgerError("FINANCE_REASON_REQUIRED") }
-        lockSale(id)
-        val membershipIds =
-            tr.sql(
-                """
-                SELECT m.id FROM memberships m JOIN sale_items i ON i.id = m.sale_item_id
-                JOIN sales s ON s.id = i.sale_id WHERE s.id = :sale AND s.org_id = :org ORDER BY m.id
-                """.trimIndent(),
-            ).bind("sale", id).bind("org", ctx.orgId).list { it.asUuid("id").toMembershipId() }
-        membershipIds
+        val sale = sales.lockActive(id)
+        sales.membershipIds(sale)
             .map { memberships.byId(it) }
             .filterNot { it is RevokedMembership }
             .forEach { it.revokeManually() }
-        val entries =
-            tr.sql(
-                """
-                SELECT t.id FROM ledger_transactions t WHERE t.sale_id = :sale AND t.org_id = :org AND t.kind <> 'reversal'
-                AND NOT EXISTS (SELECT 1 FROM ledger_transactions r WHERE r.reverses_id = t.id) ORDER BY t.id
-                """.trimIndent(),
-            ).bind("sale", id).bind("org", ctx.orgId).list { it.asUuid("id").toLedgerTransactionId() }
+        val entries = sales.openEntries(sale)
         requireTransactionCashAccess(entries, cashAccounts)
         ledger.reverseAll(entries, reason)
-        tr.sql("UPDATE sales SET cancelled_at = clock_timestamp(), cancelled_by = :actor, cancel_reason = :reason WHERE id = :sale AND org_id = :org")
-            .bind("actor", ctx.employee.id).bind("reason", reason.trim()).bind("sale", id).bind("org", ctx.orgId).execute()
+        sales.cancel(sale, reason)
     }
 }

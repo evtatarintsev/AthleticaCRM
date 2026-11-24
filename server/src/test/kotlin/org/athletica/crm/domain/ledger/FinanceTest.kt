@@ -42,6 +42,8 @@ import org.athletica.crm.domain.clients.lockForWrite
 import org.athletica.crm.domain.employees.EmployeePermission
 import org.athletica.crm.domain.memberships.MembershipFixture
 import org.athletica.crm.domain.org.DbOrgCalendar
+import org.athletica.crm.domain.sales.ActiveSale
+import org.athletica.crm.domain.sales.CancelledSale
 import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.employeeContext
 import org.athletica.crm.read.finance.CashFlowReportQuery
@@ -378,6 +380,31 @@ class FinanceTest {
             tx { actions.cancel(id, "Wrong issue") }
             assertTrue(tx { DbSaleDetailView().byId(SaleDetailQuery(id, today)) }.cancelledAt != null)
             assertEquals(rub(0), tx { DbClientLedgerView().byClient(client) }.balance)
+        }
+
+    @Test
+    fun `повторная отмена продажи отклоняется`() =
+        runTest {
+            val id = sale(1000)
+            tx { payments.pay(id, client, cashPayment(1000), today) }
+            tx { actions.cancel(id, "Error") }
+            val again = assertIs<Either.Left<AppError>>(attempt { actions.cancel(id, "Again") }).value
+            assertEquals("SALE_CANCELLED", assertIs<CommonDomainError>(again).code)
+            val cancelled = assertIs<CancelledSale>(tx { sales.byId(id) })
+            assertEquals("Error", cancelled.reason)
+            assertEquals(fixture.employeeId, cancelled.cancelledBy)
+            assertEquals(rub(0), tx { DbCashAccountBalancesView().all() }.total)
+        }
+
+    @Test
+    fun `переход отмены не срабатывает по уже отменённой продаже`() =
+        runTest {
+            val id = sale(1000)
+            val stale = assertIs<ActiveSale>(tx { sales.byId(id) })
+            tx { sales.cancel(stale, "First") }
+            val error = assertIs<Either.Left<AppError>>(attempt { sales.cancel(stale, "Second") }).value
+            assertEquals("SALE_CANCELLED", assertIs<CommonDomainError>(error).code)
+            assertEquals("First", assertIs<CancelledSale>(tx { sales.byId(id) }).reason)
         }
 
     @Test

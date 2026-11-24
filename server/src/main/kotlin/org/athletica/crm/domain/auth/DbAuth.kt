@@ -5,11 +5,9 @@ import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import jakarta.mail.internet.InternetAddress
-import org.athletica.crm.api.schemas.ChangePasswordRequest
-import org.athletica.crm.api.schemas.UpdateMeRequest
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.PasswordHash
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.auth.AuthenticatedUser
@@ -17,6 +15,7 @@ import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.HallId
 import org.athletica.crm.core.entityids.OrgId
+import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.entityids.UserId
 import org.athletica.crm.core.entityids.toEmployeeId
 import org.athletica.crm.core.entityids.toOrgId
@@ -101,20 +100,22 @@ class DbAuth(
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun updateMe(request: UpdateMeRequest) {
+    override suspend fun updateMe(name: NonBlankName, avatarId: UploadId?) {
         val updatedRows =
             tr.sql("UPDATE employees SET name = :name, avatar_id = :avatarId WHERE user_id = :userId AND org_id = :orgId")
-                .bind("name", request.name.value)
-                .bind("avatarId", request.avatarId)
+                .bind("name", name.value)
+                .bind("avatarId", avatarId)
                 .bind("userId", ctx.userId)
                 .bind("orgId", ctx.orgId)
                 .execute()
 
-        if (updatedRows == 0L) raise(UserNotFound("Employee not found for user='${ctx.userId}'"))
+        if (updatedRows == 0L) {
+            raise(UserNotFound("Employee not found for user='${ctx.userId}'"))
+        }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun changePassword(request: ChangePasswordRequest) {
+    override suspend fun changePassword(oldPassword: String, newPassword: String) {
         // Повторная смена пароля должна проверить хэш, сохранённый предыдущей транзакцией.
         val passwordHash =
             tr.sql("SELECT password_hash FROM users WHERE id = :id FOR UPDATE")
@@ -122,12 +123,12 @@ class DbAuth(
                 .firstOrNull { it.asString("password_hash") }
                 ?: raise(CommonDomainError("USER_NOT_FOUND", "User not found"))
 
-        if (!passwordHasher.verify(request.oldPassword, PasswordHash(passwordHash))) {
+        if (!passwordHasher.verify(oldPassword, PasswordHash(passwordHash))) {
             raise(CommonDomainError(code = "WRONG_PASSWORD", message = Messages.WrongPassword.localize()))
         }
 
         tr.sql("UPDATE users SET password_hash = :hash WHERE id = :id")
-            .bind("hash", passwordHasher.hash(request.newPassword).value)
+            .bind("hash", passwordHasher.hash(newPassword).value)
             .bind("id", ctx.userId)
             .execute()
         sessions.deleteOthers(ctx.userId, ctx.sessionId)
@@ -135,7 +136,7 @@ class DbAuth(
 
     /** Регистрирует организацию и владельца, создаёт локализованные настройки по умолчанию. */
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser {
+    override suspend fun signup(request: SignUp, lang: Lang, clientIp: String?): AuthenticatedUser {
         val validEmail =
             request.login.length <= 254 &&
                 request.login.none { it == '\r' || it == '\n' } &&
@@ -145,7 +146,9 @@ class DbAuth(
                         require(it.address == request.login)
                     }
                 }.isSuccess
-        if (!validEmail) raise(CommonDomainError("INVALID_EMAIL", Messages.InvalidRegistrationEmail.localize(lang)))
+        if (!validEmail) {
+            raise(CommonDomainError("INVALID_EMAIL", Messages.InvalidRegistrationEmail.localize(lang)))
+        }
         val orgId = OrgId.new()
         val userId = UserId.new()
         val employeeId = EmployeeId.new()

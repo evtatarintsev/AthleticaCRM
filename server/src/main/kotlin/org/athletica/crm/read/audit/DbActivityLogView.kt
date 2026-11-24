@@ -4,10 +4,10 @@ import arrow.core.raise.Raise
 import io.r2dbc.spi.Row
 import org.athletica.crm.api.schemas.audit.AuditLogUser
 import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLong

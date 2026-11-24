@@ -9,7 +9,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.AppError
@@ -50,7 +49,7 @@ class PasswordResetsTest {
 
     private suspend fun signup(di: Di = testDi()): AuthenticatedUser =
         orThrow {
-            db.transaction { di.auth.signup(SignUpRequest(testName("Club"), testName("Owner"), login, "old-password", "UTC", Currency.RUB), Lang.EN, null) }
+            db.transaction { di.auth.signup(SignUp(testName("Club"), testName("Owner"), login, "old-password", "UTC", Currency.RUB), Lang.EN, null) }
         }
 
     private fun service(

@@ -1,6 +1,5 @@
 package org.athletica.crm.domain.enrollments
 
-import kotlinx.serialization.Serializable
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.EnrollmentId
 import org.athletica.crm.core.entityids.GroupId
@@ -15,7 +14,6 @@ import kotlin.time.Instant
  * [enrolledAt] — момент добавления в группу.
  * [leftAt] — момент выхода; `null` означает активное участие прямо сейчас.
  */
-@Serializable
 data class Enrollment(
     /** Уникальный идентификатор записи. */
     val id: EnrollmentId,

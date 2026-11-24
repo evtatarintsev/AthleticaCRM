@@ -2,7 +2,6 @@ package org.athletica.crm.domain.clients
 
 import arrow.core.raise.context.Raise
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.Serializable
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Gender
 import org.athletica.crm.core.NonBlankName
@@ -98,9 +97,11 @@ interface ArchivedClient : Client {
     suspend fun restore()
 }
 
-@Serializable
+/** Группа, в которой состоит клиент. */
 data class ClientGroup(
+    /** Идентификатор группы. */
     val id: GroupId,
+    /** Название группы. */
     val name: String,
 )
 

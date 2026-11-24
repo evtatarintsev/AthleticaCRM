@@ -4,7 +4,6 @@ import arrow.core.Either
 import arrow.core.raise.context.either
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.UpdateMeRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -127,7 +126,7 @@ class ProfileTest {
                 context(TestPostgres.db, requestContext(userId, orgId, employeeId)) {
                     val result =
                         either {
-                            TestPostgres.db.transaction { TestPostgres.auth.updateMe(UpdateMeRequest(testName("New Name"), uploadId)) }
+                            TestPostgres.db.transaction { TestPostgres.auth.updateMe(testName("New Name"), uploadId) }
                         }
                     assertIs<Either.Right<Unit>>(result)
 

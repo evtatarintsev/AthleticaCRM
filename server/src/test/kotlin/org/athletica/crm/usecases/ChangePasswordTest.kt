@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.api.schemas.ChangePasswordRequest
 import org.athletica.crm.core.Lang
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.entityids.OrgId
@@ -15,7 +16,6 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.PostgresAuditLog
 import org.athletica.crm.domain.auth.AuditAuth
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -88,7 +88,7 @@ class ChangePasswordTest {
         either {
             TestPostgres.db.transaction {
                 context(ctx(userId, orgId, employeeId)) {
-                    auth.changePassword(request)
+                    auth.changePassword(request.oldPassword, request.newPassword)
                 }
             }
         }

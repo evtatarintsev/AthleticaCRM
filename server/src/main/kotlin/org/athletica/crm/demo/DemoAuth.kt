@@ -1,11 +1,11 @@
 package org.athletica.crm.demo
 
 import arrow.core.raise.context.Raise
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.auth.Auth
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.org.DbOrgCalendar
 import org.athletica.crm.domain.org.OrgCalendar
@@ -25,7 +25,7 @@ class DemoAuth(
     private val calendar: OrgCalendar = DbOrgCalendar(),
 ) : Auth by delegate {
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun signup(request: SignUpRequest, lang: Lang, clientIp: String?): AuthenticatedUser {
+    override suspend fun signup(request: SignUp, lang: Lang, clientIp: String?): AuthenticatedUser {
         val user = delegate.signup(request, lang, clientIp)
         context(ownerContext(user.orgId, employees, lang)) {
             demoData.fill(DemoProfile.SMALL, Random.Default, calendar.today())

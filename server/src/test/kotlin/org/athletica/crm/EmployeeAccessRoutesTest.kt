@@ -17,13 +17,13 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.athletica.crm.api.schemas.auth.LoginResponse
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.employees.EmployeeAccessStatus
 import org.athletica.crm.api.schemas.employees.EmployeeDetailResponse
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.EmployeeId
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,7 +49,7 @@ class EmployeeAccessRoutesTest {
             either {
                 di.database.transaction {
                     di.auth.signup(
-                        SignUpRequest(
+                        SignUp(
                             companyName = testName("Acme"),
                             userName = testName("John"),
                             login = "owner@example.com",

@@ -5,9 +5,9 @@ import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
 import org.athletica.crm.attendance.AttendanceFixture
 import org.athletica.crm.core.attendance.AttendanceLabelScope
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.AttendanceLabelId
 import org.athletica.crm.core.errors.AppError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.storage.Transaction

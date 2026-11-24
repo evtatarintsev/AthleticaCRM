@@ -5,11 +5,11 @@ import arrow.core.raise.context.raise
 import org.athletica.crm.core.EmailAddress
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.SystemContexts
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.entityids.toUserId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.mail.OrgEmails

@@ -9,7 +9,7 @@ import org.athletica.crm.api.schemas.audit.AuditLogListRequest
 import org.athletica.crm.api.schemas.audit.AuditLogListResponse
 import org.athletica.crm.api.schemas.audit.AuditLogSubject
 import org.athletica.crm.api.schemas.audit.AuditLogUsersResponse
-import org.athletica.crm.domain.audit.AuditActionType
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.audit.ActivityLogEntry

@@ -4,7 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.RequestContext
-import org.athletica.crm.domain.audit.AuditActionType
+import org.athletica.crm.core.audit.AuditActionType
 
 interface LocalizationKey {
     val ru: String

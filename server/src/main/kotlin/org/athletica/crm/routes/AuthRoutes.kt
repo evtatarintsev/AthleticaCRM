@@ -19,6 +19,7 @@ import org.athletica.crm.api.schemas.auth.AuthBranchesRequest
 import org.athletica.crm.api.schemas.auth.AuthBranchesResponse
 import org.athletica.crm.api.schemas.auth.ConfirmEmailRequest
 import org.athletica.crm.api.schemas.auth.ConfirmEmailResponse
+import org.athletica.crm.api.schemas.auth.EmailConfirmationStatus
 import org.athletica.crm.api.schemas.auth.ForgotPasswordRequest
 import org.athletica.crm.api.schemas.auth.LoginRequest
 import org.athletica.crm.api.schemas.auth.LoginResponse
@@ -41,9 +42,11 @@ import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.errors.SessionRevoked
 import org.athletica.crm.domain.auth.Auth
 import org.athletica.crm.domain.auth.AuthSessions
+import org.athletica.crm.domain.auth.ConfirmResult
 import org.athletica.crm.domain.auth.EmailVerifications
 import org.athletica.crm.domain.auth.IssuedSession
 import org.athletica.crm.domain.auth.PasswordResets
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.domain.branch.Branches
 import org.athletica.crm.i18n.Messages
 import org.athletica.crm.read.ReadViews
@@ -65,7 +68,13 @@ fun Route.authRoutes(
     post("/auth/confirm-email") {
         either {
             val request = call.body<ConfirmEmailRequest>()
-            db.transaction { emailVerifications.confirm(request.token, call.langFromRequest(), call.clientIp()) }
+            val result = db.transaction { emailVerifications.confirm(request.token, call.langFromRequest(), call.clientIp()) }
+            ConfirmEmailResponse(
+                when (result) {
+                    ConfirmResult.CONFIRMED -> EmailConfirmationStatus.CONFIRMED
+                    ConfirmResult.ALREADY_CONFIRMED -> EmailConfirmationStatus.ALREADY_CONFIRMED
+                },
+            )
         }.fold({ call.respondError(it) }, { call.respond(it) })
     }.contract(postContract<ConfirmEmailRequest, ConfirmEmailResponse>())
 
@@ -100,7 +109,12 @@ fun Route.authRoutes(
         call.eitherToAuthResponse {
             val request = call.body<SignUpRequest>()
             db.transaction {
-                val user = auth.signup(request, call.langFromRequest(), call.clientIp())
+                val user =
+                    auth.signup(
+                        SignUp(request.companyName, request.userName, request.login, request.password, request.timezone, request.currency),
+                        call.langFromRequest(),
+                        call.clientIp(),
+                    )
                 user to call.newSession(sessions, user)
             }
         }

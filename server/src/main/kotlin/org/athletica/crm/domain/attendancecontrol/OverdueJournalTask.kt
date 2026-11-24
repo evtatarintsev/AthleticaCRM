@@ -7,25 +7,14 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.storage.QueryBuilder
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asLocalDate
 import org.athletica.crm.storage.asLocalTime
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.sql.JournalWindowSql
+import org.athletica.crm.storage.sql.bindJournalWindow
 import kotlin.time.Duration
 import kotlin.time.Instant
-
-internal const val JOURNAL_DEADLINE_SQL =
-    "((s.date + s.end_time) AT TIME ZONE o.timezone) + make_interval(mins => COALESCE(acs.overdue_task_delay_minutes, :defaultDelay))"
-internal const val JOURNAL_ENABLED_SQL = "COALESCE(acs.overdue_task_enabled, :defaultEnabled)"
-internal const val JOURNAL_DUE_SQL =
-    "deadline <= CAST(:now AS timestamptz) AND deadline > CAST(:now AS timestamptz) - make_interval(secs => :lookbackSeconds)"
-
-internal fun QueryBuilder.bindJournalWindow(now: Instant, lookback: Duration) =
-    bind("defaultDelay", JournalCloseDelay.DEFAULT.minutes)
-        .bind("defaultEnabled", AttendanceControl.DEFAULT_OVERDUE_TASK_ENABLED)
-        .bind("now", now)
-        .bind("lookbackSeconds", lookback.inWholeSeconds.toDouble())
 
 internal data class OverdueJournalTask(
     val date: LocalDate,
@@ -50,15 +39,15 @@ internal suspend fun reserveOverdueJournalTask(
             WHERE id = :sessionId AND org_id = :orgId AND status = 'scheduled'
             FOR UPDATE
         ), candidate AS (
-            SELECT s.*, g.name AS group_name, $JOURNAL_DEADLINE_SQL AS deadline
+            SELECT s.*, g.name AS group_name, ${JournalWindowSql.DEADLINE} AS deadline
             FROM locked s
             JOIN organizations o ON o.id = s.org_id
             JOIN groups g ON g.id = s.group_id
             LEFT JOIN attendance_control_settings acs ON acs.org_id = s.org_id
-            WHERE $JOURNAL_ENABLED_SQL
+            WHERE ${JournalWindowSql.ENABLED}
         ), reserved AS (
             INSERT INTO session_overdue_tasks (session_id, org_id, task_id)
-            SELECT id, org_id, :taskId FROM candidate WHERE $JOURNAL_DUE_SQL
+            SELECT id, org_id, :taskId FROM candidate WHERE ${JournalWindowSql.DUE}
             ON CONFLICT (session_id) DO NOTHING
             RETURNING session_id
         )

@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.PositiveInt
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.audit.AuditActionType
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.MembershipId
@@ -17,7 +18,6 @@ import org.athletica.crm.core.money.Money
 import org.athletica.crm.core.subscription.ActivationMode
 import org.athletica.crm.core.subscription.CloseMode
 import org.athletica.crm.core.subscription.UnfreezeReason
-import org.athletica.crm.domain.audit.AuditActionType
 import org.athletica.crm.domain.audit.AuditEvent
 import org.athletica.crm.domain.audit.AuditLog
 import org.athletica.crm.domain.audit.logUpdate

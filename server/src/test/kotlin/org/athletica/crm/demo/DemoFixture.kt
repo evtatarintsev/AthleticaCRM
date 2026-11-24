@@ -7,7 +7,6 @@ import arrow.core.raise.either
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.NonBlankName
@@ -20,6 +19,7 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.auth.DbUsers
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.domain.employees.DbEmployees
 import org.athletica.crm.domain.employees.DbRoles
 import org.athletica.crm.domain.org.dateIn
@@ -69,7 +69,7 @@ object DemoFixture {
         orThrow {
             TestPostgres.db.transaction {
                 TestPostgres.auth.signup(
-                    SignUpRequest(testName(name), testName("Владелец"), "owner-${Uuid.random()}@example.com", "password123", TIMEZONE, Currency.RUB),
+                    SignUp(testName(name), testName("Владелец"), "owner-${Uuid.random()}@example.com", "password123", TIMEZONE, Currency.RUB),
                     Lang.RU,
                     null,
                 )

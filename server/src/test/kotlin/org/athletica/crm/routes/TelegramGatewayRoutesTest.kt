@@ -22,7 +22,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewayCodeOutcome
 import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewayIntegrationSchema
 import org.athletica.crm.api.schemas.telegramgateway.TelegramGatewaySettingsResponse
@@ -33,6 +32,7 @@ import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.money.Money
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.sessionAccessToken
 import org.athletica.crm.testDi
 import org.athletica.crm.testJwtConfig
@@ -81,7 +81,7 @@ class TelegramGatewayRoutesTest {
             either {
                 di.database.transaction {
                     di.auth.signup(
-                        SignUpRequest(
+                        SignUp(
                             companyName = testName("Acme"),
                             userName = testName("John"),
                             login = "owner@example.com",

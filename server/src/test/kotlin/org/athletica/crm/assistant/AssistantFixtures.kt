@@ -2,12 +2,12 @@ package org.athletica.crm.assistant
 
 import arrow.core.raise.Raise
 import org.athletica.crm.Di
-import org.athletica.crm.api.schemas.auth.SignUpRequest
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.SystemContexts
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.domain.auth.SignUp
 import org.athletica.crm.testName
 import kotlin.uuid.Uuid
 
@@ -17,7 +17,7 @@ suspend fun assistantOwner(di: Di, timezone: String = "UTC"): EmployeeRequestCon
     di.database.transaction {
         val owner =
             di.auth.signup(
-                SignUpRequest(testName("Org"), testName("Owner"), "${Uuid.random()}@example.com", "password123", timezone, Currency.RUB),
+                SignUp(testName("Org"), testName("Owner"), "${Uuid.random()}@example.com", "password123", timezone, Currency.RUB),
                 Lang.RU,
                 null,
             )

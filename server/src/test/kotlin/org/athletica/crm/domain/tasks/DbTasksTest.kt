@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.tasks
 
 import arrow.core.getOrElse
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -8,6 +9,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.Lang
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -20,8 +22,8 @@ import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.permissions.UserPermission
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.EmployeePermission
+import org.athletica.crm.domain.memberships.MutableClock
 import org.athletica.crm.employeeContext
 import org.athletica.crm.storage.asLong
 import org.athletica.crm.storage.asString
@@ -35,6 +37,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 class DbTasksTest {
@@ -44,7 +48,9 @@ class DbTasksTest {
     private val otherEmployeeId = EmployeeId.new()
     private val branchId = BranchId.new()
 
-    private val tasks = DbTasks()
+    private val clock = MutableClock(Instant.parse("2026-11-20T09:00:00Z"))
+    private val completedAt = Instant.parse("2026-11-21T15:30:00Z")
+    private val tasks = DbTasks(clock)
 
     private fun ctx(
         id: EmployeeId = employeeId,
@@ -149,7 +155,7 @@ class DbTasksTest {
                     }
                 }.getOrElse { fail("Unexpected error: $it") }
 
-            assertEquals(TaskStatus.PENDING, task.status)
+            assertEquals(TaskState.Pending, task.state)
             assertEquals("Задача", task.title)
             assertEquals("Описание", task.description)
             assertEquals(employeeId, task.createdBy)
@@ -157,69 +163,84 @@ class DbTasksTest {
             assertTrue(task.attachments.isEmpty())
         }
 
-    // ─── status() / completedAt ───────────────────────────────────────────────
+    // ─── complete() / moveTo() ────────────────────────────────────────────────
 
     @Test
-    fun `status COMPLETED проставляет completedAt`() =
+    fun `complete проставляет момент завершения из часов`() =
         runTest {
-            val task =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx) {
-                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
-                        }
-                    }
-                }.getOrElse { fail("Unexpected error: $it") }
-
+            val task = newTask()
             assertNull(taskCompletedAt(task.id))
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val loaded = tasks.byId(task.id)
-                        val updated = context(ctx) { loaded.status(TaskStatus.COMPLETED) }
-                        updated.save()
-                    }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
+            clock.now = completedAt
+            change(task.id) { it.complete() }
 
+            assertEquals(TaskState.Completed(completedAt), loaded(task.id).state)
             assertNotNull(taskCompletedAt(task.id))
         }
 
     @Test
-    fun `status возврат из COMPLETED сбрасывает completedAt`() =
+    fun `complete уже завершённой задачи сохраняет исходный момент`() =
         runTest {
-            val task =
-                either {
-                    TestPostgres.db.transaction {
-                        context(ctx) {
-                            tasks.new(TaskId.new(), testName("Задача"), "", null, null, null)
-                        }
-                    }
-                }.getOrElse { fail("Unexpected error: $it") }
+            val task = newTask()
+            clock.now = completedAt
+            change(task.id) { it.complete() }
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val updated = context(ctx) { tasks.byId(task.id).status(TaskStatus.COMPLETED) }
-                        updated.save()
-                    }
-                }
-            }.getOrElse { fail("Setup failed: $it") }
+            clock.now = completedAt + 1.hours
+            change(task.id) { it.complete() }
 
+            assertEquals(TaskState.Completed(completedAt), loaded(task.id).state)
+        }
+
+    @Test
+    fun `moveTo переоткрывает завершённую задачу и сбрасывает момент завершения`() =
+        runTest {
+            val task = newTask()
+            change(task.id) { it.complete() }
             assertNotNull(taskCompletedAt(task.id))
 
-            either {
-                TestPostgres.db.transaction {
-                    context(ctx) {
-                        val updated = context(ctx) { tasks.byId(task.id).status(TaskStatus.IN_PROGRESS) }
-                        updated.save()
-                    }
-                }
-            }.getOrElse { fail("Unexpected error: $it") }
+            change(task.id) { it.moveTo(TaskState.InProgress) }
 
+            assertEquals(TaskState.InProgress, loaded(task.id).state)
             assertNull(taskCompletedAt(task.id))
         }
+
+    @Test
+    fun `moveTo без прав на задачу запрещён`() =
+        runTest {
+            val task = newTask()
+
+            val result =
+                either {
+                    TestPostgres.db.transaction {
+                        context(otherCtx) { tasks.byId(task.id).moveTo(TaskState.Paused).save() }
+                    }
+                }
+
+            assertEquals("PERMISSION_DENIED", assertIs<arrow.core.Either.Left<AppError>>(result).value.code)
+        }
+
+    private suspend fun newTask(): Task =
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) { tasks.new(TaskId.new(), testName("Задача"), "", null, null, null) }
+            }
+        }.getOrElse { fail("Unexpected error: $it") }
+
+    private suspend fun change(
+        id: TaskId,
+        command: context(EmployeeRequestContext, Raise<AppError>) (Task) -> Task,
+    ) {
+        either {
+            TestPostgres.db.transaction {
+                context(ctx) { command(tasks.byId(id)).save() }
+            }
+        }.getOrElse { fail("Unexpected error: $it") }
+    }
+
+    private suspend fun loaded(id: TaskId): Task =
+        either {
+            TestPostgres.db.transaction { context(ctx) { tasks.byId(id) } }
+        }.getOrElse { fail("Unexpected error: $it") }
 
     // ─── attach() / detach() ─────────────────────────────────────────────────
 

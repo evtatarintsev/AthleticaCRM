@@ -15,7 +15,6 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.EmployeeStub
 import org.athletica.crm.domain.employees.EmployeeBranchAccess
 import org.athletica.crm.domain.employees.EmployeePermission
@@ -118,12 +117,12 @@ class SystemTasksTest {
             val id = systemTask()
 
             tx(ctx) { context(ctx) { tasks.byId(id).assignTo(stub(employeeId)).save() } }
-            tx(ctx) { context(ctx) { tasks.byId(id).status(TaskStatus.COMPLETED).save() } }
+            tx(ctx) { context(ctx) { tasks.byId(id).complete().save() } }
 
             val task = tx(ctx) { context(ctx) { tasks.byId(id) } }
             assertEquals(employeeId, task.assigneeId)
             assertNull(task.createdBy)
-            assertEquals(TaskStatus.COMPLETED, task.status)
+            assertIs<TaskState.Completed>(task.state)
         }
 
     @Test
@@ -141,7 +140,7 @@ class SystemTasksTest {
         runTest {
             val id = systemTask()
 
-            val result = attempt(otherCtx) { context(otherCtx) { tasks.byId(id).status(TaskStatus.IN_PROGRESS).save() } }
+            val result = attempt(otherCtx) { context(otherCtx) { tasks.byId(id).moveTo(TaskState.InProgress).save() } }
 
             assertEquals("PERMISSION_DENIED", assertIs<Either.Left<AppError>>(result).value.code)
         }

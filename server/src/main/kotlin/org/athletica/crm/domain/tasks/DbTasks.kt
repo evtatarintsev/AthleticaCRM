@@ -25,13 +25,18 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 /** Реализация репозитория задач на основе PostgreSQL через R2DBC. */
-class DbTasks : Tasks {
+class DbTasks(
+    /** Источник времени для создания, завершения и обновления задач. */
+    private val clock: Clock = Clock.System,
+) : Tasks {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byId(id: TaskId): Task = byIds(listOf(id)).first()
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun byIds(ids: List<TaskId>): List<Task> {
-        if (ids.isEmpty()) return emptyList()
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
 
         val rows =
             tr.sql(
@@ -70,7 +75,7 @@ class DbTasks : Tasks {
         dueDate: Instant?,
         dueDateEnd: Instant?,
     ): Task {
-        val now = Clock.System.now()
+        val now = clock.now()
         tr.sql(
             """
             INSERT INTO tasks (id, org_id, created_by, assignee_id, client_id, title, description,
@@ -98,14 +103,13 @@ class DbTasks : Tasks {
             clientId = clientId,
             title = title.value,
             description = description,
-            status = TaskStatus.PENDING,
+            state = TaskState.Pending,
             dueDate = dueDate,
             dueDateEnd = dueDateEnd,
-            completedAt = null,
             createdAt = now,
             attachments = emptyList(),
-            previousStatus = TaskStatus.PENDING,
             persistedAttachments = emptyList(),
+            clock = clock,
         )
     }
 
@@ -115,7 +119,9 @@ class DbTasks : Tasks {
         taskIds: List<TaskId>,
         tr: Transaction,
     ): Map<TaskId, List<org.athletica.crm.core.entityids.UploadId>> {
-        if (taskIds.isEmpty()) return emptyMap()
+        if (taskIds.isEmpty()) {
+            return emptyMap()
+        }
         return tr.sql(
             "SELECT task_id, upload_id FROM task_attachments WHERE task_id = ANY(:taskIds)",
         )
@@ -137,13 +143,21 @@ class DbTasks : Tasks {
             clientId = asUuidOrNull("client_id")?.toClientId(),
             title = asString("title"),
             description = asString("description"),
-            status = TaskStatus.valueOf(asString("status")),
+            state = taskState(),
             dueDate = asInstantOrNull("due_date"),
             dueDateEnd = asInstantOrNull("due_date_end"),
-            completedAt = asInstantOrNull("completed_at"),
             createdAt = asInstant("created_at"),
             attachments = attachments,
-            previousStatus = TaskStatus.valueOf(asString("status")),
             persistedAttachments = attachments,
+            clock = clock,
         )
+
+    /** Состояние задачи из колонок `status` и `completed_at`. */
+    private fun io.r2dbc.spi.Row.taskState(): TaskState =
+        when (TaskStatus.valueOf(asString("status"))) {
+            TaskStatus.PENDING -> TaskState.Pending
+            TaskStatus.IN_PROGRESS -> TaskState.InProgress
+            TaskStatus.PAUSED -> TaskState.Paused
+            TaskStatus.COMPLETED -> TaskState.Completed(asInstant("completed_at"))
+        }
 }

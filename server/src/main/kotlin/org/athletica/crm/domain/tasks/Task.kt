@@ -9,7 +9,6 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.UploadId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
-import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employee
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
@@ -34,16 +33,14 @@ interface Task {
 
     val description: String
 
-    val status: TaskStatus
+    /** Состояние задачи: незавершённая или завершённая с моментом завершения. */
+    val state: TaskState
 
     /** Начало срока выполнения. */
     val dueDate: Instant?
 
     /** Конец срока выполнения. */
     val dueDateEnd: Instant?
-
-    /** Время фактического завершения. Проставляется автоматически при переходе в COMPLETED. */
-    val completedAt: Instant?
 
     val createdAt: Instant
 
@@ -52,7 +49,6 @@ interface Task {
 
     /**
      * Сохраняет текущее состояние задачи в БД.
-     * Обновляет [completedAt]: устанавливает NOW() при переходе в COMPLETED, сбрасывает при выходе.
      * Вложения сохраняются разницей с состоянием на момент загрузки: удаляются только отвязанные
      * в этом экземпляре, добавляются только новые. Связки, добавленные параллельными транзакциями,
      * не затрагиваются.
@@ -89,11 +85,20 @@ interface Task {
     fun unassign(): Task
 
     /**
-     * Возвращает копию задачи с изменённым [newStatus].
+     * Возвращает завершённую копию задачи с моментом завершения «сейчас».
+     * Уже завершённая задача возвращается без изменений, момент завершения сохраняется.
      * Требует права на редактирование.
      */
     context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
-    fun status(newStatus: TaskStatus): Task
+    fun complete(): Task
+
+    /**
+     * Возвращает копию задачи в незавершённом состоянии [to]. Для завершённой задачи это
+     * переоткрытие: момент завершения сбрасывается.
+     * Требует права на редактирование.
+     */
+    context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
+    fun moveTo(to: TaskState.Open): Task
 
     /**
      * Возвращает копию задачи с добавленным вложением [uploadId].

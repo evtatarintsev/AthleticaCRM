@@ -1,5 +1,6 @@
 package org.athletica.crm.routes.tasks
 
+import arrow.core.raise.context.Raise
 import org.athletica.crm.api.schemas.tasks.AssignTaskRequest
 import org.athletica.crm.api.schemas.tasks.AttachTaskUploadRequest
 import org.athletica.crm.api.schemas.tasks.BulkUpdateTasksResponse
@@ -13,7 +14,12 @@ import org.athletica.crm.api.schemas.tasks.UnassignTaskRequest
 import org.athletica.crm.api.schemas.tasks.UpdateTaskRequest
 import org.athletica.crm.api.schemas.tasks.UpdateTaskStatusRequest
 import org.athletica.crm.api.schemas.upload.UploadResponse
+import org.athletica.crm.core.EmployeeRequestContext
+import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.tasks.TaskStatus
 import org.athletica.crm.domain.employees.Employees
+import org.athletica.crm.domain.tasks.Task
+import org.athletica.crm.domain.tasks.TaskState
 import org.athletica.crm.domain.tasks.Tasks
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.tasks.TaskDetailRow
@@ -84,7 +90,7 @@ fun RouteWithContext.taskRoutes(tasks: Tasks, employees: Employees, views: ReadV
         db.transaction {
             tasks
                 .byIds(req.taskIds)
-                .map { it.status(req.status) }
+                .map { it.withStatus(req.status) }
                 .forEach { it.save() }
             BulkUpdateTasksResponse(updated = req.taskIds.size)
         }
@@ -132,6 +138,16 @@ fun RouteWithContext.taskRoutes(tasks: Tasks, employees: Employees, views: ReadV
 
 /** Срок жизни подписанной ссылки на вложение. */
 private val ATTACHMENT_URL_TTL = 7.days
+
+/** Переводит задачу в статус [status] из запроса соответствующей командой агрегата. */
+context(ctx: EmployeeRequestContext, raise: Raise<AppError>)
+private fun Task.withStatus(status: TaskStatus): Task =
+    when (status) {
+        TaskStatus.COMPLETED -> complete()
+        TaskStatus.PENDING -> moveTo(TaskState.Pending)
+        TaskStatus.IN_PROGRESS -> moveTo(TaskState.InProgress)
+        TaskStatus.PAUSED -> moveTo(TaskState.Paused)
+    }
 
 /** Преобразует запрос списка задач в параметры выборки. */
 private fun TaskListRequest.toQuery() =

@@ -1,8 +1,9 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
 import {
   LocalDateSchema,
+  type LocalDate,
   type BranchId,
   type ClientId,
   type MembershipSchema,
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
+import { apiErrorOf, unwrap } from "@/query/apiFailure";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
 import { membershipHistoryQuery, membershipsQuery } from "../card/clientCardQueries";
@@ -75,8 +77,6 @@ function FreezeForm({
   const [start, setStart] = useState<string>(todayLocalDate());
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const startDate = LocalDateSchema.safeParse(start);
   const endDate = LocalDateSchema.safeParse(end);
   const groupIds = new Set(membership.groups.map((group) => group.id));
@@ -87,37 +87,36 @@ function FreezeForm({
       other.groups.some((group) => groupIds.has(group.id)),
   );
 
-  const submit = async () => {
-    if (!startDate.success || !endDate.success) {
-      return;
+  const freeze = useMutation({
+    mutationFn: async (input: { startDate: LocalDate; endDate: LocalDate }) => {
+      unwrap(
+        await api.call("memberships/freeze", { membershipId: membership.id, ...input, reason }),
+      );
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: membershipsQuery(api, branchId, clientId).queryKey,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: membershipHistoryQuery(api, branchId, membership.id).queryKey,
+        }),
+      ]);
+      onFinished();
+    },
+  });
+
+  const submit = () => {
+    if (startDate.success && endDate.success) {
+      freeze.mutate({ startDate: startDate.data, endDate: endDate.data });
     }
-    setPending(true);
-    setError(null);
-    const result = await api.call("memberships/freeze", {
-      membershipId: membership.id,
-      startDate: startDate.data,
-      endDate: endDate.data,
-      reason,
-    });
-    setPending(false);
-    if (!result.ok) {
-      setError(apiErrorMessage(t, result.error));
-      return;
-    }
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: membershipsQuery(api, branchId, clientId).queryKey,
-      }),
-      queryClient.invalidateQueries({
-        queryKey: membershipHistoryQuery(api, branchId, membership.id).queryKey,
-      }),
-    ]);
-    onFinished();
   };
 
   return (
     <EditSheetBody>
-      {error !== null && <FormAlert message={error} />}
+      {freeze.error !== null && (
+        <FormAlert message={apiErrorMessage(t, apiErrorOf(freeze.error))} />
+      )}
       <p className="text-sm text-muted-foreground">{t("membership.freeze.hint")}</p>
       {others.length > 0 && (
         <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
@@ -169,11 +168,11 @@ function FreezeForm({
       <div>
         <Button
           type="button"
-          disabled={pending || !startDate.success || !endDate.success || reason.trim() === ""}
-          aria-busy={pending}
-          onClick={() => {
-            void submit();
-          }}
+          disabled={
+            freeze.isPending || !startDate.success || !endDate.success || reason.trim() === ""
+          }
+          aria-busy={freeze.isPending}
+          onClick={submit}
         >
           {t("membership.freeze.action")}
         </Button>

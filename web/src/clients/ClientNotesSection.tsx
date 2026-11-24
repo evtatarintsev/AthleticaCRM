@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PencilIcon, TrashIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import type { ApiClient } from "@/api/client";
@@ -14,6 +14,7 @@ import { manualField } from "@/forms/field";
 import { FormAlert } from "@/forms/FormAlert";
 import { TextAreaField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
+import { apiErrorOf, unwrap } from "@/query/apiFailure";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useEditSheet } from "@/ui/editSheetContext";
@@ -46,43 +47,42 @@ export function ClientNotesSection({
   const fieldId = useId();
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<ClientNoteId | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<ClientNoteSchema | null>(null);
   const [showAll, setShowAll] = useState(false);
   const original = notes.data?.notes.find((note) => note.id === editingId)?.text ?? "";
-  useEffect(() => {
-    reportGuard({ dirty: draft !== original, submitting });
-  }, [draft, original, submitting, reportGuard]);
 
   const applyResponse = (response: ClientNotesListResponse) => {
     queryClient.setQueryData(notesQuery.queryKey, response);
   };
 
+  const save = useMutation({
+    mutationFn: async (text: string) =>
+      unwrap(
+        editingId === null
+          ? await api.call("clients/notes/add", { clientId, text })
+          : await api.call("clients/notes/edit", { noteId: editingId, text }),
+      ),
+    onSuccess: (response) => {
+      applyResponse(response);
+      cancelEdit();
+    },
+  });
+  const submitting = save.isPending;
+  useEffect(() => {
+    reportGuard({ dirty: draft !== original, submitting });
+  }, [draft, original, submitting, reportGuard]);
+
   const cancelEdit = () => {
     setEditingId(null);
     setDraft("");
-    setError(null);
+    save.reset();
   };
 
-  const submit = async () => {
+  const submit = () => {
     const text = draft.trim();
-    if (text === "" || text.length > MAX_NOTE_LENGTH) {
-      return;
+    if (text !== "" && text.length <= MAX_NOTE_LENGTH) {
+      save.mutate(text);
     }
-    setSubmitting(true);
-    setError(null);
-    const result =
-      editingId === null
-        ? await api.call("clients/notes/add", { clientId, text })
-        : await api.call("clients/notes/edit", { noteId: editingId, text });
-    setSubmitting(false);
-    if (!result.ok) {
-      setError(apiErrorMessage(t, result.error));
-      return;
-    }
-    applyResponse(result.value);
-    cancelEdit();
   };
 
   const deleteNote = async (note: ClientNoteSchema) => {
@@ -114,7 +114,7 @@ export function ClientNotesSection({
       }
     >
       <div className="space-y-2 border-b px-4 py-3">
-        {error !== null && <FormAlert message={error} />}
+        {save.error !== null && <FormAlert message={apiErrorMessage(t, apiErrorOf(save.error))} />}
         <TextAreaField
           field={manualField(fieldId, draft, setDraft)}
           label={t("clients.detail.noteFieldLabel")}
@@ -126,9 +126,7 @@ export function ClientNotesSection({
             size="sm"
             disabled={submitting || draft.trim() === ""}
             aria-busy={submitting}
-            onClick={() => {
-              void submit();
-            }}
+            onClick={submit}
           >
             {editingId === null ? t("action.add") : t("action.save")}
           </Button>
@@ -171,7 +169,7 @@ export function ClientNotesSection({
                       onClick={() => {
                         setEditingId(note.id);
                         setDraft(note.text);
-                        setError(null);
+                        save.reset();
                       }}
                     >
                       <PencilIcon aria-hidden />

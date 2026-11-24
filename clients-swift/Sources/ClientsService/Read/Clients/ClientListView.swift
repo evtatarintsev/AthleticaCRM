@@ -41,8 +41,10 @@ struct ClientListQuery: Sendable {
     var birthday: DateRange? = nil
     /// Критерии сортировки по приоритету.
     var sort: [ClientSortCriterion] = [ClientSortCriterion(column: .name, ascending: true)]
-    /// Размер страницы.
-    var limit = 50
+    /// Собирать ли абонементы и неоплаченные занятия (экспорту они не нужны).
+    var withMemberships = true
+    /// Размер страницы; `nil` — все клиенты без пагинации (экспорт).
+    var limit: Int? = 50
     /// Смещение.
     var offset = 0
 }
@@ -73,7 +75,7 @@ struct DbClientListView: ClientListView {
             let direction = criterion.ascending ? "ASC" : "DESC"
             let columns: [String] = switch criterion.column {
             case .name: ["c.name"]
-            case .balance: ["balance"]
+            case .balance: ["COALESCE(b.balance_after, 0)"]
             case .birthday: ["c.birthday"]
             case .nextBirthday: ["(\(Self.birthdayMd) < :birthdayFromMd::int)", Self.birthdayMd]
             }
@@ -91,10 +93,10 @@ struct DbClientListView: ClientListView {
                 (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', cc.id, 'type', cc.type, 'value', cc.value, 'label', cc.label, 'isPrimary', cc.is_primary) ORDER BY cc.position), '[]'::jsonb)
                    FROM client_contacts cc
                   WHERE cc.client_id = c.id AND cc.org_id = c.org_id)::text AS contacts,
-                \(Self.membershipsSql)
+                \(query.withMemberships ? Self.membershipsSql : "'[]'::jsonb::text AS memberships, 0 AS unpaid_sessions")
             \(Self.fromWhere)
             ORDER BY \(order)
-            LIMIT :limit OFFSET :offset
+            \(query.limit != nil ? "LIMIT :limit OFFSET :offset" : "")
             """
         let compiled = try Self.filters(NamedQuery(sql), query, ctx)
             .bind("today", query.today.description)

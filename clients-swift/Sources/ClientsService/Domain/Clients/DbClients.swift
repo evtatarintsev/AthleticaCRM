@@ -8,6 +8,8 @@ struct DbActiveClient: ActiveClient {
     let orgId: OrgId
     /// Определения кастомных полей для проверки новых значений.
     let definitions: any CustomFieldDefinitions
+    /// Публикация доменных событий.
+    let events: any DomainEvents
 
     func save(tr: Transaction) async throws(AppError) {
         let customFields = try jsonString(data.customFields)
@@ -40,18 +42,19 @@ struct DbActiveClient: ActiveClient {
         guard updated == 1 else {
             throw ClientErrors.alreadyArchived
         }
+        try await events.publish(ClientArchived(clientId: data.id, archivedBy: ctx.employeeId), ctx: ctx, tr: tr)
     }
 
     func attachDoc(_ doc: ClientDoc, ctx: EmployeeRequestContext) throws(AppError) -> any ActiveClient {
         var changed = data
         changed.docs.append(doc)
-        return DbActiveClient(data: changed, orgId: orgId, definitions: definitions)
+        return DbActiveClient(data: changed, orgId: orgId, definitions: definitions, events: events)
     }
 
     func deleteDoc(_ docId: ClientDocId, ctx: EmployeeRequestContext) throws(AppError) -> any ActiveClient {
         var changed = data
         changed.docs.removeAll { $0.id == docId }
-        return DbActiveClient(data: changed, orgId: orgId, definitions: definitions)
+        return DbActiveClient(data: changed, orgId: orgId, definitions: definitions, events: events)
     }
 
     func withNew(_ fields: ClientFields, ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError) -> any ActiveClient {
@@ -64,7 +67,7 @@ struct DbActiveClient: ActiveClient {
         changed.leadSourceId = fields.leadSourceId
         changed.customFields = try CustomFieldValues(definitions: current)
             .forReplacement(previous: data.customFields, values: fields.customFields)
-        return DbActiveClient(data: changed, orgId: orgId, definitions: definitions)
+        return DbActiveClient(data: changed, orgId: orgId, definitions: definitions, events: events)
     }
 }
 
@@ -100,6 +103,8 @@ struct DbArchivedClient: ArchivedClient {
 struct DbClients: Clients {
     /// Определения кастомных полей для проверки значений.
     let definitions: any CustomFieldDefinitions
+    /// Публикация доменных событий.
+    let events: any DomainEvents
 
     func byId(_ id: ClientId, ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError) -> ClientInState {
         let scalar = try await tr.first("""
@@ -143,7 +148,7 @@ struct DbClients: Clients {
         )
         return state == "ARCHIVED"
             ? .archived(DbArchivedClient(data: data))
-            : .active(DbActiveClient(data: data, orgId: ctx.orgId, definitions: definitions))
+            : .active(DbActiveClient(data: data, orgId: ctx.orgId, definitions: definitions, events: events))
     }
 
     func new(_ id: ClientId, _ fields: ClientFields, ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError) -> any ActiveClient {
@@ -179,6 +184,6 @@ struct DbClients: Clients {
             leadSourceId: fields.leadSourceId,
             customFields: validated
         )
-        return DbActiveClient(data: data, orgId: ctx.orgId, definitions: definitions)
+        return DbActiveClient(data: data, orgId: ctx.orgId, definitions: definitions, events: events)
     }
 }

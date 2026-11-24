@@ -26,20 +26,30 @@ enum App {
         let db = Database(client: pg, logger: app.logger)
         let audit = PostgresAuditLog()
         let definitions = DbCustomFieldDefinitions()
+        let enrollments = AuditEnrollments(delegate: DbEnrollments(), audit: audit)
+        let leaveGroups = LeaveGroupsOnArchive(db: db, enrollments: enrollments)
+        let bus = DomainEventBus()
+            .on(ClientArchived.self) { orgId, event throws(AppError) in try await leaveGroups.clientArchived(orgId, event) }
         let deps = ClientsDeps(
             db: db,
-            clients: AuditClients(delegate: DbClients(definitions: definitions), audit: audit),
+            clients: AuditClients(delegate: DbClients(definitions: definitions, events: bus), audit: audit),
             contacts: DbClientContacts(),
-            enrollments: AuditEnrollments(delegate: DbEnrollments(), audit: audit),
+            enrollments: enrollments,
             clientList: DbClientListView(),
-            clientBalance: DbClientBalanceView()
+            clientBalance: DbClientBalanceView(),
+            unpaidSessions: DbUnpaidSessionsView(),
+            definitions: definitions
         )
         app.get("health") { _ in "ok" }
-        RouteWithContext(routes: app.grouped("api"), auth: Authenticator(keys: keys, db: db, presence: EmployeePresence()))
-            .clientsRoutes(deps)
+        let routes = RouteWithContext(routes: app.grouped("api"), auth: Authenticator(keys: keys, db: db, presence: EmployeePresence()))
+        routes.clientsRoutes(deps)
+        routes.clientNotesRoutes(db: db, notes: DbClientNotes())
+        let worker = DomainEventWorker(db: db, bus: bus, logger: Logger(label: "domain-events"))
 
+        // Фоновые задачи живут в той же группе, что и HTTP-сервер: остановка сервера отменяет их.
         try await withThrowingDiscardingTaskGroup { group in
             group.addTask { await pg.run() }
+            group.addTask { await worker.run() }
             try await app.execute()
             group.cancelAll()
         }

@@ -8,6 +8,12 @@ protocol Enrollments: Sendable {
 
     /// Завершает участие [clientIds] в группе [groupId] (soft delete); неактивных пропускает.
     func remove(_ groupId: GroupId, _ clientIds: [ClientId], ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError)
+
+    /// Системная операция: завершает все активные участия клиента [clientId] организации [orgId],
+    /// если клиент сейчас в архиве (решение по текущему состоянию БД, а не по событию — повторная
+    /// доставка и восстановление клиента до обработки не меняют итога). Возвращает число закрытых записей.
+    @discardableResult
+    func leaveAllIfArchived(_ clientId: ClientId, orgId: OrgId, tr: Transaction) async throws(AppError) -> Int
 }
 
 extension Enrollments {
@@ -47,6 +53,17 @@ struct DbEnrollments: Enrollments {
         }
     }
 
+    @discardableResult
+    func leaveAllIfArchived(_ clientId: ClientId, orgId: OrgId, tr: Transaction) async throws(AppError) -> Int {
+        try await tr.execute("""
+            UPDATE enrollments e SET left_at = now()
+            FROM clients c
+            WHERE e.client_id = c.id AND e.left_at IS NULL
+              AND c.id = \(clientId.value) AND c.org_id = \(orgId.value) AND c.state = 'ARCHIVED'
+            RETURNING 1
+            """)
+    }
+
     /// Проверяет, что группа [groupId] принадлежит организации из контекста.
     private func verifyGroupOwnership(_ groupId: GroupId, ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError) {
         let found = try await tr.first("SELECT 1 FROM groups WHERE id = \(groupId.value) AND org_id = \(ctx.orgId.value)") { _ in true }
@@ -79,6 +96,12 @@ struct AuditEnrollments: Enrollments {
     func remove(_ groupId: GroupId, _ clientIds: [ClientId], ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError) {
         try await delegate.remove(groupId, clientIds, ctx: ctx, tr: tr)
         try await log(.delete, groupId, clientIds, ctx: ctx, tr: tr)
+    }
+
+    /// Системная операция без сотрудника, поэтому в аудит не пишется.
+    @discardableResult
+    func leaveAllIfArchived(_ clientId: ClientId, orgId: OrgId, tr: Transaction) async throws(AppError) -> Int {
+        try await delegate.leaveAllIfArchived(clientId, orgId: orgId, tr: tr)
     }
 
     /// Пишет событие [action] записи `enrollment` по каждому из [clientIds].

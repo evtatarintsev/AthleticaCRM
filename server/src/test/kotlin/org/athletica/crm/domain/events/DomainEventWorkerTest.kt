@@ -178,4 +178,27 @@ class DomainEventWorkerTest {
                 assertNotNull(id)
             }
         }
+
+    @Test
+    fun `типы событий модели совпадают с именами классов, которые пишет publish`() {
+        assertEquals(
+            setOf("AttendanceMarked", "AttendanceChanged", "SessionCompleted", "SessionCancelled"),
+            DomainEventBus.eventTypes.toSet(),
+        )
+    }
+
+    @Test
+    fun `событие чужой модели не выбирается и остаётся необработанным`() =
+        orThrow {
+            runTest {
+                failing = false
+                val id = publish()
+                TestPostgres.db.sql("UPDATE domain_events SET event_type = 'ClientArchived' WHERE id = :id").bind("id", id).execute()
+
+                assertEquals(0, worker.processBatch())
+
+                assertEquals(0, calls)
+                assertEquals(false, row(id).processed)
+            }
+        }
 }

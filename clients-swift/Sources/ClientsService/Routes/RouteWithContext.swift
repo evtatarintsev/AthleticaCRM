@@ -4,6 +4,20 @@ import Vapor
 /// Пустой ответ команды: HTTP 200 без тела, как `Unit` у Kotlin-сервера.
 struct Empty: Encodable, Sendable {}
 
+/// Файл в ответе: тело как есть с заголовками `Content-Type` и `Content-Disposition`.
+struct FileResponse: Encodable, Sendable {
+    /// Содержимое файла.
+    let body: Data
+    /// MIME-тип.
+    let contentType: String
+    /// Имя файла для скачивания.
+    let fileName: String
+
+    func encode(to encoder: Encoder) throws {
+        throw EncodingError.invalidValue(self, .init(codingPath: [], debugDescription: "Файл отдаётся телом ответа, а не JSON"))
+    }
+}
+
 /// Регистратор маршрутов с контекстом сотрудника — порт `RouteWithContext.kt`.
 /// Тело маршрута получает декодированный запрос и [EmployeeRequestContext] и бросает только [AppError];
 /// ответ на ошибку формируется здесь: бизнес-ошибка — 400 с `ErrorResponse`, нет сессии — 401, прочее — 500.
@@ -21,6 +35,19 @@ struct RouteWithContext {
         let auth = auth
         routes.on(.POST, path) { req async -> Response in
             await Self.handle(req, auth, "Invalid request body", parse: { try req.content.decode(Req.self, using: JSONDecoder()) }, run: body)
+        }
+    }
+
+    /// POST-маршрут [path], телу которого нужен и сам HTTP-запрос [Request] (например, query-параметры).
+    func post<Req: Decodable & Sendable, Res: Encodable & Sendable>(
+        _ path: PathComponent...,
+        withRequest body: @escaping @Sendable (Req, EmployeeRequestContext, Request) async throws(AppError) -> Res
+    ) {
+        let auth = auth
+        routes.on(.POST, path) { req async -> Response in
+            await Self.handle(req, auth, "Invalid request body", parse: { try req.content.decode(Req.self, using: JSONDecoder()) }) {
+                (request, ctx) throws(AppError) in try await body(request, ctx, req)
+            }
         }
     }
 
@@ -49,6 +76,12 @@ struct RouteWithContext {
             let result = try await run(try decode(invalidMessage, parse), ctx)
             if result is Empty {
                 return Response(status: .ok)
+            }
+            if let file = result as? FileResponse {
+                var headers = HTTPHeaders()
+                headers.replaceOrAdd(name: .contentType, value: file.contentType)
+                headers.replaceOrAdd(name: .contentDisposition, value: "attachment; filename=\"\(file.fileName)\"")
+                return Response(status: .ok, headers: headers, body: .init(data: file.body))
             }
             return json(.ok, result)
         } catch {

@@ -140,3 +140,27 @@ extension UUID {
         ))
     }
 }
+
+/// Идентификатор заметки о клиенте.
+struct ClientNoteId: EntityId {
+    /// Значение идентификатора.
+    let value: UUID
+    /// Создаёт идентификатор из [value].
+    init(_ value: UUID) { self.value = value }
+}
+
+/// Идентификатор занятия.
+struct SessionId: EntityId {
+    /// Значение идентификатора.
+    let value: UUID
+    /// Создаёт идентификатор из [value].
+    init(_ value: UUID) { self.value = value }
+}
+
+/// Идентификатор записи доменного события в outbox-таблице `domain_events`.
+struct DomainEventId: EntityId {
+    /// Значение идентификатора.
+    let value: UUID
+    /// Создаёт идентификатор из [value].
+    init(_ value: UUID) { self.value = value }
+}

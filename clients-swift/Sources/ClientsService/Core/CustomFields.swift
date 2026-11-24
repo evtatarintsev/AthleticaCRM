@@ -107,6 +107,8 @@ struct CustomFieldDefinition: Sendable, Equatable {
 
     /// Ключ поля.
     let fieldKey: CustomFieldKey
+    /// Название поля для людей (заголовок колонки экспорта).
+    var label: String = ""
     /// Поле обязательно для заполнения.
     let isRequired: Bool
     /// Тип поля.
@@ -195,5 +197,18 @@ struct CustomFieldValues: Sendable {
     /// Ошибка незаполненного обязательного поля [key].
     private static func requiredField(_ key: CustomFieldKey) -> AppError {
         .domain("CUSTOM_FIELD_REQUIRED", "Заполните обязательное поле \(key)")
+    }
+}
+
+extension CustomFieldValue {
+    /// Значение для таблицы и экспорта — как `displayValue()` в `shared`: целое число без дробной части,
+    /// флаг — «✓»/«—».
+    var displayValue: String {
+        switch self {
+        case let .text(_, value), let .select(_, value): value
+        case let .number(_, value): value == value.rounded() && abs(value) < 1e18 ? String(Int64(value)) : String(value)
+        case let .bool(_, value): value ? "✓" : "—"
+        case let .date(_, value): value.description
+        }
     }
 }

@@ -15,6 +15,10 @@ struct ClientsDeps: Sendable {
     let clientList: any ClientListView
     /// Проекция баланса клиента.
     let clientBalance: any ClientBalanceView
+    /// Проекция неоплаченных занятий.
+    let unpaidSessions: any UnpaidSessionsView
+    /// Определения кастомных полей (колонки экспорта).
+    let definitions: any CustomFieldDefinitions
 }
 
 /// Максимальный размер страницы списка клиентов.
@@ -22,8 +26,28 @@ private let maxClientPageSize = 100
 
 extension RouteWithContext {
     /// Регистрирует маршруты работы с клиентами, перенесённые с Kotlin-сервера.
-    /// `clients/export` и `clients/unpaid-sessions` остаются на Kotlin (см. `nginx/prod.conf.template`).
+    /// Импорт клиентов (`clients/import/*`) остаётся на Kotlin (см. `nginx/prod.conf.template`).
     func clientsRoutes(_ deps: ClientsDeps) {
+        post("clients", "unpaid-sessions") { (request: ClientUnpaidSessionsRequest, ctx) throws(AppError) in
+            try await deps.db.transaction { tr throws(AppError) in
+                try await deps.unpaidSessions.byClient(request.clientId, ctx: ctx, tr: tr)
+            }
+        }
+
+        post("clients", "export", withRequest: { (request: ClientExportRequest, ctx, req) throws(AppError) in
+            let format = req.query[String.self, at: "format"] ?? "csv"
+            let (items, definitions) = try await deps.db.transaction { tr throws(AppError) in
+                let today = try await orgToday(ctx: ctx, tr: tr)
+                let page = try await deps.clientList.page(ClientListQuery(today: today, withMemberships: false, limit: nil), ctx: ctx, tr: tr)
+                return (page.clients, try await deps.definitions.all(.client, ctx: ctx, tr: tr))
+            }
+            return FileResponse(
+                body: Data(clientsCsv(items, fields: request.fields, definitions: definitions).utf8),
+                contentType: format == "xlsx" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "text/csv; charset=UTF-8",
+                fileName: "clients.\(format)"
+            )
+        })
+
         post("clients", "list") { (request: ClientListRequest, ctx) throws(AppError) in
             try await deps.db.transaction { tr throws(AppError) in
                 let today = try await orgToday(ctx: ctx, tr: tr)
@@ -203,4 +227,34 @@ extension ClientListRequest {
             offset: Swift.max(offset, 0)
         )
     }
+}
+
+/// CSV экспорта клиентов: колонка «Имя» первая, дальше [fields] в порядке запроса; ключи, которых нет
+/// ни среди [ClientField], ни среди [definitions], пропускаются. Значения с запятой, кавычкой или
+/// переводом строки берутся в кавычки (RFC 4180) — сумма `1 200,50 ₽` иначе разбилась бы на две колонки.
+func clientsCsv(_ clients: [ClientListItem], fields: [String], definitions: [CustomFieldDefinition]) -> String {
+    let byKey = Dictionary(definitions.map { ($0.fieldKey.value, $0) }, uniquingKeysWith: { first, _ in first })
+    let columns: [(header: String, value: (ClientListItem) -> String)] = fields.compactMap { key in
+        if let field = ClientField(rawValue: key) {
+            return switch field {
+            case .birthday: ("Дата рождения", { $0.birthday?.description ?? "" })
+            case .gender: ("Пол", { $0.gender == .MALE ? "М" : "Ж" })
+            case .groups: ("Группы", { $0.groups.map(\.name).joined(separator: "; ") })
+            case .balance: ("Баланс", { $0.balance.formatted })
+            }
+        }
+        guard let definition = byKey[key] else {
+            return nil
+        }
+        return (definition.label, { client in client.customFields.first { $0.fieldKey.value == key }?.displayValue ?? "" })
+    }
+    let lines = [["Имя"] + columns.map(\.header)] + clients.map { client in [client.name] + columns.map { $0.value(client) } }
+    return lines.map { $0.map(csvField).joined(separator: ",") + "\n" }.joined()
+}
+
+/// Поле CSV: в кавычках с удвоением кавычек, если содержит разделитель, кавычку или перевод строки.
+private func csvField(_ value: String) -> String {
+    value.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" })
+        ? "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+        : value
 }

@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "clients-swift",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v15)],
     dependencies: [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.115.0"),
         .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.26.0"),

@@ -9,7 +9,8 @@ struct Database: Sendable {
     let logger: Logger
 
     /// Выполняет [body] в транзакции: коммит при успехе, откат при любой ошибке.
-    /// Ошибки драйвера, не ставшие [AppError] внутри [body], превращаются в `AppError.infrastructure`.
+    /// Ошибки драйвера, не ставшие [AppError] внутри [body], превращаются в `AppError.infrastructure`;
+    /// нарушение отложенного ограничения при коммите — в `AppError.constraintViolation`, как у запроса.
     func transaction<T: Sendable>(_ body: (Transaction) async throws(AppError) -> T) async throws(AppError) -> T {
         do {
             return try await client.withTransaction(logger: logger) { connection in
@@ -20,6 +21,9 @@ struct Database: Sendable {
         } catch let error as PostgresTransactionError {
             if let closureError = error.closureError as? AppError {
                 throw closureError
+            }
+            if let commitError = error.commitError {
+                throw Transaction.appError(commitError, [:])
             }
             throw .infrastructure(String(reflecting: error))
         } catch {
@@ -72,7 +76,7 @@ struct Transaction: @unchecked Sendable {
     }
 
     /// Переводит ошибку драйвера в [AppError]: известное нарушение ограничения — в доменную ошибку из [onViolation].
-    private static func appError(_ error: any Error, _ onViolation: [String: DomainError]) -> AppError {
+    static func appError(_ error: any Error, _ onViolation: [String: DomainError]) -> AppError {
         if let error = error as? AppError {
             return error
         }

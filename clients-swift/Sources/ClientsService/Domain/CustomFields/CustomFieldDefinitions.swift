@@ -30,13 +30,13 @@ private struct DefinitionConfig: Decodable {
 struct DbCustomFieldDefinitions: CustomFieldDefinitions {
     func all(_ entityType: CustomFieldEntityType, ctx: EmployeeRequestContext, tr: Transaction) async throws(AppError) -> [CustomFieldDefinition] {
         let rows = try await tr.list("""
-            SELECT field_key, field_type::text, config::text, is_required
+            SELECT field_key, field_type::text, config::text, is_required, label
             FROM custom_field_definitions
             WHERE org_id = \(ctx.orgId.value) AND entity_type = \(entityType.rawValue)
             ORDER BY display_order
-            """) { row in try row.decode((String, String, String, Bool).self) }
+            """) { row in try row.decode((String, String, String, Bool, String).self) }
         var result: [CustomFieldDefinition] = []
-        for (key, type, configJson, isRequired) in rows {
+        for (key, type, configJson, isRequired, label) in rows {
             let config = try decodeJson(DefinitionConfig.self, configJson)
             let kind: CustomFieldDefinition.Kind = switch type {
             case "text": .text(minLength: config.minLength, maxLength: config.maxLength)
@@ -46,7 +46,7 @@ struct DbCustomFieldDefinitions: CustomFieldDefinitions {
             case "select": .select(options: config.options ?? [])
             default: .textLike
             }
-            result.append(CustomFieldDefinition(fieldKey: try CustomFieldKey.from(key), isRequired: isRequired, kind: kind))
+            result.append(CustomFieldDefinition(fieldKey: try CustomFieldKey.from(key), label: label, isRequired: isRequired, kind: kind))
         }
         return result
     }

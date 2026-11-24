@@ -16,7 +16,6 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
-import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
 
 /** Реализация инбокса входящих на PostgreSQL через R2DBC. */
@@ -44,8 +43,7 @@ class DbInboundReceipts : InboundReceipts {
             integrationId = integrationId,
             fromAddress = fromAddress,
             body = body,
-            state = InboundReceiptState.UNRESOLVED,
-            resolvedMessageId = null,
+            state = InboundReceiptState.Unresolved,
             receivedAt = now,
         )
     }
@@ -84,14 +82,20 @@ class DbInboundReceipts : InboundReceipts {
         ensure(updated != 0L) { CommonDomainError("RECEIPT_ALREADY_RESOLVED", "Входящее уже разобрано") }
     }
 
+    private fun Row.toState(): InboundReceiptState =
+        when (val state = asString("state")) {
+            "UNRESOLVED" -> InboundReceiptState.Unresolved
+            "RESOLVED" -> InboundReceiptState.Resolved(asUuid("resolved_message_id").toMessageId())
+            else -> error("Неизвестное состояние входящего: $state")
+        }
+
     private fun Row.toReceipt(): InboundReceipt =
         InboundReceipt(
             id = asUuid("id").toInboundReceiptId(),
             integrationId = asUuid("integration_id").toChannelIntegrationId(),
             fromAddress = asString("from_address"),
             body = asString("body"),
-            state = InboundReceiptState.valueOf(asString("state")),
-            resolvedMessageId = asUuidOrNull("resolved_message_id")?.toMessageId(),
+            state = toState(),
             receivedAt = asInstant("received_at"),
         )
 }

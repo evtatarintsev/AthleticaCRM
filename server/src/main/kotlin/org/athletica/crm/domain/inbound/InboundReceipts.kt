@@ -9,13 +9,19 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.storage.Transaction
 import kotlin.time.Instant
 
-/** Состояние сырого входящего: ещё не привязано к беседе либо уже разобрано. */
-enum class InboundReceiptState {
+/**
+ * Состояние сырого входящего. Сумма-тип: связанное сообщение представимо только в [Resolved],
+ * поэтому «разобранное без сообщения» и «неразобранное с сообщением» невозможны.
+ */
+sealed interface InboundReceiptState {
     /** Не привязано к клиенту — ждёт автоматического или ручного разбора. */
-    UNRESOLVED,
+    data object Unresolved : InboundReceiptState
 
-    /** Привязано к беседе: породило входящее сообщение [InboundReceipt.resolvedMessageId]. */
-    RESOLVED,
+    /** Привязано к беседе: породило входящее сообщение [messageId]. */
+    data class Resolved(
+        /** Входящее сообщение, порождённое при разборе. */
+        val messageId: MessageId,
+    ) : InboundReceiptState
 }
 
 /**
@@ -28,13 +34,12 @@ data class InboundReceipt(
     val fromAddress: String,
     val body: String,
     val state: InboundReceiptState,
-    val resolvedMessageId: MessageId?,
     val receivedAt: Instant,
 )
 
 /** Хранилище сырых входящих (инбокс). Изолировано по организации. */
 interface InboundReceipts {
-    /** Записывает входящее в статусе `UNRESOLVED` и возвращает его. */
+    /** Записывает входящее в состоянии [InboundReceiptState.Unresolved] и возвращает его. */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun record(integrationId: ChannelIntegrationId, fromAddress: String, body: String): InboundReceipt
 

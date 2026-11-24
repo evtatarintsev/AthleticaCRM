@@ -12,6 +12,7 @@ import org.athletica.crm.core.attendance.ParticipationKind
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.sessions.SessionStatus
 import org.athletica.crm.domain.attendance.AttendanceMark
+import org.athletica.crm.domain.sessions.complete
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals

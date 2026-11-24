@@ -20,6 +20,9 @@ import org.athletica.crm.domain.events.AttendanceMarked
 import org.athletica.crm.domain.events.CompletedParticipant
 import org.athletica.crm.domain.events.SessionCancelled
 import org.athletica.crm.domain.events.SessionCompleted
+import org.athletica.crm.domain.sessions.ScheduledSession
+import org.athletica.crm.domain.sessions.cancel
+import org.athletica.crm.domain.sessions.complete
 import org.athletica.crm.storage.asLong
 import org.junit.Before
 import kotlin.test.Test
@@ -468,5 +471,20 @@ class DbSessionJournalTest {
             val event = assertIs<SessionCancelled>(fixture.events().single())
             assertEquals(session, event.sessionId)
             assertEquals(fixture.groupId, event.groupId)
+        }
+
+    @Test
+    fun `устаревший экземпляр не проводит и не отменяет уже проведённое занятие`() =
+        runTest {
+            fixture.setUp()
+            val session = fixture.insertSession()
+            val stale = assertIs<ScheduledSession>(fixture.inContext { fixture.sessions.byId(session) })
+            complete(session).getOrElse { error(it) }
+
+            assertEquals("SESSION_CANNOT_COMPLETE", fixture.errorCode(fixture.runInContext { stale.complete() }))
+            assertEquals("SESSION_CANNOT_CANCEL", fixture.errorCode(fixture.runInContext { stale.cancel() }))
+
+            assertEquals(SessionStatus.COMPLETED, status(session))
+            assertIs<SessionCompleted>(fixture.events().single())
         }
 }

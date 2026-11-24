@@ -30,7 +30,7 @@ private fun Session.snapshot() =
         SessionSnapshot(
             date = date,
             hallId = hallId,
-            status = status,
+            status = status.name.lowercase(),
             isRescheduled = isRescheduled,
             notes = notes,
             employeeIds = employeeIds,
@@ -39,14 +39,12 @@ private fun Session.snapshot() =
     )
 
 /**
- * Декоратор [Session], добавляющий запись в журнал аудита при изменении состояния занятия.
+ * Декоратор [ScheduledSession], добавляющий запись в журнал аудита при переходах занятия.
+ * В журнал пишется состояние занятия после перехода.
  */
-class AuditSession(private val delegate: Session, private val audit: AuditLog) : Session by delegate {
+class AuditScheduledSession(private val delegate: ScheduledSession, private val audit: AuditLog) : ScheduledSession by delegate {
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun cancel() =
-        delegate.cancel().also {
-            audit.logUpdate("session", id, delegate.snapshot())
-        }
+    override suspend fun cancel(): CancelledSession = delegate.cancel().also { logged(it) }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun reschedule(
@@ -54,19 +52,24 @@ class AuditSession(private val delegate: Session, private val audit: AuditLog) :
         newStartTime: LocalTime,
         newEndTime: LocalTime,
         newHallId: HallId,
-    ) = delegate.reschedule(newDate, newStartTime, newEndTime, newHallId).also {
-        audit.logUpdate("session", id, delegate.snapshot())
+    ): ScheduledSession = AuditScheduledSession(delegate.reschedule(newDate, newStartTime, newEndTime, newHallId).also { logged(it) }, audit)
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun complete(): CompletedSession = delegate.complete().also { logged(it) }
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun setEmployees(employees: List<Employee>): ScheduledSession = AuditScheduledSession(delegate.setEmployees(employees).also { logged(it) }, audit)
+
+    /** Пишет в журнал аудита снимок занятия [session] после перехода. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    private suspend fun logged(session: Session) {
+        audit.logUpdate("session", id, session.snapshot())
     }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun complete() =
-        delegate.complete().also {
-            audit.logUpdate("session", id, delegate.snapshot())
-        }
-
-    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun setEmployees(employees: List<Employee>) =
-        delegate.setEmployees(employees).also {
-            audit.logUpdate("session", id, delegate.snapshot())
-        }
 }
+
+/** Занятие [this] с аудитом переходов; у проведённого и отменённого переходов нет, они не оборачиваются. */
+internal fun Session.audited(audit: AuditLog): Session =
+    when (this) {
+        is ScheduledSession -> AuditScheduledSession(this, audit)
+        is CompletedSession, is CancelledSession -> this
+    }

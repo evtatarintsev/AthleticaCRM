@@ -112,7 +112,7 @@ import org.athletica.crm.domain.sales.Sales
 import org.athletica.crm.domain.sessions.AuditSessions
 import org.athletica.crm.domain.sessions.DbScheduleSync
 import org.athletica.crm.domain.sessions.DbSessions
-import org.athletica.crm.domain.sessions.Session
+import org.athletica.crm.domain.sessions.ScheduledSession
 import org.athletica.crm.domain.sessions.Sessions
 import org.athletica.crm.domain.tariffs.AuditTariffPlans
 import org.athletica.crm.domain.tariffs.DbTariffPlans
@@ -578,8 +578,8 @@ class DemoData(
             }
             val recent = day >= today.minus(3, DateTimeUnit.DAY)
             sessions.listAll(day, day)
-                .filter { it.status == "scheduled" }
-                .sortedWith(compareBy<Session> { it.startTime }.thenBy { world.group(it.groupId).name })
+                .filterIsInstance<ScheduledSession>()
+                .sortedWith(compareBy<ScheduledSession> { it.startTime }.thenBy { world.group(it.groupId).name })
                 .forEach { session ->
                     if (random.nextDouble() < 0.02) {
                         session.cancel()
@@ -596,7 +596,7 @@ class DemoData(
 
         /** Проводит занятие [session] дня [day]; при [leaveOpen] отмечает часть участников и не закрывает журнал. */
         context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
-        private suspend fun holdSession(session: Session, day: LocalDate, leaveOpen: Boolean) {
+        private suspend fun holdSession(session: ScheduledSession, day: LocalDate, leaveOpen: Boolean) {
             val group = world.group(session.groupId)
             val regular = journals.byId(session.id).participants.map { it.clientId }.toSet()
             val guest =

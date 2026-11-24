@@ -10,6 +10,8 @@ import org.athletica.crm.core.entityids.SessionId
 import org.athletica.crm.core.entityids.toSessionId
 import org.athletica.crm.domain.employees.Employees
 import org.athletica.crm.domain.sessions.Sessions
+import org.athletica.crm.domain.sessions.cancel
+import org.athletica.crm.domain.sessions.setEmployees
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.sessions.createSession

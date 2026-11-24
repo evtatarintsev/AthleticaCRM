@@ -56,9 +56,9 @@ class AuditSessions(private val delegate: Sessions, private val audit: AuditLog)
                 )
             }
         }
-        return AuditSession(session, audit)
+        return session.audited(audit)
     }
 
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
-    override suspend fun byId(id: SessionId): Session = AuditSession(delegate.byId(id), audit)
+    override suspend fun byId(id: SessionId): Session = delegate.byId(id).audited(audit)
 }

@@ -1,6 +1,7 @@
+import { useForm } from "@tanstack/react-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import type { ApiClient } from "@/api/client";
+import type { ApiClient, ApiResult } from "@/api/client";
 import {
   CashAccountIdSchema,
   LocalDateSchema,
@@ -9,17 +10,19 @@ import {
   type ClientLedgerResponse,
   type SaleId,
 } from "@/api/generated/contracts";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
+import { FormAlert } from "@/forms/FormAlert";
+import { SelectField, TextField } from "@/forms/fields";
+import { requiredText } from "@/forms/requiredText";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
 import { moneyEditText, parseMoney } from "@/lib/money";
+import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
-import { EditSheet } from "@/ui/EditSheet";
-import { FinanceForm } from "./FinanceForm";
+import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
 import { PaymentBlock } from "./PaymentBlock";
-import { initialPayment, paymentInput } from "./payment";
+import { initialPayment, paymentInput, type PaymentDraft } from "./payment";
 
 export type ClientPaymentMode = "payment" | "payout" | "adjust";
 
@@ -47,6 +50,25 @@ export function ClientPaymentSheet(props: {
   );
 }
 
+/** Значения формы команды клиента; суммы и дата вводятся текстом. */
+interface ClientPaymentValues {
+  /** Продажа, которую оплачивают, или `advance` — пополнение аванса. */
+  readonly destination: string;
+  /** Черновик оплаты для режима `payment`. */
+  readonly payment: PaymentDraft;
+  /** Касса выплаты; пустая строка — первая активная касса. */
+  readonly cashId: string;
+  readonly amount: string;
+  /** Направление корректировки: зачисление или списание. */
+  readonly direction: "credit" | "debit";
+  readonly comment: string;
+  readonly date: string;
+}
+
+/**
+ * Форма команды клиента в режиме [mode]: оплата продажи или пополнение аванса, выплата аванса
+ * или корректировка. Ошибка сервера оставляет форму открытой, успех закрывает панель.
+ */
 function ClientPaymentForm({
   api,
   branchId,
@@ -57,204 +79,218 @@ function ClientPaymentForm({
   onSaved,
 }: Parameters<typeof ClientPaymentSheet>[0]) {
   const { t, format } = useI18n();
+  const { close } = useEditSheet();
   const queries = useQueryClient();
   const accounts = useQuery({
     ...apiQuery(api, branchId, "finance/cash-accounts"),
     enabled: mode !== "adjust",
   });
   const available = (accounts.data?.accounts ?? []).filter((a) => !a.archived);
-  const [destination, setDestination] = useState<string>(
-    saleId ?? summary.salesWithDebt[0]?.saleId ?? "advance",
-  );
-  const [draft, setDraft] = useState(initialPayment);
-  const [cashId, setCashId] = useState("");
-  const [amount, setAmount] = useState(mode === "payout" ? moneyEditText(summary.advance) : "");
-  const [direction, setDirection] = useState("credit");
-  const [comment, setComment] = useState("");
+  const currency = summary.balance.currency;
   const today = todayLocalDate(useSession(api).orgInfo.timezone);
-  const [date, setDate] = useState<string>(today);
-  const [invalid, setInvalid] = useState(false);
-  const debt = summary.salesWithDebt.find((s) => s.saleId === destination);
-  const due = debt?.debt ?? { ...summary.balance, minorUnits: 0 };
-  const dirty =
-    amount !== (mode === "payout" ? moneyEditText(summary.advance) : "") ||
-    direction !== "credit" ||
-    comment !== "" ||
-    date !== today ||
-    cashId !== "" ||
-    destination !== (saleId ?? summary.salesWithDebt[0]?.saleId ?? "advance") ||
-    draft.fromAdvance !== "" ||
-    draft.cash.length !== 1 ||
-    draft.cash.some((row) => row.amount !== null || row.cashAccountId !== "");
-  return (
-    <FinanceForm
-      dirty={dirty}
-      submit={async () => {
-        setInvalid(true);
-        const occurredOn = LocalDateSchema.safeParse(date);
-        if (mode === "payment") {
-          const payment = paymentInput(
-            draft,
-            available,
-            due,
-            debt === undefined ? { ...summary.advance, minorUnits: 0 } : summary.advance,
-          );
-          if (payment === null || !occurredOn.success) return null;
-          return debt === undefined
-            ? api.call("finance/advance/top-up", {
-                clientId,
-                occurredOn: occurredOn.data,
-                payment,
-                comment: comment.trim() === "" ? null : comment.trim(),
-              })
-            : api.call("sales/pay", {
-                saleId: debt.saleId,
-                occurredOn: occurredOn.data,
-                payment,
-                comment: comment.trim() === "" ? null : comment.trim(),
-              });
-        }
-        const parsed = parseMoney(amount, summary.balance.currency);
-        if (parsed === null || parsed.minorUnits <= 0) return null;
-        if (mode === "adjust") {
-          if (comment.trim() === "") return null;
-          return api.call("finance/advance/adjust", {
+  const [failure, setFailure] = useState<string | null>(null);
+  const zero = { currency, minorUnits: 0 };
+  const saleDebt = (destination: string) =>
+    summary.salesWithDebt.find((s) => s.saleId === destination);
+
+  /** Запрос по значениям [value]; `null` — значения не прошли проверку. */
+  const send = async (value: ClientPaymentValues): Promise<ApiResult<unknown> | null> => {
+    const occurredOn = LocalDateSchema.safeParse(value.date);
+    const comment = value.comment.trim() === "" ? null : value.comment.trim();
+    if (mode === "payment") {
+      const debt = saleDebt(value.destination);
+      const payment = paymentInput(
+        value.payment,
+        available,
+        debt?.debt ?? zero,
+        debt === undefined ? zero : summary.advance,
+      );
+      if (payment === null || !occurredOn.success) {
+        return null;
+      }
+      return debt === undefined
+        ? api.call("finance/advance/top-up", {
             clientId,
-            amount: {
-              ...parsed,
-              minorUnits: direction === "debit" ? -parsed.minorUnits : parsed.minorUnits,
-            },
-            comment: comment.trim(),
+            occurredOn: occurredOn.data,
+            payment,
+            comment,
+          })
+        : api.call("sales/pay", {
+            saleId: debt.saleId,
+            occurredOn: occurredOn.data,
+            payment,
+            comment,
           });
-        }
-        const cashAccountId = CashAccountIdSchema.safeParse(
-          cashId === "" ? available[0]?.id : cashId,
-        );
-        if (
-          !cashAccountId.success ||
-          !occurredOn.success ||
-          parsed.minorUnits > summary.advance.minorUnits
-        )
-          return null;
-        return api.call("finance/advance/payout", {
-          clientId,
-          cashAccountId: cashAccountId.data,
-          amount: parsed,
-          occurredOn: occurredOn.data,
-          comment: comment.trim() === "" ? null : comment.trim(),
-        });
-      }}
-      onSaved={async () => {
-        await queries.invalidateQueries({ queryKey: ["api", branchId] });
-        await onSaved();
-      }}
+    }
+    const amount = parseMoney(value.amount, currency);
+    if (amount === null) {
+      return null;
+    }
+    if (mode === "adjust") {
+      return api.call("finance/advance/adjust", {
+        clientId,
+        amount: {
+          ...amount,
+          minorUnits: value.direction === "debit" ? -amount.minorUnits : amount.minorUnits,
+        },
+        comment: value.comment.trim(),
+      });
+    }
+    const cashAccountId = CashAccountIdSchema.safeParse(
+      value.cashId === "" ? available[0]?.id : value.cashId,
+    );
+    if (!cashAccountId.success || !occurredOn.success) {
+      return null;
+    }
+    return api.call("finance/advance/payout", {
+      clientId,
+      cashAccountId: cashAccountId.data,
+      amount,
+      occurredOn: occurredOn.data,
+      comment,
+    });
+  };
+
+  const defaultValues: ClientPaymentValues = {
+    destination: saleId ?? summary.salesWithDebt[0]?.saleId ?? "advance",
+    payment: initialPayment(),
+    cashId: "",
+    amount: mode === "payout" ? moneyEditText(summary.advance) : "",
+    direction: "credit",
+    comment: "",
+    date: today,
+  };
+  const form = useForm({
+    defaultValues,
+    onSubmit: async ({ value }) => {
+      const result = await send(value);
+      if (result === null) {
+        setFailure(t("error.required"));
+        return;
+      }
+      if (!result.ok) {
+        setFailure(apiErrorMessage(t, result.error));
+        return;
+      }
+      await queries.invalidateQueries({ queryKey: ["api", branchId] });
+      await onSaved();
+      close();
+    },
+  });
+  return (
+    <form.Subscribe
+      selector={(state) => ({
+        dirty: state.isDirty,
+        submitting: state.isSubmitting,
+        attempted: state.submissionAttempts > 0,
+        destination: state.values.destination,
+      })}
     >
-      {mode === "payment" && (
-        <>
-          <label className="block space-y-1">
-            <span>{t("finance.destination")}</span>
-            <NativeSelect
-              value={destination}
-              disabled={saleId !== undefined}
-              onChange={(e) => {
-                setDestination(e.target.value);
+      {({ dirty, submitting, attempted, destination }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
+            void form.handleSubmit();
+          }}
+        >
+          {failure !== null && <FormAlert message={failure} />}
+          {mode === "payment" && (
+            <>
+              <form.Field name="destination">
+                {(field) => (
+                  <SelectField
+                    field={field}
+                    label={t("finance.destination")}
+                    disabled={saleId !== undefined}
+                    options={[
+                      { value: "advance", label: t("finance.toAdvance") },
+                      ...summary.salesWithDebt.map((s) => ({
+                        value: s.saleId,
+                        label: `${format.date(s.soldOn)} · ${format.money(s.debt)}`,
+                      })),
+                    ]}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="payment">
+                {(field) => (
+                  <PaymentBlock
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    accounts={available}
+                    debt={saleDebt(destination)?.debt ?? zero}
+                    advance={saleDebt(destination) === undefined ? zero : summary.advance}
+                    canAccept
+                    invalid={attempted}
+                  />
+                )}
+              </form.Field>
+            </>
+          )}
+          {mode === "adjust" && (
+            <form.Field name="direction">
+              {(field) => (
+                <SelectField
+                  field={field}
+                  label={t("clients.detail.balanceDirection")}
+                  options={[
+                    { value: "credit", label: t("clients.detail.balanceCredit") },
+                    { value: "debit", label: t("clients.detail.balanceDebit") },
+                  ]}
+                />
+              )}
+            </form.Field>
+          )}
+          {mode === "payout" && (
+            <form.Field name="cashId">
+              {(field) => (
+                <SelectField
+                  field={field}
+                  label={t("finance.cashAccount")}
+                  options={available.map((a) => ({ value: a.id, label: a.name }))}
+                />
+              )}
+            </form.Field>
+          )}
+          {mode !== "payment" && (
+            <form.Field
+              name="amount"
+              validators={{
+                onSubmit: ({ value }) => {
+                  const minorUnits = parseMoney(value, currency)?.minorUnits ?? 0;
+                  return minorUnits > 0 &&
+                    (mode !== "payout" || minorUnits <= summary.advance.minorUnits)
+                    ? undefined
+                    : t("error.invalidAmount");
+                },
               }}
             >
-              <option value="advance">{t("finance.toAdvance")}</option>
-              {summary.salesWithDebt.map((s) => (
-                <option key={s.saleId} value={s.saleId}>
-                  {format.date(s.soldOn)} · {format.money(s.debt)}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
-          <PaymentBlock
-            value={draft}
-            onChange={setDraft}
-            accounts={available}
-            debt={due}
-            advance={debt === undefined ? { ...summary.advance, minorUnits: 0 } : summary.advance}
-            canAccept
-            invalid={invalid}
-          />
-        </>
-      )}
-      {mode === "adjust" && (
-        <label className="block space-y-1">
-          <span>{t("clients.detail.balanceDirection")}</span>
-          <NativeSelect
-            value={direction}
-            onChange={(e) => {
-              setDirection(e.target.value);
-            }}
-          >
-            <option value="credit">{t("clients.detail.balanceCredit")}</option>
-            <option value="debit">{t("clients.detail.balanceDebit")}</option>
-          </NativeSelect>
-        </label>
-      )}
-      {mode === "payout" && (
-        <label className="block space-y-1">
-          <span>{t("finance.cashAccount")}</span>
-          <NativeSelect
-            value={cashId === "" ? (available[0]?.id ?? "") : cashId}
-            onChange={(e) => {
-              setCashId(e.target.value);
-            }}
-          >
-            <option value="">{t("finance.select")}</option>
-            {available.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-      )}
-      {mode !== "payment" && (
-        <label className="block space-y-1">
-          <span>{t("finance.amount")}</span>
-          <Input
-            value={amount}
-            inputMode="decimal"
-            aria-invalid={
-              invalid && (parseMoney(amount, summary.balance.currency)?.minorUnits ?? 0) <= 0
-            }
-            onChange={(e) => {
-              setAmount(e.target.value);
-            }}
-          />
-          {invalid && (parseMoney(amount, summary.balance.currency)?.minorUnits ?? 0) <= 0 && (
-            <span className="text-sm text-destructive">{t("error.invalidAmount")}</span>
+              {(field) => (
+                <TextField
+                  field={field}
+                  label={t("finance.amount")}
+                  inputMode="decimal"
+                  autoComplete="off"
+                />
+              )}
+            </form.Field>
           )}
-        </label>
+          {mode !== "adjust" && (
+            <form.Field name="date">
+              {(field) => (
+                <TextField field={field} label={t("finance.date")} type="date" max={today} />
+              )}
+            </form.Field>
+          )}
+          <form.Field
+            name="comment"
+            validators={mode === "adjust" ? { onSubmit: requiredText(t) } : {}}
+          >
+            {(field) => <TextField field={field} label={t("finance.comment")} autoComplete="off" />}
+          </form.Field>
+        </EditSheetForm>
       )}
-      {mode !== "adjust" && (
-        <label className="block space-y-1">
-          <span>{t("finance.date")}</span>
-          <Input
-            type="date"
-            value={date}
-            max={today}
-            onChange={(e) => {
-              setDate(e.target.value);
-            }}
-          />
-        </label>
-      )}
-      <label className="block space-y-1">
-        <span>{t("finance.comment")}</span>
-        <Input
-          value={comment}
-          aria-invalid={invalid && mode === "adjust" && comment.trim() === ""}
-          onChange={(e) => {
-            setComment(e.target.value);
-          }}
-        />
-        {invalid && mode === "adjust" && comment.trim() === "" && (
-          <span className="text-sm text-destructive">{t("error.required")}</span>
-        )}
-      </label>
-    </FinanceForm>
+    </form.Subscribe>
   );
 }

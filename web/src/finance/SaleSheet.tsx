@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
@@ -7,25 +8,29 @@ import {
   SaleIdSchema,
   type BranchId,
   type ClientDetailResponse,
+  type Currency,
+  type Money,
   type SaleDetailResponse,
   type SaleId,
   type SaleOperationSchema,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
-import { useI18n } from "@/i18n/context";
+import { manualField, type BoundField } from "@/forms/field";
+import { CheckboxField, SelectField, TextField } from "@/forms/fields";
+import { requiredText } from "@/forms/requiredText";
+import { useI18n, type I18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
 import { parseMoney } from "@/lib/money";
 import { uuidv7 } from "@/lib/uuid";
+import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery } from "@/query/queries";
 import { hasPermission, useSession } from "@/query/session";
-import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
+import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
 import { CancellationForm } from "./CancellationForm";
 import { ClientPaymentSheet } from "./ClientPaymentSheet";
-import { FinanceForm } from "./FinanceForm";
 import { PaymentBlock } from "./PaymentBlock";
 import { initialPayment, paymentInput } from "./payment";
 
@@ -51,8 +56,79 @@ export function SaleCreateSheet(props: {
   );
 }
 
+/** Позиция продажи в форме: ключ строки и поля, вводимые текстом. */
+interface SaleItemDraft {
+  readonly key: string;
+  readonly name: string;
+  readonly quantity: string;
+  readonly price: string;
+}
+
+/** Новая позиция продажи: одна штука без названия и цены. */
+function emptyItem(): SaleItemDraft {
+  return { key: uuidv7(), name: "", quantity: "1", price: "" };
+}
+
+/** Количество из текста [text]: положительное целое в пределах `Int` Kotlin, иначе `null`. */
+function quantityOf(text: string): number | null {
+  const value = Number(text);
+  return Number.isSafeInteger(value) && value > 0 && value <= 2147483647 ? value : null;
+}
+
+/** Ошибки полей позиции продажи; `null` — поле заполнено верно. */
+interface SaleItemErrors {
+  readonly name: string | null;
+  readonly quantity: string | null;
+  readonly price: string | null;
+}
+
+/** Позиция без ошибок: до первой попытки отправки поля не подсвечиваются. */
+const noItemErrors: SaleItemErrors = { name: null, quantity: null, price: null };
+
+/** Ошибки полей позиции [item] с ценой в валюте [currency] и сообщениями на языке [t]. */
+function itemErrors(item: SaleItemDraft, currency: Currency, t: I18n["t"]): SaleItemErrors {
+  return {
+    name: item.name.trim() === "" ? t("error.required") : null,
+    quantity: quantityOf(item.quantity) === null ? t("error.positiveInteger") : null,
+    price: parseMoney(item.price, currency) === null ? t("error.invalidAmount") : null,
+  };
+}
+
+/**
+ * Поле позиции продажи для обёрток из `@/forms/fields`: значение [value] с ошибкой [error].
+ * Позиции — одно поле-массив формы, поэтому их поля связаны вручную, а не через `form.Field`.
+ */
+function itemField(
+  name: string,
+  value: string,
+  error: string | null,
+  onChange: (value: string) => void,
+): BoundField<string> {
+  return {
+    ...manualField(name, value, onChange),
+    state: { value, meta: { errors: error === null ? [] : [error] } },
+  };
+}
+
+/** Стоимость позиций [items] в валюте [currency]; нераспознанная цена считается нулём. */
+function saleTotal(items: readonly SaleItemDraft[], currency: Currency): Money {
+  return {
+    currency,
+    minorUnits: items.reduce(
+      (sum, item) =>
+        sum + (parseMoney(item.price, currency)?.minorUnits ?? 0) * Number(item.quantity),
+      0,
+    ),
+  };
+}
+
+/**
+ * Форма продажи клиенту [client]: дата, позиции и, при праве приёма оплат, оплата сразу.
+ * Ошибка сервера оставляет форму открытой, успех вызывает [onSaved] и закрывает панель.
+ */
 function SaleCreateForm({ api, branchId, client, onSaved }: Parameters<typeof SaleCreateSheet>[0]) {
   const { t, format } = useI18n();
+  const { close } = useEditSheet();
   const session = useSession(api);
   const canAccept = hasPermission(session, "CAN_ACCEPT_PAYMENTS");
   const accounts = useQuery({
@@ -63,183 +139,185 @@ function SaleCreateForm({ api, branchId, client, onSaved }: Parameters<typeof Sa
     ...apiQuery(api, branchId, "finance/client-payment-options", { clientId: client.id }),
     enabled: canAccept,
   });
-  const [items, setItems] = useState(() => [{ key: uuidv7(), name: "", quantity: "1", price: "" }]);
-  const [draft, setDraft] = useState(initialPayment);
-  const [payNow, setPayNow] = useState(true);
-  const today = todayLocalDate(session.orgInfo.timezone);
-  const [date, setDate] = useState<string>(today);
-  const [invalid, setInvalid] = useState(false);
+  const currency = client.balance.currency;
+  const today: string = todayLocalDate(session.orgInfo.timezone);
   const queries = useQueryClient();
-  const total = {
-    ...client.balance,
-    minorUnits: items.reduce(
-      (sum, item) =>
-        sum +
-        (parseMoney(item.price, client.balance.currency)?.minorUnits ?? 0) * Number(item.quantity),
-      0,
-    ),
-  };
-  const advance = options.data?.advance ?? { ...client.balance, minorUnits: 0 };
+  const [failure, setFailure] = useState<string | null>(null);
+  const advance = options.data?.advance ?? { currency, minorUnits: 0 };
   const available = (accounts.data?.accounts ?? []).filter((a) => !a.archived);
-  return (
-    <FinanceForm
-      dirty={
-        items.some((i) => i.name !== "" || i.price !== "") ||
-        !payNow ||
-        draft.fromAdvance !== "" ||
-        draft.cash.some((r) => r.amount !== null || r.cashAccountId !== "")
+  const form = useForm({
+    defaultValues: {
+      date: today,
+      items: [emptyItem()],
+      payNow: true,
+      payment: initialPayment(),
+    },
+    onSubmit: async ({ value }) => {
+      const total = saleTotal(value.items, currency);
+      const soldOn = LocalDateSchema.safeParse(value.date);
+      const items = value.items.flatMap((item) => {
+        const quantity = quantityOf(item.quantity);
+        const unitPrice = parseMoney(item.price, currency);
+        return quantity === null || unitPrice === null
+          ? []
+          : [{ name: item.name.trim(), quantity, unitPrice }];
+      });
+      if (!soldOn.success) {
+        setFailure(t("error.required"));
+        return;
       }
-      submit={async () => {
-        setInvalid(true);
-        const parsed = items.map((item) => ({
-          name: item.name.trim(),
-          quantity: Number(item.quantity),
-          unitPrice: parseMoney(item.price, client.balance.currency),
-        }));
-        if (
-          !Number.isSafeInteger(total.minorUnits) ||
-          parsed.length === 0 ||
-          parsed.some(
-            (item) =>
-              item.name === "" ||
-              !Number.isSafeInteger(item.quantity) ||
-              item.quantity <= 0 ||
-              item.quantity > 2147483647 ||
-              item.unitPrice === null,
-          )
-        )
-          return null;
-        const saleItems = parsed.flatMap((item) =>
-          item.unitPrice === null ? [] : [{ ...item, unitPrice: item.unitPrice }],
-        );
-        const payment =
-          canAccept && payNow && total.minorUnits > 0
-            ? paymentInput(draft, available, total, advance)
-            : null;
-        if (canAccept && payNow && total.minorUnits > 0 && payment === null) return null;
-        const soldOn = LocalDateSchema.safeParse(date);
-        if (!soldOn.success) return null;
-        return api.call("sales/create", {
-          id: SaleIdSchema.parse(uuidv7()),
-          clientId: client.id,
-          soldOn: soldOn.data,
-          items: saleItems,
-          payment,
-        });
-      }}
-      onSaved={async () => {
-        await queries.invalidateQueries({ queryKey: ["api", branchId] });
-        await onSaved();
-      }}
+      if (items.length !== value.items.length || items.some((item) => item.name === "")) {
+        return;
+      }
+      if (!Number.isSafeInteger(total.minorUnits)) {
+        setFailure(t("error.invalidAmount"));
+        return;
+      }
+      const paid = canAccept && value.payNow && total.minorUnits > 0;
+      const payment = paid ? paymentInput(value.payment, available, total, advance) : null;
+      setFailure(null);
+      if (paid && payment === null) {
+        return;
+      }
+      const result = await api.call("sales/create", {
+        id: SaleIdSchema.parse(uuidv7()),
+        clientId: client.id,
+        soldOn: soldOn.data,
+        items,
+        payment,
+      });
+      if (!result.ok) {
+        setFailure(apiErrorMessage(t, result.error));
+        return;
+      }
+      await queries.invalidateQueries({ queryKey: ["api", branchId] });
+      await onSaved();
+      close();
+    },
+  });
+  return (
+    <form.Subscribe
+      selector={(state) => ({
+        dirty: state.isDirty,
+        submitting: state.isSubmitting,
+        attempted: state.submissionAttempts > 0,
+        total: saleTotal(state.values.items, currency),
+        payNow: state.values.payNow,
+      })}
     >
-      <label className="block space-y-1">
-        <span>{t("finance.date")}</span>
-        <Input
-          type="date"
-          value={date}
-          max={today}
-          onChange={(e) => {
-            setDate(e.target.value);
+      {({ dirty, submitting, attempted, total, payNow }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
+            void form.handleSubmit();
           }}
-        />
-      </label>
-      {items.map((item) => (
-        <fieldset key={item.key} className="space-y-2 rounded-lg border p-3">
-          <label className="block space-y-1">
-            <span>{t("finance.name")}</span>
-            <Input
-              value={item.name}
-              aria-invalid={invalid && item.name.trim() === ""}
-              onChange={(e) => {
-                setItems(
-                  items.map((i) => (i.key === item.key ? { ...i, name: e.target.value } : i)),
-                );
-              }}
-            />
-            {invalid && item.name.trim() === "" && (
-              <span className="text-sm text-destructive">{t("error.required")}</span>
+        >
+          {failure !== null && <FormAlert message={failure} />}
+          <form.Field name="date">
+            {(field) => (
+              <TextField field={field} label={t("finance.date")} type="date" max={today} />
             )}
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <label>
-              <span>{t("finance.quantity")}</span>
-              <Input
-                type="number"
-                min="1"
-                step="1"
-                value={item.quantity}
-                onChange={(e) => {
-                  setItems(
-                    items.map((i) => (i.key === item.key ? { ...i, quantity: e.target.value } : i)),
-                  );
-                }}
-              />
-            </label>
-            <label>
-              <span>{t("finance.price")}</span>
-              <Input
-                value={item.price}
-                inputMode="decimal"
-                aria-invalid={invalid && parseMoney(item.price, client.balance.currency) === null}
-                onChange={(e) => {
-                  setItems(
-                    items.map((i) => (i.key === item.key ? { ...i, price: e.target.value } : i)),
-                  );
-                }}
-              />
-            </label>
-          </div>
-          {items.length > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setItems(items.filter((i) => i.key !== item.key));
-              }}
-            >
-              {t("finance.removeItem")}
-            </Button>
+          </form.Field>
+          <form.Field name="items">
+            {(itemsField) => {
+              const items = itemsField.state.value;
+              const edit = (key: string, change: Partial<SaleItemDraft>) => {
+                itemsField.handleChange(
+                  items.map((i) => (i.key === key ? { ...i, ...change } : i)),
+                );
+              };
+              return (
+                <>
+                  {items.map((item) => {
+                    const errors = attempted ? itemErrors(item, currency, t) : noItemErrors;
+                    return (
+                      <fieldset key={item.key} className="space-y-2 rounded-lg border p-3">
+                        <TextField
+                          field={itemField("name", item.name, errors.name, (name) => {
+                            edit(item.key, { name });
+                          })}
+                          label={t("finance.name")}
+                          autoComplete="off"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <TextField
+                            field={itemField(
+                              "quantity",
+                              item.quantity,
+                              errors.quantity,
+                              (quantity) => {
+                                edit(item.key, { quantity });
+                              },
+                            )}
+                            label={t("finance.quantity")}
+                            inputMode="numeric"
+                            autoComplete="off"
+                          />
+                          <TextField
+                            field={itemField("price", item.price, errors.price, (price) => {
+                              edit(item.key, { price });
+                            })}
+                            label={t("finance.price")}
+                            inputMode="decimal"
+                            autoComplete="off"
+                          />
+                        </div>
+                        {items.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              itemsField.handleChange(items.filter((i) => i.key !== item.key));
+                            }}
+                          >
+                            {t("finance.removeItem")}
+                          </Button>
+                        )}
+                      </fieldset>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      itemsField.handleChange([...items, emptyItem()]);
+                    }}
+                  >
+                    {t("finance.addItem")}
+                  </Button>
+                </>
+              );
+            }}
+          </form.Field>
+          <p className="font-medium">
+            {t("finance.total")}: {format.money(total)}
+          </p>
+          {canAccept && (
+            <>
+              <form.Field name="payNow">
+                {(field) => <CheckboxField field={field} label={t("finance.payNow")} />}
+              </form.Field>
+              {payNow && (
+                <form.Field name="payment">
+                  {(field) => (
+                    <PaymentBlock
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                      accounts={available}
+                      debt={total}
+                      advance={advance}
+                      canAccept
+                      invalid={attempted}
+                    />
+                  )}
+                </form.Field>
+              )}
+            </>
           )}
-        </fieldset>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => {
-          setItems([...items, { key: uuidv7(), name: "", quantity: "1", price: "" }]);
-        }}
-      >
-        {t("finance.addItem")}
-      </Button>
-      <p className="font-medium">
-        {t("finance.total")}: {format.money(total)}
-      </p>
-      {canAccept && (
-        <>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={payNow}
-              onChange={(e) => {
-                setPayNow(e.target.checked);
-              }}
-            />
-            {t("finance.payNow")}
-          </label>
-          {payNow && (
-            <PaymentBlock
-              value={draft}
-              onChange={setDraft}
-              accounts={available}
-              debt={total}
-              advance={advance}
-              canAccept
-              invalid={invalid}
-            />
-          )}
-        </>
+        </EditSheetForm>
       )}
-    </FinanceForm>
+    </form.Subscribe>
   );
 }
 
@@ -471,6 +549,10 @@ function LoadedSalePanel({
   );
 }
 
+/**
+ * Форма возврата по продаже [sale]: сумма не больше невозвращённой, обязательная причина
+ * и, при выплате, касса — по умолчанию первая активная.
+ */
 function SaleReturnForm({
   api,
   branchId,
@@ -483,86 +565,93 @@ function SaleReturnForm({
   readonly onSaved: () => Promise<void>;
 }) {
   const { t } = useI18n();
+  const { close } = useEditSheet();
   const accounts = useQuery(apiQuery(api, branchId, "finance/cash-accounts"));
   const available = (accounts.data?.accounts ?? []).filter((a) => !a.archived);
-  const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
-  const [payOut, setPayOut] = useState(false);
-  const [cashId, setCashId] = useState("");
-  const [invalid, setInvalid] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const returnable = sale.total.minorUnits - sale.returned.minorUnits;
+  const form = useForm({
+    defaultValues: { amount: "", reason: "", payOut: false, cashId: "" },
+    onSubmit: async ({ value }) => {
+      const amount = parseMoney(value.amount, sale.total.currency);
+      const cash = CashAccountIdSchema.safeParse(
+        value.cashId === "" ? available[0]?.id : value.cashId,
+      );
+      if (amount === null || (value.payOut && !cash.success)) {
+        setFailure(t("error.required"));
+        return;
+      }
+      setFailure(null);
+      const result = await api.call("sales/return", {
+        saleId: sale.id,
+        amount,
+        reason: value.reason.trim(),
+        cashAccountId: value.payOut && cash.success ? cash.data : null,
+      });
+      if (!result.ok) {
+        setFailure(apiErrorMessage(t, result.error));
+        return;
+      }
+      await onSaved();
+      close();
+    },
+  });
   return (
-    <FinanceForm
-      dirty={amount !== "" || reason !== "" || payOut}
-      onSaved={onSaved}
-      submit={async () => {
-        setInvalid(true);
-        const parsed = parseMoney(amount, sale.total.currency);
-        const cash = CashAccountIdSchema.safeParse(cashId === "" ? available[0]?.id : cashId);
-        if (
-          parsed === null ||
-          parsed.minorUnits <= 0 ||
-          parsed.minorUnits > sale.total.minorUnits - sale.returned.minorUnits ||
-          reason.trim() === "" ||
-          (payOut && !cash.success)
-        )
-          return null;
-        return api.call("sales/return", {
-          saleId: sale.id,
-          amount: parsed,
-          reason: reason.trim(),
-          cashAccountId: payOut && cash.success ? cash.data : null,
-        });
-      }}
+    <form.Subscribe
+      selector={(state) => ({
+        dirty: state.isDirty,
+        submitting: state.isSubmitting,
+        payOut: state.values.payOut,
+      })}
     >
-      <label className="block space-y-1">
-        <span>{t("finance.amount")}</span>
-        <Input
-          inputMode="decimal"
-          value={amount}
-          aria-invalid={invalid && (parseMoney(amount, sale.total.currency)?.minorUnits ?? 0) <= 0}
-          onChange={(e) => {
-            setAmount(e.target.value);
+      {({ dirty, submitting, payOut }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
+            void form.handleSubmit();
           }}
-        />
-      </label>
-      <label className="block space-y-1">
-        <span>{t("finance.reason")}</span>
-        <Input
-          value={reason}
-          aria-invalid={invalid && reason.trim() === ""}
-          onChange={(e) => {
-            setReason(e.target.value);
-          }}
-        />
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={payOut}
-          onChange={(e) => {
-            setPayOut(e.target.checked);
-          }}
-        />
-        {t("finance.payOutReturn")}
-      </label>
-      {payOut && (
-        <label className="block space-y-1">
-          <span>{t("finance.cashAccount")}</span>
-          <NativeSelect
-            value={cashId === "" ? (available[0]?.id ?? "") : cashId}
-            onChange={(e) => {
-              setCashId(e.target.value);
+        >
+          {failure !== null && <FormAlert message={failure} />}
+          <form.Field
+            name="amount"
+            validators={{
+              onSubmit: ({ value }) => {
+                const minorUnits = parseMoney(value, sale.total.currency)?.minorUnits ?? 0;
+                return minorUnits > 0 && minorUnits <= returnable
+                  ? undefined
+                  : t("error.invalidAmount");
+              },
             }}
           >
-            <option value="">{t("finance.select")}</option>
-            {available.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
+            {(field) => (
+              <TextField
+                field={field}
+                label={t("finance.amount")}
+                inputMode="decimal"
+                autoComplete="off"
+              />
+            )}
+          </form.Field>
+          <form.Field name="reason" validators={{ onSubmit: requiredText(t) }}>
+            {(field) => <TextField field={field} label={t("finance.reason")} autoComplete="off" />}
+          </form.Field>
+          <form.Field name="payOut">
+            {(field) => <CheckboxField field={field} label={t("finance.payOutReturn")} />}
+          </form.Field>
+          {payOut && (
+            <form.Field name="cashId">
+              {(field) => (
+                <SelectField
+                  field={field}
+                  label={t("finance.cashAccount")}
+                  options={available.map((a) => ({ value: a.id, label: a.name }))}
+                />
+              )}
+            </form.Field>
+          )}
+        </EditSheetForm>
       )}
-    </FinanceForm>
+    </form.Subscribe>
   );
 }

@@ -35,7 +35,7 @@ import { TariffSheet, type TariffTerms } from "@/tariffs/TariffSheet";
 import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
 import { useEditSheet } from "@/ui/editSheetContext";
 import { PaymentBlock } from "@/finance/PaymentBlock";
-import { initialPayment, paymentInput } from "@/finance/payment";
+import { initialPayment, paymentInput, type PaymentDraft } from "@/finance/payment";
 import { hasPermission, useSession } from "@/query/session";
 import { membershipsQuery } from "./card/clientCardQueries";
 import { RepayDebtChoice } from "./membership/RepayDebt";
@@ -43,6 +43,17 @@ import { RepayDebtChoice } from "./membership/RepayDebt";
 /** Шаблон абонемента: тариф, из которого берутся условия, или индивидуальные условия. */
 type Template =
   { readonly kind: "tariff"; readonly tariff: TariffPlanSchema } | { readonly kind: "individual" };
+
+/**
+ * Шаг выдачи: выбор шаблона (с ранее выбранным [chosen], чтобы вернуться к нему без потери
+ * введённых условий), условия выбранного шаблона или предложение погасить долг уже выданным
+ * абонементом [offer]. Переходы: выбор шаблона — pick → terms, «Изменить» — terms → pick,
+ * выдача с неоплаченными занятиями — terms → repay.
+ */
+type Step =
+  | { readonly kind: "pick"; readonly chosen: Template | null }
+  | { readonly kind: "terms"; readonly chosen: Template }
+  | { readonly kind: "repay"; readonly offer: RepayOffer };
 
 /**
  * Что редактируется во вложенной панели тарифа: новый тариф или существующий. Значение
@@ -66,6 +77,10 @@ interface IssueSubscriptionFormValues {
   readonly closeMode: CloseMode;
   /** Группы, в которых действует абонемент. */
   readonly groupIds: readonly GroupId[];
+  /** Принять оплату сразу при выдаче. */
+  readonly payNow: boolean;
+  /** Черновик оплаты: кассовые части и списание с аванса. */
+  readonly payment: PaymentDraft;
 }
 
 /** Предложение погасить долг после выдачи: абонемент, его остаток и неоплаченные занятия. */
@@ -105,6 +120,8 @@ function issueSubscriptionSchema(t: I18n["t"], currency: Currency) {
       activationDeadline: z.string(),
       closeMode: z.enum(["MANUAL", "ON_LAST_SESSION", "ON_EXPIRY"]),
       groupIds: z.custom<readonly GroupId[]>((value) => Array.isArray(value)),
+      payNow: z.boolean(),
+      payment: z.custom<PaymentDraft>(),
     })
     .refine((v) => v.unlimited || positiveInt(v.sessions) !== null, {
       path: ["sessions"],
@@ -141,6 +158,8 @@ function valuesFrom(template: Template, groupIds: readonly GroupId[]): IssueSubs
     activationDeadline: "",
     closeMode: "MANUAL",
     groupIds,
+    payNow: true,
+    payment: initialPayment(),
   } as const;
   switch (template.kind) {
     case "tariff":
@@ -277,9 +296,7 @@ function IssueSubscriptionSteps({
   const tariffsQuery = apiQuery(api, branchId, "tariffs/list", {});
   const tariffs = useQuery(tariffsQuery);
   const schema = useMemo(() => issueSubscriptionSchema(t, currency), [t, currency]);
-  const [step, setStep] = useState<"pick" | "terms" | "repay">("pick");
-  const [offer, setOffer] = useState<RepayOffer | null>(null);
-  const [chosen, setChosen] = useState<Template | null>(null);
+  const [step, setStep] = useState<Step>({ kind: "pick", chosen: null });
   const [defaults, setDefaults] = useState(() =>
     valuesFrom({ kind: "individual" }, clientGroupIds),
   );
@@ -288,23 +305,16 @@ function IssueSubscriptionSteps({
   const [editorOpen, setEditorOpen] = useState(false);
   const session = useSession(api);
   const canAccept = hasPermission(session, "CAN_ACCEPT_PAYMENTS");
-  const [payNow, setPayNow] = useState(true);
-  const [paymentDraft, setPaymentDraft] = useState(initialPayment);
   const accounts = useQuery({
     ...apiQuery(api, branchId, "finance/cash-accounts"),
-    enabled: canAccept && step === "terms",
+    enabled: canAccept && step.kind === "terms",
   });
   const paymentOptions = useQuery({
     ...apiQuery(api, branchId, "finance/client-payment-options", { clientId }),
-    enabled: canAccept && step === "terms",
+    enabled: canAccept && step.kind === "terms",
   });
   const availableCash = (accounts.data?.accounts ?? []).filter((account) => !account.archived);
   const advance = paymentOptions.data?.advance ?? { minorUnits: 0, currency };
-  const paymentDirty =
-    !payNow ||
-    paymentDraft.fromAdvance !== "" ||
-    paymentDraft.cash.length !== 1 ||
-    paymentDraft.cash.some((row) => row.amount !== null || row.cashAccountId !== "");
 
   const active = (tariffs.data?.tariffs ?? []).filter((tariff) => !tariff.archived);
 
@@ -316,7 +326,7 @@ function IssueSubscriptionSteps({
       const price = parseMoney(value.price, currency);
       const sessions = value.unlimited ? null : positiveInt(value.sessions);
       if (
-        chosen === null ||
+        step.kind !== "terms" ||
         durationValue === null ||
         price === null ||
         (!value.unlimited && sessions === null)
@@ -325,13 +335,14 @@ function IssueSubscriptionSteps({
       }
       setFailure(null);
       const payment =
-        canAccept && payNow && price.minorUnits > 0
-          ? paymentInput(paymentDraft, availableCash, price, advance)
+        canAccept && value.payNow && price.minorUnits > 0
+          ? paymentInput(value.payment, availableCash, price, advance)
           : null;
-      if (canAccept && payNow && price.minorUnits > 0 && payment === null) {
+      if (canAccept && value.payNow && price.minorUnits > 0 && payment === null) {
         setFailure(t("error.invalidAmount"));
         return;
       }
+      const chosen = step.chosen;
       const membershipId = MembershipIdSchema.parse(uuidv7());
       const result = await api.call("memberships/issue", {
         id: membershipId,
@@ -376,8 +387,10 @@ function IssueSubscriptionSteps({
       if (activeNow) {
         const unpaid = await api.call("memberships/unpaid-sessions", { membershipId });
         if (unpaid.ok && unpaid.value.sessions.length > 0) {
-          setOffer({ membershipId, remaining: sessions, sessions: unpaid.value.sessions });
-          setStep("repay");
+          setStep({
+            kind: "repay",
+            offer: { membershipId, remaining: sessions, sessions: unpaid.value.sessions },
+          });
           return;
         }
       }
@@ -385,24 +398,23 @@ function IssueSubscriptionSteps({
     },
   });
 
-  const dirty = useSelector(form.store, (state) => state.isDirty) || paymentDirty;
+  const dirty = useSelector(form.store, (state) => state.isDirty);
   useEffect(() => {
-    if (step === "pick") {
+    if (step.kind === "pick") {
       reportGuard({ dirty, submitting: false });
     }
   }, [reportGuard, step, dirty]);
+
+  const chosen = step.kind === "repay" ? null : step.chosen;
 
   const choose = (template: Template) => {
     if (chosen === null || templateKey(chosen) !== templateKey(template)) {
       const values = valuesFrom(template, clientGroupIds);
       setDefaults(values);
       form.reset(values);
-      setPaymentDraft(initialPayment());
-      setPayNow(true);
       setFailure(null);
     }
-    setChosen(template);
-    setStep("terms");
+    setStep({ kind: "terms", chosen: template });
   };
 
   const refreshTariffs = () => queryClient.invalidateQueries({ queryKey: tariffsQuery.queryKey });
@@ -434,7 +446,7 @@ function IssueSubscriptionSteps({
   const chosenKey = chosen === null ? null : templateKey(chosen);
   return (
     <>
-      {step === "pick" && (
+      {step.kind === "pick" && (
         <EditSheetBody>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">{t("clients.issue.pickHint")}</p>
@@ -511,22 +523,22 @@ function IssueSubscriptionSteps({
           </ul>
         </EditSheetBody>
       )}
-      {step === "repay" && offer !== null && (
+      {step.kind === "repay" && (
         <EditSheetBody>
           <p className="text-sm">{t("membership.repay.offer")}</p>
           <RepayDebtChoice
             api={api}
             branchId={branchId}
             clientId={clientId}
-            membershipId={offer.membershipId}
-            remaining={offer.remaining}
-            sessions={offer.sessions}
+            membershipId={step.offer.membershipId}
+            remaining={step.offer.remaining}
+            sessions={step.offer.sessions}
             skipLabel={t("membership.repay.skip")}
             onFinished={close}
           />
         </EditSheetBody>
       )}
-      {step === "terms" && chosen !== null && (
+      {step.kind === "terms" && (
         <form.Subscribe
           selector={(state) => ({
             dirty: state.isDirty,
@@ -534,9 +546,9 @@ function IssueSubscriptionSteps({
             noGroups: state.values.groupIds.length === 0,
           })}
         >
-          {({ dirty: formDirty, submitting, noGroups }) => (
+          {({ dirty, submitting, noGroups }) => (
             <EditSheetForm
-              dirty={formDirty || paymentDirty}
+              dirty={dirty}
               submitting={submitting}
               submitDisabled={noGroups}
               submitLabel={t("clients.issue.submit")}
@@ -546,10 +558,10 @@ function IssueSubscriptionSteps({
             >
               {failure !== null && <FormAlert message={failure} />}
               <TemplateSummary
-                template={chosen}
+                template={step.chosen}
                 disabled={submitting}
                 onChange={() => {
-                  setStep("pick");
+                  setStep({ kind: "pick", chosen: step.chosen });
                 }}
               />
               <form.Field name="groupIds">
@@ -705,30 +717,32 @@ function IssueSubscriptionSteps({
               </form.Field>
               {canAccept && (
                 <>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={payNow}
-                      onChange={(event) => {
-                        setPayNow(event.target.checked);
-                      }}
-                    />
-                    {t("finance.payNow")}
-                  </label>
-                  {payNow && (
-                    <form.Subscribe selector={(state) => state.values.price}>
-                      {(price) => (
-                        <PaymentBlock
-                          value={paymentDraft}
-                          onChange={setPaymentDraft}
-                          accounts={availableCash}
-                          debt={parseMoney(price, currency) ?? { minorUnits: 0, currency }}
-                          advance={advance}
-                          canAccept
-                        />
-                      )}
-                    </form.Subscribe>
-                  )}
+                  <form.Field name="payNow">
+                    {(field) => <CheckboxField field={field} label={t("finance.payNow")} />}
+                  </form.Field>
+                  <form.Subscribe
+                    selector={(state) => ({
+                      payNow: state.values.payNow,
+                      price: state.values.price,
+                    })}
+                  >
+                    {({ payNow, price }) =>
+                      payNow && (
+                        <form.Field name="payment">
+                          {(field) => (
+                            <PaymentBlock
+                              value={field.state.value}
+                              onChange={field.handleChange}
+                              accounts={availableCash}
+                              debt={parseMoney(price, currency) ?? { minorUnits: 0, currency }}
+                              advance={advance}
+                              canAccept
+                            />
+                          )}
+                        </form.Field>
+                      )
+                    }
+                  </form.Subscribe>
                 </>
               )}
             </EditSheetForm>

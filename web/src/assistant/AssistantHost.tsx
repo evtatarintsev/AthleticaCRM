@@ -27,6 +27,19 @@ import { ATTACHMENT_ACCEPT, attachmentProblem } from "./attachments";
 import { ImportCompleted, ImportDraftCard } from "./ImportDraftCard";
 
 /**
+ * Ход сотрудника в диалоге: ничего не отправляется, запрос в работе (с файлами — показывается
+ * «обрабатываю файл») или запрос отклонён с сообщением [message]. Отказ снимается следующим
+ * запросом или новыми вложениями.
+ */
+type Turn =
+  | { readonly kind: "idle" }
+  | { readonly kind: "sending"; readonly withFiles: boolean }
+  | { readonly kind: "failed"; readonly message: string };
+
+/** Ход без запроса и без отказа. */
+const IDLE: Turn = { kind: "idle" };
+
+/**
  * Панель помощника и кнопка её открытия на широком экране. Состояние живёт над размонтируемым
  * EditSheet и переживает закрытие и переходы страниц. Открытием управляет раскладка
  * ([open], [onOpenChange]): на узком экране панель открывается из меню аккаунта.
@@ -47,10 +60,8 @@ export function AssistantHost({
   const status = useQuery(assistantStatusQuery(api, employeeId));
   const allowed = assistantAllowed(status.data);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [turn, setTurn] = useState<Turn>(IDLE);
   const [files, setFiles] = useState<readonly File[]>([]);
-  const [withFiles, setWithFiles] = useState(false);
   const [stale, setStale] = useState<AssistantBlockImportDraft["draftId"] | null>(null);
   const picker = useRef<HTMLInputElement>(null);
   /** Уже загруженные файлы: повторная отправка после отказа не плодит копии с ПД в хранилище. */
@@ -90,7 +101,18 @@ export function AssistantHost({
     }
   }, [dialog.error, refreshStatus]);
   const processing = dialog.data?.messages.some((m) => m.status === "processing") === true;
+  const sending = turn.kind === "sending";
+  const withFiles = turn.kind === "sending" && turn.withFiles;
+  const failure = turn.kind === "failed" ? turn.message : null;
   const busy = sending || processing;
+  /** Показывает отказ [message]; по завершении запроса он остаётся на экране. */
+  const fail = (message: string) => {
+    setTurn({ kind: "failed", message });
+  };
+  /** Снимает завершённый запрос: отказ остаётся, состояние отправки сбрасывается. */
+  const settle = () => {
+    setTurn((current) => (current.kind === "sending" ? IDLE : current));
+  };
   const problem = attachmentProblem(files);
   const canSend = text.trim() !== "" || files.length > 0;
 
@@ -100,7 +122,7 @@ export function AssistantHost({
       return;
     }
     setFiles((current) => [...current, ...Array.from(list)]);
-    setFailure(null);
+    setTurn((current) => (current.kind === "failed" ? IDLE : current));
   }
 
   /** Квитанция обновляет все списки клиентов, в том числе в других филиалах. */
@@ -122,9 +144,7 @@ export function AssistantHost({
       return;
     }
     inFlight.current = true;
-    setSending(true);
-    setWithFiles(files.length > 0);
-    setFailure(null);
+    setTurn({ kind: "sending", withFiles: files.length > 0 });
     try {
       const attachments: UploadId[] = [];
       for (const file of files) {
@@ -138,7 +158,7 @@ export function AssistantHost({
           return;
         }
         if (!uploaded.ok) {
-          setFailure(assistantErrorMessage(t, uploaded.error));
+          fail(assistantErrorMessage(t, uploaded.error));
           return;
         }
         uploadedIds.current.set(file, uploaded.value.id);
@@ -164,7 +184,7 @@ export function AssistantHost({
           await refreshClients();
         }
       } else {
-        setFailure(assistantErrorMessage(t, result.error));
+        fail(assistantErrorMessage(t, result.error));
         if (result.error.kind !== "business") {
           uploadedIds.current = new WeakMap();
         }
@@ -176,8 +196,7 @@ export function AssistantHost({
       await status.refetch();
     } finally {
       inFlight.current = false;
-      setSending(false);
-      setWithFiles(false);
+      settle();
     }
   }
 
@@ -187,8 +206,7 @@ export function AssistantHost({
       return;
     }
     inFlight.current = true;
-    setSending(true);
-    setFailure(null);
+    setTurn({ kind: "sending", withFiles: false });
     setStale(null);
     try {
       const result = await api.call("assistant/imports/confirm", { draftId });
@@ -203,13 +221,13 @@ export function AssistantHost({
       ) {
         setStale(draftId);
       } else {
-        setFailure(assistantErrorMessage(t, result.error));
+        fail(assistantErrorMessage(t, result.error));
       }
       await dialog.refetch();
       await status.refetch();
     } finally {
       inFlight.current = false;
-      setSending(false);
+      settle();
     }
   }
 
@@ -219,8 +237,7 @@ export function AssistantHost({
       return;
     }
     inFlight.current = true;
-    setSending(true);
-    setFailure(null);
+    setTurn({ kind: "sending", withFiles: false });
     try {
       const result = await api.call("assistant/drafts/confirm", { clientId });
       if (!active.current) {
@@ -229,13 +246,13 @@ export function AssistantHost({
       if (result.ok) {
         await refreshClients();
       } else {
-        setFailure(assistantErrorMessage(t, result.error));
+        fail(assistantErrorMessage(t, result.error));
       }
       await dialog.refetch();
       await status.refetch();
     } finally {
       inFlight.current = false;
-      setSending(false);
+      settle();
     }
   }
 
@@ -245,8 +262,7 @@ export function AssistantHost({
       return;
     }
     inFlight.current = true;
-    setSending(true);
-    setFailure(null);
+    setTurn({ kind: "sending", withFiles: false });
     try {
       const result = await api.call("assistant/dialogs/create");
       if (!active.current) {
@@ -257,12 +273,12 @@ export function AssistantHost({
         setText("");
         setFiles([]);
       } else {
-        setFailure(assistantErrorMessage(t, result.error));
+        fail(assistantErrorMessage(t, result.error));
       }
       await status.refetch();
     } finally {
       inFlight.current = false;
-      setSending(false);
+      settle();
     }
   }
 

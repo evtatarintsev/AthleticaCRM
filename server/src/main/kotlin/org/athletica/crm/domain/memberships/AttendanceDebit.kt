@@ -41,7 +41,9 @@ internal suspend fun Memberships.reconcileDebit(
         }
         return null
     }
-    if (existing != null) return null
+    if (existing != null) {
+        return null
+    }
     val groupId = checkNotNull(participation.groupId)
     val membership = debitCandidate(clientId, groupId, participation.sessionDate, today) ?: return null
     return AppliedDebit(membership.applyAttendanceDebit(participation, today), membership is InactiveMembership)

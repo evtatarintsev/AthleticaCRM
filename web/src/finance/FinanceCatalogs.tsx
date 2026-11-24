@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ApiClient } from "@/api/client";
@@ -14,9 +15,8 @@ import {
   type Currency,
 } from "@/api/generated/contracts";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import { FormAlert } from "@/forms/FormAlert";
+import { CheckboxField, SelectField, TextField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
 import { parseMoney } from "@/lib/money";
@@ -24,8 +24,9 @@ import { uuidv7 } from "@/lib/uuid";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { apiQuery, myBranchesQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
-import { EditSheet } from "@/ui/EditSheet";
-import { FinanceForm } from "./FinanceForm";
+import { EditSheet, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
+import { requiredText } from "@/forms/requiredText";
 
 export function FinanceAccounts({
   api,
@@ -136,6 +137,10 @@ export function FinanceAccounts({
   );
 }
 
+/**
+ * Форма кассы: новая — с начальным остатком на дату, существующая [initial] — только название,
+ * вид и филиал. Остаток может быть отрицательным (ведущий минус) в валюте [currency].
+ */
 function CashAccountForm({
   api,
   initial,
@@ -148,121 +153,114 @@ function CashAccountForm({
   readonly onSaved: () => Promise<void>;
 }) {
   const { t } = useI18n();
+  const { close } = useEditSheet();
   const branches = useQuery(myBranchesQuery(api));
   const [id] = useState(() => initial?.id ?? CashAccountIdSchema.parse(uuidv7()));
-  const [name, setName] = useState(initial?.name ?? "");
-  const [kind, setKind] = useState(initial?.kind ?? "CASH");
-  const [branch, setBranch] = useState<string>(initial?.branchId ?? "");
-  const [opening, setOpening] = useState("0");
-  const today = todayLocalDate(useSession(api).orgInfo.timezone);
-  const [date, setDate] = useState<string>(today);
-  const [invalid, setInvalid] = useState(false);
-  return (
-    <FinanceForm
-      dirty={
-        name !== (initial?.name ?? "") ||
-        kind !== (initial?.kind ?? "CASH") ||
-        branch !== (initial?.branchId ?? "") ||
-        opening !== "0" ||
-        date !== today
+  const today: string = todayLocalDate(useSession(api).orgInfo.timezone);
+  const [failure, setFailure] = useState<string | null>(null);
+  const form = useForm({
+    defaultValues: {
+      name: initial?.name ?? "",
+      kind: initial?.kind ?? "CASH",
+      branch: initial?.branchId ?? "",
+      opening: "0",
+      date: today,
+    },
+    onSubmit: async ({ value }) => {
+      const amount = parseMoney(value.opening.trim().replace(/^-/, ""), currency);
+      const on = LocalDateSchema.safeParse(value.date);
+      const branchId = BranchIdSchema.safeParse(value.branch);
+      if (initial === null && (amount === null || !on.success)) {
+        setFailure(t("error.invalidAmount"));
+        return;
       }
-      onSaved={onSaved}
-      submit={() => {
-        setInvalid(true);
-        const amount = parseMoney(opening.trim().replace(/^-/, ""), currency);
-        const on = LocalDateSchema.safeParse(date);
-        const branchId = BranchIdSchema.safeParse(branch);
-        if (name.trim() === "" || (initial === null && (amount === null || !on.success))) {
-          return Promise.resolve(null);
-        }
-        return api.call("finance/cash-accounts/save", {
-          id,
-          name: name.trim(),
-          kind,
-          branchId: branchId.success ? branchId.data : null,
-          openingBalance:
-            initial === null && amount !== null
-              ? {
-                  ...amount,
-                  minorUnits: opening.trim().startsWith("-")
-                    ? -amount.minorUnits
-                    : amount.minorUnits,
-                }
-              : null,
-          openingOn: initial === null && on.success ? on.data : null,
-        });
-      }}
+      setFailure(null);
+      const result = await api.call("finance/cash-accounts/save", {
+        id,
+        name: value.name.trim(),
+        kind: value.kind,
+        branchId: branchId.success ? branchId.data : null,
+        openingBalance:
+          initial === null && amount !== null
+            ? {
+                ...amount,
+                minorUnits: value.opening.trim().startsWith("-")
+                  ? -amount.minorUnits
+                  : amount.minorUnits,
+              }
+            : null,
+        openingOn: initial === null && on.success ? on.data : null,
+      });
+      if (!result.ok) {
+        setFailure(apiErrorMessage(t, result.error));
+        return;
+      }
+      await onSaved();
+      close();
+    },
+  });
+  return (
+    <form.Subscribe
+      selector={(state) => ({ dirty: state.isDirty, submitting: state.isSubmitting })}
     >
-      <label className="block space-y-1">
-        <span>{t("finance.name")}</span>
-        <Input
-          value={name}
-          aria-invalid={invalid && name.trim() === ""}
-          onChange={(e) => {
-            setName(e.target.value);
-          }}
-        />
-        {invalid && name.trim() === "" && (
-          <span className="text-sm text-destructive">{t("error.required")}</span>
-        )}
-      </label>
-      <label className="block space-y-1">
-        <span>{t("finance.kind")}</span>
-        <NativeSelect
-          value={kind}
-          onChange={(e) => {
-            setKind(CashAccountKindSchema.parse(e.target.value));
+      {({ dirty, submitting }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
+            void form.handleSubmit();
           }}
         >
-          {CashAccountKindSchema.options.map((k) => (
-            <option key={k} value={k}>
-              {t(`finance.accountKind.${k}`)}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
-      <label className="block space-y-1">
-        <span>{t("finance.branch")}</span>
-        <NativeSelect
-          value={branch}
-          onChange={(e) => {
-            setBranch(e.target.value);
-          }}
-        >
-          <option value="">{t("finance.noBranch")}</option>
-          {branches.data?.branches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
-      {initial === null && (
-        <>
-          <label className="block space-y-1">
-            <span>{t("finance.openingBalance")}</span>
-            <Input
-              inputMode="decimal"
-              value={opening}
-              onChange={(e) => {
-                setOpening(e.target.value);
-              }}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span>{t("finance.date")}</span>
-            <Input
-              type="date"
-              value={date}
-              max={today}
-              onChange={(e) => {
-                setDate(e.target.value);
-              }}
-            />
-          </label>
-        </>
+          {failure !== null && <FormAlert message={failure} />}
+          <form.Field name="name" validators={{ onSubmit: requiredText(t) }}>
+            {(field) => <TextField field={field} label={t("finance.name")} autoComplete="off" />}
+          </form.Field>
+          <form.Field name="kind">
+            {(field) => (
+              <SelectField
+                field={field}
+                label={t("finance.kind")}
+                options={CashAccountKindSchema.options.map((k) => ({
+                  value: k,
+                  label: t(`finance.accountKind.${k}`),
+                }))}
+              />
+            )}
+          </form.Field>
+          <form.Field name="branch">
+            {(field) => (
+              <SelectField
+                field={field}
+                label={t("finance.branch")}
+                options={[
+                  { value: "", label: t("finance.noBranch") },
+                  ...(branches.data?.branches ?? []).map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
+            )}
+          </form.Field>
+          {initial === null && (
+            <>
+              <form.Field name="opening">
+                {(field) => (
+                  <TextField
+                    field={field}
+                    label={t("finance.openingBalance")}
+                    inputMode="decimal"
+                    autoComplete="off"
+                  />
+                )}
+              </form.Field>
+              <form.Field name="date">
+                {(field) => (
+                  <TextField field={field} label={t("finance.date")} type="date" max={today} />
+                )}
+              </form.Field>
+            </>
+          )}
+        </EditSheetForm>
       )}
-    </FinanceForm>
+    </form.Subscribe>
   );
 }
 
@@ -380,6 +378,10 @@ export function FinanceArticles({
   );
 }
 
+/**
+ * Форма статьи ДДС: новая или существующая [initial]. Родителем может быть только
+ * корневая несистемная группа того же направления из [articles]; группа родителя не имеет.
+ */
 function CashArticleForm({
   api,
   initial,
@@ -392,104 +394,110 @@ function CashArticleForm({
   readonly onSaved: () => Promise<void>;
 }) {
   const { t } = useI18n();
+  const { close } = useEditSheet();
   const [id] = useState(() => initial?.id ?? CashArticleIdSchema.parse(uuidv7()));
-  const [name, setName] = useState(initial?.name ?? "");
-  const [direction, setDirection] = useState(initial?.direction ?? "EXPENSE");
-  const [parent, setParent] = useState<string>(initial?.parentId ?? "");
-  const [group, setGroup] = useState(initial?.isGroup ?? false);
-  const [invalid, setInvalid] = useState(false);
-  return (
-    <FinanceForm
-      dirty={
-        name !== (initial?.name ?? "") ||
-        direction !== (initial?.direction ?? "EXPENSE") ||
-        parent !== (initial?.parentId ?? "") ||
-        group !== (initial?.isGroup ?? false)
+  const [failure, setFailure] = useState<string | null>(null);
+  const form = useForm({
+    defaultValues: {
+      name: initial?.name ?? "",
+      direction: initial?.direction ?? "EXPENSE",
+      parent: initial?.parentId ?? "",
+      group: initial?.isGroup ?? false,
+    },
+    onSubmit: async ({ value }) => {
+      setFailure(null);
+      const parentId = CashArticleIdSchema.safeParse(value.parent);
+      const result = await api.call("finance/cash-articles/save", {
+        id,
+        name: value.name.trim(),
+        direction: value.direction,
+        parentId: !value.group && parentId.success ? parentId.data : null,
+        isGroup: value.group,
+      });
+      if (!result.ok) {
+        setFailure(apiErrorMessage(t, result.error));
+        return;
       }
-      onSaved={onSaved}
-      submit={() => {
-        setInvalid(true);
-        if (name.trim() === "") {
-          return Promise.resolve(null);
-        }
-        const parentId = CashArticleIdSchema.safeParse(parent);
-        return api.call("finance/cash-articles/save", {
-          id,
-          name: name.trim(),
-          direction,
-          parentId: !group && parentId.success ? parentId.data : null,
-          isGroup: group,
-        });
-      }}
+      await onSaved();
+      close();
+    },
+  });
+  return (
+    <form.Subscribe
+      selector={(state) => ({
+        dirty: state.isDirty,
+        submitting: state.isSubmitting,
+        direction: state.values.direction,
+        group: state.values.group,
+      })}
     >
-      <label className="block space-y-1">
-        <span>{t("finance.name")}</span>
-        <Input
-          value={name}
-          aria-invalid={invalid && name.trim() === ""}
-          onChange={(e) => {
-            setName(e.target.value);
-          }}
-        />
-        {invalid && name.trim() === "" && (
-          <span className="text-sm text-destructive">{t("error.required")}</span>
-        )}
-      </label>
-      <label className="block space-y-1">
-        <span>{t("finance.direction")}</span>
-        <NativeSelect
-          value={direction}
-          onChange={(e) => {
-            setDirection(CashDirectionSchema.parse(e.target.value));
-            setParent("");
+      {({ dirty, submitting, direction, group }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
+            void form.handleSubmit();
           }}
         >
-          {CashDirectionSchema.options.map((d) => (
-            <option key={d} value={d}>
-              {t(`finance.direction.${d}`)}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={group}
-          onChange={(e) => {
-            setGroup(e.target.checked);
-            setParent("");
-          }}
-        />
-        {t("finance.isGroup")}
-      </label>
-      {!group && (
-        <label className="block space-y-1">
-          <span>{t("finance.parent")}</span>
-          <NativeSelect
-            value={parent}
-            onChange={(e) => {
-              setParent(e.target.value);
+          {failure !== null && <FormAlert message={failure} />}
+          <form.Field name="name" validators={{ onSubmit: requiredText(t) }}>
+            {(field) => <TextField field={field} label={t("finance.name")} autoComplete="off" />}
+          </form.Field>
+          <form.Field
+            name="direction"
+            listeners={{
+              onChange: () => {
+                form.setFieldValue("parent", "");
+              },
             }}
           >
-            <option value="">{t("finance.noParent")}</option>
-            {articles
-              .filter(
-                (a) =>
-                  a.isGroup &&
-                  a.parentId === null &&
-                  !a.archived &&
-                  a.systemCode === null &&
-                  a.direction === direction &&
-                  a.id !== id,
-              )
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-          </NativeSelect>
-        </label>
+            {(field) => (
+              <SelectField
+                field={field}
+                label={t("finance.direction")}
+                options={CashDirectionSchema.options.map((d) => ({
+                  value: d,
+                  label: t(`finance.direction.${d}`),
+                }))}
+              />
+            )}
+          </form.Field>
+          <form.Field
+            name="group"
+            listeners={{
+              onChange: () => {
+                form.setFieldValue("parent", "");
+              },
+            }}
+          >
+            {(field) => <CheckboxField field={field} label={t("finance.isGroup")} />}
+          </form.Field>
+          {!group && (
+            <form.Field name="parent">
+              {(field) => (
+                <SelectField
+                  field={field}
+                  label={t("finance.parent")}
+                  options={[
+                    { value: "", label: t("finance.noParent") },
+                    ...articles
+                      .filter(
+                        (a) =>
+                          a.isGroup &&
+                          a.parentId === null &&
+                          !a.archived &&
+                          a.systemCode === null &&
+                          a.direction === direction &&
+                          a.id !== id,
+                      )
+                      .map((a) => ({ value: a.id, label: a.name })),
+                  ]}
+                />
+              )}
+            </form.Field>
+          )}
+        </EditSheetForm>
       )}
-    </FinanceForm>
+    </form.Subscribe>
   );
 }

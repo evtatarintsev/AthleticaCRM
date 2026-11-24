@@ -73,7 +73,9 @@ internal data class DbGroup(
                 .onViolation("group_employees_employee_id_fkey") { CommonDomainError("EMPLOYEE_NOT_FOUND", Messages.EmployeeNotFound.localize()) }
                 .execute()
         }
-        if (syncEmployees) sync.sync()
+        if (syncEmployees) {
+            sync.sync()
+        }
     }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

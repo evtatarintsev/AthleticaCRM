@@ -67,10 +67,14 @@ class Database(val pool: ConnectionPool) : ConnectionScope {
         val scope = LazyTransactionScope(connection)
         return try {
             val result = scope.block()
-            if (scope.begun) connection.commitTransaction().awaitFirstOrNull()
+            if (scope.begun) {
+                connection.commitTransaction().awaitFirstOrNull()
+            }
             result
         } catch (e: Exception) {
-            if (scope.begun) connection.rollbackTransaction().awaitFirstOrNull()
+            if (scope.begun) {
+                connection.rollbackTransaction().awaitFirstOrNull()
+            }
             throw e
         } finally {
             connection.close().awaitFirstOrNull()

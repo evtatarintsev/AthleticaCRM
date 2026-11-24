@@ -246,6 +246,22 @@ describe("раздел Финансы", () => {
     ).toBe(1500000);
   });
 
+  it("касса без названия не сохраняется и подсвечивает поле", async () => {
+    const api = financeServer();
+    openApp(`${path}&tab=accounts`, api.fetch);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: ru["finance.createAccount"] }));
+    const dialog = await screen.findByRole("dialog", { name: ru["finance.createAccount"] });
+    await user.type(within(dialog).getByLabelText(ru["finance.name"]), "   ");
+    await user.click(within(dialog).getByRole("button", { name: ru["action.save"] }));
+    expect(await within(dialog).findByText(ru["error.required"])).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(ru["finance.name"])).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(api.to("finance/cash-accounts/save")).toHaveLength(0);
+  });
+
   it("системная статья не имеет действий, пользовательская группа сохраняется", async () => {
     const api = financeServer();
     openApp(`${path}&tab=articles`, api.fetch);

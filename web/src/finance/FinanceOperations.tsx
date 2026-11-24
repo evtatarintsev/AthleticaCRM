@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form";
 import { skipToken, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -22,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
+import { SelectField, TextField } from "@/forms/fields";
 import { useI18n } from "@/i18n/context";
 import { downloadBlob } from "@/lib/download";
 import { todayLocalDate } from "@/lib/localDate";
@@ -30,9 +32,9 @@ import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { unwrap } from "@/query/apiFailure";
 import { apiQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
-import { EditSheet, EditSheetBody } from "@/ui/EditSheet";
+import { EditSheet, EditSheetBody, EditSheetForm } from "@/ui/EditSheet";
+import { useEditSheet } from "@/ui/editSheetContext";
 import { CancellationForm } from "./CancellationForm";
-import { FinanceForm } from "./FinanceForm";
 import { financePeriod, type FinanceSearch } from "./financeSearch";
 import { SaleSheet } from "./SaleSheet";
 
@@ -546,6 +548,10 @@ export function JournalFilters({
   );
 }
 
+/**
+ * Форма кассовой операции [kind]: поступление и выплата — по статье с контрагентом (текстом или
+ * сотрудником), перемещение — между двумя разными кассами. Сумма положительная, в [currency].
+ */
 function CashOperationForm({
   api,
   branchId,
@@ -564,6 +570,7 @@ function CashOperationForm({
   readonly onSaved: () => Promise<void>;
 }) {
   const { t } = useI18n();
+  const { close } = useEditSheet();
   const employees = useQuery(apiQuery(api, branchId, "employees/list"));
   const available = accounts.filter((a) => !a.archived);
   const selectable = articles.filter(
@@ -573,181 +580,177 @@ function CashOperationForm({
       a.systemCode === null &&
       a.direction === (kind === "income" ? "INCOME" : "EXPENSE"),
   );
-  const [cashId, setCashId] = useState<string>(available[0]?.id ?? "");
-  const [toId, setToId] = useState<string>(available[1]?.id ?? "");
-  const [articleId, setArticleId] = useState<string>(selectable[0]?.id ?? "");
-  const [amount, setAmount] = useState("");
-  const today = todayLocalDate(useSession(api).orgInfo.timezone);
-  const [date, setDate] = useState<string>(today);
-  const [counterparty, setCounterparty] = useState("");
-  const [employee, setEmployee] = useState("");
-  const [comment, setComment] = useState("");
-  const [invalid, setInvalid] = useState(false);
-  return (
-    <FinanceForm
-      dirty={
-        amount !== "" ||
-        counterparty !== "" ||
-        employee !== "" ||
-        comment !== "" ||
-        date !== today ||
-        cashId !== available[0]?.id ||
-        toId !== available[1]?.id ||
-        articleId !== selectable[0]?.id
+  const today: string = todayLocalDate(useSession(api).orgInfo.timezone);
+  const [failure, setFailure] = useState<string | null>(null);
+  const positiveAmount = (value: string) =>
+    (parseMoney(value, currency)?.minorUnits ?? 0) > 0 ? undefined : t("error.invalidAmount");
+  const form = useForm({
+    defaultValues: {
+      cashId: available[0]?.id ?? "",
+      toId: available[1]?.id ?? "",
+      articleId: selectable[0]?.id ?? "",
+      amount: "",
+      date: today,
+      counterparty: "",
+      employee: "",
+      comment: "",
+    },
+    onSubmit: async ({ value }) => {
+      const parsed = parseMoney(value.amount, currency);
+      const cash = CashAccountIdSchema.safeParse(value.cashId);
+      const to = CashAccountIdSchema.safeParse(value.toId);
+      const article = CashArticleIdSchema.safeParse(value.articleId);
+      const occurredOn = LocalDateSchema.safeParse(value.date);
+      const person = EmployeeIdSchema.safeParse(value.employee);
+      const comment = value.comment.trim() === "" ? null : value.comment.trim();
+      if (parsed === null || !cash.success || !occurredOn.success) {
+        setFailure(t("error.required"));
+        return;
       }
-      onSaved={onSaved}
-      submit={() => {
-        setInvalid(true);
-        const parsed = parseMoney(amount, currency);
-        const cash = CashAccountIdSchema.safeParse(cashId);
-        const to = CashAccountIdSchema.safeParse(toId);
-        const article = CashArticleIdSchema.safeParse(articleId);
-        const occurredOn = LocalDateSchema.safeParse(date);
-        const person = EmployeeIdSchema.safeParse(employee);
-        if (parsed === null || parsed.minorUnits <= 0 || !cash.success || !occurredOn.success)
-          return Promise.resolve(null);
-        if (kind === "transfer") {
-          if (!to.success || to.data === cash.data) return Promise.resolve(null);
-          return api.call("finance/transfer", {
-            fromCashAccountId: cash.data,
-            toCashAccountId: to.data,
-            amount: parsed,
-            occurredOn: occurredOn.data,
-            comment: comment.trim() === "" ? null : comment.trim(),
-          });
-        }
-        if (!article.success) return Promise.resolve(null);
-        return api.call(kind === "income" ? "finance/income" : "finance/expense", {
-          cashAccountId: cash.data,
-          articleId: article.data,
-          amount: parsed,
-          occurredOn: occurredOn.data,
-          counterpartyEmployeeId: person.success ? person.data : null,
-          counterpartyText:
-            person.success || counterparty.trim() === "" ? null : counterparty.trim(),
-          comment: comment.trim() === "" ? null : comment.trim(),
-        });
-      }}
+      const request =
+        kind === "transfer"
+          ? to.success && to.data !== cash.data
+            ? () =>
+                api.call("finance/transfer", {
+                  fromCashAccountId: cash.data,
+                  toCashAccountId: to.data,
+                  amount: parsed,
+                  occurredOn: occurredOn.data,
+                  comment,
+                })
+            : null
+          : article.success
+            ? () =>
+                api.call(kind === "income" ? "finance/income" : "finance/expense", {
+                  cashAccountId: cash.data,
+                  articleId: article.data,
+                  amount: parsed,
+                  occurredOn: occurredOn.data,
+                  counterpartyEmployeeId: person.success ? person.data : null,
+                  counterpartyText:
+                    person.success || value.counterparty.trim() === ""
+                      ? null
+                      : value.counterparty.trim(),
+                  comment,
+                })
+            : null;
+      if (request === null) {
+        setFailure(t("error.required"));
+        return;
+      }
+      setFailure(null);
+      const result = await request();
+      if (!result.ok) {
+        setFailure(apiErrorMessage(t, result.error));
+        return;
+      }
+      await onSaved();
+      close();
+    },
+  });
+  const accountOptions = (exclude: string) => [
+    { value: "", label: t("finance.select") },
+    ...available.filter((a) => a.id !== exclude).map((a) => ({ value: a.id, label: a.name })),
+  ];
+  return (
+    <form.Subscribe
+      selector={(state) => ({
+        dirty: state.isDirty,
+        submitting: state.isSubmitting,
+        cashId: state.values.cashId,
+        employee: state.values.employee,
+      })}
     >
-      <label className="block space-y-1">
-        <span>{t(kind === "transfer" ? "finance.fromCash" : "finance.cashAccount")}</span>
-        <NativeSelect
-          value={cashId}
-          onChange={(e) => {
-            setCashId(e.target.value);
+      {({ dirty, submitting, cashId, employee }) => (
+        <EditSheetForm
+          dirty={dirty}
+          submitting={submitting}
+          onSubmit={() => {
+            void form.handleSubmit();
           }}
         >
-          <option value="">{t("finance.select")}</option>
-          {available.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
-      {kind === "transfer" ? (
-        <label className="block space-y-1">
-          <span>{t("finance.toCash")}</span>
-          <NativeSelect
-            value={toId}
-            onChange={(e) => {
-              setToId(e.target.value);
-            }}
-          >
-            <option value="">{t("finance.select")}</option>
-            {available
-              .filter((a) => a.id !== cashId)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-          </NativeSelect>
-        </label>
-      ) : (
-        <label className="block space-y-1">
-          <span>{t("finance.articles")}</span>
-          <NativeSelect
-            value={articleId}
-            onChange={(e) => {
-              setArticleId(e.target.value);
-            }}
-          >
-            <option value="">{t("finance.select")}</option>
-            {selectable.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
+          {failure !== null && <FormAlert message={failure} />}
+          <form.Field name="cashId">
+            {(field) => (
+              <SelectField
+                field={field}
+                label={t(kind === "transfer" ? "finance.fromCash" : "finance.cashAccount")}
+                options={accountOptions("")}
+              />
+            )}
+          </form.Field>
+          {kind === "transfer" ? (
+            <form.Field name="toId">
+              {(field) => (
+                <SelectField
+                  field={field}
+                  label={t("finance.toCash")}
+                  options={accountOptions(cashId)}
+                />
+              )}
+            </form.Field>
+          ) : (
+            <form.Field name="articleId">
+              {(field) => (
+                <SelectField
+                  field={field}
+                  label={t("finance.articles")}
+                  options={[
+                    { value: "", label: t("finance.select") },
+                    ...selectable.map((a) => ({ value: a.id, label: a.name })),
+                  ]}
+                />
+              )}
+            </form.Field>
+          )}
+          <form.Field name="amount" validators={{ onSubmit: ({ value }) => positiveAmount(value) }}>
+            {(field) => (
+              <TextField
+                field={field}
+                label={t("finance.amount")}
+                inputMode="decimal"
+                autoComplete="off"
+              />
+            )}
+          </form.Field>
+          <form.Field name="date">
+            {(field) => (
+              <TextField field={field} label={t("finance.date")} type="date" max={today} />
+            )}
+          </form.Field>
+          {kind !== "transfer" && (
+            <>
+              <form.Field name="counterparty">
+                {(field) => (
+                  <TextField
+                    field={field}
+                    label={t("finance.counterparty")}
+                    autoComplete="off"
+                    disabled={employee !== ""}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="employee">
+                {(field) => (
+                  <SelectField
+                    field={field}
+                    label={t("finance.counterpartyEmployee")}
+                    options={[
+                      { value: "", label: t("finance.select") },
+                      ...(employees.data?.employees ?? [])
+                        .filter((e) => e.status !== "BLOCKED")
+                        .map((e) => ({ value: e.id, label: e.name })),
+                    ]}
+                  />
+                )}
+              </form.Field>
+            </>
+          )}
+          <form.Field name="comment">
+            {(field) => <TextField field={field} label={t("finance.comment")} autoComplete="off" />}
+          </form.Field>
+        </EditSheetForm>
       )}
-      <label className="block space-y-1">
-        <span>{t("finance.amount")}</span>
-        <Input
-          value={amount}
-          inputMode="decimal"
-          aria-invalid={invalid && (parseMoney(amount, currency)?.minorUnits ?? 0) <= 0}
-          onChange={(e) => {
-            setAmount(e.target.value);
-          }}
-        />
-        {invalid && (parseMoney(amount, currency)?.minorUnits ?? 0) <= 0 && (
-          <span className="text-sm text-destructive">{t("error.invalidAmount")}</span>
-        )}
-      </label>
-      <label className="block space-y-1">
-        <span>{t("finance.date")}</span>
-        <Input
-          type="date"
-          value={date}
-          max={today}
-          onChange={(e) => {
-            setDate(e.target.value);
-          }}
-        />
-      </label>
-      {kind !== "transfer" && (
-        <>
-          <label className="block space-y-1">
-            <span>{t("finance.counterparty")}</span>
-            <Input
-              value={counterparty}
-              disabled={employee !== ""}
-              onChange={(e) => {
-                setCounterparty(e.target.value);
-              }}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span>{t("finance.counterpartyEmployee")}</span>
-            <NativeSelect
-              value={employee}
-              onChange={(e) => {
-                setEmployee(e.target.value);
-              }}
-            >
-              <option value="">{t("finance.select")}</option>
-              {employees.data?.employees
-                .filter((e) => e.status !== "BLOCKED")
-                .map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-            </NativeSelect>
-          </label>
-        </>
-      )}
-      <label className="block space-y-1">
-        <span>{t("finance.comment")}</span>
-        <Input
-          value={comment}
-          onChange={(e) => {
-            setComment(e.target.value);
-          }}
-        />
-      </label>
-    </FinanceForm>
+    </form.Subscribe>
   );
 }

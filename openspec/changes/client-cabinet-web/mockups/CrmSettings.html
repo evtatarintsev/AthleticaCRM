@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>CRM: клиентское приложение</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F56D6}a:hover{color:#1E3FA8}
+</style>
+</helmet>
+<div style="width: 1040px; height: 780px; box-sizing: border-box; background: #F8FAFC; font-family: Inter, system-ui, sans-serif; color: #0F172A; padding: 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 14px; color: #64748B">Настройки</span>
+<h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em">Клиентское приложение</h1>
+</div>
+<div style="display: flex; gap: 20px; flex: 1; min-height: 0">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px 24px; display: flex; gap: 16px; align-items: center">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px; font-weight: 600">Приложение включено</span><span style="font-size: 14px; line-height: 20px; color: #64748B">Клиенты могут подключаться по приглашению или QR-коду. Выключите — все клиенты организации потеряют доступ.</span></span>
+<label for="appOn" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Приложение включено</label>
+<span style="width: 48px; height: 28px; border-radius: 999px; background: #2F56D6; display: flex; align-items: center; justify-content: flex-end; padding: 3px; box-sizing: border-box; flex: none"><input id="appOn" type="checkbox" checked style="margin: 0; width: 22px; height: 22px; border-radius: 999px; appearance: none; background: #FFFFFF"></span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 16px; font-weight: 600">Кому уйдёт приглашение</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<div style="padding: 14px; border-radius: 12px; background: #F0FDF4; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 700; color: #166534">165</span><span style="font-size: 13px; line-height: 18px; color: #166534">готовы: есть телефон и дата рождения</span></div>
+<div style="padding: 14px; border-radius: 12px; background: #FFFBEB; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 700; color: #92400E">37</span><span style="font-size: 13px; line-height: 18px; color: #92400E">без даты рождения — только QR на месте</span></div>
+<div style="padding: 14px; border-radius: 12px; background: #F1F5F9; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 700; color: #334155">12</span><span style="font-size: 13px; line-height: 18px; color: #334155">без телефона — приглашение не уйдёт</span></div>
+</div>
+<a href="#" style="align-self: flex-start; font-size: 14px; font-weight: 600">Показать клиентов без даты рождения и дозаполнить</a>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 16px; font-weight: 600">Как приходит код для входа</span>
+<span style="font-size: 14px; line-height: 20px; color: #475569">Сначала Telegram, если его нет — SMS или звонок с кодом. Настраивать ничего не нужно.</span>
+</div>
+</div>
+<div style="width: 400px; flex: none; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<span style="font-size: 16px; font-weight: 600">Пригласить клиентов</span>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #64748B">Текст приглашения</span>
+<div style="padding: 14px 16px; border-radius: 16px 16px 16px 6px; background: #F1F5F9; font-size: 14px; line-height: 21px; color: #0F172A">Спортшкола «Динамо» приглашает вас в приложение Athletica: расписание, абонемент, оплата и связь с клубом. Установить: athletica.app/get</div>
+<span style="font-size: 12px; line-height: 17px; color: #64748B">В приглашении нет имени клиента — если номер записан с ошибкой, посторонний не узнает ничего лишнего.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #64748B">Кому</span>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 15px"><input type="radio" name="who" checked style="width: 18px; height: 18px; margin: 0">Всем готовым (165)</label>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 15px"><input type="radio" name="who" style="width: 18px; height: 18px; margin: 0">Выбранным группам</label>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 15px"><input type="radio" name="who" style="width: 18px; height: 18px; margin: 0">Только тем, кто ещё не приглашён</label>
+</div>
+<div style="flex: 1"></div>
+<button type="button" style="height: 48px; border-radius: 12px; border: 0; background: #2F56D6; color: #FFFFFF; font: 600 16px Inter, system-ui, sans-serif">Отправить 165 приглашений</button>
+<span style="font-size: 13px; color: #64748B; text-align: center">Подключились 0 из 165 · статусы видны в карточках клиентов</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":780}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

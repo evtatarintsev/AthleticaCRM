@@ -1,6 +1,7 @@
 package org.athletica.crm.domain.events
 
 import arrow.core.raise.Raise
+import kotlinx.serialization.descriptors.elementNames
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.athletica.crm.core.EmployeeRequestContext
@@ -107,5 +108,14 @@ class DomainEventBus : DomainEvents {
             return
         }
         eventHandlers.forEach { it(record) }
+    }
+
+    companion object {
+        /**
+         * Типы событий модели сервера — имена подклассов [DomainEvent]. Совпадают с `event_type`,
+         * который пишет [publish], потому что `@SerialName` каждого события равен имени его класса.
+         */
+        val eventTypes: List<String> =
+            DomainEvent.serializer().descriptor.getElementDescriptor(1).elementNames.toList()
     }
 }

@@ -11,6 +11,11 @@ services:
       mailpit:
         condition: service_started
 
+  clients:
+    image: athletica-clients:e2e
+    build:
+      context: ./clients-swift
+
   frontend:
     image: athletica-frontend:e2e
     build:

@@ -25,6 +25,8 @@ import kotlin.uuid.Uuid
  *   неудачных попыток помечается `failed_at` — не выполненным — и ждёт перезапуска администратором
  *   (`admin events retry-failed`).
  * - Обработчики вызываются вне любой транзакции и открывают свои транзакции при необходимости.
+ * - Выбираются только события модели этого сервера ([DomainEventBus.eventTypes]): таблицу
+ *   разделяют сервисы на других языках, и чужое событие здесь не обрабатывается и не помечается.
  *
  * [pollingInterval] — пауза перед следующей итерацией, когда очередь выбрана не полной пачкой;
  * пока пачки полные (накопился поток событий, например после демо-наполнения), воркер
@@ -77,12 +79,14 @@ class DomainEventWorker(
                 SELECT id, org_id, event_type, payload::text, retry_count
                 FROM domain_events
                 WHERE processed_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
+                  AND event_type = ANY(:types)
                 ORDER BY created_at
                 LIMIT :batchSize
                 FOR UPDATE SKIP LOCKED
                 """.trimIndent(),
             )
             .bind("batchSize", batchSize)
+            .bind("types", DomainEventBus.eventTypes.toTypedArray())
             .list { row ->
                 DomainEventRecord(
                     id = row.asUuid("id"),

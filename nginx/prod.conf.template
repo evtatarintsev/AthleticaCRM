@@ -102,6 +102,28 @@ server {
         proxy_read_timeout 190s;
     }
 
+    # Эксперимент: раздел клиентов обслуживает сервис на Swift (clients-swift/),
+    # кроме импорта (/api/clients/import/*) — он остаётся на Kotlin.
+    location /api/clients/import/ {
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://server:8080;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    location /api/clients/ {
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://clients:8080;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
     location /api/ {
         resolver           127.0.0.11 valid=10s;
         set $upstream      http://server:8080;

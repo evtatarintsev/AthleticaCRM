@@ -49,8 +49,8 @@
 
 | Изменение | Что делает | Зависит от |
 |---|---|---|
-| `client-app-chat` | переписка с клубом, канал «Приложение» во «Входящих» | шаг 1: доступы, `ClientProfileContext`, порт `ClientAppPushes` |
-| `client-app-push` | push через FCM и APNs | шаг 2: сеансы; порт `ClientAppPushes` |
+| `client-app-chat` | переписка с клубом, канал «Приложение» во «Входящих» | шаг 1: доступы, `ClientProfileContext`; заводит порт `ClientAppPushes` |
+| `client-app-push` | push через FCM и APNs | шаг 2: сеансы; порт `ClientAppPushes` из `client-app-chat` |
 | `client-mobile-android` | модуль `:mobile` на KMP + Compose Multiplatform, Android | клиентское API всех шагов |
 | `client-mobile-ios` | iOS-таргет приложения | `client-mobile-android` |
 
@@ -76,7 +76,7 @@
 - **server**: новый контур аутентификации клиентов (отдельный JWT-аудиенс, контексты
   `ClientAccountContext`/`ClientProfileContext` вне `RequestContext`), домен `clientapp`
   (аккаунты, доступы, сеансы, коды), отправители кодов над Telegram Gateway и SMS-каналами организаций,
-  порт `ClientAppPushes` с заглушкой, проекции `read/clientapp/*`, маршруты `/api/client-app/*` и
+  проекции `read/clientapp/*`, маршруты `/api/client-app/*` и
   `/api/client-app-admin/*`; генератор контрактов пишет два файла по префиксу маршрута.
 - **shared**: схемы клиентского API, `ClientAppAccessStatus`, право `CAN_MANAGE_CLIENT_APP`.
 - **cabinet** (новый проект): TypeScript + React + Vite, строгие правила как в `web/`,
@@ -85,6 +85,7 @@
   отсутствии в журнале; перегенерация `web/src/api/generated/`.
 - **БД**: таблицы аккаунтов, доступов, сеансов, кодов, предупреждений об отсутствии; колонка
   `organizations.client_app_enabled`.
+- **e2e**: dev-зависимость `pg` и доступ раннера к Postgres стенда — для сквозного входа по коду.
 - **Инфраструктура**: сервис `cabinet` в `docker-compose.prod.yaml`, хост `clients.${DOMAIN}`
   в `nginx/prod.conf.template` и в сертификате, job сборки образа в CI. Параметры клиентского
   JWT — в `application.conf`, `docker-compose.prod.yaml`, `.env.prod.example`.

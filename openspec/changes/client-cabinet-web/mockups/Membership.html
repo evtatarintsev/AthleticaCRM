@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Абонемент, баланс, оплата</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F56D6}a:hover{color:#1E3FA8}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F8FAFC; font-family: Inter, system-ui, sans-serif; color: #0F172A; display: flex; flex-direction: column">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 56px 16px 16px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 4px">
+<a href="Home.html" aria-label="Назад" style="width: 44px; height: 44px; margin-left: -8px; display: flex; align-items: center; justify-content: center; border-radius: 12px">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+</a>
+<h1 style="margin: 0; font-size: 22px; font-weight: 700">Абонемент и оплата</h1>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="font-size: 14px; color: #64748B">Баланс</span>
+<span style="padding: 4px 10px; border-radius: 999px; background: #FEE2E2; color: #991B1B; font-size: 13px; font-weight: 600">Долг</span>
+</div>
+<span style="font-size: 32px; font-weight: 700; letter-spacing: -0.02em">−1 200 ₽</span>
+<a href="#" style="height: 52px; border-radius: 14px; background: #2F56D6; color: #FFFFFF; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-decoration: none">Оплатить 1 200 ₽</a>
+<span style="font-size: 13px; color: #64748B; text-align: center">СБП или банковская карта · чек придёт на email</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 16px; font-weight: 600">Абонемент «8 занятий»</span>
+<span style="font-size: 14px; color: #64748B">до 30 ноября</span>
+</div>
+<div style="height: 8px; border-radius: 999px; background: #E2E8F0; display: flex"><div style="width: 62%; border-radius: 999px; background: #2F56D6"></div></div>
+<span style="font-size: 14px; color: #475569">Осталось 3 занятия из 8</span>
+<a href="#" style="height: 44px; border-radius: 12px; background: #EEF2FF; color: #2F56D6; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-decoration: none">Продлить абонемент</a>
+</div>
+<span style="padding: 4px 4px 0; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #64748B">История</span>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 20px; display: flex; flex-direction: column">
+<div style="padding: 14px 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9"><span style="display: flex; flex-direction: column"><span style="font-size: 15px; font-weight: 500">Занятие · Футбол U-10</span><span style="font-size: 13px; color: #64748B">18 ноября · посещение</span></span><span style="font-size: 15px; color: #64748B">−1 занятие</span></div>
+<div style="padding: 14px 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #F1F5F9"><span style="display: flex; flex-direction: column"><span style="font-size: 15px; font-weight: 500">Абонемент «8 занятий»</span><span style="font-size: 13px; color: #64748B">1 ноября · списание</span></span><span style="font-size: 15px; font-weight: 600">−3 500 ₽</span></div>
+<div style="padding: 14px 16px; display: flex; justify-content: space-between"><span style="display: flex; flex-direction: column"><span style="font-size: 15px; font-weight: 500">Пополнение через СБП</span><span style="font-size: 13px; color: #64748B">1 ноября · оплата</span></span><span style="font-size: 15px; font-weight: 600; color: #15803D">+2 300 ₽</span></div>
+</div>
+</div>
+<nav aria-label="Основное меню" style="height: 84px; box-sizing: border-box; padding: 8px 8px 24px; background: #FFFFFF; border-top: 1px solid #E2E8F0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+<a href="Home.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #2F56D6; font-size: 11px; font-weight: 600"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"></path></svg>Главная</a>
+<a href="Schedule.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #64748B; font-size: 11px; font-weight: 500"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path></svg>Расписание</a>
+<a href="Chat.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #64748B; font-size: 11px; font-weight: 500"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Чат</a>
+<a href="More.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #64748B; font-size: 11px; font-weight: 500"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg>Ещё</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вход по номеру</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F56D6}a:hover{color:#1E3FA8}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F8FAFC; font-family: Inter, system-ui, sans-serif; color: #0F172A; display: flex; flex-direction: column; padding: 72px 24px 32px">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #2F56D6; display: flex; align-items: center; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 12 4l8 16"></path><path d="M7.5 13h9"></path></svg>
+</div>
+<span style="font-size: 20px; font-weight: 700; letter-spacing: -0.01em">Athletica</span>
+</div>
+<h1 style="margin: 48px 0 0; font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em">Вход в приложение</h1>
+<p style="margin: 12px 0 0; font-size: 16px; line-height: 24px; color: #475569">Введите номер телефона, который вы оставили в клубе или школе. Пришлём код — пароль не нужен.</p>
+<label for="phone" style="margin-top: 36px; font-size: 14px; font-weight: 500; color: #334155">Номер телефона</label>
+<div style="margin-top: 8px; display: flex; align-items: center; height: 56px; border: 1.5px solid #2F56D6; border-radius: 14px; background: #FFFFFF; padding: 0 16px; gap: 10px; box-shadow: 0 0 0 4px #E0E7FF">
+<span style="font-size: 18px; font-weight: 500; color: #0F172A">+7</span>
+<input id="phone" type="tel" value="999 123-45-67" style="border: 0; outline: none; flex: 1; font: 500 18px Inter, system-ui, sans-serif; color: #0F172A; background: transparent">
+</div>
+<a href="Code.html" style="margin-top: 20px; height: 56px; border-radius: 14px; background: #2F56D6; color: #FFFFFF; font-size: 17px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-decoration: none">Получить код</a>
+<div style="flex: 1"></div>
+<div style="display: flex; gap: 12px; padding: 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E2E8F0">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01"></path><path d="M11 12h1v4h1"></path></svg>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #475569">Войти могут клиенты, которых пригласила их организация. Не пришло приглашение — спросите у администратора.</p>
+</div>
+<p style="margin: 20px 0 0; font-size: 12px; line-height: 18px; color: #64748B; text-align: center">Продолжая, вы принимаете <a href="#">условия использования</a> и <a href="#">политику обработки персональных данных</a></p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

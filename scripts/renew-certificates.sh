@@ -38,7 +38,7 @@ fi
 CERT_ARGS=()
 read -r -a CERT_DOMAINS <<< "$DOMAINS"
 for name in "${CERT_DOMAINS[@]}"; do CERT_ARGS+=(-d "$name"); done
-CERT_ARGS+=(-d "app.$DOMAIN")
+CERT_ARGS+=(-d "app.$DOMAIN" -d "clients.$DOMAIN")
 "${COMPOSE[@]}" run --rm -T certbot certonly \
     --webroot --webroot-path /var/www/certbot --cert-name "$DOMAIN" \
     --expand --keep-until-expiring --non-interactive "${CERT_ARGS[@]}" "$@"

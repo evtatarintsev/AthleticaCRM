@@ -1,13 +1,14 @@
 name: Web Contracts
 
-# Контракты API веб-клиента (web/src/api/generated) генерируются из маршрутов сервера
-# и схем shared. Job перегенерирует их и падает, если результат отличается от закоммиченного.
+# Контракты API веб-клиента (web/src/api/generated) и кабинета клиента
+# (cabinet/src/api/generated) генерируются из маршрутов сервера и схем shared. Job перегенерирует их и падает, если результат отличается от закоммиченного.
 on:
   pull_request:
     paths:
       - "server/**"
       - "shared/**"
       - "web/src/api/generated/**"
+      - "cabinet/src/api/generated/**"
       - "gradle/**"
       - "*.gradle.kts"
       - ".github/workflows/contracts.yml"
@@ -29,11 +30,13 @@ jobs:
 
       - name: Контракты актуальны
         run: |
-          if ! git diff --exit-code -- web/src/api/generated; then
-            echo "::error::Контракты устарели: выполните 'npm run contracts' в web/ и закоммитьте web/src/api/generated"
-            exit 1
-          fi
-          if [ -n "$(git status --porcelain -- web/src/api/generated)" ]; then
-            echo "::error::В web/src/api/generated появились незакоммиченные файлы: выполните 'npm run contracts'"
-            exit 1
-          fi
+          for dir in web/src/api/generated cabinet/src/api/generated; do
+            if ! git diff --exit-code -- "$dir"; then
+              echo "::error::Контракты устарели: выполните 'npm run contracts' и закоммитьте $dir"
+              exit 1
+            fi
+            if [ -n "$(git status --porcelain -- "$dir")" ]; then
+              echo "::error::В $dir появились незакоммиченные файлы: выполните 'npm run contracts'"
+              exit 1
+            fi
+          done

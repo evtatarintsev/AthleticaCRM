@@ -6,11 +6,11 @@
 
 ## 1. Порты и каркас кабинета
 
-- [ ] 1.1 Порт `VerificationCodeSender` (`CodeChannel`, `CodeDeliveryError`) по design §1; заглушка (лог и успех, только при `development`) в `Di.kt`; проверить `./gradlew compileKotlin`
-- [ ] 1.2 Каркас `cabinet/`: Vite + React + TypeScript, конфигурации строгости из `web/` (tsconfig, ESLint `strictTypeChecked`, `type-coverage --strict` 100%, prettier, vitest), i18n `ru`/`en`, пустая страница; `npm run check` проходит; раздел «When touching `cabinet/`» в CLAUDE.md и `cabinet/README.md`
-- [ ] 1.3 Генератор контрактов пишет два файла по префиксу маршрута (design §11): `/api/client-app/*` → `cabinet/src/api/generated/contracts.ts`, остальное → `web/`; `npm run contracts` в обоих проектах, CI-job `contracts` проверяет оба; тест генератора «клиентский маршрут попадает только в контракт кабинета»; `web/src/api/generated/` не изменился
-- [ ] 1.4 `cabinet/src/api/client.ts` по образцу `web/` на сгенерированных схемах; vitest на декодирование ответа и «нарушение контракта»
-- [ ] 1.5 `cabinet/Dockerfile` (`npm run check && npm run build`, nginx со статикой), job `cabinet` в `.github/workflows/docker.yml`, сервис `cabinet` в `docker-compose.prod.yaml`; блок `clients.${DOMAIN}` в `nginx/prod.conf.template` (только `/api/client-app/` на сервер, `X-Robots-Tag`, `frame-ancestors 'none'`, лимит по IP на `/api/client-app/auth/`); имя в сертификате по `DEPLOY.md`; dev-хост `clients.athletica.crm` в `vite.config.ts`; прогнать `mise run e2e`
+- [x] 1.1 Порт `VerificationCodeSender` (`CodeChannel`, `CodeDeliveryError`) по design §1; заглушка (лог и успех, только при `development`) в `Di.kt`; проверить `./gradlew compileKotlin`
+- [x] 1.2 Каркас `cabinet/`: Vite + React + TypeScript, конфигурации строгости из `web/` (tsconfig, ESLint `strictTypeChecked`, `type-coverage --strict` 100%, prettier, vitest), i18n `ru`/`en`, пустая страница; `npm run check` проходит; раздел «When touching `cabinet/`» в CLAUDE.md и `cabinet/README.md`
+- [x] 1.3 Генератор контрактов пишет два файла по префиксу маршрута (design §11): `/api/client-app/*` → `cabinet/src/api/generated/contracts.ts`, остальное → `web/`; `npm run contracts` в обоих проектах, CI-job `contracts` проверяет оба; тест генератора «клиентский маршрут попадает только в контракт кабинета»; `web/src/api/generated/` не изменился
+- [x] 1.4 `cabinet/src/api/client.ts` по образцу `web/` на сгенерированных схемах; vitest на декодирование ответа и «нарушение контракта»
+- [x] 1.5 `cabinet/Dockerfile` (`npm run check && npm run build`, nginx со статикой), job `cabinet` в `.github/workflows/docker.yml`, сервис `cabinet` в `docker-compose.prod.yaml`; блок `clients.${DOMAIN}` в `nginx/prod.conf.template` (только `/api/client-app/` на сервер, `X-Robots-Tag`, `frame-ancestors 'none'`, лимит по IP на `/api/client-app/auth/`); имя в сертификате по `DEPLOY.md`; dev-хост `clients.athletica.crm` в `vite.config.ts`; прогнать `mise run e2e`
 
 ## 2. Доступ: данные и домен
 

@@ -38,5 +38,5 @@ if [[ ! -d e2e/node_modules ]]; then
   (cd e2e && npm ci --no-audit --no-fund)
 fi
 
-"${compose[@]}" up -d --wait --build postgres rustfs mailpit server frontend nginx
+"${compose[@]}" up -d --wait --build postgres rustfs mailpit server frontend cabinet nginx
 "${compose[@]}" run --rm playwright "$@"

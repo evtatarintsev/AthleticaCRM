@@ -80,13 +80,16 @@ dependencies {
     testImplementation(contracts.output)
 }
 
-/** Генерирует `web/src/api/generated/contracts.ts` из маршрутов сервера и схем `shared`. */
+/** Генерирует `contracts.ts` CRM (`web/`) и кабинета клиента (`cabinet/`) из маршрутов сервера и схем `shared`. */
 tasks.register<JavaExec>("generateWebContracts") {
     group = "build"
-    description = "Генерирует контракты API веб-клиента (web/src/api/generated/contracts.ts)"
+    description = "Генерирует контракты API CRM и кабинета (web/ и cabinet/src/api/generated/contracts.ts)"
     classpath = contracts.runtimeClasspath
     mainClass.set("org.athletica.crm.contracts.GenerateWebContractsKt")
-    args(rootProject.file("web/src/api/generated/contracts.ts").absolutePath)
+    args(
+        rootProject.file("web/src/api/generated/contracts.ts").absolutePath,
+        rootProject.file("cabinet/src/api/generated/contracts.ts").absolutePath,
+    )
 }
 
 tasks.named<Jar>("shadowJar") {

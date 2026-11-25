@@ -1,6 +1,7 @@
 # Раскладка хостов (openspec public-site):
 #   ${DOMAIN}              — публичный лендинг
 #   app.${DOMAIN}          — CRM: SPA + REST API
+#   clients.${DOMAIN}      — кабинет клиента: SPA + только /api/client-app/
 #   www.${DOMAIN}          — 301 на ${DOMAIN}
 #   любой другой хост      — 301 на тот же путь в app.${DOMAIN} (старые домены продукта)
 # Все имена, включая прочие домены, должны быть в SAN сертификата ${DOMAIN}.
@@ -127,6 +128,58 @@ server {
     location / {
         resolver           127.0.0.11 valid=10s;
         set $upstream      http://frontend:80;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+    }
+}
+
+# Лимит по IP на вход в кабинет клиента: запрос кода и вход (design client-cabinet-web, §8)
+limit_req_zone $binary_remote_addr zone=client_app_auth:10m rate=10r/m;
+
+# HTTPS: кабинет клиента — SPA + клиентское API. Маршруты CRM здесь не проксируются.
+server {
+    listen 443 ssl;
+    server_name clients.${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Кабинет закрыт от поисковиков и не встраивается в чужие сайты
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+
+    location /api/client-app/auth/ {
+        limit_req          zone=client_app_auth burst=10 nodelay;
+        limit_req_status   429;
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://server:8080;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    location /api/client-app/ {
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://server:8080;
+        proxy_pass         $upstream;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # Остальное API (CRM, /api/client-app-admin/) с хоста кабинета недоступно
+    location /api/ {
+        return 404;
+    }
+
+    location / {
+        resolver           127.0.0.11 valid=10s;
+        set $upstream      http://cabinet:80;
         proxy_pass         $upstream;
         proxy_set_header   Host $host;
     }

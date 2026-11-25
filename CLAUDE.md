@@ -17,6 +17,13 @@ npm run format
 npm run check   # typecheck + eslint + prettier --check + vitest
 ```
 
+When touching `cabinet/` (веб-кабинет клиента, см. `cabinet/README.md`), additionally run inside `cabinet/`:
+```bash
+npm run format
+npm run check   # typecheck + eslint + type-coverage + prettier --check + vitest
+```
+Правила те же, что у `web/` (раздел «Web Client» ниже).
+
 When changing request/response schemas in `shared` or routes in `server`, regenerate
 the web client contracts and commit `web/src/api/generated/` (CI job `contracts` fails otherwise):
 ```bash

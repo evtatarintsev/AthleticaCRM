@@ -71,6 +71,11 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
     restart: unless-stopped
 
+  # Кабинет клиента (React), хост clients.${DOMAIN}
+  cabinet:
+    image: ghcr.io/${GITHUB_REPOSITORY}/cabinet:latest
+    restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     ports:
@@ -85,6 +90,7 @@ services:
     depends_on:
       - server
       - frontend
+      - cabinet
     restart: unless-stopped
 
   certbot:

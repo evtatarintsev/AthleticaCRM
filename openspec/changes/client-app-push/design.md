@@ -1,9 +1,8 @@
 ## Context
 
 Мотивация — proposal.md, требования — `specs/client-app-push/spec.md`. Порт
-`ClientAppPushes.enqueue(accessId, title, body)` и заглушка — design `client-mobile-app` §1;
-устройства `client_app_devices` и подтверждения `client_app_device_verifications` — design
-ядра §3. Вызывающий — `ClientAppTransport` из `client-app-chat`.
+`ClientAppPushes.enqueue(accessId, title, body)` и заглушка — design `client-cabinet-web` §1;
+сеансы `client_app_sessions` (на мобильных сеанс — устройство) — design ядра §5. Вызывающий — `ClientAppTransport` из `client-app-chat`.
 
 Фоновая доставка с повторами уже есть у сообщений каналов (`MessageDispatcher`,
 `deliveries`) — тот же подход здесь.
@@ -25,7 +24,7 @@
 
 | Таблица | Суть |
 |---|---|
-| `client_app_push_tokens` | `device_id` (PK, FK на `client_app_devices` `ON DELETE CASCADE`), платформа, токен, `enabled`, `updated_at` |
+| `client_app_push_tokens` | `device_id` (PK, FK на `client_app_sessions` `ON DELETE CASCADE`), платформа, токен, `enabled`, `updated_at` |
 | `client_app_push_outbox` | `id`, `access_id`, заголовок, текст, `created_at`, `attempts`, `next_attempt_at`, `done_at` |
 | `client_app_push_sent` | (`outbox_id`, `device_id`) — защита от повторной доставки на устройство при повторе |
 

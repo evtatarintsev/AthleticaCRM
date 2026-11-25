@@ -1,8 +1,8 @@
 ## Context
 
 Мотивация — proposal.md, требования — `specs/client-app-chat/spec.md`. Опирается на ядро
-`client-mobile-app`: доступы `client_app_access`, `ClientProfileContext` и общий SQL-предикат
-доступа (design ядра §4), включение приложения, порт `ClientAppPushes` (design ядра §1).
+`client-cabinet-web`: доступы `client_app_access`, `ClientProfileContext` и общий SQL-предикат
+доступа (design ядра §6), включение приложения, порт `ClientAppPushes` (design ядра §1).
 
 Что есть в переписке: `sealed interface ChannelConfig` в `shared` с `addressing`
 (`ByContact(PHONE)` у SMSC/Twilio, `ByBinding` у Telegram-бота), `ChannelTransport.send(address,

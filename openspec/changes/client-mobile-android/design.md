@@ -1,7 +1,7 @@
 ## Context
 
 Мотивация — proposal.md, требования — `specs/client-app-ui/spec.md`, `specs/client-app-android/spec.md`
-и пользовательские сценарии ядра (`client-app-access`, `client-app-overview` в `client-mobile-app`,
+и пользовательские сценарии ядра (`client-app-access`, `client-app-overview` в `client-cabinet-web`,
 `client-app-chat`, `client-app-push`). Макеты: https://claude.ai/artifact/USGK1UdgF7BxB3kEoDS8ox.
 
 Что есть: `shared` — KMP-модуль только с `jvm()` (Kotlin 2.4, kotlinx-serialization, datetime,

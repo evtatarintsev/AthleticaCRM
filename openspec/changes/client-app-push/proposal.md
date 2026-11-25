@@ -36,5 +36,5 @@
 - **Внешние зависимости**: проект Firebase и ключ APNs в учётной записи разработчика Apple
   (её заводит [#274](https://github.com/evtatarintsev/AthleticaCRM/issues/274); до этого APNs
   проверяется только в sandbox-окружении).
-- **Зависимости**: `client-mobile-app` — устройства и подтверждения (задачи 2.1, 4.4), порт
-  `ClientAppPushes` (1.2). Адаптеры FCM и APNs от ядра не зависят.
+- **Зависимости**: `client-cabinet-web` — сеансы `client_app_sessions` (задачи 2.1, 6.1), порт
+  `ClientAppPushes` (1.1). Адаптеры FCM и APNs от ядра не зависят.

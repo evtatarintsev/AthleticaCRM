@@ -1,6 +1,6 @@
 ## Why
 
-Серверное ядро клиентского приложения (`client-mobile-app`) отдаёт API, но клиенту нужно само
+Клиентское API и веб-кабинет (`client-cabinet-web`) готовы, но клиенту нужно и мобильное
 приложение. Начинаем с Android и общего для обеих платформ кода: на Kotlin Multiplatform +
 Compose Multiplatform экраны пишутся один раз, а iOS (`client-mobile-ios`) добавляет к ним
 платформенную оболочку.
@@ -38,6 +38,6 @@ Compose Multiplatform экраны пишутся один раз, а iOS (`clie
   репозиторий `google()`, условное подключение `:mobile` в `settings.gradle.kts`, CI-job
   `mobile.yml`, мобильные проверки в `CLAUDE.md`.
 - **Внешние зависимости**: Firebase (FCM SDK) — проект Firebase заводит `client-app-push`.
-- **Зависимости**: схемы клиентского API из `client-mobile-app` (задача 1.1) — для всех экранов;
+- **Зависимости**: клиентское API из `client-cabinet-web` (все шаги) — для всех экранов;
   схемы переписки из `client-app-chat` — для экранов переписки; маршруты токена из
   `client-app-push` — для push. До готовности сервера экраны работают на заглушках ответов.

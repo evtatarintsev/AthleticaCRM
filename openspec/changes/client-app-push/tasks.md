@@ -6,7 +6,7 @@
 
 ## 2. Токены и настройки устройства
 
-- [ ] 2.1 Миграция `client_app_push_tokens` (каскад от `client_app_devices`); маршруты `/api/client-app/push/{token,settings}` и схемы в `shared`; тесты: замена токена, отключение, удаление устройства удаляет токен
+- [ ] 2.1 Миграция `client_app_push_tokens` (каскад от `client_app_sessions`); маршруты `/api/client-app/push/{token,settings}` и схемы в `shared`; тесты: замена токена, отключение, удаление устройства удаляет токен
 
 ## 3. Очередь и отправка
 

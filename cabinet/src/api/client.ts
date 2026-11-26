@@ -88,9 +88,12 @@ type Sent = { readonly ok: true; readonly response: Response } | { readonly ok: 
  */
 type Refresh = "refreshed" | "rejected" | "unavailable";
 
-/** Итог обновления сеанса по ответу [sent]; сбой сети или 5xx не завершает сеанс. */
+/**
+ * Итог обновления сеанса по ответу [sent]; сбой сети, 5xx и 429 (лимит запросов) не завершают
+ * сеанс.
+ */
 function refreshOutcome(sent: Sent): Refresh {
-  if (!sent.ok || sent.response.status >= 500) {
+  if (!sent.ok || sent.response.status >= 500 || sent.response.status === 429) {
     return "unavailable";
   }
   return sent.response.ok ? "refreshed" : "rejected";
@@ -209,6 +212,9 @@ export function createApiClient<M extends Manifest>(
       return { ok: true, value: decoded.data };
     }
     if (response.status === 401) {
+      if (!WITHOUT_REFRESH.has(path)) {
+        options.onSessionExpired();
+      }
       return failure({ kind: "unauthenticated" });
     }
     if (response.status >= 400 && response.status < 500) {

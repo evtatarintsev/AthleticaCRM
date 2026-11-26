@@ -103,6 +103,26 @@ describe("createApiClient", () => {
     expect(options.onSessionExpired).toHaveBeenCalledOnce();
   });
 
+  it("лимит запросов на обновлении не завершает сеанс", async () => {
+    const responses = [json({}, 401), json({}, 429)];
+    const { api, options } = client(() => Promise.resolve(responses.shift() ?? json({}, 500)));
+    expect(await api.call("client-app/home")).toEqual({
+      ok: false,
+      error: { kind: "unavailable" },
+    });
+    expect(options.onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it("401 после успешного обновления завершает сеанс", async () => {
+    const responses = [json({}, 401), new Response(null, { status: 200 }), json({}, 401)];
+    const { api, options } = client(() => Promise.resolve(responses.shift() ?? json({}, 500)));
+    expect(await api.call("client-app/home")).toEqual({
+      ok: false,
+      error: { kind: "unauthenticated" },
+    });
+    expect(options.onSessionExpired).toHaveBeenCalledOnce();
+  });
+
   it("401 на входе — неверные данные, без обновления сеанса", async () => {
     const { api, options } = client(() => Promise.resolve(json({}, 401)));
     await api.call("client-app/auth/login", { phone: "79001234567", code: "123456" });

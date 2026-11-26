@@ -32,8 +32,9 @@ sealed interface CodeDeliveryError : AppError {
         override val message = "Код нельзя доставить этим способом"
     }
 
-    /** Провайдер окончательно отказал в отправке по причине [reason]. */
+    /** Провайдер окончательно отказал в отправке. */
     data class Failed(
+        /** Причина отказа для лога; без номера телефона и кода. */
         val reason: String,
     ) : CodeDeliveryError {
         override val code = "CODE_DELIVERY_FAILED"

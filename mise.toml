@@ -8,8 +8,8 @@ node = "24"
 _.path = ["{{config_root}}/bin"]
 
 [tasks.build]
-description = "Сборка и проверки сервера и веб-клиента"
-run = ["./gradlew build", "cd web && npm ci && npm run check"]
+description = "Сборка и проверки сервера, веб-клиента и кабинета клиента"
+run = ["./gradlew build", "cd web && npm ci && npm run check", "cd cabinet && npm ci && npm run check"]
 
 [tasks.test]
 description = "Тесты сервера"
@@ -17,7 +17,7 @@ run = "./gradlew test"
 
 [tasks.format]
 description = "Форматирование Kotlin и TypeScript"
-run = ["./gradlew ktlintFormat", "cd web && npm run format", "cd e2e && npm run format"]
+run = ["./gradlew ktlintFormat", "cd web && npm run format", "cd cabinet && npm run format", "cd e2e && npm run format"]
 
 [tasks.contracts]
 description = "Перегенерировать контракты API веб-клиента"
@@ -25,8 +25,9 @@ dir = "web"
 run = "npm run contracts"
 
 [tasks.server]
-description = "Запустить веб-сервер"
+description = "Запустить веб-сервер в режиме разработки Ktor (коды входа в кабинет пишутся в лог)"
 run = "athletica serve"
+env = { JAVA_OPTS = "-Dio.ktor.development=true" }
 quiet = true
 
 [tasks.admin]

@@ -1,0 +1,187 @@
+/* Кабинет рассчитан на телефон от 360 px; на широком экране — та же колонка по центру. */
+:root {
+  --accent: #2f56d6;
+  --accent-dark: #1e3fa8;
+  --text: #1b1f2a;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --surface: #ffffff;
+  --background: #f4f5f8;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: var(--text);
+  background: var(--background);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 0 0 4px;
+}
+
+p {
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+input {
+  font: inherit;
+  font-size: 18px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  width: 100%;
+  color: var(--text);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-dark);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.secondary {
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--line);
+}
+
+button.link {
+  background: none;
+  color: var(--accent);
+  min-height: 0;
+  padding: 4px;
+}
+
+button.option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+button.option[aria-current="true"] {
+  border-color: var(--accent);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.row > button {
+  flex: 1 1 140px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invitation {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.profile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.profile > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+[role="alert"] {
+  color: #c62828;
+}

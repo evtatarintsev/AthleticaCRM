@@ -1,11 +1,14 @@
 package org.athletica.crm.domain.clientapp
 
 import arrow.core.raise.context.Raise
+import org.athletica.crm.core.ClientProfileContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.AppError
+import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Instant
 
 /** Репозиторий доступов к кабинету клиента. */
 interface ClientAppAccesses {
@@ -23,4 +26,19 @@ interface ClientAppAccesses {
      */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun byPhone(phone: PhoneDigits): List<StoredClientAppAccess>
+
+    /**
+     * Отмечает активность профиля [ctx] в момент [now] — время последней активности доступа, которое
+     * видит организация. Пишет, только если доступ подключён и с прошлой отметки прошло больше 5 минут;
+     * доступы других организаций не трогает.
+     */
+    context(ctx: ClientProfileContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun touch(now: Instant)
+
+    /**
+     * Закрепляет задачу [taskId] «Проверьте номер телефона» за доступом [access] после «Это не я».
+     * `false` — у доступа уже есть открытая такая задача, новую создавать не нужно.
+     */
+    context(tr: Transaction, raise: Raise<AppError>)
+    suspend fun reserveNotMeTask(access: NotMeClientAppAccess, taskId: TaskId): Boolean
 }

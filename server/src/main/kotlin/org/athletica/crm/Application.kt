@@ -55,6 +55,7 @@ import org.athletica.crm.routes.checkoutRoutes
 import org.athletica.crm.routes.clientAppAuthHeader
 import org.athletica.crm.routes.clientAppAuthRoutes
 import org.athletica.crm.routes.clientAppPrincipal
+import org.athletica.crm.routes.clientAppRoutes
 import org.athletica.crm.routes.clientImportRoutes
 import org.athletica.crm.routes.clientNotesRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -231,6 +232,7 @@ fun Application.configureServer() {
                 context(di.clientAppJwtConfig, di.clientAppConfig) {
                     clientAppAuthRoutes(di.clientAppSignIn, di.verificationCodeDelivery, di.backgroundScope)
                 }
+                clientAppRoutes(di.database, di.views, di.clientAppConnections, di.clientAppAccesses)
                 authenticate("auth-jwt") {
                     routeWithContext(di) {
                         assistantRoutes(di.assistant)

@@ -1029,4 +1029,26 @@ object Messages {
         override val ru = "Укажите номер телефона"
         override val en = "Enter a phone number"
     }
+
+    /** Приглашения организации для номера нет: его уже приняли, отклонили или отозвали. */
+    object ClientAppInvitationNotFound : LocalizationKey {
+        override val ru = "Приглашение больше не действует"
+        override val en = "The invitation is no longer valid"
+    }
+
+    /** Заголовок задачи после «Это не я» в кабинете. */
+    object ClientAppNotMeTaskTitle : LocalizationKey {
+        override val ru = "Проверьте номер телефона"
+        override val en = "Check the phone number"
+    }
+
+    /** Описание задачи после «Это не я»: номер, владелец которого отказался от приглашения. */
+    object ClientAppNotMeTaskDescription : LocalizationTemplate1<String> {
+        override val ru = { phone: String ->
+            "Владелец номера +$phone сообщил в кабинете, что приглашение не для него. Проверьте номер в карточке клиента и пригласите клиента снова."
+        }
+        override val en = { phone: String ->
+            "The owner of +$phone reported in the client cabinet that the invitation is not for them. Check the number in the client card and invite the client again."
+        }
+    }
 }

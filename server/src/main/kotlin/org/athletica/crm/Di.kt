@@ -56,6 +56,7 @@ import org.athletica.crm.domain.channels.DbChannelIntegrations
 import org.athletica.crm.domain.clientapp.ClientAppAccesses
 import org.athletica.crm.domain.clientapp.ClientAppConfig
 import org.athletica.crm.domain.clientapp.DbClientAppAccesses
+import org.athletica.crm.domain.clientapp.auth.ClientAppAccounts
 import org.athletica.crm.domain.clientapp.auth.ClientAppCodes
 import org.athletica.crm.domain.clientapp.auth.ClientAppSessions
 import org.athletica.crm.domain.clientapp.auth.DbClientAppAccounts
@@ -160,6 +161,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.clientapp.ClientAppConnections
 import org.athletica.crm.usecases.clientapp.ClientAppSignIn
 import org.athletica.crm.usecases.clientapp.VerificationCodeDelivery
 import org.athletica.crm.usecases.finance.CashOperations
@@ -306,8 +308,10 @@ data class Di(
     val clientAppAccesses: ClientAppAccesses = DbClientAppAccesses()
     val clientAppSessions: ClientAppSessions = DbClientAppSessions()
     val clientAppCodes: ClientAppCodes = DbClientAppCodes()
+    val clientAppAccounts: ClientAppAccounts = DbClientAppAccounts()
     val clientAppSignIn =
-        ClientAppSignIn(database, clientAppCodes, DbClientAppAccounts(), clientAppSessions, clientAppConfig.termsVersion, clientAppJwtConfig.refreshTokenTtl)
+        ClientAppSignIn(database, clientAppCodes, clientAppAccounts, clientAppSessions, clientAppConfig.termsVersion, clientAppJwtConfig.refreshTokenTtl)
+    val clientAppConnections = ClientAppConnections(database, clientAppAccounts, clientAppAccesses, tasks)
     val verificationCodeDelivery =
         VerificationCodeDelivery(
             database,

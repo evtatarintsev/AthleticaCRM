@@ -12,6 +12,12 @@ import org.athletica.crm.read.auth.DbSessionListView
 import org.athletica.crm.read.auth.SessionListView
 import org.athletica.crm.read.channels.ChannelListView
 import org.athletica.crm.read.channels.DbChannelListView
+import org.athletica.crm.read.clientapp.ClientAppHomeView
+import org.athletica.crm.read.clientapp.ClientAppInvitationsView
+import org.athletica.crm.read.clientapp.ClientAppProfilesView
+import org.athletica.crm.read.clientapp.DbClientAppHomeView
+import org.athletica.crm.read.clientapp.DbClientAppInvitationsView
+import org.athletica.crm.read.clientapp.DbClientAppProfilesView
 import org.athletica.crm.read.clients.ClientListView
 import org.athletica.crm.read.clients.DbClientListView
 import org.athletica.crm.read.employees.DbEmployeeDetailView
@@ -85,6 +91,12 @@ import org.athletica.crm.read.widgets.WidgetListView
  * на стабы через конструктор.
  */
 data class ReadViews(
+    /** Неподключённые приглашения аккаунта кабинета клиента. */
+    val clientAppInvitations: ClientAppInvitationsView = DbClientAppInvitationsView(),
+    /** Подключённые профили аккаунта кабинета клиента для переключателя. */
+    val clientAppProfiles: ClientAppProfilesView = DbClientAppProfilesView(),
+    /** Главная кабинета клиента по профилю. */
+    val clientAppHome: ClientAppHomeView = DbClientAppHomeView(),
     /** Список клиентов с фильтрами, сортировкой и пагинацией. */
     val clientList: ClientListView = DbClientListView(),
     /** Журнал операций по личному счёту клиента. */

@@ -16,6 +16,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
 import org.athletica.crm.Di
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.clientapp.ClientAppFixture
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.auth.AuthenticatedUser
 import org.athletica.crm.core.entityids.AuthSessionId
@@ -31,10 +32,11 @@ import org.athletica.crm.testJwtConfig
 import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/** Сквозные тесты входа в кабинет: cookie, разделение с контуром CRM, ротация refresh и выход. */
+/** Сквозные тесты кабинета: cookie, разделение с контуром CRM, ротация refresh, выход и доступ к профилю. */
 class ClientAppAuthRoutesTest {
     private lateinit var di: Di
 
@@ -208,6 +210,28 @@ class ClientAppAuthRoutesTest {
                 val again = post("auth/request-code", """{"phone":"$PHONE"}""")
                 assertEquals(HttpStatusCode.OK, again.status)
                 assertTrue(again.bodyAsText().contains("\"sent\":false"), again.bodyAsText())
+            }
+        }
+
+    @Test
+    fun `данные профиля без подключения — CLIENT_NOT_FOUND, после подключения — главная`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val (orgId, clientId) = orThrow { ClientAppFixture.org("Динамо").let { it to ClientAppFixture.client(it, PHONE, name = "Иван Петров") } }
+                val cookies = "${ClientAppJwtConfig.COOKIE_ACCESS_TOKEN}=${login().access}"
+
+                suspend fun home() = client.get("/api/client-app/home?orgId=${orgId.value}&clientId=${clientId.value}") { header(HttpHeaders.Cookie, cookies) }
+
+                val before = home()
+                assertEquals(HttpStatusCode.BadRequest, before.status)
+                assertTrue(before.bodyAsText().contains("CLIENT_NOT_FOUND"), before.bodyAsText())
+                assertFalse(client.get("/api/client-app/invitations") { header(HttpHeaders.Cookie, cookies) }.bodyAsText().contains("Иван"))
+
+                assertEquals(HttpStatusCode.OK, post("connect", """{"orgId":"${orgId.value}"}""", cookies).status)
+                val after = home()
+                assertEquals(HttpStatusCode.OK, after.status)
+                assertTrue(after.bodyAsText().contains("Иван Петров"), after.bodyAsText())
             }
         }
 

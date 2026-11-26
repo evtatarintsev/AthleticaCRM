@@ -399,9 +399,13 @@ Response:
   токена. У аккаунта нет организации, поэтому это **не** вариант `sealed interface RequestContext`:
   функции с `context(ctx: RequestContext)` по типам не вызываются из клиентских маршрутов, и клиент не
   попадает в аудит под видом сотрудника или системы.
-- `ClientProfileContext(accountId, sessionId, orgId, clientId, currency, lang)` — для запросов по
-  конкретному клиенту; routes строят его только после проверки подключённого доступа. Его принимают
-  проекции `read/clientapp/*` (появляются с подключением, группа 4 `tasks.md`).
+- `ClientProfileContext(accountId, sessionId, orgId, clientId, currency, lang)` (`core/ClientProfileContext.kt`) —
+  для запросов по конкретному клиенту; routes строят его только через `ClientProfileContexts.profile`, который
+  проверяет подключённый доступ (иначе `CLIENT_NOT_FOUND`). Проекции данных клиента в `read/clientapp/`
+  принимают его и повторяют ту же проверку в своём SQL предикатом `ClientProfileContexts.CONNECTED_ACCESS_IDS`
+  (статус `CONNECTED`, номер аккаунта, кабинет включён, клиент не в архиве); его же используют команды от имени
+  клиента — например, `touch` времени последней активности доступа. Приглашения и список профилей аккаунта
+  принимают `ClientAccountContext`.
 - Записи в другие домены (задачи и т. п.) клиентский контур делает в `SystemRequestContext`
   организации через `SystemContexts.forOrg`, с аккаунтом клиента в данных события аудита.
 

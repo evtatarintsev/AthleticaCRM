@@ -2,7 +2,11 @@ package org.athletica.crm.clientapp
 
 import arrow.core.raise.context.Raise
 import org.athletica.crm.TestPostgres
+import org.athletica.crm.core.ClientAccountContext
+import org.athletica.crm.core.Lang
 import org.athletica.crm.core.clientapp.ClientAppAccessStatus
+import org.athletica.crm.core.entityids.ClientAppAccountId
+import org.athletica.crm.core.entityids.ClientAppSessionId
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
@@ -46,17 +50,21 @@ object ClientAppFixture {
         return id
     }
 
-    /** Клиент организации [orgId] с телефоном [phone] в контактах и доступом в статусе [status], приглашённым в [invitedAt]. */
+    /**
+     * Клиент [name] организации [orgId] с телефоном [phone] в контактах и доступом в статусе [status],
+     * приглашённым в [invitedAt].
+     */
     context(raise: Raise<AppError>)
     suspend fun client(
         orgId: OrgId,
         phone: String,
         status: ClientAppAccessStatus? = ClientAppAccessStatus.INVITED,
         invitedAt: Instant = Clock.System.now(),
+        name: String = "Иван",
     ): ClientId {
         val id = ClientId.new()
-        TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, 'Иван', 'MALE'::gender)")
-            .bind("id", id).bind("orgId", orgId).execute()
+        TestPostgres.db.sql("INSERT INTO clients (id, org_id, name, gender) VALUES (:id, :orgId, :name, 'MALE'::gender)")
+            .bind("id", id).bind("orgId", orgId).bind("name", name).execute()
         TestPostgres.db.sql("INSERT INTO client_contacts (id, org_id, client_id, type, value, position, is_primary) VALUES (:cid, :orgId, :id, 'PHONE', :phone, 0, true)")
             .bind("cid", Uuid.generateV7()).bind("orgId", orgId).bind("id", id).bind("phone", phone).execute()
         if (status != null) {
@@ -72,6 +80,18 @@ object ClientAppFixture {
         }
         return id
     }
+
+    /** Аккаунт кабинета номера [phone], принявший условия. */
+    context(raise: Raise<AppError>)
+    suspend fun account(phone: String): ClientAppAccountId {
+        val id = ClientAppAccountId.new()
+        TestPostgres.db.sql("INSERT INTO client_app_accounts (id, phone_digits, created_at, terms_accepted_at, terms_version) VALUES (:id, :phone, now(), now(), 'v1')")
+            .bind("id", id).bind("phone", checkNotNull(PhoneDigits.from(phone)).value).execute()
+        return id
+    }
+
+    /** Контекст аккаунта [id] с новым сеансом. */
+    fun accountContext(id: ClientAppAccountId) = ClientAccountContext(id, ClientAppSessionId.new(), Lang.RU)
 }
 
 /** Отправитель-заглушка способа [channel]: запоминает отправки и отвечает ошибкой [error], если она задана. */

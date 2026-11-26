@@ -19,6 +19,7 @@ import org.athletica.crm.TestPostgres
 import org.athletica.crm.clientapp.ClientAppFixture
 import org.athletica.crm.configureServer
 import org.athletica.crm.core.auth.AuthenticatedUser
+import org.athletica.crm.core.clientapp.ClientAppAccessStatus
 import org.athletica.crm.core.entityids.AuthSessionId
 import org.athletica.crm.core.entityids.BranchId
 import org.athletica.crm.core.entityids.EmployeeId
@@ -253,6 +254,96 @@ class ClientAppAuthRoutesTest {
                 val after = home()
                 assertEquals(HttpStatusCode.OK, after.status)
                 assertTrue(after.bodyAsText().contains("Иван Петров"), after.bodyAsText())
+            }
+        }
+
+    /** GET клиентского маршрута [path] с access токеном [access]. */
+    private suspend fun ApplicationTestBuilder.get(path: String, access: String): HttpResponse = client.get("/api/client-app/$path") { header(HttpHeaders.Cookie, "${ClientAppJwtConfig.COOKIE_ACCESS_TOKEN}=$access") }
+
+    /** Вход вторым браузером: прежние коды удаляются, чтобы не упереться в лимит частоты. */
+    private suspend fun ApplicationTestBuilder.loginAgain(): Tokens {
+        orThrow { TestPostgres.db.sql("DELETE FROM client_app_codes").execute() }
+        return login()
+    }
+
+    /** Идентификатор сеанса из access токена [access]. */
+    private fun sessionId(access: String): String = di.clientAppJwtConfig.verifier.verify(access).getClaim(JwtConfig.CLAIM_SESSION_ID).asString()
+
+    @Test
+    fun `после завершения сеанса другого устройства его access и refresh — 401`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val old = login()
+                val current = loginAgain()
+
+                val list = get("sessions", current.access)
+                assertEquals(HttpStatusCode.OK, list.status)
+                val body = list.bodyAsText()
+                assertTrue(body.contains(sessionId(old.access)), body)
+                assertTrue(body.contains(""""id":"${sessionId(current.access)}","name":"Safari, iOS""""), body)
+
+                val cookies = "${ClientAppJwtConfig.COOKIE_ACCESS_TOKEN}=${current.access}"
+                assertEquals(HttpStatusCode.OK, post("sessions/terminate", """{"sessionId":"${sessionId(old.access)}"}""", cookies).status)
+
+                assertEquals(HttpStatusCode.Unauthorized, get("sessions", old.access).status)
+                assertEquals(HttpStatusCode.Unauthorized, refresh(old.refresh).status)
+                val after = get("sessions", current.access)
+                assertEquals(HttpStatusCode.OK, after.status)
+                assertFalse(after.bodyAsText().contains(sessionId(old.access)))
+            }
+        }
+
+    @Test
+    fun `текущий сеанс завершается выходом, а не из списка`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val tokens = login()
+
+                val response = post("sessions/terminate", """{"sessionId":"${sessionId(tokens.access)}"}""", "${ClientAppJwtConfig.COOKIE_ACCESS_TOKEN}=${tokens.access}")
+                assertEquals(HttpStatusCode.BadRequest, response.status)
+                assertTrue(response.bodyAsText().contains("CANNOT_TERMINATE_CURRENT_SESSION"), response.bodyAsText())
+                assertEquals(HttpStatusCode.OK, get("sessions", tokens.access).status)
+            }
+        }
+
+    @Test
+    fun `удаление аккаунта завершает все сеансы, а повторный вход создаёт новый аккаунт без приглашений`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val volna =
+                    orThrow {
+                        val dynamo = ClientAppFixture.org("Динамо")
+                        val volna = ClientAppFixture.org("Волна", cabinet = false)
+                        ClientAppFixture.client(dynamo, PHONE, ClientAppAccessStatus.CONNECTED)
+                        ClientAppFixture.client(dynamo, PHONE, ClientAppAccessStatus.INVITED, name = "Мария")
+                        ClientAppFixture.client(volna, PHONE, ClientAppAccessStatus.CONNECTED)
+                        ClientAppFixture.client(volna, PHONE, ClientAppAccessStatus.NOT_ME, name = "Пётр")
+                        volna
+                    }
+                val other = login()
+                val tokens = loginAgain()
+
+                val response = post("account/delete", cookies = "${ClientAppJwtConfig.COOKIE_ACCESS_TOKEN}=${tokens.access}")
+                assertEquals(HttpStatusCode.OK, response.status, response.bodyAsText())
+                assertEquals("", response.cookie(ClientAppJwtConfig.COOKIE_ACCESS_TOKEN))
+                assertEquals(HttpStatusCode.Unauthorized, get("sessions", tokens.access).status)
+                assertEquals(HttpStatusCode.Unauthorized, get("sessions", other.access).status)
+                assertEquals(HttpStatusCode.Unauthorized, refresh(other.refresh).status)
+
+                val statuses = orThrow { TestPostgres.db.sql("SELECT status FROM client_app_access ORDER BY status").list { it.get("status", String::class.java) } }
+                assertEquals(listOf("DISABLED", "DISABLED", "DISABLED", "NOT_ME"), statuses)
+                val anonymized = orThrow { TestPostgres.db.sql("SELECT count(*)::int AS n FROM client_app_accounts WHERE deleted_at IS NOT NULL AND phone_digits IS NULL").firstOrNull { it.get("n", Integer::class.java) } }
+                assertEquals(1, anonymized?.toInt())
+
+                val again = loginAgain()
+                orThrow { TestPostgres.db.sql("UPDATE organizations SET client_app_enabled = true WHERE id = :id").bind("id", volna).execute() }
+                val invitations = get("invitations", again.access).bodyAsText()
+                assertTrue(invitations.contains(""""invitations":[]"""), invitations)
+                val profiles = get("profiles", again.access).bodyAsText()
+                assertTrue(profiles.contains(""""profiles":[]"""), profiles)
             }
         }
 

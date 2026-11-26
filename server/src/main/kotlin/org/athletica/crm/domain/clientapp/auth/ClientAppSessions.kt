@@ -46,6 +46,10 @@ interface ClientAppSessions {
     /** Завершает сеанс [id] аккаунта [accountId]; отсутствующий сеанс — не ошибка. */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun delete(id: ClientAppSessionId, accountId: ClientAppAccountId)
+
+    /** Завершает все сеансы аккаунта [accountId]. */
+    context(tr: Transaction, raise: Raise<AppError>)
+    suspend fun deleteAll(accountId: ClientAppAccountId)
 }
 
 /** Сеанс с действующим токеном обновления. */

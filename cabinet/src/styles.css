@@ -7,6 +7,8 @@
   --line: #e5e7eb;
   --surface: #ffffff;
   --background: #f4f5f8;
+  --danger: #b42318;
+  --danger-dark: #912018;
   font-family:
     system-ui,
     -apple-system,
@@ -184,4 +186,40 @@ button.option[aria-current="true"] {
 
 [role="alert"] {
   color: #c62828;
+}
+
+.sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.session > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.danger {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+button.destructive {
+  background: var(--danger);
+}
+
+button.destructive:hover {
+  background: var(--danger-dark);
 }

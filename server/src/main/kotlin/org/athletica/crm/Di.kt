@@ -164,6 +164,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.clientapp.ClientAppAccountDeletion
 import org.athletica.crm.usecases.clientapp.ClientAppAdmin
 import org.athletica.crm.usecases.clientapp.ClientAppConnections
 import org.athletica.crm.usecases.clientapp.ClientAppSignIn
@@ -315,6 +316,7 @@ data class Di(
     val clientAppAccounts: ClientAppAccounts = DbClientAppAccounts()
     val clientAppSignIn =
         ClientAppSignIn(database, clientAppCodes, clientAppAccounts, clientAppSessions, clientAppConfig.termsVersion, clientAppJwtConfig.refreshTokenTtl)
+    val clientAppAccountDeletion = ClientAppAccountDeletion(database, clientAppAccounts, clientAppSessions, clientAppAccesses)
     val clientAppConnections = ClientAppConnections(database, clientAppAccounts, clientAppAccesses, tasks)
     val clientAppSettings: ClientAppSettings = AuditClientAppSettings(DbClientAppSettings(), audit)
     val clientAppAdmin =

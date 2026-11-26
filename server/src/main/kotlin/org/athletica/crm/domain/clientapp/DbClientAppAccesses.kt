@@ -97,6 +97,19 @@ class DbClientAppAccesses : ClientAppAccesses {
             .bind("phone", phone.value)
             .list { it.toStoredAccess() }
 
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun allByPhone(phone: PhoneDigits): List<StoredClientAppAccess> =
+        tr.sql(
+            """
+            SELECT org_id, client_id, phone_digits, id, status, invited_at, invite_channel, status_changed_at, last_seen_at
+            FROM client_app_access
+            WHERE phone_digits = :phone
+            ORDER BY invited_at DESC, id
+            """.trimIndent(),
+        )
+            .bind("phone", phone.value)
+            .list { it.toStoredAccess() }
+
     context(ctx: ClientProfileContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun touch(now: Instant) {
         tr.sql(

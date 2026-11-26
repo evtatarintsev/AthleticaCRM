@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { CabinetApi } from "../api/cabinetApi";
-import type { ApiResult } from "../api/client";
 import { errorText } from "../api/errorText";
 import type {
   ClientAppHomeResponse,
@@ -8,54 +7,54 @@ import type {
   ClientAppProfileSchema,
   ClientAppProfilesResponse,
 } from "../api/generated/contracts";
+import { Account } from "../account/Account";
 import { useI18n } from "../i18n/context";
+import { Failure } from "../ui/Failure";
+import { useLoaded } from "../ui/useLoaded";
 import { selectedProfile, storedProfile, storeProfile, type ProfileKey } from "./selectedProfile";
 
 /** Экран вошедшего человека: главная выбранного профиля, переключатель или приглашения. */
 type View = "home" | "switcher" | "invitations";
 
-/** Состояние загрузки данных: ждём, ошибка с текстом или данные. */
-type Loaded<T> =
-  | { readonly kind: "loading" }
-  | { readonly kind: "failed"; readonly message: string }
-  | { readonly kind: "ready"; readonly value: T };
-
 /**
- * Данные вызова [load], перезапрашиваемые при смене [load] (передаётся через `useCallback`);
- * ответ устаревшего запроса отбрасывается. [reload] запрашивает данные снова.
+ * Кабинет вошедшего человека через [api]: профили и экран «Аккаунт» с сеансами, выходом и удалением
+ * аккаунта. [onSignedOut] — сеанс этого браузера завершён, нужно показать вход.
  */
-function useLoaded<T>(load: () => Promise<ApiResult<T>>) {
+export function Cabinet({ api, onSignedOut }: { api: CabinetApi; onSignedOut: () => void }) {
   const { t } = useI18n();
-  const [state, setState] = useState<Loaded<T>>({ kind: "loading" });
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let active = true;
-    void load().then((result) => {
-      if (active) {
-        setState(
-          result.ok
-            ? { kind: "ready", value: result.value }
-            : { kind: "failed", message: errorText(result.error, t) },
-        );
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [load, attempt, t]);
-  return {
-    state,
-    reload: () => {
-      setAttempt((it) => it + 1);
-    },
-  };
+  const [account, setAccount] = useState(false);
+  if (account) {
+    return (
+      <Account
+        api={api}
+        onBack={() => {
+          setAccount(false);
+        }}
+        onSignedOut={onSignedOut}
+      />
+    );
+  }
+  return (
+    <>
+      <Profiles api={api} />
+      <button
+        type="button"
+        className="link"
+        onClick={() => {
+          setAccount(true);
+        }}
+      >
+        {t("account.open")}
+      </button>
+    </>
+  );
 }
 
 /**
- * Кабинет вошедшего человека через [api]: профили аккаунта, главная выбранного профиля,
- * переключатель профилей и неподключённые приглашения. Выбор профиля запоминается на устройстве.
+ * Профили аккаунта через [api]: главная выбранного профиля, переключатель профилей и
+ * неподключённые приглашения. Выбор профиля запоминается на устройстве.
  */
-export function Cabinet({ api }: { api: CabinetApi }) {
+function Profiles({ api }: { api: CabinetApi }) {
   const { t } = useI18n();
   const [view, setView] = useState<View>("home");
   const [selection, setSelection] = useState<ProfileKey | null>(storedProfile);
@@ -291,17 +290,4 @@ function Invitations({
         </section>
       );
   }
-}
-
-/** Ошибка загрузки [message] с повтором [onRetry]. */
-function Failure({ message, onRetry }: { message: string; onRetry: () => void }) {
-  const { t } = useI18n();
-  return (
-    <div className="card">
-      <p role="alert">{message}</p>
-      <button type="button" className="secondary" onClick={onRetry}>
-        {t("app.retry")}
-      </button>
-    </div>
-  );
 }

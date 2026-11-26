@@ -93,6 +93,11 @@ class DbClientAppSessions : ClientAppSessions {
             .execute()
     }
 
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun deleteAll(accountId: ClientAppAccountId) {
+        tr.sql("DELETE FROM client_app_sessions WHERE account_id = :accountId").bind("accountId", accountId).execute()
+    }
+
     private companion object {
         /** Сколько после замены ещё принимается предыдущий токен обновления: гонка вкладок и повтор после обрыва связи. */
         val ROTATION_GRACE = 60.seconds

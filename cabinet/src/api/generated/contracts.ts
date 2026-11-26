@@ -96,6 +96,34 @@ export const ClientAppRequestCodeResponseSchema = z
   .readonly();
 export type ClientAppRequestCodeResponse = z.output<typeof ClientAppRequestCodeResponseSchema>;
 
+export const ClientAppSessionIdSchema = z.uuid().brand<"ClientAppSessionId">();
+export type ClientAppSessionId = z.output<typeof ClientAppSessionIdSchema>;
+
+export const ClientAppSessionSchemaSchema = z
+  .object({
+    id: ClientAppSessionIdSchema,
+    name: z.string().nullable(),
+    createdAt: InstantSchema,
+    lastSeenAt: InstantSchema,
+    current: z.boolean(),
+  })
+  .readonly();
+export type ClientAppSessionSchema = z.output<typeof ClientAppSessionSchemaSchema>;
+
+export const ClientAppSessionsResponseSchema = z
+  .object({
+    sessions: z.array(ClientAppSessionSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAppSessionsResponse = z.output<typeof ClientAppSessionsResponseSchema>;
+
+export const ClientAppTerminateSessionRequestSchema = z
+  .object({
+    sessionId: ClientAppSessionIdSchema,
+  })
+  .readonly();
+export type ClientAppTerminateSessionRequest = z.output<typeof ClientAppTerminateSessionRequestSchema>;
+
 export const FieldErrorSchema = z
   .object({
     name: z.string(),
@@ -115,6 +143,13 @@ export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
 
 /** Все эндпоинты API: путь без `/api/` → метод, формат запроса и ответа. */
 export const endpoints = {
+  "client-app/account/delete": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "empty",
+    response: z.undefined(),
+  },
   "client-app/auth/login": {
     method: "POST",
     in: "body",
@@ -177,5 +212,19 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: ClientAppProfilesResponseSchema,
+  },
+  "client-app/sessions": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ClientAppSessionsResponseSchema,
+  },
+  "client-app/sessions/terminate": {
+    method: "POST",
+    in: "body",
+    request: ClientAppTerminateSessionRequestSchema,
+    out: "empty",
+    response: z.undefined(),
   },
 } as const;

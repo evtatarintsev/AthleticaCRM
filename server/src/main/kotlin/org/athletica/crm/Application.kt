@@ -231,7 +231,7 @@ fun Application.configureServer() {
                     authRoutes(di.auth, di.emailVerifications, di.passwordResets, di.authSessions)
                 }
                 context(di.clientAppJwtConfig, di.clientAppConfig) {
-                    clientAppAuthRoutes(di.clientAppSignIn, di.verificationCodeDelivery, di.backgroundScope)
+                    clientAppAuthRoutes(di.database, di.views, di.clientAppSignIn, di.clientAppAccountDeletion, di.verificationCodeDelivery, di.backgroundScope)
                 }
                 clientAppRoutes(di.database, di.views, di.clientAppConnections, di.clientAppAccesses)
                 authenticate("auth-jwt") {

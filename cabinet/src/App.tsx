@@ -28,7 +28,12 @@ export function App({ fetch }: { fetch: ApiClientOptions["fetch"] }) {
   return (
     <main className="app">
       {signedIn ? (
-        <Cabinet api={api} />
+        <Cabinet
+          api={api}
+          onSignedOut={() => {
+            setSignedIn(false);
+          }}
+        />
       ) : (
         <SignIn
           api={api}

@@ -53,9 +53,12 @@ import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
+import org.athletica.crm.domain.clientapp.AuditClientAppSettings
 import org.athletica.crm.domain.clientapp.ClientAppAccesses
 import org.athletica.crm.domain.clientapp.ClientAppConfig
+import org.athletica.crm.domain.clientapp.ClientAppSettings
 import org.athletica.crm.domain.clientapp.DbClientAppAccesses
+import org.athletica.crm.domain.clientapp.DbClientAppSettings
 import org.athletica.crm.domain.clientapp.auth.ClientAppAccounts
 import org.athletica.crm.domain.clientapp.auth.ClientAppCodes
 import org.athletica.crm.domain.clientapp.auth.ClientAppSessions
@@ -161,6 +164,7 @@ import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.clientapp.ClientAppAdmin
 import org.athletica.crm.usecases.clientapp.ClientAppConnections
 import org.athletica.crm.usecases.clientapp.ClientAppSignIn
 import org.athletica.crm.usecases.clientapp.VerificationCodeDelivery
@@ -312,6 +316,19 @@ data class Di(
     val clientAppSignIn =
         ClientAppSignIn(database, clientAppCodes, clientAppAccounts, clientAppSessions, clientAppConfig.termsVersion, clientAppJwtConfig.refreshTokenTtl)
     val clientAppConnections = ClientAppConnections(database, clientAppAccounts, clientAppAccesses, tasks)
+    val clientAppSettings: ClientAppSettings = AuditClientAppSettings(DbClientAppSettings(), audit)
+    val clientAppAdmin =
+        ClientAppAdmin(
+            clientAppSettings,
+            clientAppAccesses,
+            telegramGatewayIntegrations,
+            channelIntegrations,
+            conversations,
+            deliveries,
+            organizations,
+            clientAppConfig,
+            audit,
+        )
     val verificationCodeDelivery =
         VerificationCodeDelivery(
             database,

@@ -942,6 +942,86 @@ export type ChannelListResponse = z.output<typeof ChannelListResponseSchema>;
 export const ChannelProviderSchemaSchema = z.enum(["smsc_sms", "sms_aero_sms", "telegram_bot", "twilio_sms"]);
 export type ChannelProviderSchema = z.output<typeof ChannelProviderSchemaSchema>;
 
+export const ClientAppAccessStatusSchema = z.enum(["NOT_INVITED", "INVITED", "CONNECTED", "NOT_ME", "DISABLED"]);
+export type ClientAppAccessStatus = z.output<typeof ClientAppAccessStatusSchema>;
+
+export const ClientAppBulkInviteRequestSchema = z
+  .object({
+    groupIds: z.array(GroupIdSchema).readonly().nullable().optional(),
+  })
+  .readonly();
+export type ClientAppBulkInviteRequest = z.output<typeof ClientAppBulkInviteRequestSchema>;
+
+export const ClientAppBulkInviteResponseSchema = z
+  .object({
+    invited: z.int32(),
+    notified: z.boolean(),
+  })
+  .readonly();
+export type ClientAppBulkInviteResponse = z.output<typeof ClientAppBulkInviteResponseSchema>;
+
+export const InstantSchema = z.iso.datetime({ offset: true }).brand<"Instant">();
+export type Instant = z.output<typeof InstantSchema>;
+
+export const ClientAppPhoneAccessSchemaSchema = z
+  .object({
+    phone: z.string(),
+    status: ClientAppAccessStatusSchema,
+    invitedAt: InstantSchema.nullable(),
+    inviteChannel: z.string().nullable(),
+    statusChangedAt: InstantSchema.nullable(),
+    lastSeenAt: InstantSchema.nullable(),
+    remindAvailableAt: InstantSchema.nullable(),
+  })
+  .readonly();
+export type ClientAppPhoneAccessSchema = z.output<typeof ClientAppPhoneAccessSchemaSchema>;
+
+export const ClientAppClientAccessResponseSchema = z
+  .object({
+    enabled: z.boolean(),
+    phones: z.array(ClientAppPhoneAccessSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAppClientAccessResponse = z.output<typeof ClientAppClientAccessResponseSchema>;
+
+export const ClientAppClientRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type ClientAppClientRequest = z.output<typeof ClientAppClientRequestSchema>;
+
+export const ClientAppInvitePreviewResponseSchema = z
+  .object({
+    ready: z.int32(),
+    withoutPhone: z.int32(),
+  })
+  .readonly();
+export type ClientAppInvitePreviewResponse = z.output<typeof ClientAppInvitePreviewResponseSchema>;
+
+export const ClientAppInviteResponseSchema = z
+  .object({
+    notified: z.boolean(),
+  })
+  .readonly();
+export type ClientAppInviteResponse = z.output<typeof ClientAppInviteResponseSchema>;
+
+export const ClientAppPhoneRequestSchema = z
+  .object({
+    clientId: ClientIdSchema,
+    phone: z.string(),
+  })
+  .readonly();
+export type ClientAppPhoneRequest = z.output<typeof ClientAppPhoneRequestSchema>;
+
+export const ClientAppSettingsResponseSchema = z
+  .object({
+    enabled: z.boolean(),
+    codeTransportAvailable: z.boolean(),
+  })
+  .readonly();
+export type ClientAppSettingsResponse = z.output<typeof ClientAppSettingsResponseSchema>;
+
 export const ScheduleGroupSchemaSchema = z
   .object({
     id: GroupIdSchema,
@@ -1052,9 +1132,6 @@ export const ClientDetailRequestSchema = z
   })
   .readonly();
 export type ClientDetailRequest = z.output<typeof ClientDetailRequestSchema>;
-
-export const InstantSchema = z.iso.datetime({ offset: true }).brand<"Instant">();
-export type Instant = z.output<typeof InstantSchema>;
 
 export const ClientDocSchema = z
   .object({
@@ -3737,6 +3814,13 @@ export const SetChannelEnabledRequestSchema = z
   .readonly();
 export type SetChannelEnabledRequest = z.output<typeof SetChannelEnabledRequestSchema>;
 
+export const SetClientAppEnabledRequestSchema = z
+  .object({
+    enabled: z.boolean(),
+  })
+  .readonly();
+export type SetClientAppEnabledRequest = z.output<typeof SetClientAppEnabledRequestSchema>;
+
 export const SetGroupDisciplinesRequestSchema = z
   .object({
     groupId: GroupIdSchema,
@@ -4598,6 +4682,62 @@ export const endpoints = {
     request: YookassaWebhookSchema,
     out: "empty",
     response: z.undefined(),
+  },
+  "client-app-admin/bulk-invite": {
+    method: "POST",
+    in: "body",
+    request: ClientAppBulkInviteRequestSchema,
+    out: "json",
+    response: ClientAppBulkInviteResponseSchema,
+  },
+  "client-app-admin/client": {
+    method: "GET",
+    in: "query",
+    request: ClientAppClientRequestSchema,
+    out: "json",
+    response: ClientAppClientAccessResponseSchema,
+  },
+  "client-app-admin/disable": {
+    method: "POST",
+    in: "body",
+    request: ClientAppPhoneRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app-admin/invite": {
+    method: "POST",
+    in: "body",
+    request: ClientAppClientRequestSchema,
+    out: "json",
+    response: ClientAppInviteResponseSchema,
+  },
+  "client-app-admin/invite-preview": {
+    method: "POST",
+    in: "body",
+    request: ClientAppBulkInviteRequestSchema,
+    out: "json",
+    response: ClientAppInvitePreviewResponseSchema,
+  },
+  "client-app-admin/remind": {
+    method: "POST",
+    in: "body",
+    request: ClientAppPhoneRequestSchema,
+    out: "json",
+    response: ClientAppInviteResponseSchema,
+  },
+  "client-app-admin/set-enabled": {
+    method: "POST",
+    in: "body",
+    request: SetClientAppEnabledRequestSchema,
+    out: "json",
+    response: ClientAppSettingsResponseSchema,
+  },
+  "client-app-admin/settings": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ClientAppSettingsResponseSchema,
   },
   "clients/add-to-group": {
     method: "POST",

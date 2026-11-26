@@ -8,6 +8,7 @@ import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
 import org.athletica.crm.storage.Transaction
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 /**
@@ -50,8 +51,11 @@ interface ClientAppAccessRecord {
     /** Идентификатор доступа. */
     val id: ClientAppAccessId
 
-    /** Момент последнего приглашения. */
+    /** Момент последнего уведомления о приглашении: самого приглашения или напоминания. */
     val invitedAt: Instant
+
+    /** Название канала, которым ушло последнее уведомление; `null` — уведомление не отправлялось. */
+    val inviteChannel: String?
 
     /** Момент последней смены статуса. */
     val statusChangedAt: Instant
@@ -64,9 +68,9 @@ interface ClientAppAccessRecord {
 interface NotInvitedClientAppAccess : ClientAppAccess {
     override val status: ClientAppAccessStatus get() = ClientAppAccessStatus.NOT_INVITED
 
-    /** Приглашает номер. */
+    /** Приглашает номер; [channel] — название канала, которым ушло уведомление, `null` — не ушло. */
     context(tr: Transaction, raise: Raise<AppError>)
-    suspend fun invite(): InvitedClientAppAccess
+    suspend fun invite(channel: String? = null): InvitedClientAppAccess
 }
 
 /** Номер приглашён, владелец ещё не подключился. */
@@ -84,6 +88,22 @@ interface InvitedClientAppAccess : StoredClientAppAccess {
     /** Отключает доступ. */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun disable(): DisabledClientAppAccess
+
+    /** Момент, с которого можно напомнить о приглашении: через сутки после прошлого уведомления. */
+    val remindAvailableAt: Instant get() = invitedAt + REMIND_INTERVAL
+
+    /**
+     * Отмечает напоминание о приглашении каналом [channel] (`null` — уведомление не ушло).
+     * Раньше [remindAvailableAt] — ошибка `CLIENT_APP_REMIND_TOO_SOON`.
+     */
+    context(tr: Transaction, raise: Raise<AppError>)
+    suspend fun remind(channel: String?): InvitedClientAppAccess
+
+    /** Правила напоминаний. */
+    companion object {
+        /** Не чаще одного напоминания за этот интервал. */
+        val REMIND_INTERVAL = 1.days
+    }
 }
 
 /** Владелец номера подключён и видит данные клиента. */
@@ -99,16 +119,16 @@ interface ConnectedClientAppAccess : StoredClientAppAccess {
 interface NotMeClientAppAccess : StoredClientAppAccess {
     override val status: ClientAppAccessStatus get() = ClientAppAccessStatus.NOT_ME
 
-    /** Приглашает номер снова. */
+    /** Приглашает номер снова; [channel] — название канала, которым ушло уведомление, `null` — не ушло. */
     context(tr: Transaction, raise: Raise<AppError>)
-    suspend fun invite(): InvitedClientAppAccess
+    suspend fun invite(channel: String? = null): InvitedClientAppAccess
 }
 
 /** Доступ отключён. Пригласить снова можно только из карточки клиента. */
 interface DisabledClientAppAccess : StoredClientAppAccess {
     override val status: ClientAppAccessStatus get() = ClientAppAccessStatus.DISABLED
 
-    /** Приглашает номер снова. */
+    /** Приглашает номер снова; [channel] — название канала, которым ушло уведомление, `null` — не ушло. */
     context(tr: Transaction, raise: Raise<AppError>)
-    suspend fun invite(): InvitedClientAppAccess
+    suspend fun invite(channel: String? = null): InvitedClientAppAccess
 }

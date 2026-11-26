@@ -7,6 +7,7 @@ import io.r2dbc.spi.Row
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
 import org.athletica.crm.core.RequestContext
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.entityids.toChannelIntegrationId
 import org.athletica.crm.core.errors.AppError
@@ -45,6 +46,14 @@ class DbChannelIntegrations(
             .bind("orgId", ctx.orgId)
             .firstOrNull { row -> row.toChannelIntegration() }
             ?: raise(channelNotFound())
+
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun enabledFor(type: ContactType): List<ChannelIntegration> =
+        tr.sql("SELECT id, name, config::text AS config, enabled FROM channel_integrations WHERE org_id = :orgId AND enabled ORDER BY id")
+            .bind("orgId", ctx.orgId)
+            .list { row -> row.asString("config").toChannelConfig() to row.toChannelIntegration() }
+            .filter { (config, _) -> config.addressing.accepts(type) }
+            .map { (_, integration) -> integration }
 
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun add(id: ChannelIntegrationId, name: NonBlankName, config: ChannelConfig) {

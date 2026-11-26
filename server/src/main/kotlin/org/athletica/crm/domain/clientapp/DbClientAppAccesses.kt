@@ -9,6 +9,7 @@ import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.clientapp.ClientAppAccessStatus
 import org.athletica.crm.core.entityids.ClientAppAccessId
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.entityids.toClientAppAccessId
 import org.athletica.crm.core.entityids.toClientId
@@ -21,6 +22,7 @@ import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
 import org.athletica.crm.storage.asInstantOrNull
 import org.athletica.crm.storage.asString
+import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
@@ -34,7 +36,7 @@ class DbClientAppAccesses : ClientAppAccesses {
         tr.sql(
             """
             SELECT :orgId AS org_id, :clientId AS client_id, p.digits AS phone_digits,
-                   a.id, a.status, a.invited_at, a.status_changed_at, a.last_seen_at
+                   a.id, a.status, a.invited_at, a.invite_channel, a.status_changed_at, a.last_seen_at
             FROM (
                 SELECT normalized_phone(value) AS digits, min(position) AS position
                 FROM client_contacts
@@ -51,11 +53,35 @@ class DbClientAppAccesses : ClientAppAccesses {
             .bind("clientId", clientId)
             .list { it.toAccess() }
 
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun notInvited(groupIds: List<GroupId>?): List<NotInvitedClientAppAccess> =
+        tr.sql(
+            """
+            SELECT DISTINCT cc.client_id, normalized_phone(cc.value) AS phone_digits
+            FROM client_contacts cc
+            JOIN clients c ON c.id = cc.client_id AND c.org_id = cc.org_id AND c.state = 'ACTIVE'
+            WHERE cc.org_id = :orgId AND cc.type = 'PHONE' AND normalized_phone(cc.value) <> ''
+              AND (:allGroups OR EXISTS (
+                  SELECT 1 FROM enrollments e
+                  WHERE e.client_id = c.id AND e.left_at IS NULL AND e.group_id = ANY(:groupIds)
+              ))
+              AND NOT EXISTS (
+                  SELECT 1 FROM client_app_access a
+                  WHERE a.org_id = cc.org_id AND a.client_id = cc.client_id AND a.phone_digits = normalized_phone(cc.value)
+              )
+            ORDER BY cc.client_id, phone_digits
+            """.trimIndent(),
+        )
+            .bind("orgId", ctx.orgId)
+            .bind("allGroups", groupIds == null)
+            .bind("groupIds", groupIds.orEmpty())
+            .list { DbNotInvited(ctx.orgId, it.asUuid("client_id").toClientId(), it.phoneDigits()) }
+
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun byPhone(phone: PhoneDigits): List<StoredClientAppAccess> =
         tr.sql(
             """
-            SELECT a.org_id, a.client_id, a.phone_digits, a.id, a.status, a.invited_at, a.status_changed_at, a.last_seen_at
+            SELECT a.org_id, a.client_id, a.phone_digits, a.id, a.status, a.invited_at, a.invite_channel, a.status_changed_at, a.last_seen_at
             FROM client_app_access a
             JOIN organizations o ON o.id = a.org_id AND o.client_app_enabled
             JOIN clients c ON c.id = a.client_id AND c.org_id = a.org_id AND c.state = 'ACTIVE'
@@ -120,6 +146,7 @@ class DbClientAppAccesses : ClientAppAccesses {
                 asUuid("client_id").toClientId(),
                 phoneDigits(),
                 asInstant("invited_at"),
+                asStringOrNull("invite_channel"),
                 asInstant("status_changed_at"),
                 asInstantOrNull("last_seen_at"),
             )
@@ -148,6 +175,7 @@ private data class StoredFields(
     override val clientId: ClientId,
     override val phone: PhoneDigits,
     override val invitedAt: Instant,
+    override val inviteChannel: String?,
     override val statusChangedAt: Instant,
     override val lastSeenAt: Instant?,
 ) : ClientAppAccessRecord
@@ -159,14 +187,14 @@ private data class DbNotInvited(
     override val phone: PhoneDigits,
 ) : NotInvitedClientAppAccess {
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun invite(): InvitedClientAppAccess {
+    override suspend fun invite(channel: String?): InvitedClientAppAccess {
         ensurePhoneInContacts(orgId, clientId, phone)
         val id = ClientAppAccessId.new()
         val at = Clock.System.now()
         tr.sql(
             """
-            INSERT INTO client_app_access (id, org_id, client_id, phone_digits, status, invited_at, status_changed_at)
-            VALUES (:id, :orgId, :clientId, :phone, 'INVITED', :at, :at)
+            INSERT INTO client_app_access (id, org_id, client_id, phone_digits, status, invited_at, invite_channel, status_changed_at)
+            VALUES (:id, :orgId, :clientId, :phone, 'INVITED', :at, :channel, :at)
             """.trimIndent(),
         )
             .bind("id", id)
@@ -174,23 +202,27 @@ private data class DbNotInvited(
             .bind("clientId", clientId)
             .bind("phone", phone.value)
             .bind("at", at)
+            .bind("channel", channel)
             .onViolation("uq_client_app_access_org_client_phone") { accessChanged() }
             .execute()
-        return DbInvited(StoredFields(id, orgId, clientId, phone, at, at, null))
+        return DbInvited(StoredFields(id, orgId, clientId, phone, at, channel, at, null))
     }
 }
 
+/** Повторное приглашение при переходе: уведомление ушло каналом [channel] (`null` — не ушло). */
+private data class Reinvite(val channel: String?)
+
 /**
- * Переводит доступ [this] из статуса [from] в [to]; [reinvite] — заодно обновить момент приглашения.
+ * Переводит доступ [this] из статуса [from] в [to]; [reinvite] — заодно обновить момент и канал приглашения.
  * Возвращает поля доступа после перехода.
  */
 context(tr: Transaction, raise: Raise<AppError>)
 private suspend fun StoredFields.moved(
     from: ClientAppAccessStatus,
     to: ClientAppAccessStatus,
-    reinvite: Boolean = false,
+    reinvite: Reinvite? = null,
 ): StoredFields {
-    if (reinvite) {
+    if (reinvite != null) {
         ensurePhoneInContacts(orgId, clientId, phone)
     }
     val at = Clock.System.now()
@@ -199,19 +231,25 @@ private suspend fun StoredFields.moved(
             """
             UPDATE client_app_access
             SET status = :to, status_changed_at = :at,
-                invited_at = CASE WHEN :reinvite THEN :at ELSE invited_at END
+                invited_at = CASE WHEN :reinvite THEN :at ELSE invited_at END,
+                invite_channel = CASE WHEN :reinvite THEN :channel ELSE invite_channel END
             WHERE id = :id AND org_id = :orgId AND status = :from
             """.trimIndent(),
         )
             .bind("to", to.name)
             .bind("at", at)
-            .bind("reinvite", reinvite)
+            .bind("reinvite", reinvite != null)
+            .bind("channel", reinvite?.channel)
             .bind("id", id)
             .bind("orgId", orgId)
             .bind("from", from.name)
             .execute()
     ensure(updated == 1L) { accessChanged() }
-    return copy(statusChangedAt = at, invitedAt = if (reinvite) at else invitedAt)
+    return if (reinvite == null) {
+        copy(statusChangedAt = at)
+    } else {
+        copy(statusChangedAt = at, invitedAt = at, inviteChannel = reinvite.channel)
+    }
 }
 
 /** Приглашённый доступ. */
@@ -226,6 +264,29 @@ private class DbInvited(private val fields: StoredFields) :
 
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun disable(): DisabledClientAppAccess = DbDisabled(fields.moved(status, ClientAppAccessStatus.DISABLED))
+
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun remind(channel: String?): InvitedClientAppAccess {
+        val at = Clock.System.now()
+        ensure(at >= remindAvailableAt) {
+            CommonDomainError("CLIENT_APP_REMIND_TOO_SOON", "Напомнить о приглашении можно не чаще раза в сутки")
+        }
+        val updated =
+            tr.sql(
+                """
+                UPDATE client_app_access SET invited_at = :at, invite_channel = :channel
+                WHERE id = :id AND org_id = :orgId AND status = 'INVITED' AND invited_at = :invitedAt
+                """.trimIndent(),
+            )
+                .bind("at", at)
+                .bind("channel", channel)
+                .bind("id", id)
+                .bind("orgId", orgId)
+                .bind("invitedAt", invitedAt)
+                .execute()
+        ensure(updated == 1L) { accessChanged() }
+        return DbInvited(fields.copy(invitedAt = at, inviteChannel = channel))
+    }
 }
 
 /** Подключённый доступ. */
@@ -241,7 +302,7 @@ private class DbNotMe(private val fields: StoredFields) :
     NotMeClientAppAccess,
     ClientAppAccessRecord by fields {
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun invite(): InvitedClientAppAccess = DbInvited(fields.moved(status, ClientAppAccessStatus.INVITED, reinvite = true))
+    override suspend fun invite(channel: String?): InvitedClientAppAccess = DbInvited(fields.moved(status, ClientAppAccessStatus.INVITED, Reinvite(channel)))
 }
 
 /** Отключённый доступ. */
@@ -249,7 +310,7 @@ private class DbDisabled(private val fields: StoredFields) :
     DisabledClientAppAccess,
     ClientAppAccessRecord by fields {
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun invite(): InvitedClientAppAccess = DbInvited(fields.moved(status, ClientAppAccessStatus.INVITED, reinvite = true))
+    override suspend fun invite(channel: String?): InvitedClientAppAccess = DbInvited(fields.moved(status, ClientAppAccessStatus.INVITED, Reinvite(channel)))
 }
 
 /**

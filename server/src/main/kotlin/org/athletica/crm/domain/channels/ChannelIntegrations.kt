@@ -3,6 +3,7 @@ package org.athletica.crm.domain.channels
 import arrow.core.raise.context.Raise
 import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.NonBlankName
+import org.athletica.crm.core.contacts.ContactType
 import org.athletica.crm.core.entityids.ChannelIntegrationId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.messaging.ChannelConfig
@@ -20,6 +21,10 @@ interface ChannelIntegrations {
      */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byId(id: ChannelIntegrationId): ChannelIntegration
+
+    /** Включённые интеграции организации, которые адресуют получателя контактом типа [type], в порядке создания. */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun enabledFor(type: ContactType): List<ChannelIntegration>
 
     /** Добавляет новую (активную) интеграцию [id] с настройками [config]. */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)

@@ -1051,4 +1051,34 @@ object Messages {
             "The owner of +$phone reported in the client cabinet that the invitation is not for them. Check the number in the client card and invite the client again."
         }
     }
+
+    /** Текст приглашения в кабинет: только название организации и ссылка, без данных клиента. */
+    object ClientAppInvitation : LocalizationTemplate2<String, String> {
+        override val ru = { org: String, url: String -> "$org приглашает вас в личный кабинет: расписание, абонементы и баланс. Вход по номеру телефона: $url" }
+        override val en = { org: String, url: String -> "$org invites you to the client cabinet: schedule, memberships and balance. Sign in with your phone number: $url" }
+    }
+
+    /** Кабинет в организации выключен: приглашать нельзя. */
+    object ClientAppDisabled : LocalizationKey {
+        override val ru = "Клиентский кабинет выключен — включите его в настройках"
+        override val en = "The client cabinet is disabled — enable it in the settings"
+    }
+
+    /** Включить кабинет нельзя: кодам входа не через что уходить. */
+    object ClientAppNoCodeTransport : LocalizationKey {
+        override val ru = "Подключите Telegram Gateway или SMS-канал: через них клиенты получают код входа"
+        override val en = "Connect Telegram Gateway or an SMS channel: clients receive their sign-in code through them"
+    }
+
+    /** Нет права `CAN_MANAGE_CLIENT_APP`. */
+    object ClientAppManageDenied : LocalizationKey {
+        override val ru = "Недостаточно прав для управления клиентским кабинетом"
+        override val en = "You do not have permission to manage the client cabinet"
+    }
+
+    /** Номер не найден у клиента или действие для его статуса недоступно. */
+    object ClientAppPhoneActionUnavailable : LocalizationKey {
+        override val ru = "Действие недоступно для этого номера — обновите страницу"
+        override val en = "This action is not available for the number — refresh the page"
+    }
 }

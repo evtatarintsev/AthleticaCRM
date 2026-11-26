@@ -4,6 +4,7 @@ import arrow.core.raise.context.Raise
 import org.athletica.crm.core.ClientProfileContext
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.entityids.ClientId
+import org.athletica.crm.core.entityids.GroupId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
@@ -18,6 +19,13 @@ interface ClientAppAccesses {
      */
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun byClient(clientId: ClientId): List<ClientAppAccess>
+
+    /**
+     * Неприглашённые номера активных клиентов организации запроса — для массового приглашения.
+     * [groupIds] `null` — все клиенты, иначе только участники этих групп.
+     */
+    context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
+    suspend fun notInvited(groupIds: List<GroupId>?): List<NotInvitedClientAppAccess>
 
     /**
      * Доступы номера [phone] во всех организациях, которые сейчас могут давать данные:

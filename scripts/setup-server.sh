@@ -141,8 +141,6 @@ step "Параметры установки"
 
 DOMAIN=$(ask_required "Основной домен (без https:// и без слеша), например athleticacrm.ru")
 hint "Лендинг откроется на $DOMAIN, CRM — на app.$DOMAIN."
-hint "Прочие домены продукта (например, прежний) перенаправляются в CRM; им тоже нужны A-записи и место в сертификате."
-EXTRA_DOMAINS=$(ask "Дополнительные домены через пробел, например athletictools.ru www.athletictools.ru" "")
 ACME_EMAIL=$(ask_required "E-mail для Let's Encrypt (уведомления об истечении сертификата)" "admin@$DOMAIN")
 
 GIT_REMOTE=$(git config --get remote.origin.url 2>/dev/null || true)
@@ -169,7 +167,7 @@ done
 # Docker Compose называет тома по имени каталога проекта.
 VOLUME_LETSENCRYPT="${PROJECT_NAME}_letsencrypt"
 
-CERT_DOMAINS="$DOMAIN www.$DOMAIN app.$DOMAIN clients.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN $EXTRA_DOMAINS"
+CERT_DOMAINS="$DOMAIN www.$DOMAIN app.$DOMAIN clients.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN"
 
 printf '\n'
 ok "Том с сертификатами будет называться: $VOLUME_LETSENCRYPT"
@@ -498,7 +496,7 @@ $COMPOSE down --remove-orphans >/dev/null 2>&1 || true
 # Проверку делаем через compose, а не docker run: так том letsencrypt создаётся
 # самим compose и получает его метки. Том, созданный мимо compose, ломает up.
 # --keep-until-expiring: при тех же именах сертификат не перевыпускается;
-# --expand: новые имена (app., дополнительные домены) добавляются в существующий сертификат.
+# --expand: новые имена (например, clients.) добавляются в существующий сертификат.
 echo "  · запрашиваю сертификат Let's Encrypt (или оставляю действующий)"
 CERT_ARGS=""
 for d in $CERT_DOMAINS; do CERT_ARGS="$CERT_ARGS -d $d"; done

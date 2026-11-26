@@ -15,10 +15,6 @@ set -euo pipefail
 printf '%s\n' "$*" >> "$TEST_STATE/docker.log"
 case "$*" in
     *'nginx printenv DOMAIN') printf '%s\n' "${TEST_DOMAIN-example.com}" ;;
-    *'certbot certificates --cert-name example.com')
-        [ "${TEST_FAIL:-}" != list ] || exit 1
-        printf '  Certificate Name: example.com\n    %s: %s\n' "${TEST_CERT_LABEL-Identifiers}" "${TEST_DOMAINS-example.com www.example.com minio.example.com console.minio.example.com old.example.org}"
-        ;;
     *'certbot certonly '*) [ "${TEST_FAIL:-}" != issue ] ;;
     *'nginx nginx -t') [ "${TEST_FAIL:-}" != config ] ;;
     *'nginx nginx -s reload') ;;
@@ -53,7 +49,7 @@ grep -qF '0 1 * * * backup' "$TEST_STATE/crontab"
 grep -qF 'cd /other-project && docker compose run certbot renew' "$TEST_STATE/crontab"
 grep -qF 'other-command # athletica-certificates:' "$TEST_STATE/crontab"
 grep -qF '0 3,15 * * *' "$TEST_STATE/crontab"
-grep -qF -- '--webroot --webroot-path /var/www/certbot --cert-name example.com --expand --keep-until-expiring --non-interactive -d example.com -d www.example.com -d minio.example.com -d console.minio.example.com -d old.example.org -d app.example.com -d clients.example.com' "$TEST_STATE/docker.log"
+grep -qF -- '--webroot --webroot-path /var/www/certbot --cert-name example.com --expand --keep-until-expiring --non-interactive -d example.com -d www.example.com -d app.example.com -d clients.example.com -d minio.example.com -d console.minio.example.com' "$TEST_STATE/docker.log"
 grep -qF 'nginx nginx -s reload' "$TEST_STATE/docker.log"
 # Команда из cron работает и под /bin/sh, включая пробелы в пути проекта.
 CRON_COMMAND=$(grep 'bash scripts/renew-certificates.sh' "$TEST_STATE/crontab" | cut -d ' ' -f6-)
@@ -68,8 +64,8 @@ rm "$TEST_STATE/crontab"
 bash scripts/renew-certificates.sh --install-cron
 [ "$(grep -c 'athletica-certificates:' "$TEST_STATE/crontab")" = 1 ]
 
-# При ошибке чтения сертификата, выпуска или проверки nginx reload запрещён.
-for failure in list issue config; do
+# При ошибке выпуска или проверки nginx reload запрещён.
+for failure in issue config; do
     : > "$TEST_STATE/docker.log"
     if TEST_FAIL="$failure" bash scripts/renew-certificates.sh; then
         echo "Expected failure: $failure" >&2; exit 1
@@ -77,19 +73,12 @@ for failure in list issue config; do
     ! grep -qF 'nginx nginx -s reload' "$TEST_STATE/docker.log"
 done
 
-for variable in TEST_DOMAIN TEST_DOMAINS; do
-    : > "$TEST_STATE/docker.log"
-    if env "$variable=" bash scripts/renew-certificates.sh 2> "$TEST_STATE/error.log"; then
-        echo "Expected failure for empty $variable" >&2; exit 1
-    fi
-    ! grep -qF 'certbot certonly' "$TEST_STATE/docker.log"
-done
-grep -qF 'Вывод Certbot:' "$TEST_STATE/error.log"
-grep -qF 'Certificate Name: example.com' "$TEST_STATE/error.log"
-grep -qF 'run --rm -T certbot certificates' "$TEST_STATE/error.log"
-! grep -qF 'setup-server.sh' "$TEST_STATE/error.log"
+: > "$TEST_STATE/docker.log"
+if TEST_DOMAIN= bash scripts/renew-certificates.sh; then
+    echo 'Expected failure for empty DOMAIN' >&2; exit 1
+fi
+! grep -qF 'certbot certonly' "$TEST_STATE/docker.log"
 
 bash scripts/renew-certificates.sh --dry-run
 grep -qF -- '--dry-run' "$TEST_STATE/docker.log"
-TEST_CERT_LABEL=Domains bash scripts/renew-certificates.sh --dry-run
 printf '%s\n' 'Certificate renewal checks passed'

@@ -24,7 +24,7 @@ import kotlin.time.Clock
 
 /**
  * Клиентское API кабинета `/client-app/...` под [CLIENT_JWT]: приглашения и ответ на них, профили
- * аккаунта и данные выбранного профиля. Запрос по профилю отвечает только по подключённому доступу
+ * аккаунта и данные выбранного профиля (главная, баланс). Запрос по профилю отвечает только по подключённому доступу
  * (`CLIENT_NOT_FOUND` иначе) и после ответа отмечает активность доступа в [accesses].
  */
 fun Route.clientAppRoutes(
@@ -62,6 +62,7 @@ fun Route.clientAppRoutes(
             }.contract(getContract<Unit, ClientAppProfilesResponse>())
 
             profileGet("/home", db, accesses) { views.clientAppHome.home() }
+            profileGet("/balance", db, accesses) { views.clientAppBalance.balance() }
         }
     }
 }

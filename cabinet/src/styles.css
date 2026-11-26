@@ -223,3 +223,9 @@ button.destructive {
 button.destructive:hover {
   background: var(--danger-dark);
 }
+
+.amount {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}

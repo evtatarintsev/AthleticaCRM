@@ -3,6 +3,41 @@
 
 import { z } from "zod";
 
+export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
+export type LocalDate = z.output<typeof LocalDateSchema>;
+
+export const LedgerKindSchema = z.enum(["SALE", "SALE_RETURN", "PAYMENT", "PAYOUT", "ADJUSTMENT", "INCOME", "EXPENSE", "TRANSFER", "OPENING", "REVERSAL"]);
+export type LedgerKind = z.output<typeof LedgerKindSchema>;
+
+export const CurrencySchema = z.enum(["RUB", "USD", "EUR", "KZT", "BYN", "UAH"]);
+export type Currency = z.output<typeof CurrencySchema>;
+
+export const MoneySchema = z
+  .object({
+    minorUnits: z.int(),
+    currency: CurrencySchema,
+  })
+  .readonly();
+export type Money = z.output<typeof MoneySchema>;
+
+export const ClientAppBalanceEntrySchemaSchema = z
+  .object({
+    occurredOn: LocalDateSchema,
+    kind: LedgerKindSchema,
+    amount: MoneySchema,
+  })
+  .readonly();
+export type ClientAppBalanceEntrySchema = z.output<typeof ClientAppBalanceEntrySchemaSchema>;
+
+export const ClientAppBalanceResponseSchema = z
+  .object({
+    balance: MoneySchema,
+    unpaidSessions: z.int32(),
+    entries: z.array(ClientAppBalanceEntrySchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAppBalanceResponse = z.output<typeof ClientAppBalanceResponseSchema>;
+
 export const ClientAppHomeResponseSchema = z
   .object({
     clientName: z.string(),
@@ -177,6 +212,13 @@ export const endpoints = {
     request: ClientAppRequestCodeRequestSchema,
     out: "json",
     response: ClientAppRequestCodeResponseSchema,
+  },
+  "client-app/balance": {
+    method: "GET",
+    in: "query",
+    request: ClientAppProfileRequestSchema,
+    out: "json",
+    response: ClientAppBalanceResponseSchema,
   },
   "client-app/connect": {
     method: "POST",

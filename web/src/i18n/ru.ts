@@ -532,6 +532,10 @@ export const ru = {
   "permission.CAN_MANAGE_TELEGRAM_GATEWAY.name": "Может настраивать Telegram Gateway",
   "permission.CAN_MANAGE_TELEGRAM_GATEWAY.description":
     "Сотрудник сможет подключать Telegram Gateway и отправлять тестовые коды за счёт его баланса",
+  "permission.CAN_MANAGE_CLIENT_APP.label": "Клиентский кабинет",
+  "permission.CAN_MANAGE_CLIENT_APP.name": "Может управлять клиентским кабинетом",
+  "permission.CAN_MANAGE_CLIENT_APP.description":
+    "Сотрудник сможет включать клиентский кабинет и приглашать в него всех клиентов сразу",
   "permission.CAN_MANAGE_TASKS.label": "Управление задачами",
   "permission.CAN_MANAGE_TASKS.name": "Может управлять задачами",
   "permission.CAN_MANAGE_TASKS.description":

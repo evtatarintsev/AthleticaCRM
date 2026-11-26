@@ -76,7 +76,11 @@ interface ClientContacts {
     context(ctx: RequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun clientsByPhone(phone: PhoneDigits): List<ClientId>
 
-    /** Полностью заменяет набор контактов клиента [client] на [contacts], приведённый к [normalized]. */
+    /**
+     * Полностью заменяет набор контактов клиента [client] на [contacts], приведённый к [normalized].
+     * В той же транзакции отключает доступы к кабинету клиента по удалённым номерам: иначе
+     * прежний владелец номера продолжал бы видеть данные клиента.
+     */
     context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
     suspend fun replace(client: ActiveClient, contacts: List<ClientContact>)
 }

@@ -500,6 +500,10 @@ export const en: Messages<typeof ru> = {
   "permission.CAN_MANAGE_TELEGRAM_GATEWAY.name": "Can manage Telegram Gateway",
   "permission.CAN_MANAGE_TELEGRAM_GATEWAY.description":
     "Employee can connect Telegram Gateway and send test codes paid from its balance",
+  "permission.CAN_MANAGE_CLIENT_APP.label": "Client cabinet",
+  "permission.CAN_MANAGE_CLIENT_APP.name": "Can manage the client cabinet",
+  "permission.CAN_MANAGE_CLIENT_APP.description":
+    "Employee can enable the client cabinet and invite all clients at once",
   "permission.CAN_MANAGE_TASKS.label": "Manage tasks",
   "permission.CAN_MANAGE_TASKS.name": "Can manage tasks",
   "permission.CAN_MANAGE_TASKS.description": "Employee can edit and delete tasks of other members",

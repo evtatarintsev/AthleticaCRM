@@ -25,20 +25,9 @@ fi
 DOMAIN=$("${COMPOSE[@]}" exec -T nginx printenv DOMAIN)
 [ -n "$DOMAIN" ] || { echo "У nginx не задан DOMAIN" >&2; exit 1; }
 
-CERTIFICATES=$("${COMPOSE[@]}" run --rm -T certbot certificates --cert-name "$DOMAIN")
-# shortcut: текстовый вывод Certbot, при смене формата обновить извлечение имён.
-DOMAINS=$(printf '%s\n' "$CERTIFICATES" | sed -nE 's/^[[:space:]]*(Domains|Identifiers):[[:space:]]*//p')
-if [ -z "$DOMAINS" ]; then
-    printf 'Не удалось прочитать имена сертификата %s. Вывод Certbot:\n%s\n' "$DOMAIN" "$CERTIFICATES" >&2
-    echo 'Проверьте список: docker compose -f docker-compose.prod.yaml run --rm -T certbot certificates' >&2
-    exit 1
-fi
-
-# Сохраняем все прежние SAN, включая дополнительные домены продукта.
-CERT_ARGS=()
-read -r -a CERT_DOMAINS <<< "$DOMAINS"
-for name in "${CERT_DOMAINS[@]}"; do CERT_ARGS+=(-d "$name"); done
-CERT_ARGS+=(-d "app.$DOMAIN" -d "clients.$DOMAIN")
+# Все хосты из nginx/prod.conf.template; новый server_name — добавить и сюда.
+CERT_ARGS=(-d "$DOMAIN" -d "www.$DOMAIN" -d "app.$DOMAIN" -d "clients.$DOMAIN" \
+    -d "minio.$DOMAIN" -d "console.minio.$DOMAIN")
 "${COMPOSE[@]}" run --rm -T certbot certonly \
     --webroot --webroot-path /var/www/certbot --cert-name "$DOMAIN" \
     --expand --keep-until-expiring --non-interactive "${CERT_ARGS[@]}" "$@"

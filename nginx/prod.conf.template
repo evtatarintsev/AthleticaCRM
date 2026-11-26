@@ -3,8 +3,8 @@
 #   app.${DOMAIN}          — CRM: SPA + REST API
 #   clients.${DOMAIN}      — кабинет клиента: SPA + только /api/client-app/
 #   www.${DOMAIN}          — 301 на ${DOMAIN}
-#   любой другой хост      — 301 на тот же путь в app.${DOMAIN} (старые домены продукта)
-# Все имена, включая прочие домены, должны быть в SAN сертификата ${DOMAIN}.
+#   любой другой хост      — 301 на тот же путь в app.${DOMAIN}
+# Все имена должны быть в SAN сертификата ${DOMAIN} (scripts/renew-certificates.sh).
 
 # HTTP: ACME challenge для Let's Encrypt, всё остальное — на HTTPS того же хоста
 server {

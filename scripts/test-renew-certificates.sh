@@ -53,7 +53,7 @@ grep -qF '0 1 * * * backup' "$TEST_STATE/crontab"
 grep -qF 'cd /other-project && docker compose run certbot renew' "$TEST_STATE/crontab"
 grep -qF 'other-command # athletica-certificates:' "$TEST_STATE/crontab"
 grep -qF '0 3,15 * * *' "$TEST_STATE/crontab"
-grep -qF -- '--webroot --webroot-path /var/www/certbot --cert-name example.com --expand --keep-until-expiring --non-interactive -d example.com -d www.example.com -d minio.example.com -d console.minio.example.com -d old.example.org -d app.example.com' "$TEST_STATE/docker.log"
+grep -qF -- '--webroot --webroot-path /var/www/certbot --cert-name example.com --expand --keep-until-expiring --non-interactive -d example.com -d www.example.com -d minio.example.com -d console.minio.example.com -d old.example.org -d app.example.com -d clients.example.com' "$TEST_STATE/docker.log"
 grep -qF 'nginx nginx -s reload' "$TEST_STATE/docker.log"
 # Команда из cron работает и под /bin/sh, включая пробелы в пути проекта.
 CRON_COMMAND=$(grep 'bash scripts/renew-certificates.sh' "$TEST_STATE/crontab" | cut -d ' ' -f6-)

@@ -169,7 +169,7 @@ done
 # Docker Compose называет тома по имени каталога проекта.
 VOLUME_LETSENCRYPT="${PROJECT_NAME}_letsencrypt"
 
-CERT_DOMAINS="$DOMAIN www.$DOMAIN app.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN $EXTRA_DOMAINS"
+CERT_DOMAINS="$DOMAIN www.$DOMAIN app.$DOMAIN clients.$DOMAIN minio.$DOMAIN console.minio.$DOMAIN $EXTRA_DOMAINS"
 
 printf '\n'
 ok "Том с сертификатами будет называться: $VOLUME_LETSENCRYPT"

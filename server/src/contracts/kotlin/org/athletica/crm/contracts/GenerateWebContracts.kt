@@ -8,19 +8,22 @@ import org.athletica.crm.routes.ApiResponse
 import java.io.File
 import kotlin.system.exitProcess
 
+/** Префикс путей клиентского API (без `/api/`): такие эндпоинты попадают только в контракт кабинета. */
+const val CABINET_PATH_PREFIX = "client-app/"
+
 /**
- * Генерирует `contracts.ts` веб-клиента. Единственный аргумент — путь к выходному файлу.
- * При нарушении инвариантов печатает причину и завершается с кодом 1.
+ * Генерирует `contracts.ts` веб-клиента CRM и кабинета клиента. Аргументы — пути к выходным
+ * файлам CRM и кабинета. Эндпоинты `client-app/` уходят в кабинет, остальные (в том числе
+ * `client-app-admin/`) — в CRM. При нарушении инвариантов печатает причину и завершается с кодом 1.
  */
 fun main(args: Array<String>) {
-    val output =
-        args.singleOrNull() ?: run {
-            System.err.println("Использование: GenerateWebContracts <путь к contracts.ts>")
-            exitProcess(2)
-        }
-    val text =
+    if (args.size != 2) {
+        System.err.println("Использование: GenerateWebContracts <contracts.ts CRM> <contracts.ts кабинета>")
+        exitProcess(2)
+    }
+    val texts =
         try {
-            contractsText(endpoints(registeredRoutes(offlineDi())))
+            contractsTexts(endpoints(registeredRoutes(offlineDi())))
         } catch (e: ManifestException) {
             System.err.println(e.message)
             exitProcess(1)
@@ -28,12 +31,28 @@ fun main(args: Array<String>) {
             System.err.println("Генерация контрактов: ${e.message}")
             exitProcess(1)
         }
-    File(output).apply {
-        parentFile.mkdirs()
-        writeText(text)
+    args.zip(listOf(texts.web, texts.cabinet)).forEach { (output, text) ->
+        File(output).apply {
+            parentFile.mkdirs()
+            writeText(text)
+        }
+        println("Контракты записаны в $output")
     }
-    println("Контракты записаны в $output")
     exitProcess(0)
+}
+
+/** Тексты `contracts.ts` двух фронтендов. */
+data class ContractsTexts(
+    /** Контракт веб-клиента CRM. */
+    val web: String,
+    /** Контракт кабинета клиента. */
+    val cabinet: String,
+)
+
+/** Контракты CRM и кабинета для [endpoints], разделённых по префиксу [CABINET_PATH_PREFIX]. */
+fun contractsTexts(endpoints: List<Endpoint>): ContractsTexts {
+    val (cabinet, web) = endpoints.partition { it.path.startsWith(CABINET_PATH_PREFIX) }
+    return ContractsTexts(web = contractsText(web), cabinet = contractsText(cabinet))
 }
 
 /** Текст `contracts.ts` для [endpoints]; [module] разрешает открытый полиморфизм. */

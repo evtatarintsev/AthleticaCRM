@@ -9,12 +9,14 @@ LIVE="$OUT/live/e2e.test"
 
 mkdir -p "$LIVE"
 
-if [ ! -f "$LIVE/fullchain.pem" ]; then
+# Сертификат без нового имени (выпущен до появления хоста) перевыпускается.
+if ! grep -qs clients.e2e.test "$LIVE/names"; then
   openssl req -x509 -nodes -newkey rsa:2048 -days 825 \
     -keyout "$LIVE/privkey.pem" -out "$LIVE/fullchain.pem" \
     -subj "/CN=e2e.test" \
-    -addext "subjectAltName=DNS:e2e.test,DNS:app.e2e.test,DNS:minio.e2e.test,DNS:console.minio.e2e.test" \
+    -addext "subjectAltName=DNS:e2e.test,DNS:app.e2e.test,DNS:clients.e2e.test,DNS:minio.e2e.test,DNS:console.minio.e2e.test" \
     -addext "extendedKeyUsage=serverAuth" 2>/dev/null
+  echo "e2e.test app.e2e.test clients.e2e.test minio.e2e.test console.minio.e2e.test" > "$LIVE/names"
 fi
 
 cat > "$OUT/options-ssl-nginx.conf" <<'CONF'

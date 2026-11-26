@@ -207,6 +207,25 @@ class ContractGeneratorTest {
     }
 
     @Test
+    fun `клиентский маршрут попадает только в контракт кабинета`() {
+        val texts =
+            contractsTexts(
+                listOf(
+                    Endpoint("client-app/home", getContract<Unit, Prefs>()),
+                    Endpoint("client-app-admin/invite", getContract<Unit, Prefs>()),
+                    Endpoint("clients/list", getContract<Unit, Prefs>()),
+                ),
+            )
+
+        assertContains(texts.cabinet, "\"client-app/home\"")
+        assertFalse(texts.cabinet.contains("\"client-app-admin/invite\""))
+        assertFalse(texts.cabinet.contains("\"clients/list\""))
+        assertFalse(texts.web.contains("\"client-app/home\""))
+        assertContains(texts.web, "\"client-app-admin/invite\"")
+        assertContains(texts.web, "\"clients/list\"")
+    }
+
+    @Test
     fun `тип только в запросах получает необязательные поля с дефолтом`() {
         val text = contractsText(listOf(Endpoint("things/search", postContract<SearchRequest, Unit>())))
 

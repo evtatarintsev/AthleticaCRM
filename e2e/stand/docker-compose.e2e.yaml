@@ -16,6 +16,11 @@ services:
     build:
       context: ./web
 
+  cabinet:
+    image: athletica-cabinet:e2e
+    build:
+      context: ./cabinet
+
   nginx:
     ports: !reset []
     volumes:
@@ -25,6 +30,7 @@ services:
         aliases:
           - e2e.test
           - app.e2e.test
+          - clients.e2e.test
           - minio.e2e.test
           - console.minio.e2e.test
 

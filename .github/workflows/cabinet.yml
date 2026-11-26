@@ -1,0 +1,28 @@
+name: Client Cabinet Checks
+
+# Проверки кабинета клиента (cabinet/) на каждом PR: типы, линтер, покрытие типами,
+# форматирование и тесты — та же команда, что выполняется при сборке образа cabinet.
+on:
+  pull_request:
+    paths:
+      - "cabinet/**"
+      - ".github/workflows/cabinet.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cabinet
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cabinet/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run check

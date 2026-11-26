@@ -50,6 +50,9 @@ import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
+import org.athletica.crm.domain.clientapp.codes.CodeChannel
+import org.athletica.crm.domain.clientapp.codes.LoggingVerificationCodeSender
+import org.athletica.crm.domain.clientapp.codes.VerificationCodeSender
 import org.athletica.crm.domain.clientcard.ClientCardSectionSettings
 import org.athletica.crm.domain.clientcard.DbClientCardSectionSettings
 import org.athletica.crm.domain.clientcontacts.DbClientContacts
@@ -209,6 +212,8 @@ data class Di(
         ),
     /** Наполнитель демо-режима; `null` — демо-режим выключен и регистрация не наполняет организацию. */
     val demoData: DemoData? = null,
+    /** Отправители кодов входа в кабинет клиента; реальные TELEGRAM и SMS появятся вместе с входом по коду. */
+    val verificationCodeSenders: List<VerificationCodeSender> = emptyList(),
 ) {
     val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
@@ -337,6 +342,7 @@ fun Application.di(): Di {
         photoRecognizer = PhotoRecognizer.from(environment.config),
         emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
         demoData = if (environment.config.property("demo.enabled").getString().toBoolean()) DemoData(audit = audit) else null,
+        verificationCodeSenders = if (developmentMode) CodeChannel.entries.map { LoggingVerificationCodeSender(it) } else emptyList(),
     )
 }
 

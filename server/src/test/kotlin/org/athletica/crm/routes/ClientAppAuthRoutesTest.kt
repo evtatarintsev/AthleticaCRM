@@ -172,6 +172,27 @@ class ClientAppAuthRoutesTest {
         }
 
     @Test
+    fun `несколько вкладок в окне гонки получают один текущий refresh и сохраняют сеанс`() =
+        runTest {
+            testApplication {
+                application { context(di) { configureServer() } }
+                val original = login()
+                val current = refresh(original.refresh).tokens()
+                repeat(3) {
+                    val response = refresh(original.refresh)
+                    assertEquals(HttpStatusCode.OK, response.status)
+                    assertEquals(
+                        di.clientAppJwtConfig.verifier.verify(current.refresh).id,
+                        di.clientAppJwtConfig.verifier.verify(response.tokens().refresh).id,
+                    )
+                }
+                val next = refresh(current.refresh)
+                assertEquals(HttpStatusCode.OK, next.status)
+                assertEquals(HttpStatusCode.OK, logout(next.tokens().access).status)
+            }
+        }
+
+    @Test
     fun `украденный refresh завершает сеанс вместе с его текущими токенами`() =
         runTest {
             testApplication {

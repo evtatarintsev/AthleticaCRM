@@ -24,7 +24,8 @@ data class ClientAppRequestCodeResponse(
 
 /**
  * Вход по номеру [phone] и коду [code]. [acceptedTermsVersion] — версия условий, которую человек
- * принял на экране; без неё вход аккаунта, не принявшего текущую версию, отвечает `CLIENT_APP_TERMS_REQUIRED`.
+ * принял на экране; без неё вход с верным кодом аккаунта, не принявшего текущую версию,
+ * отвечает `CLIENT_APP_TERMS_REQUIRED` без погашения кода.
  */
 @Serializable
 data class ClientAppLoginRequest(

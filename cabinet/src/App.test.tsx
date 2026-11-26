@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import type { ApiClientOptions } from "./api/client";
 import { I18nProvider } from "./i18n/I18nProvider";
@@ -64,7 +64,62 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("вход", () => {
+  it.each([
+    ["CLIENT_APP_CODE_WRONG", "Неверный код"],
+    ["CLIENT_APP_CODE_EXPIRED", "Код истёк"],
+  ])(
+    "после условий ошибка %s позволяет исправить код или запросить новый",
+    async (errorCode, message) => {
+      const startedAt = Date.now();
+      const now = vi.spyOn(Date, "now").mockReturnValue(startedAt);
+      let accepted = false;
+      const { fetch, calls } = server({
+        "client-app/profiles": () => new Response(null, { status: 401 }),
+        "client-app/auth/refresh": () => new Response(null, { status: 401 }),
+        "client-app/auth/request-code": () =>
+          json({ sent: true, retryAfterSeconds: 60, termsVersion: "v1" }),
+        "client-app/auth/login": () => {
+          const result = json(
+            {
+              code: accepted ? errorCode : "CLIENT_APP_TERMS_REQUIRED",
+              message: accepted ? message : "Примите условия",
+              fields: null,
+            },
+            400,
+          );
+          accepted = true;
+          return result;
+        },
+      });
+      renderApp(fetch);
+      fireEvent.change(await screen.findByLabelText("Номер телефона"), {
+        target: { value: "+79031234567" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Получить код" }));
+      fireEvent.change(await screen.findByLabelText("Код из сообщения"), {
+        target: { value: "000000" },
+      });
+      expect(screen.getByText("Новый код можно запросить через 1:00")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+      const accept = await screen.findByRole("button", { name: "Принимаю условия и вхожу" });
+      now.mockReturnValue(startedAt + 61_000);
+      fireEvent.click(accept);
+      expect(await screen.findByRole("alert")).toHaveTextContent(message);
+      fireEvent.change(screen.getByLabelText("Код из сообщения"), { target: { value: "123456" } });
+      expect(screen.getByLabelText("Код из сообщения")).toHaveValue("123456");
+      fireEvent.click(screen.getByRole("button", { name: "Отправить по SMS" }));
+      await vi.waitFor(() => {
+        expect(calls.filter((it) => it.path === "client-app/auth/request-code")).toHaveLength(2);
+      });
+      expect(calls.at(-1)?.body).toEqual({ phone: "+79031234567", viaSms: true });
+    },
+  );
+
   it("номер → код → условия → главная", async () => {
     let signedIn = false;
     const { fetch, calls } = server({

@@ -12,6 +12,7 @@ import org.athletica.crm.domain.clientapp.auth.CodeIssue
 import org.athletica.crm.domain.clientapp.auth.DbClientAppAccounts
 import org.athletica.crm.domain.clientapp.auth.DbClientAppCodes
 import org.athletica.crm.domain.clientapp.auth.DbClientAppSessions
+import org.athletica.crm.domain.clientcontacts.PhoneDigits
 import org.athletica.crm.storage.asInt
 import org.athletica.crm.storage.asString
 import org.junit.Before
@@ -56,10 +57,34 @@ class ClientAppSignInTest {
         }
 
     @Test
+    fun `без верного кода наличие аккаунта и версия условий не раскрываются, лимит попыток сохраняется`() =
+        runTest {
+            listOf(null, "v1", "v2").forEach { version ->
+                TestPostgres.truncate()
+                if (version != null) {
+                    orThrow {
+                        TestPostgres.db.transaction {
+                            DbClientAppAccounts().new(checkNotNull(PhoneDigits.from(phone)), version, Clock.System.now())
+                        }
+                    }
+                }
+                assertEquals("CLIENT_APP_CODE_EXPIRED", assertIs<Either.Left<AppError>>(login("000000", accepted = null)).value.code)
+                val code = issued().code.value
+                val wrong = if (code == "000000") "111111" else "000000"
+                repeat(5) {
+                    assertEquals("CLIENT_APP_CODE_WRONG", assertIs<Either.Left<AppError>>(login(wrong, accepted = null)).value.code)
+                }
+                assertEquals(5, attempts())
+                assertEquals("CLIENT_APP_CODE_EXPIRED", assertIs<Either.Left<AppError>>(login(code, accepted = null)).value.code)
+            }
+        }
+
+    @Test
     fun `первый вход требует условий и не тратит попытку`() =
         runTest {
             val code = issued().code.value
 
+            assertEquals("CLIENT_APP_TERMS_REQUIRED", assertIs<Either.Left<AppError>>(login(code, accepted = null)).value.code)
             assertEquals("CLIENT_APP_TERMS_REQUIRED", assertIs<Either.Left<AppError>>(login(code, accepted = null)).value.code)
             assertEquals(0, attempts())
 

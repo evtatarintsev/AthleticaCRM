@@ -7,17 +7,10 @@ import { useI18n } from "../i18n/context";
 type Step =
   | { readonly kind: "phone" }
   | {
-      readonly kind: "code";
+      readonly kind: "code" | "terms";
       readonly phone: string;
       readonly termsVersion: string;
-      readonly retryAfterSeconds: number;
-      readonly issue: number;
-    }
-  | {
-      readonly kind: "terms";
-      readonly phone: string;
-      readonly code: string;
-      readonly termsVersion: string;
+      readonly retryAt: number;
     };
 
 /**
@@ -48,23 +41,20 @@ export function SignIn({ api, onSignedIn }: { api: CabinetApi; onSignedIn: () =>
       kind: "code",
       phone: target,
       termsVersion: result.value.termsVersion,
-      retryAfterSeconds: result.value.retryAfterSeconds,
-      issue: step.kind === "code" ? step.issue + 1 : 0,
+      retryAt: Date.now() + result.value.retryAfterSeconds * 1000,
     });
   }
 
-  /** Входит номером [target] и кодом [value]; [acceptedTermsVersion] — принятая версия условий. */
-  async function login(
-    target: string,
-    value: string,
-    termsVersion: string,
-    acceptedTermsVersion: string | null,
-  ) {
+  /** Входит номером и кодом формы; [acceptedTermsVersion] — принятая версия условий. */
+  async function login(acceptedTermsVersion: string | null) {
+    if (step.kind === "phone") {
+      return;
+    }
     setBusy(true);
     setError(null);
     const result = await api.call("client-app/auth/login", {
-      phone: target,
-      code: value,
+      phone: step.phone,
+      code,
       acceptedTermsVersion,
     });
     setBusy(false);
@@ -73,24 +63,30 @@ export function SignIn({ api, onSignedIn }: { api: CabinetApi; onSignedIn: () =>
       return;
     }
     if (result.error.kind === "business" && result.error.code === "CLIENT_APP_TERMS_REQUIRED") {
-      setStep({ kind: "terms", phone: target, code: value, termsVersion });
+      setStep({ ...step, kind: "terms" });
       return;
+    }
+    if (step.kind === "terms" && result.error.kind === "business") {
+      setStep({ ...step, kind: "code" });
     }
     setError(errorText(result.error, t));
   }
 
   /** Обработчик формы: действие [action] без перезагрузки страницы. */
-  function submit(action: () => Promise<void>) {
-    return (event: SyntheticEvent) => {
-      event.preventDefault();
-      void action();
-    };
+  function submit(event: SyntheticEvent, action: () => Promise<void>) {
+    event.preventDefault();
+    void action();
   }
 
   switch (step.kind) {
     case "phone":
       return (
-        <form className="card" onSubmit={submit(() => requestCode(phone, false))}>
+        <form
+          className="card"
+          onSubmit={(event) => {
+            submit(event, () => requestCode(phone, false));
+          }}
+        >
           <h1>{t("signIn.phoneTitle")}</h1>
           <p className="muted">{t("signIn.phoneHint")}</p>
           <label>
@@ -115,7 +111,9 @@ export function SignIn({ api, onSignedIn }: { api: CabinetApi; onSignedIn: () =>
       return (
         <form
           className="card"
-          onSubmit={submit(() => login(step.phone, code, step.termsVersion, null))}
+          onSubmit={(event) => {
+            submit(event, () => login(null));
+          }}
         >
           <h1>{t("signIn.codeTitle")}</h1>
           <p className="muted">{t("signIn.codeSent", { phone: step.phone })}</p>
@@ -137,8 +135,7 @@ export function SignIn({ api, onSignedIn }: { api: CabinetApi; onSignedIn: () =>
             {t("signIn.login")}
           </button>
           <Resend
-            key={step.issue}
-            retryAfterSeconds={step.retryAfterSeconds}
+            retryAt={step.retryAt}
             busy={busy}
             onResend={(viaSms) => void requestCode(step.phone, viaSms)}
           />
@@ -158,9 +155,9 @@ export function SignIn({ api, onSignedIn }: { api: CabinetApi; onSignedIn: () =>
       return (
         <form
           className="card"
-          onSubmit={submit(() =>
-            login(step.phone, step.code, step.termsVersion, step.termsVersion),
-          )}
+          onSubmit={(event) => {
+            submit(event, () => login(step.termsVersion));
+          }}
         >
           <h1>{t("signIn.termsTitle")}</h1>
           <p>{t("signIn.termsText")}</p>
@@ -174,21 +171,19 @@ export function SignIn({ api, onSignedIn }: { api: CabinetApi; onSignedIn: () =>
 }
 
 /**
- * Повторная отправка кода: [retryAfterSeconds] секунд обратного отсчёта с момента показа, затем
- * «Отправить ещё раз» и «Отправить по SMS». [onResend] получает признак SMS. Новый код — новый
- * экземпляр компонента (`key`), поэтому отсчёт начинается заново.
+ * Повторная отправка кода: отсчёт до [retryAt], затем «Отправить ещё раз» и «Отправить по SMS».
+ * [onResend] получает признак SMS. Переход к условиям и обратно не сбрасывает отсчёт.
  */
 function Resend({
-  retryAfterSeconds,
+  retryAt,
   busy,
   onResend,
 }: {
-  retryAfterSeconds: number;
+  retryAt: number;
   busy: boolean;
   onResend: (viaSms: boolean) => void;
 }) {
   const { t } = useI18n();
-  const [retryAt] = useState(() => Date.now() + retryAfterSeconds * 1000);
   const [now, setNow] = useState(() => Date.now());
   const left = Math.max(0, Math.ceil((retryAt - now) / 1000));
 

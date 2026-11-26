@@ -49,7 +49,7 @@ class ClientAppSignIn(
     /**
      * Входит по номеру [rawPhone] и коду [rawCode] в момент [now] и открывает сеанс с названием
      * [sessionName]. Аккаунт без принятой текущей версии условий входит, только если [acceptedTermsVersion] —
-     * текущая версия; иначе `CLIENT_APP_TERMS_REQUIRED` до проверки кода, и попытка не тратится.
+     * текущая версия; иначе верный код возвращает `CLIENT_APP_TERMS_REQUIRED` без погашения и траты попытки.
      */
     context(raise: Raise<AppError>)
     suspend fun login(
@@ -66,13 +66,14 @@ class ClientAppSignIn(
             db.transaction {
                 val account = accounts.byPhone(phone)
                 val termsAccepted = account?.termsVersion == termsVersion
-                if (!termsAccepted && acceptedTermsVersion != termsVersion) {
-                    return@transaction LoginOutcome.TermsRequired
-                }
-                when (codes.check(phone, code, now)) {
+                val canSignIn = termsAccepted || acceptedTermsVersion == termsVersion
+                when (codes.check(phone, code, now, consumeAccepted = canSignIn)) {
                     CodeCheck.WRONG -> LoginOutcome.WrongCode
                     CodeCheck.EXPIRED -> LoginOutcome.ExpiredCode
                     CodeCheck.ACCEPTED -> {
+                        if (!canSignIn) {
+                            return@transaction LoginOutcome.TermsRequired
+                        }
                         val accountId = account?.id ?: accounts.new(phone, termsVersion, now)
                         if (account != null && !termsAccepted) {
                             accounts.acceptTerms(accountId, termsVersion, now)

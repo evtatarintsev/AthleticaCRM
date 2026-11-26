@@ -60,6 +60,9 @@ class DbClientAppSessions : ClientAppSessions {
             tr.sql("DELETE FROM client_app_sessions WHERE id = :id").bind("id", id).execute()
             return null
         }
+        if (presentedJti == prevJti) {
+            return IssuedClientAppSession(id, jti)
+        }
         val session = IssuedClientAppSession(id, Uuid.generateV7())
         tr.sql(
             """

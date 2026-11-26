@@ -31,10 +31,16 @@ interface ClientAppCodes {
 
     /**
      * Проверяет [code] против последнего кода номера [phone] в момент [now]. Неверный код тратит
-     * попытку, верный гасит код: транзакцию надо зафиксировать при любом исходе.
+     * попытку, верный гасит код только при [consumeAccepted]: транзакцию надо зафиксировать при любом исходе.
+     * До принятия условий верный код проверяется без погашения.
      */
     context(tr: Transaction, raise: Raise<AppError>)
-    suspend fun check(phone: PhoneDigits, code: VerificationCode, now: Instant): CodeCheck
+    suspend fun check(
+        phone: PhoneDigits,
+        code: VerificationCode,
+        now: Instant,
+        consumeAccepted: Boolean = true,
+    ): CodeCheck
 
     /** Запоминает, что код [id] доставлен способом [channel]. */
     context(tr: Transaction, raise: Raise<AppError>)
@@ -55,7 +61,7 @@ sealed interface CodeIssue {
 
 /** Исход проверки кода. */
 enum class CodeCheck {
-    /** Код верный, теперь погашен. */
+    /** Код верный; погашен, если проверка запрашивала погашение. */
     ACCEPTED,
 
     /** Код неверный, попытка засчитана. */
@@ -109,7 +115,12 @@ class DbClientAppCodes : ClientAppCodes {
     }
 
     context(tr: Transaction, raise: Raise<AppError>)
-    override suspend fun check(phone: PhoneDigits, code: VerificationCode, now: Instant): CodeCheck {
+    override suspend fun check(
+        phone: PhoneDigits,
+        code: VerificationCode,
+        now: Instant,
+        consumeAccepted: Boolean,
+    ): CodeCheck {
         val latest =
             tr.sql(
                 """
@@ -126,7 +137,9 @@ class DbClientAppCodes : ClientAppCodes {
             tr.sql("UPDATE client_app_codes SET attempts = attempts + 1 WHERE id = :id").bind("id", latest.id).execute()
             return CodeCheck.WRONG
         }
-        tr.sql("UPDATE client_app_codes SET used_at = :now WHERE id = :id").bind("id", latest.id).bind("now", now).execute()
+        if (consumeAccepted) {
+            tr.sql("UPDATE client_app_codes SET used_at = :now WHERE id = :id").bind("id", latest.id).bind("now", now).execute()
+        }
         return CodeCheck.ACCEPTED
     }
 

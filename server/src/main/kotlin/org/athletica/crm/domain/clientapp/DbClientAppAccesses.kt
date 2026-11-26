@@ -32,7 +32,7 @@ class DbClientAppAccesses : ClientAppAccesses {
             SELECT :orgId AS org_id, :clientId AS client_id, p.digits AS phone_digits,
                    a.id, a.status, a.invited_at, a.status_changed_at, a.last_seen_at
             FROM (
-                SELECT phone_digits(value) AS digits, min(position) AS position
+                SELECT normalized_phone(value) AS digits, min(position) AS position
                 FROM client_contacts
                 WHERE org_id = :orgId AND client_id = :clientId AND type = 'PHONE'
                 GROUP BY 1
@@ -56,18 +56,38 @@ class DbClientAppAccesses : ClientAppAccesses {
             JOIN organizations o ON o.id = a.org_id AND o.client_app_enabled
             JOIN clients c ON c.id = a.client_id AND c.org_id = a.org_id AND c.state = 'ACTIVE'
             WHERE a.phone_digits = :phone
+              AND EXISTS (
+                  SELECT 1 FROM client_contacts cc
+                  WHERE cc.org_id = a.org_id AND cc.client_id = a.client_id AND cc.type = 'PHONE'
+                    AND normalized_phone(cc.value) = a.phone_digits
+              )
             ORDER BY a.invited_at DESC, a.id
             """.trimIndent(),
         )
             .bind("phone", phone.value)
-            .list { it.toAccess() as StoredClientAppAccess }
+            .list { it.toStoredAccess() }
 
-    private fun Row.toAccess(): ClientAppAccess {
-        val orgId = asUuid("org_id").toOrgId()
-        val clientId = asUuid("client_id").toClientId()
-        val phone = checkNotNull(PhoneDigits.from(asString("phone_digits")))
-        val id = asUuidOrNull("id")?.toClientAppAccessId() ?: return DbNotInvited(orgId, clientId, phone)
-        val stored = StoredFields(id, orgId, clientId, phone, asInstant("invited_at"), asInstant("status_changed_at"), asInstantOrNull("last_seen_at"))
+    /** Доступ из строки выборки; строка без `id` — номер без приглашения. */
+    private fun Row.toAccess(): ClientAppAccess =
+        if (asUuidOrNull("id") == null) {
+            DbNotInvited(asUuid("org_id").toOrgId(), asUuid("client_id").toClientId(), phoneDigits())
+        } else {
+            toStoredAccess()
+        }
+
+    /** Хранимый доступ из строки `client_app_access`. */
+    private fun Row.toStoredAccess(): StoredClientAppAccess {
+        val id = asUuid("id").toClientAppAccessId()
+        val stored =
+            StoredFields(
+                id,
+                asUuid("org_id").toOrgId(),
+                asUuid("client_id").toClientId(),
+                phoneDigits(),
+                asInstant("invited_at"),
+                asInstant("status_changed_at"),
+                asInstantOrNull("last_seen_at"),
+            )
         return when (ClientAppAccessStatus.valueOf(asString("status"))) {
             ClientAppAccessStatus.INVITED -> DbInvited(stored)
             ClientAppAccessStatus.CONNECTED -> DbConnected(stored)
@@ -76,6 +96,9 @@ class DbClientAppAccesses : ClientAppAccesses {
             ClientAppAccessStatus.NOT_INVITED -> error("Статус NOT_INVITED не хранится в БД: доступ $id")
         }
     }
+
+    /** Номер из колонки `phone_digits`. */
+    private fun Row.phoneDigits(): PhoneDigits = checkNotNull(PhoneDigits.from(asString("phone_digits")))
 }
 
 /** Поля хранимого доступа, общие для всех его статусов. */
@@ -97,6 +120,7 @@ private data class DbNotInvited(
 ) : NotInvitedClientAppAccess {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(): InvitedClientAppAccess {
+        ensurePhoneInContacts(orgId, clientId, phone)
         val id = ClientAppAccessId.new()
         val at = Clock.System.now()
         tr.sql(
@@ -126,6 +150,9 @@ private suspend fun StoredFields.moved(
     to: ClientAppAccessStatus,
     reinvite: Boolean = false,
 ): StoredFields {
+    if (reinvite) {
+        ensurePhoneInContacts(orgId, clientId, phone)
+    }
     val at = Clock.System.now()
     val updated =
         tr.sql(
@@ -183,6 +210,36 @@ private class DbDisabled(private val fields: StoredFields) :
     ClientAppAccessRecord by fields {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun invite(): InvitedClientAppAccess = DbInvited(fields.moved(status, ClientAppAccessStatus.INVITED, reinvite = true))
+}
+
+/**
+ * Блокирует клиента [clientId] организации [orgId] до конца транзакции и проверяет, что номер [phone]
+ * всё ещё в его контактах. Та же блокировка берётся в `DbClientContacts.replace`, поэтому номер,
+ * удалённый параллельным запросом, приглашение не получит.
+ */
+context(tr: Transaction, raise: Raise<AppError>)
+private suspend fun ensurePhoneInContacts(
+    orgId: OrgId,
+    clientId: ClientId,
+    phone: PhoneDigits,
+) {
+    tr.sql("SELECT 1 FROM clients WHERE id = :clientId AND org_id = :orgId FOR UPDATE")
+        .bind("clientId", clientId)
+        .bind("orgId", orgId)
+        .firstOrNull { 1 }
+    val inContacts =
+        tr.sql(
+            """
+            SELECT 1 FROM client_contacts
+            WHERE org_id = :orgId AND client_id = :clientId AND type = 'PHONE' AND normalized_phone(value) = :phone
+            LIMIT 1
+            """.trimIndent(),
+        )
+            .bind("orgId", orgId)
+            .bind("clientId", clientId)
+            .bind("phone", phone.value)
+            .firstOrNull { 1 }
+    ensure(inContacts != null) { accessChanged() }
 }
 
 /** Статус доступа изменился в другом запросе. */

@@ -95,7 +95,7 @@ class DbClientContacts : ClientContacts {
             SET status = 'DISABLED', status_changed_at = :at
             WHERE org_id = :orgId AND client_id = :clientId AND status <> 'DISABLED'
               AND phone_digits NOT IN (
-                  SELECT phone_digits(value)
+                  SELECT normalized_phone(value)
                   FROM client_contacts
                   WHERE org_id = :orgId AND client_id = :clientId AND type = 'PHONE'
               )
@@ -122,15 +122,8 @@ class DbClientContacts : ClientContacts {
         tr.sql(
             """
             SELECT DISTINCT client_id
-            FROM (
-                SELECT client_id, regexp_replace(value, '[^0-9]', '', 'g') AS digits
-                FROM client_contacts
-                WHERE org_id = :orgId AND type = 'PHONE'
-            ) phones
-            WHERE CASE
-                      WHEN length(digits) = 11 AND left(digits, 1) = '8' THEN '7' || substr(digits, 2)
-                      ELSE digits
-                  END = :phone
+            FROM client_contacts
+            WHERE org_id = :orgId AND type = 'PHONE' AND normalized_phone(value) = :phone
             """.trimIndent(),
         )
             .bind("orgId", ctx.orgId)

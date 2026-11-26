@@ -193,6 +193,48 @@ class DbClientAppAccessesTest {
         }
 
     @Test
+    fun `номер удалён после загрузки карточки — пригласить его нельзя`() =
+        runTest {
+            val result =
+                inTx(ctx) {
+                    setPhones(ivan, "+79031234567")
+                    val stale = notInvited(ivan)
+                    setPhones(ivan)
+                    stale.invite()
+                }
+
+            assertEquals("CLIENT_APP_ACCESS_CHANGED", assertIs<CommonDomainError>(result.leftOrNull()).code)
+        }
+
+    @Test
+    fun `отключённый номер удалён после загрузки карточки — пригласить снова нельзя`() =
+        runTest {
+            val result =
+                inTx(ctx) {
+                    setPhones(ivan, "+79031234567")
+                    val disabled = notInvited(ivan).invite().disable()
+                    setPhones(ivan)
+                    disabled.invite()
+                }
+
+            assertEquals("CLIENT_APP_ACCESS_CHANGED", assertIs<CommonDomainError>(result.leftOrNull()).code)
+        }
+
+    @Test
+    fun `byPhone не возвращает доступ номера, которого нет в контактах`() =
+        runTest {
+            val result =
+                inTx(ctx) {
+                    setPhones(ivan, "+79031234567")
+                    notInvited(ivan).invite().connect()
+                    deleteContactsBypassingSync(ivan)
+                    accesses.byPhone(mom)
+                }
+
+            assertEquals(emptyList(), assertIs<Either.Right<List<StoredClientAppAccess>>>(result).value)
+        }
+
+    @Test
     fun `архив клиента и выключенный кабинет скрывают доступ, восстановление возвращает прежний статус`() =
         runTest {
             val result =
@@ -243,6 +285,12 @@ class DbClientAppAccessesTest {
         tr.sql("SELECT phone_digits, status FROM client_app_access WHERE client_id = :id")
             .bind("id", clientId)
             .list { it.asString("phone_digits") to it.asString("status") }
+
+    /** Удаляет контакты клиента [clientId] в обход `replace`, без синхронизации доступов. */
+    context(tr: Transaction, raise: Raise<AppError>)
+    private suspend fun deleteContactsBypassingSync(clientId: ClientId) {
+        tr.sql("DELETE FROM client_contacts WHERE client_id = :id").bind("id", clientId).execute()
+    }
 
     /** Включает или выключает кабинет организации [orgId]. */
     context(tr: Transaction, raise: Raise<AppError>)

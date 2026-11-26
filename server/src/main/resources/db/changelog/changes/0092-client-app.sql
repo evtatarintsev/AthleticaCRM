@@ -67,7 +67,7 @@ CREATE TABLE client_app_access (
 CREATE INDEX idx_client_app_access_phone ON client_app_access (phone_digits);
 
 -- Номер телефона в виде для сравнения — то же правило, что PhoneDigits в коде.
-CREATE FUNCTION phone_digits(raw TEXT) RETURNS TEXT
+CREATE FUNCTION normalized_phone(raw TEXT) RETURNS TEXT
     LANGUAGE sql IMMUTABLE STRICT AS
 $$
 SELECT CASE
@@ -77,7 +77,7 @@ SELECT CASE
 FROM (SELECT regexp_replace(raw, '[^0-9]', '', 'g') AS d) digits
 $$;
 
---rollback DROP FUNCTION phone_digits(TEXT);
+--rollback DROP FUNCTION normalized_phone(TEXT);
 --rollback DROP TABLE client_app_access;
 --rollback DROP TABLE client_app_codes;
 --rollback DROP TABLE client_app_sessions;

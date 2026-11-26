@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import type { ApiClientOptions } from "./api/client";
@@ -66,6 +66,7 @@ const BALANCE = {
   unpaidSessions: 2,
   entries: [
     {
+      id: "0197a3c2-0000-7000-8000-000000000001",
       occurredOn: "2026-11-20",
       kind: "ADJUSTMENT",
       amount: { minorUnits: 50_000, currency: "RUB" },
@@ -434,8 +435,24 @@ describe("баланс", () => {
     fireEvent.click(screen.getByRole("button", { name: "История баланса" }));
     expect(await screen.findByText("Начисление")).toBeInTheDocument();
     expect(screen.getByText("+500,00 ₽")).toBeInTheDocument();
-    expect(calls.filter((it) => it.path === "client-app/balance")).toHaveLength(2);
+    expect(screen.getByText("20 ноября 2026 г.")).toBeInTheDocument();
+    expect(calls.filter((it) => it.path === "client-app/balance")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Назад" }));
     expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
+  });
+
+  it("без движений и долга блока на главной нет", async () => {
+    const { fetch } = server({
+      "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+      "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/balance": () =>
+        json({ balance: { minorUnits: 0, currency: "RUB" }, unpaidSessions: 0, entries: [] }),
+    });
+    renderApp(fetch);
+    expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Загрузка…")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Баланс")).not.toBeInTheDocument();
   });
 });

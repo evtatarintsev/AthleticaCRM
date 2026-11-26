@@ -6,6 +6,9 @@ import { z } from "zod";
 export const LocalDateSchema = z.iso.date().brand<"LocalDate">();
 export type LocalDate = z.output<typeof LocalDateSchema>;
 
+export const LedgerTransactionIdSchema = z.uuid().brand<"LedgerTransactionId">();
+export type LedgerTransactionId = z.output<typeof LedgerTransactionIdSchema>;
+
 export const LedgerKindSchema = z.enum(["SALE", "SALE_RETURN", "PAYMENT", "PAYOUT", "ADJUSTMENT", "INCOME", "EXPENSE", "TRANSFER", "OPENING", "REVERSAL"]);
 export type LedgerKind = z.output<typeof LedgerKindSchema>;
 
@@ -22,6 +25,7 @@ export type Money = z.output<typeof MoneySchema>;
 
 export const ClientAppBalanceEntrySchemaSchema = z
   .object({
+    id: LedgerTransactionIdSchema,
     occurredOn: LocalDateSchema,
     kind: LedgerKindSchema,
     amount: MoneySchema,

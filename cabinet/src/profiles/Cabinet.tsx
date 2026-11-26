@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import type { CabinetApi } from "../api/cabinetApi";
 import { errorText } from "../api/errorText";
 import type {
+  ClientAppBalanceResponse,
   ClientAppHomeResponse,
   ClientAppInvitationsResponse,
   ClientAppProfileSchema,
@@ -14,8 +15,8 @@ import { Failure } from "../ui/Failure";
 import { useLoaded } from "../ui/useLoaded";
 import { selectedProfile, storedProfile, storeProfile, type ProfileKey } from "./selectedProfile";
 
-/** Экран вошедшего человека: главная выбранного профиля, его баланс, переключатель или приглашения. */
-type View = "home" | "balance" | "switcher" | "invitations";
+/** Экран вошедшего человека: главная выбранного профиля, переключатель или приглашения. */
+type View = "home" | "switcher" | "invitations";
 
 /**
  * Кабинет вошедшего человека через [api]: профили и экран «Аккаунт» с сеансами, выходом и удалением
@@ -58,6 +59,7 @@ export function Cabinet({ api, onSignedOut }: { api: CabinetApi; onSignedOut: ()
 function Profiles({ api }: { api: CabinetApi }) {
   const { t } = useI18n();
   const [view, setView] = useState<View>("home");
+  const [balance, setBalance] = useState<ClientAppBalanceResponse | null>(null);
   const [selection, setSelection] = useState<ProfileKey | null>(storedProfile);
   const { state, reload } = useLoaded(useCallback(() => api.call("client-app/profiles"), [api]));
 
@@ -95,13 +97,12 @@ function Profiles({ api }: { api: CabinetApi }) {
   if (profile === null) {
     return <p className="card">{t("profiles.empty")}</p>;
   }
-  if (view === "balance") {
+  if (balance !== null) {
     return (
       <Balance
-        api={api}
-        profile={profile}
+        balance={balance}
         onBack={() => {
-          setView("home");
+          setBalance(null);
         }}
       />
     );
@@ -144,15 +145,13 @@ function Profiles({ api }: { api: CabinetApi }) {
         key={`${profile.orgId}/${profile.clientId}`}
         api={api}
         profile={profile}
-        onBalance={() => {
-          setView("balance");
-        }}
+        onBalance={setBalance}
       />
     </>
   );
 }
 
-/** Главная профиля [profile]: приветствие по имени клиента и баланс; [onBalance] — открыть баланс. */
+/** Главная профиля [profile]: приветствие по имени клиента и баланс; [onBalance] — открыть загруженный баланс. */
 function Home({
   api,
   profile,
@@ -160,7 +159,7 @@ function Home({
 }: {
   api: CabinetApi;
   profile: ClientAppProfileSchema;
-  onBalance: () => void;
+  onBalance: (balance: ClientAppBalanceResponse) => void;
 }) {
   const { t } = useI18n();
   const { orgId, clientId } = profile;

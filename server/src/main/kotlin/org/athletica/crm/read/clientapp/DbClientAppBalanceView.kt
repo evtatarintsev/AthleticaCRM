@@ -14,6 +14,8 @@ import org.athletica.crm.storage.asString
 /**
  * [ClientAppBalanceView] одним SQL по счетам аванса и долга клиента с проверкой подключённого доступа.
  * Неоплаченные занятия — проведённые с отметкой «пришёл» без действующего списания, во всех филиалах.
+ * Операции, не изменившие баланс (например, погашение долга из аванса), в истории не показываются —
+ * в отличие от лицевого счёта в CRM.
  */
 class DbClientAppBalanceView : ClientAppBalanceView {
     context(ctx: ClientProfileContext, tr: Transaction, raise: Raise<AppError>)
@@ -44,7 +46,7 @@ class DbClientAppBalanceView : ClientAppBalanceView {
                       AND NOT EXISTS (SELECT 1 FROM membership_debits d WHERE d.session_id = s.id AND d.client_id = sa.client_id AND d.reversed_at IS NULL)
                 ),
                 'entries', COALESCE((SELECT jsonb_agg(jsonb_build_object(
-                    'occurredOn', occurred_on, 'kind', upper(kind), 'amount', ${moneyJsonSql("change")}
+                    'id', id, 'occurredOn', occurred_on, 'kind', upper(kind), 'amount', ${moneyJsonSql("change")}
                 ) ORDER BY occurred_on DESC, created_at DESC, id DESC) FROM entries WHERE change <> 0), '[]')
             )::text AS response
             WHERE EXISTS (${ClientProfileContexts.CONNECTED_ACCESS_IDS})

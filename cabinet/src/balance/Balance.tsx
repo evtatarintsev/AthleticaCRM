@@ -10,31 +10,6 @@ import { Failure } from "../ui/Failure";
 import { formatMoney } from "../ui/money";
 import { useLoaded } from "../ui/useLoaded";
 
-/** Баланс профиля [profile] через [api]: загрузка и показ данных функцией [children]. */
-function LoadedBalance({
-  api,
-  profile,
-  children,
-}: {
-  api: CabinetApi;
-  profile: ClientAppProfileSchema;
-  children: (balance: ClientAppBalanceResponse) => React.ReactNode;
-}) {
-  const { t } = useI18n();
-  const { orgId, clientId } = profile;
-  const { state, reload } = useLoaded<ClientAppBalanceResponse>(
-    useCallback(() => api.call("client-app/balance", { orgId, clientId }), [api, orgId, clientId]),
-  );
-  switch (state.kind) {
-    case "loading":
-      return <p className="muted">{t("app.loading")}</p>;
-    case "failed":
-      return <Failure message={state.message} onRetry={reload} />;
-    case "ready":
-      return children(state.value);
-  }
-}
-
 /** Сумма баланса и число неоплаченных занятий [balance] с подсказкой, если они есть. */
 function Summary({ balance }: { balance: ClientAppBalanceResponse }) {
   const { t, locale } = useI18n();
@@ -52,7 +27,17 @@ function Summary({ balance }: { balance: ClientAppBalanceResponse }) {
   );
 }
 
-/** Блок баланса профиля [profile] на главной; [onOpen] — открыть историю баланса. */
+/** Нет ни движений, ни неоплаченных занятий, ни ненулевого баланса — блоку на главной нечего показать. */
+function isEmpty(balance: ClientAppBalanceResponse) {
+  return (
+    balance.balance.minorUnits === 0 && balance.unpaidSessions === 0 && balance.entries.length === 0
+  );
+}
+
+/**
+ * Блок баланса профиля [profile] на главной, загруженного через [api]; без данных скрыт.
+ * [onOpen] — открыть историю с уже загруженным балансом.
+ */
 export function BalanceBlock({
   api,
   profile,
@@ -60,64 +45,84 @@ export function BalanceBlock({
 }: {
   api: CabinetApi;
   profile: ClientAppProfileSchema;
-  onOpen: () => void;
+  onOpen: (balance: ClientAppBalanceResponse) => void;
 }) {
   const { t } = useI18n();
+  const { orgId, clientId } = profile;
+  const { state, reload } = useLoaded<ClientAppBalanceResponse>(
+    useCallback(() => api.call("client-app/balance", { orgId, clientId }), [api, orgId, clientId]),
+  );
+  switch (state.kind) {
+    case "loading":
+      return <p className="muted">{t("app.loading")}</p>;
+    case "failed":
+      return <Failure message={state.message} onRetry={reload} />;
+    case "ready":
+      break;
+  }
+  const balance = state.value;
+  if (isEmpty(balance)) {
+    return null;
+  }
   return (
-    <LoadedBalance api={api} profile={profile}>
-      {(balance) => (
-        <section className="card">
-          <h2>{t("balance.title")}</h2>
-          <Summary balance={balance} />
-          <button type="button" className="link" onClick={onOpen}>
-            {t("balance.history")}
-          </button>
-        </section>
-      )}
-    </LoadedBalance>
+    <section className="card">
+      <h2>{t("balance.title")}</h2>
+      <Summary balance={balance} />
+      <button
+        type="button"
+        className="link"
+        onClick={() => {
+          onOpen(balance);
+        }}
+      >
+        {t("balance.history")}
+      </button>
+    </section>
   );
 }
 
-/** Экран баланса профиля [profile]: сумма, неоплаченные занятия и история движений; [onBack] — назад. */
+/**
+ * Экран баланса [balance]: сумма, неоплаченные занятия и история движений; [onBack] — назад.
+ * Дата операции — день без времени, поэтому форматируется в UTC: иначе западнее UTC она сдвинулась бы на день.
+ */
 export function Balance({
-  api,
-  profile,
+  balance,
   onBack,
 }: {
-  api: CabinetApi;
-  profile: ClientAppProfileSchema;
+  balance: ClientAppBalanceResponse;
   onBack: () => void;
 }) {
   const { t, locale } = useI18n();
-  const dates = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" });
+  const dates = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
   return (
-    <LoadedBalance api={api} profile={profile}>
-      {(balance) => (
-        <section className="card">
-          <h1>{t("balance.title")}</h1>
-          <Summary balance={balance} />
-          <h2>{t("balance.history")}</h2>
-          {balance.entries.length === 0 ? (
-            <p className="muted">{t("balance.empty")}</p>
-          ) : (
-            <ul className="sessions">
-              {balance.entries.map((it, index) => (
-                <li key={index} className="session">
-                  <div>
-                    <span>{t(entryKey(it))}</span>
-                    <span className="muted">{dates.format(new Date(it.occurredOn))}</span>
-                  </div>
-                  <strong>{formatMoney(it.amount, locale, true)}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-          <button type="button" className="link" onClick={onBack}>
-            {t("balance.back")}
-          </button>
-        </section>
+    <section className="card">
+      <h1>{t("balance.title")}</h1>
+      <Summary balance={balance} />
+      <h2>{t("balance.history")}</h2>
+      {balance.entries.length === 0 ? (
+        <p className="muted">{t("balance.empty")}</p>
+      ) : (
+        <ul className="sessions">
+          {balance.entries.map((it) => (
+            <li key={it.id} className="session">
+              <div>
+                <span>{t(entryKey(it))}</span>
+                <span className="muted">{dates.format(new Date(it.occurredOn))}</span>
+              </div>
+              <strong>{formatMoney(it.amount, locale, true)}</strong>
+            </li>
+          ))}
+        </ul>
       )}
-    </LoadedBalance>
+      <button type="button" className="link" onClick={onBack}>
+        {t("balance.back")}
+      </button>
+    </section>
   );
 }
 

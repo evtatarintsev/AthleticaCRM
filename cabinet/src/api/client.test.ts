@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
 import { createApiClient, type ApiClientOptions, type CallArgs } from "./client";
 
-/** Тестовый манифест: в сгенерированном контракте кабинета эндпоинтов пока нет. */
+/** Тестовый манифест: проверки клиента не зависят от сгенерированного контракта. */
 const manifest = {
   "client-app/home": {
     method: "GET",

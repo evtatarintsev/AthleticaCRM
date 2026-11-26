@@ -1003,4 +1003,52 @@ object Messages {
         override val ru = "У организации нет владельца с учётной записью"
         override val en = "The organization has no owner with an account"
     }
+
+    /** Текст SMS с кодом входа в кабинет: название организации-плательщика и код. */
+    object ClientAppSmsCode : LocalizationTemplate2<String, String> {
+        override val ru = { org: String, code: String -> "$org: код входа в кабинет $code. Никому его не сообщайте." }
+        override val en = { org: String, code: String -> "$org: your sign-in code is $code. Do not share it." }
+    }
+
+    object ClientAppTermsRequired : LocalizationKey {
+        override val ru = "Примите условия использования, чтобы войти"
+        override val en = "Accept the terms of use to sign in"
+    }
+
+    object ClientAppCodeWrong : LocalizationKey {
+        override val ru = "Неверный код"
+        override val en = "Wrong code"
+    }
+
+    object ClientAppCodeExpired : LocalizationKey {
+        override val ru = "Код больше не действует — запросите новый"
+        override val en = "The code is no longer valid — request a new one"
+    }
+
+    object ClientAppInvalidPhone : LocalizationKey {
+        override val ru = "Укажите номер телефона"
+        override val en = "Enter a phone number"
+    }
+
+    /** Приглашения организации для номера нет: его уже приняли, отклонили или отозвали. */
+    object ClientAppInvitationNotFound : LocalizationKey {
+        override val ru = "Приглашение больше не действует"
+        override val en = "The invitation is no longer valid"
+    }
+
+    /** Заголовок задачи после «Это не я» в кабинете. */
+    object ClientAppNotMeTaskTitle : LocalizationKey {
+        override val ru = "Проверьте номер телефона"
+        override val en = "Check the phone number"
+    }
+
+    /** Описание задачи после «Это не я»: номер, владелец которого отказался от приглашения. */
+    object ClientAppNotMeTaskDescription : LocalizationTemplate1<String> {
+        override val ru = { phone: String ->
+            "Владелец номера +$phone сообщил в кабинете, что приглашение не для него. Проверьте номер в карточке клиента и пригласите клиента снова."
+        }
+        override val en = { phone: String ->
+            "The owner of +$phone reported in the client cabinet that the invitation is not for them. Check the number in the client card and invite the client again."
+        }
+    }
 }

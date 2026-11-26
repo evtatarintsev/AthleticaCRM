@@ -387,3 +387,52 @@ Response:
 - [ ] Результат возвращается в правильном формате (API schema)
 - [ ] Документирован в API (OpenAPI/Swagger)
 
+
+## 10. Клиентский контур (кабинет клиента)
+
+Кабинет клиента (`cabinet/`, хост `clients.<домен>`) — отдельный от сотрудников контур со своими
+токенами, контекстами и маршрутами `/api/client-app/*`. Требования — `openspec/changes/client-cabinet-web`.
+
+### Контексты вне `RequestContext`
+
+- `ClientAccountContext(accountId, sessionId, lang)` (`core/ClientAccountContext.kt`) — из клиентского
+  токена. У аккаунта нет организации, поэтому это **не** вариант `sealed interface RequestContext`:
+  функции с `context(ctx: RequestContext)` по типам не вызываются из клиентских маршрутов, и клиент не
+  попадает в аудит под видом сотрудника или системы.
+- `ClientProfileContext(accountId, sessionId, orgId, clientId, currency, lang)` (`core/ClientProfileContext.kt`) —
+  для запросов по конкретному клиенту; routes строят его только через `ClientProfileContexts.profile`, который
+  проверяет подключённый доступ (иначе `CLIENT_NOT_FOUND`). Проекции данных клиента в `read/clientapp/`
+  принимают его и повторяют ту же проверку в своём SQL предикатом `ClientProfileContexts.CONNECTED_ACCESS_IDS`
+  (статус `CONNECTED`, номер аккаунта, кабинет включён, клиент не в архиве); его же используют команды от имени
+  клиента — например, `touch` времени последней активности доступа. Приглашения и список профилей аккаунта
+  принимают `ClientAccountContext`.
+- Записи в другие домены (задачи и т. п.) клиентский контур делает в `SystemRequestContext`
+  организации через `SystemContexts.forOrg`, с аккаунтом клиента в данных события аудита.
+
+### Токены и cookie
+
+- `ClientAppJwtConfig` (`security/`): тот же ключ `jwt.secret`, но аудитория `athletica-client-app`
+  вместо `athletica-crm-users` — верификатор CRM не принимает клиентский токен, и наоборот.
+  Access — 15 минут, refresh — 60 дней (`clientApp` в `application.conf`).
+- Провайдер `client-jwt` (`Application.kt`) читает только cookie `client_app_access_token`
+  (заголовок `Authorization` добавят мобильные приложения) и пропускает запрос, только пока жив сеанс
+  `client_app_sessions` из claim `sid`; иначе 401.
+- Cookie HttpOnly, `SameSite=Strict`, без `Domain`, `Secure` вне режима разработки: access — на путь
+  `/api/client-app`, refresh (`client_app_refresh_token`) — только на `/api/client-app/auth/refresh`.
+  Имена отличаются от cookie CRM, поэтому сеансы CRM и кабинета в одном браузере независимы.
+- Сеансы `DbClientAppSessions` устроены как `DbAuthSessions`: ротация refresh с окном 60 с, повторное
+  предъявление заменённого токена позже окна удаляет сеанс.
+
+### Вход по коду
+
+- `usecases/clientapp/ClientAppSignIn`: запрос кода, вход, обновление, выход. Коды — `DbClientAppCodes`
+  (хэш SHA-256 от `id` строки и кода, 5 минут, 5 попыток, лимиты 60 с / 5 в час / 10 в сутки на номер).
+  Ответ на запрос кода одинаков для любого номера.
+- Доставка — `VerificationCodeDelivery`, в фоне (`Di.backgroundScope`) после ответа: только если у номера
+  есть доступ `приглашён`/`подключён` в организации с включённым кабинетом; Telegram, при
+  `Undeliverable` — SMS.
+- Порт `VerificationCodeSender` (`domain/clientapp/codes`) отделяет политику от способов доставки.
+  Реализации платят за код из средств организации (`CodePayers` — включённый кабинет и самое свежее
+  приглашение): `TelegramVerificationCodeSender` — через Telegram Gateway в её `SystemRequestContext`,
+  `SmsVerificationCodeSender` — напрямую через `ChannelTransports` её SMS-канала. В режиме разработки
+  вместо них `LoggingVerificationCodeSender` пишет код в лог.

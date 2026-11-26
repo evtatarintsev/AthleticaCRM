@@ -181,6 +181,10 @@ mise run admin org find ЦР   # = bin/athletica admin org find ЦР
   Загрузка полного списка (`employees.list()`) ради `associateBy { it.id }` — ошибка.
 - Скоуп по `ctx.orgId` (и `branch_id`, где колонка есть) — обязательная часть каждого запроса.
 - Правила видимости на чтение (например `CAN_VIEW_ALL_TASKS`) живут в проекции, а не в репозитории агрегата.
+- Проекции кабинета клиента `read/clientapp/*` принимают `ClientProfileContext` (данные клиента) или
+  `ClientAccountContext` (приглашения и список профилей аккаунта), а не `EmployeeRequestContext`; данные
+  клиента проверяют подключённый доступ в том же SQL (`ClientProfileContexts.CONNECTED_ACCESS_IDS`);
+  см. «Клиентский контур» в `docs/ARCHITECTURE_CORE.md`.
 - Исключение из «сортировки в SQL»: признак, выведенный общим правилом из `shared` (например
   `ActiveStatus` — «заканчивается», «к закрытию»), считается в Kotlin, а не копируется в SQL;
   сортировать по нему в Kotlin допустимо только в непостраничной проекции с небольшим ответом

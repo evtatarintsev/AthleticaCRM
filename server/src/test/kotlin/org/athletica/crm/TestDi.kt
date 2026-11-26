@@ -13,15 +13,19 @@ import org.athletica.crm.domain.payment.PaymentCreateRequest
 import org.athletica.crm.domain.payment.PaymentCreateResult
 import org.athletica.crm.domain.payment.PaymentGateway
 import org.athletica.crm.domain.payment.PaymentGatewayError
+import org.athletica.crm.security.ClientAppJwtConfig
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.infra.yookassa.YookassaConfig
 
+/** Ключ подписи токенов в тестах — общий для CRM и кабинета, как в проде: контуры различает аудитория. */
+private const val TEST_JWT_SECRET = "test-secret-key-for-unit-tests"
+
 /** JWT-конфиг для тестовой среды. */
 val testJwtConfig =
     JwtConfig(
-        secret = "test-secret-key-for-unit-tests",
+        secret = TEST_JWT_SECRET,
         accessTokenTtlMinutes = 15L,
         refreshTokenTtlDays = 30L,
     )
@@ -34,6 +38,7 @@ fun testDi(): Di {
         database = TestPostgres.db,
         mailbox = TestMailbox(),
         jwtConfig = testJwtConfig,
+        clientAppJwtConfig = ClientAppJwtConfig(TEST_JWT_SECRET, accessTokenTtlMinutes = 15L, refreshTokenTtlDays = 60L),
         minio = TestMinio.minioService,
         passwordHasher = PasswordHasher(),
         audit = audit,

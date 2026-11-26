@@ -3,6 +3,8 @@ package org.athletica.crm.domain.clientapp
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
 import io.r2dbc.spi.Row
+import org.athletica.crm.core.ClientProfileContext
+import org.athletica.crm.core.ClientProfileContexts
 import org.athletica.crm.core.RequestContext
 import org.athletica.crm.core.clientapp.ClientAppAccessStatus
 import org.athletica.crm.core.entityids.ClientAppAccessId
@@ -13,6 +15,7 @@ import org.athletica.crm.core.entityids.toClientId
 import org.athletica.crm.core.entityids.toOrgId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
+import org.athletica.crm.core.tasks.TaskId
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.storage.asInstant
@@ -21,6 +24,7 @@ import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asUuid
 import org.athletica.crm.storage.asUuidOrNull
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 /** Реализация репозитория доступов к кабинету клиента на PostgreSQL. */
@@ -67,6 +71,37 @@ class DbClientAppAccesses : ClientAppAccesses {
             .bind("phone", phone.value)
             .list { it.toStoredAccess() }
 
+    context(ctx: ClientProfileContext, tr: Transaction, raise: Raise<AppError>)
+    override suspend fun touch(now: Instant) {
+        tr.sql(
+            """
+            UPDATE client_app_access SET last_seen_at = :now
+            WHERE id IN (${ClientProfileContexts.CONNECTED_ACCESS_IDS})
+              AND (last_seen_at IS NULL OR last_seen_at < :threshold)
+            """.trimIndent(),
+        )
+            .bind("now", now)
+            .bind("threshold", now - TOUCH_INTERVAL)
+            .bind("accountId", ctx.accountId)
+            .bind("orgId", ctx.orgId)
+            .bind("clientId", ctx.clientId)
+            .execute()
+    }
+
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun reserveNotMeTask(access: NotMeClientAppAccess, taskId: TaskId): Boolean =
+        tr.sql(
+            """
+            UPDATE client_app_access a SET not_me_task_id = :taskId
+            WHERE a.id = :id AND a.org_id = :orgId AND a.status = 'NOT_ME'
+              AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.id = a.not_me_task_id AND t.status <> 'COMPLETED')
+            """.trimIndent(),
+        )
+            .bind("taskId", taskId)
+            .bind("id", access.id)
+            .bind("orgId", access.orgId)
+            .execute() == 1L
+
     /** Доступ из строки выборки; строка без `id` — номер без приглашения. */
     private fun Row.toAccess(): ClientAppAccess =
         if (asUuidOrNull("id") == null) {
@@ -99,6 +134,11 @@ class DbClientAppAccesses : ClientAppAccesses {
 
     /** Номер из колонки `phone_digits`. */
     private fun Row.phoneDigits(): PhoneDigits = checkNotNull(PhoneDigits.from(asString("phone_digits")))
+
+    private companion object {
+        /** Как часто запросы профиля обновляют время последней активности доступа. */
+        val TOUCH_INTERVAL = 5.minutes
+    }
 }
 
 /** Поля хранимого доступа, общие для всех его статусов. */

@@ -8,6 +8,9 @@ import io.r2dbc.pool.ConnectionPool
 import io.r2dbc.pool.ConnectionPoolConfiguration
 import io.r2dbc.spi.ConnectionFactories
 import io.r2dbc.spi.ConnectionFactoryOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.athletica.crm.assistant.AssistantService
 import org.athletica.crm.assistant.imports.ImportDrafts
 import org.athletica.crm.assistant.imports.PhotoRecognizer
@@ -50,8 +53,19 @@ import org.athletica.crm.domain.channels.ChannelTransports
 import org.athletica.crm.domain.channels.DbChannelBindings
 import org.athletica.crm.domain.channels.DbChannelChats
 import org.athletica.crm.domain.channels.DbChannelIntegrations
+import org.athletica.crm.domain.clientapp.ClientAppAccesses
+import org.athletica.crm.domain.clientapp.ClientAppConfig
+import org.athletica.crm.domain.clientapp.DbClientAppAccesses
+import org.athletica.crm.domain.clientapp.auth.ClientAppAccounts
+import org.athletica.crm.domain.clientapp.auth.ClientAppCodes
+import org.athletica.crm.domain.clientapp.auth.ClientAppSessions
+import org.athletica.crm.domain.clientapp.auth.DbClientAppAccounts
+import org.athletica.crm.domain.clientapp.auth.DbClientAppCodes
+import org.athletica.crm.domain.clientapp.auth.DbClientAppSessions
 import org.athletica.crm.domain.clientapp.codes.CodeChannel
 import org.athletica.crm.domain.clientapp.codes.LoggingVerificationCodeSender
+import org.athletica.crm.domain.clientapp.codes.SmsVerificationCodeSender
+import org.athletica.crm.domain.clientapp.codes.TelegramVerificationCodeSender
 import org.athletica.crm.domain.clientapp.codes.VerificationCodeSender
 import org.athletica.crm.domain.clientcard.ClientCardSectionSettings
 import org.athletica.crm.domain.clientcard.DbClientCardSectionSettings
@@ -142,10 +156,14 @@ import org.athletica.crm.domain.widgets.AuditScheduleWidgets
 import org.athletica.crm.domain.widgets.DbScheduleWidgets
 import org.athletica.crm.domain.widgets.ScheduleWidgets
 import org.athletica.crm.read.ReadViews
+import org.athletica.crm.security.ClientAppJwtConfig
 import org.athletica.crm.security.JwtConfig
 import org.athletica.crm.security.PasswordHasher
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.MinioService
+import org.athletica.crm.usecases.clientapp.ClientAppConnections
+import org.athletica.crm.usecases.clientapp.ClientAppSignIn
+import org.athletica.crm.usecases.clientapp.VerificationCodeDelivery
 import org.athletica.crm.usecases.finance.CashOperations
 import org.athletica.crm.usecases.finance.ClientPayments
 import org.athletica.crm.usecases.finance.SaleActions
@@ -212,9 +230,15 @@ data class Di(
         ),
     /** Наполнитель демо-режима; `null` — демо-режим выключен и регистрация не наполняет организацию. */
     val demoData: DemoData? = null,
-    /** Отправители кодов входа в кабинет клиента; реальные TELEGRAM и SMS появятся вместе с входом по коду. */
-    val verificationCodeSenders: List<VerificationCodeSender> = emptyList(),
+    /** Отправители кодов входа в кабинет клиента; `null` — реальные TELEGRAM и SMS за счёт организаций. */
+    val verificationCodeSenders: List<VerificationCodeSender>? = null,
+    /** Настройки кабинета клиента. */
+    val clientAppConfig: ClientAppConfig = ClientAppConfig("http://localhost:5174", "dev", secureCookies = false),
+    /** Токены кабинета клиента. */
+    val clientAppJwtConfig: ClientAppJwtConfig = ClientAppJwtConfig("dev-jwt-secret", accessTokenTtlMinutes = 15, refreshTokenTtlDays = 60),
 ) {
+    /** Фоновые задачи вне запроса (доставка кодов кабинета); отменяется при остановке приложения. */
+    val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val employeePresence = EmployeePresence()
     val emailVerifications = EmailVerifications(orgEmails, notifications, audit, emailVerificationConfig)
     val passwordResets = PasswordResets(orgEmails, authSessions, emailVerifications, audit, passwordHasher, emailVerificationConfig)
@@ -281,6 +305,20 @@ data class Di(
     val channelChats: ChannelChats = DbChannelChats()
     val inboundStores = InboundStores(channelBindings, inboundReceipts, conversations, channelChats, clientContacts)
     val deliveries = DbDeliveries()
+    val clientAppAccesses: ClientAppAccesses = DbClientAppAccesses()
+    val clientAppSessions: ClientAppSessions = DbClientAppSessions()
+    val clientAppCodes: ClientAppCodes = DbClientAppCodes()
+    val clientAppAccounts: ClientAppAccounts = DbClientAppAccounts()
+    val clientAppSignIn =
+        ClientAppSignIn(database, clientAppCodes, clientAppAccounts, clientAppSessions, clientAppConfig.termsVersion, clientAppJwtConfig.refreshTokenTtl)
+    val clientAppConnections = ClientAppConnections(database, clientAppAccounts, clientAppAccesses, tasks)
+    val verificationCodeDelivery =
+        VerificationCodeDelivery(
+            database,
+            clientAppAccesses,
+            clientAppCodes,
+            verificationCodeSenders ?: listOf(TelegramVerificationCodeSender(database, telegramGateway), SmsVerificationCodeSender(database, channelTransports)),
+        )
     val messageDispatcher: MessageDispatcher =
         MessageDispatcher(database, deliveries, channelIntegrations)
     val telegramPollState = TelegramPollState(leaseFor = 60.seconds)
@@ -342,7 +380,19 @@ fun Application.di(): Di {
         photoRecognizer = PhotoRecognizer.from(environment.config),
         emailVerificationConfig = EmailVerificationConfig(environment.config.property("emailVerification.publicUrl").getString()),
         demoData = if (environment.config.property("demo.enabled").getString().toBoolean()) DemoData(audit = audit) else null,
-        verificationCodeSenders = if (developmentMode) CodeChannel.entries.map { LoggingVerificationCodeSender(it) } else emptyList(),
+        verificationCodeSenders = if (developmentMode) CodeChannel.entries.map { LoggingVerificationCodeSender(it) } else null,
+        clientAppConfig =
+            ClientAppConfig(
+                publicUrl = environment.config.property("clientApp.publicUrl").getString(),
+                termsVersion = environment.config.property("clientApp.termsVersion").getString(),
+                secureCookies = !developmentMode,
+            ),
+        clientAppJwtConfig =
+            ClientAppJwtConfig(
+                secret = environment.config.property("jwt.secret").getString(),
+                accessTokenTtlMinutes = environment.config.property("clientApp.accessTokenTtlMinutes").getString().toLong(),
+                refreshTokenTtlDays = environment.config.property("clientApp.refreshTokenTtlDays").getString().toLong(),
+            ),
     )
 }
 

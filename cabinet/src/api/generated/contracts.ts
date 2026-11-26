@@ -3,6 +3,99 @@
 
 import { z } from "zod";
 
+export const ClientAppHomeResponseSchema = z
+  .object({
+    clientName: z.string(),
+    orgName: z.string(),
+  })
+  .readonly();
+export type ClientAppHomeResponse = z.output<typeof ClientAppHomeResponseSchema>;
+
+export const OrgIdSchema = z.uuid().brand<"OrgId">();
+export type OrgId = z.output<typeof OrgIdSchema>;
+
+export const ClientAppInvitationRequestSchema = z
+  .object({
+    orgId: OrgIdSchema,
+  })
+  .readonly();
+export type ClientAppInvitationRequest = z.output<typeof ClientAppInvitationRequestSchema>;
+
+export const InstantSchema = z.iso.datetime({ offset: true }).brand<"Instant">();
+export type Instant = z.output<typeof InstantSchema>;
+
+export const ClientAppInvitationSchemaSchema = z
+  .object({
+    orgId: OrgIdSchema,
+    orgName: z.string(),
+    invitedAt: InstantSchema,
+    clientCount: z.int32(),
+  })
+  .readonly();
+export type ClientAppInvitationSchema = z.output<typeof ClientAppInvitationSchemaSchema>;
+
+export const ClientAppInvitationsResponseSchema = z
+  .object({
+    invitations: z.array(ClientAppInvitationSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAppInvitationsResponse = z.output<typeof ClientAppInvitationsResponseSchema>;
+
+export const ClientAppLoginRequestSchema = z
+  .object({
+    phone: z.string(),
+    code: z.string(),
+    acceptedTermsVersion: z.string().nullable().optional(),
+  })
+  .readonly();
+export type ClientAppLoginRequest = z.output<typeof ClientAppLoginRequestSchema>;
+
+export const ClientIdSchema = z.uuid().brand<"ClientId">();
+export type ClientId = z.output<typeof ClientIdSchema>;
+
+export const ClientAppProfileRequestSchema = z
+  .object({
+    orgId: OrgIdSchema,
+    clientId: ClientIdSchema,
+  })
+  .readonly();
+export type ClientAppProfileRequest = z.output<typeof ClientAppProfileRequestSchema>;
+
+export const ClientAppProfileSchemaSchema = z
+  .object({
+    orgId: OrgIdSchema,
+    orgName: z.string(),
+    clientId: ClientIdSchema,
+    clientName: z.string(),
+  })
+  .readonly();
+export type ClientAppProfileSchema = z.output<typeof ClientAppProfileSchemaSchema>;
+
+export const ClientAppProfilesResponseSchema = z
+  .object({
+    profiles: z.array(ClientAppProfileSchemaSchema).readonly(),
+    newInvitations: z.int32(),
+  })
+  .readonly();
+export type ClientAppProfilesResponse = z.output<typeof ClientAppProfilesResponseSchema>;
+
+export const ClientAppRequestCodeRequestSchema = z
+  .object({
+    phone: z.string(),
+    viaSms: z.boolean().optional(),
+  })
+  .readonly();
+export type ClientAppRequestCodeRequest = z.output<typeof ClientAppRequestCodeRequestSchema>;
+
+export const ClientAppRequestCodeResponseSchema = z
+  .object({
+    sent: z.boolean(),
+    retryAfterSeconds: z.int(),
+    termsVersion: z.string(),
+  })
+  .readonly();
+export type ClientAppRequestCodeResponse = z.output<typeof ClientAppRequestCodeResponseSchema>;
+
 export const FieldErrorSchema = z
   .object({
     name: z.string(),
@@ -22,4 +115,67 @@ export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
 
 /** Все эндпоинты API: путь без `/api/` → метод, формат запроса и ответа. */
 export const endpoints = {
+  "client-app/auth/login": {
+    method: "POST",
+    in: "body",
+    request: ClientAppLoginRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app/auth/logout": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app/auth/refresh": {
+    method: "POST",
+    in: "none",
+    request: z.undefined(),
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app/auth/request-code": {
+    method: "POST",
+    in: "body",
+    request: ClientAppRequestCodeRequestSchema,
+    out: "json",
+    response: ClientAppRequestCodeResponseSchema,
+  },
+  "client-app/connect": {
+    method: "POST",
+    in: "body",
+    request: ClientAppInvitationRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app/home": {
+    method: "GET",
+    in: "query",
+    request: ClientAppProfileRequestSchema,
+    out: "json",
+    response: ClientAppHomeResponseSchema,
+  },
+  "client-app/invitations": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ClientAppInvitationsResponseSchema,
+  },
+  "client-app/not-me": {
+    method: "POST",
+    in: "body",
+    request: ClientAppInvitationRequestSchema,
+    out: "empty",
+    response: z.undefined(),
+  },
+  "client-app/profiles": {
+    method: "GET",
+    in: "none",
+    request: z.undefined(),
+    out: "json",
+    response: ClientAppProfilesResponseSchema,
+  },
 } as const;

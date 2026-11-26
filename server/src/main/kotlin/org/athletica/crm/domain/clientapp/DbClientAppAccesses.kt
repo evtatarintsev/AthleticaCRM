@@ -105,6 +105,7 @@ class DbClientAppAccesses : ClientAppAccesses {
             FROM client_app_access
             WHERE phone_digits = :phone
             ORDER BY invited_at DESC, id
+            FOR UPDATE
             """.trimIndent(),
         )
             .bind("phone", phone.value)

@@ -38,6 +38,7 @@ interface ClientAppAccesses {
     /**
      * Все хранимые доступы номера [phone] во всех организациях, в том числе с выключенным кабинетом,
      * у клиентов в архиве и у номеров, которых уже нет в контактах, — для удаления аккаунта.
+     * Строки блокируются до конца транзакции: параллельная смена статуса ждёт, а не ломает удаление.
      */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun allByPhone(phone: PhoneDigits): List<StoredClientAppAccess>

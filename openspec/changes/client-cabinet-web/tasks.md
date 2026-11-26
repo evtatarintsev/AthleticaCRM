@@ -14,10 +14,10 @@
 
 ## 2. Доступ: данные и домен
 
-- [ ] 2.1 Liquibase-миграция: `organizations.client_app_enabled` (default `false`), таблицы `client_app_accounts`, `client_app_sessions`, `client_app_codes`, `client_app_access` по design §5; проверить, что `./gradlew test` поднимает схему
-- [ ] 2.2 `ClientAppAccessStatus` в `shared`, право `CAN_MANAGE_CLIENT_APP`; агрегат `domain/clientapp/ClientAppAccess` с переходами из `client-app-access` (недопустимые невыразимы типами) и `DbClientAppAccesses` с выборкой по (`org_id`, `client_id`) и по `phone_digits`; domain-тест на каждый допустимый переход и изоляцию организаций
-- [ ] 2.3 Синхронизация доступов в `DbClientContacts.replace` в той же транзакции: удалённый номер → `отключён`; тесты «номер заменён — старый доступ отключён, новый `не приглашён`» (в том числе через `ClientDrafts`) и «номер удалён и записан снова — доступ остаётся `отключён`»
-- [ ] 2.4 Архив клиента и выключение кабинета в выборке доступов (доступ не даёт данных, статус сохраняется); тест: архивирование и восстановление возвращают прежний статус
+- [x] 2.1 Liquibase-миграция: `organizations.client_app_enabled` (default `false`), таблицы `client_app_accounts`, `client_app_sessions`, `client_app_codes`, `client_app_access` по design §5; проверить, что `./gradlew test` поднимает схему
+- [x] 2.2 `ClientAppAccessStatus` в `shared`, право `CAN_MANAGE_CLIENT_APP`; агрегат `domain/clientapp/ClientAppAccess` с переходами из `client-app-access` (недопустимые невыразимы типами) и `DbClientAppAccesses` с выборкой по (`org_id`, `client_id`) и по `phone_digits`; domain-тест на каждый допустимый переход и изоляцию организаций
+- [x] 2.3 Синхронизация доступов в `DbClientContacts.replace` в той же транзакции: удалённый номер → `отключён`; тесты «номер заменён — старый доступ отключён, новый `не приглашён`» и «номер удалён и записан снова — доступ остаётся `отключён`» (`ClientDrafts`, как импорт и демо-данные, только создаёт клиентов: доступов у нового клиента нет, отдельный тест не нужен)
+- [x] 2.4 Архив клиента и выключение кабинета в выборке доступов (доступ не даёт данных, статус сохраняется); тест: архивирование и восстановление возвращают прежний статус
 
 ## 3. Вход по коду
 

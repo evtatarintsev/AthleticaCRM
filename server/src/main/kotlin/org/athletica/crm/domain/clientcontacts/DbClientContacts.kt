@@ -16,6 +16,7 @@ import org.athletica.crm.storage.asBoolean
 import org.athletica.crm.storage.asString
 import org.athletica.crm.storage.asStringOrNull
 import org.athletica.crm.storage.asUuid
+import kotlin.time.Clock
 
 /** Реализация репозитория контактов клиентов на PostgreSQL через R2DBC. */
 class DbClientContacts : ClientContacts {
@@ -79,6 +80,31 @@ class DbClientContacts : ClientContacts {
                 .bind("position", position)
                 .execute()
         }
+        disableRemovedPhoneAccesses(client.id)
+    }
+
+    /**
+     * Отключает доступы к кабинету клиента [clientId] по номерам, которых больше нет в его контактах.
+     * Номер, записанный снова, находит свой доступ отключённым: вернуть его может только новое приглашение.
+     */
+    context(ctx: EmployeeRequestContext, tr: Transaction, raise: Raise<AppError>)
+    private suspend fun disableRemovedPhoneAccesses(clientId: ClientId) {
+        tr.sql(
+            """
+            UPDATE client_app_access
+            SET status = 'DISABLED', status_changed_at = :at
+            WHERE org_id = :orgId AND client_id = :clientId AND status <> 'DISABLED'
+              AND phone_digits NOT IN (
+                  SELECT normalized_phone(value)
+                  FROM client_contacts
+                  WHERE org_id = :orgId AND client_id = :clientId AND type = 'PHONE'
+              )
+            """.trimIndent(),
+        )
+            .bind("at", Clock.System.now())
+            .bind("orgId", ctx.orgId)
+            .bind("clientId", clientId)
+            .execute()
     }
 
     private fun Row.toClientContact(): ClientContact =
@@ -96,15 +122,8 @@ class DbClientContacts : ClientContacts {
         tr.sql(
             """
             SELECT DISTINCT client_id
-            FROM (
-                SELECT client_id, regexp_replace(value, '[^0-9]', '', 'g') AS digits
-                FROM client_contacts
-                WHERE org_id = :orgId AND type = 'PHONE'
-            ) phones
-            WHERE CASE
-                      WHEN length(digits) = 11 AND left(digits, 1) = '8' THEN '7' || substr(digits, 2)
-                      ELSE digits
-                  END = :phone
+            FROM client_contacts
+            WHERE org_id = :orgId AND type = 'PHONE' AND normalized_phone(value) = :phone
             """.trimIndent(),
         )
             .bind("orgId", ctx.orgId)

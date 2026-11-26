@@ -208,8 +208,7 @@ class ImportDrafts(
             tr.sql(
                 """
                 SELECT 'phone' AS kind, digits AS key, client_id FROM (
-                    SELECT client_id, CASE WHEN length(d) = 11 AND left(d, 1) = '8' THEN '7' || substr(d, 2) ELSE d END AS digits
-                    FROM (SELECT client_id, regexp_replace(value, '[^0-9]', '', 'g') AS d FROM client_contacts WHERE org_id = :org AND type = 'PHONE') raw
+                    SELECT client_id, normalized_phone(value) AS digits FROM client_contacts WHERE org_id = :org AND type = 'PHONE'
                 ) phones WHERE digits = ANY(:phones)
                 UNION ALL
                 SELECT 'name', lower(regexp_replace(replace(replace(trim(name), 'ё', 'е'), 'Ё', 'Е'), '\s+', ' ', 'g')), id

@@ -34,6 +34,9 @@ enum class UserPermission : Permission {
 
     /** Позволяет подключать Telegram Gateway организации и отправлять тестовые коды за её счёт. */
     CAN_MANAGE_TELEGRAM_GATEWAY,
+
+    /** Позволяет включать и выключать кабинет клиента и приглашать в него всех клиентов сразу. */
+    CAN_MANAGE_CLIENT_APP,
 }
 
 /**

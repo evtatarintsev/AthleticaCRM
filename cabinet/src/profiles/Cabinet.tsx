@@ -2,12 +2,14 @@ import { useCallback, useState } from "react";
 import type { CabinetApi } from "../api/cabinetApi";
 import { errorText } from "../api/errorText";
 import type {
+  ClientAppBalanceResponse,
   ClientAppHomeResponse,
   ClientAppInvitationsResponse,
   ClientAppProfileSchema,
   ClientAppProfilesResponse,
 } from "../api/generated/contracts";
 import { Account } from "../account/Account";
+import { Balance, BalanceBlock } from "../balance/Balance";
 import { useI18n } from "../i18n/context";
 import { Failure } from "../ui/Failure";
 import { useLoaded } from "../ui/useLoaded";
@@ -57,6 +59,7 @@ export function Cabinet({ api, onSignedOut }: { api: CabinetApi; onSignedOut: ()
 function Profiles({ api }: { api: CabinetApi }) {
   const { t } = useI18n();
   const [view, setView] = useState<View>("home");
+  const [balance, setBalance] = useState<ClientAppBalanceResponse | null>(null);
   const [selection, setSelection] = useState<ProfileKey | null>(storedProfile);
   const { state, reload } = useLoaded(useCallback(() => api.call("client-app/profiles"), [api]));
 
@@ -94,6 +97,16 @@ function Profiles({ api }: { api: CabinetApi }) {
   if (profile === null) {
     return <p className="card">{t("profiles.empty")}</p>;
   }
+  if (balance !== null) {
+    return (
+      <Balance
+        balance={balance}
+        onBack={() => {
+          setBalance(null);
+        }}
+      />
+    );
+  }
   if (view === "switcher") {
     return (
       <Switcher
@@ -128,13 +141,26 @@ function Profiles({ api }: { api: CabinetApi }) {
           {profiles.newInvitations > 0 && <span className="badge">{profiles.newInvitations}</span>}
         </button>
       </header>
-      <Home key={`${profile.orgId}/${profile.clientId}`} api={api} profile={profile} />
+      <Home
+        key={`${profile.orgId}/${profile.clientId}`}
+        api={api}
+        profile={profile}
+        onBalance={setBalance}
+      />
     </>
   );
 }
 
-/** Главная профиля [profile]: приветствие по имени клиента. */
-function Home({ api, profile }: { api: CabinetApi; profile: ClientAppProfileSchema }) {
+/** Главная профиля [profile]: приветствие по имени клиента и баланс; [onBalance] — открыть загруженный баланс. */
+function Home({
+  api,
+  profile,
+  onBalance,
+}: {
+  api: CabinetApi;
+  profile: ClientAppProfileSchema;
+  onBalance: (balance: ClientAppBalanceResponse) => void;
+}) {
   const { t } = useI18n();
   const { orgId, clientId } = profile;
   const { state, reload } = useLoaded<ClientAppHomeResponse>(
@@ -147,10 +173,13 @@ function Home({ api, profile }: { api: CabinetApi; profile: ClientAppProfileSche
       return <Failure message={state.message} onRetry={reload} />;
     case "ready":
       return (
-        <section className="card">
-          <h1>{t("home.greeting")}</h1>
-          <p>{t("home.cabinetOf", { name: state.value.clientName })}</p>
-        </section>
+        <>
+          <section className="card">
+            <h1>{t("home.greeting")}</h1>
+            <p>{t("home.cabinetOf", { name: state.value.clientName })}</p>
+          </section>
+          <BalanceBlock api={api} profile={profile} onOpen={onBalance} />
+        </>
       );
   }
 }

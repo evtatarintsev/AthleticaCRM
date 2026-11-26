@@ -12,10 +12,12 @@ import org.athletica.crm.read.auth.DbSessionListView
 import org.athletica.crm.read.auth.SessionListView
 import org.athletica.crm.read.channels.ChannelListView
 import org.athletica.crm.read.channels.DbChannelListView
+import org.athletica.crm.read.clientapp.ClientAppBalanceView
 import org.athletica.crm.read.clientapp.ClientAppHomeView
 import org.athletica.crm.read.clientapp.ClientAppInvitationsView
 import org.athletica.crm.read.clientapp.ClientAppProfilesView
 import org.athletica.crm.read.clientapp.ClientAppSessionsView
+import org.athletica.crm.read.clientapp.DbClientAppBalanceView
 import org.athletica.crm.read.clientapp.DbClientAppHomeView
 import org.athletica.crm.read.clientapp.DbClientAppInvitationsView
 import org.athletica.crm.read.clientapp.DbClientAppProfilesView
@@ -101,6 +103,8 @@ data class ReadViews(
     val clientAppProfiles: ClientAppProfilesView = DbClientAppProfilesView(),
     /** Главная кабинета клиента по профилю. */
     val clientAppHome: ClientAppHomeView = DbClientAppHomeView(),
+    /** Баланс и его история по профилю кабинета клиента. */
+    val clientAppBalance: ClientAppBalanceView = DbClientAppBalanceView(),
     /** Сеансы аккаунта кабинета клиента. */
     val clientAppSessions: ClientAppSessionsView = DbClientAppSessionsView(),
     /** Подготовка массового приглашения в кабинет клиента. */

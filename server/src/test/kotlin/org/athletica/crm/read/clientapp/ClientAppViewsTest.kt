@@ -15,7 +15,9 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.core.finance.LedgerKind
 import org.athletica.crm.core.money.Currency
+import org.athletica.crm.core.money.Money
 import org.athletica.crm.domain.clientapp.DbClientAppAccesses
 import org.athletica.crm.domain.clientapp.auth.DbClientAppSessions
 import org.athletica.crm.storage.asInstantOrNull
@@ -125,6 +127,41 @@ class ClientAppViewsTest {
                 }
 
             assertEquals(ClientAppHomeResponse("Иван Петров", "Динамо"), home)
+        }
+
+    @Test
+    fun `баланс — тип и сумма корректировки без примечания`() =
+        runTest {
+            val (balance, stranger) =
+                orThrow {
+                    val dynamo = ClientAppFixture.org("Динамо")
+                    val ivan = ClientAppFixture.client(dynamo, mom, ClientAppAccessStatus.CONNECTED)
+                    val other = ClientAppFixture.client(dynamo, "+7 999 000-00-00", ClientAppAccessStatus.CONNECTED)
+                    TestPostgres.db.transaction {
+                        sql("INSERT INTO ledger_accounts (org_id, kind) VALUES (:org, 'adjustment')").bind("org", dynamo).execute()
+                        sql("INSERT INTO ledger_accounts (org_id, kind, client_id) VALUES (:org, 'advance', :client)").bind("org", dynamo).bind("client", ivan).execute()
+                        sql(
+                            """
+                            WITH t AS (
+                                INSERT INTO ledger_transactions (org_id, kind, occurred_on, comment)
+                                VALUES (:org, 'adjustment', CURRENT_DATE, 'компенсация за отмену') RETURNING id
+                            )
+                            INSERT INTO ledger_postings (transaction_id, account_id, amount)
+                            SELECT t.id, a.id, CASE WHEN a.kind = 'advance' THEN -500 ELSE 500 END FROM t, ledger_accounts a WHERE a.org_id = :org
+                            """.trimIndent(),
+                        ).bind("org", dynamo).execute()
+                    }
+                    val ctx = ClientAppFixture.accountContext(ClientAppFixture.account(mom))
+                    val balance = TestPostgres.db.transaction { context(ctx) { context(ClientProfileContexts.profile(dynamo, ivan)) { DbClientAppBalanceView().balance() } } }
+                    val forged = ClientProfileContext(ctx.accountId, ctx.sessionId, dynamo, other, Currency.RUB, ctx.lang)
+                    balance to either { TestPostgres.db.transaction { context(forged) { DbClientAppBalanceView().balance() } } }
+                }
+
+            assertEquals(Money(50_000, Currency.RUB), balance.balance)
+            assertEquals(0, balance.unpaidSessions)
+            assertEquals(listOf(LedgerKind.ADJUSTMENT to Money(50_000, Currency.RUB)), balance.entries.map { it.kind to it.amount })
+            assertFalse(balance.toString().contains("компенсация"))
+            assertEquals("CLIENT_NOT_FOUND", assertIs<Either.Left<AppError>>(stranger).value.code)
         }
 
     @Test

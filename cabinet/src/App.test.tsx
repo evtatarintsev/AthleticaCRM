@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import type { ApiClientOptions } from "./api/client";
@@ -59,6 +59,20 @@ function home(names: Readonly<Record<string, string>>): Handler {
   return (_body, query) =>
     json({ clientName: names[query.get("clientId") ?? ""] ?? "?", orgName: "Динамо" });
 }
+
+/** Баланс клиента: 500 ₽ после начисления, два неоплаченных занятия. */
+const BALANCE = {
+  balance: { minorUnits: 50_000, currency: "RUB" },
+  unpaidSessions: 2,
+  entries: [
+    {
+      id: "0197a3c2-0000-7000-8000-000000000001",
+      occurredOn: "2026-11-20",
+      kind: "ADJUSTMENT",
+      amount: { minorUnits: 50_000, currency: "RUB" },
+    },
+  ],
+};
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -145,6 +159,7 @@ describe("вход", () => {
         return ok();
       },
       "client-app/home": home({ [IVAN]: "Иван Петров" }),
+      "client-app/balance": () => json(BALANCE),
     });
     renderApp(fetch);
 
@@ -242,6 +257,7 @@ describe("приглашения", () => {
         return ok();
       },
       "client-app/home": home({ [IVAN]: "Иван Петров" }),
+      "client-app/balance": () => json(BALANCE),
     });
     renderApp(fetch);
 
@@ -287,6 +303,7 @@ describe("профили", () => {
       "client-app/profiles": () =>
         json({ profiles: [profile(IVAN, "Иван"), profile(MARIA, "Мария")], newInvitations: 1 }),
       "client-app/home": home({ [IVAN]: "Иван", [MARIA]: "Мария" }),
+      "client-app/balance": () => json(BALANCE),
     };
     renderApp(server(routes).fetch);
 
@@ -324,6 +341,7 @@ describe("аккаунт", () => {
     return server({
       "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
       "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/balance": () => json(BALANCE),
       "client-app/sessions": () => json({ sessions: sessions() }),
       ...routes,
     });
@@ -401,5 +419,40 @@ describe("аккаунт", () => {
 
     expect(await screen.findByLabelText("Номер телефона")).toBeInTheDocument();
     expect(calls.filter((it) => it.path === "client-app/account/delete")).toHaveLength(1);
+  });
+});
+
+describe("баланс", () => {
+  it("блок на главной и история с типом операции", async () => {
+    const { fetch, calls } = server({
+      "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+      "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/balance": () => json(BALANCE),
+    });
+    renderApp(fetch);
+    expect(await screen.findByText("500,00 ₽")).toBeInTheDocument();
+    expect(screen.getByText("Неоплаченных занятий: 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "История баланса" }));
+    expect(await screen.findByText("Начисление")).toBeInTheDocument();
+    expect(screen.getByText("+500,00 ₽")).toBeInTheDocument();
+    expect(screen.getByText("20 ноября 2026 г.")).toBeInTheDocument();
+    expect(calls.filter((it) => it.path === "client-app/balance")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Назад" }));
+    expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
+  });
+
+  it("без движений и долга блока на главной нет", async () => {
+    const { fetch } = server({
+      "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+      "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/balance": () =>
+        json({ balance: { minorUnits: 0, currency: "RUB" }, unpaidSessions: 0, entries: [] }),
+    });
+    renderApp(fetch);
+    expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Загрузка…")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Баланс")).not.toBeInTheDocument();
   });
 });

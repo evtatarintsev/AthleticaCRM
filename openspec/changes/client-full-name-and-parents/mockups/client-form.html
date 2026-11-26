@@ -1,0 +1,339 @@
+<title>Форма нового клиента</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Раскладка: оболочка Athletica (боковое меню + рабочая область), форма в одну колонку до 760px */
+:root{
+  --bg:#f8fafc;--fg:#0f172a;--card:#ffffff;--muted:#64748b;--accent:#f1f5f9;--border:#e2e8f0;--input:#cbd5e1;
+  --primary:#3159d8;--primary-fg:#ffffff;--primary-soft:#eef3ff;--primary-line:#c7d4f7;
+  --danger:#dc2626;--danger-soft:#fef2f2;--ok:#15803d;--ok-soft:#ecfdf3;--warn:#a16207;--warn-soft:#fefce8;
+  --proto:#7c3aed;--proto-soft:#f5f3ff;--scrim:rgba(15,23,42,.45);
+  --font:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f172a;--fg:#f8fafc;--card:#1e293b;--muted:#94a3b8;--accent:#334155;--border:rgba(255,255,255,.1);--input:rgba(255,255,255,.18);
+  --primary:#5b7cf0;--primary-fg:#ffffff;--primary-soft:rgba(91,124,240,.16);--primary-line:rgba(91,124,240,.45);
+  --danger:#f87171;--danger-soft:rgba(248,113,113,.12);--ok:#4ade80;--ok-soft:rgba(74,222,128,.12);--warn:#facc15;--warn-soft:rgba(250,204,21,.1);
+  --proto:#a78bfa;--proto-soft:rgba(167,139,250,.12);--scrim:rgba(0,0,0,.6);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f172a;--fg:#f8fafc;--card:#1e293b;--muted:#94a3b8;--accent:#334155;--border:rgba(255,255,255,.1);--input:rgba(255,255,255,.18);
+  --primary:#5b7cf0;--primary-fg:#ffffff;--primary-soft:rgba(91,124,240,.16);--primary-line:rgba(91,124,240,.45);
+  --danger:#f87171;--danger-soft:rgba(248,113,113,.12);--ok:#4ade80;--ok-soft:rgba(74,222,128,.12);--warn:#facc15;--warn-soft:rgba(250,204,21,.1);
+  --proto:#a78bfa;--proto-soft:rgba(167,139,250,.12);--scrim:rgba(0,0,0,.6);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+.side{background:var(--card);border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:16px;padding-left:max(12px,env(safe-area-inset-left,0px))}
+.club{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:var(--r)}
+.mono{width:32px;height:32px;flex:none;border-radius:8px;background:var(--primary);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.club b{display:block;font-weight:600;line-height:1.3}.club span{font-size:12.5px;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;height:36px;padding:0 10px;border-radius:8px;font-weight:500;color:var(--muted);text-decoration:none}
+.nav a.on{background:var(--accent);color:var(--fg)}
+.work{min-width:0;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-right,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:760px;margin:0 auto}
+@media (max-width:860px){.shell{grid-template-columns:1fr}.side{display:none}.work{padding-top:16px;padding-left:max(16px,env(safe-area-inset-left,0px))}}
+
+.proto{border:1px dashed var(--proto);background:var(--proto-soft);border-radius:var(--r);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:24px}
+.proto .tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--proto)}
+.proto .t{font-size:13px;color:var(--muted);flex:1 1 200px;min-width:0}
+.chipbtn{border:1px solid var(--input);background:var(--card);border-radius:99px;padding:4px 12px;font-size:13px;cursor:pointer}
+.chipbtn:hover{border-color:var(--proto)}
+
+.crumb{font-size:13px;color:var(--muted)}
+h1{margin:2px 0 20px;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.alert{border:1px solid var(--danger);background:var(--danger-soft);color:var(--danger);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-weight:500}
+
+.head{display:flex;gap:20px;align-items:flex-start}
+.avatar{flex:none;text-align:center}
+.av{width:88px;height:88px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:600}
+.av i{font-style:normal;color:var(--muted);font-size:34px;font-weight:400}
+.grid3{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 12px}
+.span2{grid-column:span 2}
+@media (max-width:560px){.head{flex-direction:column;align-items:center}.grid3{width:100%;grid-template-columns:1fr}.span2{grid-column:auto}}
+
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f label,.lbl{font-size:13px;font-weight:500}
+.req{color:var(--danger)}
+.in{height:36px;width:100%;border:1px solid var(--input);border-radius:8px;background:var(--card);padding:0 10px;min-width:0}
+.in:focus,.seg button:focus-visible,.btn:focus-visible,.link:focus-visible,.x:focus-visible,.chipbtn:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.in.bad{border-color:var(--danger)}
+.err{font-size:12.5px;color:var(--danger);min-height:0}
+.err:empty{display:none}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.age{font-size:12.5px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--input);border-radius:8px;overflow:hidden;background:var(--card);align-self:flex-start}
+.seg button{border:0;background:none;padding:0 14px;height:34px;cursor:pointer;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--input)}
+.seg button[aria-pressed="true"]{background:var(--primary-soft);color:var(--primary);font-weight:600}
+
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:20px}
+.box.par{border-color:var(--primary-line)}
+.bh{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+.bh h2{font-size:15px;font-weight:600;margin:0}
+.ico{width:22px;height:22px;flex:none;color:var(--primary)}
+.pcard{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg);display:flex;flex-direction:column;gap:12px}
+.pcard+.pcard{margin-top:10px}
+.prow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,.9fr);gap:10px}
+@media (max-width:640px){.prow{grid-template-columns:1fr 1fr}}
+.crow{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.crow .type{width:120px;flex:none}
+.crow .val{flex:1 1 180px}
+.crow .lab{width:150px;flex:0 1 150px}
+.pfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--primary);background:var(--primary-soft);padding:3px 10px;border-radius:99px}
+.link{border:0;background:none;padding:2px 0;color:var(--primary);font-weight:500;font-size:13px;cursor:pointer}
+.link.mut{color:var(--muted)}
+.link.dan{color:var(--danger)}
+.links{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.x{width:36px;height:36px;flex:none;border:0;background:none;border-radius:8px;color:var(--muted);cursor:pointer;font-size:18px}
+.x:hover{background:var(--accent)}
+.prim{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);height:36px;white-space:nowrap}
+.prim input{accent-color:var(--primary);width:16px;height:16px}
+.note{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px dashed var(--input);border-radius:10px;padding:10px 14px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.ex{font-size:11px;font-weight:500;color:var(--proto);margin-left:6px}
+
+.actions{display:flex;gap:8px;margin-top:24px}
+.btn{height:38px;padding:0 18px;border-radius:8px;border:1px solid var(--input);background:var(--card);font-weight:500;cursor:pointer}
+.btn.pr{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+
+.scrim{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.dlg{background:var(--card);border-radius:14px;max-width:480px;width:100%;padding:20px 22px;box-shadow:0 20px 50px -12px rgba(0,0,0,.35)}
+.dlg h2{margin:0 0 4px;font-size:18px}
+.dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:14px 0;font-size:13.5px}
+.dl dt{color:var(--muted)}.dl dd{margin:0}
+.to{border-radius:10px;padding:10px 12px;font-size:13.5px}
+.to.ok{background:var(--ok-soft);color:var(--ok)}.to.warn{background:var(--warn-soft);color:var(--warn)}
+@media (prefers-reduced-motion:no-preference){.pcard,.box.par{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateY(-3px)}to{opacity:1;transform:none}}}
+</style>
+
+<div class="shell">
+  <aside class="side" aria-label="Меню">
+    <div class="club"><span class="mono" aria-hidden="true">ФЛ</span><div><b>Фитнес Лайф</b><span>Центральный</span></div></div>
+    <nav class="nav"><a>Главная</a><a>Расписание</a><a class="on">Клиенты</a><a>Входящие</a><a>Группы</a><a>Сотрудники</a><a>Задачи</a><a>Финансы</a><a>Настройки</a></nav>
+  </aside>
+
+  <main class="work"><div class="wrap">
+    <div class="proto" role="note">
+      <span class="tag">Прототип</span>
+      <span class="t">Ничего не сохраняется. Заполнить для проверки:</span>
+      <button class="chipbtn" type="button" data-preset="child">Ребёнок, 9 лет</button>
+      <button class="chipbtn" type="button" data-preset="teen">Подросток, 15 лет</button>
+      <button class="chipbtn" type="button" data-preset="adult">Взрослый</button>
+      <button class="chipbtn" type="button" data-preset="nobd">Без даты рождения</button>
+      <button class="chipbtn" type="button" data-preset="clear">Очистить</button>
+    </div>
+
+    <div class="crumb">Клиенты</div>
+    <h1>Новый клиент</h1>
+
+    <form id="form" novalidate>
+      <div id="alert"></div>
+
+      <div class="head">
+        <div class="avatar">
+          <div class="av" id="av"><i aria-hidden="true">+</i></div>
+          <button class="link" type="button" style="margin-top:8px">Загрузить фото</button>
+        </div>
+        <div class="grid3">
+          <div class="f"><label for="last">Фамилия <span class="req">*</span></label><input class="in" id="last" data-k="last" autocomplete="family-name"><div class="err" id="err-last"></div></div>
+          <div class="f"><label for="first">Имя <span class="req">*</span></label><input class="in" id="first" data-k="first" autocomplete="given-name"><div class="err" id="err-first"></div></div>
+          <div class="f"><label for="middle">Отчество</label><input class="in" id="middle" data-k="middle" autocomplete="additional-name"></div>
+          <div class="f"><label for="birthday">Дата рождения</label><input class="in" id="birthday" type="date" data-k="birthday"><span class="age" id="age"></span></div>
+          <div class="f span2"><span class="lbl" id="g-lbl">Пол</span>
+            <div class="seg" role="group" aria-labelledby="g-lbl"><button type="button" data-g="MALE" aria-pressed="false">Мужской</button><button type="button" data-g="FEMALE" aria-pressed="false">Женский</button></div>
+            <span class="hint" id="g-hint">Не выбран</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="parents"></div>
+
+      <section class="box" aria-labelledby="c-h">
+        <div class="bh"><div><h2 id="c-h">Контакты клиента</h2><p class="hint" id="c-hint"></p></div></div>
+        <div id="contacts"></div>
+        <div class="links">
+          <button class="link" type="button" data-addc="PHONE">+ Телефон</button>
+          <button class="link" type="button" data-addc="EMAIL">+ Почта</button>
+          <button class="link" type="button" data-addc="TELEGRAM">+ Telegram</button>
+          <button class="link" type="button" data-addc="VK">+ ВКонтакте</button>
+        </div>
+      </section>
+
+      <section class="box" aria-labelledby="d-h">
+        <div class="bh"><h2 id="d-h">Дополнительно</h2></div>
+        <div class="grid2">
+          <div class="f"><label for="source">Откуда пришёл</label>
+            <select class="in" id="source" data-k="source"><option value="">Не указано</option><option>Сарафанное радио</option><option>Сайт</option><option>Instagram</option><option>ВКонтакте</option><option>Вывеска</option><option>Пробное занятие</option></select></div>
+          <div class="f"><label for="medical">Медсправка до<span class="ex">поле клуба, пример</span></label><input class="in" id="medical" type="date" data-k="medical"></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="btn pr" type="submit">Создать</button>
+        <button class="btn" type="button" id="cancel">Отмена</button>
+      </div>
+    </form>
+  </div></main>
+</div>
+<div id="dlg"></div>
+
+<script>
+const REL=["Мама","Папа","Бабушка","Дедушка","Опекун","Другое"];
+const CT={PHONE:"Телефон",EMAIL:"Почта",TELEGRAM:"Telegram",VK:"ВКонтакте"};
+const PH={PHONE:"+7 900 000-00-00",EMAIL:"name@mail.ru",TELEGRAM:"@username",VK:"vk.com/id"};
+let uid=0;const nid=()=>++uid;
+const contact=(type="PHONE",value="",label="")=>({id:nid(),type,value,label});
+const parent=(o={})=>({id:nid(),last:"",first:"",middle:"",relation:"Мама",contacts:[contact("PHONE")],...o});
+let S,errs={};
+function blank(){return{last:"",first:"",middle:"",birthday:"",gender:null,source:"",medical:"",manualChild:false,parents:[],primaryParent:null,contacts:[contact("PHONE")],primaryContact:{}}}
+S=blank();
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function age(){if(!S.birthday)return null;const b=new Date(S.birthday+"T00:00"),t=new Date();if(isNaN(b)||b>t)return null;let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a}
+function years(n){const d=n%10,h=n%100;return n+" "+(d===1&&h!==11?"год":d>=2&&d<=4&&(h<10||h>=20)?"года":"лет")}
+function isChild(){const a=age();return a===null?S.manualChild:a<18}
+function ensureParent(){if(S.parents.length===0){S.parents.push(parent())}if(!S.parents.some(p=>p.id===S.primaryParent)){S.primaryParent=S.parents[0].id}}
+function primaryContactId(type){const list=S.contacts.filter(c=>c.type===type);if(!list.length)return null;const cur=S.primaryContact[type];return list.some(c=>c.id===cur)?cur:list[0].id}
+
+function renderHead(){
+  const a=age();
+  $("age").textContent=S.birthday===""?"":a===null?"Дата в будущем":years(a)+(a<18?" · ребёнок":"");
+  const ini=((S.last[0]||"")+(S.first[0]||"")).toUpperCase();
+  $("av").innerHTML=ini?esc(ini):'<i aria-hidden="true">+</i>';
+  document.querySelectorAll("[data-g]").forEach(b=>b.setAttribute("aria-pressed",String(S.gender===b.dataset.g)));
+  $("g-hint").textContent=S.gender===null?"Не выбран":"Нажмите ещё раз, чтобы снять";
+}
+function contactRow(c,owner,primaryId,canRemove){
+  const p=owner==="client"?`c-${c.id}`:`p-${owner}-c-${c.id}`;
+  return `<div class="crow">
+    <select class="in type" aria-label="Тип контакта" data-c="${c.id}" data-o="${owner}" data-ck="type">${Object.entries(CT).map(([k,v])=>`<option value="${k}"${k===c.type?" selected":""}>${v}</option>`).join("")}</select>
+    <div class="f val"><input class="in${errs[p]?" bad":""}" id="${p}" aria-label="${CT[c.type]}" placeholder="${PH[c.type]}" value="${esc(c.value)}" data-c="${c.id}" data-o="${owner}" data-ck="value"><div class="err">${errs[p]||""}</div></div>
+    ${owner==="client"?`<input class="in lab" aria-label="Комментарий" placeholder="комментарий" value="${esc(c.label)}" data-c="${c.id}" data-o="${owner}" data-ck="label">`:""}
+    ${owner==="client"?`<label class="prim"><input type="radio" name="pc-${c.type}" ${primaryId===c.id?"checked":""} data-pc="${c.id}" data-t="${c.type}">основной</label>`:""}
+    ${canRemove?`<button class="x" type="button" aria-label="Удалить контакт" data-delc="${c.id}" data-o="${owner}">×</button>`:""}
+  </div>`;
+}
+function renderParents(){
+  const el=$("parents");const a=age();
+  if(!isChild()){
+    if(a===null&&S.birthday===""){
+      el.innerHTML=`<div class="box" style="padding:0;border:0;background:none"><div class="note"><span>Дата рождения не указана. Если клиент — ребёнок, добавьте родителя.</span><button class="link" type="button" id="mkchild">+ Добавить родителя</button></div></div>`;
+    }else if(a!==null&&S.parents.some(p=>p.first||p.last)){
+      el.innerHTML=`<div class="box" style="padding:0;border:0;background:none"><div class="note"><span>Клиенту ${years(a)} — блок родителей не нужен. Введённые данные родителей не сохранятся.</span></div></div>`;
+    }else{el.innerHTML=""}
+    return;
+  }
+  ensureParent();
+  el.innerHTML=`<section class="box par" aria-labelledby="p-h">
+    <div class="bh"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg>
+      <div style="flex:1;min-width:0"><h2 id="p-h">Родители и представители</h2><p class="hint">${a===null?"Отмечено вручную, что клиент — ребёнок.":"Клиенту "+years(a)+"."} Оплата, напоминания и рассылки уходят основному родителю.</p></div>
+      ${a===null?`<button class="link mut" type="button" id="unchild">Не ребёнок</button>`:""}</div>
+    ${S.parents.map(p=>{const isP=p.id===S.primaryParent;const k=`p-${p.id}`;return `<div class="pcard">
+      <div class="prow">
+        <div class="f"><label for="${k}-last">Фамилия <span class="req">*</span></label><input class="in${errs[k+"-last"]?" bad":""}" id="${k}-last" placeholder="${esc(S.last||"Иванова")}" value="${esc(p.last)}" data-p="${p.id}" data-pk="last"><div class="err">${errs[k+"-last"]||""}</div></div>
+        <div class="f"><label for="${k}-first">Имя <span class="req">*</span></label><input class="in${errs[k+"-first"]?" bad":""}" id="${k}-first" value="${esc(p.first)}" data-p="${p.id}" data-pk="first"><div class="err">${errs[k+"-first"]||""}</div></div>
+        <div class="f"><label for="${k}-middle">Отчество</label><input class="in" id="${k}-middle" value="${esc(p.middle)}" data-p="${p.id}" data-pk="middle"></div>
+        <div class="f"><label for="${k}-rel">Кем приходится</label><select class="in" id="${k}-rel" data-p="${p.id}" data-pk="relation">${REL.map(r=>`<option${r===p.relation?" selected":""}>${r}</option>`).join("")}</select></div>
+      </div>
+      <div><span class="lbl">Контакты <span class="req">*</span></span><p class="hint" style="margin-bottom:6px">Нужен хотя бы телефон.</p>
+        ${p.contacts.map((c,i)=>contactRow(c,p.id,null,i>0||p.contacts.length>1)).join("")}
+        <div class="err" id="${k}-phone">${errs[k+"-phone"]||""}</div>
+        <div class="links"><button class="link" type="button" data-addpc="${p.id}" data-t="PHONE">+ Телефон</button><button class="link" type="button" data-addpc="${p.id}" data-t="TELEGRAM">+ Telegram</button><button class="link" type="button" data-addpc="${p.id}" data-t="EMAIL">+ Почта</button></div>
+      </div>
+      <div class="pfoot">
+        ${isP?`<span class="pill">★ Основной — ему пишем и выставляем оплату</span>`:`<button class="link" type="button" data-mkp="${p.id}">Сделать основным</button>`}
+        ${S.parents.length>1?`<button class="link dan" type="button" data-delp="${p.id}">Убрать</button>`:""}
+      </div></div>`}).join("")}
+    <div class="links"><button class="link" type="button" id="addp">+ Добавить родителя</button></div>
+  </section>`;
+}
+function renderContacts(){
+  $("c-hint").textContent=isChild()?"Необязательно: у ребёнка может не быть своего телефона. Сообщения всё равно уходят родителю.":"Сюда клиенту звоним и пишем. Основной контакт каждого типа выбирается отметкой.";
+  $("contacts").innerHTML=S.contacts.length?S.contacts.map(c=>contactRow(c,"client",primaryContactId(c.type),true)).join(""):`<p class="hint">Контактов пока нет.</p>`;
+}
+function renderAll(){renderHead();renderParents();renderContacts();
+  ["last","first","middle","birthday","source","medical"].forEach(k=>{if($(k).value!==S[k])$(k).value=S[k]});
+  ["last","first"].forEach(k=>{$("err-"+k).textContent=errs[k]||"";$(k).classList.toggle("bad",!!errs[k])});
+  $("alert").innerHTML=Object.keys(errs).length?`<div class="alert" role="alert">Заполните отмеченные поля.</div>`:"";
+}
+function findC(owner,id){const list=owner==="client"?S.contacts:S.parents.find(p=>String(p.id)===String(owner)).contacts;return{list,c:list.find(c=>String(c.id)===String(id))}}
+
+document.addEventListener("input",e=>{const t=e.target;
+  if(t.dataset.k){S[t.dataset.k]=t.value;if(t.dataset.k==="birthday"){renderParents();renderContacts()}if(errs[t.dataset.k]){delete errs[t.dataset.k];renderAll()}renderHead();return}
+  if(t.dataset.pk){const p=S.parents.find(p=>String(p.id)===t.dataset.p);p[t.dataset.pk]=t.value;return}
+  if(t.dataset.ck){const{c}=findC(t.dataset.o,t.dataset.c);c[t.dataset.ck]=t.value;if(t.dataset.ck==="type"){t.dataset.o==="client"?renderContacts():renderParents()}}
+});
+document.addEventListener("change",e=>{const t=e.target;
+  if(t.dataset.pc){S.primaryContact[t.dataset.t]=Number(t.dataset.pc)}
+  if(t.dataset.k==="source"){S.source=t.value}
+});
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.g){S.gender=S.gender===t.dataset.g?null:t.dataset.g;renderHead();return}
+  if(t.id==="mkchild"){S.manualChild=true;renderParents();renderContacts();const f=document.querySelector("[data-pk=last]");f&&f.focus();return}
+  if(t.id==="unchild"){S.manualChild=false;renderParents();renderContacts();return}
+  if(t.id==="addp"){const p=parent({relation:"Папа"});S.parents.push(p);renderParents();$("p-"+p.id+"-last").focus();return}
+  if(t.dataset.delp){S.parents=S.parents.filter(p=>String(p.id)!==t.dataset.delp);ensureParent();renderParents();return}
+  if(t.dataset.mkp){S.primaryParent=Number(t.dataset.mkp);renderParents();return}
+  if(t.dataset.addpc){const p=S.parents.find(p=>String(p.id)===t.dataset.addpc);p.contacts.push(contact(t.dataset.t));renderParents();return}
+  if(t.dataset.addc){S.contacts.push(contact(t.dataset.addc));renderContacts();const ins=$("contacts").querySelectorAll("[data-ck=value]");ins[ins.length-1].focus();return}
+  if(t.dataset.delc){const{list,c}=findC(t.dataset.o,t.dataset.delc);list.splice(list.indexOf(c),1);t.dataset.o==="client"?renderContacts():renderParents();return}
+  if(t.dataset.preset){preset(t.dataset.preset);return}
+  if(t.id==="cancel"){S=blank();errs={};renderAll();return}
+  if(t.dataset.close!==undefined){$("dlg").innerHTML="";if(t.dataset.close==="new"){S=blank();errs={};renderAll();$("last").focus()}}
+});
+
+const digits=s=>s.replace(/\D/g,"").length;
+function validate(){errs={};
+  if(!S.last.trim())errs.last="Укажите фамилию";
+  if(!S.first.trim())errs.first="Укажите имя";
+  S.contacts.forEach(c=>{if(c.type==="PHONE"&&c.value.trim()&&digits(c.value)<10)errs["c-"+c.id]="Похоже на неполный номер"});
+  if(isChild()){S.parents.forEach(p=>{const k="p-"+p.id;
+    if(!p.last.trim())errs[k+"-last"]="Укажите фамилию";
+    if(!p.first.trim())errs[k+"-first"]="Укажите имя";
+    const phones=p.contacts.filter(c=>c.type==="PHONE"&&c.value.trim());
+    if(!phones.length)errs[k+"-phone"]="Добавьте телефон родителя";
+    p.contacts.forEach(c=>{if(c.type==="PHONE"&&c.value.trim()&&digits(c.value)<10)errs[`p-${p.id}-c-${c.id}`]="Похоже на неполный номер"});
+  })}
+  return Object.keys(errs).length===0;
+}
+const fio=o=>[o.last,o.first,o.middle].map(s=>s.trim()).filter(Boolean).join(" ");
+$("form").addEventListener("submit",e=>{e.preventDefault();
+  if(!validate()){renderAll();const first=document.querySelector(".in.bad")||document.querySelector(".err:not(:empty)");first&&first.focus&&first.focus();if(first)first.scrollIntoView({block:"center",behavior:"smooth"});return}
+  errs={};renderAll();
+  const a=age(),child=isChild();let to;
+  if(child){const p=S.parents.find(p=>p.id===S.primaryParent);const ph=p.contacts.find(c=>c.type==="PHONE"&&c.value.trim());to=`<div class="to ok">Сообщения и оплата — <b>${esc(p.relation.toLowerCase())}, ${esc(fio(p))}</b>, ${esc(ph.value)}</div>`}
+  else{const ph=S.contacts.find(c=>c.id===primaryContactId("PHONE")&&c.value.trim())||S.contacts.find(c=>c.value.trim());to=ph?`<div class="to ok">Сообщения — самому клиенту: ${esc(CT[ph.type].toLowerCase())} ${esc(ph.value)}</div>`:`<div class="to warn">У клиента нет контактов — напоминания отправлять некуда. Карточку можно дополнить позже.</div>`}
+  const others=child?S.parents.filter(p=>p.id!==S.primaryParent).map(p=>esc(p.relation+": "+fio(p))).join("<br>"):"";
+  $("dlg").innerHTML=`<div class="scrim"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+    <h2 id="dlg-h">Клиент создан</h2><p class="hint">Так карточка выглядела бы после сохранения.</p>
+    <dl class="dl"><dt>ФИО</dt><dd>${esc(fio(S))}</dd>
+    <dt>Возраст</dt><dd>${a===null?(child?"не указан, отмечен как ребёнок":"не указан"):years(a)}</dd>
+    <dt>Пол</dt><dd>${S.gender==="MALE"?"мужской":S.gender==="FEMALE"?"женский":"не указан"}</dd>
+    ${others?`<dt>Ещё родители</dt><dd>${others}</dd>`:""}
+    ${S.source?`<dt>Откуда пришёл</dt><dd>${esc(S.source)}</dd>`:""}</dl>
+    ${to}
+    <div class="actions" style="margin-top:18px"><button class="btn pr" type="button" data-close="new">Создать ещё</button><button class="btn" type="button" data-close="">Вернуться к форме</button></div>
+  </div></div>`;
+  document.querySelector("[data-close=new]").focus();
+});
+
+function iso(yearsAgo,m,d){const y=new Date().getFullYear()-yearsAgo;return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`}
+function preset(k){S=blank();errs={};
+  if(k==="child"){Object.assign(S,{last:"Иванов",first:"Пётр",middle:"Сергеевич",birthday:iso(9,3,12),gender:"MALE",source:"Сарафанное радио",contacts:[]});
+    const m=parent({last:"Иванова",first:"Мария",middle:"Петровна",relation:"Мама",contacts:[contact("PHONE","+7 916 245-18-07"),contact("TELEGRAM","@maria_iv")]});
+    const f=parent({last:"Иванов",first:"Сергей",middle:"Андреевич",relation:"Папа",contacts:[contact("PHONE","+7 903 771-02-44")]});
+    S.parents=[m,f];S.primaryParent=m.id}
+  if(k==="teen"){Object.assign(S,{last:"Кузнецова",first:"Алина",birthday:iso(15,8,2),gender:"FEMALE",contacts:[contact("PHONE","+7 925 310-55-19","свой")]});
+    const m=parent({last:"Кузнецова",first:"Ольга",relation:"Мама",contacts:[contact("PHONE","+7 926 118-40-72")]});S.parents=[m];S.primaryParent=m.id}
+  if(k==="adult"){Object.assign(S,{last:"Смирнова",first:"Анна",middle:"Викторовна",birthday:iso(34,7,4),gender:"FEMALE",source:"Сайт",contacts:[contact("PHONE","+7 915 402-66-81"),contact("EMAIL","anna.smirnova@mail.ru")]})}
+  if(k==="nobd"){Object.assign(S,{last:"Петров",first:"Миша"})}
+  renderAll();
+}
+renderAll();
+</script>

@@ -89,6 +89,60 @@ export const ClientAppLoginRequestSchema = z
   .readonly();
 export type ClientAppLoginRequest = z.output<typeof ClientAppLoginRequestSchema>;
 
+export const SessionIdSchema = z.uuid().brand<"SessionId">();
+export type SessionId = z.output<typeof SessionIdSchema>;
+
+export const ClientAppMembershipDebitSchemaSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    sessionDate: LocalDateSchema,
+    groupName: z.string().nullable(),
+  })
+  .readonly();
+export type ClientAppMembershipDebitSchema = z.output<typeof ClientAppMembershipDebitSchemaSchema>;
+
+export const ClientAppMembershipFreezeSchemaSchema = z
+  .object({
+    startDate: LocalDateSchema,
+    endDate: LocalDateSchema,
+  })
+  .readonly();
+export type ClientAppMembershipFreezeSchema = z.output<typeof ClientAppMembershipFreezeSchemaSchema>;
+
+export const ClientAppMembershipStateSchema = z.enum(["INACTIVE", "ACTIVE", "CLOSED", "REVOKED"]);
+export type ClientAppMembershipState = z.output<typeof ClientAppMembershipStateSchema>;
+
+export const MembershipIdSchema = z.uuid().brand<"MembershipId">();
+export type MembershipId = z.output<typeof MembershipIdSchema>;
+
+export const EndingSoonReasonSchema = z.enum(["BY_DATE", "BY_SESSIONS"]);
+export type EndingSoonReason = z.output<typeof EndingSoonReasonSchema>;
+
+export const ClientAppMembershipSchemaSchema = z
+  .object({
+    id: MembershipIdSchema,
+    name: z.string(),
+    state: ClientAppMembershipStateSchema,
+    sessionsTotal: z.int32().nullable(),
+    sessionsRemaining: z.int32().nullable(),
+    startDate: LocalDateSchema.nullable(),
+    endDate: LocalDateSchema.nullable(),
+    activateOn: LocalDateSchema.nullable(),
+    endingSoon: z.array(EndingSoonReasonSchema).readonly(),
+    freeze: ClientAppMembershipFreezeSchemaSchema.nullable(),
+    closedOn: LocalDateSchema.nullable(),
+    debits: z.array(ClientAppMembershipDebitSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAppMembershipSchema = z.output<typeof ClientAppMembershipSchemaSchema>;
+
+export const ClientAppMembershipsResponseSchema = z
+  .object({
+    memberships: z.array(ClientAppMembershipSchemaSchema).readonly(),
+  })
+  .readonly();
+export type ClientAppMembershipsResponse = z.output<typeof ClientAppMembershipsResponseSchema>;
+
 export const ClientIdSchema = z.uuid().brand<"ClientId">();
 export type ClientId = z.output<typeof ClientIdSchema>;
 
@@ -244,6 +298,13 @@ export const endpoints = {
     request: z.undefined(),
     out: "json",
     response: ClientAppInvitationsResponseSchema,
+  },
+  "client-app/memberships": {
+    method: "GET",
+    in: "query",
+    request: ClientAppProfileRequestSchema,
+    out: "json",
+    response: ClientAppMembershipsResponseSchema,
   },
   "client-app/not-me": {
     method: "POST",

@@ -160,6 +160,7 @@ describe("вход", () => {
       },
       "client-app/home": home({ [IVAN]: "Иван Петров" }),
       "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
     });
     renderApp(fetch);
 
@@ -258,6 +259,7 @@ describe("приглашения", () => {
       },
       "client-app/home": home({ [IVAN]: "Иван Петров" }),
       "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
     });
     renderApp(fetch);
 
@@ -304,6 +306,7 @@ describe("профили", () => {
         json({ profiles: [profile(IVAN, "Иван"), profile(MARIA, "Мария")], newInvitations: 1 }),
       "client-app/home": home({ [IVAN]: "Иван", [MARIA]: "Мария" }),
       "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
     };
     renderApp(server(routes).fetch);
 
@@ -342,6 +345,7 @@ describe("аккаунт", () => {
       "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
       "client-app/home": home({ [IVAN]: "Иван" }),
       "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
       "client-app/sessions": () => json({ sessions: sessions() }),
       ...routes,
     });
@@ -428,6 +432,7 @@ describe("баланс", () => {
       "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
       "client-app/home": home({ [IVAN]: "Иван" }),
       "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
     });
     renderApp(fetch);
     expect(await screen.findByText("500,00 ₽")).toBeInTheDocument();
@@ -447,6 +452,7 @@ describe("баланс", () => {
       "client-app/home": home({ [IVAN]: "Иван" }),
       "client-app/balance": () =>
         json({ balance: { minorUnits: 0, currency: "RUB" }, unpaidSessions: 0, entries: [] }),
+      "client-app/memberships": () => json({ memberships: [] }),
     });
     renderApp(fetch);
     expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
@@ -454,5 +460,94 @@ describe("баланс", () => {
       expect(screen.queryByText("Загрузка…")).not.toBeInTheDocument();
     });
     expect(screen.queryByText("Баланс")).not.toBeInTheDocument();
+  });
+});
+
+/** Абонемент [name] в состоянии [state] без срока и списаний; поля переопределяются [extra]. */
+function membership(id: string, name: string, state: string, extra: Record<string, unknown> = {}) {
+  return {
+    id,
+    name,
+    state,
+    sessionsTotal: 8,
+    sessionsRemaining: 8,
+    startDate: null,
+    endDate: null,
+    activateOn: null,
+    endingSoon: [],
+    freeze: null,
+    closedOn: null,
+    debits: [],
+    ...extra,
+  };
+}
+
+/** Сервер с одним профилем Ивана и абонементами [memberships]. */
+function withMemberships(memberships: unknown[]) {
+  return server({
+    "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+    "client-app/home": home({ [IVAN]: "Иван" }),
+    "client-app/balance": () => json(BALANCE),
+    "client-app/memberships": () => json({ memberships }),
+  });
+}
+
+describe("абонементы", () => {
+  it("на главной активный абонемент, на экране — заморозка, списания и история", async () => {
+    const { fetch, calls } = withMemberships([
+      membership("0197a3c2-0000-7000-8000-000000000011", "8 занятий", "ACTIVE", {
+        sessionsRemaining: 3,
+        startDate: "2026-11-01",
+        endDate: "2026-11-30",
+        endingSoon: ["BY_DATE"],
+        freeze: { startDate: "2026-11-10", endDate: "2026-11-20" },
+        debits: [
+          {
+            sessionId: "0197a3c2-0000-7000-8000-000000000021",
+            sessionDate: "2026-11-05",
+            groupName: "Дети 7–9",
+          },
+        ],
+      }),
+      membership("0197a3c2-0000-7000-8000-000000000012", "Старый", "CLOSED", {
+        closedOn: "2026-10-31",
+      }),
+    ]);
+    renderApp(fetch);
+    expect(await screen.findByText("Осталось 3 из 8, до 30 ноября")).toBeInTheDocument();
+    expect(screen.getByText("Заканчивается")).toBeInTheDocument();
+    expect(screen.queryByText("Старый")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Все абонементы" }));
+    expect(await screen.findByText("Заморозка с 10 ноября по 20 ноября")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Списания: 1"));
+    expect(screen.getByText("5 ноября")).toBeInTheDocument();
+    expect(screen.getByText("Дети 7–9")).toBeInTheDocument();
+    expect(screen.getByText("История")).toBeInTheDocument();
+    expect(screen.getByText("Закрыт 31 октября")).toBeInTheDocument();
+    expect(calls.filter((it) => it.path === "client-app/memberships")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Назад" }));
+    expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
+  });
+
+  it("без активного и неактивированного абонемента блока на главной нет", async () => {
+    const { fetch } = withMemberships([
+      membership("0197a3c2-0000-7000-8000-000000000013", "Отозванный", "REVOKED"),
+    ]);
+    renderApp(fetch);
+    expect(await screen.findByText("500,00 ₽")).toBeInTheDocument();
+    expect(screen.queryByText("Все абонементы")).not.toBeInTheDocument();
+  });
+
+  it("неактивированный безлимит — дата начала", async () => {
+    const { fetch } = withMemberships([
+      membership("0197a3c2-0000-7000-8000-000000000014", "Безлимит", "INACTIVE", {
+        sessionsTotal: null,
+        sessionsRemaining: null,
+        activateOn: "2026-12-01",
+      }),
+    ]);
+    renderApp(fetch);
+    expect(await screen.findByText("Начнёт действовать 1 декабря")).toBeInTheDocument();
+    expect(screen.getAllByText("Безлимит")).toHaveLength(2);
   });
 });

@@ -52,6 +52,7 @@ import org.athletica.crm.routes.authSessionsRoutes
 import org.athletica.crm.routes.branchesRoutes
 import org.athletica.crm.routes.channelsRoutes
 import org.athletica.crm.routes.checkoutRoutes
+import org.athletica.crm.routes.clientAppAdminRoutes
 import org.athletica.crm.routes.clientAppAuthHeader
 import org.athletica.crm.routes.clientAppAuthRoutes
 import org.athletica.crm.routes.clientAppPrincipal
@@ -257,6 +258,7 @@ fun Application.configureServer() {
                         clientNotesRoutes(di.clientNotes)
                         channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
                         telegramGatewayRoutes(di.telegramGatewayIntegrations, di.telegramGateway)
+                        clientAppAdminRoutes(di.clientAppAdmin, di.clientAppSettings, di.clientAppAccesses, di.views)
                         messagingRoutes(
                             di.channelIntegrations,
                             di.conversations,

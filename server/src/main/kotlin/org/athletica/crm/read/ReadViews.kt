@@ -18,6 +18,8 @@ import org.athletica.crm.read.clientapp.ClientAppProfilesView
 import org.athletica.crm.read.clientapp.DbClientAppHomeView
 import org.athletica.crm.read.clientapp.DbClientAppInvitationsView
 import org.athletica.crm.read.clientapp.DbClientAppProfilesView
+import org.athletica.crm.read.clientappadmin.ClientAppInvitePreviewView
+import org.athletica.crm.read.clientappadmin.DbClientAppInvitePreviewView
 import org.athletica.crm.read.clients.ClientListView
 import org.athletica.crm.read.clients.DbClientListView
 import org.athletica.crm.read.employees.DbEmployeeDetailView
@@ -97,6 +99,8 @@ data class ReadViews(
     val clientAppProfiles: ClientAppProfilesView = DbClientAppProfilesView(),
     /** Главная кабинета клиента по профилю. */
     val clientAppHome: ClientAppHomeView = DbClientAppHomeView(),
+    /** Подготовка массового приглашения в кабинет клиента. */
+    val clientAppInvitePreview: ClientAppInvitePreviewView = DbClientAppInvitePreviewView(),
     /** Список клиентов с фильтрами, сортировкой и пагинацией. */
     val clientList: ClientListView = DbClientListView(),
     /** Журнал операций по личному счёту клиента. */

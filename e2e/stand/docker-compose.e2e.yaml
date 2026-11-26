@@ -50,10 +50,16 @@ services:
     working_dir: /work/e2e
     environment:
       NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      # Postgres стенда для помощника support/db.ts: включение кабинета и известный код входа.
+      PGHOST: postgres
+      PGDATABASE: athletica
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./e2e:/work/e2e
       - ./web/src:/work/web/src:ro
       - ./web/tsconfig.base.json:/work/web/tsconfig.base.json:ro
+      - ./cabinet/src/i18n:/work/cabinet/src/i18n:ro
       # Импорт zod из web/src/api/generated разрешается вверх по дереву до /work/node_modules.
       - ./e2e/node_modules:/work/node_modules:ro
     depends_on:

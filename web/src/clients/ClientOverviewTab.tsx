@@ -23,6 +23,7 @@ import { apiQuery } from "@/query/queries";
 import { ClientCardBlock } from "./card/ClientCardBlock";
 import { ClientContactList } from "./card/ClientContactList";
 import type { ClientAlert } from "./card/clientCardAlerts";
+import { ClientAppSection } from "./ClientAppSection";
 import { ClientGroupsSection } from "./ClientGroupsSection";
 import { ClientMessagesSection } from "./ClientActivitySections";
 
@@ -206,6 +207,9 @@ export function ClientOverviewTab({
             onOpenChange={onGroupOpen}
           />
           <Contacts client={client} />
+          {client.state === "ACTIVE" && (
+            <ClientAppSection api={api} branchId={branchId} clientId={client.id} />
+          )}
           {extras && profile}
         </div>
         <div className="space-y-4">

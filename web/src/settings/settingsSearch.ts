@@ -20,6 +20,7 @@ export const SettingsPanelSchema = z.enum([
   "client-card",
   "schedule-widgets",
   "telegram-gateway",
+  "client-app",
 ]);
 
 /** Панель страницы настроек. */

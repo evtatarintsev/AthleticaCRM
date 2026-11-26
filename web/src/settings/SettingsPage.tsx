@@ -20,6 +20,7 @@ import {
   SettingsIcon,
   SparklesIcon,
   ShieldCheckIcon,
+  SmartphoneIcon,
   StoreIcon,
   TableIcon,
   TicketIcon,
@@ -39,6 +40,7 @@ import { useI18n, type PlainMessageKey } from "@/i18n/context";
 import { hasPermission, useSession } from "@/query/session";
 import { AssistantSettingsSheet } from "@/assistant/AssistantSettingsSheet";
 import { AttendanceControlSheet } from "./attendanceControl/AttendanceControlSheet";
+import { ClientAppSheet } from "./clientApp/ClientAppSheet";
 import { ClientImportSheet } from "./import/ClientImportSheet";
 import { CustomFieldsSheet } from "./customFields/CustomFieldsSheet";
 import { branches, disciplines, halls, leadSources } from "./directories";
@@ -260,6 +262,13 @@ const SETTINGS: readonly SettingSection[] = [
         permission: "CAN_MANAGE_TELEGRAM_GATEWAY",
       },
       {
+        title: "settings.itemClientApp",
+        subtitle: "settings.itemClientAppSubtitle",
+        icon: SmartphoneIcon,
+        target: panel("client-app"),
+        permission: "CAN_MANAGE_CLIENT_APP",
+      },
+      {
         title: "settings.itemScheduleWidgets",
         subtitle: "settings.itemScheduleWidgetsSubtitle",
         icon: CalendarDaysIcon,
@@ -297,6 +306,7 @@ const SHEETS: Readonly<Record<SettingsPanel, ComponentType<SettingsSheetProps>>>
   "client-card": ClientCardSectionsSheet,
   "schedule-widgets": ScheduleWidgetsSheet,
   "telegram-gateway": TelegramGatewaySheet,
+  "client-app": ClientAppSheet,
 };
 
 /**

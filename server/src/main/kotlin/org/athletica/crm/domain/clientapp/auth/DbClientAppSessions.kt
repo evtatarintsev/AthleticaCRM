@@ -50,7 +50,15 @@ class DbClientAppSessions : ClientAppSessions {
         now: Instant,
     ): IssuedClientAppSession? {
         val (jti, prevJti, rotatedAt) =
-            tr.sql("SELECT refresh_jti, prev_refresh_jti, rotated_at FROM client_app_sessions WHERE id = :id AND account_id = :accountId FOR UPDATE")
+            tr.sql(
+                """
+                SELECT s.refresh_jti, s.prev_refresh_jti, s.rotated_at
+                FROM client_app_sessions s
+                JOIN client_app_accounts acc ON acc.id = s.account_id AND acc.deleted_at IS NULL
+                WHERE s.id = :id AND s.account_id = :accountId
+                FOR UPDATE OF s
+                """.trimIndent(),
+            )
                 .bind("id", id)
                 .bind("accountId", accountId)
                 .firstOrNull { row -> Triple(row.asUuid("refresh_jti"), row.asUuidOrNull("prev_refresh_jti"), row.asInstant("rotated_at")) }
@@ -80,7 +88,13 @@ class DbClientAppSessions : ClientAppSessions {
 
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun isActive(id: ClientAppSessionId, accountId: ClientAppAccountId): Boolean =
-        tr.sql("SELECT 1 FROM client_app_sessions WHERE id = :id AND account_id = :accountId")
+        tr.sql(
+            """
+            SELECT 1 FROM client_app_sessions s
+            JOIN client_app_accounts acc ON acc.id = s.account_id AND acc.deleted_at IS NULL
+            WHERE s.id = :id AND s.account_id = :accountId
+            """.trimIndent(),
+        )
             .bind("id", id)
             .bind("accountId", accountId)
             .firstOrNull { true } ?: false
@@ -91,6 +105,11 @@ class DbClientAppSessions : ClientAppSessions {
             .bind("id", id)
             .bind("accountId", accountId)
             .execute()
+    }
+
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun deleteAll(accountId: ClientAppAccountId) {
+        tr.sql("DELETE FROM client_app_sessions WHERE account_id = :accountId").bind("accountId", accountId).execute()
     }
 
     private companion object {

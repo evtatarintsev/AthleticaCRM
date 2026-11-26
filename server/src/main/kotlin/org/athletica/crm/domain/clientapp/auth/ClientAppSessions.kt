@@ -28,7 +28,7 @@ interface ClientAppSessions {
     /**
      * Меняет токен обновления сеанса [id] аккаунта [accountId] по предъявленному [presentedJti] в момент [now].
      * Повтор с предыдущим токеном в окне гонки возвращает текущий без новой ротации.
-     * `null` — сеанса нет или токен заменён раньше окна гонки; во втором случае сеанс удаляется,
+     * `null` — сеанса нет, аккаунт удалён или токен заменён раньше окна гонки; в последнем случае сеанс удаляется,
      * поэтому транзакцию вызывающего надо зафиксировать.
      */
     context(tr: Transaction, raise: Raise<AppError>)
@@ -39,13 +39,17 @@ interface ClientAppSessions {
         now: Instant,
     ): IssuedClientAppSession?
 
-    /** Существует ли сеанс [id] аккаунта [accountId]. */
+    /** Существует ли сеанс [id] аккаунта [accountId] и не удалён ли сам аккаунт. */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun isActive(id: ClientAppSessionId, accountId: ClientAppAccountId): Boolean
 
     /** Завершает сеанс [id] аккаунта [accountId]; отсутствующий сеанс — не ошибка. */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun delete(id: ClientAppSessionId, accountId: ClientAppAccountId)
+
+    /** Завершает все сеансы аккаунта [accountId]. */
+    context(tr: Transaction, raise: Raise<AppError>)
+    suspend fun deleteAll(accountId: ClientAppAccountId)
 }
 
 /** Сеанс с действующим токеном обновления. */

@@ -127,4 +127,16 @@ class ClientAppSignInTest {
             val second = assertIs<Either.Right<SignedIn>>(login(code, accepted = null)).value
             assertEquals(first.accountId, second.accountId)
         }
+
+    @Test
+    fun `сеанс, оставшийся у удалённого аккаунта после гонки со входом, не действует`() =
+        runTest {
+            val signedIn = assertIs<Either.Right<SignedIn>>(login(issued().code.value, accepted = "v2")).value
+            orThrow { TestPostgres.db.transaction { DbClientAppAccounts().delete(signedIn.accountId, Clock.System.now()) } }
+
+            val active = orThrow { TestPostgres.db.transaction { DbClientAppSessions().isActive(signedIn.session.id, signedIn.accountId) } }
+            assertEquals(false, active)
+            val refreshed = either { signIn().refresh(signedIn.accountId, signedIn.session.id, signedIn.session.refreshJti, Clock.System.now()) }
+            assertIs<Either.Left<AppError>>(refreshed)
+        }
 }

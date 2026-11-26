@@ -29,6 +29,13 @@ interface ClientAppAccounts {
     /** Запоминает, что аккаунт [id] принял условия версии [termsVersion] в момент [now]. */
     context(tr: Transaction, raise: Raise<AppError>)
     suspend fun acceptTerms(id: ClientAppAccountId, termsVersion: String, now: Instant)
+
+    /**
+     * Удаляет аккаунт [id] в момент [now]: запись остаётся с обезличенным номером, поэтому следующий
+     * вход с тем же номером создаёт новый аккаунт.
+     */
+    context(tr: Transaction, raise: Raise<AppError>)
+    suspend fun delete(id: ClientAppAccountId, now: Instant)
 }
 
 /** Аккаунт кабинета. */
@@ -78,6 +85,14 @@ class DbClientAppAccounts : ClientAppAccounts {
             .bind("id", id)
             .bind("now", now)
             .bind("version", termsVersion)
+            .execute()
+    }
+
+    context(tr: Transaction, raise: Raise<AppError>)
+    override suspend fun delete(id: ClientAppAccountId, now: Instant) {
+        tr.sql("UPDATE client_app_accounts SET phone_digits = NULL, deleted_at = :now WHERE id = :id AND deleted_at IS NULL")
+            .bind("id", id)
+            .bind("now", now)
             .execute()
     }
 

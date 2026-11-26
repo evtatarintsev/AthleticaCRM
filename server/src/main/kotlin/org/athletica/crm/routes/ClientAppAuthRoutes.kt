@@ -16,6 +16,7 @@ import io.ktor.server.response.ResponseCookies
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,8 @@ import kotlinx.coroutines.launch
 import org.athletica.crm.api.schemas.clientapp.ClientAppLoginRequest
 import org.athletica.crm.api.schemas.clientapp.ClientAppRequestCodeRequest
 import org.athletica.crm.api.schemas.clientapp.ClientAppRequestCodeResponse
+import org.athletica.crm.api.schemas.clientapp.ClientAppSessionsResponse
+import org.athletica.crm.api.schemas.clientapp.ClientAppTerminateSessionRequest
 import org.athletica.crm.core.ClientAccountContext
 import org.athletica.crm.core.entityids.ClientAppAccountId
 import org.athletica.crm.core.entityids.ClientAppSessionId
@@ -33,9 +36,13 @@ import org.athletica.crm.core.errors.SessionRevoked
 import org.athletica.crm.domain.clientapp.ClientAppConfig
 import org.athletica.crm.domain.clientapp.auth.CodeIssue
 import org.athletica.crm.domain.clientcontacts.PhoneDigits
+import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.auth.userAgentInfo
+import org.athletica.crm.read.clientapp.ClientAppSessionsQuery
 import org.athletica.crm.security.ClientAppJwtConfig
 import org.athletica.crm.security.JwtConfig
+import org.athletica.crm.storage.Database
+import org.athletica.crm.usecases.clientapp.ClientAppAccountDeletion
 import org.athletica.crm.usecases.clientapp.ClientAppSignIn
 import org.athletica.crm.usecases.clientapp.SignedIn
 import org.athletica.crm.usecases.clientapp.VerificationCodeDelivery
@@ -49,13 +56,44 @@ const val CLIENT_JWT = "client-jwt"
 /**
  * Маршруты входа в кабинет `/client-app/auth/...`: запрос кода, вход и обновление — без токена,
  * выход — под [CLIENT_JWT]. Доставку кода [delivery] запускает в фоне [scope] после ответа.
+ * Под [CLIENT_JWT] здесь же сеансы аккаунта из [views] с их завершением и удаление аккаунта [deletion]:
+ * выход и удаление стирают cookie кабинета.
  */
 context(jwt: ClientAppJwtConfig, config: ClientAppConfig)
 fun Route.clientAppAuthRoutes(
+    db: Database,
+    views: ReadViews,
     signIn: ClientAppSignIn,
+    deletion: ClientAppAccountDeletion,
     delivery: VerificationCodeDelivery,
     scope: CoroutineScope,
 ) {
+    authenticate(CLIENT_JWT) {
+        route("/client-app") {
+            get("/sessions") {
+                either {
+                    val query = ClientAppSessionsQuery(Clock.System.now(), jwt.refreshTokenTtl)
+                    context(call.clientAccountContext()) { db.transaction { views.clientAppSessions.sessions(query) } }
+                }.fold({ call.respondError(it) }, { call.respond(it) })
+            }.contract(getContract<Unit, ClientAppSessionsResponse>())
+
+            post("/sessions/terminate") {
+                either {
+                    val request = call.body<ClientAppTerminateSessionRequest>()
+                    context(call.clientAccountContext()) { signIn.terminate(request.sessionId) }
+                }.fold({ call.respondError(it) }, { call.respond(Unit) })
+            }.contract(postContract<ClientAppTerminateSessionRequest, Unit>())
+
+            post("/account/delete") {
+                either {
+                    context(call.clientAccountContext()) { deletion.delete(Clock.System.now()) }
+                    call.response.cookies.clearClientAppCookies()
+                    call.respond(Unit)
+                }.onLeft { call.respondError(it) }
+            }.contract(postContract<Unit, Unit>())
+        }
+    }
+
     route("/client-app/auth") {
         post("/request-code") {
             either {

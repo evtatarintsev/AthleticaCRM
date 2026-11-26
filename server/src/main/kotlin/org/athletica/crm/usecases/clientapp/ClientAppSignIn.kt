@@ -1,6 +1,7 @@
 package org.athletica.crm.usecases.clientapp
 
 import arrow.core.raise.context.Raise
+import arrow.core.raise.context.ensure
 import arrow.core.raise.context.raise
 import org.athletica.crm.core.ClientAccountContext
 import org.athletica.crm.core.Lang
@@ -106,6 +107,18 @@ class ClientAppSignIn(
     context(ctx: ClientAccountContext, raise: Raise<AppError>)
     suspend fun logout() {
         db.transaction { sessions.delete(ctx.sessionId, ctx.accountId) }
+    }
+
+    /**
+     * Завершает сеанс [sessionId] другого устройства аккаунта запроса: его следующий запрос получит 401.
+     * Чужой или уже завершённый сеанс — не ошибка; текущий — `CANNOT_TERMINATE_CURRENT_SESSION` (для него есть выход).
+     */
+    context(ctx: ClientAccountContext, raise: Raise<AppError>)
+    suspend fun terminate(sessionId: ClientAppSessionId) {
+        ensure(sessionId != ctx.sessionId) {
+            CommonDomainError("CANNOT_TERMINATE_CURRENT_SESSION", Messages.CannotTerminateCurrentSession.localize(ctx.lang))
+        }
+        db.transaction { sessions.delete(sessionId, ctx.accountId) }
     }
 
     /** Номер из [raw]; `INVALID_PHONE` на языке [lang], если в строке нет цифр. */

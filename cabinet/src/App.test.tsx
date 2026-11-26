@@ -311,3 +311,95 @@ describe("профили", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("аккаунт", () => {
+  const CURRENT = "0190a000-0000-7000-8000-000000000010";
+  const OLD = "0190a000-0000-7000-8000-000000000011";
+
+  /** Сервер с профилем Ивана и сеансами [sessions] плюс дополнительные маршруты [routes]. */
+  function withSessions(
+    sessions: () => readonly unknown[],
+    routes: Readonly<Record<string, Handler>> = {},
+  ) {
+    return server({
+      "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+      "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/sessions": () => json({ sessions: sessions() }),
+      ...routes,
+    });
+  }
+
+  /** Сеанс [id] с названием [name]; [current] — этот браузер. */
+  function session(id: string, name: string | null, current: boolean) {
+    return {
+      id,
+      name,
+      createdAt: "2026-11-01T10:00:00Z",
+      lastSeenAt: "2026-11-20T10:00:00Z",
+      current,
+    };
+  }
+
+  it("список сеансов: текущий отмечен, другой можно завершить", async () => {
+    let terminated = false;
+    const { fetch, calls } = withSessions(
+      () =>
+        terminated
+          ? [session(CURRENT, "Safari, iOS", true)]
+          : [session(CURRENT, "Safari, iOS", true), session(OLD, "Chrome, Android", false)],
+      {
+        "client-app/sessions/terminate": () => {
+          terminated = true;
+          return ok();
+        },
+      },
+    );
+    renderApp(fetch);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Аккаунт и сеансы" }));
+    expect(await screen.findByText("Этот браузер")).toBeInTheDocument();
+    expect(screen.getByText("Safari, iOS")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Завершить сеанс Safari, iOS" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Завершить сеанс Chrome, Android" }));
+
+    await vi.waitFor(() => {
+      expect(screen.queryByText("Chrome, Android")).toBeNull();
+    });
+    expect(calls.find((it) => it.path === "client-app/sessions/terminate")?.body).toEqual({
+      sessionId: OLD,
+    });
+  });
+
+  it("выход возвращает к вводу номера", async () => {
+    const { fetch, calls } = withSessions(() => [session(CURRENT, null, true)], {
+      "client-app/auth/logout": () => ok(),
+    });
+    renderApp(fetch);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Аккаунт и сеансы" }));
+    expect(await screen.findByText("Неизвестное устройство")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Выйти" }));
+
+    expect(await screen.findByLabelText("Номер телефона")).toBeInTheDocument();
+    expect(calls.some((it) => it.path === "client-app/auth/logout")).toBe(true);
+  });
+
+  it("удаление аккаунта — только после подтверждения, затем вход по номеру", async () => {
+    const { fetch, calls } = withSessions(() => [session(CURRENT, "Safari, iOS", true)], {
+      "client-app/account/delete": () => ok(),
+    });
+    renderApp(fetch);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Аккаунт и сеансы" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Удалить аккаунт" }));
+    expect(screen.getByText(/Вы выйдете на всех устройствах/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Отмена" }));
+    expect(calls.some((it) => it.path === "client-app/account/delete")).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Удалить аккаунт" }));
+    fireEvent.click(screen.getByRole("button", { name: "Удалить навсегда" }));
+
+    expect(await screen.findByLabelText("Номер телефона")).toBeInTheDocument();
+    expect(calls.filter((it) => it.path === "client-app/account/delete")).toHaveLength(1);
+  });
+});

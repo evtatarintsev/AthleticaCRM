@@ -1,9 +1,9 @@
 import { randomInt } from "node:crypto";
-import { request as playwrightRequest } from "@playwright/test";
+import { request as playwrightRequest, type Page } from "@playwright/test";
 import { uuidv7 } from "../../web/src/lib/uuid";
 import { call } from "../support/api";
 import { enableCabinet, setKnownCode } from "../support/db";
-import { expect, test } from "../support/fixtures";
+import { expect, test, type Owner } from "../support/fixtures";
 import { c, t } from "../support/i18n";
 
 /** Адрес кабинета клиента на стенде. */
@@ -27,7 +27,11 @@ test("маршруты CRM с хоста кабинета недоступны",
   await context.dispose();
 });
 
-test("клиент входит в кабинет по приглашению из карточки", async ({ page, owner }) => {
+/**
+ * Приглашает из карточки нового клиента организации [owner], входит в кабинет на [page] по его номеру
+ * и подключает приглашение. Возвращает имя клиента.
+ */
+async function connectedClient(page: Page, owner: Owner): Promise<string> {
   const digits = `79${String(randomInt(0, 1_000_000_000)).padStart(9, "0")}`;
   const clientId = uuidv7();
   const clientName = `Иван ${clientId.slice(-6)}`;
@@ -53,6 +57,25 @@ test("клиент входит в кабинет по приглашению и
   await page.getByRole("button", { name: c["signIn.termsAccept"] }).click();
   await expect(page.getByText(owner.companyName)).toBeVisible();
   await page.getByRole("button", { name: c["invitations.connect"] }).click();
+  return clientName;
+}
+
+test("клиент входит в кабинет по приглашению из карточки", async ({ page, owner }) => {
+  const clientName = await connectedClient(page, owner);
 
   await expect(page.getByText(`Это кабинет клиента ${clientName}`)).toBeVisible();
+});
+
+test("клиент удаляет аккаунт кабинета и возвращается ко входу", async ({ page, owner }) => {
+  const clientName = await connectedClient(page, owner);
+  await expect(page.getByText(`Это кабинет клиента ${clientName}`)).toBeVisible();
+
+  await page.getByRole("button", { name: c["account.open"] }).click();
+  await expect(page.getByText(c["account.currentSession"])).toBeVisible();
+  await page.getByRole("button", { name: c["account.delete"] }).click();
+  await page.getByRole("button", { name: c["account.deleteConfirm"] }).click();
+
+  await expect(page.getByRole("heading", { name: c["signIn.phoneTitle"] })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: c["signIn.phoneTitle"] })).toBeVisible();
 });

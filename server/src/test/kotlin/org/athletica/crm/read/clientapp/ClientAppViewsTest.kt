@@ -9,6 +9,7 @@ import org.athletica.crm.clientapp.ClientAppFixture
 import org.athletica.crm.core.ClientAccountContext
 import org.athletica.crm.core.ClientProfileContext
 import org.athletica.crm.core.ClientProfileContexts
+import org.athletica.crm.core.Lang
 import org.athletica.crm.core.clientapp.ClientAppAccessStatus
 import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.entityids.OrgId
@@ -16,6 +17,7 @@ import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.orThrow
 import org.athletica.crm.core.money.Currency
 import org.athletica.crm.domain.clientapp.DbClientAppAccesses
+import org.athletica.crm.domain.clientapp.auth.DbClientAppSessions
 import org.athletica.crm.storage.asInstantOrNull
 import org.junit.Before
 import kotlin.test.Test
@@ -25,6 +27,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
@@ -203,5 +206,32 @@ class ClientAppViewsTest {
             assertEquals(start.toEpochMilliseconds(), lastSeen(ivan)?.toEpochMilliseconds())
             touch(start + 6.minutes)
             assertEquals((start + 6.minutes).toEpochMilliseconds(), lastSeen(ivan)?.toEpochMilliseconds())
+        }
+
+    @Test
+    fun `сеансы — только свои и активные, текущий отмечен`() =
+        runTest {
+            val now = Clock.System.now()
+            val (response, ids) =
+                orThrow {
+                    val sessions = DbClientAppSessions()
+                    val mine = ClientAppFixture.account(mom)
+                    val other = ClientAppFixture.account("+7 903 000-00-00")
+                    val (active, stale, current) =
+                        TestPostgres.db.transaction {
+                            val active = sessions.new(mine, "Chrome, Android", now - 10.minutes, now - 365.days)
+                            val stale = sessions.new(mine, "Firefox, Linux", now - 61.days, now - 365.days)
+                            val current = sessions.new(mine, "Safari, iOS", now, now - 365.days)
+                            sessions.new(other, "Edge, Windows", now, now - 365.days)
+                            Triple(active, stale, current)
+                        }
+                    val ctx = ClientAccountContext(mine, current.id, Lang.RU)
+                    TestPostgres.db.transaction { context(ctx) { DbClientAppSessionsView().sessions(ClientAppSessionsQuery(now, 60.days)) } } to
+                        listOf(current.id, active.id, stale.id)
+                }
+
+            assertEquals(ids.take(2), response.sessions.map { it.id })
+            assertEquals(listOf(true, false), response.sessions.map { it.current })
+            assertEquals("Safari, iOS", response.sessions.first().name)
         }
 }

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отчёты — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f5fa;--surface:#fff;--line:#e9ebf2;--line-2:#f1f2f6;--text:#111113;--text-2:#3f3f46;--muted:#6b6b74;--brand:#2f55d4;--brand-ink:#2443b0;--good-bg:#dcfce7;--good:#166534;--bad-bg:#ffe4e4;--bad:#a3171b;--warn-bg:#fff1d6;--warn:#8a4b00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none}a:hover{color:var(--brand-ink)}
+button,select{font:inherit;color:inherit}
+.app{min-height:100vh;display:flex;flex-wrap:wrap}
+.side{flex:1 1 220px;padding:18px 12px;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.club{display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:10px;border-radius:14px;background:var(--bg)}
+.club-av{width:36px;height:36px;border-radius:10px;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
+.nv{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:14px;font-weight:500;color:var(--text-2)}
+.nv:hover{background:#eef0f6;color:var(--text)}
+.nv-on,.nv-on:hover{background:var(--brand);color:#fff}
+.main{flex:999 1 560px;min-width:0;padding:28px 24px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.mut{color:var(--muted)}
+.sel{height:40px;padding:0 12px;border-radius:10px;border:1px solid #e3e5ee;background:#fff;font-size:14px;cursor:pointer}
+.seg{display:inline-flex;padding:3px;gap:2px;background:#e8eaf2;border-radius:10px}
+.sb{height:34px;padding:0 14px;border:0;border-radius:8px;background:transparent;font-size:14px;font-weight:500;color:#4b4b53;cursor:pointer;white-space:nowrap}
+.sb.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(16,16,20,.14)}
+.modebar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:12px;border:1px dashed #c4c7d4;font-size:13.5px;color:#4b4b53}
+.h1{margin:0;font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.03em}
+.gh{margin:6px 0 0;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#4b4b53;text-transform:uppercase;letter-spacing:.06em}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.rc{display:flex;flex-direction:column;padding:18px;border-radius:18px;background:#fff;border:1px solid var(--line);box-shadow:0 1px 2px rgba(16,16,20,.04),0 8px 24px rgba(30,40,90,.05);color:var(--text);transition:transform .15s,box-shadow .15s}
+.rc:hover{color:var(--text);transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,16,20,.05),0 14px 32px rgba(30,40,90,.10)}
+.ib{border-radius:12px;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.pill{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.p-good{background:var(--good-bg);color:var(--good)}.p-bad{background:var(--bad-bg);color:var(--bad)}
+.chip{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;min-height:28px;padding:4px 10px;border-radius:10px;font-size:13px;font-weight:600}
+.c-red{background:#ffe9e9;color:var(--bad)}.c-amber{background:var(--warn-bg);color:var(--warn)}
+.spark{display:flex;gap:3px;align-items:flex-end;height:48px;width:116px;flex:none}
+.box{background:#fff;border:1px solid var(--line);border-radius:18px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th{text-align:left;font-size:12.5px;font-weight:600;color:var(--muted);padding:12px 18px;border-bottom:1px solid #eceef4;white-space:nowrap}
+td{padding:12px 18px;border-top:1px solid var(--line-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.r{text-align:right}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 1px 2px rgba(16,16,20,.04),0 8px 24px rgba(30,40,90,.05);min-width:0;padding:22px}
+.ch{margin:0 0 16px;font-size:17px;font-weight:700}
+.hero{border-radius:22px;color:#fff;padding:24px;display:flex;flex-wrap:wrap;gap:20px 32px;align-items:flex-end;justify-content:space-between}
+.hero .pill{background:rgba(255,255,255,.2);color:#fff;height:28px;font-size:13.5px}
+.tile{display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;background:#fff;border:1px solid var(--line)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.lr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0;border-top:1px solid var(--line-2);font-size:14.5px}
+.av{width:38px;height:38px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.age{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:700;margin-left:8px}
+.a-red{background:var(--bad-bg);color:var(--bad)}.a-amber{background:var(--warn-bg);color:var(--warn)}.a-mute{background:#f1f2f7;color:#4b4b53}
+.btn{height:36px;padding:0 14px;border-radius:10px;border:1px solid #e3e5ee;background:#fff;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#cfd3e0;background:#fafbfd}
+.btn-p{border:0;background:var(--brand);color:#fff}.btn-p:hover{background:var(--brand-ink)}
+.alert{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-radius:14px;background:var(--warn-bg);color:#5c3300;font-size:14px}
+.how{padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:13.5px;color:var(--text-2)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:40}
+@media (max-width:640px){.main{padding:20px 16px 64px}.h1{font-size:26px}.hero{padding:18px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const P = {
+  home: 'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  calendar: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4',
+  user: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+  inbox: 'M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z',
+  users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4.5-6.5',
+  idcard: 'M3 5h18v14H3zM7 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0M6 16a3 3 0 0 1 6 0M14 9h4M14 13h4',
+  check: 'M4 4h16v16H4zM8 12l3 3 5-6',
+  wallet: 'M3 7h15a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 14h2',
+  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  sliders: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0',
+  trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
+  alert: 'M12 8v5M12 16.5v.5M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  ticket: 'M3 8a2 2 0 0 0 0 4 2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 1 0-4V6H3zM14 6v12',
+  calcheck: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4M9 15l2 2 4-4',
+  coach: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 11l2 2 4-4',
+  layers: 'M12 3 2 8l10 5 10-5zM2 13l10 5 10-5M2 18l10 5 10-5',
+  building: 'M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h3a1 1 0 0 1 1 1v11M2 21h20M8 7h4M8 11h4M8 15h4',
+  receipt: 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3',
+  coins: 'M8 8a6 3 0 1 0 12 0 6 3 0 1 0-12 0M8 8v4c0 1.7 2.7 3 6 3s6-1.3 6-3V8M4 12a6 3 0 0 0 6 3M4 12v4c0 1.7 2.7 3 6 3',
+  back: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  book: 'M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4zM4 16a4 4 0 0 1 4-4h12',
+  percent: 'M19 5 5 19M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+};
+const svg = (d, s = 18, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"></path></svg>`;
+const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const rub = (n) => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' ₽';
+const C = {
+  money: { main: '#2f55d4', mid: '#a8b8f0', tint: '#e9eeff', hero: '#2f55d4', heroInk: '#dfe6ff', title: 'Деньги' },
+  clients: { main: '#0d9488', mid: '#8fd8cf', tint: '#ddf5f1', hero: '#0f766e', heroInk: '#d3f2ee', title: 'Клиенты' },
+  team: { main: '#7c3aed', mid: '#c9b6f6', tint: '#efe8fe', hero: '#6d28d9', heroInk: '#ece4fe', title: 'Команда' },
+  compare: { main: '#ea580c', mid: '#f8bb96', tint: '#ffeedf', hero: '#c2410c', heroInk: '#ffe8d6', title: 'Сравнения' },
+};
+const AV = [['#e9eeff', '#2443b0'], ['#ddf5f1', '#0f766e'], ['#efe8fe', '#6d28d9'], ['#ffeedf', '#c2410c'], ['#fde7f1', '#be185d'], ['#f1f2f7', '#3f3f46']];
+const state = { view: 'cards', oneSport: false, finance: true, toast: '' };
+
+const REPORTS = [
+  { id: 'revenue', cat: 'money', money: true, name: 'Выручка', q: 'Сколько денег пришло от клиентов', value: '1 284 600 ₽', delta: '▲ 12,4%', good: true, icon: P.wallet, spark: [248, 262, 231, 270, 291, 296, 301, 318] },
+  { id: 'pnl', cat: 'money', money: true, name: 'Доходы и расходы', q: 'Сколько осталось после всех расходов', value: '422 300 ₽', delta: '▲ 41,6%', good: true, icon: P.trend, spark: [230, 120, -80, 25, 465, 422] },
+  { id: 'debts', cat: 'money', money: true, name: 'Долги клиентов', q: 'Кто должен за абонементы и занятия', value: '96 300 ₽', delta: '▼ 8,1%', good: true, icon: P.alert, spark: [112, 108, 104, 110, 101, 98, 99, 96], warn: '14 клиентов должны', warnCls: 'c-amber' },
+  { id: 'sales', cat: 'clients', name: 'Продажи абонементов', q: 'Что покупают и продлевают ли', value: '174 шт.', delta: '▲ 8,1%', good: true, icon: P.ticket, spark: [36, 38, 33, 40, 41, 44, 42, 45], warn: '8 закончатся без продления', warnCls: 'c-red' },
+  { id: 'attendance', cat: 'clients', name: 'Посещаемость', q: 'Ходят ли клиенты на занятия', value: '83,3%', delta: '▲ 1,2 п.п.', good: true, icon: P.calcheck, spark: [80, 81, 79, 82, 82, 83, 84, 83], warn: '17 перестали ходить', warnCls: 'c-red' },
+  { id: 'groups', cat: 'clients', name: 'Группы', q: 'Какие группы растут, а какие теряют клиентов', value: 'Юниоры У12', delta: '▲ 9 клиентов', good: true, icon: P.users, spark: [372, 375, 378, 380, 383, 386, 390, 394], warn: 'Юниоры У8: −5 клиентов', warnCls: 'c-amber' },
+  { id: 'coaches', cat: 'team', name: 'Тренеры и залы', q: 'Кто сколько работает, где свободное время', value: '296 ч', delta: '▲ 3,5%', good: true, icon: P.coach, spark: [268, 274, 271, 280, 276, 286, 290, 296] },
+  { id: 'directions', cat: 'compare', name: 'Направления', q: 'Какое направление растёт, какое падает', value: 'Футбол', delta: '▲ 19,3%', good: true, icon: P.layers, spark: [270, 282, 290, 301, 315, 322, 350, 384], warn: 'ОФП: выручка −5,4%', warnCls: 'c-amber' },
+  { id: 'branches', cat: 'compare', money: true, name: 'Филиалы', q: 'Какой филиал зарабатывает', value: '3 филиала', delta: '', good: true, icon: P.building, spark: [310, 290, 180, 240, 430, 452, 470, 498], warn: 'Юг: остаётся 6,8% выручки', warnCls: 'c-amber' },
+];
+const visible = () => REPORTS.filter((r) => !(state.oneSport && r.id === 'directions') && (state.finance || !r.money));
+
+function sparkBars(vals, c, h = 48) {
+  const min = Math.min(...vals), max = Math.max(...vals);
+  return vals.map((v, i) => `<span style="flex:1 1 0;height:${Math.round(h * 0.2 + (v - min) / (max - min || 1) * h * 0.8)}px;border-radius:3px;background:${v < 0 ? '#f87171' : i === vals.length - 1 ? c.main : c.mid}"></span>`).join('');
+}
+function shell(content) {
+  const nav = [['Главная', P.home], ['Расписание', P.calendar], ['Клиенты', P.user], ['Входящие', P.inbox], ['Группы', P.users], ['Сотрудники', P.idcard], ['Задачи', P.check], ['Финансы', P.wallet], ['Отчёты', P.chart], ['Настройки', P.sliders]];
+  return `<div class="app"><nav class="side" aria-label="Разделы">
+    <div class="club"><span class="club-av" aria-hidden="true">A</span><span><b style="display:block;font-size:14px">Athletica</b><span class="mut" style="font-size:12.5px">Филиал «Центр»</span></span></div>
+    ${nav.map(([n, i]) => `<a class="nv ${n === 'Отчёты' ? 'nv-on' : ''}" href="${n === 'Отчёты' ? '#' : '#'}" data-act="${n === 'Отчёты' ? 'home' : 'toast'}" data-v="Раздел «${n}»">${svg(i)}${n}</a>`).join('')}
+  </nav><main class="main"><div class="wrap">${content}</div></main></div>`;
+}
+function modebar() {
+  const b = (act, v, on, label) => `<button class="sb ${on ? 'on' : ''}" data-act="${act}" data-v="${v}" aria-pressed="${on}">${label}</button>`;
+  return `<div class="modebar"><span>Только в макете:</span><div style="display:flex;flex-wrap:wrap;gap:8px">
+    <div class="seg" role="group" aria-label="Сколько направлений в клубе">${b('sport', 'many', !state.oneSport, 'Несколько направлений')}${b('sport', 'one', state.oneSport, 'Одно направление')}</div>
+    <div class="seg" role="group" aria-label="Права сотрудника">${b('fin', 'yes', state.finance, 'С правом «Финансы»')}${b('fin', 'no', !state.finance, 'Без права')}</div>
+  </div></div>`;
+}
+function filters(extra = '') {
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <select class="sel" aria-label="Период"><option>Октябрь 2026 (1–27)</option><option>Сентябрь 2026</option><option>Последние 30 дней</option><option>Квартал</option><option>Свой период…</option></select>
+    <select class="sel" aria-label="Филиал"><option>Филиал «Центр»</option><option>Филиал «Север»</option><option>Филиал «Юг»</option><option>Все филиалы</option></select>${extra}</div>`;
+}
+
+function homeView() {
+  const seg = (v, label) => `<button class="sb ${state.view === v ? 'on' : ''}" data-act="view" data-v="${v}" aria-pressed="${state.view === v}">${label}</button>`;
+  let body = '';
+  if (state.view === 'cards') {
+    body = ['money', 'clients', 'team', 'compare'].map((k) => {
+      const cards = visible().filter((r) => r.cat === k);
+      if (!cards.length) return '';
+      const c = C[k];
+      return `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="gh"><span class="dot" style="background:${c.main}"></span>${c.title}</h2><div class="grid">${cards.map((r) => `
+        <a class="rc" href="#${r.id}">
+          <span style="display:flex;align-items:center;gap:12px">
+            <span class="ib" style="width:44px;height:44px;background:${c.tint};color:${c.main}">${svg(r.icon, 22)}</span>
+            <span style="flex:1;min-width:0"><span style="display:block;font-size:15.5px;font-weight:700">${r.name}</span><span class="mut" style="display:block;font-size:12.5px;line-height:1.35">${r.q}</span></span>
+            <span aria-hidden="true" style="color:#9a9aa5;font-size:22px;line-height:1">›</span>
+          </span>
+          <span style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:16px">
+            <span style="min-width:0"><span style="display:block;font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.1">${r.value}</span>${r.delta ? `<span class="pill ${r.good ? 'p-good' : 'p-bad'}" style="margin-top:8px">${r.delta}</span>` : ''}</span>
+            <span class="spark" aria-hidden="true">${sparkBars(r.spark, c)}</span>
+          </span>
+          ${r.warn ? `<span class="chip ${r.warnCls}" style="margin-top:14px">${svg(P.alert, 15, 2.2)}${r.warn}</span>` : ''}
+        </a>`).join('')}</div></section>`;
+    }).join('');
+  } else {
+    const g = (k) => `<tr><td colspan="4" style="padding:18px 18px 8px;border-top:0;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${C[k].main}">${C[k].title}</td></tr>`;
+    const row = (name, now, was, d, good, id) => `<tr><td><a href="#${id}" style="color:var(--text);font-weight:500">${name}</a></td><td class="r" style="font-weight:700">${now}</td><td class="r mut">${was}</td><td class="r"><span class="pill ${good ? 'p-good' : 'p-bad'}">${d}</span></td></tr>`;
+    const money = state.finance ? g('money') + row('Выручка', '1 284 600 ₽', '1 142 900 ₽', '▲ 12,4%', true, 'revenue') + row('Расходы', '862 300 ₽', '844 600 ₽', '▲ 2,1%', false, 'pnl') + row('Прибыль', '422 300 ₽', '298 300 ₽', '▲ 41,6%', true, 'pnl') + row('Средний чек', '6 003 ₽', '5 831 ₽', '▲ 2,9%', true, 'revenue') + row('Долг клиентов', '96 300 ₽', '104 800 ₽', '▼ 8,1%', true, 'debts') : '';
+    body = `<div class="box"><table><thead><tr><th>Показатель</th><th class="r">Октябрь, 1–27</th><th class="r">Сентябрь, 1–27</th><th class="r">Изменение</th></tr></thead><tbody>
+      ${money}${g('clients')}${row('Продано абонементов', '174', '161', '▲ 8,1%', true, 'sales')}${row('Доля продлений', '78%', '81%', '▼ 3 п.п.', false, 'sales')}${row('Активные клиенты', '352', '338', '▲ 4,1%', true, 'groups')}${row('Посещаемость', '83,3%', '82,1%', '▲ 1,2 п.п.', true, 'attendance')}${row('Перестали ходить', '17', '12', '▲ 5', false, 'attendance')}
+      ${g('team')}${row('Проведено занятий', '210', '203', '▲ 3,4%', true, 'coaches')}${row('Часы тренеров', '296 ч', '286 ч', '▲ 3,5%', true, 'coaches')}${row('Отменено занятий', '10', '7', '▲ 3', false, 'coaches')}
+    </tbody></table></div><div style="display:flex;justify-content:flex-end"><button class="sel" data-act="toast" data-v="Выгрузка таблицы в Excel" style="font-weight:600">Выгрузить в Excel</button></div>`;
+  }
+  const note = [];
+  if (state.oneSport) note.push('В клубе один вид спорта, поэтому отчёта «Направления» нет. Что растёт, а что проседает, видно в отчёте «Группы».');
+  if (!state.finance) note.push('У сотрудника нет права просмотра финансов: денежных отчётов (выручка, доходы и расходы, долги, филиалы) он не видит.');
+  return shell(`${modebar()}
+    ${note.map((t) => `<div style="padding:10px 14px;border-radius:12px;background:#e9eeff;font-size:13.5px;color:#1f2a55">${t}</div>`).join('')}
+    <div style="display:flex;flex-wrap:wrap;gap:14px 16px;align-items:flex-end;justify-content:space-between">
+      <div><h1 class="h1">Отчёты</h1><div class="mut" style="font-size:14.5px;margin-top:6px">Октябрь, 1–27 · сравнение с тем же периодом сентября</div></div>
+      ${filters(`<div class="seg" role="group" aria-label="Вид">${seg('cards', 'Карточки')}${seg('table', 'Таблица')}</div>`)}
+    </div>${body}
+    <div class="mut" style="font-size:12.5px">Цифры условные. Нажмите на карточку или название показателя — откроется отчёт.</div>`);
+}
+
+const tile = (t, c) => `<div class="tile"><span class="ib" style="width:46px;height:46px;border-radius:13px;background:${t.bg || c.tint};color:${t.fg || c.main}">${svg(t.icon, 22)}</span><span style="min-width:0"><span class="mut" style="display:block;font-size:13px">${t.label}</span><span style="display:block;font-size:22px;font-weight:800;letter-spacing:-.02em">${t.value}</span><span style="display:block;font-size:12.5px;font-weight:600;color:${t.kind === 'bad' ? 'var(--bad)' : t.kind === 'warn' ? 'var(--warn)' : t.kind === 'good' ? 'var(--good)' : 'var(--muted)'}">${t.note || ''}</span></span></div>`;
+const barRows = (items, gap = 12) => `<div style="display:flex;flex-direction:column;gap:${gap}px">${items.map((b) => `<div style="display:flex;flex-direction:column;gap:5px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:14px"><span>${b.name}${b.sub ? ` <span class="mut" style="font-size:12.5px">· ${b.sub}</span>` : ''}</span><b style="font-weight:700;white-space:nowrap;${b.valStyle || ''}">${b.val}</b></div><div style="height:10px;border-radius:5px;background:#f1f2f7"><div style="height:10px;border-radius:5px;background:${b.color};width:${Math.max(1, b.pct).toFixed(1)}%"></div></div></div>`).join('')}</div>`;
+const donut = (segs, center, sub, label) => {
+  const total = segs.reduce((s, x) => s + x.v, 0);
+  let acc = 0;
+  const stops = segs.map((x) => { const a = acc / total * 100; acc += x.v; return `${x.color} ${a.toFixed(1)}% ${(acc / total * 100).toFixed(1)}%`; }).join(', ');
+  return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:20px"><div style="position:relative;width:150px;height:150px;flex:none;border-radius:50%;background:conic-gradient(${stops})" role="img" aria-label="${label}"><div style="position:absolute;inset:26px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-size:20px;font-weight:800">${center}</span><span class="mut" style="font-size:11.5px">${sub}</span></div></div><div style="flex:1 1 160px;display:flex;flex-direction:column;gap:10px">${segs.map((x) => `<div style="display:flex;align-items:center;gap:10px;font-size:14px"><span class="dot" style="width:12px;height:12px;border-radius:4px;flex:none;background:${x.color}"></span><span style="flex:1;min-width:0">${x.name}</span><b style="font-weight:700;white-space:nowrap">${x.val}</b></div>`).join('')}</div></div>`;
+};
+const people = (items) => items.map((p, i) => `<div class="lr"><span class="av" style="background:${AV[i % AV.length][0]};color:${AV[i % AV.length][1]}" aria-hidden="true">${p.name.split(' ').map((s) => s[0]).join('')}</span><span style="flex:1 1 260px;min-width:0"><a href="#" data-act="toast" data-v="Карточка клиента «${p.name}»" style="font-weight:600">${p.name}</a>${p.badge ? `<span class="age ${p.badgeCls}">${p.badge}</span>` : ''}<span class="mut" style="display:block;font-size:13px">${p.sub}</span></span>${p.right ? `<b style="font-weight:800;white-space:nowrap;min-width:84px;text-align:right;${p.rightStyle || ''}">${p.right}</b>` : ''}${p.chip ? `<span class="age a-mute" style="margin:0">${p.chip}</span>` : ''}<span style="display:flex;gap:8px">${(p.buttons || []).map((b, j) => `<button class="btn ${j === 0 && b.primary ? 'btn-p' : ''}" data-act="toast" data-v="${b.label}: ${p.name}">${b.label}</button>`).join('')}</span></div>`).join('');
+const card = (title, inner, right = '') => `<section class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 12px"><h2 class="ch">${title}</h2>${right}</div>${inner}</section>`;
+const tableHtml = (cols, rows) => `<div style="overflow-x:auto"><table><thead><tr>${cols.map((c, i) => `<th class="${i ? 'r' : ''}">${c}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr style="${r.style || ''}">${r.cells.map((c, i) => `<td class="${i ? 'r' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const vbars = (vals, labels, color, mid, h = 200, titles = []) => `<div style="display:flex;gap:4px;align-items:flex-end;height:${h}px;border-bottom:2px solid #e3e5ee">${vals.map((v, i) => `<div title="${titles[i] || ''}" style="flex:1 1 0;min-width:0;height:${Math.round(Math.abs(v) / Math.max(...vals.map(Math.abs)) * (h - 4))}px;border-radius:5px 5px 1px 1px;background:${typeof color === 'function' ? color(v, i) : color}"></div>`).join('')}</div><div style="display:flex;gap:4px;font-size:11.5px;color:var(--muted);padding-top:4px">${labels.map((l) => `<div style="flex:1 1 0;min-width:0;text-align:center">${l}</div>`).join('')}</div>`;
+const compare = (items, max, nowLabel, baseLabel, color) => `<div style="display:flex;gap:16px;font-size:13px;color:var(--muted);margin:-6px 0 14px"><span style="display:inline-flex;align-items:center;gap:6px"><span class="dot" style="background:${color}"></span>${nowLabel}</span><span style="display:inline-flex;align-items:center;gap:6px"><span class="dot" style="background:#c9d3f6"></span>${baseLabel}</span></div><div style="display:flex;flex-direction:column;gap:16px">${items.map((d) => `<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:12px;font-size:14.5px"><b style="font-weight:600">${d.name}${d.sub ? ` <span class="mut" style="font-weight:400;font-size:13px">· ${d.sub}</span>` : ''}</b><span><b style="font-weight:700">${d.nowLabel}</b> <span class="pill ${d.good ? 'p-good' : 'p-bad'}" style="height:22px;font-size:12px">${d.delta}</span></span></div><div style="height:12px;border-radius:4px;background:${d.good ? color : '#f59e0b'};width:${(d.now / max * 100).toFixed(1)}%"></div><div style="height:12px;border-radius:4px;background:#c9d3f6;width:${(d.base / max * 100).toFixed(1)}%"></div></div>`).join('')}</div>`;
+
+function reportView(r, cfg) {
+  const c = C[r.cat];
+  const mini = cfg.mini ? `<div style="flex:0 1 380px;min-width:260px"><div style="font-size:12.5px;color:${c.heroInk};margin-bottom:6px">${cfg.mini.title}</div><div style="display:flex;gap:8px;align-items:flex-end;height:110px">${(() => { const vs = cfg.mini.values; const mn = Math.min(...vs.map(Math.abs)); const mx = Math.max(...vs.map(Math.abs)); return vs.map((v, i) => `<div style="flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:11.5px;color:${c.heroInk};white-space:nowrap">${cfg.mini.labels[i]}</div><div style="width:100%;height:${Math.round(12 + (Math.abs(v) - mn) / (mx - mn || 1) * 60)}px;border-radius:6px 6px 2px 2px;background:${v < 0 ? '#fca5a5' : i === vs.length - 1 ? '#fff' : 'rgba(255,255,255,.35)'}"></div>${cfg.mini.under ? `<div style="font-size:11.5px;color:${c.heroInk}">${cfg.mini.under[i]}</div>` : ''}</div>`).join(''); })()}</div></div>` : '';
+  return shell(`<a href="#" style="align-self:flex-start;font-size:14px;font-weight:600">← Все отчёты</a>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:14px"><span class="ib" style="width:52px;height:52px;border-radius:14px;background:${c.tint};color:${c.main}">${svg(r.icon, 26)}</span><div><h1 class="h1">${r.name}</h1><div class="mut" style="font-size:14.5px;margin-top:2px">${r.q}</div></div></div>
+      ${filters(`<button class="sel" data-act="toast" data-v="Выгрузка отчёта в Excel" style="font-weight:600">Excel</button>`)}
+    </div>
+    <section class="hero" style="background:${cfg.heroBg || c.hero}"><div style="min-width:0"><div style="font-size:14px;font-weight:600;color:${c.heroInk}">${cfg.hero.label}</div><div style="font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1.05;margin-top:4px">${cfg.hero.value}</div><div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px">${cfg.hero.pill ? `<span class="pill">${cfg.hero.pill}</span>` : ''}<span style="font-size:14px;color:${c.heroInk}">${cfg.hero.note}</span></div></div>${mini}</section>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${cfg.tiles.map((t) => tile(t, c)).join('')}</div>
+    ${cfg.body}
+    <div class="how"><b style="font-weight:700">Как считается:</b> ${cfg.how}</div>`);
+}
+
+const months6 = ['май', 'июн', 'июл', 'авг', 'сен', 'окт'];
+const CFG = {
+  revenue: () => {
+    const days = [142, 118, 41, 28, 96, 64, 58, 52, 47, 30, 18, 49, 44, 45, 52, 43, 27, 15, 40, 46, 42, 39, 37, 22, 14, 35, 40.6];
+    return {
+      hero: { label: 'Пришло за 1–27 октября', value: '1 284 600 ₽', pill: '▲ 12,4%', note: 'к сентябрю: было 1 142 900 ₽' },
+      mini: { title: 'Последние 6 месяцев', values: [1020, 880, 640, 760, 1310, 1284.6], labels: ['1,02', '0,88', '0,64', '0,76', '1,31', '1,28'], under: months6 },
+      tiles: [
+        { label: 'Оплат', value: '214', note: '▲ 9,2% к сентябрю', kind: 'good', icon: P.receipt },
+        { label: 'Средний чек', value: '6 003 ₽', note: '▲ 2,9% к сентябрю', kind: 'good', icon: P.coins, bg: '#ddf5f1', fg: '#0d9488' },
+        { label: 'Выплачено клиентам', value: '18 400 ₽', note: '3 выплаты', icon: P.back, bg: '#ffeedf', fg: '#ea580c' },
+      ],
+      body: card('По дням', `<div style="display:inline-flex;padding:4px 10px;border-radius:999px;background:#e9eeff;color:#2443b0;font-size:12.5px;font-weight:700;margin-bottom:8px">Пик — 1 октября: 142 000 ₽</div>${vbars(days, days.map((_, i) => (i === 0 || (i + 1) % 5 === 0 ? String(i + 1) : '')), (v, i) => ((i + 3) % 7 >= 5 ? '#a8b8f0' : '#2f55d4'), null, 200, days.map((v, i) => `${i + 1} октября · ${fmt(v * 1000)} ₽`))}<div class="mut" style="font-size:13px;margin-top:10px">Светлые столбцы — выходные. Больше всего денег приходит 1–5 числа: клиенты продлевают абонементы.</div>`)
+        + `<div class="two">${card('В какие кассы пришли', donut([{ name: 'Эквайринг (карты)', v: 58, val: '745 068 ₽', color: '#2f55d4' }, { name: 'Наличные', v: 24, val: '308 304 ₽', color: '#0d9488' }, { name: 'Расчётный счёт', v: 15, val: '192 690 ₽', color: '#7c3aed' }, { name: 'Онлайн-оплата', v: 3, val: '38 538 ₽', color: '#ea580c' }], '58%', 'картой', 'Эквайринг 58%, наличные 24%, расчётный счёт 15%, онлайн 3%'))}
+          ${card('За что платят', barRows([['Плавание · 8 занятий', 412800], ['Безлимит · месяц', 356000], ['ОФП · 8 занятий', 228900], ['Индивидуальные · 5 занятий', 190500], ['Разовое занятие', 96400]].map(([n, v], i) => ({ name: n, val: rub(v), pct: v / 412800 * 100, color: ['#2f55d4', '#0d9488', '#7c3aed', '#ea580c', '#db2777'][i] }))))}</div>`
+        + card('Последние оплаты', people([
+          { name: 'Ольга Зайцева', sub: 'Безлимит · месяц · 27.10, 14:32', chip: 'Эквайринг', right: '8 900 ₽' },
+          { name: 'Тимур Гареев', sub: 'Плавание · 8 занятий · 27.10, 12:05', chip: 'Наличные', right: '6 400 ₽' },
+          { name: 'Никита Соловьёв', sub: 'часть оплаты ОФП · 8 занятий · 26.10, 19:40', chip: 'Расчётный счёт', right: '2 500 ₽' },
+          { name: 'Елена Морозова', sub: 'выплата с аванса · 26.10, 18:10', chip: 'Наличные', right: '−950 ₽', rightStyle: 'color:var(--bad)' },
+          { name: 'Полина Фролова', sub: 'Индивидуальные · 5 занятий · 26.10, 10:22', chip: 'Онлайн', right: '12 500 ₽' },
+        ]), '<a href="#" data-act="toast" data-v="Журнал операций в «Финансах»" style="font-size:14px;font-weight:600">Все 214 в журнале операций →</a>'),
+      how: 'оплаты клиентов в кассы минус выплаты клиентам, по дате операции; отменённые не считаются. Это та же строка «Поступления от клиентов», что в отчёте ДДС раздела «Финансы».',
+    };
+  },
+  pnl: () => {
+    const inc = [1020, 880, 640, 760, 1310, 1284.6], out = [790, 760, 720, 735, 845, 862.3];
+    return {
+      hero: { label: 'Прибыль за 1–27 октября', value: '422 300 ₽', pill: '▲ 41,6%', note: 'в сентябре 298 300 ₽' },
+      mini: { title: 'Прибыль по месяцам, тыс. ₽', values: inc.map((v, i) => v - out[i]), labels: inc.map((v, i) => (v - out[i] < 0 ? '−' : '') + fmt(Math.abs(v - out[i]))), under: months6 },
+      tiles: [
+        { label: 'Доходы', value: '1 284 600 ₽', note: 'от клиентов за вычетом выплат им', icon: P.wallet },
+        { label: 'Расходы', value: '862 300 ₽', note: '▲ 2,1% к сентябрю', kind: 'bad', icon: P.receipt, bg: '#ffeedf', fg: '#ea580c' },
+        { label: 'Остаётся от выручки', value: '32,9%', note: '▲ 6,8 п.п.', kind: 'good', icon: P.percent, bg: '#ddf5f1', fg: '#0d9488' },
+      ],
+      body: card('Доходы и расходы по месяцам', `<div style="display:flex;gap:16px;font-size:13px;color:var(--muted);margin:-6px 0 14px"><span style="display:inline-flex;align-items:center;gap:6px"><span class="dot" style="background:#2f55d4"></span>доходы</span><span style="display:inline-flex;align-items:center;gap:6px"><span class="dot" style="background:#f0a35e"></span>расходы</span></div><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px">${months6.map((m, i) => `<div style="display:flex;flex-direction:column;gap:6px"><div style="height:170px;display:flex;gap:5px;align-items:flex-end;justify-content:center;border-bottom:2px solid #e3e5ee"><div title="доходы ${fmt(inc[i] * 1000)} ₽" style="width:36%;max-width:36px;height:${Math.round(inc[i] / 1310 * 166)}px;background:#2f55d4;border-radius:5px 5px 1px 1px"></div><div title="расходы ${fmt(out[i] * 1000)} ₽" style="width:36%;max-width:36px;height:${Math.round(out[i] / 1310 * 166)}px;background:#f0a35e;border-radius:5px 5px 1px 1px"></div></div><div style="text-align:center;font-size:13px;font-weight:600">${m}</div><div style="text-align:center"><span class="pill ${inc[i] - out[i] >= 0 ? 'p-good' : 'p-bad'}" style="height:22px;font-size:12px">${(inc[i] - out[i] >= 0 ? '+' : '−') + fmt(Math.abs(inc[i] - out[i]))}</span></div></div>`).join('')}</div><div class="mut" style="font-size:13px;margin-top:10px">В июле убыток: летом клиентов меньше, а аренда и зарплаты остаются. Под месяцем — прибыль в тыс. ₽.</div>`)
+        + `<div class="two">${card('На что ушли деньги', barRows([['Зарплата', 418000], ['Аренда', 240000], ['Реклама', 86500], ['Налоги', 64200], ['Инвентарь', 23200], ['Комиссия эквайринга', 16400], ['Прочие расходы', 14000]].map(([n, v]) => ({ name: n, val: rub(v), sub: Math.round(v / 862300 * 100) + '%', pct: v / 418000 * 100, color: '#f0a35e' }))), '<span class="mut" style="font-size:13px">по статьям расходов</span>')}
+          ${card('Последние расходы', people([
+            { name: 'Реклама', sub: 'таргет ВКонтакте · 25.10', chip: 'Расчётный счёт', right: '35 000 ₽' },
+            { name: 'Инвентарь', sub: 'доски и колобашки · 20.10', chip: 'Наличные', right: '18 400 ₽' },
+            { name: 'Зарплата', sub: 'аванс тренерам · 15.10', chip: 'Расчётный счёт', right: '209 000 ₽' },
+            { name: 'Налоги', sub: 'УСН за 3 квартал · 10.10', chip: 'Расчётный счёт', right: '64 200 ₽' },
+          ]), '<button class="btn btn-p" data-act="toast" data-v="Панель «Расход», как в «Финансах»">+ Расход</button>')}</div>`,
+      how: 'деньги от клиентов (за вычетом выплат им) и прочие доходы минус расходы по статьям за период — те же операции, что в отчёте ДДС; переводы между кассами и отменённые операции не считаются. Подробно по статьям и месяцам — ДДС в «Финансах».',
+    };
+  },
+  debts: () => ({
+    heroBg: '#2443b0',
+    hero: { label: 'Должны клиенты на сегодня', value: '96 300 ₽', pill: '▼ 8,1% — долгов меньше', note: 'месяц назад было 104 800 ₽' },
+    mini: { title: 'Долг по неделям, тыс. ₽', values: [112, 108, 104, 110, 101, 98, 99, 96], labels: ['112', '108', '104', '110', '101', '98', '99', '96'] },
+    tiles: [
+      { label: 'Должников', value: '14', note: 'было 16 месяц назад', icon: P.users },
+      { label: 'Средний долг', value: '6 879 ₽', note: 'на одного должника', icon: P.coins, bg: '#ddf5f1', fg: '#0d9488' },
+      { label: 'Самый давний долг', value: '34 дня', note: 'Артём Новиков', kind: 'bad', icon: P.clock, bg: '#ffe4e4', fg: '#b42318' },
+    ],
+    body: `<div class="two">${card('За что должны', donut([{ name: 'Продажи, оплаченные частично', v: 61200, val: '61 200 ₽', color: '#2f55d4' }, { name: 'Продажи совсем без оплаты', v: 35100, val: '35 100 ₽', color: '#ea580c' }], '14', 'должников', 'Оплачены частично 61 200 рублей, без оплаты 35 100 рублей') + `<div class="alert" style="margin-top:16px;font-size:13.5px">Ещё <b>9 неоплаченных занятий</b> у 4 клиентов — пришли без абонемента. Гасятся выдачей абонемента, а не деньгами.</div>`)}
+      ${card('Как давно должны', barRows([['До 7 дней', '3 клиента', 18400, '#0d9488'], ['8–14 дней', '4 клиента', 30900, '#2f55d4'], ['15–30 дней', '5 клиентов', 25400, '#ea580c'], ['Больше 30 дней', '2 клиента', 21600, '#dc2626']].map(([n, s, v, col]) => ({ name: n, sub: s, val: rub(v), pct: v / 30900 * 100, color: col })), 14) + '<div class="mut" style="font-size:13px;margin-top:14px">Чем дольше долг, тем меньше шансов его получить — начните с красных.</div>')}</div>`
+      + card('Кто должен', people([
+        ['Артём Новиков', 'Индивидуальные · 5 занятий — оплачено 6 000 из 12 500 ₽', '6 500 ₽', 34],
+        ['Глеб Макаров', 'ОФП · 8 занятий — не оплачен', '4 900 ₽', 20],
+        ['Марк Соколов', 'Плавание · 8 занятий — оплачено 4 500 из 6 400 ₽', '1 900 ₽', 14],
+        ['Вера Егорова', 'Безлимит · месяц — не оплачен', '8 900 ₽', 12],
+        ['Ксения Романова', 'Плавание · 8 занятий — не оплачен', '6 400 ₽', 9],
+        ['Никита Соловьёв', 'ОФП · 8 занятий — оплачено 2 500 из 4 900 ₽', '2 400 ₽', 1],
+      ].map(([name, sub, right, d]) => ({ name, sub, right, badge: d + (d === 1 ? ' день' : d % 10 >= 2 && d % 10 <= 4 && (d < 10 || d > 20) ? ' дня' : ' дней'), badgeCls: d > 30 ? 'a-red' : d >= 14 ? 'a-amber' : 'a-mute', buttons: [{ label: 'Принять оплату', primary: true }, { label: 'Напомнить' }] }))), '<a href="#" data-act="toast" data-v="Полный список должников" style="font-size:14px;font-weight:600">Все 14 →</a>'),
+    how: 'клиент должен, если его баланс меньше нуля: продажи оплачены не полностью, а аванса не хватает. Неоплаченные занятия (пришёл без действующего абонемента) показаны отдельно. «Принять оплату» открывает ту же панель, что в карточке клиента; «Напомнить» отправляет сообщение в канал связи клиента.',
+  }),
+  sales: () => ({
+    hero: { label: 'Продано абонементов за 1–27 октября', value: '174 шт.', pill: '▲ 8,1%', note: 'в сентябре 161 шт.' },
+    mini: { title: 'По неделям, шт.', values: [36, 38, 33, 40, 41, 44, 42, 45], labels: ['36', '38', '33', '40', '41', '44', '42', '45'] },
+    tiles: [
+      { label: 'На сумму', value: '1 152 400 ₽', note: '▲ 11,8% к сентябрю', kind: 'good', icon: P.coins },
+      { label: 'Продлили', value: '78%', note: '▼ 3 п.п. — было 81%', kind: 'bad', icon: P.back, bg: '#ffeedf', fg: '#ea580c' },
+      { label: 'Новым клиентам', value: '50 шт.', note: '29% всех продаж', icon: P.user, bg: '#e9eeff', fg: '#2f55d4' },
+    ],
+    body: `<div class="two">${card('Новые и продления', donut([{ name: 'Продления', v: 124, val: '124', color: '#0d9488' }, { name: 'Новые клиенты', v: 50, val: '50', color: '#2f55d4' }], '174', 'абонемента', 'Продления 124, новые клиенты 50') + '<div class="mut" style="font-size:13px;margin-top:14px">Из 159 закончившихся абонементов 124 клиента купили новый в течение 30 дней.</div>')}
+      ${card('Что покупают', barRows([['Плавание · 8 занятий', 64, '409 600 ₽'], ['ОФП · 8 занятий', 46, '225 400 ₽'], ['Безлимит · месяц', 40, '356 000 ₽'], ['Индивидуальные · 5 занятий', 12, '150 000 ₽'], ['Разовое занятие', 12, '11 400 ₽']].map(([n, q, s], i) => ({ name: n, sub: s, val: q + ' шт.', pct: q / 64 * 100, color: ['#0d9488', '#2f55d4', '#7c3aed', '#ea580c', '#db2777'][i] }))))}</div>`
+      + card('Скоро закончатся, а продления нет', people([
+        ['Марк Соколов', 'Плавание · 8 занятий · до 29.10 · осталось 1 из 8', 2],
+        ['Вера Егорова', 'Безлимит · месяц · до 30.10', 3],
+        ['Илья Кириллов', 'ОФП · 8 занятий · до 31.10 · осталось 0 из 8', 4],
+        ['Ксения Романова', 'Плавание · 8 занятий · до 01.11 · осталось 2 из 8', 5],
+        ['Артём Новиков', 'Индивидуальные · 5 занятий · до 03.11 · осталось 1 из 5', 7],
+      ].map(([name, sub, d]) => ({ name, sub, badge: 'через ' + d + (d < 5 ? ' дня' : ' дней'), badgeCls: d <= 3 ? 'a-red' : 'a-mute', buttons: [{ label: 'Создать задачу' }] }))), '<span class="mut" style="font-size:14px">8 клиентов · 14 дней</span>'),
+    how: 'абонементы, выданные за период. «Продлили» — доля закончившихся абонементов, после которых клиент купил новый в течение 30 дней (срок — открытый вопрос).',
+  }),
+  attendance: () => ({
+    hero: { label: 'Пришли на занятия за 1–27 октября', value: '83,3%', pill: '▲ 1,2 п.п.', note: 'в сентябре было 82,1%' },
+    mini: { title: 'По неделям', values: [80, 81, 79, 82, 82, 83, 84, 83], labels: ['80%', '81%', '79%', '82%', '82%', '83%', '84%', '83%'] },
+    tiles: [
+      { label: 'Человек на занятии', value: '9,1', note: '▲ 0,4 к сентябрю', kind: 'good', icon: P.users },
+      { label: 'Активных клиентов', value: '352', note: '▲ 4,1% к сентябрю', kind: 'good', icon: P.user, bg: '#e9eeff', fg: '#2f55d4' },
+      { label: 'Закрыто журналов', value: '210 из 213', note: '3 ещё не закрыты', kind: 'warn', icon: P.book, bg: '#ffeedf', fg: '#ea580c' },
+    ],
+    body: `<a href="#" class="alert" data-act="toast" data-v="Список незакрытых журналов">${svg(P.alert, 18, 2.2)}<span style="flex:1 1 300px"><b>3 журнала ещё не закрыты.</b> Их отметки попадут в отчёт после закрытия.</span><b style="color:var(--warn)">Открыть журналы →</b></a>
+      <div class="two">${card('Почему не пришли', donut([{ name: 'Болеет', v: 141, val: '141', color: '#0d9488' }, { name: 'Без предупреждения', v: 132, val: '132', color: '#ea580c' }, { name: 'Уважительная причина', v: 58, val: '58', color: '#7c3aed' }, { name: 'Отпуск', v: 53, val: '53', color: '#2f55d4' }], '384', 'пропуска', 'Болеет 141, без предупреждения 132, уважительная причина 58, отпуск 53') + '<div class="mut" style="font-size:13px;margin-top:14px">Метки задаёт клуб. Треть пропусков — «без предупреждения»: с этими клиентами стоит поговорить.</div>')}
+      ${card('По группам', barRows([['Младшая группа', 88, '11,0'], ['Взрослые', 86, '11,0'], ['Юниоры У12', 85, '11,0'], ['Йога', 80, '6,9'], ['ОФП дети', 79, '8,0'], ['Юниоры У8', 78, '7,0']].map(([n, p, f]) => ({ name: n, sub: f + ' чел. на занятии', val: p + '%', valStyle: 'color:' + (p < 80 ? '#c2410c' : '#0f766e'), pct: p, color: p < 80 ? '#f59e0b' : '#0d9488' }))))}</div>`
+      + card('Перестали ходить', people([
+        ['Денис Белов', 'Юниоры У12, осталось 5 из 8 · был 30.09', '27 дней', 'a-red'],
+        ['Алина Широкова', 'Йога, безлимит до 15.11 · была 04.10', '23 дня', 'a-red'],
+        ['Глеб Макаров', 'ОФП дети, осталось 6 из 8 · был 07.10', '20 дней', 'a-amber'],
+        ['Софья Лапина', 'Младшая группа, осталось 4 из 8 · была 10.10', '17 дней', 'a-amber'],
+        ['Роман Титов', 'Взрослые, безлимит до 20.11 · был 12.10', '15 дней', 'a-amber'],
+      ].map(([name, sub, badge, badgeCls]) => ({ name, sub, badge, badgeCls, buttons: [{ label: 'Создать задачу' }] }))), '<a href="#" data-act="toast" data-v="Все 17 клиентов" style="font-size:14px;font-weight:600">Все 17 →</a>'),
+    how: 'по закрытым журналам занятий — «пришёл», делённое на «пришёл» плюс «не пришёл». Участники без отметки и отменённые занятия не считаются. Учитывать ли пропуски с метками «болеет» и «отпуск» — открытый вопрос.',
+  }),
+  groups: () => {
+    const G = [['Юниоры У12', 'Футбол', 70, 61, '85%', '11,0', 236200], ['Йога', 'Йога', 41, 37, '80%', '6,9', 99400], ['Младшая группа', 'Плавание', 80, 76, '88%', '11,0', 214000], ['Взрослые', 'Плавание', 88, 86, '86%', '11,0', 388400], ['ОФП дети', 'ОФП', 64, 67, '79%', '8,0', 198600], ['Юниоры У8', 'Футбол', 51, 56, '78%', '7,0', 148000]];
+    return {
+      hero: { label: 'Быстрее всех растёт', value: 'Юниоры У12', pill: '+9 клиентов', note: 'больше всех теряет — Юниоры У8, −5' },
+      mini: { title: 'Клиентов во всех группах по неделям', values: [372, 375, 378, 380, 383, 386, 390, 394], labels: ['372', '375', '378', '380', '383', '386', '390', '394'] },
+      tiles: [
+        { label: 'Групп', value: '6', note: 'в филиале «Центр»', icon: P.users },
+        { label: 'Растут', value: '4', note: '+19 клиентов', kind: 'good', icon: P.trend, bg: '#dcfce7', fg: '#166534' },
+        { label: 'Теряют клиентов', value: '2', note: '−8 клиентов', kind: 'bad', icon: P.alert, bg: '#ffe4e4', fg: '#b42318' },
+      ],
+      body: card('Клиентов в группах: сейчас и месяц назад', compare(G.map(([n, d, now, was]) => ({ name: n, sub: d, now, base: was, nowLabel: now, delta: (now - was >= 0 ? '+' : '−') + Math.abs(now - was), good: now >= was })), 88, 'сейчас', 'месяц назад', '#0d9488'))
+        + card('Подробно по группам', tableHtml(['Группа', 'Клиентов', 'Посещаемость', 'Человек на занятии', 'Выручка'], G.map(([n, , now, , att, fill, rev]) => ({ cells: [`<b style="font-weight:600">${n}</b>`, now, att, fill, rub(rev)] }))))
+        + card('Ушли из групп за месяц', people([['Тимофей Гусев', 'Юниоры У8 · ушёл 24.10'], ['Злата Ермакова', 'Юниоры У8 · ушла 19.10'], ['Лев Васильев', 'ОФП дети · ушёл 15.10'], ['Ева Жукова', 'Юниоры У8 · ушла 08.10']].map(([name, sub]) => ({ name, sub, buttons: [{ label: 'Создать задачу' }] }))), '<span class="mut" style="font-size:14px">стоит позвонить и узнать причину</span>'),
+      how: 'рост группы — сколько в ней клиентов сейчас и сколько было месяц назад. Отчёт есть у всех клубов, даже с одним видом спорта. Как делить выручку абонемента на несколько групп — открытый вопрос.',
+    };
+  },
+  coaches: () => ({
+    hero: { label: 'Часы тренеров за 1–27 октября', value: '296 ч', pill: '▲ 3,5%', note: 'в сентябре 286 ч' },
+    mini: { title: 'По неделям, ч', values: [76, 71, 79, 70], labels: ['76', '71', '79', '70'], under: ['1–7', '8–14', '15–21', '22–27'] },
+    tiles: [
+      { label: 'Проведено занятий', value: '210', note: '5 тренеров', icon: P.calcheck },
+      { label: 'Отменено', value: '10', note: '▲ 3 к сентябрю', kind: 'bad', icon: P.alert, bg: '#ffe4e4', fg: '#b42318' },
+      { label: 'Человек на занятии', value: '9,1', note: 'в среднем', icon: P.users, bg: '#ddf5f1', fg: '#0d9488' },
+    ],
+    body: `<div class="two">${card('Тренеры', barRows([['Анна Иванова', 86, 62, '10,3', 1], ['Сергей Петров', 66, 48, '8,4', 3], ['Ирина Соколова', 60, 44, '9,9', 0], ['Дмитрий Лебедев', 54, 36, '9,2', 2], ['Ольга Зайцева', 30, 30, '8,9', 4]].map(([n, h, d, f, c]) => ({ name: n, sub: `${d} занятий · ${f} чел. · ${c ? 'отмен: ' + c : 'без отмен'}`, val: h + ' ч', pct: h / 86 * 100, color: c >= 3 ? '#f59e0b' : '#7c3aed' }))) + '<div class="mut" style="font-size:13px;margin-top:14px">Если занятие ведут двое, оно засчитывается обоим.</div>')}
+      ${card('Залы: сколько часов занято', barRows([['Зал 1', 101, 'футбол · вечер будней занят полностью'], ['Бассейн', 99, 'плавание · свободно в будни до 17:00'], ['Зал йоги', 39, 'йога · днём пустует'], ['Зал 2', 36, 'ОФП · занят меньше всех']].map(([n, h, s]) => ({ name: n, sub: s, val: h + ' ч', pct: h / 101 * 100, color: h < 40 ? '#f59e0b' : '#7c3aed' }))) + '<div class="mut" style="font-size:13px;margin-top:14px">Зал 2 занят около 9 часов в неделю — туда можно поставить новую группу.</div>')}</div>`,
+    how: 'часы проведённых занятий по тренерам и залам. Если занятие ведут два тренера, оно засчитывается каждому.',
+  }),
+  directions: () => {
+    const D = [['Плавание', 602400, 530000, 84, 168, '87%', '11,0'], ['Футбол', 384200, 322000, 52, 121, '81%', '9,0'], ['ОФП', 198600, 210000, 26, 64, '79%', '8,0'], ['Йога', 99400, 80900, 12, 41, '80%', '6,9']];
+    return {
+      hero: { label: 'Быстрее всех растёт', value: 'Футбол', pill: '▲ 19,3%', note: 'хуже всех — ОФП, −5,4%' },
+      mini: { title: 'Выручка по направлениям, тыс. ₽', values: D.map((d) => d[1] / 1000), labels: D.map((d) => fmt(d[1] / 1000)), under: D.map((d) => d[0]) },
+      tiles: [
+        { label: 'Направлений', value: '4', note: 'в филиале «Центр»', icon: P.layers },
+        { label: 'Выручка', value: '1 284 600 ₽', note: '▲ 12,4%', kind: 'good', icon: P.wallet, bg: '#e9eeff', fg: '#2f55d4' },
+        { label: 'Активных клиентов', value: '394', note: 'клиент в двух направлениях — в каждом', icon: P.users, bg: '#ddf5f1', fg: '#0d9488' },
+      ],
+      body: card('Выручка: сейчас и месяц назад', compare(D.map(([n, now, base]) => ({ name: n, now, base, nowLabel: rub(now), delta: (now >= base ? '▲ ' : '▼ ') + Math.abs((now / base - 1) * 100).toFixed(1).replace('.', ',') + '%', good: now >= base })), 602400, 'октябрь', 'сентябрь', '#ea580c'))
+        + card('Подробно по направлениям', tableHtml(['Направление', 'Продано абонементов', 'Активных клиентов', 'Посещаемость', 'Человек на занятии'], D.map(([n, , , s, c, a, f]) => ({ cells: [`<b style="font-weight:600">${n}</b>`, s, c, a, f] })))),
+      how: 'выручка направления — оплаты по тарифам этого направления. Если абонемент даёт несколько направлений, как делить деньги — открытый вопрос. Отчёт не показывается, если в клубе одно направление.',
+    };
+  },
+  branches: () => {
+    const B = [['Центр', 1284600, 862300, 174, '83%'], ['Север', 918200, 701400, 131, '79%'], ['Юг', 642500, 598900, 96, '74%']];
+    return {
+      hero: { label: 'Прибыль всей сети за 1–27 октября', value: '497 700 ₽', pill: 'остаётся 17,5%', note: 'доходы 2 845 300 ₽ · расходы 2 347 600 ₽' },
+      mini: { title: 'Прибыль по филиалам, тыс. ₽', values: B.map((b) => (b[1] - b[2]) / 1000), labels: B.map((b) => fmt((b[1] - b[2]) / 1000)), under: B.map((b) => b[0]) },
+      tiles: [
+        { label: 'Доходы сети', value: '2 845 300 ₽', note: '3 филиала', icon: P.wallet },
+        { label: 'Расходы сети', value: '2 347 600 ₽', note: 'из них общие 185 000 ₽', icon: P.receipt, bg: '#ffeedf', fg: '#ea580c' },
+        { label: 'Хуже всех', value: 'Юг', note: 'остаётся 6,8% выручки', kind: 'bad', icon: P.alert, bg: '#ffe4e4', fg: '#b42318' },
+      ],
+      body: card('Сколько зарабатывает каждый филиал', barRows(B.map(([n, inc, exp]) => { const p = inc - exp, m = p / inc; return { name: n, sub: 'остаётся ' + (m * 100).toFixed(1).replace('.', ',') + '%', val: rub(p), pct: p / 422300 * 100, color: m < 0.1 ? '#f59e0b' : '#ea580c' }; }), 16) + '<div class="alert" style="margin-top:16px">Юг оставляет себе 6,8% выручки — почти в 5 раз меньше, чем Центр.</div>')
+        + card('Филиалы рядом', tableHtml(['Филиал', 'Доходы', 'Расходы', 'Прибыль', 'Продано абонементов', 'Посещаемость'], [...B.map(([n, inc, exp, s, a]) => ({ cells: [`<b style="font-weight:600">${n}</b>`, rub(inc), rub(exp), rub(inc - exp), s, a] })), { style: 'color:#4b4b53;font-style:italic', cells: ['Общие расходы сети', '—', rub(185000), `<span style="color:var(--bad)">${rub(-185000)}</span>`, '—', '—'] }, { style: 'font-weight:700;background:#fafafa', cells: ['Итого', rub(2845300), rub(2347600), rub(497700), '401', '79%'] }])),
+      how: 'у каждого филиала — его доходы минус его расходы. Общие расходы сети (бухгалтерия, реклама бренда) показаны отдельной строкой; делить ли их между филиалами — открытый вопрос. Отчёт видит только владелец и не показывается, если филиал один.',
+    };
+  },
+};
+
+function render() {
+  const id = location.hash.slice(1);
+  const r = visible().find((x) => x.id === id);
+  document.getElementById('app').innerHTML = (r ? reportView(r, CFG[r.id]()) : homeView()) + (state.toast ? `<div class="toast" role="status">${state.toast}</div>` : '');
+}
+let toastTimer;
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act]');
+  if (!t) return;
+  const a = t.dataset.act, v = t.dataset.v;
+  if (a === 'home') { e.preventDefault(); location.hash = ''; return; }
+  if (a === 'toast') { e.preventDefault(); state.toast = v + ' — в макете не открывается'; clearTimeout(toastTimer); toastTimer = setTimeout(() => { state.toast = ''; render(); }, 2200); }
+  if (a === 'view') state.view = v;
+  if (a === 'sport') state.oneSport = v === 'one';
+  if (a === 'fin') state.finance = v === 'yes';
+  render();
+});
+window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); });
+render();
+</script>
+</body>
+</html>

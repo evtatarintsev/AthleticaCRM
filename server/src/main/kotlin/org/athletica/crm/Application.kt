@@ -1,5 +1,6 @@
 package org.athletica.crm
 
+import arrow.core.raise.either
 import com.github.ajalt.clikt.command.main
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -43,6 +44,7 @@ import org.athletica.crm.core.errors.EmployeeBlocked
 import org.athletica.crm.core.errors.SessionRevoked
 import org.athletica.crm.core.errors.UnhandledAppError
 import org.athletica.crm.core.errors.orThrow
+import org.athletica.crm.routes.CLIENT_JWT
 import org.athletica.crm.routes.attendanceRoutes
 import org.athletica.crm.routes.auditRoutes
 import org.athletica.crm.routes.authRoutes
@@ -50,6 +52,9 @@ import org.athletica.crm.routes.authSessionsRoutes
 import org.athletica.crm.routes.branchesRoutes
 import org.athletica.crm.routes.channelsRoutes
 import org.athletica.crm.routes.checkoutRoutes
+import org.athletica.crm.routes.clientAppAuthHeader
+import org.athletica.crm.routes.clientAppAuthRoutes
+import org.athletica.crm.routes.clientAppPrincipal
 import org.athletica.crm.routes.clientImportRoutes
 import org.athletica.crm.routes.clientNotesRoutes
 import org.athletica.crm.routes.clientsRoutes
@@ -151,6 +156,7 @@ fun Application.configureServer() {
     monitor.subscribe(ApplicationStopped) {
         di.assistantConnection.close()
         di.photoRecognizer.close()
+        di.backgroundScope.cancel()
     }
     install(CallLogging)
 
@@ -198,6 +204,18 @@ fun Application.configureServer() {
                 call.respond(HttpStatusCode.Unauthorized, "Token expired or invalid")
             }
         }
+        jwt(CLIENT_JWT) {
+            authHeader { call -> call.request.clientAppAuthHeader() }
+            verifier(di.clientAppJwtConfig.verifier)
+            validate { credential ->
+                clientAppPrincipal(credential.payload) { sessionId, accountId ->
+                    either { di.database.transaction { di.clientAppSessions.isActive(sessionId, accountId) } }.getOrNull() == true
+                }
+            }
+            challenge { _, _ ->
+                call.respond(HttpStatusCode.Unauthorized, "Token expired or invalid")
+            }
+        }
     }
     context(di.database, di.audit) {
         routing {
@@ -209,6 +227,9 @@ fun Application.configureServer() {
 
                 context(di.jwtConfig) {
                     authRoutes(di.auth, di.emailVerifications, di.passwordResets, di.authSessions)
+                }
+                context(di.clientAppJwtConfig, di.clientAppConfig) {
+                    clientAppAuthRoutes(di.clientAppSignIn, di.verificationCodeDelivery, di.backgroundScope)
                 }
                 authenticate("auth-jwt") {
                     routeWithContext(di) {

@@ -3,6 +3,9 @@
 
 import { z } from "zod";
 
+export const AttendancePresenceSchema = z.enum(["PRESENT", "ABSENT"]);
+export type AttendancePresence = z.output<typeof AttendancePresenceSchema>;
+
 export const ClientIdSchema = z.uuid().brand<"ClientId">();
 export type ClientId = z.output<typeof ClientIdSchema>;
 
@@ -277,6 +280,35 @@ export const ClientAppTerminateSessionRequestSchema = z
   .readonly();
 export type ClientAppTerminateSessionRequest = z.output<typeof ClientAppTerminateSessionRequestSchema>;
 
+export const ClientAppVisitSchemaSchema = z
+  .object({
+    sessionId: SessionIdSchema,
+    date: LocalDateSchema,
+    startTime: LocalTimeSchema,
+    groupName: z.string().nullable(),
+    presence: AttendancePresenceSchema,
+  })
+  .readonly();
+export type ClientAppVisitSchema = z.output<typeof ClientAppVisitSchemaSchema>;
+
+export const ClientAppVisitsRequestSchema = z
+  .object({
+    orgId: OrgIdSchema,
+    clientId: ClientIdSchema,
+    monthOf: LocalDateSchema.nullable().optional(),
+  })
+  .readonly();
+export type ClientAppVisitsRequest = z.output<typeof ClientAppVisitsRequestSchema>;
+
+export const ClientAppVisitsResponseSchema = z
+  .object({
+    monthStart: LocalDateSchema,
+    visits: z.array(ClientAppVisitSchemaSchema).readonly(),
+    presentCount: z.int32(),
+  })
+  .readonly();
+export type ClientAppVisitsResponse = z.output<typeof ClientAppVisitsResponseSchema>;
+
 export const FieldErrorSchema = z
   .object({
     name: z.string(),
@@ -414,5 +446,12 @@ export const endpoints = {
     request: ClientAppTerminateSessionRequestSchema,
     out: "empty",
     response: z.undefined(),
+  },
+  "client-app/visits": {
+    method: "GET",
+    in: "query",
+    request: ClientAppVisitsRequestSchema,
+    out: "json",
+    response: ClientAppVisitsResponseSchema,
   },
 } as const;

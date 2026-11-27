@@ -19,6 +19,7 @@ import org.athletica.crm.read.clientapp.ClientAppMembershipsView
 import org.athletica.crm.read.clientapp.ClientAppProfilesView
 import org.athletica.crm.read.clientapp.ClientAppScheduleView
 import org.athletica.crm.read.clientapp.ClientAppSessionsView
+import org.athletica.crm.read.clientapp.ClientAppVisitsView
 import org.athletica.crm.read.clientapp.DbClientAppBalanceView
 import org.athletica.crm.read.clientapp.DbClientAppHomeView
 import org.athletica.crm.read.clientapp.DbClientAppInvitationsView
@@ -26,6 +27,7 @@ import org.athletica.crm.read.clientapp.DbClientAppMembershipsView
 import org.athletica.crm.read.clientapp.DbClientAppProfilesView
 import org.athletica.crm.read.clientapp.DbClientAppScheduleView
 import org.athletica.crm.read.clientapp.DbClientAppSessionsView
+import org.athletica.crm.read.clientapp.DbClientAppVisitsView
 import org.athletica.crm.read.clientappadmin.ClientAppInvitePreviewView
 import org.athletica.crm.read.clientappadmin.DbClientAppInvitePreviewView
 import org.athletica.crm.read.clients.ClientListView
@@ -113,6 +115,8 @@ data class ReadViews(
     val clientAppMemberships: ClientAppMembershipsView = DbClientAppMembershipsView(),
     /** Расписание недели и ближайшее занятие по профилю кабинета клиента. */
     val clientAppSchedule: ClientAppScheduleView = DbClientAppScheduleView(),
+    /** История посещений за месяц по профилю кабинета клиента. */
+    val clientAppVisits: ClientAppVisitsView = DbClientAppVisitsView(),
     /** Сеансы аккаунта кабинета клиента. */
     val clientAppSessions: ClientAppSessionsView = DbClientAppSessionsView(),
     /** Подготовка массового приглашения в кабинет клиента. */

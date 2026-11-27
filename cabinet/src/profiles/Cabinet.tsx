@@ -15,11 +15,12 @@ import { useI18n } from "../i18n/context";
 import { MembershipBlock, Memberships } from "../memberships/Memberships";
 import { NextSessionBlock, Schedule } from "../schedule/Schedule";
 import { Failure } from "../ui/Failure";
+import { Visits, VisitsBlock } from "../visits/Visits";
 import { useLoaded } from "../ui/useLoaded";
 import { selectedProfile, storedProfile, storeProfile, type ProfileKey } from "./selectedProfile";
 
-/** Экран вошедшего человека: главная выбранного профиля, расписание, переключатель или приглашения. */
-type View = "home" | "schedule" | "switcher" | "invitations";
+/** Экран вошедшего человека: главная выбранного профиля, расписание, посещения, переключатель или приглашения. */
+type View = "home" | "schedule" | "visits" | "switcher" | "invitations";
 
 /**
  * Кабинет вошедшего человека через [api]: профили и экран «Аккаунт» с сеансами, выходом и удалением
@@ -132,6 +133,17 @@ function Profiles({ api }: { api: CabinetApi }) {
       />
     );
   }
+  if (view === "visits") {
+    return (
+      <Visits
+        api={api}
+        profile={profile}
+        onBack={() => {
+          setView("home");
+        }}
+      />
+    );
+  }
   if (view === "switcher") {
     return (
       <Switcher
@@ -175,14 +187,18 @@ function Profiles({ api }: { api: CabinetApi }) {
         onSchedule={() => {
           setView("schedule");
         }}
+        onVisits={() => {
+          setView("visits");
+        }}
       />
     </>
   );
 }
 
 /**
- * Главная профиля [profile]: приветствие по имени клиента, ближайшее занятие, текущий абонемент и баланс;
- * [onBalance] и [onMemberships] — открыть уже загруженные баланс и абонементы, [onSchedule] — расписание.
+ * Главная профиля [profile]: приветствие по имени клиента, ближайшее занятие, текущий абонемент, баланс
+ * и посещения месяца; [onBalance] и [onMemberships] — открыть уже загруженные баланс и абонементы,
+ * [onSchedule] — расписание, [onVisits] — историю посещений.
  */
 function Home({
   api,
@@ -190,12 +206,14 @@ function Home({
   onBalance,
   onMemberships,
   onSchedule,
+  onVisits,
 }: {
   api: CabinetApi;
   profile: ClientAppProfileSchema;
   onBalance: (balance: ClientAppBalanceResponse) => void;
   onMemberships: (memberships: ClientAppMembershipsResponse) => void;
   onSchedule: () => void;
+  onVisits: () => void;
 }) {
   const { t } = useI18n();
   const { orgId, clientId } = profile;
@@ -217,6 +235,7 @@ function Home({
           <NextSessionBlock api={api} profile={profile} onOpen={onSchedule} />
           <MembershipBlock api={api} profile={profile} onOpen={onMemberships} />
           <BalanceBlock api={api} profile={profile} onOpen={onBalance} />
+          <VisitsBlock api={api} profile={profile} onOpen={onVisits} />
         </>
       );
   }

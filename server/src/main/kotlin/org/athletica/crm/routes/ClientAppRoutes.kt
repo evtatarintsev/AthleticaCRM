@@ -15,6 +15,8 @@ import org.athletica.crm.api.schemas.clientapp.ClientAppProfileRequest
 import org.athletica.crm.api.schemas.clientapp.ClientAppProfilesResponse
 import org.athletica.crm.api.schemas.clientapp.ClientAppScheduleRequest
 import org.athletica.crm.api.schemas.clientapp.ClientAppScheduleResponse
+import org.athletica.crm.api.schemas.clientapp.ClientAppVisitsRequest
+import org.athletica.crm.api.schemas.clientapp.ClientAppVisitsResponse
 import org.athletica.crm.core.ClientProfileContext
 import org.athletica.crm.core.ClientProfileContexts
 import org.athletica.crm.core.errors.AppError
@@ -23,6 +25,7 @@ import org.athletica.crm.domain.clientapp.ClientAppAccesses
 import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.clientapp.ClientAppMembershipsQuery
 import org.athletica.crm.read.clientapp.ClientAppScheduleQuery
+import org.athletica.crm.read.clientapp.ClientAppVisitsQuery
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.usecases.clientapp.ClientAppConnections
@@ -30,7 +33,7 @@ import kotlin.time.Clock
 
 /**
  * Клиентское API кабинета `/client-app/...` под [CLIENT_JWT]: приглашения и ответ на них, профили
- * аккаунта, данные выбранного профиля (главная, баланс, абонементы, расписание) и «Не придём» через [notices].
+ * аккаунта, данные выбранного профиля (главная, баланс, абонементы, расписание, посещения) и «Не придём» через [notices].
  * Запрос по профилю отвечает только по подключённому доступу (`CLIENT_NOT_FOUND` иначе) и после ответа
  * отмечает активность доступа в [accesses].
  */
@@ -74,6 +77,9 @@ fun Route.clientAppRoutes(
             profileGet("/memberships", db, accesses) { views.clientAppMemberships.memberships(ClientAppMembershipsQuery(Clock.System.now())) }
             profileGet<ClientAppScheduleRequest, ClientAppScheduleResponse>("/schedule", db, accesses, { ClientAppProfileRequest(it.orgId, it.clientId) }) {
                 views.clientAppSchedule.schedule(ClientAppScheduleQuery(it.weekOf, Clock.System.now()))
+            }
+            profileGet<ClientAppVisitsRequest, ClientAppVisitsResponse>("/visits", db, accesses, { ClientAppProfileRequest(it.orgId, it.clientId) }) {
+                views.clientAppVisits.visits(ClientAppVisitsQuery(it.monthOf, Clock.System.now()))
             }
 
             profilePost<ClientAppAbsenceNoticeRequest>("/absence-notices/create", db, accesses, { ClientAppProfileRequest(it.orgId, it.clientId) }) {

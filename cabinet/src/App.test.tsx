@@ -29,7 +29,10 @@ function profile(clientId: string, clientName: string) {
   return { orgId: ORG, orgName: "Динамо", clientId, clientName };
 }
 
-/** Фейковый сервер: маршрут `client-app/...` → обработчик; неизвестный маршрут — 404. */
+/**
+ * Фейковый сервер: маршрут `client-app/...` → обработчик; неизвестный маршрут — 404.
+ * Посещения по умолчанию — пустой месяц, чтобы блок главной не мешал остальным сценариям.
+ */
 function server(routes: Readonly<Record<string, Handler>>) {
   const calls: { path: string; body: unknown; query: URLSearchParams }[] = [];
   const fetch = vi.fn<ApiClientOptions["fetch"]>((input, init) => {
@@ -37,7 +40,11 @@ function server(routes: Readonly<Record<string, Handler>>) {
     const path = url.pathname.replace("/api/", "");
     const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
     calls.push({ path, body, query: url.searchParams });
-    const handler = routes[path];
+    const withDefaults: Readonly<Record<string, Handler>> = {
+      "client-app/visits": () => json(month([])),
+      ...routes,
+    };
+    const handler = withDefaults[path];
     return Promise.resolve(
       handler === undefined ? new Response(null, { status: 404 }) : handler(body, url.searchParams),
     );
@@ -717,5 +724,64 @@ describe("расписание", () => {
     );
     expect(await screen.findByText("Ближайших занятий нет")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Расписание" })).toBeInTheDocument();
+  });
+});
+
+/** Посещения января 2030 [visits]; число посещений — по отметкам «был». */
+function month(visits: readonly { presence: string }[]) {
+  return {
+    monthStart: "2030-01-01",
+    visits,
+    presentCount: visits.filter((it) => it.presence === "PRESENT").length,
+  };
+}
+
+/** Проведённое занятие [id] [date] в 18:00 группы «Дети 7–9» с отметкой [presence]. */
+function visit(id: string, date: string, presence: string) {
+  return { sessionId: id, date, startTime: "18:00:00", groupName: "Дети 7–9", presence };
+}
+
+describe("посещения", () => {
+  /** Сервер с профилем Ивана: в январе одно посещение и один пропуск. */
+  function withVisits() {
+    return server({
+      "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+      "client-app/home": home({ [IVAN]: "Иван" }),
+      "client-app/balance": () => json(BALANCE),
+      "client-app/memberships": () => json({ memberships: [] }),
+      "client-app/schedule": () => json(week([])),
+      "client-app/visits": (_body, query) =>
+        json(
+          query.get("monthOf") === null
+            ? month([
+                visit("0197a3c2-0000-7000-8000-000000000041", "2030-01-03", "PRESENT"),
+                visit("0197a3c2-0000-7000-8000-000000000042", "2030-01-10", "ABSENT"),
+              ])
+            : { ...month([]), monthStart: "2029-12-01" },
+        ),
+    });
+  }
+
+  it("на главной число посещений месяца; в истории «Был» и «Не был»", async () => {
+    renderApp(withVisits().fetch);
+    expect(await screen.findByText("Посещения в этом месяце")).toBeInTheDocument();
+    expect(screen.getByText("1 посещение")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "История посещений" }));
+    expect(await screen.findByText("январь 2030 г.")).toBeInTheDocument();
+    expect(screen.getByText("Был")).toBeInTheDocument();
+    expect(screen.getByText("Не был")).toBeInTheDocument();
+  });
+
+  it("предыдущий месяц запрашивается по дате; пустой месяц — «проведённых занятий нет»", async () => {
+    const { fetch, calls } = withVisits();
+    renderApp(fetch);
+    fireEvent.click(await screen.findByRole("button", { name: "История посещений" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Предыдущий месяц" }));
+    expect(await screen.findByText("В этом месяце проведённых занятий нет")).toBeInTheDocument();
+    expect(
+      calls.some(
+        (it) => it.path === "client-app/visits" && it.query.get("monthOf") === "2029-12-01",
+      ),
+    ).toBe(true);
   });
 });

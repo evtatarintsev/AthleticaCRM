@@ -196,6 +196,13 @@ export const ClientAppProfilesResponseSchema = z
   .readonly();
 export type ClientAppProfilesResponse = z.output<typeof ClientAppProfilesResponseSchema>;
 
+export const ClientAppRefreshRequestSchema = z
+  .object({
+    refreshToken: z.string(),
+  })
+  .readonly();
+export type ClientAppRefreshRequest = z.output<typeof ClientAppRefreshRequestSchema>;
+
 export const ClientAppRequestCodeRequestSchema = z
   .object({
     phone: z.string(),
@@ -280,6 +287,14 @@ export const ClientAppTerminateSessionRequestSchema = z
   .readonly();
 export type ClientAppTerminateSessionRequest = z.output<typeof ClientAppTerminateSessionRequestSchema>;
 
+export const ClientAppTokensResponseSchema = z
+  .object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+  })
+  .readonly();
+export type ClientAppTokensResponse = z.output<typeof ClientAppTokensResponseSchema>;
+
 export const ClientAppVisitSchemaSchema = z
   .object({
     sessionId: SessionIdSchema,
@@ -362,6 +377,20 @@ export const endpoints = {
     request: z.undefined(),
     out: "empty",
     response: z.undefined(),
+  },
+  "client-app/auth/mobile/login": {
+    method: "POST",
+    in: "body",
+    request: ClientAppLoginRequestSchema,
+    out: "json",
+    response: ClientAppTokensResponseSchema,
+  },
+  "client-app/auth/mobile/refresh": {
+    method: "POST",
+    in: "body",
+    request: ClientAppRefreshRequestSchema,
+    out: "json",
+    response: ClientAppTokensResponseSchema,
   },
   "client-app/auth/refresh": {
     method: "POST",

@@ -24,6 +24,13 @@ npm run check   # typecheck + eslint + type-coverage + prettier --check + vitest
 ```
 Правила те же, что у `web/` (раздел «Web Client» ниже).
 
+When touching `mobile/` or `shared/` (мобильное приложение, раздел «Mobile App» ниже), additionally run
+(нужен Android SDK: `sdk.dir` в `local.properties` или `ANDROID_HOME`):
+```bash
+./gradlew -Pathletica.mobile=true ktlintFormat
+./gradlew -Pathletica.mobile=true :mobile:check :mobile:androidApp:assembleDebug   # ktlint + тесты экранов + APK
+```
+
 When changing request/response schemas in `shared` or routes in `server`, regenerate
 the web client contracts and commit `web/src/api/generated/` (CI job `contracts` fails otherwise):
 ```bash
@@ -96,7 +103,8 @@ mise run admin org find ЦР   # = bin/athletica admin org find ЦР
 
 ### Modules
 - **server**: Ktor backend (REST API, database access, business logic)
-- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs), пока только JVM-таргет; задел под будущие мобильные KMP-клиенты
+- **shared**: Kotlin Multiplatform code (shared request/response schemas, IDs): JVM-таргет, а в мобильной сборке ещё Android
+- **mobile**: приложение клиента на Compose Multiplatform — общие экраны, сеть и Android-хранилище сеанса; `mobile/androidApp` — оболочка Android-приложения. Подключаются только с `-Pathletica.mobile=true`
 - **web**: веб-фронтенд — TypeScript + React + Vite, отдаётся с `/`. Не Gradle-модуль, см. `web/README.md`
 - **e2e**: смоук-тесты Playwright на полном стенде (прод-compose + оверлей), см. `e2e/README.md`
 
@@ -607,6 +615,23 @@ Inject via constructor only. Field injection and `lateinit var` are forbidden ex
   как в Kotlin-коде.
 
 Типовые приёмы с примерами — в `web/README.md`.
+
+## Mobile App (`mobile/`, Kotlin Multiplatform)
+
+- Модули `:mobile` и `:mobile:androidApp`, Android-таргет `shared` и репозиторий `google()` включаются
+  свойством `athletica.mobile=true` (в `~/.gradle/gradle.properties` или `-P`). Без него `./gradlew build`
+  и Docker собираются без Android SDK; мобильную сборку держит CI `mobile.yml`.
+- AGP 9 не допускает KMP и `com.android.application` в одном модуле: экраны и платформенный код — в
+  `:mobile` (`com.android.kotlin.multiplatform.library`), Activity и манифест — в `:mobile:androidApp`.
+- Схемы запросов и ответов, `Money`, ID берутся из `shared` напрямую — контракты не генерируются.
+- Сеть — `api/ClientApi.kt`: Bearer-токены из `/client-app/auth/mobile/login`, один `mobile/refresh` на 401,
+  ошибки — `Either<ApiError, T>`, а не исключения. Сеанс и выбранный профиль — единственное, что хранится
+  на устройстве (`SessionStore`; на Android — зашифрованный DataStore вне резервных копий).
+- Экраны читают данные через `rememberLoader` (view-модель со `StateFlow`); строки — только из
+  `composeResources/values*/strings.xml` (`ru` по умолчанию, `en`).
+- Тесты экранов — `jvmTest` на `runComposeUiTest` и фейковом сервере `FakeServer` (`MockEngine`);
+  код, которому нужен Android (Keystore), — `androidDeviceTest`
+  (`./gradlew -Pathletica.mobile=true :mobile:connectedAndroidDeviceTest` на эмуляторе или устройстве).
 
 ## Known Constraints & Gotchas
 

@@ -55,8 +55,11 @@ mobile/
   src/androidMain/  хранилище сеанса, FCM, разрешения, MainActivity
 ```
 
-Android-приложение — `androidMain` того же модуля (одно приложение, один модуль), без
-отдельного `androidApp`, пока ему нечего держать отдельно.
+Android-приложение — отдельный тонкий модуль `mobile/androidApp` (манифест, `MainActivity`,
+правила резервного копирования): AGP 9 не допускает KMP-плагин и `com.android.application` в одном
+модуле, поэтому `:mobile` — KMP-библиотека (`com.android.kotlin.multiplatform.library`), а
+приложение подключает её. Тесты экранов идут на JVM-таргете `:mobile` (`runComposeUiTest`
+без эмулятора), код с Android API — в `androidDeviceTest`.
 
 - Навигация — `navigation-compose` для Compose Multiplatform.
 - Состояние экранов — view-модели (`lifecycle-viewmodel` Compose Multiplatform) с `StateFlow`.
@@ -66,7 +69,12 @@ Android-приложение — `androidMain` того же модуля (од�
 
 Ktor-клиент (`OkHttp` на Android; движок iOS добавит `client-mobile-ios`), `ContentNegotiation`
 с `appJson` из `shared`, плагин `Auth` с bearer-токенами: при `401` — один запрос `refresh`,
-при его неудаче — сброс сеанса и экран входа. Ошибки сервера — `ErrorResponse` из `shared`,
+при его неудаче — сброс сеанса и экран входа.
+
+Веб-кабинет получает токены только в HttpOnly cookie, поэтому сервер дополняется маршрутами
+мобильного входа: `/client-app/auth/mobile/login` и `/client-app/auth/mobile/refresh` отдают
+`ClientAppTokensResponse` в теле (refresh принимает токен в теле), а клиентское API принимает
+`Authorization: Bearer`, если cookie нет. Токен CRM не проходит: подпись проверяет другой ключ. Ошибки сервера — `ErrorResponse` из `shared`,
 разбираются в значение, а не исключение (как `ApiResult` в `web/`).
 
 До готовности маршрутов ядра экраны работают на `MockEngine` с ответами-примерами по схемам

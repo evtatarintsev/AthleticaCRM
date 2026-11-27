@@ -7,6 +7,7 @@ import com.auth0.jwt.interfaces.Payload
 import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
 import io.ktor.http.auth.HttpAuthHeader
+import io.ktor.http.auth.parseAuthorizationHeader
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
@@ -22,10 +23,12 @@ import io.ktor.server.routing.route
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.athletica.crm.api.schemas.clientapp.ClientAppLoginRequest
+import org.athletica.crm.api.schemas.clientapp.ClientAppRefreshRequest
 import org.athletica.crm.api.schemas.clientapp.ClientAppRequestCodeRequest
 import org.athletica.crm.api.schemas.clientapp.ClientAppRequestCodeResponse
 import org.athletica.crm.api.schemas.clientapp.ClientAppSessionsResponse
 import org.athletica.crm.api.schemas.clientapp.ClientAppTerminateSessionRequest
+import org.athletica.crm.api.schemas.clientapp.ClientAppTokensResponse
 import org.athletica.crm.core.ClientAccountContext
 import org.athletica.crm.core.entityids.ClientAppAccountId
 import org.athletica.crm.core.entityids.ClientAppSessionId
@@ -55,7 +58,8 @@ const val CLIENT_JWT = "client-jwt"
 
 /**
  * Маршруты входа в кабинет `/client-app/auth/...`: запрос кода, вход и обновление — без токена,
- * выход — под [CLIENT_JWT]. Доставку кода [delivery] запускает в фоне [scope] после ответа.
+ * выход — под [CLIENT_JWT]. Вход и обновление веб-кабинета отдают токены в cookie, мобильного
+ * приложения (`/mobile/login`, `/mobile/refresh`) — в теле ответа. Доставку кода [delivery] запускает в фоне [scope] после ответа.
  * Под [CLIENT_JWT] здесь же сеансы аккаунта из [views] с их завершением и удаление аккаунта [deletion]:
  * выход и удаление стирают cookie кабинета.
  */
@@ -108,29 +112,29 @@ fun Route.clientAppAuthRoutes(
 
         post("/login") {
             either {
-                val request = call.body<ClientAppLoginRequest>()
-                val signedIn =
-                    signIn.login(
-                        request.phone,
-                        request.code,
-                        request.acceptedTermsVersion,
-                        sessionName(call.request.header(HttpHeaders.UserAgent)),
-                        call.langFromRequest(),
-                        Clock.System.now(),
-                    )
-                call.response.cookies.setClientAppCookies(signedIn)
+                call.response.cookies.setClientAppCookies(call.signIn(signIn))
                 call.respond(Unit)
             }.onLeft { call.respondError(it) }
         }.contract(postContract<ClientAppLoginRequest, Unit>())
 
         post("/refresh") {
             either {
-                val token = call.request.clientAppRefreshToken()
-                val session = signIn.refresh(token.accountId, token.sessionId, token.jti, Clock.System.now())
-                call.response.cookies.setClientAppCookies(SignedIn(token.accountId, session))
+                val token = clientAppRefreshToken(call.request.cookies[ClientAppJwtConfig.COOKIE_REFRESH_TOKEN])
+                call.response.cookies.setClientAppCookies(signIn.refreshed(token))
                 call.respond(Unit)
             }.onLeft { call.respondError(it) }
         }.contract(postContract<Unit, Unit>())
+
+        post("/mobile/login") {
+            either { call.signIn(signIn).tokens() }.fold({ call.respondError(it) }, { call.respond(it) })
+        }.contract(postContract<ClientAppLoginRequest, ClientAppTokensResponse>())
+
+        post("/mobile/refresh") {
+            either {
+                val token = clientAppRefreshToken(call.body<ClientAppRefreshRequest>().refreshToken)
+                signIn.refreshed(token).tokens()
+            }.fold({ call.respondError(it) }, { call.respond(it) })
+        }.contract(postContract<ClientAppRefreshRequest, ClientAppTokensResponse>())
 
         authenticate(CLIENT_JWT) {
             post("/logout") {
@@ -159,8 +163,35 @@ suspend fun clientAppPrincipal(
     return JWTPrincipal(payload).takeIf { isActive(claims.second, claims.first) }
 }
 
-/** Access токен кабинета из его cookie; заголовок `Authorization` клиентский API не принимает. */
-fun ApplicationRequest.clientAppAuthHeader(): HttpAuthHeader? = cookies[ClientAppJwtConfig.COOKIE_ACCESS_TOKEN]?.let { HttpAuthHeader.Single("Bearer", it) }
+/**
+ * Access токен клиентского API: cookie веб-кабинета, а без неё — заголовок `Authorization: Bearer`
+ * мобильного приложения. Токен CRM не пройдёт ни так, ни так: его подпись проверяет другой ключ.
+ */
+fun ApplicationRequest.clientAppAuthHeader(): HttpAuthHeader? =
+    cookies[ClientAppJwtConfig.COOKIE_ACCESS_TOKEN]?.let { HttpAuthHeader.Single("Bearer", it) }
+        ?: header(HttpHeaders.Authorization)?.let { parseAuthorizationHeader(it) }
+
+/** Вход по коду из тела [ClientAppLoginRequest] запроса: сеанс называется по `User-Agent`. */
+context(raise: Raise<AppError>)
+private suspend fun RoutingCall.signIn(signIn: ClientAppSignIn): SignedIn {
+    val request = body<ClientAppLoginRequest>()
+    return signIn.login(
+        request.phone,
+        request.code,
+        request.acceptedTermsVersion,
+        sessionName(this.request.header(HttpHeaders.UserAgent)),
+        langFromRequest(),
+        Clock.System.now(),
+    )
+}
+
+/** Новые токены сеанса по проверенному refresh токену [token] (ротация refresh). */
+context(raise: Raise<AppError>)
+private suspend fun ClientAppSignIn.refreshed(token: ClientAppRefreshToken): SignedIn = SignedIn(token.accountId, refresh(token.accountId, token.sessionId, token.jti, Clock.System.now()))
+
+/** Токены сеанса [this] в теле ответа мобильному приложению. */
+context(jwt: ClientAppJwtConfig)
+private fun SignedIn.tokens(): ClientAppTokensResponse = ClientAppTokensResponse(jwt.accessToken(accountId, session), jwt.refreshToken(accountId, session))
 
 /** Контекст аккаунта из принципала [CLIENT_JWT]; вызывается только под `authenticate(CLIENT_JWT)`. */
 fun RoutingCall.clientAccountContext(): ClientAccountContext {
@@ -191,11 +222,11 @@ private data class ClientAppRefreshToken(
     val jti: Uuid,
 )
 
-/** Refresh токен кабинета из его cookie; нет, не подписан, истёк или не refresh — [SessionRevoked] (HTTP 401). */
+/** Проверенный refresh токен [raw] (cookie кабинета или тело мобильного запроса); нет, не подписан, истёк или не refresh — [SessionRevoked] (HTTP 401). */
 context(jwt: ClientAppJwtConfig, raise: Raise<AppError>)
-private fun ApplicationRequest.clientAppRefreshToken(): ClientAppRefreshToken {
+private fun clientAppRefreshToken(raw: String?): ClientAppRefreshToken {
     val payload =
-        cookies[ClientAppJwtConfig.COOKIE_REFRESH_TOKEN]
+        raw
             ?.let { runCatching { jwt.verifier.verify(it) }.getOrNull() }
             ?.takeIf { it.getClaim(JwtConfig.CLAIM_TYPE).asString() == JwtConfig.TYPE_REFRESH }
             ?: raise(SessionRevoked)

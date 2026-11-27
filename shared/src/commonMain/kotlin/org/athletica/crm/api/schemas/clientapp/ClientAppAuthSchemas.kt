@@ -33,3 +33,20 @@ data class ClientAppLoginRequest(
     val code: String,
     val acceptedTermsVersion: String? = null,
 )
+
+/**
+ * Токены сеанса мобильного приложения в теле ответа: [accessToken] — для заголовка
+ * `Authorization: Bearer`, [refreshToken] — для `/client-app/auth/mobile/refresh`.
+ * Веб-кабинет получает те же токены только в HttpOnly cookie.
+ */
+@Serializable
+data class ClientAppTokensResponse(
+    val accessToken: String,
+    val refreshToken: String,
+)
+
+/** Обновление сеанса мобильного приложения по refresh токену [refreshToken]. */
+@Serializable
+data class ClientAppRefreshRequest(
+    val refreshToken: String,
+)

@@ -1,3 +1,18 @@
+buildscript {
+    // Android и Compose — только для мобильной сборки: сервер и Docker собираются без Android SDK и google().
+    if (providers.gradleProperty("athletica.mobile").orNull == "true") {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath(libs.android.gradlePlugin)
+            classpath(libs.compose.gradlePlugin)
+            classpath(libs.kotlin.composeCompilerGradlePlugin)
+        }
+    }
+}
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader

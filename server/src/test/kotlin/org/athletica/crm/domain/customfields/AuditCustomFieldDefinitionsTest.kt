@@ -108,6 +108,24 @@ class AuditCustomFieldDefinitionsTest {
         }
 
     @Test
+    fun `удаление первого поля даёт только DELETE`() =
+        runTest {
+            save(listOf(school, size, uniform))
+            val events = save(listOf(size, uniform))
+
+            assertEquals(listOf(AuditActionType.DELETE), events.map { it.actionType })
+        }
+
+    @Test
+    fun `вставка поля в начало даёт только CREATE`() =
+        runTest {
+            save(listOf(size, uniform))
+            val events = save(listOf(school, size, uniform))
+
+            assertEquals(listOf(AuditActionType.CREATE), events.map { it.actionType })
+        }
+
+    @Test
     fun `сохранение без изменений не пишет событий`() =
         runTest {
             save(listOf(school, size))

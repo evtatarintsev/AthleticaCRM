@@ -22,11 +22,14 @@ class AuditCustomFieldDefinitions(private val delegate: CustomFieldDefinitions, 
         val before = delegate.stored(entityType).associateBy { it.definition.fieldKey }
         delegate.saveAll(entityType, definitions)
         val after = delegate.stored(entityType)
+        val keptAfter = after.map { it.definition.fieldKey }.filter { it in before }
+        val keptBefore = before.keys.filter { it in keptAfter }
         after.forEach { current ->
-            val previous = before[current.definition.fieldKey]
+            val key = current.definition.fieldKey
+            val previous = before[key]
             when {
                 previous == null -> audit.logCreate(AUDIT_ENTITY_TYPE, current.id, current.auditData(entityType))
-                previous.definition != current.definition || previous.position != current.position ->
+                previous.definition != current.definition || keptBefore.indexOf(key) != keptAfter.indexOf(key) ->
                     audit.logUpdate(AUDIT_ENTITY_TYPE, current.id, current.auditData(entityType))
             }
         }

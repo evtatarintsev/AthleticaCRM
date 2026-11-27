@@ -27,7 +27,7 @@
 ### 2. Декоратор `AuditCustomFieldDefinitions`
 По образцу `AuditLeadSources`: `class AuditCustomFieldDefinitions(delegate, audit) : CustomFieldDefinitions by delegate`, переопределяет только `saveAll`. Перед вызовом делегата читает сохранённый набор, после — новый, сравнивает по ключу:
 - ключа не было → `logCreate`;
-- ключ был, изменилось определение (`equals` data-класса) или позиция → `logUpdate`;
+- ключ был, изменилось определение (`equals` data-класса) или место среди полей, сохранившихся в наборе, → `logUpdate` (сдвиг абсолютной позиции из-за добавления или удаления соседа событием не считается);
 - ключ пропал → `logDelete` со снимком до удаления.
 Тип сущности журнала — `custom_field`; `data` — JSON `{entityType, position, definition}` с `definition`, сериализованным `appJson` как в API.
 Чтение до и после идёт в той же транзакции, поэтому ошибка сохранения откатывает и события.

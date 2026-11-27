@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 import org.athletica.crm.api.schemas.export.ExportFormat
 import org.athletica.crm.core.DateRange
 import org.athletica.crm.core.money.Money
+import kotlin.math.abs
 
 /** Значение показателя отчёта (дискриминатор `type`). */
 @OptIn(ExperimentalSerializationApi::class)
@@ -87,7 +88,8 @@ data class ReportsTableExportRequest(
 
 /**
  * Изменение показателя [value] к прошлому значению [base] — общее правило для веба и файла:
- * для сумм и количеств — относительное (`0.1` — рост на 10%), для долей — разница в долях
+ * для сумм и количеств — относительное к модулю прошлого значения (`0.1` — рост на 10%; при
+ * отрицательном прошлом значении рост остаётся положительным), для долей — разница в долях
  * (`0.04` — на 4 процентных пункта). `null` — сравнивать не с чем (нет прошлого значения,
  * оно нулевое или другого вида).
  */
@@ -97,8 +99,8 @@ fun reportChange(
 ): Double? =
     when {
         value is AmountReportValue && base is AmountReportValue && base.amount.minorUnits != 0L ->
-            value.amount.minorUnits.toDouble() / base.amount.minorUnits - 1
-        value is CountReportValue && base is CountReportValue && base.count != 0L -> value.count.toDouble() / base.count - 1
+            (value.amount.minorUnits - base.amount.minorUnits).toDouble() / abs(base.amount.minorUnits)
+        value is CountReportValue && base is CountReportValue && base.count != 0L -> (value.count - base.count).toDouble() / abs(base.count)
         value is PercentReportValue && base is PercentReportValue -> value.share - base.share
         else -> null
     }

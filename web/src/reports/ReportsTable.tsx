@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FormAlert } from "@/forms/FormAlert";
 import { useI18n } from "@/i18n/context";
 import { downloadBlob } from "@/lib/download";
+import { apiErrorOf } from "@/query/apiFailure";
 import { apiErrorMessage } from "@/query/apiErrorMessage";
 import { useSession } from "@/query/session";
 import { groupColor } from "./charts/colors";
@@ -41,7 +42,7 @@ export function ReportsTable({
     return <Skeleton className="h-40 w-full" />;
   }
   if (table.isError) {
-    return <FormAlert message={t("reports.card.failed")} />;
+    return <FormAlert message={apiErrorMessage(t, apiErrorOf(table.error))} />;
   }
   const { rows, period, basePeriod } = table.data;
   const download = async (format: ExportFormat) => {
@@ -55,12 +56,16 @@ export function ReportsTable({
     }
     downloadBlob(`reports-${period.from}-${period.to}.${format}`, result.value);
   };
-  const grouped = reportGroups
-    .map((group) => ({
+  const grouped: readonly {
+    readonly group: (typeof reportGroups)[number] | null;
+    readonly rows: readonly ReportsTableRow[];
+  }[] = [
+    ...reportGroups.map((group) => ({
       group,
       rows: rows.filter((row) => reportById(row.reportId)?.group === group),
-    }))
-    .filter((entry) => entry.rows.length > 0);
+    })),
+    { group: null, rows: rows.filter((row) => reportById(row.reportId) === undefined) },
+  ].filter((entry) => entry.rows.length > 0);
   return (
     <div className="space-y-3">
       <div className="bg-card overflow-x-auto rounded-xl border">
@@ -82,7 +87,7 @@ export function ReportsTable({
               </tr>
             ) : (
               grouped.map(({ group, rows: groupRows }) => (
-                <TableGroup key={group} group={group} rows={groupRows} />
+                <TableGroup key={group ?? "other"} group={group} rows={groupRows} />
               ))
             )}
           </tbody>
@@ -107,26 +112,31 @@ export function ReportsTable({
   );
 }
 
-/** Заголовок группы [group] таблицы показателей и её строки [rows]. */
+/**
+ * Заголовок группы [group] таблицы показателей и её строки [rows]; строки отчётов, которых
+ * нет в реестре (`group` — `null`), идут последними без заголовка, как и в файле выгрузки.
+ */
 function TableGroup({
   group,
   rows,
 }: {
-  readonly group: (typeof reportGroups)[number];
+  readonly group: (typeof reportGroups)[number] | null;
   readonly rows: readonly ReportsTableRow[];
 }) {
   const i18n = useI18n();
   return (
     <>
-      <tr>
-        <td
-          colSpan={4}
-          className="px-3 pt-4 pb-1 text-xs font-bold tracking-wide uppercase"
-          style={{ color: groupColor(group) }}
-        >
-          {i18n.t(`reports.group.${group}`)}
-        </td>
-      </tr>
+      {group !== null && (
+        <tr>
+          <td
+            colSpan={4}
+            className="px-3 pt-4 pb-1 text-xs font-bold tracking-wide uppercase"
+            style={{ color: groupColor(group) }}
+          >
+            {i18n.t(`reports.group.${group}`)}
+          </td>
+        </tr>
+      )}
       {rows.map((row) => {
         const change = reportChangeView(i18n, row.value, row.base, row.better);
         return (

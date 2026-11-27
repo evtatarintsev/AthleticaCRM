@@ -13,11 +13,12 @@ import { useI18n } from "@/i18n/context";
 import { todayLocalDate } from "@/lib/localDate";
 import { myBranchesQuery } from "@/query/queries";
 import { useSession } from "@/query/session";
-import type { ReportSearch } from "./reportSearch";
+import { isCustomPeriodValid, type ReportSearch } from "./reportSearch";
 
 /**
  * Фильтры отчётов: период (свой период — две даты и режим сравнения) и филиал из доступных
- * сотруднику. Дата, с которой начало периода оказалось бы позже конца, не применяется.
+ * сотруднику. Дата, с которой начало периода оказалось бы позже конца, период — длиннее
+ * допустимого или конец — в будущем, не применяется.
  */
 export function ReportFilters({
   api,
@@ -33,7 +34,7 @@ export function ReportFilters({
   const branches = useQuery(myBranchesQuery(api)).data?.branches ?? [];
   const today = todayLocalDate(session.orgInfo.timezone);
   const setDates = (from: LocalDate | undefined, to: LocalDate | undefined) => {
-    if (from !== undefined && to !== undefined && from <= to && to <= today) {
+    if (from !== undefined && to !== undefined && isCustomPeriodValid(from, to) && to <= today) {
       onSearchChange({ ...search, from, to });
     }
   };

@@ -5,12 +5,23 @@ import {
   ReportCompareModeSchema,
   ReportPeriodKindSchema,
   type ReportFilter,
+  type LocalDate,
 } from "@/api/generated/contracts";
+import { addDays } from "@/lib/localDate";
+
+/** Наибольшая длина своего периода в днях — как `CustomPeriod.MAX_DAYS` на сервере. */
+export const MAX_CUSTOM_PERIOD_DAYS = 366;
+
+/** Свой период [from] … [to] допустим: начало не позже конца и не длиннее [MAX_CUSTOM_PERIOD_DAYS] дней. */
+export function isCustomPeriodValid(from: LocalDate, to: LocalDate): boolean {
+  return from <= to && to <= addDays(from, MAX_CUSTOM_PERIOD_DAYS - 1);
+}
 
 /**
  * Фильтры раздела «Отчёты» в search-параметрах `/reports` и `/reports/$reportId`.
  * Неверное значение заменяется значением по умолчанию («Этот месяц», карточки); свой
- * период без дат или с началом позже конца не применяется — остаётся «Этот месяц».
+ * период без дат, с началом позже конца или длиннее [MAX_CUSTOM_PERIOD_DAYS] дней не
+ * применяется — остаётся «Этот месяц».
  */
 export const ReportSearchSchema = z
   .object({
@@ -25,7 +36,11 @@ export const ReportSearchSchema = z
     if (search.period !== "custom") {
       return { ...search, from: undefined, to: undefined };
     }
-    if (search.from === undefined || search.to === undefined || search.from > search.to) {
+    if (
+      search.from === undefined ||
+      search.to === undefined ||
+      !isCustomPeriodValid(search.from, search.to)
+    ) {
       return { ...search, period: "month" as const, from: undefined, to: undefined };
     }
     return search;

@@ -25,6 +25,15 @@ describe("ReportSearchSchema", () => {
     expect(search.from).toBeUndefined();
   });
 
+  it("свой период длиннее 366 дней не применяется", () => {
+    expect(
+      ReportSearchSchema.parse({ period: "custom", from: "2025-01-01", to: "2026-01-01" }).period,
+    ).toBe("custom");
+    expect(
+      ReportSearchSchema.parse({ period: "custom", from: "2025-01-01", to: "2026-01-02" }).period,
+    ).toBe("month");
+  });
+
   it("свой период с датами и режимом сравнения сохраняется и уходит в запрос", () => {
     const search = ReportSearchSchema.parse({
       period: "custom",

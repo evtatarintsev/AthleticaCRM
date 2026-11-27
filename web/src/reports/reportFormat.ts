@@ -14,7 +14,7 @@ export interface ReportChangeView {
 
 /**
  * Изменение [value] к [base] — то же правило, что `reportChange` на сервере: для сумм и количеств —
- * относительное, для долей — разница в долях; `null` — сравнивать не с чем.
+ * относительное к модулю прошлого значения, для долей — разница в долях; `null` — сравнивать не с чем.
  */
 export function reportChange(value: ReportValue, base: ReportValue | null): number | null {
   if (base === null) {
@@ -23,10 +23,12 @@ export function reportChange(value: ReportValue, base: ReportValue | null): numb
   switch (value.type) {
     case "amount":
       return base.type === "amount" && base.amount.minorUnits !== 0
-        ? value.amount.minorUnits / base.amount.minorUnits - 1
+        ? (value.amount.minorUnits - base.amount.minorUnits) / Math.abs(base.amount.minorUnits)
         : null;
     case "count":
-      return base.type === "count" && base.count !== 0 ? value.count / base.count - 1 : null;
+      return base.type === "count" && base.count !== 0
+        ? (value.count - base.count) / Math.abs(base.count)
+        : null;
     case "percent":
       return base.type === "percent" ? value.share - base.share : null;
   }

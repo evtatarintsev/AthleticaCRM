@@ -28,11 +28,15 @@ sealed interface ExportCell {
         val value: Long,
     ) : ExportCell
 
-    /** Доля: `0.125` — 12,5%. */
+    /** Доля: `0.125` — 12,5%; только конечное число. */
     data class Percent(
         /** Значение ячейки как доля единицы. */
         val value: Double,
-    ) : ExportCell
+    ) : ExportCell {
+        init {
+            require(value.isFinite()) { "доля в выгрузке должна быть конечным числом: $value" }
+        }
+    }
 
     /** Денежная сумма; пишется числом без символа валюты, в Excel — с форматом валюты. */
     data class Amount(
@@ -93,7 +97,7 @@ internal fun ExportTable.csv(): ByteArray {
     CSVPrinter(text, CSVFormat.DEFAULT.builder().setHeader(*headers.toTypedArray()).get()).use { csv ->
         rows.forEach { row -> csv.printRecord(row.map { it.csv() }) }
     }
-    return ("﻿" + text).toByteArray(Charsets.UTF_8)
+    return ("\uFEFF" + text).toByteArray(Charsets.UTF_8)
 }
 
 /** Значение ячейки для CSV. */

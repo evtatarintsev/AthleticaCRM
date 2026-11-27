@@ -76,9 +76,13 @@ shadcn/ui).
 а не SVG-пути.
 
 Риск — строгость `web/`: `type-coverage --strict` 100% и `strictTypeChecked` на типах
-форматтеров Recharts (`ValueType`, `NameType`). Первая задача проверяет это на одном графике;
-если обойти без `as` нельзя — решение пересматривается в пользу своих компонентов до начала
-остальных задач.
+форматтеров Recharts (`ValueType`, `NameType`). Проверено на `BarsChart`: собственные типы
+Recharts проходят без `as` (подсказка ищет готовую строку по ключу столбца, цвет столбца — через
+`shape`, а не устаревший `Cell`). Не проходит `index.d.mts` зависимости `@reduxjs/toolkit`
+(`exactOptionalPropertyTypes` при `skipLibCheck: false`). Отключать `skipLibCheck` целиком не
+стали: типы только этого пакета подменены для `tsc` через `paths` на
+`web/src/vendor-types/reduxjs-toolkit.d.ts` — то немногое, что видно в объявлениях Recharts;
+исключение записано в `web/README.md`.
 
 ### 2. Выгрузка — общая, на сервере
 
@@ -109,8 +113,8 @@ sealed interface ExportCell {
 /** Таблица выгрузки: заголовки [headers] и строки [rows] одинаковой длины. */
 data class ExportTable(val headers: List<String>, val rows: List<List<ExportCell>>)
 
-/** Отвечает файлом [filename] в формате [format] с таблицей [table]. */
-suspend fun RoutingCall.respondExport(filename: String, format: ExportFormat, table: ExportTable)
+/** Выставляет заголовки файла [filename] в формате [format] и возвращает его содержимое. */
+fun RoutingCall.exportFile(filename: String, format: ExportFormat, table: ExportTable): ByteArray
 ```
 
 - **CSV** — commons-csv, UTF-8 с BOM, правила `financeCsv`: текстовые ячейки, начинающиеся с
@@ -120,8 +124,9 @@ suspend fun RoutingCall.respondExport(filename: String, format: ExportFormat, ta
   `implementation`): потоковая запись, без Apache POI. Числа и суммы — числовые ячейки с форматом
   (`# ##0.00` + символ валюты организации), проценты — `0.0%`, даты — формат даты; заголовок жирный,
   ширина колонок по содержимому. Строки-формулы не пишутся вовсе — только значения.
-- Формат выбирается параметром запроса `format` (`ExportFormat` в `shared`), имя файла — латиницей
-  (`reports-2026-11-01-2026-11-27.xlsx`).
+- Формат — `ExportFormat` из `shared`. У выгрузок клиентов и финансов — query-параметр `format`
+  (`?format=xlsx`, по умолчанию CSV), у таблицы отчётов — поле `format` в теле запроса: веб-клиент
+  передаёт параметры POST только телом. Имя файла — латиницей (`reports-2026-11-01-2026-11-27.xlsx`).
 
 В этом изменении на механизм переводятся существующие выгрузки финансов (журнал, ДДС) и клиентов
 — это и исправление выгрузки клиентов в Excel. Веб не получает новых зависимостей: кнопки
@@ -204,7 +209,7 @@ interface ReportImpl {
   `{ reportId, label, value, base, better }`, значение — `ReportValue` (`Amount` / `Count` /
   `Percent`) из `shared`; изменение считает веб для показа и сервер для файла по общему правилу.
 - `POST /api/reports/table/export` (`ReportsTableRequest` + `format`) → файл через
-  `respondExport`, колонки «Показатель», «Период», «Прошлый период», «Изменение».
+  `exportFile`, колонки «Показатель», «Период», «Прошлый период», «Изменение».
 - Строки поставляют источники `ReportTableSource` (`read/reports/`):
   `requires: Set<Permission>` и `rows(filter, periods)`; список источников — в `ReadViews`.
   Маршрут требует `CAN_VIEW_REPORTS` и берёт только источники, на которые хватает прав, — так в

@@ -78,6 +78,7 @@ import org.athletica.crm.read.messaging.DbInboxView
 import org.athletica.crm.read.messaging.DbTriageChatView
 import org.athletica.crm.read.messaging.InboxView
 import org.athletica.crm.read.messaging.TriageChatView
+import org.athletica.crm.read.reports.ReportTableSource
 import org.athletica.crm.read.schedule.DbScheduleView
 import org.athletica.crm.read.schedule.ScheduleView
 import org.athletica.crm.read.sessions.DbSessionDebitPreviewView
@@ -195,4 +196,6 @@ data class ReadViews(
     val widgetList: WidgetListView = DbWidgetListView(),
     /** Публичное расписание виджета для посетителей сайта и ВКонтакте. */
     val publicSchedule: PublicScheduleView = DbPublicScheduleView(),
+    /** Источники строк таблицы показателей раздела «Отчёты»; по одному на отчёт. */
+    val reportTableSources: List<ReportTableSource> = emptyList(),
 )

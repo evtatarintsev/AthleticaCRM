@@ -32,6 +32,7 @@ Dev-nginx работает по HTTPS на самоподписанном сер
 | `src/account/`       | профиль, смена пароля, смена филиала                                                                                |
 | `src/settings/`      | страница настроек и справочники: `directory/` — общая страница справочника, остальное — тарифы, роли, доп. поля     |
 | `src/ui/`            | общие элементы страниц: заголовок, аватар, диалог подтверждения, панель выбранных записей                           |
+| `src/reports/`       | раздел «Отчёты»: реестр отчётов, фильтры, шаблоны карточки и экрана, таблица показателей, `charts/` — графики       |
 
 Базовый путь клиента — константа сборки `__BASE_PATH__` из `vite.config.ts` (сейчас `""`), в коде —
 `BASE_PATH` из `src/config.ts`; используется только для склейки адреса возврата после входа.
@@ -115,6 +116,29 @@ function errorText(error: ApiError, t: Translate): string {
 const api = { call: vi.fn<ApiClient["call"]>() } satisfies ApiClient;
 ```
 
+### Раздел «Отчёты»: как подключается отчёт
+
+Каркас раздела — изменение `reports-page`; каждый отчёт (`reports-revenue`, `reports-debts`, …)
+встраивается в него, почти не трогая общие файлы:
+
+- **Реестр.** В `src/reports/registry.ts` у записи отчёта появляется `impl: { Card, Screen }`.
+  `Card` загружает свою сводку отдельным `useQuery` и рисует `ReportCard` (состояния «загрузка»,
+  «не удалось загрузить» с повтором, «готово»); `Screen` рисует `ReportScreen` с `ReportTile`,
+  `ReportSection`, `ReportPeople` и строкой «Как считается». Без `impl` — заглушка «скоро», а
+  `/reports/<id>` отвечает «не найдено». Маршрут один на все отчёты, `router.tsx` не правится.
+- **Права.** `requires` записи — права сверх `CAN_VIEW_REPORTS`; сервер проверяет те же права в
+  маршруте отчёта.
+- **Таблица показателей.** На сервере — источник `ReportTableSource` (`read/reports/`) поверх
+  проекции-сводки отчёта, с `requires` теми же правами; регистрируется в
+  `ReadViews.reportTableSources`. Строки попадают и в таблицу, и в выгрузку Excel/CSV.
+- **Словари.** Ключи только своего префикса `reports.<id>.*` (`name` и `question` уже есть).
+- **Графики** — только из `src/reports/charts` (`BarsChart`, `Sparkline`, `CompareBars`,
+  `DonutChart`, `ShareBars`): отчёты не импортируют Recharts напрямую, передают числа и готовые
+  подписи, цвет — группа отчёта. Раздел грузится отдельным чанком (`lazyRouteComponent`), поэтому
+  Recharts не попадает в основной бандл.
+- **Период** считает сервер (`ReportPeriods` в `shared`): отчёт принимает `ReportFilter` и
+  отдаёт `period` и `basePeriod`; «сегодня» берёт маршрут в часовом поясе организации.
+
 ### Исключения из строгих правил
 
 Исключения задаются только в конфигурации, с причиной:
@@ -132,6 +156,11 @@ const api = { call: vi.fn<ApiClient["call"]>() } satisfies ApiClient;
 - Radix подключается пакетами `@radix-ui/react-*`, а не общим `radix-ui`: объявления
   `@radix-ui/react-select` не проходят `skipLibCheck: false` с `exactOptionalPropertyTypes`.
   Выпадающий список — нативный `<select>` (`components/ui/native-select.tsx`).
+- Типы `@reduxjs/toolkit` подменены для `tsc` (`paths` в `tsconfig.base.json` →
+  `src/vendor-types/reduxjs-toolkit.d.ts`): пакет — зависимость Recharts, его `index.d.mts` не
+  проходит `exactOptionalPropertyTypes`. Код `web/` toolkit не импортирует; подмена описывает только
+  типы внутреннего хранилища, которые видны в объявлениях Recharts, и на сборку не влияет — Vite
+  берёт настоящий пакет. Новый тип toolkit в объявлениях Recharts уронит `tsc` — дописать в подмену.
 
 ## Деплой
 

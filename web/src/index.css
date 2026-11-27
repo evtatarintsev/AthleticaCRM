@@ -10,6 +10,23 @@
   --color-brand-700: oklch(0.46 0.19 262);
 }
 
+/* `static`: переменные нужны в inline-стилях графиков, без утилит Tailwind они бы не попали в сборку. */
+@theme static {
+  /* Цвета групп раздела «Отчёты» (макет `reports-page`): основной, средний и фон. */
+  --color-report-money: #2f55d4;
+  --color-report-money-mid: #a8b8f0;
+  --color-report-money-tint: #e9eeff;
+  --color-report-clients: #0d9488;
+  --color-report-clients-mid: #8fd8cf;
+  --color-report-clients-tint: #ddf5f1;
+  --color-report-team: #7c3aed;
+  --color-report-team-mid: #c9b6f6;
+  --color-report-team-tint: #efe8fe;
+  --color-report-compare: #ea580c;
+  --color-report-compare-mid: #f8bb96;
+  --color-report-compare-tint: #ffeedf;
+}
+
 /* Токены компонентов shadcn/ui. Тёмная тема следует системной, как и классы `dark:`. */
 :root {
   --radius: 0.625rem;

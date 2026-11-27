@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   Outlet,
   redirect,
   RouterProvider,
@@ -24,6 +25,7 @@ import {
 import { createAuthApi } from "@/auth/authApi";
 import { FinancePage } from "@/finance/FinancePage";
 import { FinanceSearchSchema, type FinanceSearch } from "@/finance/financeSearch";
+import { ReportSearchSchema, type ReportSearch } from "@/reports/reportSearch";
 import { ClientsPage } from "@/clients/ClientsPage";
 import { ClientCreatePage } from "@/clients/ClientCreatePage";
 import { ClientDetailPage } from "@/clients/ClientDetailPage";
@@ -574,6 +576,56 @@ const financeRoute = createRoute({
   },
 });
 
+/** Страница раздела «Отчёты»; загружается отдельным чанком вместе с библиотекой графиков. */
+const ReportsPage = lazyRouteComponent(() => import("@/reports/ReportsPage"), "ReportsPage");
+
+/** Экран отчёта; общий чанк с [ReportsPage]. */
+const ReportPage = lazyRouteComponent(() => import("@/reports/ReportPage"), "ReportPage");
+
+/** Раздел «Отчёты»: период, филиал и вид (карточки или таблица) в search-параметрах адреса. */
+const reportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/reports",
+  validateSearch: ReportSearchSchema,
+  component: function ReportsRoute() {
+    const { api } = reportsRoute.useRouteContext();
+    const search = reportsRoute.useSearch();
+    const navigate = reportsRoute.useNavigate();
+    return (
+      <ReportsPage
+        api={api}
+        search={search}
+        onSearchChange={(next: ReportSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
+/** Экран отчёта [reportId] с теми же фильтрами, что у страницы раздела. */
+const reportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/reports/$reportId",
+  validateSearch: ReportSearchSchema,
+  component: function ReportRoute() {
+    const { api } = reportRoute.useRouteContext();
+    const { reportId } = reportRoute.useParams();
+    const search = reportRoute.useSearch();
+    const navigate = reportRoute.useNavigate();
+    return (
+      <ReportPage
+        api={api}
+        reportId={reportId}
+        search={search}
+        onSearchChange={(next: ReportSearch) => {
+          void navigate({ search: next });
+        }}
+      />
+    );
+  },
+});
+
 const clientsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/clients",
@@ -719,6 +771,8 @@ const routeTree = rootRoute.addChildren([
     employeesRoute,
     clientsRoute,
     financeRoute,
+    reportsRoute,
+    reportRoute,
     clientNewRoute,
     clientRoute,
     clientEditRoute,
@@ -784,6 +838,7 @@ const staticAppPaths: Readonly<Record<StaticAppPath, true>> = {
   "/employees": true,
   "/clients": true,
   "/finance": true,
+  "/reports": true,
   "/clients/new": true,
   "/tasks": true,
 };

@@ -32,7 +32,11 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-card px-3 py-4 lg:flex">
         <ClubCard api={api} me={me} variant="menu" className="w-full" />
-        <Navigation badges={badges} canViewFinance={me.permissions.includes("CAN_VIEW_FINANCE")} />
+        <Navigation
+          badges={badges}
+          canViewFinance={me.permissions.includes("CAN_VIEW_FINANCE")}
+          canViewReports={me.permissions.includes("CAN_VIEW_REPORTS")}
+        />
         <ProductMark />
       </aside>
       <div className="flex min-w-0 flex-col">
@@ -55,6 +59,7 @@ export function AppLayout({ api, onLogout }: { api: ApiClient; onLogout: () => P
               </div>
               <Navigation
                 canViewFinance={me.permissions.includes("CAN_VIEW_FINANCE")}
+                canViewReports={me.permissions.includes("CAN_VIEW_REPORTS")}
                 badges={badges}
                 onNavigate={() => {
                   setMenuOpen(false);

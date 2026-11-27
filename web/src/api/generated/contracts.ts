@@ -585,7 +585,7 @@ export const OrgInfoSchema = z
   .readonly();
 export type OrgInfo = z.output<typeof OrgInfoSchema>;
 
-export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS", "CAN_MANAGE_TELEGRAM_GATEWAY", "CAN_MANAGE_CLIENT_APP"]);
+export const UserPermissionSchema = z.enum(["CAN_MANAGE_ORG_BALANCE", "CAN_VIEW_CLIENT_BALANCE", "CAN_ACCEPT_PAYMENTS", "CAN_MANAGE_FINANCE", "CAN_VIEW_FINANCE", "CAN_VIEW_REPORTS", "CAN_VIEW_ALL_TASKS", "CAN_MANAGE_TASKS", "CAN_USE_ASSISTANT", "CAN_MANAGE_WIDGETS", "CAN_MANAGE_TELEGRAM_GATEWAY", "CAN_MANAGE_CLIENT_APP"]);
 export type UserPermission = z.output<typeof UserPermissionSchema>;
 
 export const AuthMeResponseSchema = z
@@ -2497,6 +2497,9 @@ export const ErrorResponseSchema = z
   .readonly();
 export type ErrorResponse = z.output<typeof ErrorResponseSchema>;
 
+export const ExportFormatSchema = z.enum(["csv", "xlsx"]);
+export type ExportFormat = z.output<typeof ExportFormatSchema>;
+
 export const ExtendMembershipRequestSchema = z
   .object({
     membershipId: MembershipIdSchema,
@@ -3413,6 +3416,81 @@ export const RepayDebtRequestSchema = z
   })
   .readonly();
 export type RepayDebtRequest = z.output<typeof RepayDebtRequestSchema>;
+
+export const ReportBetterSchema = z.enum(["up", "down"]);
+export type ReportBetter = z.output<typeof ReportBetterSchema>;
+
+export const ReportCompareModeSchema = z.enum(["days-before", "month-before"]);
+export type ReportCompareMode = z.output<typeof ReportCompareModeSchema>;
+
+export const ReportPeriodKindSchema = z.enum(["month", "last-month", "30d", "quarter", "custom"]);
+export type ReportPeriodKind = z.output<typeof ReportPeriodKindSchema>;
+
+export const ReportFilterSchema = z
+  .object({
+    period: ReportPeriodKindSchema.optional(),
+    from: LocalDateSchema.nullable().optional(),
+    to: LocalDateSchema.nullable().optional(),
+    compare: ReportCompareModeSchema.optional(),
+    branchId: BranchIdSchema.nullable().optional(),
+  })
+  .readonly();
+export type ReportFilter = z.output<typeof ReportFilterSchema>;
+
+export const ReportValueAmountSchema = z
+  .object({
+    type: z.literal("amount"),
+    amount: MoneySchema,
+  })
+  .readonly();
+export type ReportValueAmount = z.output<typeof ReportValueAmountSchema>;
+
+export const ReportValueCountSchema = z
+  .object({
+    type: z.literal("count"),
+    count: z.int(),
+  })
+  .readonly();
+export type ReportValueCount = z.output<typeof ReportValueCountSchema>;
+
+export const ReportValuePercentSchema = z
+  .object({
+    type: z.literal("percent"),
+    share: z.number(),
+  })
+  .readonly();
+export type ReportValuePercent = z.output<typeof ReportValuePercentSchema>;
+
+export const ReportValueSchema = z.discriminatedUnion("type", [ReportValueAmountSchema, ReportValueCountSchema, ReportValuePercentSchema]);
+export type ReportValue = z.output<typeof ReportValueSchema>;
+
+export const ReportsTableExportRequestSchema = z
+  .object({
+    filter: ReportFilterSchema.optional(),
+    format: ExportFormatSchema.optional(),
+  })
+  .readonly();
+export type ReportsTableExportRequest = z.output<typeof ReportsTableExportRequestSchema>;
+
+export const ReportsTableRowSchema = z
+  .object({
+    reportId: z.string(),
+    label: z.string(),
+    value: ReportValueSchema,
+    base: ReportValueSchema.nullable(),
+    better: ReportBetterSchema,
+  })
+  .readonly();
+export type ReportsTableRow = z.output<typeof ReportsTableRowSchema>;
+
+export const ReportsTableResponseSchema = z
+  .object({
+    period: DateRangeSchema,
+    basePeriod: DateRangeSchema,
+    rows: z.array(ReportsTableRowSchema).readonly(),
+  })
+  .readonly();
+export type ReportsTableResponse = z.output<typeof ReportsTableResponseSchema>;
 
 export const RescheduleSessionRequestSchema = z
   .object({
@@ -5510,6 +5588,20 @@ export const endpoints = {
     request: PublicScheduleRequestSchema,
     out: "json",
     response: PublicScheduleResponseSchema,
+  },
+  "reports/table": {
+    method: "POST",
+    in: "body",
+    request: ReportFilterSchema,
+    out: "json",
+    response: ReportsTableResponseSchema,
+  },
+  "reports/table/export": {
+    method: "POST",
+    in: "body",
+    request: ReportsTableExportRequestSchema,
+    out: "file",
+    response: z.instanceof(Blob),
   },
   "sales/cancel": {
     method: "POST",

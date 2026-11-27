@@ -22,7 +22,8 @@
     "skipLibCheck": false,
     "noEmit": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@reduxjs/toolkit": ["./src/vendor-types/reduxjs-toolkit.d.ts"]
     }
   }
 }

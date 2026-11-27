@@ -2,7 +2,6 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
-import io.ktor.http.HttpHeaders
 import kotlinx.datetime.LocalDate
 import org.athletica.crm.api.schemas.clients.AddClientToGroupsRequest
 import org.athletica.crm.api.schemas.clients.AddClientsToGroupRequest
@@ -29,6 +28,7 @@ import org.athletica.crm.api.schemas.clients.EditClientRequest
 import org.athletica.crm.api.schemas.clients.RemoveClientFromGroupRequest
 import org.athletica.crm.api.schemas.clients.RestoreClientRequest
 import org.athletica.crm.api.schemas.clients.field
+import org.athletica.crm.api.schemas.export.ExportFormat
 import org.athletica.crm.api.schemas.memberships.UnpaidSessionsResponse
 import org.athletica.crm.api.schemas.settings.SortDirectionSchema
 import org.athletica.crm.core.Gender
@@ -40,7 +40,6 @@ import org.athletica.crm.core.entityids.ClientId
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.money.Money
-import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.clientcontacts.ClientContact
 import org.athletica.crm.domain.clientcontacts.ClientContacts
 import org.athletica.crm.domain.clients.ActiveClient
@@ -62,6 +61,10 @@ import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.clients.ClientListQuery
 import org.athletica.crm.read.clients.ClientSortColumn
 import org.athletica.crm.read.clients.ClientSortCriterion
+import org.athletica.crm.routes.export.ExportCell
+import org.athletica.crm.routes.export.ExportTable
+import org.athletica.crm.routes.export.exportFile
+import org.athletica.crm.routes.export.textCell
 import org.athletica.crm.storage.Database
 
 /**
@@ -89,23 +92,12 @@ fun RouteWithContext.clientsRoutes(
     }
 
     post<ClientExportRequest, ByteArray>("/clients/export") { request, call ->
-        val format = call.request.queryParameters["format"] ?: "csv"
-
         val (items, customDefs) =
             db.transaction {
                 val items = views.clientList.page(ClientListQuery(today = calendar.today(), withMemberships = false, limit = null)).clients
                 Pair(items, definitions.all(CLIENT_CUSTOM_FIELD_ENTITY_TYPE))
             }
-
-        val csvContent = generateCsvContent(items, request.fields, customDefs)
-
-        call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"clients.${format}\"")
-        call.response.headers.append(
-            HttpHeaders.ContentType,
-            if (format == "xlsx") "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else "text/csv; charset=UTF-8",
-        )
-
-        csvContent
+        call.exportFile("clients", ExportFormat.byExtension(call.request.queryParameters["format"]), clientsTable(items, request.fields, customDefs))
     }
 
     get<ClientDetailRequest, ClientDetailResponse>("/clients/detail") { request ->
@@ -286,40 +278,32 @@ internal fun ClientListRequest.toQuery(today: LocalDate): ClientListQuery {
 }
 
 /**
- * Генерирует CSV контент для экспорта списка клиентов.
+ * Таблица выгрузки списка клиентов [clients].
  * Колонка «Имя» всегда первая. Остальные колонки соответствуют [fields] в порядке передачи.
  * Неизвестные ключи (не из [ClientField] и не из [customDefs]) молча пропускаются.
- * Возвращает ByteArray с CSV данными в кодировке UTF-8.
  */
-private fun generateCsvContent(
+private fun clientsTable(
     clients: List<ClientListItem>,
     fields: List<String>,
     customDefs: List<CustomFieldDefinition>,
-): ByteArray {
+): ExportTable {
     val customByKey = customDefs.associateBy { it.fieldKey.value }
     val resolved =
         fields.mapNotNull { key ->
             ClientField.byKey(key)?.let { ResolvedField.Standard(it) }
                 ?: customByKey[key]?.let { ResolvedField.Custom(it) }
         }
-
-    val sb = StringBuilder()
-    val header = listOf("Имя") + resolved.map { it.header() }
-    sb.appendLine(header.joinToString(","))
-
-    clients.forEach { client ->
-        val row = listOf(client.name) + resolved.map { it.value(client) }
-        sb.appendLine(row.joinToString(","))
-    }
-
-    return sb.toString().toByteArray(Charsets.UTF_8)
+    return ExportTable(
+        headers = listOf("Имя") + resolved.map { it.header() },
+        rows = clients.map { client -> listOf(ExportCell.Text(client.name)) + resolved.map { it.value(client) } },
+    )
 }
 
 /** Колонка экспорта, разрешённая в стандартное или кастомное поле. */
 private sealed class ResolvedField {
     abstract fun header(): String
 
-    abstract fun value(client: ClientListItem): String
+    abstract fun value(client: ClientListItem): ExportCell
 
     data class Standard(val field: ClientField) : ResolvedField() {
         override fun header(): String =
@@ -330,23 +314,23 @@ private sealed class ResolvedField {
                 ClientField.BALANCE -> "Баланс"
             }
 
-        override fun value(client: ClientListItem): String =
+        override fun value(client: ClientListItem): ExportCell =
             when (field) {
-                ClientField.BIRTHDAY -> client.birthday?.toString() ?: ""
+                ClientField.BIRTHDAY -> client.birthday?.let(ExportCell::Day) ?: ExportCell.Empty
                 ClientField.GENDER ->
                     when (client.gender) {
-                        Gender.MALE -> "М"
-                        Gender.FEMALE -> "Ж"
+                        Gender.MALE -> ExportCell.Text("М")
+                        Gender.FEMALE -> ExportCell.Text("Ж")
                     }
 
-                ClientField.GROUPS -> client.groups.joinToString("; ") { it.name }
-                ClientField.BALANCE -> client.balance.formatted
+                ClientField.GROUPS -> textCell(client.groups.joinToString("; ") { it.name })
+                ClientField.BALANCE -> ExportCell.Amount(client.balance)
             }
     }
 
     data class Custom(val definition: CustomFieldDefinition) : ResolvedField() {
         override fun header(): String = definition.label
 
-        override fun value(client: ClientListItem): String = client.field(definition.fieldKey.value)?.displayValue() ?: ""
+        override fun value(client: ClientListItem): ExportCell = textCell(client.field(definition.fieldKey.value)?.displayValue())
     }
 }

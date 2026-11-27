@@ -83,4 +83,43 @@ describe("журнал действий", () => {
     expect(history.location.pathname).toBe("/settings/activity-log");
     expect(api.to("audit/log").at(-1)?.query.get("userId")).toBe(actorId);
   });
+  it("ведёт дополнительное поле в его раздел настроек", async () => {
+    const fieldId = "0199a0b2-7c3e-7d2a-9f10-000000000051";
+    const api = appServer({
+      "audit/log/users": () => json({ items: [] }),
+      "audit/log": () =>
+        json({
+          items: [
+            {
+              id: "0199a0b2-7c3e-7d2a-9f10-000000000052",
+              userId: actorId,
+              username: "Анна",
+              actionType: "update",
+              description: "Анна: изменила дополнительного поля «Школа»",
+              entityType: "custom_field",
+              entityId: fieldId,
+              subject: {
+                type: "custom_field",
+                id: fieldId,
+                title: "Школа",
+                isAvailable: true,
+                targetId: null,
+              },
+              data: null,
+              ipAddress: null,
+              createdAt: "2026-10-17T10:00:00Z",
+            },
+          ],
+          total: 1,
+          page: 0,
+          pageSize: 50,
+        }),
+    });
+    openApp("/settings/activity-log", api.fetch);
+
+    expect(await screen.findByRole("link", { name: "Школа" })).toHaveAttribute(
+      "href",
+      "/settings?panel=client-additional-attributes",
+    );
+  });
 });

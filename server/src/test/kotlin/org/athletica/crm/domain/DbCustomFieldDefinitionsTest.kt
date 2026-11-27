@@ -421,5 +421,65 @@ class DbCustomFieldDefinitionsTest {
             assertTrue(result.isSortable)
         }
 
+    @Test
+    fun `saveAll сохраняет идентификатор поля при переименовании и смене порядка`() =
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        definitions.saveAll(
+                            "client",
+                            listOf(
+                                CustomFieldDefinition.Text(key("school"), "Школа"),
+                                CustomFieldDefinition.Bool(key("gone"), "Удаляемое"),
+                                CustomFieldDefinition.Number(key("size"), "Размер"),
+                            ),
+                        )
+                        val before = definitions.stored("client").associate { it.definition.fieldKey to it.id }
+
+                        definitions.saveAll(
+                            "client",
+                            listOf(
+                                CustomFieldDefinition.Number(key("size"), "Размер"),
+                                CustomFieldDefinition.Text(key("school"), "Учебное заведение"),
+                            ),
+                        )
+                        val after = definitions.stored("client")
+
+                        assertEquals(listOf(key("size"), key("school")), after.map { it.definition.fieldKey })
+                        assertEquals(listOf(0, 1), after.map { it.position })
+                        assertEquals(before[key("size")], after[0].id)
+                        assertEquals(before[key("school")], after[1].id)
+                        assertEquals("Учебное заведение", after[1].definition.label)
+                    }
+                }
+            }
+        }
+
+    @Test
+    fun `saveAll отклоняет повтор ключа и не меняет набор`() =
+        orThrow {
+            runTest {
+                TestPostgres.db.transaction {
+                    context(ctx) {
+                        val previous = listOf(CustomFieldDefinition.Bool(key("previous"), "Прежнее поле"))
+                        definitions.saveAll("client", previous)
+                        val rejected =
+                            either {
+                                definitions.saveAll(
+                                    "client",
+                                    listOf(
+                                        CustomFieldDefinition.Text(key("dup"), "Первое"),
+                                        CustomFieldDefinition.Text(key("dup"), "Второе"),
+                                    ),
+                                )
+                            }
+                        assertEquals("CUSTOM_FIELD_DUPLICATE_KEY", assertIs<Either.Left<AppError>>(rejected).value.code)
+                        assertEquals(previous, definitions.all("client"))
+                    }
+                }
+            }
+        }
+
     private fun key(value: String): CustomFieldKey = either { value.toFieldKey() }.getOrElse { error("Невалидный тестовый CustomFieldKey: $value") }
 }

@@ -110,6 +110,7 @@ class DbActivityLogView : ActivityLogView {
                      WHEN 'hall' THEN h.name
                      WHEN 'discipline' THEN d.name
                      WHEN 'lead_source' THEN ls.name
+                     WHEN 'custom_field' THEN cfd.label
                      WHEN 'subscription_tariff' THEN st.name
                      WHEN 'channel_integration' THEN ci.name
                      WHEN 'enrollment' THEN CASE WHEN en.id IS NULL THEN NULL
@@ -129,6 +130,7 @@ class DbActivityLogView : ActivityLogView {
             LEFT JOIN halls h ON a.entity_type = 'hall' AND h.id = a.entity_id AND h.org_id = a.org_id
             LEFT JOIN disciplines d ON a.entity_type = 'discipline' AND d.id = a.entity_id AND d.org_id = a.org_id
             LEFT JOIN lead_sources ls ON a.entity_type = 'lead_source' AND ls.id = a.entity_id AND ls.org_id = a.org_id
+            LEFT JOIN custom_field_definitions cfd ON a.entity_type = 'custom_field' AND cfd.id = a.entity_id AND cfd.org_id = a.org_id
             LEFT JOIN subscription_tariffs st ON a.entity_type = 'subscription_tariff' AND st.id = a.entity_id AND st.org_id = a.org_id
             LEFT JOIN channel_integrations ci ON a.entity_type = 'channel_integration' AND ci.id = a.entity_id AND ci.org_id = a.org_id
             LEFT JOIN enrollments en ON a.entity_type = 'enrollment' AND en.id = a.entity_id

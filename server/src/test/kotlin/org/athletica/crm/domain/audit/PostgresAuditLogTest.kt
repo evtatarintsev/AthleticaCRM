@@ -397,6 +397,47 @@ class PostgresAuditLogTest {
         }
 
     @Test
+    fun `list называет дополнительное поле его меткой, а удалённое — недоступным`() =
+        orThrow {
+            runTest {
+                val fieldId = Uuid.generateV7()
+                TestPostgres.db
+                    .sql(
+                        """
+                        INSERT INTO custom_field_definitions (id, org_id, entity_type, field_key, label, field_type)
+                        VALUES (:id, :orgId, 'CLIENT', 'school', 'Школа', 'text'::custom_field_type)
+                        """.trimIndent(),
+                    )
+                    .bind("id", fieldId)
+                    .bind("orgId", orgId)
+                    .execute()
+                val removedId = Uuid.generateV7()
+                TestPostgres.db.transaction {
+                    listOf(fieldId, removedId).forEach {
+                        auditLog.log(
+                            AuditEvent(
+                                orgId = orgId,
+                                userId = userId,
+                                username = "user@example.com",
+                                actionType = AuditActionType.UPDATE,
+                                entityType = "custom_field",
+                                entityId = it,
+                            ),
+                        )
+                    }
+                }
+
+                val events =
+                    TestPostgres.db.transaction {
+                        context(ctx) { activityLog.list(ActivityLogQuery(limit = 10u, offset = 0u)) }
+                    }
+
+                assertEquals("Школа", events.single { it.entityId == fieldId }.subjectTitle)
+                assertNull(events.single { it.entityId == removedId }.subjectTitle)
+            }
+        }
+
+    @Test
     fun `users возвращает уникальных авторов только текущей организации`() =
         orThrow {
             runTest {

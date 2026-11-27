@@ -15,11 +15,13 @@ import org.athletica.crm.read.channels.DbChannelListView
 import org.athletica.crm.read.clientapp.ClientAppBalanceView
 import org.athletica.crm.read.clientapp.ClientAppHomeView
 import org.athletica.crm.read.clientapp.ClientAppInvitationsView
+import org.athletica.crm.read.clientapp.ClientAppMembershipsView
 import org.athletica.crm.read.clientapp.ClientAppProfilesView
 import org.athletica.crm.read.clientapp.ClientAppSessionsView
 import org.athletica.crm.read.clientapp.DbClientAppBalanceView
 import org.athletica.crm.read.clientapp.DbClientAppHomeView
 import org.athletica.crm.read.clientapp.DbClientAppInvitationsView
+import org.athletica.crm.read.clientapp.DbClientAppMembershipsView
 import org.athletica.crm.read.clientapp.DbClientAppProfilesView
 import org.athletica.crm.read.clientapp.DbClientAppSessionsView
 import org.athletica.crm.read.clientappadmin.ClientAppInvitePreviewView
@@ -105,6 +107,8 @@ data class ReadViews(
     val clientAppHome: ClientAppHomeView = DbClientAppHomeView(),
     /** Баланс и его история по профилю кабинета клиента. */
     val clientAppBalance: ClientAppBalanceView = DbClientAppBalanceView(),
+    /** Абонементы и история списаний по профилю кабинета клиента. */
+    val clientAppMemberships: ClientAppMembershipsView = DbClientAppMembershipsView(),
     /** Сеансы аккаунта кабинета клиента. */
     val clientAppSessions: ClientAppSessionsView = DbClientAppSessionsView(),
     /** Подготовка массового приглашения в кабинет клиента. */

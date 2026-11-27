@@ -17,6 +17,7 @@ import org.athletica.crm.core.ClientProfileContexts
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.domain.clientapp.ClientAppAccesses
 import org.athletica.crm.read.ReadViews
+import org.athletica.crm.read.clientapp.ClientAppMembershipsQuery
 import org.athletica.crm.storage.Database
 import org.athletica.crm.storage.Transaction
 import org.athletica.crm.usecases.clientapp.ClientAppConnections
@@ -24,7 +25,7 @@ import kotlin.time.Clock
 
 /**
  * Клиентское API кабинета `/client-app/...` под [CLIENT_JWT]: приглашения и ответ на них, профили
- * аккаунта и данные выбранного профиля (главная, баланс). Запрос по профилю отвечает только по подключённому доступу
+ * аккаунта и данные выбранного профиля (главная, баланс, абонементы). Запрос по профилю отвечает только по подключённому доступу
  * (`CLIENT_NOT_FOUND` иначе) и после ответа отмечает активность доступа в [accesses].
  */
 fun Route.clientAppRoutes(
@@ -63,6 +64,7 @@ fun Route.clientAppRoutes(
 
             profileGet("/home", db, accesses) { views.clientAppHome.home() }
             profileGet("/balance", db, accesses) { views.clientAppBalance.balance() }
+            profileGet("/memberships", db, accesses) { views.clientAppMemberships.memberships(ClientAppMembershipsQuery(Clock.System.now())) }
         }
     }
 }

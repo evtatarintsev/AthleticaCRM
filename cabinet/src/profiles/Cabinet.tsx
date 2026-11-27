@@ -5,12 +5,14 @@ import type {
   ClientAppBalanceResponse,
   ClientAppHomeResponse,
   ClientAppInvitationsResponse,
+  ClientAppMembershipsResponse,
   ClientAppProfileSchema,
   ClientAppProfilesResponse,
 } from "../api/generated/contracts";
 import { Account } from "../account/Account";
 import { Balance, BalanceBlock } from "../balance/Balance";
 import { useI18n } from "../i18n/context";
+import { MembershipBlock, Memberships } from "../memberships/Memberships";
 import { Failure } from "../ui/Failure";
 import { useLoaded } from "../ui/useLoaded";
 import { selectedProfile, storedProfile, storeProfile, type ProfileKey } from "./selectedProfile";
@@ -60,6 +62,7 @@ function Profiles({ api }: { api: CabinetApi }) {
   const { t } = useI18n();
   const [view, setView] = useState<View>("home");
   const [balance, setBalance] = useState<ClientAppBalanceResponse | null>(null);
+  const [memberships, setMemberships] = useState<ClientAppMembershipsResponse | null>(null);
   const [selection, setSelection] = useState<ProfileKey | null>(storedProfile);
   const { state, reload } = useLoaded(useCallback(() => api.call("client-app/profiles"), [api]));
 
@@ -107,6 +110,16 @@ function Profiles({ api }: { api: CabinetApi }) {
       />
     );
   }
+  if (memberships !== null) {
+    return (
+      <Memberships
+        memberships={memberships}
+        onBack={() => {
+          setMemberships(null);
+        }}
+      />
+    );
+  }
   if (view === "switcher") {
     return (
       <Switcher
@@ -146,20 +159,26 @@ function Profiles({ api }: { api: CabinetApi }) {
         api={api}
         profile={profile}
         onBalance={setBalance}
+        onMemberships={setMemberships}
       />
     </>
   );
 }
 
-/** Главная профиля [profile]: приветствие по имени клиента и баланс; [onBalance] — открыть загруженный баланс. */
+/**
+ * Главная профиля [profile]: приветствие по имени клиента, текущий абонемент и баланс;
+ * [onBalance] и [onMemberships] — открыть уже загруженные баланс и абонементы.
+ */
 function Home({
   api,
   profile,
   onBalance,
+  onMemberships,
 }: {
   api: CabinetApi;
   profile: ClientAppProfileSchema;
   onBalance: (balance: ClientAppBalanceResponse) => void;
+  onMemberships: (memberships: ClientAppMembershipsResponse) => void;
 }) {
   const { t } = useI18n();
   const { orgId, clientId } = profile;
@@ -178,6 +197,7 @@ function Home({
             <h1>{t("home.greeting")}</h1>
             <p>{t("home.cabinetOf", { name: state.value.clientName })}</p>
           </section>
+          <MembershipBlock api={api} profile={profile} onOpen={onMemberships} />
           <BalanceBlock api={api} profile={profile} onOpen={onBalance} />
         </>
       );

@@ -40,6 +40,15 @@ description = "Dev-сервер фронтенда"
 dir = "web"
 run = "npm run dev"
 
+[tasks.cabinet]
+description = "Dev-сервер кабинета клиента"
+dir = "cabinet"
+run = "npm run dev"
+
+[tasks.all]
+description = "Сервер, фронтенд и кабинет клиента разом (параллельно, Ctrl+C останавливает всё)"
+depends = ["server", "web", "cabinet"]
+
 [tasks.e2e]
 description = "E2E-тесты на полном стенде: mise run e2e [-- --keep] [-- аргументы playwright]"
 run = "e2e/stand/run.sh"

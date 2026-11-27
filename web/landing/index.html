@@ -1,7 +1,8 @@
 <!doctype html>
 <!--
   Публичный лендинг: отдаётся на корне основного домена, независимо от SPA и API.
-  Ссылки относительные — внешний nginx перенаправляет /login и /sign-up на хост CRM (app.).
+  Ссылки относительные — внешний nginx перенаправляет /login и /sign-up на хост CRM (app.),
+  /cabinet — на хост кабинета клиента (clients.).
   Строки не из словарей i18n: у лендинга пока один язык (см. web/README.md).
 -->
 <html lang="ru">
@@ -58,7 +59,7 @@
         justify-content: center;
         flex-wrap: wrap;
       }
-      a {
+      nav a {
         padding: 12px 24px;
         border-radius: 8px;
         border: 1px solid var(--border);
@@ -66,10 +67,18 @@
         text-decoration: none;
         font-weight: 600;
       }
-      a.primary {
+      nav a.primary {
         background: var(--accent);
         border-color: var(--accent);
         color: var(--accent-fg);
+      }
+      .clients {
+        margin: 24px 0 0;
+      }
+      .clients a {
+        color: inherit;
+        font-weight: 600;
+        text-underline-offset: 3px;
       }
       a:focus-visible {
         outline: 2px solid var(--accent);
@@ -84,6 +93,7 @@
         <a href="/login">Войти</a>
         <a class="primary" href="/sign-up">Регистрация</a>
       </nav>
+      <p class="clients">Вы клиент клуба? <a href="/cabinet">Войти в кабинет</a></p>
     </main>
   </body>
 </html>

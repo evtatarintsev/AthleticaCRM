@@ -69,7 +69,7 @@ class DbSessionJournalView : SessionJournalView {
                                    'absenceNotice', (SELECT jsonb_build_object('phone', ca.phone_digits, 'createdAt', n.created_at)
                                                        FROM client_app_absence_notices n
                                                        JOIN client_app_access ca ON ca.id = n.access_id
-                                                      WHERE n.session_id = s.id AND n.client_id = r.client_id)
+                                                      WHERE n.session_id = s.id AND n.client_id = r.client_id AND n.cancelled_at IS NULL)
                                ) ORDER BY c.name, c.id), '[]'::jsonb)
                           FROM roster r
                           JOIN clients c ON c.id = r.client_id AND c.org_id = s.org_id) AS participants

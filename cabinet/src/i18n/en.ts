@@ -62,6 +62,7 @@ export const en: Messages<typeof ru> = {
   "schedule.title": "Schedule",
   "schedule.open": "Schedule",
   "schedule.next": "Next session",
+  "schedule.noNext": "No upcoming sessions",
   "schedule.previous": "Previous week",
   "schedule.following": "Next week",
   "schedule.empty": "No sessions this week",

@@ -11,7 +11,7 @@ import {
 } from "../api/generated/contracts";
 import { useI18n } from "../i18n/context";
 import { Failure } from "../ui/Failure";
-import { useLoaded } from "../ui/useLoaded";
+import { useLoaded, type Loaded } from "../ui/useLoaded";
 
 /** Дата [date], сдвинутая на [days] дней; считается в UTC, чтобы пояс браузера не сдвигал день. */
 function shiftDate(date: LocalDate, days: number): LocalDate {
@@ -48,7 +48,7 @@ function Place({ session }: { session: ClientAppScheduleSessionSchema }) {
 
 /**
  * Блок ближайшего занятия профиля [profile] на главной, загруженного через [api]: дата, время,
- * группа, зал и тренеры; без ближайшего занятия остаётся только ссылка на расписание.
+ * группа, зал и тренеры; без ближайшего занятия — «Ближайших занятий нет» и ссылка на расписание.
  * [onOpen] — открыть расписание.
  */
 export function NextSessionBlock({
@@ -80,7 +80,13 @@ export function NextSessionBlock({
   }
   const next = state.value.next;
   if (next === null) {
-    return open;
+    return (
+      <section className="card">
+        <h2>{t("schedule.next")}</h2>
+        <p className="muted">{t("schedule.noNext")}</p>
+        {open}
+      </section>
+    );
   }
   return (
     <section className="card">
@@ -136,7 +142,7 @@ export function Schedule({
   const { t, locale } = useI18n();
   const { orgId, clientId } = profile;
   const [weekOf, setWeekOf] = useState<LocalDate | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busyOn, setBusyOn] = useState<Loaded<ClientAppScheduleResponse> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { state, reload } = useLoaded<ClientAppScheduleResponse>(
     useCallback(
@@ -145,18 +151,23 @@ export function Schedule({
     ),
   );
 
-  /** «Не придём» или отмена предупреждения действием [path] по занятию [session]. */
+  const busy = busyOn !== null && busyOn === state;
+
+  /**
+   * «Не придём» или отмена предупреждения действием [path] по занятию [session]. Кнопки заблокированы,
+   * пока не придёт обновлённое расписание: занятость привязана к состоянию загрузки на момент нажатия.
+   */
   async function notice(
     path: "client-app/absence-notices/create" | "client-app/absence-notices/cancel",
     session: ClientAppScheduleSessionSchema,
   ) {
-    setBusy(true);
+    setBusyOn(state);
     setError(null);
     const result = await api.call(path, { orgId, clientId, sessionId: session.sessionId });
-    setBusy(false);
     if (result.ok) {
       reload();
     } else {
+      setBusyOn(null);
       setError(errorText(result.error, t));
     }
   }
@@ -182,7 +193,7 @@ export function Schedule({
           className="secondary"
           aria-label={t("schedule.previous")}
           onClick={() => {
-            setWeekOf(shiftDate(week.weekStart, -7));
+            setWeekOf((it) => shiftDate(it ?? week.weekStart, -7));
           }}
         >
           ←
@@ -196,7 +207,7 @@ export function Schedule({
           className="secondary"
           aria-label={t("schedule.following")}
           onClick={() => {
-            setWeekOf(shiftDate(week.weekStart, 7));
+            setWeekOf((it) => shiftDate(it ?? week.weekStart, 7));
           }}
         >
           →

@@ -63,6 +63,7 @@ export const ru = {
   "schedule.title": "Расписание",
   "schedule.open": "Расписание",
   "schedule.next": "Ближайшее занятие",
+  "schedule.noNext": "Ближайших занятий нет",
   "schedule.previous": "Предыдущая неделя",
   "schedule.following": "Следующая неделя",
   "schedule.empty": "На этой неделе занятий нет",

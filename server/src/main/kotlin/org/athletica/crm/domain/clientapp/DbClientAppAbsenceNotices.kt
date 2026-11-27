@@ -15,7 +15,10 @@ import org.athletica.crm.storage.asUuid
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-/** [ClientAppAbsenceNotices] в таблице `client_app_absence_notices`, одна строка на клиента в занятии. */
+/**
+ * [ClientAppAbsenceNotices] в таблице `client_app_absence_notices`: действующее предупреждение — одно на клиента
+ * в занятии, отмена проставляет `cancelled_at` и оставляет строку в истории.
+ */
 class DbClientAppAbsenceNotices : ClientAppAbsenceNotices {
     context(ctx: ClientProfileContext, tr: Transaction, raise: Raise<AppError>)
     override suspend fun notify(
@@ -27,7 +30,7 @@ class DbClientAppAbsenceNotices : ClientAppAbsenceNotices {
             """
             INSERT INTO client_app_absence_notices (session_id, client_id, access_id, created_at)
             VALUES (:sessionId, :clientId, :accessId, :now)
-            ON CONFLICT (session_id, client_id) DO NOTHING
+            ON CONFLICT (session_id, client_id) WHERE cancelled_at IS NULL DO NOTHING
             """.trimIndent(),
         )
             .bind("sessionId", sessionId)
@@ -43,7 +46,13 @@ class DbClientAppAbsenceNotices : ClientAppAbsenceNotices {
         now: Instant,
     ) {
         openSessionAccess(sessionId, now)
-        tr.sql("DELETE FROM client_app_absence_notices WHERE session_id = :sessionId AND client_id = :clientId")
+        tr.sql(
+            """
+            UPDATE client_app_absence_notices SET cancelled_at = :now
+            WHERE session_id = :sessionId AND client_id = :clientId AND cancelled_at IS NULL
+            """.trimIndent(),
+        )
+            .bind("now", now)
             .bind("sessionId", sessionId)
             .bind("clientId", ctx.clientId)
             .execute()

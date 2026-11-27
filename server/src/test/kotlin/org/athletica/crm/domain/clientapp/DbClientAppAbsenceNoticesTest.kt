@@ -71,7 +71,7 @@ class DbClientAppAbsenceNoticesTest {
         }
 
     @Test
-    fun `отмена до начала убирает предупреждение`() =
+    fun `отмена до начала убирает предупреждение и оставляет его в истории, повтор создаёт новое`() =
         runTest {
             fixture.setUp()
             val ivan = ivan()
@@ -81,6 +81,13 @@ class DbClientAppAbsenceNoticesTest {
             fixture.asMom(ivan) { notices.cancel(session, before) }.getOrElse { error(it.toString()) }
 
             assertNull(participant(session, ivan).absenceNotice)
+            assertEquals(1, noticeCount())
+
+            val again = fixture.at(day, LocalTime(9, 30))
+            fixture.asMom(ivan) { notices.notify(session, again) }.getOrElse { error(it.toString()) }
+
+            assertEquals(again, participant(session, ivan).absenceNotice?.createdAt)
+            assertEquals(2, noticeCount())
         }
 
     @Test

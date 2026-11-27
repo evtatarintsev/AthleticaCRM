@@ -26,7 +26,7 @@ import { ParticipantClientSheet, type ParticipantRef } from "./ParticipantClient
  * не уводя с занятия; ctrl/cmd-клик и средняя кнопка — полную карточку по ссылке. В заголовке — сколько отмечено,
  * массовая отметка оставшихся и добавление разового участника.
  * Под именем — абонемент, с которого спишется или списано занятие, или «Нет абонемента», и предупреждение
- * «Не придём» из кабинета клиента с временем по часовому поясу организации и номером.
+ * «Не придём» из кабинета клиента с датой и временем по часовому поясу организации и номером.
  * Аватаров в журнале пока нет — показываются инициалы.
  */
 export function SessionParticipantsSection({
@@ -238,7 +238,10 @@ function DebitMembership({
   );
 }
 
-/** Предупреждение «Не придём» [notice] из кабинета: время в часовом поясе организации [timeZone] и номер. */
+/**
+ * Предупреждение «Не придём» [notice] из кабинета: дата и время в часовом поясе организации [timeZone] и номер.
+ * Дата нужна всегда — предупреждают и за несколько дней до занятия.
+ */
 function AbsenceNotice({
   notice,
   timeZone,
@@ -249,6 +252,8 @@ function AbsenceNotice({
   const { t, locale } = useI18n();
   const time = new Intl.DateTimeFormat(locale, {
     timeZone,
+    day: "numeric",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",

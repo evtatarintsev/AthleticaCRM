@@ -18,8 +18,8 @@ import { Failure } from "../ui/Failure";
 import { useLoaded } from "../ui/useLoaded";
 import { selectedProfile, storedProfile, storeProfile, type ProfileKey } from "./selectedProfile";
 
-/** Экран вошедшего человека: главная выбранного профиля, переключатель или приглашения. */
-type View = "home" | "switcher" | "invitations";
+/** Экран вошедшего человека: главная выбранного профиля, расписание, переключатель или приглашения. */
+type View = "home" | "schedule" | "switcher" | "invitations";
 
 /**
  * Кабинет вошедшего человека через [api]: профили и экран «Аккаунт» с сеансами, выходом и удалением
@@ -64,7 +64,6 @@ function Profiles({ api }: { api: CabinetApi }) {
   const [view, setView] = useState<View>("home");
   const [balance, setBalance] = useState<ClientAppBalanceResponse | null>(null);
   const [memberships, setMemberships] = useState<ClientAppMembershipsResponse | null>(null);
-  const [schedule, setSchedule] = useState(false);
   const [selection, setSelection] = useState<ProfileKey | null>(storedProfile);
   const { state, reload } = useLoaded(useCallback(() => api.call("client-app/profiles"), [api]));
 
@@ -122,13 +121,13 @@ function Profiles({ api }: { api: CabinetApi }) {
       />
     );
   }
-  if (schedule) {
+  if (view === "schedule") {
     return (
       <Schedule
         api={api}
         profile={profile}
         onBack={() => {
-          setSchedule(false);
+          setView("home");
         }}
       />
     );
@@ -174,7 +173,7 @@ function Profiles({ api }: { api: CabinetApi }) {
         onBalance={setBalance}
         onMemberships={setMemberships}
         onSchedule={() => {
-          setSchedule(true);
+          setView("schedule");
         }}
       />
     </>

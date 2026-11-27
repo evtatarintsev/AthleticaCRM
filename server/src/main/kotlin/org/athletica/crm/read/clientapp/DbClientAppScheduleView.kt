@@ -108,7 +108,7 @@ class DbClientAppScheduleView : ClientAppScheduleView {
             JOIN halls h ON h.id = s.hall_id
             LEFT JOIN groups g ON g.id = s.group_id
             LEFT JOIN schedule_slots ss ON ss.id = s.origin_slot_id
-            LEFT JOIN client_app_absence_notices n ON n.session_id = s.id AND n.client_id = :clientId
+            LEFT JOIN client_app_absence_notices n ON n.session_id = s.id AND n.client_id = :clientId AND n.cancelled_at IS NULL
             WHERE s.org_id = :orgId AND ${ClientProfileContexts.IN_SESSION} AND $where
             ORDER BY s.date, s.start_time, s.id
             $tail

@@ -688,4 +688,34 @@ describe("расписание", () => {
       ).toBe(true);
     });
   });
+
+  it("два быстрых перехода вперёд сдвигают на две недели, не дожидаясь ответа", async () => {
+    const { fetch, calls } = withSchedule();
+    renderApp(fetch);
+    fireEvent.click(await screen.findByRole("button", { name: "Расписание" }));
+    const following = await screen.findByRole("button", { name: "Следующая неделя" });
+    fireEvent.click(following);
+    fireEvent.click(following);
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (it) => it.path === "client-app/schedule" && it.query.get("weekOf") === "2030-01-21",
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("без ближайшего занятия на главной — карточка «Ближайших занятий нет»", async () => {
+    renderApp(
+      server({
+        "client-app/profiles": () => json({ profiles: [profile(IVAN, "Иван")], newInvitations: 0 }),
+        "client-app/home": home({ [IVAN]: "Иван" }),
+        "client-app/balance": () => json(BALANCE),
+        "client-app/memberships": () => json({ memberships: [] }),
+        "client-app/schedule": () => json(week([])),
+      }).fetch,
+    );
+    expect(await screen.findByText("Ближайших занятий нет")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Расписание" })).toBeInTheDocument();
+  });
 });

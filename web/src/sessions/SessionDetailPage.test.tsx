@@ -415,7 +415,7 @@ describe("карточка занятия", () => {
     expect(within(row("Аня")).getByText(ru["sessionDetail.attendance.unmarked"])).toBeVisible();
   });
 
-  it("показывает предупреждение «Не придём» из кабинета с временем и номером, отметку не ставит", async () => {
+  it("показывает предупреждение «Не придём» из кабинета с датой, временем и номером, отметку не ставит", async () => {
     const notice = { phone: "79031234567", createdAt: "2030-01-07T15:00:00Z" };
     const server = journalServer(
       journalOf([participant("1", "Аня", "REGULAR", null, notice), participant("2", "Борис")]),
@@ -424,7 +424,7 @@ describe("карточка занятия", () => {
 
     expect(await screen.findByText("Юниоры У8")).toBeVisible();
     expect(
-      within(row("Аня")).getByText("Предупредили из кабинета в 15:00 · +79031234567"),
+      within(row("Аня")).getByText(/^Предупредили из кабинета 7 янв\.?,? 15:00 · \+79031234567$/),
     ).toBeVisible();
     expect(within(row("Аня")).getByText(ru["sessionDetail.attendance.unmarked"])).toBeVisible();
     expect(within(row("Борис")).queryByText(/Предупредили из кабинета/)).toBeNull();

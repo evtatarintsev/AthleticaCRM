@@ -76,27 +76,12 @@ fun Route.clientAppRoutes(
                 views.clientAppSchedule.schedule(ClientAppScheduleQuery(it.weekOf, Clock.System.now()))
             }
 
-            post("/absence-notices/create") {
-                either {
-                    val request = call.body<ClientAppAbsenceNoticeRequest>()
-                    context(call.clientAccountContext()) {
-                        db.transaction {
-                            context(ClientProfileContexts.profile(request.orgId, request.clientId)) { notices.notify(request.sessionId, Clock.System.now()) }
-                        }
-                    }
-                }.fold({ call.respondError(it) }, { call.respond(Unit) })
-            }.contract(postContract<ClientAppAbsenceNoticeRequest, Unit>())
-
-            post("/absence-notices/cancel") {
-                either {
-                    val request = call.body<ClientAppAbsenceNoticeRequest>()
-                    context(call.clientAccountContext()) {
-                        db.transaction {
-                            context(ClientProfileContexts.profile(request.orgId, request.clientId)) { notices.cancel(request.sessionId, Clock.System.now()) }
-                        }
-                    }
-                }.fold({ call.respondError(it) }, { call.respond(Unit) })
-            }.contract(postContract<ClientAppAbsenceNoticeRequest, Unit>())
+            profilePost<ClientAppAbsenceNoticeRequest>("/absence-notices/create", db, accesses, { ClientAppProfileRequest(it.orgId, it.clientId) }) {
+                notices.notify(it.sessionId, Clock.System.now())
+            }
+            profilePost<ClientAppAbsenceNoticeRequest>("/absence-notices/cancel", db, accesses, { ClientAppProfileRequest(it.orgId, it.clientId) }) {
+                notices.cancel(it.sessionId, Clock.System.now())
+            }
         }
     }
 }
@@ -136,3 +121,30 @@ private inline fun <reified Req : Any, reified Res : Any> Route.profileGet(
             }
         }.onLeft { call.respondError(it) }
     }.contract(getContract<Req, Res>())
+
+/**
+ * POST-действие [path] над данными профиля: строит [ClientProfileContext] по профилю [profileOf] тела запроса
+ * (нет подключённого доступа — `CLIENT_NOT_FOUND`), выполняет [body] в транзакции и после ответа
+ * отмечает активность доступа в [accesses].
+ */
+private inline fun <reified Req : Any> Route.profilePost(
+    path: String,
+    db: Database,
+    accesses: ClientAppAccesses,
+    crossinline profileOf: (Req) -> ClientAppProfileRequest,
+    crossinline body: suspend context(ClientProfileContext, Transaction, Raise<AppError>) (Req) -> Unit,
+): Route =
+    post(path) {
+        either<AppError, Unit> {
+            val request = call.body<Req>()
+            val key = profileOf(request)
+            context(call.clientAccountContext()) {
+                val profile =
+                    db.transaction {
+                        ClientProfileContexts.profile(key.orgId, key.clientId).also { context(it) { body(request) } }
+                    }
+                call.respond(Unit)
+                context(profile) { db.transaction { accesses.touch(Clock.System.now()) } }
+            }
+        }.onLeft { call.respondError(it) }
+    }.contract(postContract<Req, Unit>())

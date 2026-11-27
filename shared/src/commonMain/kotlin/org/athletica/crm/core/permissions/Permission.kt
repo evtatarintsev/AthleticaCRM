@@ -20,6 +20,12 @@ enum class UserPermission : Permission {
     /** Позволяет просматривать кассовый журнал, остатки касс и отчёт ДДС. */
     CAN_VIEW_FINANCE,
 
+    /**
+     * Позволяет открывать раздел «Отчёты». Денежные отчёты дополнительно требуют
+     * [CAN_VIEW_FINANCE] или [CAN_VIEW_CLIENT_BALANCE].
+     */
+    CAN_VIEW_REPORTS,
+
     /** Позволяет видеть задачи всех сотрудников, а не только свои. */
     CAN_VIEW_ALL_TASKS,
 

@@ -3,6 +3,7 @@ package org.athletica.crm.domain.ledger
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -45,7 +46,10 @@ import org.athletica.crm.testJwtConfig
 import org.athletica.crm.testName
 import org.athletica.crm.testPositiveInt
 import org.athletica.crm.usecases.finance.ClientPayments
+import org.dhatim.fastexcel.reader.CellType
+import org.dhatim.fastexcel.reader.ReadableWorkbook
 import org.junit.Before
+import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -182,6 +186,21 @@ class FinanceRoutesTest {
                 }
             assertEquals(HttpStatusCode.OK, report.status)
             assertTrue(report.bodyAsText().contains("Поступления от клиентов"))
+            val book =
+                client.post("/api/finance/journal/export?format=xlsx") {
+                    header(HttpHeaders.Authorization, "Bearer ${token()}")
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+            assertEquals(HttpStatusCode.OK, book.status)
+            assertTrue(book.headers[HttpHeaders.ContentDisposition].orEmpty().contains("cash-journal.xlsx"))
+            ReadableWorkbook(book.bodyAsBytes().inputStream()).use { workbook ->
+                val rows = workbook.firstSheet.read()
+                assertEquals(3, rows.size)
+                val amount = rows[1].getCell(4)
+                assertEquals(CellType.NUMBER, amount.type)
+                assertEquals(0, BigDecimal("1000.00").compareTo(amount.asNumber()))
+            }
         }
 
     @Test

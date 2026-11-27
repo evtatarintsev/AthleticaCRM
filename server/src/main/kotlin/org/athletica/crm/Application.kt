@@ -79,6 +79,7 @@ import org.athletica.crm.routes.orgRoutes
 import org.athletica.crm.routes.paymentRoutes
 import org.athletica.crm.routes.profileRoutes
 import org.athletica.crm.routes.publicScheduleRoutes
+import org.athletica.crm.routes.reportsRoutes
 import org.athletica.crm.routes.routeWithContext
 import org.athletica.crm.routes.scheduleRoutes
 import org.athletica.crm.routes.scheduleWidgetsRoutes
@@ -255,6 +256,7 @@ fun Application.configureServer() {
                             di.orgCalendar,
                         )
                         financeRoutes(di.clientPayments, di.saleActions, di.cashOperations, di.cashAccounts, di.cashArticles, di.sales, di.clients, di.orgCalendar, di.views)
+                        reportsRoutes(di.orgCalendar, di.views)
                         clientNotesRoutes(di.clientNotes)
                         channelsRoutes(di.channelIntegrations, di.channelConfigVerifier, di.views)
                         telegramGatewayRoutes(di.telegramGatewayIntegrations, di.telegramGateway)

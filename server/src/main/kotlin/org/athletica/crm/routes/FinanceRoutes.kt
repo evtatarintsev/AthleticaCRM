@@ -2,10 +2,8 @@ package org.athletica.crm.routes
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.ensure
-import io.ktor.http.HttpHeaders
 import kotlinx.datetime.LocalDate
-import org.apache.commons.csv.CSVFormat
-import org.apache.commons.csv.CSVPrinter
+import org.athletica.crm.api.schemas.export.ExportFormat
 import org.athletica.crm.api.schemas.finance.AdjustAdvanceRequest
 import org.athletica.crm.api.schemas.finance.ArchiveCashAccountRequest
 import org.athletica.crm.api.schemas.finance.ArchiveCashArticleRequest
@@ -34,7 +32,6 @@ import org.athletica.crm.core.EmployeeRequestContext
 import org.athletica.crm.core.errors.AppError
 import org.athletica.crm.core.errors.CommonDomainError
 import org.athletica.crm.core.finance.CashDirection
-import org.athletica.crm.core.money.formatted
 import org.athletica.crm.domain.cashaccounts.CashAccounts
 import org.athletica.crm.domain.casharticles.CashArticles
 import org.athletica.crm.domain.clients.Clients
@@ -46,6 +43,10 @@ import org.athletica.crm.read.ReadViews
 import org.athletica.crm.read.finance.CashFlowReportQuery
 import org.athletica.crm.read.finance.CashJournalQuery
 import org.athletica.crm.read.finance.SaleDetailQuery
+import org.athletica.crm.routes.export.ExportCell
+import org.athletica.crm.routes.export.ExportTable
+import org.athletica.crm.routes.export.exportFile
+import org.athletica.crm.routes.export.textCell
 import org.athletica.crm.storage.Database
 import org.athletica.crm.usecases.finance.CashOperations
 import org.athletica.crm.usecases.finance.ClientPayments
@@ -123,23 +124,45 @@ fun RouteWithContext.financeRoutes(
         post<CashFlowReportRequest, CashFlowReportResponse>("/cash-flow") { r -> db.transaction { views.cashFlowReport.report(r.toQuery()) } }
         post<CashJournalRequest, ByteArray>("/journal/export") { r, call ->
             val result = db.transaction { views.cashJournal.page(r.toQuery(calendar.today(), Int.MAX_VALUE, 0)) }
-            call.response.headers.append(HttpHeaders.ContentType, "text/csv; charset=UTF-8")
-            call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"cash-journal.csv\"")
-            financeCsv(
-                listOf("Date", "Kind", "Cash account", "Article", "Amount", "Client", "Sale", "Counterparty", "Comment", "Author", "Reversed", "Reversal reason", "Reversed by"),
-                result.entries.map {
-                    listOf(it.occurredOn.toString(), it.kind.name, listOfNotNull(it.cashAccountName, it.counterCashAccountName).joinToString(" / "), it.articleName.orEmpty(), it.amount.formatted, it.clientName.orEmpty(), it.saleId?.toString().orEmpty(), it.counterparty.orEmpty(), it.comment.orEmpty(), it.performedBy?.name.orEmpty(), it.reversed.toString(), it.reversalReason.orEmpty(), it.reversedBy?.name.orEmpty())
-                },
+            call.exportFile(
+                "cash-journal",
+                ExportFormat.byExtension(call.request.queryParameters["format"]),
+                ExportTable(
+                    listOf("Date", "Kind", "Cash account", "Article", "Amount", "Client", "Sale", "Counterparty", "Comment", "Author", "Reversed", "Reversal reason", "Reversed by"),
+                    result.entries.map {
+                        listOf(
+                            ExportCell.Day(it.occurredOn),
+                            ExportCell.Text(it.kind.name),
+                            textCell(listOfNotNull(it.cashAccountName, it.counterCashAccountName).joinToString(" / ")),
+                            textCell(it.articleName),
+                            ExportCell.Amount(it.amount),
+                            textCell(it.clientName),
+                            textCell(it.saleId?.toString()),
+                            textCell(it.counterparty),
+                            textCell(it.comment),
+                            textCell(it.performedBy?.name),
+                            ExportCell.Text(it.reversed.toString()),
+                            textCell(it.reversalReason),
+                            textCell(it.reversedBy?.name),
+                        )
+                    },
+                ),
             )
         }
         post<CashFlowReportRequest, ByteArray>("/cash-flow/export") { r, call ->
             val result = db.transaction { views.cashFlowReport.report(r.toQuery()) }
-            call.response.headers.append(HttpHeaders.ContentType, "text/csv; charset=UTF-8")
-            call.response.headers.append(HttpHeaders.ContentDisposition, "attachment; filename=\"cash-flow.csv\"")
-            financeCsv(
-                listOf("Article", "Group") + result.months + "Total",
-                result.rows.map { listOf(it.name, it.parentName.orEmpty()) + it.amounts.map { amount -> amount.formatted } + it.total.formatted } +
-                    listOf(listOf("Opening", "") + result.months.map { "" } + result.opening.formatted, listOf("Closing", "") + result.months.map { "" } + result.closing.formatted),
+            val noMonths = result.months.map { ExportCell.Empty }
+            call.exportFile(
+                "cash-flow",
+                ExportFormat.byExtension(call.request.queryParameters["format"]),
+                ExportTable(
+                    listOf("Article", "Group") + result.months + "Total",
+                    result.rows.map { listOf(ExportCell.Text(it.name), textCell(it.parentName)) + it.amounts.map(ExportCell::Amount) + ExportCell.Amount(it.total) } +
+                        listOf(
+                            listOf(ExportCell.Text("Opening"), ExportCell.Empty) + noMonths + ExportCell.Amount(result.opening),
+                            listOf(ExportCell.Text("Closing"), ExportCell.Empty) + noMonths + ExportCell.Amount(result.closing),
+                        ),
+                ),
             )
         }
     }
@@ -180,16 +203,4 @@ private fun ensurePeriod(from: LocalDate, to: LocalDate) {
 private object FinancePeriodInvalid : LocalizationKey {
     override val ru = "Начало периода позже его конца"
     override val en = "The period start is after its end"
-}
-
-/**
- * CSV-файл с заголовками [headers] и строками [rows] в UTF-8 с BOM. Значения, которые табличный
- * редактор принял бы за формулу, экранируются апострофом.
- */
-private fun financeCsv(headers: List<String>, rows: List<List<String>>): ByteArray {
-    val text = StringBuilder()
-    CSVPrinter(text, CSVFormat.DEFAULT.builder().setHeader(*headers.toTypedArray()).get()).use { csv ->
-        rows.forEach { row -> csv.printRecord(row.map { if (it.trimStart().firstOrNull() in listOf('=', '+', '-', '@') || it.firstOrNull() in listOf('\t', '\r', '\n')) "'$it" else it }) }
-    }
-    return ("\uFEFF" + text).toByteArray(Charsets.UTF_8)
 }

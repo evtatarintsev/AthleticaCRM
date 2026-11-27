@@ -271,6 +271,7 @@ class DemoData(
                     "Менеджер",
                     setOf(
                         UserPermission.CAN_VIEW_CLIENT_BALANCE, UserPermission.CAN_ACCEPT_PAYMENTS, UserPermission.CAN_VIEW_FINANCE,
+                        UserPermission.CAN_VIEW_REPORTS,
                         UserPermission.CAN_VIEW_ALL_TASKS, UserPermission.CAN_MANAGE_TASKS,
                     ),
                 )

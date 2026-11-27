@@ -1,5 +1,6 @@
 import {
   CalendarDaysIcon,
+  ChartColumnIcon,
   WalletIcon,
   CheckSquareIcon,
   HomeIcon,
@@ -22,7 +23,8 @@ export type SectionId =
   | "employees"
   | "tasks"
   | "settings"
-  | "finance";
+  | "finance"
+  | "reports";
 
 /** Пункт основной навигации. */
 export interface Section {
@@ -46,6 +48,7 @@ export const sections: readonly Section[] = [
   { id: "employees", path: "/employees", label: "nav.employees", icon: IdCardIcon },
   { id: "tasks", path: "/tasks", label: "nav.tasks", icon: CheckSquareIcon },
   { id: "finance", path: "/finance", label: "nav.finance", icon: WalletIcon },
+  { id: "reports", path: "/reports", label: "nav.reports", icon: ChartColumnIcon },
   { id: "settings", path: "/settings", label: "nav.settings", icon: SettingsIcon },
 ];
 

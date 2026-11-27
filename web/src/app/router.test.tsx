@@ -161,6 +161,13 @@ describe("раскладка", () => {
     );
   });
 
+  it("без права на отчёты пункта «Отчёты» нет", async () => {
+    openApp("/", true);
+
+    await screen.findAllByRole("link", { name: ru["nav.home"] });
+    expect(screen.queryByRole("link", { name: ru["nav.reports"] })).not.toBeInTheDocument();
+  });
+
   it("у каждого раздела есть маршрут веб-клиента", () => {
     sections.forEach((section) => {
       expect(isStaticAppPath(section.path)).toBe(true);

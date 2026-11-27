@@ -11,15 +11,18 @@ const BADGE_LIMIT = 99;
  * Основная навигация по разделам; каждый пункт открывается ссылкой роутера.
  * [onNavigate] вызывается после выбора пункта, чтобы закрыть выезжающее меню.
  * [badges] — числа у пунктов разделов (например, непрочитанное во «Входящих»); ноль не показывается.
+ * «Финансы» видны с [canViewFinance], «Отчёты» — с [canViewReports].
  */
 export function Navigation({
   onNavigate,
   badges = {},
   canViewFinance = false,
+  canViewReports = false,
 }: {
   onNavigate?: () => void;
   badges?: Partial<Record<SectionId, number>>;
   canViewFinance?: boolean;
+  canViewReports?: boolean;
 }) {
   const { t } = useI18n();
   const current = sectionOf(useLocation({ select: (location) => location.pathname }));
@@ -27,7 +30,11 @@ export function Navigation({
     <nav aria-label={t("nav.label")}>
       <ul className="space-y-1">
         {sections
-          .filter((section) => section.id !== "finance" || canViewFinance)
+          .filter(
+            (section) =>
+              (section.id !== "finance" || canViewFinance) &&
+              (section.id !== "reports" || canViewReports),
+          )
           .map((section) => (
             <li key={section.id}>
               <SectionLink

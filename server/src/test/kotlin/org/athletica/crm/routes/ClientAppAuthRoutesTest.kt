@@ -275,6 +275,7 @@ class ClientAppAuthRoutesTest {
                 assertEquals(HttpStatusCode.Unauthorized, mobileRefresh(tokens.access).status)
                 assertEquals(HttpStatusCode.Unauthorized, mobileRefresh(crmToken()).status)
                 assertEquals(HttpStatusCode.Unauthorized, bearerGet("sessions", crmToken()).status)
+                assertEquals(HttpStatusCode.Unauthorized, bearerGet("sessions", "a b").status)
                 assertEquals(HttpStatusCode.OK, client.post("/api/client-app/auth/logout") { header(HttpHeaders.Authorization, "Bearer ${tokens.access}") }.status)
                 assertEquals(HttpStatusCode.Unauthorized, mobileRefresh(tokens.refresh).status)
                 assertEquals(HttpStatusCode.Unauthorized, bearerGet("sessions", tokens.access).status)

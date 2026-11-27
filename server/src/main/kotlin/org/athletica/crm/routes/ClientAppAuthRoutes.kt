@@ -166,10 +166,11 @@ suspend fun clientAppPrincipal(
 /**
  * Access токен клиентского API: cookie веб-кабинета, а без неё — заголовок `Authorization: Bearer`
  * мобильного приложения. Токен CRM не пройдёт ни так, ни так: его подпись проверяет другой ключ.
+ * Неразборчивый заголовок — то же, что его отсутствие (HTTP 401), а не исключение (HTTP 500).
  */
 fun ApplicationRequest.clientAppAuthHeader(): HttpAuthHeader? =
     cookies[ClientAppJwtConfig.COOKIE_ACCESS_TOKEN]?.let { HttpAuthHeader.Single("Bearer", it) }
-        ?: header(HttpHeaders.Authorization)?.let { parseAuthorizationHeader(it) }
+        ?: header(HttpHeaders.Authorization)?.let { runCatching { parseAuthorizationHeader(it) }.getOrNull() }
 
 /** Вход по коду из тела [ClientAppLoginRequest] запроса: сеанс называется по `User-Agent`. */
 context(raise: Raise<AppError>)

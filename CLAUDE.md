@@ -632,6 +632,13 @@ Inject via constructor only. Field injection and `lateinit var` are forbidden ex
 - Тесты экранов — `jvmTest` на `runComposeUiTest` и фейковом сервере `FakeServer` (`MockEngine`);
   код, которому нужен Android (Keystore), — `androidDeviceTest`
   (`./gradlew -Pathletica.mobile=true :mobile:connectedAndroidDeviceTest` на эмуляторе или устройстве).
+- iOS: таргеты `iosArm64`/`iosSimulatorArm64` в `shared` и `:mobile` (собираются только на macOS с Xcode),
+  платформенный код — `iosMain` (`MainViewController`, сеанс в Keychain `IosSessionStore`, ссылки в
+  `SFSafariViewController`). `mobile/iosApp` — SwiftUI-оболочка; фреймворк собирает фаза Xcode
+  `embedAndSignAppleFrameworkForXcode`, адреса API и документов — настройки сборки `ATHLETICA_*`.
+  Тесты, которым нужен Keychain, — XCTest в `mobile/iosApp/iosAppTests` (тестам Kotlin/Native симулятор
+  Keychain не даёт): `xcodebuild -project mobile/iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=<iPhone>' test`.
+  Имена тестов в `commonTest` — без запятых и точек: Kotlin/Native их не принимает.
 
 ## Known Constraints & Gotchas
 

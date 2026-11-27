@@ -20,8 +20,14 @@ kotlin {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
     }
-    // shortcut: JVM-таргет только для тестов экранов (`runComposeUiTest` без эмулятора); iOS добавит `client-mobile-ios`.
+    // shortcut: JVM-таргет только для тестов экранов (`runComposeUiTest` без эмулятора).
     jvm()
+    listOf(iosArm64(), iosSimulatorArm64()).forEach {
+        it.binaries.framework {
+            baseName = "AthleticaMobile"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -47,6 +53,9 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.datastore)
             implementation(libs.tink.android)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

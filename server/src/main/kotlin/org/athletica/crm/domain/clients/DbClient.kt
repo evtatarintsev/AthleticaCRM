@@ -36,6 +36,8 @@ internal data class DbActiveClient(
     override val customFields: List<CustomFieldValue>,
     private val orgId: OrgId,
     private val definitions: CustomFieldDefinitions,
+    /** Идентификаторы документов на момент загрузки; по ним [save] пишет только добавленные и удалённые документы. */
+    private val loadedDocIds: Set<ClientDocId>,
 ) : ActiveClient {
     context(tr: Transaction, raise: Raise<AppError>)
     override suspend fun save() {
@@ -59,11 +61,15 @@ internal data class DbActiveClient(
                 .execute()
         ensure(updated == 1L) { clientArchived() }
 
-        tr.sql("DELETE FROM client_docs WHERE client_id = :clientId")
-            .bind("clientId", id)
-            .execute()
+        val currentDocIds = docs.map { it.id }.toSet()
+        (loadedDocIds - currentDocIds).forEach { docId ->
+            tr.sql("DELETE FROM client_docs WHERE id = :id AND client_id = :clientId")
+                .bind("id", docId)
+                .bind("clientId", id)
+                .execute()
+        }
 
-        docs.forEach { doc ->
+        docs.filterNot { it.id in loadedDocIds }.forEach { doc ->
             tr.sql(
                 """
                 INSERT INTO client_docs (id, client_id, org_id, upload_id, name, created_at)

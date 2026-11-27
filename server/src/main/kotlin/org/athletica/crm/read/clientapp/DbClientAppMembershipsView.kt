@@ -4,7 +4,7 @@ import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
 import io.r2dbc.spi.Row
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.json.Json
+import org.athletica.crm.api.appJson
 import org.athletica.crm.api.schemas.clientapp.ClientAppMembershipDebitSchema
 import org.athletica.crm.api.schemas.clientapp.ClientAppMembershipFreezeSchema
 import org.athletica.crm.api.schemas.clientapp.ClientAppMembershipSchema
@@ -24,7 +24,7 @@ import org.athletica.crm.storage.asUuid
 
 /**
  * [ClientAppMembershipsView]: «сегодня» организации с проверкой подключённого доступа, затем один SQL
- * по абонементам клиента с действующими списаниями. Признак «заканчивается» выводит общий
+ * по абонементам клиента с действующими списаниями. Признаки «заканчивается» и «закончился» выводит общий
  * [ActiveStatus.of] в Kotlin — ответ непостраничный и небольшой.
  */
 class DbClientAppMembershipsView : ClientAppMembershipsView {
@@ -53,7 +53,13 @@ class DbClientAppMembershipsView : ClientAppMembershipsView {
         val end = asLocalDateOrNull("end_date")
         val remaining = asIntOrNull("sessions_remaining")
         val freezeStart = asLocalDateOrNull("freeze_start")
-        val freezeEnd = asLocalDateOrNull("freeze_end")
+        val freezeEnd = asLocalDateOrNull("freeze_end")?.takeIf { it >= today }
+        val status =
+            if (state == ClientAppMembershipState.ACTIVE && start != null && end != null) {
+                ActiveStatus.of(start, end, remaining, today)
+            } else {
+                null
+            }
         return ClientAppMembershipSchema(
             id = asUuid("id").toMembershipId(),
             name = asString("name"),
@@ -63,15 +69,11 @@ class DbClientAppMembershipsView : ClientAppMembershipsView {
             startDate = start,
             endDate = end,
             activateOn = asLocalDateOrNull("activate_on").takeIf { state == ClientAppMembershipState.INACTIVE },
-            endingSoon =
-                if (state == ClientAppMembershipState.ACTIVE && start != null && end != null) {
-                    ActiveStatus.of(start, end, remaining, today).endingSoon.sorted()
-                } else {
-                    emptyList()
-                },
+            endingSoon = status?.endingSoon?.sorted().orEmpty(),
+            ended = status?.closePending ?: false,
             freeze = if (freezeStart != null && freezeEnd != null) ClientAppMembershipFreezeSchema(freezeStart, freezeEnd) else null,
             closedOn = asLocalDateOrNull("closed_on"),
-            debits = Json.decodeFromString<List<ClientAppMembershipDebitSchema>>(asString("debits")),
+            debits = appJson.decodeFromString<List<ClientAppMembershipDebitSchema>>(asString("debits")),
         )
     }
 

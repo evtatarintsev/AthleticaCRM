@@ -9,9 +9,12 @@ import { useI18n } from "../i18n/context";
 import { Failure } from "../ui/Failure";
 import { useLoaded } from "../ui/useLoaded";
 
-/** Абонемент действует или ждёт активации — показывается среди текущих, а не в истории. */
+/**
+ * Абонемент действует или ждёт активации — показывается среди текущих, а не в истории. Закончившийся,
+ * но ещё не закрытый сотрудником активный абонемент для клиента уже история.
+ */
 function isCurrent(membership: ClientAppMembershipSchema) {
-  return membership.state === "ACTIVE" || membership.state === "INACTIVE";
+  return (membership.state === "ACTIVE" && !membership.ended) || membership.state === "INACTIVE";
 }
 
 /**
@@ -39,6 +42,7 @@ function Details({ membership }: { membership: ClientAppMembershipSchema }) {
       <p>
         {sessions}
         {membership.state === "ACTIVE" &&
+          !membership.ended &&
           membership.endDate !== null &&
           `, ${t("memberships.until", { date: day(membership.endDate) })}`}
       </p>
@@ -58,6 +62,9 @@ function Details({ membership }: { membership: ClientAppMembershipSchema }) {
             : t("memberships.startsOn", { date: day(membership.activateOn) })}
         </p>
       )}
+      {membership.state === "ACTIVE" && membership.ended && (
+        <p className="muted">{t("memberships.ended")}</p>
+      )}
       {membership.state === "CLOSED" && membership.closedOn !== null && (
         <p className="muted">{t("memberships.closedOn", { date: day(membership.closedOn) })}</p>
       )}
@@ -67,8 +74,9 @@ function Details({ membership }: { membership: ClientAppMembershipSchema }) {
 }
 
 /**
- * Блок текущего абонемента профиля [profile] на главной, загруженного через [api]: активный, иначе
- * неактивированный; без них блок скрыт. [onOpen] — открыть все абонементы с уже загруженным ответом.
+ * Блок текущего абонемента профиля [profile] на главной, загруженного через [api]: действующий, иначе
+ * неактивированный; без них — «действующих нет» и ссылка на историю; без абонементов вовсе блок скрыт.
+ * [onOpen] — открыть все абонементы с уже загруженным ответом.
  */
 export function MembershipBlock({
   api,
@@ -97,15 +105,22 @@ export function MembershipBlock({
   }
   const all = state.value.memberships;
   const current =
-    all.find((it) => it.state === "ACTIVE") ?? all.find((it) => it.state === "INACTIVE");
-  if (current === undefined) {
+    all.find((it) => it.state === "ACTIVE" && !it.ended) ??
+    all.find((it) => it.state === "INACTIVE");
+  if (all.length === 0) {
     return null;
   }
   return (
     <section className="card">
       <h2>{t("memberships.current")}</h2>
-      <strong>{current.name}</strong>
-      <Details membership={current} />
+      {current === undefined ? (
+        <p className="muted">{t("memberships.none")}</p>
+      ) : (
+        <>
+          <strong>{current.name}</strong>
+          <Details membership={current} />
+        </>
+      )}
       <button
         type="button"
         className="link"

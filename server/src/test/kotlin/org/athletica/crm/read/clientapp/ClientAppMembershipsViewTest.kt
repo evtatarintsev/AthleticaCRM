@@ -99,6 +99,7 @@ class ClientAppMembershipsViewTest {
             assertEquals(8 to 3, membership.sessionsTotal to membership.sessionsRemaining)
             assertEquals(LocalDate(2026, 10, 20), membership.endDate)
             assertEquals(listOf(EndingSoonReason.BY_DATE), membership.endingSoon)
+            assertFalse(membership.ended)
             assertEquals(listOf(second, first), membership.debits.map { it.sessionId })
             assertEquals("Дети 7–9", membership.debits.first().groupName)
         }
@@ -122,6 +123,25 @@ class ClientAppMembershipsViewTest {
             assertEquals(LocalDate(2026, 11, 20), response.memberships[1].activateOn)
             assertEquals(ClientAppMembershipState.CLOSED to LocalDate(2026, 9, 1), response.memberships[2].state to response.memberships[2].closedOn)
             assertFalse(response.toString().contains("травма"))
+        }
+
+    @Test
+    fun `активный с вышедшим сроком или без занятий — закончился, прошедшая заморозка не отдаётся`() =
+        runTest {
+            val ivan = connected()
+            val expired = fixture.issue(ivan, name = "Срок вышел").id
+            debits.setTerm(expired, LocalDate(2026, 9, 1), LocalDate(2026, 10, 10))
+            val exhausted = fixture.issue(ivan, name = "Без занятий").id
+            debits.setTerm(exhausted, LocalDate(2026, 10, 1), LocalDate(2026, 10, 31))
+            fixture.setRemaining(exhausted, 0)
+            orThrow {
+                TestPostgres.db.sql("UPDATE memberships SET freeze_start = '2026-10-01', freeze_end = '2026-10-15', freeze_reason = 'отпуск' WHERE id = :id").bind("id", exhausted).execute()
+            }
+
+            val byId = memberships(ivan).memberships.associateBy { it.id }
+
+            assertEquals(true to emptyList(), byId.getValue(expired).ended to byId.getValue(expired).endingSoon)
+            assertEquals(true to null, byId.getValue(exhausted).ended to byId.getValue(exhausted).freeze)
         }
 
     @Test

@@ -475,6 +475,7 @@ function membership(id: string, name: string, state: string, extra: Record<strin
     endDate: null,
     activateOn: null,
     endingSoon: [],
+    ended: false,
     freeze: null,
     closedOn: null,
     debits: [],
@@ -529,13 +530,32 @@ describe("абонементы", () => {
     expect(await screen.findByText("Это кабинет клиента Иван")).toBeInTheDocument();
   });
 
-  it("без активного и неактивированного абонемента блока на главной нет", async () => {
-    const { fetch } = withMemberships([
-      membership("0197a3c2-0000-7000-8000-000000000013", "Отозванный", "REVOKED"),
-    ]);
+  it("без абонементов блока на главной нет", async () => {
+    const { fetch } = withMemberships([]);
     renderApp(fetch);
     expect(await screen.findByText("500,00 ₽")).toBeInTheDocument();
     expect(screen.queryByText("Все абонементы")).not.toBeInTheDocument();
+  });
+
+  it("только история — на главной «действующих нет», закончившийся активный в истории", async () => {
+    const { fetch } = withMemberships([
+      membership("0197a3c2-0000-7000-8000-000000000015", "Срок вышел", "ACTIVE", {
+        sessionsRemaining: 2,
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+        ended: true,
+      }),
+      membership("0197a3c2-0000-7000-8000-000000000013", "Отозванный", "REVOKED"),
+    ]);
+    renderApp(fetch);
+    expect(await screen.findByText("Действующих абонементов нет")).toBeInTheDocument();
+    expect(screen.queryByText("Срок вышел")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Все абонементы" }));
+    expect(await screen.findByText("История")).toBeInTheDocument();
+    expect(screen.getByText("Срок вышел")).toBeInTheDocument();
+    expect(screen.getByText("Закончился")).toBeInTheDocument();
+    expect(screen.getByText("Осталось 2 из 8")).toBeInTheDocument();
+    expect(screen.getByText("Отозван")).toBeInTheDocument();
   });
 
   it("неактивированный безлимит — дата начала", async () => {

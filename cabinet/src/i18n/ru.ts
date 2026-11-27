@@ -75,6 +75,7 @@ export const ru = {
   "memberships.startsOnVisit": "Начнёт действовать с первого посещения",
   "memberships.closedOn": "Закрыт {date}",
   "memberships.revoked": "Отозван",
+  "memberships.ended": "Закончился",
   "memberships.debits": "Списания: {count}",
   "memberships.noDebits": "Списаний пока нет",
   "account.open": "Аккаунт и сеансы",

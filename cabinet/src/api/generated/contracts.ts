@@ -129,6 +129,7 @@ export const ClientAppMembershipSchemaSchema = z
     endDate: LocalDateSchema.nullable(),
     activateOn: LocalDateSchema.nullable(),
     endingSoon: z.array(EndingSoonReasonSchema).readonly(),
+    ended: z.boolean(),
     freeze: ClientAppMembershipFreezeSchemaSchema.nullable(),
     closedOn: LocalDateSchema.nullable(),
     debits: z.array(ClientAppMembershipDebitSchemaSchema).readonly(),

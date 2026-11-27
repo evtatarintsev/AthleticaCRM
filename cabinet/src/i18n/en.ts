@@ -74,6 +74,7 @@ export const en: Messages<typeof ru> = {
   "memberships.startsOnVisit": "Starts on the first visit",
   "memberships.closedOn": "Closed on {date}",
   "memberships.revoked": "Revoked",
+  "memberships.ended": "Ended",
   "memberships.debits": "Sessions used: {count}",
   "memberships.noDebits": "No sessions used yet",
   "account.open": "Account and sessions",
